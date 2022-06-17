@@ -2,3 +2,4 @@ node_modules/
 .vscode-test/
 dist/
 out/
+.DS_Store
