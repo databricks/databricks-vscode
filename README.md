@@ -1,8 +1,20 @@
-# databricks README
+# Databricks extension for VSCode
 
-This is the README for your extension "databricks". After writing up a brief description, we recommend including the following sections.
+| System | Status |
+| ------------ | ------------ |
+| Build ([main branch](https://github.com/databricks/databricks-vscode/commits/main)) | [![GitHub CI Status](https://github.com/databricks/databricks-vscode/actions/workflows/push.yml/badge.svg?branch=main)](https://github.com/databricks/databricks-vscode/actions/workflows/push.yml) [![Coverage](https://img.shields.io/codecov/c/github/databricks/databricks-vscode/main.svg)](https://codecov.io/gh/databricks/databricks-vscode/branch/main) [![LGTM Grade](https://img.shields.io/lgtm/grade/javascript/github/databricks/databricks-vscode)](https://lgtm.com/projects/g/databricks/databricks-vscode/) |
+| [Marketplace](https://marketplace.visualstudio.com/items?itemName=databricks.databricks-vscode) | [![Marketplace Version](https://img.shields.io/vscode-marketplace/v/databricks.databricks-vscode.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/d/databricks.databricks-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=databricks.databricks-vscode)     
+
+The Databricks extension for VSCode allows you to develop for the Databricks Lakehouse platform from VSCode. 
+
+The extension is available from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/itemdetails?itemName=databricks.databricks-vscode).
+
+This is an open source project because we want you to be involved. We love issues, feature requests, code reviews, pull
+requests or any positive contribution. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Features
+
+<mark>TODO</mark>
 
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
 
@@ -14,9 +26,13 @@ For example if there is an image subfolder under your extension project workspac
 
 ## Requirements
 
+<mark>TODO</mark>
+
 If you have any requirements or dependencies, add a section describing those and how to install and configure them.
 
 ## Extension Settings
+
+<mark>TODO</mark>
 
 Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
 
@@ -29,9 +45,13 @@ This extension contributes the following settings:
 
 ## Known Issues
 
+<mark>TODO</mark>
+
 Calling out known issues can help limit users opening duplicate issues against your extension.
 
 ## Release Notes
+
+<mark>TODO</mark>
 
 Users appreciate release notes as you update your extension.
 
@@ -46,6 +66,10 @@ Fixed issue #.
 ### 1.1.0
 
 Added features X, Y, and Z.
+
+## License
+
+The **Databricks extension for Visual Studio Code** is distributed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
 -----------------------------------------------------------------------------------------------------------
 ## Following extension guidelines
