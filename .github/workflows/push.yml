@@ -1,39 +1,39 @@
 name: Node.js CI
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+    build:
+        runs-on: ${{ matrix.os }}
 
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
-        node-version: [14.x]
-        vscode-version: [minimum, stable, insiders]
+        strategy:
+            matrix:
+                os: [windows-latest, macos-latest]
+                node-version: [14.x]
+                vscode-version: [minimum, stable, insiders]
 
-    env:
-        VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-
-      - run: npm ci
-      - run: npm run vscode:prepublish
-
-      - name: Tests
-        uses: GabrielBB/xvfb-action@v1
-        if: matrix.os != 'windows-latest'
         env:
-            NODE_OPTIONS: '--max-old-space-size=8192'
-        with:
-            run: npm test
+            VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v3
+              with:
+                  node-version: ${{ matrix.node-version }}
+
+            - run: npm ci
+            - run: npm run vscode:prepublish
+
+            - name: Tests
+              uses: GabrielBB/xvfb-action@v1
+              if: matrix.os != 'windows-latest'
+              env:
+                  NODE_OPTIONS: "--max-old-space-size=8192"
+              with:
+                  run: npm test
