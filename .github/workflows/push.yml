@@ -22,5 +22,5 @@ jobs:
         with:
           node-version: 15.x
 
-      - run: npm package
+      - run: npm run package
       - run: npm test
