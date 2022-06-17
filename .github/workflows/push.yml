@@ -32,8 +32,7 @@ jobs:
 
       - name: Tests
         uses: GabrielBB/xvfb-action@v1
-        if: ${{ matrix.os }} != 'windows-latest'
-        # `NODE_OPTIONS` should be isolated because of https://github.com/codecov/uploader/issues/475
+        if: matrix.os != 'windows-latest'
         env:
             NODE_OPTIONS: '--max-old-space-size=8192'
         with:
