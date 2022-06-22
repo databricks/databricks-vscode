@@ -1,4 +1,4 @@
-name: Node.js CI
+name: VSCode Extensions CI
 
 on:
     push:
@@ -14,7 +14,7 @@ jobs:
             matrix:
                 os: [windows-latest, macos-latest]
                 node-version: [14.x]
-                vscode-version: [minimum, stable, insiders]
+                vscode-version: [stable, insiders]
 
         env:
             VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
@@ -28,12 +28,26 @@ jobs:
                   node-version: ${{ matrix.node-version }}
 
             - run: npm ci
-            - run: npm run vscode:prepublish
 
-            - name: Tests
+            - name: Building packages
+              run: npm run build
+
+            - name: Tests (OSX)
               uses: GabrielBB/xvfb-action@v1
               if: matrix.os != 'windows-latest'
               env:
                   NODE_OPTIONS: "--max-old-space-size=8192"
               with:
                   run: npm test
+
+            - name: Tests (Windows)
+              if: matrix.os == 'windows-latest'
+              run: npm test
+              env:
+                  NODE_OPTIONS: "--max-old-space-size=8192"
+
+            - name: Integration Tests
+              run: npm run test:integ
+              env:
+                  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+                  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}

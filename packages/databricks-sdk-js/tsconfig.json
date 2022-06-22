@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "declaration": true,
+        "module": "CommonJS",
+        "target": "ES6",
+        "lib": ["ES2020"],
+        "sourceMap": true,
+        "rootDir": "src",
+        "outDir": "dist",
+        "strict": true /* enable all strict type-checking options */
+    }
+}
