@@ -1,4 +1,5 @@
 import * as path from "path";
+import os = require("os");
 
 import {runTests} from "@vscode/test-electron";
 
@@ -13,7 +14,11 @@ async function main() {
         const extensionTestsPath = path.resolve(__dirname, "./suite/index");
 
         // Download VS Code, unzip it and run the integration test
-        await runTests({extensionDevelopmentPath, extensionTestsPath});
+        await runTests({
+            extensionDevelopmentPath,
+            extensionTestsPath,
+            launchArgs: ["--user-data-dir", `${os.tmpdir()}`],
+        });
     } catch (err) {
         console.error("Failed to run tests");
         process.exit(1);

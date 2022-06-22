@@ -1,0 +1,34 @@
+{
+    "name": "@databricks/databricks-sdk",
+    "version": "0.0.1",
+    "description": "Databricks SDK",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/databricks/databricks-vscode.git#main"
+    },
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/databricks/databricks-vscode/issues"
+    },
+    "homepage": "https://github.com/databricks/databricks-vscode/tree/main#readme",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "/dist"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "clean": "rm -rf dist node_modules",
+        "pretest": "npm run build && npm run lint",
+        "fix": "prettier . --write",
+        "test:lint": "eslint src --ext ts && prettier . -c",
+        "test": "ts-mocha --type-check 'src/**/*.test.ts'",
+        "test:integ": "ts-mocha --type-check 'src/**/*.integ.ts'"
+    },
+    "dependencies": {
+        "node-fetch": "^2.6.7"
+    },
+    "devDependencies": {
+        "@types/node-fetch": "^2.6.2"
+    }
+}
