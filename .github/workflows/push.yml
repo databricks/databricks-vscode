@@ -26,11 +26,12 @@ jobs:
               uses: actions/setup-node@v3
               with:
                   node-version: ${{ matrix.node-version }}
+                  cache: "yarn"
 
-            - run: npm ci
+            - run: yarn install --immutable
 
             - name: Building packages
-              run: npm run build
+              run: yarn run build
 
             - name: Tests (OSX)
               uses: GabrielBB/xvfb-action@v1
@@ -38,16 +39,17 @@ jobs:
               env:
                   NODE_OPTIONS: "--max-old-space-size=8192"
               with:
-                  run: npm test
+                  run: yarn test
 
             - name: Tests (Windows)
               if: matrix.os == 'windows-latest'
-              run: npm test
+              run: yarn test
               env:
                   NODE_OPTIONS: "--max-old-space-size=8192"
 
             - name: Integration Tests
-              run: npm run test:integ
+              run: yarn run test:integ
               env:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
                   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+                  DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}

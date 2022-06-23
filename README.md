@@ -18,5 +18,12 @@ Currently, we have the following packages:
 
 ### Getting Started
 
+Prepare yarn:
+
+```
+npm install -g yarn@2
+yarn install
+```
+
 This is an open source project because we want you to be involved. We love issues, feature requests, code reviews, pull
 requests or any positive contribution. See [CONTRIBUTING.md](CONTRIBUTING.md).

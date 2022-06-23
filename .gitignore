@@ -4,3 +4,10 @@ dist/
 out/
 .DS_Store
 *.vsix
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions

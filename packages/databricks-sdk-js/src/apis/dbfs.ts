@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 import {ApiClient} from "../api-client";
 
 export interface DbfsPutRequest {

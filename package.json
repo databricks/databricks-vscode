@@ -6,10 +6,15 @@
         "packages/databricks-sdk-js",
         "packages/databricks-vscode"
     ],
+    "engines": {
+        "node": ">=16.0",
+        "yarn": ">=3.2.0"
+    },
     "scripts": {
-        "test": "npm run test --workspaces --if-present",
-        "test:integ": "npm run test:integ --workspaces --if-present",
-        "build": "npm run build --workspaces --if-present"
+        "test": "yarn workspaces foreach run test --if-present",
+        "test:integ": "yarn workspaces foreach run test:integ --if-present",
+        "build": "yarn workspaces foreach run build",
+        "clean": "yarn workspaces foreach run clean"
     },
     "repository": {
         "type": "git",
@@ -20,15 +25,5 @@
         "url": "https://github.com/databricks/databricks-vscode/issues"
     },
     "homepage": "https://github.com/databricks/databricks-vscode#readme",
-    "devDependencies": {
-        "@types/mocha": "^9.1.1",
-        "@typescript-eslint/eslint-plugin": "^5.29.0",
-        "@typescript-eslint/parser": "^5.29.0",
-        "eslint": "^8.18.0",
-        "eslint-config-prettier": "^8.5.0",
-        "mocha": "^10.0.0",
-        "prettier": "^2.7.1",
-        "ts-mocha": "^10.0.0",
-        "typescript": "^4.7.4"
-    }
+    "packageManager": "yarn@3.2.1"
 }

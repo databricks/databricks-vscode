@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 import {
     ApiClient,
     ClustersApi,
@@ -8,16 +10,18 @@ import {
     ExecutionContext,
 } from ".";
 import assert = require("assert");
-import {getHeapStatistics} from "v8";
+import {v4 as uuidv4} from "uuid";
 
 describe("Integration tests for the Databricks SDK", function () {
     let client: ApiClient;
     let clusterId: string;
+    let testRunId: string;
     let cleanupCluster = false;
 
     this.timeout(10 * 60 * 1000);
 
     before(async () => {
+        testRunId = uuidv4();
         let host = process.env["DATABRICKS_HOST"];
         let token = process.env["DATABRICKS_TOKEN"];
 
@@ -34,7 +38,7 @@ describe("Integration tests for the Databricks SDK", function () {
             cleanupCluster = true;
 
             let response = await clustersApi.create({
-                cluster_name: `sdk-integ-test-${Date.now()}`,
+                cluster_name: `sdk-integ-test-${testRunId}`,
                 spark_version: "10.4.x-scala2.12",
                 num_workers: 0,
                 node_type_id: "m5d.large",
@@ -64,19 +68,16 @@ describe("Integration tests for the Databricks SDK", function () {
 
         let clustersApi = new ClustersApi(client);
 
-        console.log(
-            "deleting cluster",
-            await clustersApi.delete({
-                cluster_id: clusterId,
-            })
-        );
+        await clustersApi.delete({
+            cluster_id: clusterId,
+        });
     });
 
     it("should run a notebook job", async () => {
         let jobsService = new JobsService(client);
 
         let dbfsApi = new DbfsService(client);
-        let jobPath = `/tmp/sdk-js-integ-${Date.now()}.py`;
+        let jobPath = `/tmp/sdk-js-integ-${testRunId}.py`;
 
         await dbfsApi.put({
             path: jobPath,
