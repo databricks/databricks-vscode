@@ -9,13 +9,17 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-sdk@workspace:packages/databricks-sdk-js"
   dependencies:
+    "@types/ini": ^1.3.31
     "@types/node-fetch": ^2.6.2
+    "@types/tmp": ^0.2.3
     "@types/uuid": ^8.3.4
     eslint: ^8.18.0
     eslint-config-prettier: ^8.5.0
+    ini: ^3.0.0
     mocha: ^10.0.0
     node-fetch: ^2.6.7
     prettier: ^2.7.1
+    tmp-promise: ^3.0.3
     ts-loader: ^9.3.0
     ts-mocha: ^10.0.0
     typescript: ^4.7.4
@@ -223,6 +227,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/ini@npm:^1.3.31":
+  version: 1.3.31
+  resolution: "@types/ini@npm:1.3.31"
+  checksum: aca4fed0cd68f6693fd64e1b7d188a9c8c6f5823b2e3501b0570135555d4184d7d0dfba2c1afb3514c94cb21ece732f4467ea98c827d1b1b98716827ac9de680
+  languageName: node
+  linkType: hard
+
 "@types/json-schema@npm:*, @types/json-schema@npm:^7.0.8, @types/json-schema@npm:^7.0.9":
   version: 7.0.11
   resolution: "@types/json-schema@npm:7.0.11"
@@ -272,6 +283,13 @@ __metadata:
   version: 16.11.41
   resolution: "@types/node@npm:16.11.41"
   checksum: 808e4d65757bb13cf25e88dfa4e65880efef06652b04baecb051eb90cf090dda9812aa3505b31e963a48041eed7dbe0fc59c44c7c5e117da952ff951bf3a584a
+  languageName: node
+  linkType: hard
+
+"@types/tmp@npm:^0.2.3":
+  version: 0.2.3
+  resolution: "@types/tmp@npm:0.2.3"
+  checksum: 0ca45e99b3b3c6959d5c4f4555f73c8007db540cfb0fbbb9373217f9ab85e67eef75193f51a1d6564b0ee6c6f5ffa259d1034d7f7530a5b7ce80acb94cfc4daa
   languageName: node
   linkType: hard
 
@@ -2260,6 +2278,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ini@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "ini@npm:3.0.0"
+  checksum: e92b6b0835ac369e58c677e7faa8db6019ac667d7404887978fb86b181d658e50f1742ecbba7d81eb5ff917b3ae4d63a48e1ef3a9f8a0527bd7605fe1a9995d4
+  languageName: node
+  linkType: hard
+
 "ini@npm:~1.3.0":
   version: 1.3.8
   resolution: "ini@npm:1.3.8"
@@ -3821,7 +3846,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tmp@npm:^0.2.1":
+"tmp-promise@npm:^3.0.3":
+  version: 3.0.3
+  resolution: "tmp-promise@npm:3.0.3"
+  dependencies:
+    tmp: ^0.2.0
+  checksum: f854f5307dcee6455927ec3da9398f139897faf715c5c6dcee6d9471ae85136983ea06662eba2edf2533bdcb0fca66d16648e79e14381e30c7fb20be9c1aa62c
+  languageName: node
+  linkType: hard
+
+"tmp@npm:^0.2.0, tmp@npm:^0.2.1":
   version: 0.2.1
   resolution: "tmp@npm:0.2.1"
   dependencies:
