@@ -26,15 +26,19 @@
         "test:integ": "ts-mocha --type-check 'src/**/*.integ.ts'"
     },
     "dependencies": {
+        "ini": "^3.0.0",
         "node-fetch": "^2.6.7"
     },
     "devDependencies": {
+        "@types/ini": "^1.3.31",
         "@types/node-fetch": "^2.6.2",
+        "@types/tmp": "^0.2.3",
         "@types/uuid": "^8.3.4",
         "eslint": "^8.18.0",
         "eslint-config-prettier": "^8.5.0",
         "mocha": "^10.0.0",
         "prettier": "^2.7.1",
+        "tmp-promise": "^3.0.3",
         "ts-loader": "^9.3.0",
         "ts-mocha": "^10.0.0",
         "typescript": "^4.7.4",

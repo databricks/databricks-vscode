@@ -1,34 +1,25 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import fetch from "node-fetch";
-//import {Event, EventEmitter} from "vscode";
+import {fromDefaultChain} from "./auth/fromChain";
 
 type HttpMethod = "POST" | "GET";
 
 export class ApiClient {
-    private host!: string;
-    private token!: string;
-
-    constructor(host: string, token: string) {
-        this.updateConfiguration(host, token);
-    }
-
-    updateConfiguration(host: string, token: string) {
-        this.host = host;
-        this.token = token;
-    }
+    constructor(private credentialProvider = fromDefaultChain) {}
 
     async request(
         path: string,
         method: HttpMethod,
         payload?: any
     ): Promise<Object> {
+        const credentials = await this.credentialProvider();
         const headers = {
-            "Authorization": `Bearer ${this.token}`,
+            "Authorization": `Bearer ${credentials.token}`,
             "User-Agent": `vscode-notebook`,
             "Content-Type": "text/json",
         };
 
-        let url = new URL(this.host);
+        let url = credentials.host;
         url.pathname = path;
 
         let options: any = {

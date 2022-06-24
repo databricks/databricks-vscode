@@ -1,8 +1,8 @@
 import {equal} from "assert";
 import {ApiClient} from "./api-client";
 
-describe("API Client", () => {
+describe(__filename, () => {
     it("create an instance of the client", () => {
-        let client = new ApiClient("https://databricks.com", "PAT");
+        let client = new ApiClient();
     });
 });

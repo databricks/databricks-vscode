@@ -11,6 +11,7 @@ import {
 } from ".";
 import assert = require("assert");
 import {v4 as uuidv4} from "uuid";
+import {fromEnv} from "./auth/fromEnv";
 
 describe("Integration tests for the Databricks SDK", function () {
     let client: ApiClient;
@@ -22,13 +23,7 @@ describe("Integration tests for the Databricks SDK", function () {
 
     before(async () => {
         testRunId = uuidv4();
-        let host = process.env["DATABRICKS_HOST"];
-        let token = process.env["DATABRICKS_TOKEN"];
-
-        assert(host, "Environment variable 'DATABRICKS_HOST' must be set");
-        assert(token, "Environment variable 'DATABRICKS_TOKEN' must be set");
-
-        client = new ApiClient(host, token);
+        client = new ApiClient(fromEnv());
         let clustersApi = new ClustersApi(client);
 
         if (process.env["DATABRICKS_CLUSTER_ID"]) {
