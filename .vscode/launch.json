@@ -8,24 +8,30 @@
         {
             "name": "Run Extension",
             "type": "extensionHost",
+            "cwd": "${workspaceFolder}/packages/databricks-vscode",
             "request": "launch",
-            "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/packages/databricks-vscode"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/packages/databricks-vscode/dist/**/*.js"
+            ],
             "preLaunchTask": "${defaultBuildTask}"
         },
         {
             "name": "Extension Tests",
             "type": "extensionHost",
+            "cwd": "${workspaceFolder}/packages/databricks-vscode",
             "request": "launch",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}",
-                "--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
+                "--extensionDevelopmentPath=${workspaceFolder}/packages/databricks-vscode",
+                "--extensionTestsPath=${workspaceFolder}/packages/databricks-vscode/out/test/suite/index"
             ],
             "outFiles": [
-                "${workspaceFolder}/out/**/*.js",
-                "${workspaceFolder}/dist/**/*.js"
+                "${workspaceFolder}/packages/databricks-vscode/out/**/*.js",
+                "${workspaceFolder}/packages/databricks-vscode/dist/**/*.js"
             ],
-            "preLaunchTask": "tasks: watch-tests"
+            "preLaunchTask": "${defaultBuildTask}"
         }
     ]
 }
