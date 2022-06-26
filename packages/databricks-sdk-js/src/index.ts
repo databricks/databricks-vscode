@@ -11,7 +11,8 @@ export * from "./apis/dbfs";
 export * from "./services/Command";
 export * from "./services/ExecutionContext";
 
-export * from "./auth/CredentialProvider";
+export * from "./auth/types";
 export * from "./auth/fromEnv";
 export * from "./auth/fromChain";
 export * from "./auth/fromConfigFile";
+export * from "./auth/configFile";

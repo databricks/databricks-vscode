@@ -1,7 +1,4 @@
-import {
-    CredentialProvider,
-    CredentialsProviderError,
-} from "./CredentialProvider";
+import {CredentialProvider, CredentialsProviderError} from "./types";
 import {fromEnv} from "./fromEnv";
 import {fromConfigFile} from "./fromConfigFile";
 

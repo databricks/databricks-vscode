@@ -2,8 +2,8 @@ import {
     CredentialProvider,
     Credentials,
     CredentialsProviderError,
-} from "./CredentialProvider";
-import {loadConfigFile} from "../configFile";
+} from "./types";
+import {loadConfigFile} from "./configFile";
 
 export const DEFAULT_PROFILE = "DEFAULT";
 

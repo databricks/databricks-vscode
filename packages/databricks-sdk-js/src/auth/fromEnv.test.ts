@@ -1,5 +1,5 @@
 import assert = require("node:assert");
-import {CredentialsProviderError} from "./CredentialProvider";
+import {CredentialsProviderError} from "./types";
 import {fromEnv} from "./fromEnv";
 
 describe(__filename, () => {

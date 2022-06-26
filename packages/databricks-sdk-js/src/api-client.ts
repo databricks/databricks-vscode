@@ -4,6 +4,16 @@ import {fromDefaultChain} from "./auth/fromChain";
 
 type HttpMethod = "POST" | "GET";
 
+export class HttpError extends Error {
+    constructor(
+        readonly message: string,
+        readonly code: number,
+        readonly json?: any
+    ) {
+        super(message);
+    }
+}
+
 export class ApiClient {
     constructor(private credentialProvider = fromDefaultChain) {}
 
@@ -42,6 +52,12 @@ export class ApiClient {
         // TODO proper error handling
         if ("error" in response) {
             throw new Error(response.error);
+        }
+
+        if ("error_code" in response) {
+            let message =
+                response.message || `HTTP error ${response.error_code}`;
+            throw new HttpError(message, response.error_code, response);
         }
 
         return response as any;
