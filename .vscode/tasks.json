@@ -5,6 +5,9 @@
     "tasks": [
         {
             "type": "npm",
+            "options": {
+                "cwd": "${workspaceFolder}/packages/databricks-vscode"
+            },
             "script": "watch",
             "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
             "isBackground": true,
@@ -19,6 +22,9 @@
         },
         {
             "type": "npm",
+            "options": {
+                "cwd": "${workspaceFolder}/packages/databricks-vscode"
+            },
             "script": "watch-tests",
             "problemMatcher": "$tsc-watch",
             "isBackground": true,

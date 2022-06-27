@@ -18,6 +18,7 @@
     ],
     "scripts": {
         "build": "tsc -p tsconfig.json",
+        "watch": "tsc -w -p tsconfig.json",
         "clean": "rm -rf dist node_modules",
         "fix": "prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",

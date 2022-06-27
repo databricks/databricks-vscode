@@ -1,7 +1,4 @@
-import {
-    CredentialProvider,
-    CredentialsProviderError,
-} from "./CredentialProvider";
+import {CredentialProvider, CredentialsProviderError} from "./types";
 
 export const fromEnv = (): CredentialProvider => {
     return async () => {
