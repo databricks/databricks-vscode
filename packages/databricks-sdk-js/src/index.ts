@@ -8,6 +8,7 @@ export * from "./apis/libraries";
 export * from "./apis/scim";
 export * from "./apis/dbfs";
 
+export * from "./services/Cluster";
 export * from "./services/Command";
 export * from "./services/ExecutionContext";
 
