@@ -56,9 +56,8 @@ jobs:
 
             - name: Build VSIX (OSX)
               if: matrix.os == 'macos-latest'
-              run: yarn workspace databricks vscode:package -t darwin-x64
-              run: yarn workspace databricks vscode:package -t darwin-arm64
-            
+              run: yarn workspace databricks vscode:package -t darwin-x64 && yarn workspace databricks vscode:package -t darwin-arm64
+
             - name: Build VSIX (Windows)
               if: matrix.os == 'windows-latest'
               run: yarn workspace databricks vscode:package
