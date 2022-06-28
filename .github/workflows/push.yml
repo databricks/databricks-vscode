@@ -73,6 +73,9 @@ jobs:
 
             - run: yarn install --immutable
 
+            - name: Building packages
+              run: yarn run build
+
             - name: Build VSIX (OSX)
               if: matrix.os == 'macos-latest'
               run: yarn workspace databricks vscode:package -t darwin-x64 && yarn workspace databricks vscode:package -t darwin-arm64
