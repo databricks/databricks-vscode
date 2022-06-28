@@ -153,7 +153,7 @@
     },
     "scripts": {
         "vscode:prepublish": "yarn run package",
-        "vscode:package": "vsce package",
+        "vscode:package": "vsce package --yarn",
         "compile": "webpack",
         "watch": "webpack --watch",
         "package": "webpack --mode production --devtool hidden-source-map",

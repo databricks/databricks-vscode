@@ -53,3 +53,33 @@ jobs:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
                   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
                   DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
+
+    package:
+        runs-on: ${{matrix.os}}
+
+        strategy:
+            matrix:
+                os: [windows-latest, macos-latest]
+                node-version: [14.x]
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v3
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: "yarn"
+
+            - run: yarn install --immutable
+
+            - name: Building packages
+              run: yarn run build
+
+            - name: Build VSIX (OSX)
+              if: matrix.os == 'macos-latest'
+              run: yarn workspace databricks vscode:package -t darwin-x64 && yarn workspace databricks vscode:package -t darwin-arm64
+
+            - name: Build VSIX (Windows)
+              if: matrix.os == 'windows-latest'
+              run: yarn workspace databricks vscode:package
