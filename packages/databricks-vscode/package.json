@@ -36,14 +36,118 @@
         "url": "https://github.com/databricks/databricks-vscode.git"
     },
     "activationEvents": [
-        "onCommand:databricks.helloWorld"
+        "onCommand:databricks.hello",
+        "onCommand:databricks.login",
+        "onCommand:databricks.logout",
+        "onCommand:databricks.configureProject",
+        "onCommand:databricks.openDatabricksConfigFile",
+        "onCommand:databricks.cluster.refresh",
+        "onCommand:databricks.cluster.filterByAll",
+        "onCommand:databricks.cluster.filterByMe",
+        "onCommand:databricks.cluster.filterByRunning",
+        "onView:clusterManager",
+        "onView:clusterList"
     ],
     "main": "./dist/extension.js",
     "contributes": {
         "commands": [
             {
-                "command": "databricks.helloWorld",
-                "title": "Hello World"
+                "command": "databricks.hello",
+                "title": "Databricks: Hello"
+            },
+            {
+                "command": "databricks.login",
+                "title": "Databricks: Login"
+            },
+            {
+                "command": "databricks.logout",
+                "title": "Databricks: Logout"
+            },
+            {
+                "command": "databricks.configureProject",
+                "icon": "$(gear)",
+                "title": "Databricks: Configure project"
+            },
+            {
+                "command": "databricks.openDatabricksConfigFile",
+                "title": "Databricks: Open Databricks configuration file"
+            },
+            {
+                "command": "databricks.cluster.filterByAll",
+                "title": "All"
+            },
+            {
+                "command": "databricks.cluster.filterByRunning",
+                "title": "Running"
+            },
+            {
+                "command": "databricks.cluster.filterByMe",
+                "title": "Created by me"
+            },
+            {
+                "command": "databricks.cluster.refresh",
+                "icon": "$(refresh)",
+                "title": "Refresh"
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "clusterManager",
+                    "title": "Databricks Clusters",
+                    "icon": "resources/light/logo.svg"
+                }
+            ]
+        },
+        "views": {
+            "clusterManager": [
+                {
+                    "id": "clusterList",
+                    "name": "Clusters"
+                }
+            ]
+        },
+        "viewsWelcome": [
+            {
+                "view": "clusterList",
+                "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.configureProject)\nTo learn more about how to use Databricks with VS Code [read our docs](https://github.com/databricks/databricks-vscode)."
+            }
+        ],
+        "menus": {
+            "view/title": [
+                {
+                    "when": "view == clusterList",
+                    "group": "navigation@1",
+                    "submenu": "databricks.cluster.filter"
+                },
+                {
+                    "command": "databricks.cluster.refresh",
+                    "when": "view == clusterList",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.configureProject",
+                    "when": "view == clusterList",
+                    "group": "navigation@3"
+                }
+            ],
+            "databricks.cluster.filter": [
+                {
+                    "command": "databricks.cluster.filterByAll"
+                },
+                {
+                    "command": "databricks.cluster.filterByMe"
+                },
+                {
+                    "command": "databricks.cluster.filterByRunning"
+                }
+            ]
+        },
+        "submenus": [
+            {
+                "id": "databricks.cluster.filter",
+                "label": "Filter clusters ...",
+                "icon": "$(filter)"
             }
         ]
     },
