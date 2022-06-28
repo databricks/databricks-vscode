@@ -53,3 +53,12 @@ jobs:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
                   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
                   DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
+
+            - name: Build VSIX (OSX)
+              if: matrix.os == 'macos-latest'
+              run: yarn workspace databricks vscode:package -t darwin-x64
+              run: yarn workspace databricks vscode:package -t darwin-arm64
+            
+            - name: Build VSIX (Windows)
+              if: matrix.os == 'windows-latest'
+              run: yarn workspace databricks vscode:package
