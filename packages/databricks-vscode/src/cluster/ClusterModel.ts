@@ -1,5 +1,7 @@
-import {Cluster} from "@databricks/databricks-sdk";
-import {Disposable, Event, EventEmitter} from "vscode";
+/* eslint-disable @typescript-eslint/naming-convention */
+
+import {Cluster, ClusterState} from "@databricks/databricks-sdk";
+import {Disposable, Event, EventEmitter, TreeItem} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export type ClusterFilter = "ALL" | "ME" | "RUNNING";
@@ -56,7 +58,26 @@ export class ClusterModel implements Disposable {
             return;
         }
 
-        return await Cluster.list(apiClient);
+        let clusters = await Cluster.list(apiClient);
+
+        return clusters
+            .filter((c) => {
+                return c.source !== "JOB";
+            })
+            .sort((a, b) => {
+                let stateWeight: Record<ClusterState, number> = {
+                    RUNNING: 10,
+                    PENDING: 9,
+                    RESTARTING: 8,
+                    RESIZING: 7,
+                    TERMINATING: 6,
+                    TERMINATED: 5,
+                    ERROR: 4,
+                    UNKNOWN: 3,
+                };
+
+                return stateWeight[a.state] > stateWeight[b.state] ? -1 : 1;
+            });
     }
 
     private async applyFilter(
