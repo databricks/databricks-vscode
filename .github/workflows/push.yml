@@ -7,7 +7,7 @@ on:
         branches: [main]
 
 jobs:
-    build:
+    test:
         runs-on: ${{ matrix.os }}
 
         strategy:
@@ -76,10 +76,22 @@ jobs:
             - name: Building packages
               run: yarn run build
 
-            - name: Build VSIX (OSX)
+            - run: mkdir -p artifacts
+
+            - name: Build VSIX (OSX - x64)
               if: matrix.os == 'macos-latest'
-              run: yarn workspace databricks vscode:package -t darwin-x64 && yarn workspace databricks vscode:package -t darwin-arm64
+              run: yarn workspace databricks vscode:package -t darwin-x64 -o artifacts
+
+            - name: Build VSIX (OSX - arm64)
+              if: matrix.os == 'macos-latest'
+              run: yarn workspace databricks vscode:package -t darwin-arm64 -o artifacts
 
             - name: Build VSIX (Windows)
               if: matrix.os == 'windows-latest'
-              run: yarn workspace databricks vscode:package
+              run: yarn workspace databricks vscode:package -o artifacts
+
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v3
+              with:
+                  name: ${{matrix.os}} artifacts
+                  path: artifacts
