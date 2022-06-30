@@ -93,14 +93,18 @@
         "viewsContainers": {
             "activitybar": [
                 {
-                    "id": "clusterManager",
-                    "title": "Databricks Clusters",
+                    "id": "databricksBar",
+                    "title": "Databricks",
                     "icon": "resources/light/logo.svg"
                 }
             ]
         },
         "views": {
-            "clusterManager": [
+            "databricksBar": [
+                {
+                    "id": "configurationView",
+                    "name": "Configuration"
+                },
                 {
                     "id": "clusterList",
                     "name": "Clusters"
@@ -109,12 +113,17 @@
         },
         "viewsWelcome": [
             {
-                "view": "clusterList",
+                "view": "configurationView",
                 "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.configureProject)\nTo learn more about how to use Databricks with VS Code [read our docs](https://github.com/databricks/databricks-vscode)."
             }
         ],
         "menus": {
             "view/title": [
+                {
+                    "command": "databricks.configureProject",
+                    "when": "view == configurationView",
+                    "group": "navigation@3"
+                },
                 {
                     "when": "view == clusterList",
                     "group": "navigation@1",
@@ -124,11 +133,6 @@
                     "command": "databricks.cluster.refresh",
                     "when": "view == clusterList",
                     "group": "navigation@2"
-                },
-                {
-                    "command": "databricks.configureProject",
-                    "when": "view == clusterList",
-                    "group": "navigation@3"
                 }
             ],
             "databricks.cluster.filter": [

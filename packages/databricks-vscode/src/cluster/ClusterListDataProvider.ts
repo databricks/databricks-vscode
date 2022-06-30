@@ -100,47 +100,7 @@ export class ClusterListDataProvider
     ): ProviderResult<Array<Cluster | TreeItem>> {
         if (element) {
             if (this.isClusterNode(element)) {
-                let children = [
-                    {
-                        label: "Cluster ID:",
-                        description: element.id,
-                    },
-                ];
-                if (element.cores) {
-                    children.push({
-                        label: "Cores:",
-                        description: element.cores + "",
-                    });
-                }
-                if (element.memoryMb) {
-                    children.push({
-                        label: "Memory:",
-                        description: formatSize(element.memoryMb),
-                    });
-                }
-                children.push(
-                    {
-                        label: "Spark version:",
-                        description: element.sparkVersion,
-                    },
-                    {
-                        label: "State:",
-                        description: element.state,
-                    },
-                    {
-                        label: "Creator:",
-                        description: element.creator,
-                    }
-                );
-
-                if (element.stateMessage) {
-                    children.push({
-                        label: "State message:",
-                        description: element.stateMessage,
-                    });
-                }
-
-                return children;
+                return ClusterListDataProvider.clusterNodeToTreeItems(element);
             } else {
                 return [];
             }
@@ -154,6 +114,48 @@ export class ClusterListDataProvider
                 }
             })();
         }
+    }
+
+    public static clusterNodeToTreeItems(element: Cluster): Array<TreeItem> {
+        let children = [
+            {
+                label: "Cluster ID:",
+                description: element.id,
+            },
+        ];
+        if (element.cores) {
+            children.push({
+                label: "Cores:",
+                description: element.cores + "",
+            });
+        }
+        if (element.memoryMb) {
+            children.push({
+                label: "Memory:",
+                description: formatSize(element.memoryMb),
+            });
+        }
+        children.push(
+            {
+                label: "Spark version:",
+                description: element.sparkVersion,
+            },
+            {
+                label: "State:",
+                description: element.state,
+            },
+            {
+                label: "Creator:",
+                description: element.creator,
+            }
+        );
+
+        if (element.stateMessage) {
+            children.push({
+                label: "State message:",
+                description: element.stateMessage,
+            });
+        }
 
         function formatSize(sizeInMB: number): string {
             if (sizeInMB > 1024) {
@@ -162,5 +164,7 @@ export class ClusterListDataProvider
                 return `${sizeInMB} MB`;
             }
         }
+
+        return children;
     }
 }

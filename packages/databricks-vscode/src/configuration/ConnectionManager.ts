@@ -26,6 +26,7 @@ export class ConnectionManager {
     private _apiClient?: ApiClient;
     private _projectConfigFile?: ProjectConfigFile;
     private _me?: string;
+    private _profile?: string;
 
     private readonly onChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -39,6 +40,10 @@ export class ConnectionManager {
 
     get me(): string | undefined {
         return this._me;
+    }
+
+    get profile(): string | undefined {
+        return this._profile;
     }
 
     get state(): ConnectionState {
@@ -59,6 +64,7 @@ export class ConnectionManager {
 
         let projectConfigFile;
         let apiClient;
+        let profile;
 
         try {
             if (!workspace.rootPath) {
@@ -71,15 +77,14 @@ export class ConnectionManager {
                 workspace.rootPath
             );
 
-            if (!projectConfigFile.config.profile) {
+            profile = projectConfigFile.config.profile;
+            if (!profile) {
                 throw new Error(
                     "Can't login to Databricks: Can't find project configuration file"
                 );
             }
 
-            let credentialProvider = fromConfigFile(
-                projectConfigFile.config.profile
-            );
+            let credentialProvider = fromConfigFile(profile);
 
             await credentialProvider();
 
@@ -98,7 +103,7 @@ export class ConnectionManager {
 
         this._apiClient = apiClient;
         this._projectConfigFile = projectConfigFile;
-
+        this._profile = profile;
         this.updateState("CONNECTED");
     }
 
@@ -117,21 +122,6 @@ export class ConnectionManager {
     }
 
     async configureProject() {
-        if (!workspace.rootPath) {
-            throw new Error(
-                "Can't login to Databricks: Not in a VSCode workspace"
-            );
-        }
-
-        let projectConfigFile;
-        try {
-            projectConfigFile = await ProjectConfigFile.load(
-                workspace.rootPath
-            );
-        } catch (e) {
-            projectConfigFile = new ProjectConfigFile({}, workspace.rootPath);
-        }
-
         let profile;
         while (true) {
             profile = await selectProfile(this.cli);
@@ -169,11 +159,28 @@ export class ConnectionManager {
             break;
         }
 
-        projectConfigFile.profile = profile;
-        await projectConfigFile.write();
+        await this.writeConfigFile(profile);
         window.showInformationMessage(`Selected profile: ${profile}`);
 
         await this.login(false);
+    }
+
+    private async writeConfigFile(profile: string) {
+        if (!workspace.rootPath) {
+            throw new Error("Not in a VSCode workspace");
+        }
+
+        let projectConfigFile;
+        try {
+            projectConfigFile = await ProjectConfigFile.load(
+                workspace.rootPath
+            );
+        } catch (e) {
+            projectConfigFile = new ProjectConfigFile({}, workspace.rootPath);
+        }
+
+        projectConfigFile.profile = profile;
+        await projectConfigFile.write();
     }
 
     async getCluster(): Promise<Cluster | undefined> {
@@ -211,7 +218,7 @@ export class ConnectionManager {
         return cluster;
     }
 
-    async getRepo() {}
+    async getWorkspace() {}
 
     private async getMe(apiClient: ApiClient): Promise<string> {
         let scimApi = new ScimApi(apiClient);

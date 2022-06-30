@@ -5,6 +5,7 @@ import {ConnectionManager} from "./configuration/ConnectionManager";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
+import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
@@ -14,8 +15,17 @@ export function activate(context: ExtensionContext) {
     connectionManager.login(false);
 
     let connectionCommands = new ConnectionCommands(connectionManager);
+    let configurationDataProvider = new ConfigurationDataProvider(
+        connectionManager
+    );
+    window.registerTreeDataProvider(
+        "configurationView",
+        configurationDataProvider
+    );
 
     context.subscriptions.push(
+        configurationDataProvider,
+
         commands.registerCommand("databricks.hello", async () => {
             console.log("Hello");
         }),

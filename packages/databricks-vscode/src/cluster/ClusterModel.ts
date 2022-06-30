@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {Cluster, ClusterState} from "@databricks/databricks-sdk";
-import {Disposable, Event, EventEmitter, TreeItem} from "vscode";
+import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export type ClusterFilter = "ALL" | "ME" | "RUNNING";
