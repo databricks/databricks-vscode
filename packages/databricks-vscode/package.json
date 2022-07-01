@@ -36,11 +36,12 @@
         "url": "https://github.com/databricks/databricks-vscode.git"
     },
     "activationEvents": [
-        "onCommand:databricks.hello",
-        "onCommand:databricks.login",
-        "onCommand:databricks.logout",
-        "onCommand:databricks.configureProject",
-        "onCommand:databricks.openDatabricksConfigFile",
+        "onCommand:databricks.connection.login",
+        "onCommand:databricks.connection.logout",
+        "onCommand:databricks.connection.configureProject",
+        "onCommand:databricks.connection.openDatabricksConfigFile",
+        "onCommand:databricks.connection.attachCluster",
+        "onCommand:databricks.connection.detachCluster",
         "onCommand:databricks.cluster.refresh",
         "onCommand:databricks.cluster.filterByAll",
         "onCommand:databricks.cluster.filterByMe",
@@ -52,25 +53,31 @@
     "contributes": {
         "commands": [
             {
-                "command": "databricks.hello",
-                "title": "Databricks: Hello"
-            },
-            {
-                "command": "databricks.login",
+                "command": "databricks.connection.login",
                 "title": "Databricks: Login"
             },
             {
-                "command": "databricks.logout",
+                "command": "databricks.connection.logout",
                 "title": "Databricks: Logout"
             },
             {
-                "command": "databricks.configureProject",
+                "command": "databricks.connection.configureProject",
                 "icon": "$(gear)",
                 "title": "Databricks: Configure project"
             },
             {
-                "command": "databricks.openDatabricksConfigFile",
+                "command": "databricks.connection.openDatabricksConfigFile",
                 "title": "Databricks: Open Databricks configuration file"
+            },
+            {
+                "command": "databricks.connection.attachCluster",
+                "title": "Attach cluster",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.connection.detachCluster",
+                "title": "Detach cluster",
+                "icon": "$(debug-disconnect)"
             },
             {
                 "command": "databricks.cluster.filterByAll",
@@ -114,13 +121,13 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.configureProject)\nTo learn more about how to use Databricks with VS Code [read our docs](https://github.com/databricks/databricks-vscode)."
+                "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.connection.configureProject)\nTo learn more about how to use Databricks with VS Code [read our docs](https://github.com/databricks/databricks-vscode)."
             }
         ],
         "menus": {
             "view/title": [
                 {
-                    "command": "databricks.configureProject",
+                    "command": "databricks.connection.configureProject",
                     "when": "view == configurationView",
                     "group": "navigation@3"
                 },
@@ -144,6 +151,23 @@
                 },
                 {
                     "command": "databricks.cluster.filterByRunning"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "databricks.connection.attachCluster",
+                    "when": "view == clusterList",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.connection.detachCluster",
+                    "when": "view == configurationView && viewItem == clusterRunning",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.connection.detachCluster",
+                    "when": "view == configurationView && viewItem == clusterStopped",
+                    "group": "inline@0"
                 }
             ]
         },

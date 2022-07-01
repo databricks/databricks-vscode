@@ -1,3 +1,4 @@
+import {Cluster} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {Uri, window, workspace} from "vscode";
 import {ConnectionManager} from "./ConnectionManager";
@@ -50,8 +51,8 @@ export class ConnectionCommands {
      * in settings.
      */
     attachClusterCommand() {
-        return () => {
-            // delete profile
+        return async (cluster: Cluster) => {
+            await this.connectionManager.attachCluster(cluster);
         };
     }
 
@@ -59,8 +60,8 @@ export class ConnectionCommands {
      * Set cluster to undefined and remove cluster ID from settings file
      */
     detachClusterCommand() {
-        return () => {
-            // delete profile
+        return async () => {
+            await this.connectionManager.detachCluster();
         };
     }
 

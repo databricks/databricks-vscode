@@ -26,28 +26,34 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         configurationDataProvider,
 
-        commands.registerCommand("databricks.hello", async () => {
-            console.log("Hello");
-        }),
-
         commands.registerCommand(
-            "databricks.login",
+            "databricks.connection.login",
             connectionCommands.loginCommand(),
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.logout",
+            "databricks.connection.logout",
             connectionCommands.logoutCommand(),
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.configureProject",
+            "databricks.connection.configureProject",
             connectionCommands.configureProjectCommand(),
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.openDatabricksConfigFile",
+            "databricks.connection.openDatabricksConfigFile",
             connectionCommands.openDatabricksConfigFileCommand(),
+            connectionCommands
+        ),
+        commands.registerCommand(
+            "databricks.connection.attachCluster",
+            connectionCommands.attachClusterCommand(),
+            connectionCommands
+        ),
+        commands.registerCommand(
+            "databricks.connection.detachCluster",
+            connectionCommands.detachClusterCommand(),
             connectionCommands
         )
     );

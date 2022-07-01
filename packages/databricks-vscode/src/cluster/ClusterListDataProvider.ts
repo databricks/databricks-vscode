@@ -47,37 +47,7 @@ export class ClusterListDataProvider
             return element;
         }
 
-        let icon: ThemeIcon;
-        switch (element.state) {
-            case "RUNNING":
-                icon = new ThemeIcon("debug-start");
-                break;
-
-            case "RESTARTING":
-            case "PENDING":
-            case "RESIZING":
-                icon = new ThemeIcon("debug-restart");
-                break;
-
-            case "TERMINATING":
-            case "TERMINATED":
-            case "ERROR":
-            case "UNKNOWN":
-                icon = new ThemeIcon("debug-stop");
-                break;
-        }
-
-        return {
-            label: element.name,
-            iconPath: icon,
-            //description: `${formatSize(element.memoryMb)} MB | ${element.cores} Cores | ${element.sparkVersion}`,
-            id: element.id,
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
-            contextValue:
-                element.state === "RUNNING"
-                    ? "clusterRunning"
-                    : "clusterStopped",
-        };
+        return ClusterListDataProvider.clusterNodeToTreeItem(element);
     }
 
     private isClusterNode(element: Cluster | TreeItem): element is Cluster {
@@ -114,6 +84,39 @@ export class ClusterListDataProvider
                 }
             })();
         }
+    }
+
+    public static clusterNodeToTreeItem(element: Cluster): TreeItem {
+        let icon: ThemeIcon;
+        switch (element.state) {
+            case "RUNNING":
+                icon = new ThemeIcon("debug-start");
+                break;
+
+            case "RESTARTING":
+            case "PENDING":
+            case "RESIZING":
+                icon = new ThemeIcon("debug-restart");
+                break;
+
+            case "TERMINATING":
+            case "TERMINATED":
+            case "ERROR":
+            case "UNKNOWN":
+                icon = new ThemeIcon("debug-stop");
+                break;
+        }
+
+        return {
+            label: element.name,
+            iconPath: icon,
+            id: element.id,
+            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            contextValue:
+                element.state === "RUNNING"
+                    ? "clusterRunning"
+                    : "clusterStopped",
+        };
     }
 
     public static clusterNodeToTreeItems(element: Cluster): Array<TreeItem> {

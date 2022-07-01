@@ -105,6 +105,10 @@ export class ConnectionManager {
         this._projectConfigFile = projectConfigFile;
         this._profile = profile;
         this.updateState("CONNECTED");
+
+        if (projectConfigFile.config.clusterId) {
+            await this.attachCluster(projectConfigFile.config.clusterId);
+        }
     }
 
     async logout() {
@@ -183,39 +187,44 @@ export class ConnectionManager {
         await projectConfigFile.write();
     }
 
-    async getCluster(): Promise<Cluster | undefined> {
+    get cluster(): Cluster | undefined {
         if (this.state === "DISCONNECTED") {
             return;
         }
 
-        if (!this._apiClient) {
+        return this._cluster;
+    }
+
+    async attachCluster(cluster: Cluster | string): Promise<void> {
+        if (this._cluster === cluster) {
             return;
         }
 
-        if (this._cluster) {
-            return this._cluster;
+        if (this.state !== "CONNECTED") {
+            throw new Error("Can't attach to cluster while not connected.");
         }
 
-        if (!this._projectConfigFile?.config.clusterId) {
-            return;
+        if (typeof cluster === "string") {
+            cluster = await Cluster.fromClusterId(this._apiClient!, cluster);
         }
 
-        let cluster;
-        try {
-            cluster = await Cluster.fromClusterId(
-                this._apiClient,
-                this._projectConfigFile?.config.clusterId
-            );
-        } catch (e) {
-            return;
-        }
-
-        if (!(await cluster.canExecute())) {
-            return;
-        }
+        this._projectConfigFile!.clusterId = cluster.id;
+        await this._projectConfigFile!.write();
 
         this.updateCluster(cluster);
-        return cluster;
+    }
+
+    async detachCluster(): Promise<void> {
+        if (!this._cluster) {
+            return;
+        }
+
+        if (this._projectConfigFile) {
+            this._projectConfigFile.clusterId = undefined;
+            await this._projectConfigFile.write();
+        }
+
+        this.updateCluster(undefined);
     }
 
     async getWorkspace() {}

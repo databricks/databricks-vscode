@@ -10,7 +10,7 @@ import {
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ConnectionManager} from "./ConnectionManager";
 
-type NODE_TYPE = "PROFILE" | "CLUSTER" | "WORKSPACE";
+type NodeType = "PROFILE" | "CLUSTER" | "WORKSPACE";
 
 /**
  * Data provider for the cluster tree view
@@ -28,6 +28,10 @@ export class ConfigurationDataProvider
     constructor(private connectionManager: ConnectionManager) {
         this.disposables.push(
             this.connectionManager.onChangeState((state) => {
+                this._onDidChangeTreeData.fire();
+            }),
+            this.connectionManager.onChangeCluster((cluster) => {
+                console.log("change cluster event", cluster);
                 this._onDidChangeTreeData.fire();
             })
         );
@@ -47,32 +51,43 @@ export class ConfigurationDataProvider
         }
         return (async () => {
             if (!element) {
-                let cluster = await this.connectionManager.getCluster();
-                return [
-                    {
-                        label: `Profile: ${this.connectionManager.profile}`,
-                        id: "CONNECTION",
-                        collapsibleState: TreeItemCollapsibleState.None,
-                    },
-                    {
-                        label: `Cluster: ${
-                            cluster ? cluster.name : "None attached"
-                        }`,
+                let cluster = this.connectionManager.cluster;
+                let children: Array<TreeItem> = [];
+                children.push({
+                    label: `Profile: ${this.connectionManager.profile}`,
+                    id: "CONNECTION",
+                    collapsibleState: TreeItemCollapsibleState.None,
+                });
+
+                if (cluster) {
+                    let clusterItem =
+                        ClusterListDataProvider.clusterNodeToTreeItem(cluster);
+
+                    children.push({
+                        ...clusterItem,
+                        label: `Cluster: ${cluster.name}`,
                         id: "CLUSTER",
-                        collapsibleState: cluster
-                            ? TreeItemCollapsibleState.Expanded
-                            : TreeItemCollapsibleState.None,
-                    },
-                    {
-                        label: "Workspace",
-                        id: "WORKSPACE",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
-                    },
-                ];
+                    });
+                } else {
+                    children.push({
+                        label: `Cluster: "None attached"`,
+                        id: "CLUSTER",
+                        collapsibleState: TreeItemCollapsibleState.Expanded,
+                    });
+                }
+
+                children.push({
+                    label: "Workspace",
+                    id: "WORKSPACE",
+                    collapsibleState: TreeItemCollapsibleState.Expanded,
+                });
+
+                return children;
             }
 
             if (element.id === "CLUSTER") {
-                let cluster = await this.connectionManager.getCluster();
+                let cluster = this.connectionManager.cluster;
                 if (cluster) {
                     return ClusterListDataProvider.clusterNodeToTreeItems(
                         cluster
