@@ -2,7 +2,7 @@
 
 import {v4 as uuidv4} from "uuid";
 import {ApiClient} from "../api-client";
-import {ClustersApi} from "../apis/cluster";
+import {ClusterService} from "../apis/cluster";
 import {fromEnv} from "../auth/fromEnv";
 
 export class IntegrationTestSetup {
@@ -16,8 +16,8 @@ export class IntegrationTestSetup {
     static async getInstance(): Promise<IntegrationTestSetup> {
         if (!this._instance) {
             let clusterId;
-            let client = new ApiClient(fromEnv());
-            let clustersApi = new ClustersApi(client);
+            let client = new ApiClient();
+            let clustersApi = new ClusterService(client);
 
             if (!process.env["DATABRICKS_CLUSTER_ID"]) {
                 throw new Error(

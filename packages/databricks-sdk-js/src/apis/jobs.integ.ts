@@ -56,7 +56,7 @@ describe(__filename, function () {
                 });
                 // console.log(output);
 
-                assert.equal(output.logs, "hello from job");
+                assert.equal(output.logs.trim(), "hello from job");
                 break;
             }
         }

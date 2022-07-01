@@ -4,7 +4,6 @@ import {Cluster} from "..";
 import assert = require("assert");
 
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
-import cluster from "cluster";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
@@ -40,7 +39,7 @@ describe(__filename, function () {
 
         let clusterB = await Cluster.fromClusterName(
             integSetup.client,
-            clusterA.details.cluster_name
+            clusterA.details.cluster_name!
         );
 
         assert(clusterA.details.cluster_id);

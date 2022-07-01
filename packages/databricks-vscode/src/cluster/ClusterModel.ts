@@ -1,17 +1,6 @@
-import {ClustersApi, ClusterState} from "@databricks/databricks-sdk";
-import {Disposable, Event, EventEmitter, TreeItem} from "vscode";
+import {Cluster} from "@databricks/databricks-sdk";
+import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-
-export interface ClusterNode {
-    id: string;
-    name: string;
-    memoryMb: number;
-    cores: number;
-    sparkVersion: string;
-    creator: string;
-    state: ClusterState;
-    stateMessage: string;
-}
 
 export type ClusterFilter = "ALL" | "ME" | "RUNNING";
 
@@ -27,7 +16,7 @@ export class ClusterModel implements Disposable {
 
     private disposables: Array<Disposable>;
     private _filter: ClusterFilter = "ALL";
-    private _clusters: Promise<Array<ClusterNode> | undefined> =
+    private _clusters: Promise<Array<Cluster> | undefined> =
         Promise.resolve(undefined);
     private _dirty = true;
 
@@ -51,7 +40,7 @@ export class ClusterModel implements Disposable {
         this._onDidChange.fire();
     }
 
-    public get roots(): Promise<ClusterNode[] | undefined> {
+    public get roots(): Promise<Cluster[] | undefined> {
         if (this._dirty) {
             this._clusters = this.loadClusters();
             this._dirty = false;
@@ -60,33 +49,19 @@ export class ClusterModel implements Disposable {
         return this.applyFilter(this._clusters);
     }
 
-    private async loadClusters(): Promise<Array<ClusterNode> | undefined> {
+    private async loadClusters(): Promise<Array<Cluster> | undefined> {
         let apiClient = this.connectionManager.apiClient;
 
         if (!apiClient) {
             return;
         }
 
-        let clusterService = new ClustersApi(apiClient);
-        let clusters = await clusterService.list({});
-
-        return clusters.clusters.map((c) => {
-            return {
-                name: c.cluster_name,
-                id: c.cluster_id,
-                memoryMb: c.cluster_memory_mb,
-                cores: c.cluster_cores,
-                sparkVersion: c.spark_version,
-                creator: c.creator_user_name,
-                state: c.state,
-                stateMessage: c.state_message,
-            };
-        });
+        return await Cluster.list(apiClient);
     }
 
     private async applyFilter(
-        nodesPromise: Promise<Array<ClusterNode> | undefined>
-    ): Promise<Array<ClusterNode> | undefined> {
+        nodesPromise: Promise<Array<Cluster> | undefined>
+    ): Promise<Array<Cluster> | undefined> {
         const nodes = await nodesPromise;
 
         if (!nodes) {

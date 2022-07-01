@@ -1,21 +1,53 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {ApiClient} from "../api-client";
-import {ClustersApi, ClustersGetResponse, ClusterState} from "../apis/cluster";
+import {
+    ClusterService,
+    GetClusterResponse,
+    ClusterState,
+} from "../apis/cluster";
 import {ExecutionContext} from "./ExecutionContext";
 
 export class Cluster {
-    private clusterApi: ClustersApi;
+    private clusterApi: ClusterService;
 
     constructor(
         private client: ApiClient,
-        private clusterDetails: ClustersGetResponse
+        private clusterDetails: GetClusterResponse
     ) {
-        this.clusterApi = new ClustersApi(client);
+        this.clusterApi = new ClusterService(client);
+    }
+
+    get id(): string {
+        return this.clusterDetails.cluster_id!;
+    }
+
+    get name(): string {
+        return this.clusterDetails.cluster_name!;
+    }
+
+    get memoryMb(): number | undefined {
+        return this.clusterDetails.cluster_memory_mb;
+    }
+
+    get cores(): number | undefined {
+        return this.clusterDetails.cluster_cores;
+    }
+
+    get sparkVersion(): string {
+        return this.clusterDetails.spark_version!;
+    }
+
+    get creator(): string {
+        return this.clusterDetails.creator_user_name || "";
     }
 
     get state(): ClusterState {
-        return this.clusterDetails.state;
+        return this.clusterDetails.state!;
+    }
+
+    get stateMessage(): string {
+        return this.clusterDetails.state_message || "";
     }
 
     get details() {
@@ -24,19 +56,19 @@ export class Cluster {
 
     async refresh() {
         this.clusterDetails = await this.clusterApi.get({
-            cluster_id: this.clusterDetails.cluster_id,
+            cluster_id: this.clusterDetails.cluster_id!,
         });
     }
 
     async start() {
         await this.clusterApi.start({
-            cluster_id: this.clusterDetails.cluster_id,
+            cluster_id: this.clusterDetails.cluster_id!,
         });
     }
 
     async stop() {
-        await this.clusterApi.terminate({
-            cluster_id: this.clusterDetails.cluster_id,
+        await this.clusterApi.delete({
+            cluster_id: this.clusterDetails.cluster_id!,
         });
     }
 
@@ -55,7 +87,7 @@ export class Cluster {
     async createExecutioncontext(): Promise<ExecutionContext> {
         return await ExecutionContext.create(
             this.client,
-            this.clusterDetails.cluster_id
+            this.clusterDetails.cluster_id!
         );
     }
 
@@ -79,16 +111,16 @@ export class Cluster {
         client: ApiClient,
         clusterName: string
     ): Promise<Cluster | undefined> {
-        let clusterApi = new ClustersApi(client);
-        let clusterList = await clusterApi.list({});
-        let cluster = clusterList.clusters.find((cluster) => {
+        let clusterApi = new ClusterService(client);
+        let clusterList = await clusterApi.listClusters({});
+        let cluster = clusterList.clusters?.find((cluster) => {
             return cluster.cluster_name === clusterName;
         });
         if (!cluster) {
             return;
         }
 
-        let response = await clusterApi.get({cluster_id: cluster.cluster_id});
+        let response = await clusterApi.get({cluster_id: cluster.cluster_id!});
         return new Cluster(client, response);
     }
 
@@ -96,8 +128,19 @@ export class Cluster {
         client: ApiClient,
         clusterId: string
     ): Promise<Cluster> {
-        let clusterApi = new ClustersApi(client);
+        let clusterApi = new ClusterService(client);
         let response = await clusterApi.get({cluster_id: clusterId});
         return new Cluster(client, response);
+    }
+
+    static async list(client: ApiClient): Promise<Array<Cluster>> {
+        let clusterApi = new ClusterService(client);
+        let response = await clusterApi.listClusters({});
+
+        if (!response.clusters) {
+            return [];
+        }
+
+        return response.clusters.map((c) => new Cluster(client, c));
     }
 }

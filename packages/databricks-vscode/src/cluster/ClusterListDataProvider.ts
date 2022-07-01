@@ -8,20 +8,20 @@ import {
     TreeItem,
     TreeItemCollapsibleState,
 } from "vscode";
-import {ClusterModel, ClusterNode} from "./ClusterModel";
+import {Cluster} from "@databricks/databricks-sdk";
+import {ClusterModel} from "./ClusterModel";
 
 /**
  * Data provider for the cluster tree view
  */
 export class ClusterListDataProvider
-    implements TreeDataProvider<ClusterNode | TreeItem>, Disposable
+    implements TreeDataProvider<Cluster | TreeItem>, Disposable
 {
     private _onDidChangeTreeData: EventEmitter<
-        ClusterNode | TreeItem | undefined | void
-    > = new EventEmitter<ClusterNode | TreeItem | undefined | void>();
-    readonly onDidChangeTreeData: Event<
-        ClusterNode | TreeItem | undefined | void
-    > = this._onDidChangeTreeData.event;
+        Cluster | TreeItem | undefined | void
+    > = new EventEmitter<Cluster | TreeItem | undefined | void>();
+    readonly onDidChangeTreeData: Event<Cluster | TreeItem | undefined | void> =
+        this._onDidChangeTreeData.event;
 
     private disposables: Array<Disposable>;
 
@@ -38,8 +38,12 @@ export class ClusterListDataProvider
         this.disposables.forEach((d) => d.dispose());
     }
 
-    getTreeItem(element: ClusterNode | TreeItem): TreeItem {
+    getTreeItem(element: Cluster | TreeItem): TreeItem {
         if (!this.isClusterNode(element)) {
+            return element;
+        }
+
+        if (element instanceof TreeItem) {
             return element;
         }
 
@@ -76,10 +80,8 @@ export class ClusterListDataProvider
         };
     }
 
-    private isClusterNode(
-        element: ClusterNode | TreeItem
-    ): element is ClusterNode {
-        return (element as ClusterNode).state !== undefined;
+    private isClusterNode(element: Cluster | TreeItem): element is Cluster {
+        return (element as Cluster).state !== undefined;
     }
 
     private autoReload(refreshRateInMs: number): Disposable {
@@ -94,8 +96,8 @@ export class ClusterListDataProvider
     }
 
     getChildren(
-        element?: ClusterNode | TreeItem | undefined
-    ): ProviderResult<Array<ClusterNode | TreeItem>> {
+        element?: Cluster | TreeItem | undefined
+    ): ProviderResult<Array<Cluster | TreeItem>> {
         if (element) {
             if (this.isClusterNode(element)) {
                 let children = [
