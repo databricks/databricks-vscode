@@ -18,8 +18,36 @@ export class Cluster {
         this.clusterApi = new ClusterService(client);
     }
 
+    get id(): string {
+        return this.clusterDetails.cluster_id!;
+    }
+
+    get name(): string {
+        return this.clusterDetails.cluster_name!;
+    }
+
+    get memoryMb(): number | undefined {
+        return this.clusterDetails.cluster_memory_mb;
+    }
+
+    get cores(): number | undefined {
+        return this.clusterDetails.cluster_cores;
+    }
+
+    get sparkVersion(): string {
+        return this.clusterDetails.spark_version!;
+    }
+
+    get creator(): string {
+        return this.clusterDetails.creator_user_name || "";
+    }
+
     get state(): ClusterState {
         return this.clusterDetails.state!;
+    }
+
+    get stateMessage(): string {
+        return this.clusterDetails.state_message || "";
     }
 
     get details() {
@@ -103,5 +131,16 @@ export class Cluster {
         let clusterApi = new ClusterService(client);
         let response = await clusterApi.get({cluster_id: clusterId});
         return new Cluster(client, response);
+    }
+
+    static async list(client: ApiClient): Promise<Array<Cluster>> {
+        let clusterApi = new ClusterService(client);
+        let response = await clusterApi.listClusters({});
+
+        if (!response.clusters) {
+            return [];
+        }
+
+        return response.clusters.map((c) => new Cluster(client, c));
     }
 }
