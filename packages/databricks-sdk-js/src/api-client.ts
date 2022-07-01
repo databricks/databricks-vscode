@@ -58,6 +58,11 @@ export class ApiClient {
             }
         }
 
+        // throw error if the URL is incorrect and we get back an HTML page
+        if (response.headers.get("content-type")?.match("text/html")) {
+            throw new HttpError(`Can't connect to ${url.toString()}`, 404);
+        }
+
         let responseBody = await response.arrayBuffer();
         let responseText = new TextDecoder().decode(responseBody);
 

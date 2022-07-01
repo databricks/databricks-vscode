@@ -696,7 +696,7 @@ export class ClusterService {
         request: ListClustersRequest
     ): Promise<ListClustersResponse> {
         return (await this.client.request(
-            "/clusters/list",
+            "/api/2.0/clusters/list",
             "GET",
             request
         )) as ListClustersResponse;
@@ -706,7 +706,7 @@ export class ClusterService {
         request: CreateClusterRequest
     ): Promise<CreateClusterResponse> {
         return (await this.client.request(
-            "/clusters/create",
+            "/api/2.0/clusters/create",
             "POST",
             request
         )) as CreateClusterResponse;
@@ -714,7 +714,7 @@ export class ClusterService {
 
     async start(request: StartClusterRequest): Promise<StartClusterResponse> {
         return (await this.client.request(
-            "/clusters/start",
+            "/api/2.0/clusters/start",
             "POST",
             request
         )) as StartClusterResponse;
@@ -724,7 +724,7 @@ export class ClusterService {
         request: GetSparkVersionsRequest
     ): Promise<GetSparkVersionsResponse> {
         return (await this.client.request(
-            "/clusters/spark-versions",
+            "/api/2.0/clusters/spark-versions",
             "GET",
             request
         )) as GetSparkVersionsResponse;
@@ -734,7 +734,7 @@ export class ClusterService {
         request: DeleteClusterRequest
     ): Promise<DeleteClusterResponse> {
         return (await this.client.request(
-            "/clusters/delete",
+            "/api/2.0/clusters/delete",
             "POST",
             request
         )) as DeleteClusterResponse;
@@ -744,7 +744,7 @@ export class ClusterService {
         request: PermanentDeleteClusterRequest
     ): Promise<PermanentDeleteClusterResponse> {
         return (await this.client.request(
-            "/clusters/permanent-delete",
+            "/api/2.0/clusters/permanent-delete",
             "POST",
             request
         )) as PermanentDeleteClusterResponse;
@@ -754,7 +754,7 @@ export class ClusterService {
         request: RestartClusterRequest
     ): Promise<RestartClusterResponse> {
         return (await this.client.request(
-            "/clusters/restart",
+            "/api/2.0/clusters/restart",
             "POST",
             request
         )) as RestartClusterResponse;
@@ -764,7 +764,7 @@ export class ClusterService {
         request: ResizeClusterRequest
     ): Promise<ResizeClusterResponse> {
         return (await this.client.request(
-            "/clusters/resize",
+            "/api/2.0/clusters/resize",
             "POST",
             request
         )) as ResizeClusterResponse;
@@ -772,7 +772,7 @@ export class ClusterService {
 
     async edit(request: EditClusterRequest): Promise<EditClusterResponse> {
         return (await this.client.request(
-            "/clusters/edit",
+            "/api/2.0/clusters/edit",
             "POST",
             request
         )) as EditClusterResponse;
@@ -780,7 +780,7 @@ export class ClusterService {
 
     async get(request: GetClusterRequest): Promise<GetClusterResponse> {
         return (await this.client.request(
-            "/clusters/get",
+            "/api/2.0/clusters/get",
             "GET",
             request
         )) as GetClusterResponse;
@@ -788,7 +788,7 @@ export class ClusterService {
 
     async pin(request: PinClusterRequest): Promise<PinClusterResponse> {
         return (await this.client.request(
-            "/clusters/pin",
+            "/api/2.0/clusters/pin",
             "POST",
             request
         )) as PinClusterResponse;
@@ -796,7 +796,7 @@ export class ClusterService {
 
     async unpin(request: UnpinClusterRequest): Promise<UnpinClusterResponse> {
         return (await this.client.request(
-            "/clusters/unpin",
+            "/api/2.0/clusters/unpin",
             "POST",
             request
         )) as UnpinClusterResponse;
@@ -806,7 +806,7 @@ export class ClusterService {
         request: ListNodeTypesRequest
     ): Promise<ListNodeTypesResponse> {
         return (await this.client.request(
-            "/clusters/list-node-types",
+            "/api/2.0/clusters/list-node-types",
             "GET",
             request
         )) as ListNodeTypesResponse;
@@ -816,7 +816,7 @@ export class ClusterService {
         request: ListAvailableZonesRequest
     ): Promise<ListAvailableZonesResponse> {
         return (await this.client.request(
-            "/clusters/list-zones",
+            "/api/2.0/clusters/list-zones",
             "GET",
             request
         )) as ListAvailableZonesResponse;
@@ -824,7 +824,7 @@ export class ClusterService {
 
     async getEvents(request: GetEventsRequest): Promise<GetEventsResponse> {
         return (await this.client.request(
-            "/clusters/events",
+            "/api/2.0/clusters/events",
             "POST",
             request
         )) as GetEventsResponse;

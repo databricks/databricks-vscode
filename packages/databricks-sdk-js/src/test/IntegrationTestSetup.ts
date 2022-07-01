@@ -16,7 +16,7 @@ export class IntegrationTestSetup {
     static async getInstance(): Promise<IntegrationTestSetup> {
         if (!this._instance) {
             let clusterId;
-            let client = new ApiClient(fromEnv());
+            let client = new ApiClient();
             let clustersApi = new ClusterService(client);
 
             if (!process.env["DATABRICKS_CLUSTER_ID"]) {
