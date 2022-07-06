@@ -534,7 +534,7 @@ export class JobsService {
 
     async createJob(request: CreateJobRequest): Promise<CreateJobResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/create",
+            "/api/2.1/jobs/create",
             "POST",
             request
         )) as CreateJobResponse;
@@ -542,7 +542,7 @@ export class JobsService {
 
     async submitRun(request: SubmitRunRequest): Promise<SubmitRunResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/runs/submit",
+            "/api/2.1/jobs/runs/submit",
             "POST",
             request
         )) as SubmitRunResponse;
@@ -550,7 +550,7 @@ export class JobsService {
 
     async resetJob(request: ResetJobRequest): Promise<ResetJobResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/reset",
+            "/api/2.1/jobs/reset",
             "POST",
             request
         )) as ResetJobResponse;
@@ -558,7 +558,7 @@ export class JobsService {
 
     async deleteJob(request: DeleteJobRequest): Promise<DeleteJobResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/delete",
+            "/api/2.1/jobs/delete",
             "POST",
             request
         )) as DeleteJobResponse;
@@ -566,7 +566,7 @@ export class JobsService {
 
     async getJob(request: GetJobRequest): Promise<GetJobResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/get",
+            "/api/2.1/jobs/get",
             "GET",
             request
         )) as GetJobResponse;
@@ -574,7 +574,7 @@ export class JobsService {
 
     async list(request: ListJobsRequest): Promise<ListJobsResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/list",
+            "/api/2.1/jobs/list",
             "GET",
             request
         )) as ListJobsResponse;
@@ -582,7 +582,7 @@ export class JobsService {
 
     async runNow(request: RunNowRequest): Promise<RunNowResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/run-now",
+            "/api/2.1/jobs/run-now",
             "POST",
             request
         )) as RunNowResponse;
@@ -590,7 +590,7 @@ export class JobsService {
 
     async repair(request: RepairRunRequest): Promise<RepairRunResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/runs/repair",
+            "/api/2.1/jobs/runs/repair",
             "POST",
             request
         )) as RepairRunResponse;
@@ -598,7 +598,7 @@ export class JobsService {
 
     async listRuns(request: ListRunsRequest): Promise<ListRunsResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/runs/list",
+            "/api/2.1/jobs/runs/list",
             "GET",
             request
         )) as ListRunsResponse;
@@ -606,7 +606,7 @@ export class JobsService {
 
     async getRun(request: GetRunRequest): Promise<GetRunResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/runs/get",
+            "/api/2.1/jobs/runs/get",
             "GET",
             request
         )) as GetRunResponse;
@@ -614,7 +614,7 @@ export class JobsService {
 
     async deleteRun(request: DeleteRunRequest): Promise<DeleteRunResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/runs/delete",
+            "/api/2.1/jobs/runs/delete",
             "POST",
             request
         )) as DeleteRunResponse;
@@ -622,7 +622,7 @@ export class JobsService {
 
     async cancelRun(request: CancelRunRequest): Promise<CancelRunResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/runs/cancel",
+            "/api/2.1/jobs/runs/cancel",
             "POST",
             request
         )) as CancelRunResponse;
@@ -632,7 +632,7 @@ export class JobsService {
         request: GetRunOutputRequest
     ): Promise<GetRunOutputResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/runs/get-output",
+            "/api/2.1/jobs/runs/get-output",
             "GET",
             request
         )) as GetRunOutputResponse;
@@ -640,7 +640,7 @@ export class JobsService {
 
     async exportRun(request: ExportRunRequest): Promise<ExportRunResponse> {
         return (await this.client.request(
-            "/api/2.0/jobs/runs/export",
+            "/api/2.1/jobs/runs/export",
             "GET",
             request
         )) as ExportRunResponse;
