@@ -28,7 +28,7 @@ describe(__filename, function () {
             overwrite: true,
         });
 
-        let res = await jobsService.submit({
+        let res = await jobsService.submitRun({
             tasks: [
                 {
                     task_key: "hello_world",
@@ -41,26 +41,26 @@ describe(__filename, function () {
         });
 
         // console.log(res);
-        let runId = res.run_id;
+        let runId = res.run_id!;
 
         while (true) {
             await sleep(3000);
             let run = await jobsService.getRun({run_id: runId});
-            let state = run.state.life_cycle_state;
+            let state = run.state!.life_cycle_state!;
 
             // console.log(`State: ${state} - URL: ${run.run_page_url}`);
 
             if (state === "INTERNAL_ERROR" || state === "TERMINATED") {
                 let output = await jobsService.getRunOutput({
-                    run_id: run.tasks[0].run_id,
+                    run_id: run.tasks![0].run_id!,
                 });
                 // console.log(output);
 
-                assert.equal(output.logs.trim(), "hello from job");
+                assert.equal(output.logs!.trim(), "hello from job");
                 break;
             }
         }
 
-        dbfsApi.delete({path: jobPath});
+        await dbfsApi.delete({path: jobPath});
     });
 });
