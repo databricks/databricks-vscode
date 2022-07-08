@@ -30,7 +30,7 @@ export class ClusterListDataProvider
             model.onDidChange(() => {
                 this._onDidChangeTreeData.fire();
             }),
-            this.autoReload(5000),
+            this.autoReload(15000),
         ];
     }
 
@@ -119,6 +119,11 @@ export class ClusterListDataProvider
         };
     }
 
+    /**
+     * Creates a list of TreeItems from a list of clusters. The information
+     * in the TreeItems match the information presented in cluster list
+     * of the Databricks webapp.
+     */
     public static clusterNodeToTreeItems(element: Cluster): Array<TreeItem> {
         let children = [
             {
