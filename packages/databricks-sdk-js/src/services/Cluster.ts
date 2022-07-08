@@ -5,6 +5,7 @@ import {
     ClusterService,
     GetClusterResponse,
     ClusterState,
+    ClusterSource,
 } from "../apis/cluster";
 import {ExecutionContext} from "./ExecutionContext";
 
@@ -48,6 +49,10 @@ export class Cluster {
 
     get stateMessage(): string {
         return this.clusterDetails.state_message || "";
+    }
+
+    get source(): ClusterSource {
+        return this.clusterDetails.cluster_source!;
     }
 
     get details() {

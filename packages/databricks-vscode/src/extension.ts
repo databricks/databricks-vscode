@@ -5,6 +5,7 @@ import {ConnectionManager} from "./configuration/ConnectionManager";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
+import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
@@ -14,30 +15,45 @@ export function activate(context: ExtensionContext) {
     connectionManager.login(false);
 
     let connectionCommands = new ConnectionCommands(connectionManager);
+    let configurationDataProvider = new ConfigurationDataProvider(
+        connectionManager
+    );
+    window.registerTreeDataProvider(
+        "configurationView",
+        configurationDataProvider
+    );
 
     context.subscriptions.push(
-        commands.registerCommand("databricks.hello", async () => {
-            console.log("Hello");
-        }),
+        configurationDataProvider,
 
         commands.registerCommand(
-            "databricks.login",
+            "databricks.connection.login",
             connectionCommands.loginCommand(),
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.logout",
+            "databricks.connection.logout",
             connectionCommands.logoutCommand(),
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.configureProject",
+            "databricks.connection.configureProject",
             connectionCommands.configureProjectCommand(),
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.openDatabricksConfigFile",
+            "databricks.connection.openDatabricksConfigFile",
             connectionCommands.openDatabricksConfigFileCommand(),
+            connectionCommands
+        ),
+        commands.registerCommand(
+            "databricks.connection.attachCluster",
+            connectionCommands.attachClusterCommand(),
+            connectionCommands
+        ),
+        commands.registerCommand(
+            "databricks.connection.detachCluster",
+            connectionCommands.detachClusterCommand(),
             connectionCommands
         )
     );

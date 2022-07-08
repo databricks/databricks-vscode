@@ -26,6 +26,7 @@ export class ConnectionManager {
     private _apiClient?: ApiClient;
     private _projectConfigFile?: ProjectConfigFile;
     private _me?: string;
+    private _profile?: string;
 
     private readonly onChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -39,6 +40,10 @@ export class ConnectionManager {
 
     get me(): string | undefined {
         return this._me;
+    }
+
+    get profile(): string | undefined {
+        return this._profile;
     }
 
     get state(): ConnectionState {
@@ -59,6 +64,7 @@ export class ConnectionManager {
 
         let projectConfigFile;
         let apiClient;
+        let profile;
 
         try {
             if (!workspace.rootPath) {
@@ -71,15 +77,14 @@ export class ConnectionManager {
                 workspace.rootPath
             );
 
-            if (!projectConfigFile.config.profile) {
+            profile = projectConfigFile.config.profile;
+            if (!profile) {
                 throw new Error(
                     "Can't login to Databricks: Can't find project configuration file"
                 );
             }
 
-            let credentialProvider = fromConfigFile(
-                projectConfigFile.config.profile
-            );
+            let credentialProvider = fromConfigFile(profile);
 
             await credentialProvider();
 
@@ -98,8 +103,12 @@ export class ConnectionManager {
 
         this._apiClient = apiClient;
         this._projectConfigFile = projectConfigFile;
-
+        this._profile = profile;
         this.updateState("CONNECTED");
+
+        if (projectConfigFile.config.clusterId) {
+            await this.attachCluster(projectConfigFile.config.clusterId);
+        }
     }
 
     async logout() {
@@ -117,21 +126,6 @@ export class ConnectionManager {
     }
 
     async configureProject() {
-        if (!workspace.rootPath) {
-            throw new Error(
-                "Can't login to Databricks: Not in a VSCode workspace"
-            );
-        }
-
-        let projectConfigFile;
-        try {
-            projectConfigFile = await ProjectConfigFile.load(
-                workspace.rootPath
-            );
-        } catch (e) {
-            projectConfigFile = new ProjectConfigFile({}, workspace.rootPath);
-        }
-
         let profile;
         while (true) {
             profile = await selectProfile(this.cli);
@@ -169,49 +163,71 @@ export class ConnectionManager {
             break;
         }
 
-        projectConfigFile.profile = profile;
-        await projectConfigFile.write();
+        await this.writeConfigFile(profile);
         window.showInformationMessage(`Selected profile: ${profile}`);
 
         await this.login(false);
     }
 
-    async getCluster(): Promise<Cluster | undefined> {
+    private async writeConfigFile(profile: string) {
+        if (!workspace.rootPath) {
+            throw new Error("Not in a VSCode workspace");
+        }
+
+        let projectConfigFile;
+        try {
+            projectConfigFile = await ProjectConfigFile.load(
+                workspace.rootPath
+            );
+        } catch (e) {
+            projectConfigFile = new ProjectConfigFile({}, workspace.rootPath);
+        }
+
+        projectConfigFile.profile = profile;
+        await projectConfigFile.write();
+    }
+
+    get cluster(): Cluster | undefined {
         if (this.state === "DISCONNECTED") {
             return;
         }
 
-        if (!this._apiClient) {
-            return;
-        }
-
-        if (this._cluster) {
-            return this._cluster;
-        }
-
-        if (!this._projectConfigFile?.config.clusterId) {
-            return;
-        }
-
-        let cluster;
-        try {
-            cluster = await Cluster.fromClusterId(
-                this._apiClient,
-                this._projectConfigFile?.config.clusterId
-            );
-        } catch (e) {
-            return;
-        }
-
-        if (!(await cluster.canExecute())) {
-            return;
-        }
-
-        this.updateCluster(cluster);
-        return cluster;
+        return this._cluster;
     }
 
-    async getRepo() {}
+    async attachCluster(cluster: Cluster | string): Promise<void> {
+        if (this._cluster === cluster) {
+            return;
+        }
+
+        if (this.state !== "CONNECTED") {
+            throw new Error("Can't attach to cluster while not connected.");
+        }
+
+        if (typeof cluster === "string") {
+            cluster = await Cluster.fromClusterId(this._apiClient!, cluster);
+        }
+
+        this._projectConfigFile!.clusterId = cluster.id;
+        await this._projectConfigFile!.write();
+
+        this.updateCluster(cluster);
+    }
+
+    async detachCluster(): Promise<void> {
+        if (!this._cluster) {
+            return;
+        }
+
+        if (this._projectConfigFile) {
+            this._projectConfigFile.clusterId = undefined;
+            await this._projectConfigFile.write();
+        }
+
+        this.updateCluster(undefined);
+    }
+
+    async getWorkspace() {}
 
     private async getMe(apiClient: ApiClient): Promise<string> {
         let scimApi = new ScimApi(apiClient);

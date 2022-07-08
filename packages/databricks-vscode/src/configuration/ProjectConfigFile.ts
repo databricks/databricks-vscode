@@ -58,16 +58,6 @@ export class ProjectConfigFile {
             throw new ConfigFileError("Error parsing project config file");
         }
 
-        let projectConfig: Partial<ProjectConfig> = {};
-        if (config.clusterId) {
-            projectConfig.clusterId = config.clusterId;
-        }
-        if (config.clusterId) {
-            projectConfig.clusterId = config.clusterId;
-        }
-        if (config.workspacePath) {
-            projectConfig.workspacePath = config.workspacePath;
-        }
         return new ProjectConfigFile(config, projectDir);
     }
 

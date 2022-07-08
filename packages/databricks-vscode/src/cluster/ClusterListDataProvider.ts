@@ -30,7 +30,7 @@ export class ClusterListDataProvider
             model.onDidChange(() => {
                 this._onDidChangeTreeData.fire();
             }),
-            this.autoReload(5000),
+            this.autoReload(15000),
         ];
     }
 
@@ -47,6 +47,46 @@ export class ClusterListDataProvider
             return element;
         }
 
+        return ClusterListDataProvider.clusterNodeToTreeItem(element);
+    }
+
+    private isClusterNode(element: Cluster | TreeItem): element is Cluster {
+        return (element as Cluster).state !== undefined;
+    }
+
+    private autoReload(refreshRateInMs: number): Disposable {
+        let interval = setInterval(() => {
+            this.model.refresh();
+        }, refreshRateInMs);
+        return {
+            dispose() {
+                clearInterval(interval);
+            },
+        };
+    }
+
+    getChildren(
+        element?: Cluster | TreeItem | undefined
+    ): ProviderResult<Array<Cluster | TreeItem>> {
+        if (element) {
+            if (this.isClusterNode(element)) {
+                return ClusterListDataProvider.clusterNodeToTreeItems(element);
+            } else {
+                return [];
+            }
+        } else {
+            return (async () => {
+                let roots = await this.model.roots;
+                if (roots && roots.length === 0) {
+                    return [new TreeItem("No clusters found")];
+                } else {
+                    return roots;
+                }
+            })();
+        }
+    }
+
+    public static clusterNodeToTreeItem(element: Cluster): TreeItem {
         let icon: ThemeIcon;
         switch (element.state) {
             case "RUNNING":
@@ -70,7 +110,6 @@ export class ClusterListDataProvider
         return {
             label: element.name,
             iconPath: icon,
-            //description: `${formatSize(element.memoryMb)} MB | ${element.cores} Cores | ${element.sparkVersion}`,
             id: element.id,
             collapsibleState: TreeItemCollapsibleState.Collapsed,
             contextValue:
@@ -80,79 +119,50 @@ export class ClusterListDataProvider
         };
     }
 
-    private isClusterNode(element: Cluster | TreeItem): element is Cluster {
-        return (element as Cluster).state !== undefined;
-    }
-
-    private autoReload(refreshRateInMs: number): Disposable {
-        let interval = setInterval(() => {
-            this.model.refresh();
-        }, refreshRateInMs);
-        return {
-            dispose() {
-                clearInterval(interval);
+    /**
+     * Creates a list of TreeItems from a list of clusters. The information
+     * in the TreeItems match the information presented in cluster list
+     * of the Databricks webapp.
+     */
+    public static clusterNodeToTreeItems(element: Cluster): Array<TreeItem> {
+        let children = [
+            {
+                label: "Cluster ID:",
+                description: element.id,
             },
-        };
-    }
-
-    getChildren(
-        element?: Cluster | TreeItem | undefined
-    ): ProviderResult<Array<Cluster | TreeItem>> {
-        if (element) {
-            if (this.isClusterNode(element)) {
-                let children = [
-                    {
-                        label: "Cluster ID:",
-                        description: element.id,
-                    },
-                ];
-                if (element.cores) {
-                    children.push({
-                        label: "Cores:",
-                        description: element.cores + "",
-                    });
-                }
-                if (element.memoryMb) {
-                    children.push({
-                        label: "Memory:",
-                        description: formatSize(element.memoryMb),
-                    });
-                }
-                children.push(
-                    {
-                        label: "Spark version:",
-                        description: element.sparkVersion,
-                    },
-                    {
-                        label: "State:",
-                        description: element.state,
-                    },
-                    {
-                        label: "Creator:",
-                        description: element.creator,
-                    }
-                );
-
-                if (element.stateMessage) {
-                    children.push({
-                        label: "State message:",
-                        description: element.stateMessage,
-                    });
-                }
-
-                return children;
-            } else {
-                return [];
+        ];
+        if (element.cores) {
+            children.push({
+                label: "Cores:",
+                description: element.cores + "",
+            });
+        }
+        if (element.memoryMb) {
+            children.push({
+                label: "Memory:",
+                description: formatSize(element.memoryMb),
+            });
+        }
+        children.push(
+            {
+                label: "Spark version:",
+                description: element.sparkVersion,
+            },
+            {
+                label: "State:",
+                description: element.state,
+            },
+            {
+                label: "Creator:",
+                description: element.creator,
             }
-        } else {
-            return (async () => {
-                let roots = await this.model.roots;
-                if (roots && roots.length === 0) {
-                    return [new TreeItem("No clusters found")];
-                } else {
-                    return roots;
-                }
-            })();
+        );
+
+        if (element.stateMessage) {
+            children.push({
+                label: "State message:",
+                description: element.stateMessage,
+            });
         }
 
         function formatSize(sizeInMB: number): string {
@@ -162,5 +172,7 @@ export class ClusterListDataProvider
                 return `${sizeInMB} MB`;
             }
         }
+
+        return children;
     }
 }
