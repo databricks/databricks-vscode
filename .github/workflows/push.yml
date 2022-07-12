@@ -55,20 +55,15 @@ jobs:
                   DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
 
     package:
-        runs-on: ${{matrix.os}}
-
-        strategy:
-            matrix:
-                os: [windows-latest, macos-latest]
-                node-version: [14.x]
+        name: Package VSIX
 
         steps:
             - uses: actions/checkout@v3
 
-            - name: Use Node.js ${{ matrix.node-version }}
+            - name: Use Node.js 14.x
               uses: actions/setup-node@v3
               with:
-                  node-version: ${{ matrix.node-version }}
+                  node-version: 14.x
                   cache: "yarn"
 
             - run: yarn install --immutable
@@ -78,20 +73,11 @@ jobs:
 
             - run: mkdir -p packages/databricks-vscode/artifacts
 
-            - name: Build VSIX (OSX - x64)
-              if: matrix.os == 'macos-latest'
-              run: yarn workspace databricks vscode:package -t darwin-x64 -o artifacts
-
-            - name: Build VSIX (OSX - arm64)
-              if: matrix.os == 'macos-latest'
-              run: yarn workspace databricks vscode:package -t darwin-arm64 -o artifacts
-
-            - name: Build VSIX (Windows)
-              if: matrix.os == 'windows-latest'
+            - name: Build VSIX
               run: yarn workspace databricks vscode:package -o artifacts
 
             - name: Upload artifacts
               uses: actions/upload-artifact@v3
               with:
-                  name: ${{matrix.os}} artifacts
+                  name: VSIX artifacts
                   path: packages/databricks-vscode/artifacts
