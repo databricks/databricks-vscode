@@ -56,7 +56,7 @@ jobs:
 
     package:
         name: Package VSIX
-
+        runs-on: ["darwin-arm64"]
         steps:
             - uses: actions/checkout@v3
 
