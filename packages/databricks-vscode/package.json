@@ -189,8 +189,8 @@
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:compile": "tsc -p . --outDir out",
         "test:watch": "tsc -p . -w --outDir out",
-        "test:run": "node ./out/test/runTest.js",
-        "test": "yarn run test:compile && yarn run compile && yarn run test:lint && yarn run test:run",
+        "test:unit": "node ./out/test/runTest.js",
+        "test": "yarn run test:compile && yarn run compile && yarn run test:lint && yarn run test:unit",
         "build": "yarn run vscode:prepublish",
         "clean": "rm -rf node_modules out dist .vscode-test"
     },
@@ -211,6 +211,7 @@
         "mocha": "^10.0.0",
         "prettier": "^2.7.1",
         "ts-loader": "^9.3.0",
+        "ts-mockito": "^2.6.1",
         "typescript": "^4.7.4",
         "vsce": "^2.9.1",
         "webpack": "^5.72.1",
