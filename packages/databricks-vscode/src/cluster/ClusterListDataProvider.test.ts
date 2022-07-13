@@ -1,15 +1,16 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {ClusterModel} from "./ClusterModel";
+import * as assert from "assert";
 import {mock, when, instance} from "ts-mockito";
-import assert = require("assert");
-import {Disposable, ProviderResult, TreeItem} from "vscode";
+import {ClusterModel} from "./ClusterModel";
+import {Disposable, TreeItem} from "vscode";
 import {ClusterListDataProvider} from "./ClusterListDataProvider";
 import {
     ApiClient,
     Cluster,
     ListClustersResponse,
 } from "@databricks/databricks-sdk";
+import {resolveProviderResult} from "../test/utils";
 
 const mockListClustersResponse: ListClustersResponse = {
     clusters: [
@@ -35,7 +36,7 @@ const mockListClustersResponse: ListClustersResponse = {
 describe(__filename, () => {
     let mockedClusterModel: ClusterModel;
     let disposables: Array<Disposable>;
-    let onModelChangeListener;
+    let onModelChangeListener: () => void;
 
     beforeEach(() => {
         disposables = [];
@@ -60,14 +61,6 @@ describe(__filename, () => {
     });
 
     it("should reload tree on model change", async () => {
-        let handler = () => {};
-        when(mockedClusterModel.onDidChange).thenReturn((_handler) => {
-            handler = _handler;
-            return {
-                dispose() {},
-            };
-        });
-
         let model = instance(mockedClusterModel);
         let provider = new ClusterListDataProvider(model);
         disposables.push(provider);
@@ -80,7 +73,7 @@ describe(__filename, () => {
         );
 
         assert(!called);
-        handler();
+        onModelChangeListener();
         assert(called);
     });
 
@@ -187,17 +180,3 @@ describe(__filename, () => {
         });
     });
 });
-
-async function resolveProviderResult<T>(
-    result: ProviderResult<T>
-): Promise<T | null | undefined> {
-    if (!result) {
-        return result;
-    }
-
-    if ("then" in result) {
-        return await result;
-    } else {
-        return result;
-    }
-}

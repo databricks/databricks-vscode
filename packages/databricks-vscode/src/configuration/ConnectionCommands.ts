@@ -70,17 +70,13 @@ export class ConnectionCommands {
      * then show dialog to select (or create) one. Selected workspaces is saved in settings.
      */
     attachWorkspaceCommand() {
-        return () => {
-            // delete profile
-        };
+        return () => {};
     }
 
     /**
      * Set workspace to undefined and remove workspace path from settings file.
      */
     detachWorkspaceCommand() {
-        return () => {
-            // delete profile
-        };
+        return () => {};
     }
 }

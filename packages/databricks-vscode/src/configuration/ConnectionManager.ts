@@ -18,9 +18,6 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
  * and for providing instances of the APIClient, Cluster and Workspace classes
  */
 export class ConnectionManager {
-    public readonly onChangeState: Event<ConnectionState>;
-    public readonly onChangeCluster: Event<Cluster | undefined>;
-
     private _state: ConnectionState = "DISCONNECTED";
     private _cluster?: Cluster;
     private _apiClient?: ApiClient;
@@ -33,10 +30,10 @@ export class ConnectionManager {
     private readonly onChangeClusterEmitter: EventEmitter<Cluster | undefined> =
         new EventEmitter();
 
-    constructor(private cli: CliWrapper) {
-        this.onChangeState = this.onChangeStateEmitter.event;
-        this.onChangeCluster = this.onChangeClusterEmitter.event;
-    }
+    public readonly onChangeState = this.onChangeStateEmitter.event;
+    public readonly onChangeCluster = this.onChangeClusterEmitter.event;
+
+    constructor(private cli: CliWrapper) {}
 
     get me(): string | undefined {
         return this._me;
