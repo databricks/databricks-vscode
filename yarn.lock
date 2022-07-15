@@ -1313,6 +1313,7 @@ __metadata:
     mocha: ^10.0.0
     prettier: ^2.7.1
     ts-loader: ^9.3.0
+    ts-mockito: ^2.6.1
     typescript: ^4.7.4
     vsce: ^2.9.1
     webpack: ^5.72.1
@@ -2539,6 +2540,13 @@ __metadata:
   version: 4.6.2
   resolution: "lodash.merge@npm:4.6.2"
   checksum: ad580b4bdbb7ca1f7abf7e1bce63a9a0b98e370cf40194b03380a46b4ed799c9573029599caebc1b14e3f24b111aef72b96674a56cfa105e0f5ac70546cdc005
+  languageName: node
+  linkType: hard
+
+"lodash@npm:^4.17.5":
+  version: 4.17.21
+  resolution: "lodash@npm:4.17.21"
+  checksum: eb835a2e51d381e561e508ce932ea50a8e5a68f4ebdd771ea240d3048244a8d13658acbd502cd4829768c56f2e16bdd4340b9ea141297d472517b83868e677f7
   languageName: node
   linkType: hard
 
@@ -3916,6 +3924,15 @@ __metadata:
   bin:
     ts-mocha: bin/ts-mocha
   checksum: b11f2a8ceecf195b0db724da429159982fef12e4357088fe900289223587217e8c126ead7929679edd58bf19ad96c5da5911535d26f535386632e18fbff10c40
+  languageName: node
+  linkType: hard
+
+"ts-mockito@npm:^2.6.1":
+  version: 2.6.1
+  resolution: "ts-mockito@npm:2.6.1"
+  dependencies:
+    lodash: ^4.17.5
+  checksum: c793da0e801565c7488501e3f5c0fe17879a04a62073b137d4c4b87161b4249aebdf35e905a372a6e06f39ba434f092325f4af6ce6339e71cdaa26f98f9d5fed
   languageName: node
   linkType: hard
 

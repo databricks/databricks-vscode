@@ -10,8 +10,6 @@ import {
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ConnectionManager} from "./ConnectionManager";
 
-type NodeType = "PROFILE" | "CLUSTER" | "WORKSPACE";
-
 /**
  * Data provider for the cluster tree view
  */
@@ -31,7 +29,7 @@ export class ConfigurationDataProvider
                 this._onDidChangeTreeData.fire();
             }),
             this.connectionManager.onChangeCluster((cluster) => {
-                console.log("change cluster event", cluster);
+                // console.log("change cluster event", cluster);
                 this._onDidChangeTreeData.fire();
             })
         );
