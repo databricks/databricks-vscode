@@ -11,8 +11,8 @@
         "yarn": ">=3.2.0"
     },
     "scripts": {
-        "test": "yarn workspaces foreach run test --if-present",
-        "test:integ": "yarn workspaces foreach run test:integ --if-present",
+        "test": "yarn workspaces foreach run test",
+        "test:integ": "yarn workspaces foreach run test:integ",
         "build": "yarn workspaces foreach run build",
         "clean": "yarn workspaces foreach run clean"
     },
