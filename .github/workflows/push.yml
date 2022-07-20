@@ -7,13 +7,75 @@ on:
         branches: [main]
 
 jobs:
-    test:
+    unit-test-sdk:
+        name: Unit Test Databricks SDK
         runs-on: ${{ matrix.os }}
 
         strategy:
             matrix:
+                os: [windows-latest, ubuntu-latest]
+                node-version: [14.x, 18.x]
+
+        defaults:
+            run:
+                shell: bash
+                working-directory: packages/databricks-sdk-js
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v3
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: "yarn"
+
+            - run: yarn install --immutable
+
+            - name: Building packages
+              run: yarn run build
+
+            - name: Prettier and Linting
+              run: yarn run test:lint
+
+            - name: Unit Tests
+              run: yarn test:run
+
+    integ-test-sdk:
+        name: Integration Test Databricks SDK
+        runs-on: ubuntu-latest
+
+        defaults:
+            run:
+                working-directory: packages/databricks-sdk-js
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Use Node.js 18.x
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 18.x
+                  cache: "yarn"
+
+            - run: yarn install --immutable
+
+            - name: Integration Tests
+              run: yarn run test:integ
+              env:
+                  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+                  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+                  DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
+
+    test-extension:
+        name: Test VSCode Extension
+        runs-on: ${{ matrix.os }}
+        needs: [unit-test-sdk, integ-test-sdk]
+
+        strategy:
+            matrix:
                 os: [windows-latest, macos-latest]
-                node-version: [14.x]
+                node-version: [16.x]
                 vscode-version: [stable, insiders]
 
         env:
@@ -30,8 +92,15 @@ jobs:
 
             - run: yarn install --immutable
 
+            - name: Prettier and Linting
+              run: yarn run test:lint
+              working-directory: packages/databricks-vscode
+
             - name: Building packages
               run: yarn run build
+
+            - run: yarn run test:compile
+              working-directory: packages/databricks-vscode
 
             - name: Tests (OSX)
               uses: GabrielBB/xvfb-action@v1
@@ -39,16 +108,19 @@ jobs:
               env:
                   NODE_OPTIONS: "--max-old-space-size=8192"
               with:
-                  run: yarn test
+                  run: yarn run test:unit
+                  working-directory: packages/databricks-vscode
 
             - name: Tests (Windows)
               if: matrix.os == 'windows-latest'
-              run: yarn test
+              run: yarn run test:unit
+              working-directory: packages/databricks-vscode
               env:
                   NODE_OPTIONS: "--max-old-space-size=8192"
 
             - name: Integration Tests
               run: yarn run test:integ
+              working-directory: packages/databricks-vscode
               env:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
                   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
@@ -56,14 +128,15 @@ jobs:
 
     package:
         name: Package VSIX
+        needs: "test-extension"
         runs-on: "macos-latest"
         steps:
             - uses: actions/checkout@v3
 
-            - name: Use Node.js 14.x
+            - name: Use Node.js ${{ matrix.node-version }}
               uses: actions/setup-node@v3
               with:
-                  node-version: 14.x
+                  node-version: ${{ matrix.node-version }}
                   cache: "yarn"
 
             - run: yarn install --immutable
