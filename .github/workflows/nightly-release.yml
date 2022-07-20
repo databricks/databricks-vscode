@@ -1,0 +1,30 @@
+name: Publish nightly release
+
+on:
+    push:
+        branches: [main]
+
+jobs:
+    archive-build-artifacts:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Use Node.js 18.x
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 18.x
+
+            - run: yarn install
+            - run: yarn run build
+
+            - run: yarn run vscode:package
+              working-directory: packages/databricks-vscode
+
+            - name: Update nightly release
+              uses: eine/tip@master
+              with:
+                  tag: nightly
+                  rm: true
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  files: "packages/databricks-vscode/*.vsix"
