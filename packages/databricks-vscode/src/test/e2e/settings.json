@@ -2,6 +2,5 @@
     "typescript.updateImportsOnFileMove.enabled": "always",
     "files.simpleDialog.enable": true,
     "workbench.editor.enablePreview": true,
-    "workbench.colorTheme": "Default Light+",
     "window.newWindowDimensions": "default"
 }

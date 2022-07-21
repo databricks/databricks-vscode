@@ -1,5 +1,11 @@
 import {Key} from "selenium-webdriver";
-import {InputBox, EditorView, Workbench} from "vscode-extension-tester";
+import {
+    InputBox,
+    EditorView,
+    Workbench,
+    ActivityBar,
+    ViewSection,
+} from "vscode-extension-tester";
 
 // work around for https://github.com/redhat-developer/vscode-extension-tester/issues/470
 export async function openCommandPrompt(
@@ -12,6 +18,7 @@ export async function openCommandPrompt(
         const tab = await new EditorView().getActiveTab();
         if (tab) {
             await tab.sendKeys(Key.F1);
+            ``;
             return InputBox.create();
         }
     }
@@ -28,4 +35,33 @@ export async function openCommandPrompt(
     }
 
     return InputBox.create();
+}
+
+export async function getViewSection(
+    name: string
+): Promise<ViewSection | undefined> {
+    const control = await new ActivityBar().getViewControl("Databricks");
+    const view = await control?.openView();
+    const content = await view?.getContent();
+    const section = await content?.getSection(name);
+    await section?.expand();
+    await section?.click();
+    return section;
+}
+
+export async function waitForTreeItems(
+    section: ViewSection,
+    timeoutMs: number = 5000
+): Promise<boolean> {
+    let start = Date.now();
+    while (true) {
+        let items = await section.getVisibleItems();
+        if (items.length > 0) {
+            return true;
+        }
+        if (Date.now() - start > timeoutMs) {
+            return false;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+    }
 }
