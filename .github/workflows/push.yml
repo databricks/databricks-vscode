@@ -80,6 +80,9 @@ jobs:
 
         env:
             VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
+            DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+            DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+            DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
 
         steps:
             - uses: actions/checkout@v3
@@ -114,7 +117,7 @@ jobs:
               run: yarn run test:unit
               working-directory: packages/databricks-vscode
 
-            - name: Prepare Integration Tests
+            - name: Integration Tests
               uses: nick-fields/retry@v2
               with:
                   max_attempts: 3
@@ -124,14 +127,7 @@ jobs:
                   command: |
                       cd packages/databricks-vscode
                       yarn run test:integ:prepare
-
-            - name: Integration Tests
-              run: yarn run test:integ:run
-              working-directory: packages/databricks-vscode
-              env:
-                  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-                  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-                  DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
+                      yarn run test:integ:run
 
     package:
         name: Package VSIX
