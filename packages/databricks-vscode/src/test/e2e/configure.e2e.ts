@@ -1,6 +1,7 @@
 import assert = require("node:assert");
 import path = require("node:path");
 import * as fs from "fs/promises";
+import * as tmp from "tmp-promise";
 import {
     VSBrowser,
     WebDriver,
@@ -11,13 +12,19 @@ import {
     ContextMenu,
     CustomTreeSection,
 } from "vscode-extension-tester";
-import {getViewSection, openCommandPrompt, waitForTreeItems} from "./utils";
+import {
+    getViewSection,
+    openCommandPrompt,
+    openFolder,
+    waitForTreeItems,
+} from "./utils";
 
 describe("Configure Databricks Extension", function () {
     // these will be populated by the before() function
     let browser: VSBrowser;
     let driver: WebDriver;
     let projectDir: string;
+    let cleanup: () => void;
 
     // this will be populated by the tests
     let clusterId: string;
@@ -28,30 +35,17 @@ describe("Configure Databricks Extension", function () {
         browser = VSBrowser.instance;
         driver = browser.driver;
 
-        assert(process.env["PROJECT_DIR"]);
-        projectDir = process.env["PROJECT_DIR"];
+        ({path: projectDir, cleanup} = await tmp.dir());
+        await openFolder(browser, projectDir);
+    });
+
+    after(() => {
+        cleanup();
     });
 
     it("should open VSCode", async () => {
         const title = await driver.getTitle();
         assert(title.indexOf("Get Started") >= 0);
-    });
-
-    it("should open project folder", async () => {
-        await fs.writeFile(path.join(projectDir, "test.txt"), "test");
-        (await new ActivityBar().getViewControl("Explorer"))?.openView();
-
-        const workbench = new Workbench();
-        const prompt = await openCommandPrompt(workbench);
-        await prompt.setText(">File: Open Folder");
-        await prompt.confirm();
-
-        const input = await InputBox.create();
-        await input.setText(projectDir);
-        await input.confirm();
-
-        // wait for reload to complete
-        await new Promise((resolve) => setTimeout(resolve, 3000));
     });
 
     it("should open databricks panel and login", async () => {

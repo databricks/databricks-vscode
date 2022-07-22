@@ -2,5 +2,6 @@
     "typescript.updateImportsOnFileMove.enabled": "always",
     "files.simpleDialog.enable": true,
     "workbench.editor.enablePreview": true,
-    "window.newWindowDimensions": "default"
+    "window.newWindowDimensions": "default",
+    "window.openFoldersInNewWindow": "off"
 }

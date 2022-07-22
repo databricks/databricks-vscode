@@ -5,6 +5,7 @@ import {
     Workbench,
     ActivityBar,
     ViewSection,
+    VSBrowser,
 } from "vscode-extension-tester";
 
 // work around for https://github.com/redhat-developer/vscode-extension-tester/issues/470
@@ -35,6 +36,18 @@ export async function openCommandPrompt(
     }
 
     return InputBox.create();
+}
+
+export async function openFolder(
+    browser: VSBrowser,
+    projectDir: string
+): Promise<void> {
+    try {
+        await browser.openResources(projectDir);
+    } catch (e) {}
+
+    await browser.driver.sleep(1000);
+    await browser.waitForWorkbench();
 }
 
 export async function getViewSection(

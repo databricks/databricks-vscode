@@ -195,7 +195,7 @@
         "test:watch": "tsc -p . -w --outDir out",
         "test:unit": "node ./out/test/runTest.js",
         "test:integ:prepare": "yarn run vscode:package && extest get-vscode --type ${VSCODE_TEST_VERSION:-stable} --storage /tmp/vscode-test-databricks && extest get-chromedriver --storage /tmp/vscode-test-databricks && extest install-vsix -f databricks-0.0.1.vsix --storage /tmp/vscode-test-databricks",
-        "test:integ:run": "yarn run test:compile && ts-node src/test/e2e/scripts/e2e.ts --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json out/test/e2e/*.e2e.js",
+        "test:integ:run": "yarn run test:compile && ts-node src/test/e2e/scripts/e2e.ts --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json 'out/**/*.e2e.js'",
         "test:integ": "yarn run test:integ:prepare && yarn run test:integ:run",
         "test": "yarn run test:compile && yarn run compile && yarn run test:lint && yarn run test:unit",
         "build": "yarn run vscode:prepublish",
