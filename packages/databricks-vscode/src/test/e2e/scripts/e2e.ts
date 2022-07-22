@@ -2,12 +2,10 @@
 import {spawn} from "child_process";
 import * as assert from "assert";
 import * as fs from "fs/promises";
-import * as path from "path";
 import * as tmp from "tmp-promise";
 
 /**
- * Create a temporary directory for the test and populate the Databricks config file
- * with values taken from environment variables
+ * Create a temporary Databricks config file with values taken from environment variables
  */
 async function main(args: string[]) {
     assert(
@@ -23,10 +21,10 @@ async function main(args: string[]) {
         "Environment variable DATABRICKS_CLUSTER_ID must be set"
     );
 
-    const {path: projectDir, cleanup} = await tmp.dir();
+    const {path: configFile, cleanup} = await tmp.file();
     try {
         await fs.writeFile(
-            path.join(projectDir, ".databrickscfg"),
+            configFile,
             `[DEFAULT]
 host = ${process.env["DATABRICKS_HOST"]}
 token = ${process.env["DATABRICKS_TOKEN"]}`
@@ -35,8 +33,7 @@ token = ${process.env["DATABRICKS_TOKEN"]}`
         const child = spawn("extest", ["run-tests", ...args], {
             env: {
                 DATABRICKS_CLUSTER_ID: process.env["DATABRICKS_CLUSTER_ID"],
-                PROJECT_DIR: projectDir,
-                DATABRICKS_CONFIG_FILE: path.join(projectDir, ".databrickscfg"),
+                DATABRICKS_CONFIG_FILE: configFile,
                 PATH: process.env["PATH"],
             },
             stdio: "inherit",
