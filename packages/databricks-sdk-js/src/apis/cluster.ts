@@ -3,7 +3,6 @@
 import {ApiClient} from "../api-client";
 
 import * as delegate from "./delegate";
-import * as chauffeur from "./chauffeur";
 
 //
 // Enums.
@@ -442,7 +441,7 @@ export interface ClusterEvent {
     timestamp?: number;
     type?: ClusterEventType;
     details?: EventDetails;
-    data_plane_event_details?: chauffeur.DataPlaneEventDetails;
+    data_plane_event_details?: any;
 }
 
 export interface EventDetails {
