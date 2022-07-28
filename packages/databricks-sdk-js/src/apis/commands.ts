@@ -64,7 +64,7 @@ export interface CommandsCancelResponse {
     id: string;
 }
 
-export class CommandsApi {
+export class CommandsService {
     readonly client: ApiClient;
 
     constructor(client: ApiClient) {

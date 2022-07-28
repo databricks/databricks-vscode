@@ -15,6 +15,12 @@ export type ViewType = "NOTEBOOK" | "DASHBOARD";
 
 export type Format = "SINGLE_TASK" | "MULTI_TASK";
 
+export type JobPermission =
+    | "CAN_VIEW"
+    | "CAN_MANAGE_RUN"
+    | "IS_OWNER"
+    | "CAN_MANAGE";
+
 export type TriggerType =
     | "PERIODIC"
     | "ONE_TIME"
@@ -48,14 +54,6 @@ export type ViewsToExport = "CODE" | "DASHBOARDS" | "ALL";
 
 export type RepairType = "ORIGINAL" | "REPAIR";
 
-export type JobType =
-    | "NORMAL"
-    | "WORKFLOW"
-    | "EPHEMERAL"
-    | "PIPELINE"
-    | "MAINTENANCE_PIPELINE"
-    | "AIRFLOW";
-
 //
 // Subtypes used in request/response types.
 //
@@ -65,14 +63,14 @@ export interface TaskDependency {
 }
 
 export interface TaskSettings {
-    task_key: string;
-    depends_on?: Array<TaskDependency>;
     notebook_task?: NotebookTask;
     spark_jar_task?: SparkJarTask;
     spark_python_task?: SparkPythonTask;
     spark_submit_task?: SparkSubmitTask;
     existing_cluster_id?: string;
     new_cluster?: NewCluster;
+    task_key: string;
+    depends_on?: Array<TaskDependency>;
     libraries?: Array<libraries.Library>;
     max_retries?: number;
     min_retry_interval_millis?: number;
@@ -133,6 +131,8 @@ export interface ClusterSpec {
 }
 
 export interface NewCluster {
+    num_workers?: number;
+    autoscale?: cluster.AutoScale;
     cluster_name?: string;
     spark_version?: string;
     spark_conf?: Array<cluster.SparkConfPair>;
@@ -152,8 +152,9 @@ export interface NewCluster {
     policy_id?: string;
     enable_local_disk_encryption?: boolean;
     driver_instance_pool_id?: string;
-    num_workers?: number;
-    autoscale?: cluster.AutoScale;
+    workload_type?: cluster.WorkloadType;
+    runtime_engine?: cluster.RuntimeEngine;
+    effective_spark_version?: string;
     apply_policy_default_values?: boolean;
 }
 
@@ -168,11 +169,18 @@ export interface JobCluster {
 }
 
 export interface GitSource {
-    git_url: string;
-    git_provider: string;
     git_branch?: string;
     git_tag?: string;
     git_commit?: string;
+    git_url: string;
+    git_provider: string;
+}
+
+export interface AccessControlRequest {
+    user_name?: string;
+    group_name?: string;
+    service_principal_name?: string;
+    permission_level?: JobPermission;
 }
 
 export interface JobEmailNotifications {
@@ -188,31 +196,42 @@ export interface CronSchedule {
     pause_status?: SchedulePauseStatus;
 }
 
+export interface TriggerSettings {
+    file_arrival?: FileArrivalTriggerConfiguration;
+    pause_status?: SchedulePauseStatus;
+}
+
+export interface FileArrivalTriggerConfiguration {
+    url: string;
+    min_time_between_triggers_seconds?: number;
+    wait_after_last_change_seconds?: number;
+}
+
 export interface RunTaskSettings {
-    task_key?: string;
-    description?: string;
-    depends_on?: Array<TaskDependency>;
     notebook_task?: NotebookTask;
     spark_jar_task?: SparkJarTask;
     spark_python_task?: SparkPythonTask;
     spark_submit_task?: SparkSubmitTask;
     existing_cluster_id?: string;
     new_cluster?: NewCluster;
+    task_key?: string;
+    description?: string;
+    depends_on?: Array<TaskDependency>;
     libraries?: Array<libraries.Library>;
     timeout_seconds?: number;
 }
 
 export interface RunTask {
-    run_id?: number;
-    task_key?: string;
-    description?: string;
-    depends_on?: Array<TaskDependency>;
     notebook_task?: NotebookTask;
     spark_jar_task?: SparkJarTask;
     spark_python_task?: SparkPythonTask;
     spark_submit_task?: SparkSubmitTask;
     existing_cluster_id?: string;
     new_cluster?: NewCluster;
+    run_id?: number;
+    task_key?: string;
+    description?: string;
+    depends_on?: Array<TaskDependency>;
     libraries?: Array<libraries.Library>;
     timeout_seconds?: number;
     state?: RunState;
@@ -289,9 +308,13 @@ export interface JobTag {
 }
 
 export interface JobSettings {
-    name?: string;
     existing_cluster_id?: string;
     new_cluster?: NewCluster;
+    notebook_task?: NotebookTask;
+    spark_jar_task?: SparkJarTask;
+    spark_python_task?: SparkPythonTask;
+    spark_submit_task?: SparkSubmitTask;
+    name?: string;
     libraries?: Array<libraries.Library>;
     email_notifications?: JobEmailNotifications;
     timeout_seconds?: number;
@@ -299,10 +322,7 @@ export interface JobSettings {
     min_retry_interval_millis?: number;
     retry_on_timeout?: boolean;
     schedule?: CronSchedule;
-    notebook_task?: NotebookTask;
-    spark_jar_task?: SparkJarTask;
-    spark_python_task?: SparkPythonTask;
-    spark_submit_task?: SparkSubmitTask;
+    trigger?: TriggerSettings;
     max_concurrent_runs?: number;
     tasks?: Array<TaskSettings>;
     job_clusters?: Array<JobCluster>;
@@ -324,9 +344,13 @@ export interface Job {
 //
 
 export interface CreateJobRequest {
-    name?: string;
     existing_cluster_id?: string;
     new_cluster?: NewCluster;
+    notebook_task?: NotebookTask;
+    spark_jar_task?: SparkJarTask;
+    spark_python_task?: SparkPythonTask;
+    spark_submit_task?: SparkSubmitTask;
+    name?: string;
     libraries?: Array<libraries.Library>;
     email_notifications?: JobEmailNotifications;
     timeout_seconds?: number;
@@ -334,16 +358,14 @@ export interface CreateJobRequest {
     min_retry_interval_millis?: number;
     retry_on_timeout?: boolean;
     schedule?: CronSchedule;
-    notebook_task?: NotebookTask;
-    spark_jar_task?: SparkJarTask;
-    spark_python_task?: SparkPythonTask;
-    spark_submit_task?: SparkSubmitTask;
+    trigger?: TriggerSettings;
     max_concurrent_runs?: number;
     tasks?: Array<TaskSettings>;
     job_clusters?: Array<JobCluster>;
     git_source?: GitSource;
     tags?: Array<JobTag>;
     format?: Format;
+    access_control_list?: Array<AccessControlRequest>;
 }
 
 export interface CreateJobResponse {
@@ -351,19 +373,20 @@ export interface CreateJobResponse {
 }
 
 export interface SubmitRunRequest {
-    run_name?: string;
     existing_cluster_id?: string;
     new_cluster?: NewCluster;
-    libraries?: Array<libraries.Library>;
     notebook_task?: NotebookTask;
     spark_jar_task?: SparkJarTask;
     spark_python_task?: SparkPythonTask;
     spark_submit_task?: SparkSubmitTask;
+    run_name?: string;
+    libraries?: Array<libraries.Library>;
     timeout_seconds?: number;
     idempotency_token?: string;
     tasks?: Array<RunTaskSettings>;
     job_clusters?: Array<JobCluster>;
     git_source?: GitSource;
+    access_control_list?: Array<AccessControlRequest>;
 }
 
 export interface SubmitRunResponse {
@@ -376,6 +399,14 @@ export interface ResetJobRequest {
 }
 
 export interface ResetJobResponse {}
+
+export interface UpdateJobRequest {
+    job_id: number;
+    new_settings?: JobSettings;
+    fields_to_remove?: Array<string>;
+}
+
+export interface UpdateJobResponse {}
 
 export interface DeleteJobRequest {
     job_id: number;
@@ -396,7 +427,6 @@ export interface GetJobResponse {
 }
 
 export interface ListJobsRequest {
-    job_type?: JobType;
     offset?: number;
     limit?: number;
     expand_tasks?: boolean;
@@ -438,9 +468,9 @@ export interface RepairRunResponse {
 }
 
 export interface ListRunsRequest {
-    job_id?: number;
     active_only?: boolean;
     completed_only?: boolean;
+    job_id?: number;
     offset?: number;
     limit?: number;
     run_type?: RunType;
@@ -503,17 +533,23 @@ export interface CancelRunRequest {
 
 export interface CancelRunResponse {}
 
+export interface CancelAllRunsRequest {
+    job_id: number;
+}
+
+export interface CancelAllRunsResponse {}
+
 export interface GetRunOutputRequest {
     run_id: number;
 }
 
 export interface GetRunOutputResponse {
+    notebook_output?: NotebookOutput;
     metadata?: Run;
     error?: string;
     logs?: string;
     logs_truncated?: boolean;
     error_trace?: string;
-    notebook_output?: NotebookOutput;
 }
 
 export interface ExportRunRequest {
@@ -554,6 +590,14 @@ export class JobsService {
             "POST",
             request
         )) as ResetJobResponse;
+    }
+
+    async updateJob(request: UpdateJobRequest): Promise<UpdateJobResponse> {
+        return (await this.client.request(
+            "/api/2.1/jobs/update",
+            "POST",
+            request
+        )) as UpdateJobResponse;
     }
 
     async deleteJob(request: DeleteJobRequest): Promise<DeleteJobResponse> {
@@ -626,6 +670,16 @@ export class JobsService {
             "POST",
             request
         )) as CancelRunResponse;
+    }
+
+    async cancelAllRuns(
+        request: CancelAllRunsRequest
+    ): Promise<CancelAllRunsResponse> {
+        return (await this.client.request(
+            "/api/2.1/jobs/runs/cancel-all",
+            "POST",
+            request
+        )) as CancelAllRunsResponse;
     }
 
     async getRunOutput(

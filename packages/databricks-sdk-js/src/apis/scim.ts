@@ -15,7 +15,7 @@ export interface ScimMeResponse {
     userName: string;
 }
 
-export class ScimApi {
+export class ScimService {
     constructor(readonly client: ApiClient) {}
 
     async me(req: ScimMeRequest): Promise<ScimMeResponse> {

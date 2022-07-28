@@ -1,17 +1,17 @@
 import EventEmitter = require("node:events");
-import {CommandsApi, CommandsStatusResponse} from "../apis/commands";
+import {CommandsService, CommandsStatusResponse} from "../apis/commands";
 import {Language} from "../apis/executionContext";
 import {ExecutionContext} from "./ExecutionContext";
 
 export class Command extends EventEmitter {
     readonly context: ExecutionContext;
-    readonly commandsApi: CommandsApi;
+    readonly commandsApi: CommandsService;
     id?: string;
 
     constructor(context: ExecutionContext) {
         super();
         this.context = context;
-        this.commandsApi = new CommandsApi(context.client);
+        this.commandsApi = new CommandsService(context.client);
     }
 
     async response(): Promise<CommandsStatusResponse> {

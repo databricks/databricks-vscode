@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {ExecutionContextApi, CommandsApi} from "..";
+import {ExecutionContextService, CommandsService} from "..";
 import assert = require("assert");
 
 import {IntegrationTestSetup, sleep} from "../test/IntegrationTestSetup";
@@ -15,8 +15,10 @@ describe(__filename, function () {
     });
 
     it("should execute python with low level API", async () => {
-        let executionContextApi = new ExecutionContextApi(integSetup.client);
-        let commandsApi = new CommandsApi(integSetup.client);
+        let executionContextApi = new ExecutionContextService(
+            integSetup.client
+        );
+        let commandsApi = new CommandsService(integSetup.client);
 
         let context = await executionContextApi.create({
             clusterId: integSetup.clusterId,
