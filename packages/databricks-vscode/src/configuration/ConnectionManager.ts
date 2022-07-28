@@ -4,8 +4,9 @@ import {
     fromConfigFile,
     ScimService,
 } from "@databricks/databricks-sdk";
-import {commands, EventEmitter, window, workspace} from "vscode";
+import {commands, EventEmitter, Uri, window, workspace} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
+import {PathMapper} from "./PathMapper";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
 
@@ -21,6 +22,7 @@ export class ConnectionManager {
     private _state: ConnectionState = "DISCONNECTED";
     private _cluster?: Cluster;
     private _apiClient?: ApiClient;
+    private _pathMapper?: PathMapper;
     private _projectConfigFile?: ProjectConfigFile;
     private _me?: string;
     private _profile?: string;
@@ -45,6 +47,10 @@ export class ConnectionManager {
 
     get state(): ConnectionState {
         return this._state;
+    }
+
+    get pathMapper(): PathMapper | undefined {
+        return this._pathMapper;
     }
 
     /**
@@ -105,6 +111,12 @@ export class ConnectionManager {
 
         if (projectConfigFile.config.clusterId) {
             await this.attachCluster(projectConfigFile.config.clusterId);
+        }
+
+        if (projectConfigFile.config.workspacePath) {
+            await this.attachWorkspace(
+                Uri.file(projectConfigFile.config.workspacePath)
+            );
         }
     }
 
@@ -222,6 +234,16 @@ export class ConnectionManager {
         }
 
         this.updateCluster(undefined);
+    }
+
+    async attachWorkspace(workspacePath: Uri): Promise<void> {
+        if (!workspace.workspaceFolders || !workspace.workspaceFolders.length) {
+            // TODO how do we handle this?
+            return;
+        }
+
+        const wsUri = workspace.workspaceFolders[0].uri;
+        this._pathMapper = new PathMapper(workspacePath, wsUri);
     }
 
     private async getMe(apiClient: ApiClient): Promise<string> {

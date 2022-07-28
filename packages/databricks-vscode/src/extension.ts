@@ -6,6 +6,7 @@ import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
+import {WorkflowCommands} from "./workflow/WorkflowCommands";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
@@ -54,6 +55,16 @@ export function activate(context: ExtensionContext) {
         commands.registerCommand(
             "databricks.connection.detachCluster",
             connectionCommands.detachClusterCommand(),
+            connectionCommands
+        )
+    );
+
+    // Workflow group
+    const workflowCommands = new WorkflowCommands(connectionManager, context);
+    context.subscriptions.push(
+        commands.registerCommand(
+            "databricks.run.runEditorContentsAsWorkflow",
+            workflowCommands.runEditorContentsAsWorkflow(),
             connectionCommands
         )
     );

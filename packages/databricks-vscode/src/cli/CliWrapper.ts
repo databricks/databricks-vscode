@@ -1,7 +1,10 @@
-import {execFile, ExecFileException, spawn} from "child_process";
+import {spawn} from "child_process";
 
 /**
  * Entrypoint for all wrapped CLI commands
+ *
+ * Righ now this is a placeholder for a future implementation
+ * of the bricks CLI
  */
 export class CliWrapper {
     constructor() {}
