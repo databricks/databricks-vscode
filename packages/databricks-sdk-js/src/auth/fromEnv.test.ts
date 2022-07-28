@@ -15,7 +15,7 @@ describe(__filename, () => {
 
     it("should load config from environment variables", async () => {
         process.env["DATABRICKS_HOST"] = "https://cloud.databricks.com/";
-        process.env["DATABRICKS_TOKEN"] = "dapitest1234";
+        process.env["TEST_PERSONAL_ACCESS_TOKEN"] = "dapitest1234";
 
         const provider = fromEnv();
         const credentials = await provider();

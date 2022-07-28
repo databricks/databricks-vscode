@@ -3,7 +3,7 @@ import {CredentialProvider, CredentialsProviderError} from "./types";
 export const fromEnv = (): CredentialProvider => {
     return async () => {
         const host = process.env["DATABRICKS_HOST"];
-        const token = process.env["DATABRICKS_TOKEN"];
+        const token = process.env["TEST_PERSONAL_ACCESS_TOKEN"];
 
         if (host && token) {
             return {

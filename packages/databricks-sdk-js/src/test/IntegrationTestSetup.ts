@@ -19,13 +19,13 @@ export class IntegrationTestSetup {
             let client = new ApiClient();
             let clustersApi = new ClusterService(client);
 
-            if (!process.env["DATABRICKS_CLUSTER_ID"]) {
+            if (!process.env["TEST_DEFAULT_CLUSTER_ID"]) {
                 throw new Error(
-                    "Environment variable 'DATABRICKS_CLUSTER_ID' must be set"
+                    "Environment variable 'TEST_DEFAULT_CLUSTER_ID' must be set"
                 );
             }
 
-            clusterId = process.env["DATABRICKS_CLUSTER_ID"];
+            clusterId = process.env["TEST_DEFAULT_CLUSTER_ID"];
             clustersApi.start({cluster_id: clusterId});
 
             // wait for cluster to be running
