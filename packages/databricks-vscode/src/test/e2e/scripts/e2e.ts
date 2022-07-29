@@ -13,8 +13,8 @@ async function main(args: string[]) {
         "Environment variable DATABRICKS_HOST must be set"
     );
     assert(
-        process.env["TEST_PERSONAL_ACCESS_TOKEN"],
-        "Environment variable TEST_PERSONAL_ACCESS_TOKEN must be set"
+        process.env["DATABRICKS_TOKEN"],
+        "Environment variable DATABRICKS_TOKEN must be set"
     );
     assert(
         process.env["TEST_DEFAULT_CLUSTER_ID"],
@@ -27,7 +27,7 @@ async function main(args: string[]) {
             configFile,
             `[DEFAULT]
 host = ${process.env["DATABRICKS_HOST"]}
-token = ${process.env["TEST_PERSONAL_ACCESS_TOKEN"]}`
+token = ${process.env["DATABRICKS_TOKEN"]}`
         );
 
         const child = spawn("extest", ["run-tests", ...args], {

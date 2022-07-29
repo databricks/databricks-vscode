@@ -53,7 +53,7 @@ describe(__filename, function () {
         assert.equal(status.results.data, "juhu");
 
         await executionContextApi.destroy({
-            clusterId: "1118-013127-82wynr8t",
+            clusterId: integSetup.clusterId,
             contextId: context.id,
         });
     });
