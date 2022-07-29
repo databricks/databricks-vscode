@@ -1,15 +1,9 @@
-import assert = require("node:assert");
-import path = require("node:path");
+import assert from "node:assert";
+import path from "node:path";
 import * as fs from "fs/promises";
 import * as tmp from "tmp-promise";
-import {
-    VSBrowser,
-    WebDriver,
-    ActivityBar,
-    InputBox,
-    Workbench,
-} from "vscode-extension-tester";
-import {openCommandPrompt, openFolder} from "./utils";
+import {VSBrowser, WebDriver} from "vscode-extension-tester";
+import {openFolder} from "./utils";
 
 describe("Run python on cluster", function () {
     // these will be populated by the before() function

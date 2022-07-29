@@ -1,4 +1,4 @@
-import EventEmitter = require("node:events");
+import EventEmitter from "node:events";
 import {CommandsService, CommandsStatusResponse} from "../apis/commands";
 import {Language} from "../apis/executionContext";
 import {ExecutionContext} from "./ExecutionContext";

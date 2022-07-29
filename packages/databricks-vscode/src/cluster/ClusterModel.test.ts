@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import * as assert from "assert";
+import assert from "assert";
 import {mock, when, anything, anyString, instance, verify} from "ts-mockito";
 import {ApiClient, cluster} from "@databricks/databricks-sdk";
 import {ClusterModel} from "./ClusterModel";

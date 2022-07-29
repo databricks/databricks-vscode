@@ -1,4 +1,4 @@
-import path = require("node:path");
+import path from "node:path";
 import {readFile, stat} from "node:fs/promises";
 import {parse} from "ini";
 import {homedir} from "node:os";
