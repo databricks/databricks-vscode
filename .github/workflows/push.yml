@@ -38,11 +38,8 @@ jobs:
             - name: Prettier and Linting
               run: yarn run test:lint
 
-            - name: Unit Tests
-              run: yarn test:run
-
-            - name: Code Coverage
-              run: yarn run test:cov
+            - name: Unit Tests With Code Cov
+              run: yarn test:cov
 
             - name: Upload Code Coverage Report
               uses: codecov/codecov-action@v3
@@ -70,15 +67,12 @@ jobs:
 
             - run: yarn install --immutable
 
-            - name: Integration Tests
-              run: yarn run test:integ
+            - name: Integration Tests With Code Coverage
+              run: yarn run test:integ:cov
               env:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
                   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
                   TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
-
-            - name: Code Coverage
-              run: yarn run test:integ:cov
 
             - name: Upload Code Coverage Report
               uses: codecov/codecov-action@v3
