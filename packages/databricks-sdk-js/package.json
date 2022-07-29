@@ -53,7 +53,7 @@
     },
     "nyc": {
         "extends": "@istanbuljs/nyc-config-typescript",
-        "check-coverage": true,
+        "check-coverage": false,
         "all": true,
         "skip-empty": true,
         "include": [
