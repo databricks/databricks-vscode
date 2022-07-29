@@ -17,8 +17,8 @@ async function main(args: string[]) {
         "Environment variable DATABRICKS_TOKEN must be set"
     );
     assert(
-        process.env["DATABRICKS_CLUSTER_ID"],
-        "Environment variable DATABRICKS_CLUSTER_ID must be set"
+        process.env["TEST_DEFAULT_CLUSTER_ID"],
+        "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
     );
 
     const {path: configFile, cleanup} = await tmp.file();
@@ -32,7 +32,7 @@ token = ${process.env["DATABRICKS_TOKEN"]}`
 
         const child = spawn("extest", ["run-tests", ...args], {
             env: {
-                DATABRICKS_CLUSTER_ID: process.env["DATABRICKS_CLUSTER_ID"],
+                TEST_DEFAULT_CLUSTER_ID: process.env["TEST_DEFAULT_CLUSTER_ID"],
                 DATABRICKS_CONFIG_FILE: configFile,
                 PATH: process.env["PATH"],
             },

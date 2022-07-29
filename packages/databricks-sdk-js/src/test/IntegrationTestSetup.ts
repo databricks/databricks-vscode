@@ -3,7 +3,6 @@
 import {v4 as uuidv4} from "uuid";
 import {ApiClient} from "../api-client";
 import {ClusterService} from "../apis/cluster";
-import {fromEnv} from "../auth/fromEnv";
 
 export class IntegrationTestSetup {
     readonly testRunId: string;
@@ -15,17 +14,17 @@ export class IntegrationTestSetup {
     private static _instance: IntegrationTestSetup;
     static async getInstance(): Promise<IntegrationTestSetup> {
         if (!this._instance) {
-            let clusterId;
             let client = new ApiClient();
             let clustersApi = new ClusterService(client);
 
-            if (!process.env["DATABRICKS_CLUSTER_ID"]) {
+            if (!process.env["TEST_DEFAULT_CLUSTER_ID"]) {
                 throw new Error(
-                    "Environment variable 'DATABRICKS_CLUSTER_ID' must be set"
+                    "Environment variable 'TEST_DEFAULT_CLUSTER_ID' must be set"
                 );
             }
 
-            clusterId = process.env["DATABRICKS_CLUSTER_ID"];
+            const clusterId =
+                process.env["TEST_DEFAULT_CLUSTER_ID"]!.split("'").join("");
             clustersApi.start({cluster_id: clusterId});
 
             // wait for cluster to be running
