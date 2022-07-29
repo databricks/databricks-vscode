@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {Cluster, ClusterState} from "@databricks/databricks-sdk";
+import {Cluster, cluster} from "@databricks/databricks-sdk";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
@@ -66,7 +66,7 @@ export class ClusterModel implements Disposable {
             })
             .sort((a, b) => {
                 // Sort by descending state priority
-                const stateWeight: Record<ClusterState, number> = {
+                const stateWeight: Record<cluster.ClusterState, number> = {
                     RUNNING: 10,
                     PENDING: 9,
                     RESTARTING: 8,

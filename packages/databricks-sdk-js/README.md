@@ -21,8 +21,8 @@ npm run test
 
 Most of the tests are integrations tests and must be run against a life cluster. To run the integration tests you need to configure the following environment variables:
 
-| Name                  | Value                                                                                                     |
-| --------------------- | --------------------------------------------------------------------------------------------------------- |
-| DATABRICKS_HOST       | Hostname of the Databricks workspace (starts with https://)                                               |
-| DATABRICKS_TOKEN      | Personal access token                                                                                     |
-| DATABRICKS_CLUSTER_ID | (optional) ID of a cluster to run the tests agains. If missing the tests will create a cluster on demand. |
+| Name                    | Value                                                                                                     |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| DATABRICKS_HOST         | Hostname of the Databricks workspace (starts with https://)                                               |
+| DATABRICKS_TOKEN        | Personal access token                                                                                     |
+| TEST_DEFAULT_CLUSTER_ID | (optional) ID of a cluster to run the tests agains. If missing the tests will create a cluster on demand. |

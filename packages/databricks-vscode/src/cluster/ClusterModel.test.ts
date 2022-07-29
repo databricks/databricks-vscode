@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import * as assert from "assert";
+import assert from "assert";
 import {mock, when, anything, anyString, instance, verify} from "ts-mockito";
-import {ApiClient, ListClustersResponse} from "@databricks/databricks-sdk";
+import {ApiClient, cluster} from "@databricks/databricks-sdk";
 import {ClusterModel} from "./ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Disposable} from "vscode";
 
 const me = "user-1";
-const mockListClustersResponse: ListClustersResponse = {
+const mockListClustersResponse: cluster.ListClustersResponse = {
     clusters: [
         {
             cluster_id: "cluster-id-2",
@@ -43,7 +43,7 @@ describe(__filename, () => {
         disposables = [];
         mockedConnectionManager = mock(ConnectionManager);
         mockedApiClient = mock<ApiClient>();
-        when<ListClustersResponse>(
+        when<cluster.ListClustersResponse>(
             mockedApiClient.request(anyString(), "GET", anything())
         ).thenResolve(mockListClustersResponse);
         when(mockedConnectionManager.apiClient).thenReturn(

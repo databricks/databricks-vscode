@@ -2,9 +2,9 @@ import {
     ApiClient,
     Cluster,
     fromConfigFile,
-    ScimApi,
+    ScimService,
 } from "@databricks/databricks-sdk";
-import {commands, Event, EventEmitter, window, workspace} from "vscode";
+import {commands, EventEmitter, window, workspace} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
@@ -224,10 +224,8 @@ export class ConnectionManager {
         this.updateCluster(undefined);
     }
 
-    async getWorkspace() {}
-
     private async getMe(apiClient: ApiClient): Promise<string> {
-        let scimApi = new ScimApi(apiClient);
+        let scimApi = new ScimService(apiClient);
         let response = await scimApi.me({});
 
         return response.userName;

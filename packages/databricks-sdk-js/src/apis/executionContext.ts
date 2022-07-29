@@ -29,7 +29,7 @@ interface ExecutionContextDestroyResponse {
     id: string;
 }
 
-export class ExecutionContextApi {
+export class ExecutionContextService {
     readonly client: ApiClient;
 
     constructor(client: ApiClient) {

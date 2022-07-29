@@ -1,5 +1,15 @@
 import {CredentialProvider, CredentialsProviderError} from "./types";
 
+function getValidHost(host: string) {
+    return !/https:\/\/.+/.test(host) && !/http:\/\/.+/.test(host)
+        ? `https://${host}`
+        : host;
+}
+
+function strip(strToStrip: string, str: string) {
+    return str.split(strToStrip).join("");
+}
+
 export const fromEnv = (): CredentialProvider => {
     return async () => {
         const host = process.env["DATABRICKS_HOST"];
@@ -7,8 +17,8 @@ export const fromEnv = (): CredentialProvider => {
 
         if (host && token) {
             return {
-                token: token,
-                host: new URL(host),
+                token: strip("'", token),
+                host: new URL(getValidHost(strip("'", host))),
             };
         }
 

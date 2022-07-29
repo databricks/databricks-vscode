@@ -1,4 +1,4 @@
-import assert = require("node:assert");
+import assert from "node:assert";
 import {writeFile} from "node:fs/promises";
 import {withFile} from "tmp-promise";
 import {DEFAULT_PROFILE, fromConfigFile} from "./fromConfigFile";
