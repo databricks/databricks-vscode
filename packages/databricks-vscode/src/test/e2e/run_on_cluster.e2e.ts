@@ -30,7 +30,7 @@ describe("Run python on cluster", function () {
         await fs.writeFile(
             path.join(projectDir, ".databricks", "project.json"),
             JSON.stringify({
-                clusterId: process.env["DATABRICKS_CLUSTER_ID"],
+                clusterId: process.env["TEST_DEFAULT_CLUSTER_ID"],
                 profile: "DEFAULT",
             })
         );
