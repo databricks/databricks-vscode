@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {ExecutionContextService, CommandsService} from "..";
-import * as assert from "assert";
+import assert from "assert";
 
 import {IntegrationTestSetup, sleep} from "../test/IntegrationTestSetup";
 

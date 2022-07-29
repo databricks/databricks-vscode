@@ -1,5 +1,5 @@
-import assert = require("node:assert");
-import path = require("node:path");
+import assert from "node:assert";
+import path from "node:path";
 import * as fs from "fs/promises";
 import * as tmp from "tmp-promise";
 import {

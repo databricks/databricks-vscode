@@ -1,5 +1,5 @@
 import {DbfsService, Cluster, jobs, WorkflowRun, WorkspaceService} from "..";
-import * as assert from "assert";
+import assert from "assert";
 
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
 

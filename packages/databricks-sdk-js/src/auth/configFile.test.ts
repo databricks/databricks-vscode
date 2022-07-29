@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import assert = require("node:assert");
+import assert from "node:assert";
 import {loadConfigFile, resolveConfigFilePath} from "./configFile";
 import {writeFile} from "node:fs/promises";
 import {withFile} from "tmp-promise";
 import {homedir} from "node:os";
-import path = require("node:path");
+import path from "node:path";
 
 describe(__filename, () => {
     beforeEach(() => {

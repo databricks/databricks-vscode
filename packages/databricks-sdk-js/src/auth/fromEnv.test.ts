@@ -1,4 +1,4 @@
-import assert = require("node:assert");
+import assert from "node:assert";
 import {CredentialsProviderError} from "./types";
 import {fromEnv} from "./fromEnv";
 

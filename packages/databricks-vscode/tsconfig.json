@@ -1,7 +1,10 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
-        "target": "ES2020",
+        "module": "CommonJS",
+        "target": "ES6",
+        "moduleResolution": "Node",
+        "esModuleInterop": true,
+        "isolatedModules": true,
         "lib": ["ES2020"],
         "sourceMap": true,
         "rootDir": "src",

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {spawn} from "child_process";
-import * as assert from "assert";
-import * as fs from "fs/promises";
-import * as tmp from "tmp-promise";
+import assert from "assert";
+import fs from "fs/promises";
+import tmp from "tmp-promise";
 
 /**
  * Create a temporary Databricks config file with values taken from environment variables

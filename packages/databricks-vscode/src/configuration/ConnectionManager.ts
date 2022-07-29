@@ -4,7 +4,7 @@ import {
     fromConfigFile,
     ScimService,
 } from "@databricks/databricks-sdk";
-import {commands, EventEmitter, Uri, window, workspace} from "vscode";
+import {commands, EventEmitter, window, workspace} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";

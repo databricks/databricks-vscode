@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import * as assert from "assert";
+import assert from "assert";
 import {mock, when, instance} from "ts-mockito";
 import {ClusterModel} from "./ClusterModel";
 import {Disposable, TreeItem} from "vscode";

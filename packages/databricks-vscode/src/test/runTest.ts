@@ -1,5 +1,5 @@
-import * as path from "path";
-import os = require("os");
+import path from "path";
+import os from "os";
 
 import {runTests} from "@vscode/test-electron";
 
