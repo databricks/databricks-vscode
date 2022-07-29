@@ -41,6 +41,16 @@ jobs:
             - name: Unit Tests
               run: yarn test:run
 
+            - name: Code Coverage
+              run: yarn run test:cov
+
+            - name: Upload Code Coverage Report
+              uses: codecov/codecov-action@v3
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  flags: unittests
+                  fail_ci_if_error: false
+
     integ-test-sdk:
         name: Integration Test Databricks SDK
         runs-on: ubuntu-latest
@@ -66,6 +76,16 @@ jobs:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
                   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
                   DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
+
+            - name: Code Coverage
+              run: yarn run test:integ:cov
+
+            - name: Upload Code Coverage Report
+              uses: codecov/codecov-action@v3
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  flags: unittests
+                  fail_ci_if_error: false
 
     test-extension:
         name: Test VSCode Extension
