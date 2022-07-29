@@ -1,16 +1,16 @@
 import {ApiClient} from "../api-client";
-import {ExecutionContextApi, Language} from "../apis/executionContext";
+import {ExecutionContextService, Language} from "../apis/executionContext";
 import {Command} from "./Command";
 
 export class ExecutionContext {
-    readonly executionContextApi: ExecutionContextApi;
+    readonly executionContextApi: ExecutionContextService;
     readonly clusterId: string;
     readonly client: ApiClient;
     id?: string;
 
     constructor(client: ApiClient, clusterId: string) {
         this.client = client;
-        this.executionContextApi = new ExecutionContextApi(client);
+        this.executionContextApi = new ExecutionContextService(client);
         this.clusterId = clusterId;
     }
 

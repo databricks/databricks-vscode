@@ -41,6 +41,16 @@ export type ClusterState =
 
 export type ListOrder = "DESC" | "ASC";
 
+export type RuntimeEngine = "NULL" | "STANDARD" | "PHOTON";
+
+export type ClusterClientRestriction = "NOTEBOOKS" | "JOBS";
+
+export type FleetAllocationStrategy =
+    | "LOWEST_PRICE"
+    | "DIVERSIFIED"
+    | "CAPACITY_OPTIMIZED"
+    | "PRIORITIZED";
+
 export type TerminationCode =
     | "UNKNOWN"
     | "USER_REQUEST"
@@ -188,6 +198,8 @@ export type InstancePoolState = "ACTIVE" | "STOPPED" | "DELETED";
 //
 
 export interface ClusterInfo {
+    num_workers?: number;
+    autoscale?: AutoScale;
     cluster_id?: string;
     creator_user_name?: string;
     driver?: SparkNode;
@@ -213,14 +225,15 @@ export interface ClusterInfo {
     policy_id?: string;
     enable_local_disk_encryption?: boolean;
     driver_instance_pool_id?: string;
+    workload_type?: WorkloadType;
+    runtime_engine?: RuntimeEngine;
+    effective_spark_version?: string;
     state?: ClusterState;
     state_message?: string;
     start_time?: number;
     terminated_time?: number;
     last_state_loss_time?: number;
     last_restarted_time?: number;
-    num_workers?: number;
-    autoscale?: AutoScale;
     cluster_memory_mb?: number;
     cluster_cores?: number;
     default_tags?: Array<ClusterTag>;
@@ -248,6 +261,9 @@ export interface ClusterAttributes {
     policy_id?: string;
     enable_local_disk_encryption?: boolean;
     driver_instance_pool_id?: string;
+    workload_type?: WorkloadType;
+    runtime_engine?: RuntimeEngine;
+    effective_spark_version?: string;
 }
 
 export interface ClusterTag {
@@ -351,15 +367,43 @@ export interface LogSyncStatus {
     last_exception?: string;
 }
 
+export interface WorkloadType {
+    clients?: ClientsTypes;
+}
+
+export interface ClientsTypes {
+    notebooks?: boolean;
+    jobs?: boolean;
+}
+
 export interface GetInstance {}
 
-export interface Policy {
-    policy_id?: string;
-    name?: string;
-    definition?: string;
-    creator_user_name?: string;
-    created_at_timestamp?: number;
+export interface FleetSpotOption {
+    allocation_strategy?: FleetAllocationStrategy;
+    instance_pools_to_use_count?: number;
+    max_total_price?: number;
 }
+
+export interface FleetOnDemandOption {
+    allocation_strategy?: FleetAllocationStrategy;
+    use_capacity_reservations_first?: boolean;
+    max_total_price?: number;
+}
+
+export interface FleetLaunchTemplateOverride {
+    availability_zone: string;
+    instance_type: string;
+    max_price?: number;
+    priority?: number;
+}
+
+export interface InstancePoolFleetAttributes {
+    fleet_spot_option?: FleetSpotOption;
+    fleet_on_demand_option?: FleetOnDemandOption;
+    launch_template_overrides?: Array<FleetLaunchTemplateOverride>;
+}
+
+export interface Policy {}
 
 export interface TerminationReason {
     code?: TerminationCode;
@@ -385,7 +429,6 @@ export interface InstancePoolAndStats {
     preloaded_docker_images?: Array<DockerImage>;
     preloaded_spark_versions?: Array<string>;
     azure_attributes?: InstancePoolAzureAttributes;
-    gcp_attributes?: InstancePoolGcpAttributes;
     instance_pool_id?: string;
     default_tags?: Array<ClusterTag>;
     state?: InstancePoolState;
@@ -398,6 +441,7 @@ export interface ClusterEvent {
     timestamp?: number;
     type?: ClusterEventType;
     details?: EventDetails;
+    data_plane_event_details?: any;
 }
 
 export interface EventDetails {
@@ -450,8 +494,8 @@ export interface DiskType {
 }
 
 export interface DockerImage {
-    url?: string;
     basic_auth?: DockerBasicAuth;
+    url?: string;
 }
 
 export interface DockerBasicAuth {
@@ -460,10 +504,6 @@ export interface DockerBasicAuth {
 }
 
 export interface InstancePool {}
-
-export interface InstancePoolGcpAttributes {
-    gcp_availability?: GcpAvailability;
-}
 
 export interface InstancePoolAwsAttributes {
     availability?: AwsAvailability;
@@ -496,7 +536,9 @@ export interface PendingInstanceError {
 // Request/response types.
 //
 
-export interface ListClustersRequest {}
+export interface ListClustersRequest {
+    can_use_client?: ClusterClientRestriction;
+}
 
 export interface ListClustersResponse {
     clusters?: Array<ClusterInfo>;
@@ -524,6 +566,9 @@ export interface CreateClusterRequest {
     policy_id?: string;
     enable_local_disk_encryption?: boolean;
     driver_instance_pool_id?: string;
+    workload_type?: WorkloadType;
+    runtime_engine?: RuntimeEngine;
+    effective_spark_version?: string;
     apply_policy_default_values?: boolean;
 }
 
@@ -557,22 +602,23 @@ export interface PermanentDeleteClusterResponse {}
 
 export interface RestartClusterRequest {
     cluster_id: string;
+    restart_user?: string;
 }
 
 export interface RestartClusterResponse {}
 
 export interface ResizeClusterRequest {
-    cluster_id: string;
     num_workers?: number;
     autoscale?: AutoScale;
+    cluster_id: string;
 }
 
 export interface ResizeClusterResponse {}
 
 export interface EditClusterRequest {
-    cluster_id: string;
     num_workers?: number;
     autoscale?: AutoScale;
+    cluster_id: string;
     cluster_name?: string;
     spark_version?: string;
     spark_conf?: Array<SparkConfPair>;
@@ -592,16 +638,28 @@ export interface EditClusterRequest {
     policy_id?: string;
     enable_local_disk_encryption?: boolean;
     driver_instance_pool_id?: string;
+    workload_type?: WorkloadType;
+    runtime_engine?: RuntimeEngine;
+    effective_spark_version?: string;
     apply_policy_default_values?: boolean;
 }
 
 export interface EditClusterResponse {}
+
+export interface ChangeClusterOwnerRequest {
+    cluster_id: string;
+    owner_username?: string;
+}
+
+export interface ChangeClusterOwnerResponse {}
 
 export interface GetClusterRequest {
     cluster_id: string;
 }
 
 export interface GetClusterResponse {
+    num_workers?: number;
+    autoscale?: AutoScale;
     cluster_id?: string;
     creator_user_name?: string;
     driver?: SparkNode;
@@ -627,14 +685,15 @@ export interface GetClusterResponse {
     policy_id?: string;
     enable_local_disk_encryption?: boolean;
     driver_instance_pool_id?: string;
+    workload_type?: WorkloadType;
+    runtime_engine?: RuntimeEngine;
+    effective_spark_version?: string;
     state?: ClusterState;
     state_message?: string;
     start_time?: number;
     terminated_time?: number;
     last_state_loss_time?: number;
     last_restarted_time?: number;
-    num_workers?: number;
-    autoscale?: AutoScale;
     cluster_memory_mb?: number;
     cluster_cores?: number;
     default_tags?: Array<ClusterTag>;
@@ -657,9 +716,9 @@ export interface UnpinClusterResponse {}
 export interface ListNodeTypesRequest {}
 
 export interface ListNodeTypesResponse {
-    node_types?: Array<NodeType>;
     success?: delegate.CpalSuccessResponse;
     failure?: delegate.CpalFailureResponse;
+    node_types?: Array<NodeType>;
 }
 
 export interface ListAvailableZonesRequest {}
@@ -776,6 +835,16 @@ export class ClusterService {
             "POST",
             request
         )) as EditClusterResponse;
+    }
+
+    async changeClusterOwner(
+        request: ChangeClusterOwnerRequest
+    ): Promise<ChangeClusterOwnerResponse> {
+        return (await this.client.request(
+            "/api/2.0/clusters/change-owner",
+            "POST",
+            request
+        )) as ChangeClusterOwnerResponse;
     }
 
     async get(request: GetClusterRequest): Promise<GetClusterResponse> {
