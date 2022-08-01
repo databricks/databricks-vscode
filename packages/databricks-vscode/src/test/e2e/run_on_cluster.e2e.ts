@@ -12,7 +12,7 @@ describe("Run python on cluster", function () {
     let projectDir: string;
     let cleanup: () => void;
 
-    this.timeout(20_000);
+    this.timeout(10 * 60 * 1000);
 
     before(async () => {
         browser = VSBrowser.instance;

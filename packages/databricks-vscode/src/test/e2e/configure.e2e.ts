@@ -29,7 +29,7 @@ describe("Configure Databricks Extension", function () {
     // this will be populated by the tests
     let clusterId: string;
 
-    this.timeout(20_000);
+    this.timeout(10 * 60 * 1000);
 
     before(async () => {
         browser = VSBrowser.instance;
