@@ -4,7 +4,13 @@ import {
     fromConfigFile,
     ScimService,
 } from "@databricks/databricks-sdk";
-import {commands, EventEmitter, Uri, window, workspace} from "vscode";
+import {
+    commands,
+    EventEmitter,
+    Uri,
+    window,
+    workspace as vscodeWorkspace,
+} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {PathMapper} from "./PathMapper";
 import {ProjectConfigFile} from "./ProjectConfigFile";
@@ -70,14 +76,14 @@ export class ConnectionManager {
         let profile;
 
         try {
-            if (!workspace.rootPath) {
+            if (!vscodeWorkspace.rootPath) {
                 throw new Error(
                     "Can't login to Databricks: Not in a VSCode workspace"
                 );
             }
 
             projectConfigFile = await ProjectConfigFile.load(
-                workspace.rootPath
+                vscodeWorkspace.rootPath
             );
 
             profile = projectConfigFile.config.profile;
@@ -179,17 +185,20 @@ export class ConnectionManager {
     }
 
     private async writeConfigFile(profile: string) {
-        if (!workspace.rootPath) {
+        if (!vscodeWorkspace.rootPath) {
             throw new Error("Not in a VSCode workspace");
         }
 
         let projectConfigFile;
         try {
             projectConfigFile = await ProjectConfigFile.load(
-                workspace.rootPath
+                vscodeWorkspace.rootPath
             );
         } catch (e) {
-            projectConfigFile = new ProjectConfigFile({}, workspace.rootPath);
+            projectConfigFile = new ProjectConfigFile(
+                {},
+                vscodeWorkspace.rootPath
+            );
         }
 
         projectConfigFile.profile = profile;
@@ -237,12 +246,15 @@ export class ConnectionManager {
     }
 
     async attachWorkspace(workspacePath: Uri): Promise<void> {
-        if (!workspace.workspaceFolders || !workspace.workspaceFolders.length) {
+        if (
+            !vscodeWorkspace.workspaceFolders ||
+            !vscodeWorkspace.workspaceFolders.length
+        ) {
             // TODO how do we handle this?
             return;
         }
 
-        const wsUri = workspace.workspaceFolders[0].uri;
+        const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
         this._pathMapper = new PathMapper(workspacePath, wsUri);
     }
 

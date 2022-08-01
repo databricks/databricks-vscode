@@ -65,7 +65,7 @@ export function activate(context: ExtensionContext) {
         commands.registerCommand(
             "databricks.run.runEditorContentsAsWorkflow",
             workflowCommands.runEditorContentsAsWorkflow(),
-            connectionCommands
+            workflowCommands
         )
     );
 
