@@ -25,8 +25,7 @@
         "test:run": "ts-mocha --type-check 'src/**/*.test.ts'",
         "test": "yarn run test:lint && yarn run test:run",
         "test:integ": "ts-mocha --type-check 'src/**/*.integ.ts'",
-        "test:cov": "nyc yarn run test:run",
-        "test:integ:cov": "nyc yarn run test:integ"
+        "test:cov": "nyc yarn run test:run"
     },
     "dependencies": {
         "ini": "^3.0.0",
