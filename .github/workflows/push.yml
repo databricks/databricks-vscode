@@ -41,12 +41,14 @@ jobs:
             - name: Unit Tests With Code Cov
               run: yarn test:cov
 
+            - name: Show coverage test result
+              run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
+
             - name: Upload Code Coverage Report
               uses: codecov/codecov-action@v3
               with:
                   token: ${{ secrets.CODECOV_TOKEN }}
                   flags: unittests
-                  url: https://codecov.staging.cloud.databricks.com
                   fail_ci_if_error: false
 
     integ-test-sdk:
@@ -123,6 +125,10 @@ jobs:
             - name: Unit Tests with Coverage (Windows)
               if: matrix.os == 'windows-latest'
               run: yarn run test:cov
+              working-directory: packages/databricks-vscode
+
+            - name: Show coverage test result
+              run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
               working-directory: packages/databricks-vscode
 
             - name: Upload Code Coverage Report

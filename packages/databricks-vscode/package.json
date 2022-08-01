@@ -244,7 +244,7 @@
         ],
         "reporter": [
             "lcov",
-            "text-summary"
+            "json"
         ],
         "report-dir": "coverage"
     }
