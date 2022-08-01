@@ -60,6 +60,9 @@ describe(__filename, function () {
 
         let jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
         let workspaceService = new WorkspaceService(integSetup.client);
+
+        await workspaceService.mkdirs({path: "/tmp"});
+
         await workspaceService.import({
             path: jobPath,
             format: "SOURCE",
