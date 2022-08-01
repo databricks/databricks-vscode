@@ -46,6 +46,7 @@ jobs:
               with:
                   token: ${{ secrets.CODECOV_TOKEN }}
                   flags: unittests
+                  url: https://codecov.staging.cloud.databricks.com
                   fail_ci_if_error: false
 
     integ-test-sdk:
@@ -68,7 +69,7 @@ jobs:
             - run: yarn install --immutable
 
             - name: Integration Tests
-              run: yarn run test:integ:cov
+              run: yarn run test:integ
               env:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
                   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
@@ -129,6 +130,7 @@ jobs:
               with:
                   token: ${{ secrets.CODECOV_TOKEN }}
                   flags: unittests
+                  url: https://codecov.staging.cloud.databricks.com
                   fail_ci_if_error: false
 
             - name: Integration Tests
