@@ -207,6 +207,7 @@
         "@vscode/webview-ui-toolkit": "^1.0.0"
     },
     "devDependencies": {
+        "@istanbuljs/nyc-config-typescript": "^1.0.2",
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.1",
         "@types/node": "^18.0.6",
@@ -217,6 +218,7 @@
         "eslint": "^8.20.0",
         "glob": "^8.0.3",
         "mocha": "^10.0.0",
+        "nyc": "^15.1.0",
         "prettier": "^2.7.1",
         "tmp-promise": "^3.0.3",
         "ts-loader": "^9.3.1",
