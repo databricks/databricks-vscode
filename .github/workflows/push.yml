@@ -44,7 +44,7 @@ jobs:
             - run: yarn install --immutable
 
             - name: Integration Tests
-              run: yarn run test:cov
+              run: yarn run test:integ:cov
               env:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
                   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
