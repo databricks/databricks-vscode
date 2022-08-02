@@ -99,9 +99,6 @@ export class WorkflowOutputPanel {
 
     private getWebviewContent(message: string): string {
         const toolkitUri = this.getUri([
-            "node_modules",
-            "@vscode",
-            "webview-ui-toolkit",
             "dist",
             "toolkit.js", // A toolkit.min.js file is also available
         ]);
