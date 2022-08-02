@@ -4,8 +4,15 @@ import {
     fromConfigFile,
     ScimService,
 } from "@databricks/databricks-sdk";
-import {commands, EventEmitter, window, workspace} from "vscode";
+import {
+    commands,
+    EventEmitter,
+    Uri,
+    window,
+    workspace as vscodeWorkspace,
+} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
+import {PathMapper} from "./PathMapper";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
 
@@ -21,6 +28,7 @@ export class ConnectionManager {
     private _state: ConnectionState = "DISCONNECTED";
     private _cluster?: Cluster;
     private _apiClient?: ApiClient;
+    private _pathMapper?: PathMapper;
     private _projectConfigFile?: ProjectConfigFile;
     private _me?: string;
     private _profile?: string;
@@ -47,6 +55,10 @@ export class ConnectionManager {
         return this._state;
     }
 
+    get pathMapper(): PathMapper | undefined {
+        return this._pathMapper;
+    }
+
     /**
      * Get a pre-configured APIClient. Do not hold on to references to this class as
      * it might be invalidated as the configuration changes. If you have to store a reference
@@ -64,14 +76,14 @@ export class ConnectionManager {
         let profile;
 
         try {
-            if (!workspace.rootPath) {
+            if (!vscodeWorkspace.rootPath) {
                 throw new Error(
                     "Can't login to Databricks: Not in a VSCode workspace"
                 );
             }
 
             projectConfigFile = await ProjectConfigFile.load(
-                workspace.rootPath
+                vscodeWorkspace.rootPath
             );
 
             profile = projectConfigFile.config.profile;
@@ -105,6 +117,12 @@ export class ConnectionManager {
 
         if (projectConfigFile.config.clusterId) {
             await this.attachCluster(projectConfigFile.config.clusterId);
+        }
+
+        if (projectConfigFile.config.workspacePath) {
+            await this.attachWorkspace(
+                Uri.file(projectConfigFile.config.workspacePath)
+            );
         }
     }
 
@@ -167,17 +185,20 @@ export class ConnectionManager {
     }
 
     private async writeConfigFile(profile: string) {
-        if (!workspace.rootPath) {
+        if (!vscodeWorkspace.rootPath) {
             throw new Error("Not in a VSCode workspace");
         }
 
         let projectConfigFile;
         try {
             projectConfigFile = await ProjectConfigFile.load(
-                workspace.rootPath
+                vscodeWorkspace.rootPath
             );
         } catch (e) {
-            projectConfigFile = new ProjectConfigFile({}, workspace.rootPath);
+            projectConfigFile = new ProjectConfigFile(
+                {},
+                vscodeWorkspace.rootPath
+            );
         }
 
         projectConfigFile.profile = profile;
@@ -222,6 +243,19 @@ export class ConnectionManager {
         }
 
         this.updateCluster(undefined);
+    }
+
+    async attachWorkspace(workspacePath: Uri): Promise<void> {
+        if (
+            !vscodeWorkspace.workspaceFolders ||
+            !vscodeWorkspace.workspaceFolders.length
+        ) {
+            // TODO how do we handle this?
+            return;
+        }
+
+        const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
+        this._pathMapper = new PathMapper(workspacePath, wsUri);
     }
 
     private async getMe(apiClient: ApiClient): Promise<string> {
