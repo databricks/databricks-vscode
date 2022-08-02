@@ -14,7 +14,7 @@
                 "--extensionDevelopmentPath=${workspaceFolder}/packages/databricks-vscode"
             ],
             "outFiles": [
-                "${workspaceFolder}/packages/databricks-vscode/dist/**/*.js"
+                "${workspaceFolder}/packages/databricks-vscode/out/**/*.js"
             ],
             "preLaunchTask": "${defaultBuildTask}"
         },
@@ -28,8 +28,7 @@
                 "--extensionTestsPath=${workspaceFolder}/packages/databricks-vscode/out/test/suite"
             ],
             "outFiles": [
-                "${workspaceFolder}/packages/databricks-vscode/out/**/*.js",
-                "${workspaceFolder}/packages/databricks-vscode/dist/**/*.js"
+                "${workspaceFolder}/packages/databricks-vscode/out/**/*.js"
             ],
             "preLaunchTask": "${defaultBuildTask}"
         }
