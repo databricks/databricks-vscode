@@ -7,8 +7,8 @@ on:
         branches: [main]
 
 jobs:
-    unit-test-sdk:
-        name: Unit Test Databricks SDK
+    test-sdk:
+        name: Test Databricks SDK
         runs-on: ${{ matrix.os }}
 
         strategy:
@@ -61,7 +61,7 @@ jobs:
     test-extension:
         name: Test VSCode Extension
         runs-on: ${{ matrix.os }}
-        needs: [unit-test-sdk, integ-test-sdk]
+        needs: [test-sdk]
 
         strategy:
             matrix:
