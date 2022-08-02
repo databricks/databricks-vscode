@@ -50,10 +50,10 @@ jobs:
 
             - run: |
                   cd coverage
-                  mkdir -p final
-                  mv integration/*.json final
-                  mv unit/*.json final
-                  yarn nyc merge final final/final.json
+                  mkdir -p all && mkdir -p final
+                  mv integration/*.json all
+                  mv unit/*.json all
+                  yarn nyc merge all final/final.json
                   yarn nyc report --reporter text -t ./coverage/final >> $GITHUB_STEP_SUMMARY
 
     test-extension:
