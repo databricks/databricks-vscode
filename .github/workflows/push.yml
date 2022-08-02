@@ -41,9 +41,7 @@ jobs:
             - name: Unit Tests With Code Cov
               run: yarn test:cov
 
-            - run: yarn install --immutable
-
-            - name: Integration Tests
+            - name: Integration Tests With Code Cov
               run: yarn run test:integ:cov
               env:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
@@ -56,7 +54,7 @@ jobs:
                   mv integration/*.json final
                   mv unit/*.json final
                   yarn nyc merge final final/final.json
-                  yarn nyc report --reporter text -t ./final >> $GITHUB_STEP_SUMMARY
+                  yarn nyc report --reporter text -t ./coverage/final >> $GITHUB_STEP_SUMMARY
 
     test-extension:
         name: Test VSCode Extension
