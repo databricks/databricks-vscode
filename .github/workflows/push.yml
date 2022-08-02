@@ -51,8 +51,8 @@ jobs:
             - run: |
                   cd coverage
                   mkdir -p all && mkdir -p final
-                  mv integration/*.json all
-                  mv unit/*.json all
+                  mv integration/coverage-final.json all/integration.json
+                  mv unit/coverage-final.json all/unit.json
                   yarn nyc merge all final/final.json
                   yarn nyc report --reporter text -t ./coverage/final >> $GITHUB_STEP_SUMMARY
 
