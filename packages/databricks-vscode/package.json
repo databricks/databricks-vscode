@@ -219,12 +219,8 @@
         "test:integ:prepare": "yarn run vscode:package && extest get-vscode --type ${VSCODE_TEST_VERSION:-stable} --storage /tmp/vscode-test-databricks && extest get-chromedriver --storage /tmp/vscode-test-databricks && extest install-vsix -f databricks-0.0.1.vsix --storage /tmp/vscode-test-databricks",
         "test:integ:run": "yarn run test:compile && ts-node src/test/e2e/scripts/e2e.ts --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json 'out/**/*.e2e.js'",
         "test:integ": "yarn run test:integ:prepare && yarn run test:integ:run",
-<<<<<<< HEAD
-        "test": "yarn run test:compile && yarn run compile && yarn run test:lint && yarn run test:unit",
         "test:cov": "nyc yarn run test:unit",
-=======
         "test": "yarn run compile && yarn run test:lint && yarn run test:unit",
->>>>>>> 5ef0919 (Add run as job functionality (#39))
         "build": "yarn run vscode:prepublish",
         "clean": "rm -rf node_modules out dist .vscode-test"
     },
