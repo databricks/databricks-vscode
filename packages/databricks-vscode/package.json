@@ -51,7 +51,7 @@
         "onView:clusterManager",
         "onView:clusterList"
     ],
-    "main": "./dist/extension.js",
+    "main": "out/extension.js",
     "contributes": {
         "commands": [
             {
@@ -206,23 +206,22 @@
         "useYarn": false
     },
     "scripts": {
-        "vscode:prepublish": "yarn run package",
-        "vscode:package": "vsce package",
-        "compile": "webpack",
-        "watch": "webpack --watch",
-        "package": "webpack --mode production --devtool hidden-source-map",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
+        "package": "vsce package",
+        "package:compile": "yarn run esbuild:base --minify",
+        "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
+        "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+        "compile": "tsc",
+        "watch": "yarn run package:copy-webview-toolkit && tsc -w",
         "fix": "prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
-        "test:compile": "tsc -p . --outDir out",
-        "test:watch": "tsc -p . -w --outDir out",
-        "test:unit": "yarn run test:compile && node ./out/test/runTest.js",
-        "test:integ:prepare": "yarn run vscode:package && extest get-vscode --type ${VSCODE_TEST_VERSION:-stable} --storage /tmp/vscode-test-databricks && extest get-chromedriver --storage /tmp/vscode-test-databricks && extest install-vsix -f databricks-0.0.1.vsix --storage /tmp/vscode-test-databricks",
-        "test:integ:run": "yarn run test:compile && ts-node src/test/e2e/scripts/e2e.ts --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json 'out/**/*.e2e.js'",
+        "test:unit": "yarn run compile && node ./out/test/runTest.js",
+        "test:integ:prepare": "yarn run package && extest get-vscode --type ${VSCODE_TEST_VERSION:-stable} --storage /tmp/vscode-test-databricks && extest get-chromedriver --storage /tmp/vscode-test-databricks && extest install-vsix -f databricks-0.0.1.vsix --storage /tmp/vscode-test-databricks",
+        "test:integ:run": "yarn run compile && node out/test/e2e/scripts/e2e.js --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json 'out/**/*.e2e.js'",
         "test:integ": "yarn run test:integ:prepare && yarn run test:integ:run",
         "test:cov": "nyc yarn run test:unit",
-        "test": "yarn run compile && yarn run test:lint && yarn run test:unit",
-        "build": "yarn run vscode:prepublish",
-        "clean": "rm -rf node_modules out dist .vscode-test"
+        "test": "yarn run test:lint && yarn run test:unit",
+        "clean": "rm -rf node_modules out .vscode-test"
     },
     "dependencies": {
         "@databricks/databricks-sdk": "*",
@@ -237,20 +236,17 @@
         "@types/vscode": "^1.69.0",
         "@typescript-eslint/eslint-plugin": "^5.30.7",
         "@vscode/test-electron": "^2.1.5",
+        "esbuild": "^0.14.51",
         "eslint": "^8.20.0",
         "glob": "^8.0.3",
         "mocha": "^10.0.0",
         "nyc": "^15.1.0",
         "prettier": "^2.7.1",
         "tmp-promise": "^3.0.3",
-        "ts-loader": "^9.3.1",
         "ts-mockito": "^2.6.1",
-        "ts-node": "^10.9.1",
         "typescript": "^4.7.4",
         "vsce": "^2.10.0",
-        "vscode-extension-tester": "^4.3.0",
-        "webpack": "^5.73.0",
-        "webpack-cli": "^4.10.0"
+        "vscode-extension-tester": "^4.3.0"
     },
     "nyc": {
         "extends": "@istanbuljs/nyc-config-typescript",

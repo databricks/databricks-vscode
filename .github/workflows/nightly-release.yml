@@ -18,7 +18,7 @@ jobs:
             - run: yarn install
             - run: yarn run build
 
-            - run: yarn run vscode:package
+            - run: yarn run package
               working-directory: packages/databricks-vscode
 
             - name: Update nightly release
