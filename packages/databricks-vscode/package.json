@@ -235,6 +235,7 @@
         "@types/tmp": "^0.2.3",
         "@types/vscode": "^1.69.0",
         "@typescript-eslint/eslint-plugin": "^5.30.7",
+        "@typescript-eslint/parser": "^5.32.0",
         "@vscode/test-electron": "^2.1.5",
         "esbuild": "^0.14.51",
         "eslint": "^8.20.0",
