@@ -100,19 +100,15 @@ export class Cluster {
         }
     }
 
-    async createExecutioncontext(): Promise<ExecutionContext> {
-        return await ExecutionContext.create(
-            this.client,
-            this.clusterDetails.cluster_id!
-        );
+    async createExecutionContext(): Promise<ExecutionContext> {
+        return await ExecutionContext.create(this.client, this);
     }
 
     async canExecute(): Promise<boolean> {
         let context: ExecutionContext | undefined;
         try {
-            context = await this.createExecutioncontext();
-            let command = await context.execute("print('hello')");
-            await command.response();
+            context = await this.createExecutionContext();
+            await context.execute("print('hello')");
             return true;
         } catch (e) {
             return false;

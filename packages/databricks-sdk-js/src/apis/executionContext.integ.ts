@@ -21,13 +21,13 @@ describe(__filename, function () {
         let commandsApi = new CommandsService(integSetup.client);
 
         let context = await executionContextApi.create({
-            clusterId: integSetup.clusterId,
+            clusterId: integSetup.cluster.id,
             language: "python",
         });
         //console.log("Execution context", context);
 
         let command = await commandsApi.execute({
-            clusterId: integSetup.clusterId,
+            clusterId: integSetup.cluster.id,
             contextId: context.id,
             language: "python",
             command: "print('juhu')",
@@ -38,7 +38,7 @@ describe(__filename, function () {
         while (true) {
             await sleep(3000);
             status = await commandsApi.status({
-                clusterId: integSetup.clusterId,
+                clusterId: integSetup.cluster.id,
                 contextId: context.id,
                 commandId: command.id,
             });
@@ -55,7 +55,7 @@ describe(__filename, function () {
         assert.equal(status.results.data, "juhu");
 
         await executionContextApi.destroy({
-            clusterId: integSetup.clusterId,
+            clusterId: integSetup.cluster.id,
             contextId: context.id,
         });
     });

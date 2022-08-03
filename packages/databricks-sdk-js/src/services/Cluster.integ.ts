@@ -15,16 +15,10 @@ describe(__filename, function () {
     });
 
     it("should create an execution context", async () => {
-        let cluster = await Cluster.fromClusterId(
-            integSetup.client,
-            integSetup.clusterId
-        );
+        await integSetup.cluster.canExecute();
 
-        await cluster.canExecute();
-
-        let ctx = await cluster.createExecutioncontext();
-        let command = await ctx.execute("print('hello')");
-        let result = await command.response();
+        let ctx = await integSetup.cluster.createExecutionContext();
+        let {result} = await ctx.execute("print('hello')");
 
         assert(result.results);
         assert(result.results.resultType === "text");
@@ -32,17 +26,14 @@ describe(__filename, function () {
     });
 
     it("should load a cluster by name", async () => {
-        let clusterA = await Cluster.fromClusterId(
-            integSetup.client,
-            integSetup.clusterId
-        );
+        let clusterA = integSetup.cluster;
 
         let clusterB = await Cluster.fromClusterName(
             integSetup.client,
             clusterA.details.cluster_name!
         );
 
-        assert(clusterA.details.cluster_id);
-        assert.equal(clusterA.details.cluster_id, clusterB?.details.cluster_id);
+        assert(clusterA.id);
+        assert.equal(clusterA.id, clusterB?.id);
     });
 });
