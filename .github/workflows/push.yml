@@ -140,7 +140,7 @@ jobs:
             - run: mkdir -p packages/databricks-vscode/artifacts
 
             - name: Build VSIX
-              run: yarn workspace databricks vscode:package -o artifacts
+              run: yarn workspace databricks package -o artifacts
 
             - name: Upload artifacts
               uses: actions/upload-artifact@v3
