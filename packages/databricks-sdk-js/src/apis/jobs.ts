@@ -568,6 +568,91 @@ export class JobsService {
         this.client = client;
     }
 
+    /**
+     * Creates a new job with the provided settings.
+     *
+     * An example request for a job that runs at 10:15pm each night:
+     *
+     * .. aws::
+     *   .. code::
+     *
+     *     {
+     *       "name": "Nightly model training",
+     *       "new_cluster": {
+     *         "spark_version": "2.0.x-scala2.10",
+     *         "node_type_id": "r3.xlarge",
+     *         "aws_attributes": {
+     *           "availability": "ON_DEMAND"
+     *         },
+     *         "num_workers": 10
+     *       },
+     *       "libraries": [
+     *         {
+     *           "jar": "dbfs:/my-jar.jar"
+     *         },
+     *         {
+     *           "maven": {
+     *             "coordinates": "org.jsoup:jsoup:1.7.2"
+     *           }
+     *         }
+     *       ],
+     *       "email_notifications": {
+     *         "on_start": [],
+     *         "on_success": [],
+     *         "on_failure": []
+     *       },
+     *       "timeout_seconds": 3600,
+     *       "max_retries": 1,
+     *       "schedule": {
+     *         "quartz_cron_expression": "0 15 22 ? * *",
+     *         "timezone_id": "America/Los_Angeles"
+     *       },
+     *       "spark_jar_task": {
+     *         "main_class_name": "com.databricks.ComputeModels"
+     *       }
+     *     }
+     *
+     *
+     * .. azure::
+     *   .. code::
+     *
+     *     {
+     *       "name": "Nightly model training",
+     *       "new_cluster": {
+     *         "spark_version": "3.1.x-scala2.11",
+     *         "node_type_id": "Standard_D3_v2",
+     *         "num_workers": 10
+     *       },
+     *       "libraries": [
+     *         {
+     *           "jar": "dbfs:/my-jar.jar"
+     *         },
+     *         {
+     *           "maven": {
+     *             "coordinates": "org.jsoup:jsoup:1.7.2"
+     *           }
+     *         }
+     *       ],
+     *       "timeout_seconds": 3600,
+     *       "max_retries": 1,
+     *       "schedule": {
+     *         "quartz_cron_expression": "0 15 22 ? * *",
+     *         "timezone_id": "America/Los_Angeles"
+     *       },
+     *       "spark_jar_task": {
+     *         "main_class_name": "com.databricks.ComputeModels"
+     *       }
+     *     }
+     *
+     *
+     * And response:
+     *
+     * .. code::
+     *
+     *     {
+     *       "job_id": 1
+     *     }
+     */
     async createJob(request: CreateJobRequest): Promise<CreateJobResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/create",
@@ -576,6 +661,76 @@ export class JobsService {
         )) as CreateJobResponse;
     }
 
+    /**
+     * Submit a one-time run with the provided settings. This endpoint doesn't require a Databricks job
+     * to be created.  You can directly submit your workload. Runs submitted via this endpoint don't
+     * show up in the UI. Once the run is submitted, you can use the ``jobs/runs/get`` API to check the run state.
+     *
+     * An example request:
+     *
+     * .. aws::
+     *   .. code::
+     *
+     *     {
+     *       "run_name": "my spark task",
+     *       "new_cluster": {
+     *         "spark_version": "2.0.x-scala2.10",
+     *         "node_type_id": "r3.xlarge",
+     *         "aws_attributes": {
+     *           "availability": "ON_DEMAND"
+     *         },
+     *         "num_workers": 10
+     *       },
+     *       "libraries": [
+     *         {
+     *           "jar": "dbfs:/my-jar.jar"
+     *         },
+     *         {
+     *           "maven": {
+     *             "coordinates": "org.jsoup:jsoup:1.7.2"
+     *           }
+     *         }
+     *       ],
+     *       "timeout_seconds": 3600,
+     *       "spark_jar_task": {
+     *         "main_class_name": "com.databricks.ComputeModels"
+     *       }
+     *     }
+     *
+     * .. azure::
+     *   .. code::
+     *
+     *     {
+     *       "run_name": "my spark task",
+     *       "new_cluster": {
+     *         "spark_version": "3.1.x-scala2.11",
+     *         "node_type_id": "Standard_D3_v2",
+     *         "num_workers": 10
+     *       },
+     *       "libraries": [
+     *         {
+     *           "jar": "dbfs:/my-jar.jar"
+     *         },
+     *         {
+     *           "maven": {
+     *             "coordinates": "org.jsoup:jsoup:1.7.2"
+     *           }
+     *         }
+     *       ],
+     *       "timeout_seconds": 3600,
+     *       "spark_jar_task": {
+     *         "main_class_name": "com.databricks.ComputeModels"
+     *       }
+     *     }
+     *
+     * And response:
+     *
+     * .. code::
+     *
+     *     {
+     *       "run_id": 123
+     *     }
+     */
     async submitRun(request: SubmitRunRequest): Promise<SubmitRunResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/runs/submit",
@@ -584,6 +739,89 @@ export class JobsService {
         )) as SubmitRunResponse;
     }
 
+    /**
+     * Overwrites the settings of a job with the provided settings.
+     *
+     * An example request that makes job 2 look like job 1 (from the ``create_job`` example):
+     *
+     * .. aws::
+     *   .. code::
+     *
+     *     {
+     *       "job_id": 2,
+     *       "new_settings": {
+     *         "name": "Nightly model training",
+     *         "new_cluster": {
+     *           "spark_version": "2.0.x-scala2.10",
+     *           "node_type_id": "r3.xlarge",
+     *           "aws_attributes": {
+     *             "availability": "ON_DEMAND"
+     *           },
+     *           "num_workers": 10
+     *         },
+     *         "libraries": [
+     *           {
+     *             "jar": "dbfs:/my-jar.jar"
+     *           },
+     *           {
+     *             "maven": {
+     *               "coordinates": "org.jsoup:jsoup:1.7.2"
+     *             }
+     *           }
+     *         ],
+     *         "email_notifications": {
+     *           "on_start": [],
+     *           "on_success": [],
+     *           "on_failure": []
+     *         },
+     *         "timeout_seconds": 100000000,
+     *         "max_retries": 1,
+     *         "schedule": {
+     *           "quartz_cron_expression": "0 15 22 ? * *",
+     *           "timezone_id": "America/Los_Angeles",
+     *           "pause_status": "UNPAUSED"
+     *         },
+     *         "spark_jar_task": {
+     *           "main_class_name": "com.databricks.ComputeModels"
+     *         }
+     *       }
+     *     }
+     *
+     * .. azure::
+     *   .. code::
+     *
+     *     {
+     *       "job_id": 2,
+     *       "new_settings": {
+     *         "name": "Nightly model training",
+     *         "new_cluster": {
+     *           "spark_version": "3.1.x-scala2.11",
+     *           "node_type_id": "Standard_D3_v2",
+     *           "num_workers": 10
+     *         },
+     *         "libraries": [
+     *           {
+     *             "jar": "dbfs:/my-jar.jar"
+     *           },
+     *           {
+     *             "maven": {
+     *               "coordinates": "org.jsoup:jsoup:1.7.2"
+     *             }
+     *           }
+     *         ],
+     *         "timeout_seconds": 100000000,
+     *         "max_retries": 1,
+     *         "schedule": {
+     *           "quartz_cron_expression": "0 15 22 ? * *",
+     *           "timezone_id": "America/Los_Angeles",
+     *           "pause_status": "UNPAUSED"
+     *         },
+     *         "spark_jar_task": {
+     *           "main_class_name": "com.databricks.ComputeModels"
+     *         }
+     *       }
+     *     }
+     */
     async resetJob(request: ResetJobRequest): Promise<ResetJobResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/reset",
@@ -592,6 +830,9 @@ export class JobsService {
         )) as ResetJobResponse;
     }
 
+    /**
+     * Updates the settings of a job with the provided settings.
+     */
     async updateJob(request: UpdateJobRequest): Promise<UpdateJobResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/update",
@@ -600,6 +841,22 @@ export class JobsService {
         )) as UpdateJobResponse;
     }
 
+    /**
+     * Deletes the job and sends an email to the addresses specified in
+     * ``JobSettings.email_notifications``.
+     * No action will occur if the job has already been removed. After the job is removed, neither its
+     * details or its run history will be visible via the Jobs UI or API. The job is guaranteed to
+     * be removed upon completion of this request. However, runs that were active before the receipt
+     * of this request may still be active. They will be terminated asynchronously.
+     *
+     * An example request:
+     *
+     * .. code::
+     *
+     *     {
+     *       "job_id": 1
+     *     }
+     */
     async deleteJob(request: DeleteJobRequest): Promise<DeleteJobResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/delete",
@@ -608,6 +865,98 @@ export class JobsService {
         )) as DeleteJobResponse;
     }
 
+    /**
+     * Retrieves information about a single job.
+     * An example request:
+     *
+     * .. code::
+     *
+     *     /jobs/get?job_id=1
+     *
+     *
+     *
+     * An example response:
+     *
+     * .. aws::
+     *   .. code::
+     *
+     *     {
+     *       "job_id": 1,
+     *       "settings": {
+     *         "name": "Nightly model training",
+     *         "new_cluster": {
+     *           "spark_version": "2.0.x-scala2.10",
+     *           "node_type_id": "r3.xlarge",
+     *           "aws_attributes": {
+     *             "availability": "ON_DEMAND"
+     *           },
+     *           "num_workers": 10
+     *         },
+     *         "libraries": [
+     *           {
+     *             "jar": "dbfs:/my-jar.jar"
+     *           },
+     *           {
+     *             "maven": {
+     *               "coordinates": "org.jsoup:jsoup:1.7.2"
+     *             }
+     *           }
+     *         ],
+     *         "email_notifications": {
+     *           "on_start": [],
+     *           "on_success": [],
+     *           "on_failure": []
+     *         },
+     *         "timeout_seconds": 100000000,
+     *         "max_retries": 1,
+     *         "schedule": {
+     *           "quartz_cron_expression": "0 15 22 ? * *",
+     *           "timezone_id": "America/Los_Angeles",
+     *           "pause_status": "UNPAUSED"
+     *         },
+     *         "spark_jar_task": {
+     *           "main_class_name": "com.databricks.ComputeModels"
+     *         }
+     *       },
+     *       "created_time": 1457570074236
+     *     }
+     *
+     * .. azure::
+     *   .. code::
+     *
+     *     {
+     *       "job_id": 1,
+     *       "settings": {
+     *         "name": "Nightly model training",
+     *         "new_cluster": {
+     *           "spark_version": "3.1.x-scala2.11",
+     *           "node_type_id": "Standard_D3_v2",
+     *           "num_workers": 10
+     *         },
+     *         "libraries": [
+     *           {
+     *             "jar": "dbfs:/my-jar.jar"
+     *           },
+     *           {
+     *             "maven": {
+     *               "coordinates": "org.jsoup:jsoup:1.7.2"
+     *             }
+     *           }
+     *         ],
+     *         "timeout_seconds": 100000000,
+     *         "max_retries": 1,
+     *         "schedule": {
+     *           "quartz_cron_expression": "0 15 22 ? * *",
+     *           "timezone_id": "America/Los_Angeles",
+     *           "pause_status": "UNPAUSED"
+     *         },
+     *         "spark_jar_task": {
+     *           "main_class_name": "com.databricks.ComputeModels"
+     *         }
+     *       },
+     *       "created_time": 1457570074236
+     *     }
+     */
     async getJob(request: GetJobRequest): Promise<GetJobResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/get",
@@ -616,6 +965,98 @@ export class JobsService {
         )) as GetJobResponse;
     }
 
+    /**
+     * Lists all jobs.
+     * An example response:
+     *
+     * .. aws::
+     *   .. code::
+     *
+     *     {
+     *       "jobs": [
+     *         {
+     *           "job_id": 1,
+     *           "settings": {
+     *             "name": "Nightly model training",
+     *             "new_cluster": {
+     *               "spark_version": "2.0.x-scala2.10",
+     *               "node_type_id": "r3.xlarge",
+     *               "aws_attributes": {
+     *                 "availability": "ON_DEMAND"
+     *               },
+     *               "num_workers": 10
+     *             },
+     *             "libraries": [
+     *               {
+     *                 "jar": "dbfs:/my-jar.jar"
+     *               },
+     *               {
+     *                 "maven": {
+     *                   "coordinates": "org.jsoup:jsoup:1.7.2"
+     *                 }
+     *               }
+     *             ],
+     *             "email_notifications": {
+     *               "on_start": [],
+     *               "on_success": [],
+     *               "on_failure": []
+     *             },
+     *             "timeout_seconds": 100000000,
+     *             "max_retries": 1,
+     *             "schedule": {
+     *               "quartz_cron_expression": "0 15 22 ? * *",
+     *               "timezone_id": "America/Los_Angeles",
+     *               "pause_status": "UNPAUSED"
+     *             },
+     *             "spark_jar_task": {
+     *               "main_class_name": "com.databricks.ComputeModels"
+     *             }
+     *           },
+     *           "created_time": 1457570074236
+     *         }
+     *       ]
+     *     }
+     *
+     * .. azure::
+     *   .. code::
+     *
+     *     {
+     *       "jobs": [
+     *         {
+     *           "job_id": 1,
+     *           "settings": {
+     *             "name": "Nightly model training",
+     *             "new_cluster": {
+     *               "spark_version": "3.1.x-scala2.11",
+     *               "node_type_id": "Standard_D3_v2",
+     *               "num_workers": 10
+     *             },
+     *             "libraries": [
+     *               {
+     *                 "jar": "dbfs:/my-jar.jar"
+     *               },
+     *               {
+     *                 "maven": {
+     *                   "coordinates": "org.jsoup:jsoup:1.7.2"
+     *                 }
+     *               }
+     *             ],
+     *             "timeout_seconds": 100000000,
+     *             "max_retries": 1,
+     *             "schedule": {
+     *               "quartz_cron_expression": "0 15 22 ? * *",
+     *               "timezone_id": "America/Los_Angeles",
+     *               "pause_status": "UNPAUSED"
+     *             },
+     *             "spark_jar_task": {
+     *               "main_class_name": "com.databricks.ComputeModels"
+     *             }
+     *           },
+     *           "created_time": 1457570074236
+     *         }
+     *       ]
+     *     }
+     */
     async list(request: ListJobsRequest): Promise<ListJobsResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/list",
@@ -624,6 +1065,37 @@ export class JobsService {
         )) as ListJobsResponse;
     }
 
+    /**
+     * Runs the job now, and returns the ``run_id`` of the triggered run.
+     *
+     * .. note:: If you find yourself using :ref:`jobsJobsServicecreateJob` together with
+     *           :ref:`jobsJobsServicerunNow` a lot, you may actually be interested in the
+     *           :ref:`jobsJobsServicesubmitRun` API. This API endpoint allows you to submit your
+     *           workloads directly without having to create a job in Databricks.
+     *
+     * An example request for a notebook job:
+     *
+     * .. code::
+     *
+     *     {
+     *       "job_id": 1,
+     *       "notebook_params": {
+     *         "dry-run": "true",
+     *         "oldest-time-to-consider": "1457570074236"
+     *       }
+     *     }
+     *
+     *
+     *
+     * An example request for a jar job:
+     *
+     * .. code::
+     *
+     *     {
+     *       "job_id": 2,
+     *       "jar_params": ["param1", "param2"]
+     *     }
+     */
     async runNow(request: RunNowRequest): Promise<RunNowResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/run-now",
@@ -640,6 +1112,62 @@ export class JobsService {
         )) as RepairRunResponse;
     }
 
+    /**
+     * Lists runs from most recently started to least.
+     *
+     * .. note::
+     *
+     *   Runs are automatically removed after 60 days. We
+     *   recommend you to save old run results through the UI before they expire to
+     *   reference them in future. See :ref:`export-job-runs` for details.
+     *
+     * An example request:
+     *
+     * .. code::
+     *
+     *     /jobs/runs/list?job_id=1&active_only=false&offset=1&limit=1
+     *
+     *
+     *
+     * And response:
+     *
+     * .. code::
+     *
+     *     {
+     *       "runs": [
+     *         {
+     *           "job_id": 1,
+     *           "run_id": 452,
+     *           "number_in_job": 5,
+     *           "state": {
+     *             "life_cycle_state": "RUNNING",
+     *             "state_message": "Performing action"
+     *           },
+     *           "task": {
+     *             "notebook_task": {
+     *               "notebook_path": "/Users/donald@duck.com/my-notebook"
+     *             }
+     *           },
+     *           "cluster_spec": {
+     *             "existing_cluster_id": "1201-my-cluster"
+     *           },
+     *           "cluster_instance": {
+     *             "cluster_id": "1201-my-cluster",
+     *             "spark_context_id": "1102398-spark-context-id"
+     *           },
+     *           "overriding_parameters": {
+     *             "jar_params": ["param1", "param2"]
+     *           },
+     *           "start_time": 1457570074236,
+     *           "setup_duration": 259754,
+     *           "execution_duration": 3589020,
+     *           "cleanup_duration": 31038,
+     *           "trigger": "PERIODIC"
+     *         }
+     *       ],
+     *       "has_more": true
+     *     }
+     */
     async listRuns(request: ListRunsRequest): Promise<ListRunsResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/runs/list",
@@ -648,6 +1176,57 @@ export class JobsService {
         )) as ListRunsResponse;
     }
 
+    /**
+     * Retrieves the metadata of a run.
+     *
+     * .. note::
+     *
+     *   Runs are automatically removed after 60 days. We
+     *   recommend you to save old run results through the UI before they expire to
+     *   reference them in future. See :ref:`export-job-runs` for details.
+     *
+     * An example request:
+     *
+     * .. code::
+     *
+     *     /jobs/runs/get?run_id=452
+     *
+     *
+     *
+     * An example response:
+     *
+     * .. code::
+     *
+     *     {
+     *       "job_id": 1,
+     *       "run_id": 452,
+     *       "number_in_job": 5,
+     *       "state": {
+     *         "life_cycle_state": "RUNNING",
+     *         "state_message": "Performing action"
+     *       },
+     *       "task": {
+     *         "notebook_task": {
+     *           "notebook_path": "/Users/donald@duck.com/my-notebook"
+     *         }
+     *       },
+     *       "cluster_spec": {
+     *         "existing_cluster_id": "1201-my-cluster"
+     *       },
+     *       "cluster_instance": {
+     *         "cluster_id": "1201-my-cluster",
+     *         "spark_context_id": "1102398-spark-context-id"
+     *       },
+     *       "overriding_parameters": {
+     *         "jar_params": ["param1", "param2"]
+     *       },
+     *       "start_time": 1457570074236,
+     *       "setup_duration": 259754,
+     *       "execution_duration": 3589020,
+     *       "cleanup_duration": 31038,
+     *       "trigger": "PERIODIC"
+     *     }
+     */
     async getRun(request: GetRunRequest): Promise<GetRunResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/runs/get",
@@ -656,6 +1235,17 @@ export class JobsService {
         )) as GetRunResponse;
     }
 
+    /**
+     * Deletes a non-active run. Returns an error if the run is active.
+     *
+     * An example request:
+     *
+     * .. code::
+     *
+     *     {
+     *       "run_id": 42
+     *     }
+     */
     async deleteRun(request: DeleteRunRequest): Promise<DeleteRunResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/runs/delete",
@@ -664,6 +1254,19 @@ export class JobsService {
         )) as DeleteRunResponse;
     }
 
+    /**
+     * Cancels a run. The run is canceled asynchronously, so when this request completes, the run may
+     * still be running. The run will be terminated shortly. If the run is already in a
+     * terminal ``life_cycle_state``, this method is a no-op.
+     *
+     * An example request:
+     *
+     * .. code::
+     *
+     *     {
+     *       "run_id": 453
+     *     }
+     */
     async cancelRun(request: CancelRunRequest): Promise<CancelRunResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/runs/cancel",
@@ -672,6 +1275,20 @@ export class JobsService {
         )) as CancelRunResponse;
     }
 
+    /**
+     * Cancels all the runs for provided job. The runs are canceled asynchronously,
+     * so when this request completes, the runs may still be running.
+     * The run will be terminated shortly. If the run is already in a terminal ``life_cycle_state``,
+     * this method is a no-op.
+     *
+     * An example request:
+     *
+     * .. code::
+     *
+     *     {
+     *       "job_id": 2
+     *     }
+     */
     async cancelAllRuns(
         request: CancelAllRunsRequest
     ): Promise<CancelAllRunsResponse> {
@@ -682,6 +1299,67 @@ export class JobsService {
         )) as CancelAllRunsResponse;
     }
 
+    /**
+     * Retrieve the output of a run.
+     * When a notebook task returns a value through the
+     * :ref:`Notebook Workflow Exit <notebook-workflows-exit>`
+     * call, you can use this endpoint to retrieve that value. Note that
+     * Databricks will restrict this API to return the first 5 MB of the output.
+     * For returning larger results, your job can store the results in a cloud storage
+     * service.
+     *
+     * .. note::
+     *
+     *   Runs are automatically removed after 60 days. We
+     *   recommend you to save old run results through the UI before they expire to
+     *   reference them in future. See :ref:`export-job-runs` for details.
+     *
+     * An example request:
+     *
+     * .. code::
+     *
+     *     /jobs/runs/get-output?run_id=453
+     *
+     * And response:
+     *
+     * .. code::
+     *
+     *     {
+     *       "metadata": {
+     *         "job_id": 1,
+     *         "run_id": 452,
+     *         "number_in_job": 5,
+     *         "state": {
+     *           "life_cycle_state": "TERMINATED",
+     *           "result_state": "SUCCESS",
+     *           "state_message": ""
+     *         },
+     *         "task": {
+     *           "notebook_task": {
+     *             "notebook_path": "/Users/donald@duck.com/my-notebook"
+     *           }
+     *         },
+     *         "cluster_spec": {
+     *           "existing_cluster_id": "1201-my-cluster"
+     *         },
+     *         "cluster_instance": {
+     *           "cluster_id": "1201-my-cluster",
+     *           "spark_context_id": "1102398-spark-context-id"
+     *         },
+     *         "overriding_parameters": {
+     *           "jar_params": ["param1", "param2"]
+     *         },
+     *         "start_time": 1457570074236,
+     *         "setup_duration": 259754,
+     *         "execution_duration": 3589020,
+     *         "cleanup_duration": 31038,
+     *         "trigger": "PERIODIC"
+     *       },
+     *       "notebook_output": {
+     *         "result": "the maybe truncated string passed to dbutils.notebook.exit()"
+     *       }
+     *     }
+     */
     async getRunOutput(
         request: GetRunOutputRequest
     ): Promise<GetRunOutputResponse> {
@@ -692,6 +1370,33 @@ export class JobsService {
         )) as GetRunOutputResponse;
     }
 
+    /**
+     * Exports and retrieves the job run task.
+     *
+     * .. note::
+     *
+     *   Only notebook runs can be exported in HTML format at the moment.
+     *   Other runs will fail and return an exception.
+     *
+     * An example request:
+     *
+     * .. code::
+     *
+     *     /jobs/runs/export?run_id=452
+     *
+     *
+     * An example response:
+     *
+     * .. code::
+     *
+     *     {
+     *       "views": [
+     *         "content": "<!DOCTYPE html><html><head>Head</head><body>Body</body></html>",
+     *         "name": "my-notebook",
+     *         "type": "NOTEBOOK"
+     *       ]
+     *     }
+     */
     async exportRun(request: ExportRunRequest): Promise<ExportRunResponse> {
         return (await this.client.request(
             "/api/2.1/jobs/runs/export",
