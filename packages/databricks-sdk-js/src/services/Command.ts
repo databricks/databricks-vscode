@@ -1,6 +1,5 @@
 import EventEmitter from "node:events";
 import {CommandsService, CommandsStatusResponse} from "../apis/commands";
-import {Language} from "../apis/executionContext";
 import {ExecutionContext} from "./ExecutionContext";
 
 export interface CommandWithResult {
@@ -8,7 +7,7 @@ export interface CommandWithResult {
     result: CommandsStatusResponse;
 }
 
-export type StatusUpdateListener = (...args: any[]) => void;
+export type StatusUpdateListener = (result: CommandsStatusResponse) => void;
 
 export class Command extends EventEmitter {
     readonly context: ExecutionContext;
