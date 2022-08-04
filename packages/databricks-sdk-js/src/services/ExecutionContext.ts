@@ -1,27 +1,30 @@
+import {cluster} from "..";
 import {ApiClient} from "../api-client";
 import {ExecutionContextService, Language} from "../apis/executionContext";
-import {Command} from "./Command";
+import {Cluster} from "./Cluster";
+import {Command, CommandWithResult, StatusUpdateListener} from "./Command";
 
 export class ExecutionContext {
     readonly executionContextApi: ExecutionContextService;
-    readonly clusterId: string;
-    readonly client: ApiClient;
     id?: string;
 
-    constructor(client: ApiClient, clusterId: string) {
-        this.client = client;
+    constructor(
+        readonly client: ApiClient,
+        readonly cluster: Cluster,
+        readonly language: Language
+    ) {
         this.executionContextApi = new ExecutionContextService(client);
-        this.clusterId = clusterId;
     }
 
     static async create(
         client: ApiClient,
-        clusterId: string
+        cluster: Cluster,
+        language: Language = "python"
     ): Promise<ExecutionContext> {
-        let context = new ExecutionContext(client, clusterId);
+        let context = new ExecutionContext(client, cluster, language);
         let response = await context.executionContextApi.create({
-            clusterId: context.clusterId,
-            language: "python",
+            clusterId: context.cluster.id,
+            language: context.language,
         });
 
         context.id = response.id;
@@ -30,9 +33,9 @@ export class ExecutionContext {
 
     async execute(
         command: string,
-        language: Language = "python"
-    ): Promise<Command> {
-        return await Command.execute(this, command, language);
+        onStatusUpdate: StatusUpdateListener = () => {}
+    ): Promise<CommandWithResult> {
+        return await Command.execute(this, command, onStatusUpdate);
     }
 
     async destroy() {
@@ -41,7 +44,7 @@ export class ExecutionContext {
         }
 
         await this.executionContextApi.destroy({
-            clusterId: this.clusterId,
+            clusterId: this.cluster.id,
             contextId: this.id,
         });
     }

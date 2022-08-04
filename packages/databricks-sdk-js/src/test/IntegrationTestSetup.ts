@@ -3,11 +3,12 @@
 import {v4 as uuidv4} from "uuid";
 import {ApiClient} from "../api-client";
 import {ClusterService} from "../apis/cluster";
+import {Cluster} from "../services/Cluster";
 
 export class IntegrationTestSetup {
     readonly testRunId: string;
 
-    constructor(readonly client: ApiClient, readonly clusterId: string) {
+    constructor(readonly client: ApiClient, readonly cluster: Cluster) {
         this.testRunId = uuidv4();
     }
 
@@ -15,7 +16,6 @@ export class IntegrationTestSetup {
     static async getInstance(): Promise<IntegrationTestSetup> {
         if (!this._instance) {
             let client = new ApiClient();
-            let clustersApi = new ClusterService(client);
 
             if (!process.env["TEST_DEFAULT_CLUSTER_ID"]) {
                 throw new Error(
@@ -25,20 +25,13 @@ export class IntegrationTestSetup {
 
             const clusterId =
                 process.env["TEST_DEFAULT_CLUSTER_ID"]!.split("'").join("");
-            clustersApi.start({cluster_id: clusterId});
 
+            const cluster = await Cluster.fromClusterId(client, clusterId);
+            cluster.start();
             // wait for cluster to be running
-            while (true) {
-                let cluster = await clustersApi.get({cluster_id: clusterId});
-                if (cluster.state === "RUNNING") {
-                    break;
-                }
+            await cluster.waitForState("RUNNING");
 
-                await new Promise((resolve) => {
-                    setTimeout(resolve, 1000);
-                });
-            }
-            this._instance = new IntegrationTestSetup(client, clusterId);
+            this._instance = new IntegrationTestSetup(client, cluster);
         }
         return this._instance;
     }
