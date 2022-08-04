@@ -9,6 +9,11 @@ import {spawn} from "child_process";
 export class CliWrapper {
     constructor() {}
 
+    get bricksExecutable(): string {
+        // TODO: Point to the bricks CLI
+        return "dbx";
+    }
+
     async addProfile(
         name: string,
         host: URL,

@@ -6,11 +6,7 @@ import {Uri} from "vscode";
  * on the Databricks driver
  */
 export class PathMapper {
-    readonly repo: string;
-
-    constructor(readonly repoPath: Uri, readonly workspacePath: Uri) {
-        this.repo = path.basename(repoPath.path);
-    }
+    constructor(readonly repoPath: Uri, readonly workspacePath: Uri) {}
 
     localToRemoteDir(localPath: Uri): string {
         return path.dirname(this.localToRemote(localPath));
@@ -19,5 +15,9 @@ export class PathMapper {
     localToRemote(localPath: Uri): string {
         let relativePath = localPath.path.replace(this.workspacePath.path, "");
         return Uri.joinPath(this.repoPath, relativePath).path;
+    }
+
+    get remoteWorkspaceName(): string {
+        return path.basename(this.repoPath.path);
     }
 }
