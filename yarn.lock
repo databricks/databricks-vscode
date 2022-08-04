@@ -191,12 +191,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/parser@npm:^7.18.10":
-  version: 7.18.10
-  resolution: "@babel/parser@npm:7.18.10"
+"@babel/parser@npm:^7.18.10, @babel/parser@npm:^7.18.11":
+  version: 7.18.11
+  resolution: "@babel/parser@npm:7.18.11"
   bin:
     parser: ./bin/babel-parser.js
-  checksum: adf417daccb5bc5edb53cc86b8e60abd911eaee8212703ea702ec17ff7967a9a17a84f6aa19b1cd0faec58e9beaa31a026c85238fd8ca08f2d66ba1db8180dc6
+  checksum: 5ecc75b83e62ec53a947b1635a6ca75d6210d4a4f962f9f16f4239a6783f98e57f9662b598fa2fb1b8e12c0ad5c2bd86846ed0b97b85eb73dd7498b3a6d71a4b
   languageName: node
   linkType: hard
 
@@ -212,8 +212,8 @@ __metadata:
   linkType: hard
 
 "@babel/traverse@npm:^7.18.10, @babel/traverse@npm:^7.18.9":
-  version: 7.18.10
-  resolution: "@babel/traverse@npm:7.18.10"
+  version: 7.18.11
+  resolution: "@babel/traverse@npm:7.18.11"
   dependencies:
     "@babel/code-frame": ^7.18.6
     "@babel/generator": ^7.18.10
@@ -221,11 +221,11 @@ __metadata:
     "@babel/helper-function-name": ^7.18.9
     "@babel/helper-hoist-variables": ^7.18.6
     "@babel/helper-split-export-declaration": ^7.18.6
-    "@babel/parser": ^7.18.10
+    "@babel/parser": ^7.18.11
     "@babel/types": ^7.18.10
     debug: ^4.1.0
     globals: ^11.1.0
-  checksum: c58b744b1c145649d3bf8167f7a3a6df032808f4582fb8f86b15fba0b7f237640f2289e67b854abfd7f1bda0abdbc0a71527fe78c6d470120ba0a96e64f8bf36
+  checksum: 727409464d5cf27f33555010098ce9bb435f0648cc76e674f4fb7513522356655ba62be99c8df330982b391ccf5f0c0c23c7bd7453d4936d47e2181693fed14c
   languageName: node
   linkType: hard
 
@@ -1577,9 +1577,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.30001370":
-  version: 1.0.30001373
-  resolution: "caniuse-lite@npm:1.0.30001373"
-  checksum: cd2f027e2fcf66ed3b0e3eccec89df871f951f2e7600944fae2c3f6f1c37ac82392e573c279e15bf851b75f9696472e38d33fd52d964819ffb8af7af4078ceba
+  version: 1.0.30001374
+  resolution: "caniuse-lite@npm:1.0.30001374"
+  checksum: a75656e971d7ef2af4d2f3529a4620ae1a45d09460601fbc34b26f6867f31bbca006f71d8840291c471a2f01fc1994044f319a5660241ffaf35a2d84535af442
   languageName: node
   linkType: hard
 
@@ -2139,9 +2139,9 @@ __metadata:
   linkType: hard
 
 "electron-to-chromium@npm:^1.4.202":
-  version: 1.4.210
-  resolution: "electron-to-chromium@npm:1.4.210"
-  checksum: e9cb6cb7754b64f89bc1ae8a3b57b8b6ee7cf2317b4b104978ca4fde3d1d384a694919401d0583ec8f108790be1b576bc4663b1888e917bc577428d19d3dbafd
+  version: 1.4.211
+  resolution: "electron-to-chromium@npm:1.4.211"
+  checksum: 43d983b94f5aa542926c4063bae597591458b59e96ec0ab85a62cc296b9760c447d7d0af369d3c40b44b75cfc9d3a66277495736517c370cf03e181cf3ed39f1
   languageName: node
   linkType: hard
 
@@ -4194,11 +4194,11 @@ __metadata:
   linkType: hard
 
 "node-abi@npm:^3.3.0":
-  version: 3.23.0
-  resolution: "node-abi@npm:3.23.0"
+  version: 3.24.0
+  resolution: "node-abi@npm:3.24.0"
   dependencies:
     semver: ^7.3.5
-  checksum: 3691ff1120ce3ed3dd2ab97916a5ded9a5858706b3a8cca7f44978f2435368b76ecbb31bf87fdac0058099e1ae91fa6d4f7e39083091754bfd71885970bd7458
+  checksum: d90ab48802497b2203800cac71018668e99c246435395ca4f67afcabf689e7e81568ed36e8036bae79a052b63ea5707375bece6ca0a1d2e2b99bfafde7a5c9b2
   languageName: node
   linkType: hard
 
@@ -6089,7 +6089,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yargs-parser@npm:20.2.4":
+"yargs-parser@npm:20.2.4, yargs-parser@npm:^20.2.2":
   version: 20.2.4
   resolution: "yargs-parser@npm:20.2.4"
   checksum: d251998a374b2743a20271c2fd752b9fbef24eb881d53a3b99a7caa5e8227fcafd9abf1f345ac5de46435821be25ec12189a11030c12ee6481fef6863ed8b924
@@ -6103,13 +6103,6 @@ __metadata:
     camelcase: ^5.0.0
     decamelize: ^1.2.0
   checksum: 60e8c7d1b85814594d3719300ecad4e6ae3796748b0926137bfec1f3042581b8646d67e83c6fc80a692ef08b8390f21ddcacb9464476c39bbdf52e34961dd4d9
-  languageName: node
-  linkType: hard
-
-"yargs-parser@npm:^20.2.2":
-  version: 20.2.9
-  resolution: "yargs-parser@npm:20.2.9"
-  checksum: 8bb69015f2b0ff9e17b2c8e6bfe224ab463dd00ca211eece72a4cd8a906224d2703fb8a326d36fdd0e68701e201b2a60ed7cf81ce0fd9b3799f9fe7745977ae3
   languageName: node
   linkType: hard
 

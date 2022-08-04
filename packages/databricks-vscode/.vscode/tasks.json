@@ -5,9 +5,6 @@
     "tasks": [
         {
             "type": "npm",
-            "options": {
-                "cwd": "${workspaceFolder}/packages/databricks-vscode"
-            },
             "script": "watch",
             "problemMatcher": "$tsc-watch",
             "isBackground": true,
