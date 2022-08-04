@@ -6,6 +6,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "SDK unit tests",
+            "request": "launch",
+            "runtimeArgs": ["run", "test:unit"],
+            "runtimeExecutable": "npm",
+            "cwd": "${workspaceFolder}/packages/databricks-sdk-js",
+            "outFiles": [
+                "${workspaceFolder}/packages/databricks-sdk-js/**/*.js"
+            ],
+            "type": "node"
+        },
+        {
             "name": "Run Extension",
             "type": "extensionHost",
             "cwd": "${workspaceFolder}/packages/databricks-vscode",
