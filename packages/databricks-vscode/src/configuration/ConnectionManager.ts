@@ -3,6 +3,7 @@ import {
     Cluster,
     fromConfigFile,
     ScimService,
+    CredentialProvider,
 } from "@databricks/databricks-sdk";
 import {
     commands,
@@ -15,6 +16,8 @@ import {CliWrapper} from "../cli/CliWrapper";
 import {PathMapper} from "./PathMapper";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
+
+const extensionVersion = require("../../package.json").version;
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
@@ -68,6 +71,10 @@ export class ConnectionManager {
         return this._apiClient;
     }
 
+    private apiClientFrom(creds: CredentialProvider): ApiClient {
+        return new ApiClient("vscode-extension", extensionVersion, creds);
+    }
+
     async login(interactive: boolean = false): Promise<void> {
         await this.logout();
 
@@ -97,7 +104,7 @@ export class ConnectionManager {
 
             await credentialProvider();
 
-            apiClient = new ApiClient(credentialProvider);
+            apiClient = this.apiClientFrom(credentialProvider);
             this._me = await this.getMe(apiClient);
         } catch (e: any) {
             const message = `Can't login to Databricks: ${e.message}`;
@@ -149,7 +156,7 @@ export class ConnectionManager {
             }
 
             try {
-                await this.getMe(new ApiClient(fromConfigFile(profile)));
+                await this.getMe(this.apiClientFrom(fromConfigFile(profile)));
             } catch (e: any) {
                 console.error(e);
                 const response = await window.showWarningMessage(
