@@ -6,7 +6,7 @@
     "license": "Apache-2.0",
     "version": "0.0.1",
     "engines": {
-        "vscode": "^1.69.0"
+        "vscode": "^1.69.1"
     },
     "categories": [
         "Data Science",
@@ -216,7 +216,7 @@
         "fix": "prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run compile && node ./out/test/runTest.js",
-        "test:integ:prepare": "yarn run package && extest get-vscode --type ${VSCODE_TEST_VERSION:-stable} --storage /tmp/vscode-test-databricks && extest get-chromedriver --storage /tmp/vscode-test-databricks && extest install-vsix -f databricks-0.0.1.vsix --storage /tmp/vscode-test-databricks",
+        "test:integ:prepare": "yarn run package && extest get-vscode --code_version 1.69.1 --storage /tmp/vscode-test-databricks && extest get-chromedriver --storage /tmp/vscode-test-databricks && extest install-vsix -f databricks-0.0.1.vsix --storage /tmp/vscode-test-databricks",
         "test:integ:run": "yarn run compile && node out/test/e2e/scripts/e2e.js --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json 'out/**/*.e2e.js'",
         "test:integ": "yarn run test:integ:prepare && yarn run test:integ:run",
         "test:cov": "nyc yarn run test:unit",
@@ -231,14 +231,14 @@
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.1",
-        "@types/node": "^18.0.6",
+        "@types/node": "^18.6.4",
         "@types/tmp": "^0.2.3",
-        "@types/vscode": "^1.69.0",
-        "@typescript-eslint/eslint-plugin": "^5.30.7",
+        "@types/vscode": "^1.69.1",
+        "@typescript-eslint/eslint-plugin": "^5.32.0",
         "@typescript-eslint/parser": "^5.32.0",
         "@vscode/test-electron": "^2.1.5",
-        "esbuild": "^0.14.51",
-        "eslint": "^8.20.0",
+        "esbuild": "^0.14.53",
+        "eslint": "^8.21.0",
         "glob": "^8.0.3",
         "mocha": "^10.0.0",
         "nyc": "^15.1.0",
@@ -247,7 +247,7 @@
         "ts-mockito": "^2.6.1",
         "typescript": "^4.7.4",
         "vsce": "^2.10.0",
-        "vscode-extension-tester": "^4.3.0"
+        "vscode-extension-tester": "^4.4.0"
     },
     "nyc": {
         "extends": "@istanbuljs/nyc-config-typescript",
