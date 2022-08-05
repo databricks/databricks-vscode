@@ -15,7 +15,7 @@ describe(__filename, function () {
     it("should run a python job", async () => {
         let cluster = await Cluster.fromClusterId(
             integSetup.client,
-            integSetup.clusterId
+            integSetup.cluster.id
         );
 
         let dbfsApi = new DbfsService(integSetup.client);
@@ -55,7 +55,7 @@ describe(__filename, function () {
     it("should run a notebook job", async () => {
         let cluster = await Cluster.fromClusterId(
             integSetup.client,
-            integSetup.clusterId
+            integSetup.cluster.id
         );
 
         let jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;

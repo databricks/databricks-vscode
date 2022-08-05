@@ -7,6 +7,7 @@ import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
 import {WorkflowCommands} from "./workflow/WorkflowCommands";
+import {CliCommands} from "./cli/CliCommands";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
@@ -77,6 +78,7 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         clusterModel,
         clusterTreeDataProvider,
+        window.registerTreeDataProvider("clusterList", clusterTreeDataProvider),
 
         commands.registerCommand(
             "databricks.cluster.refresh",
@@ -99,7 +101,26 @@ export function activate(context: ExtensionContext) {
             clusterCommands
         )
     );
-    window.registerTreeDataProvider("clusterList", clusterTreeDataProvider);
+
+    // Tasks
+    const cliCommands = new CliCommands(connectionManager, cli);
+    context.subscriptions.push(
+        commands.registerCommand(
+            "databricks.cli.startSync",
+            cliCommands.startSyncCommand("incremental"),
+            cliCommands
+        ),
+        commands.registerCommand(
+            "databricks.cli.startSyncFull",
+            cliCommands.startSyncCommand("full"),
+            cliCommands
+        ),
+        commands.registerCommand(
+            "databricks.cli.stopSync",
+            cliCommands.stopSyncCommand(),
+            cliCommands
+        )
+    );
 }
 
 // this method is called when your extension is deactivated

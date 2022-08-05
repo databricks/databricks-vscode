@@ -5,19 +5,13 @@ import * as tmp from "tmp-promise";
 import {
     VSBrowser,
     WebDriver,
-    ActivityBar,
     InputBox,
     Workbench,
     TreeItem,
     ContextMenu,
     CustomTreeSection,
 } from "vscode-extension-tester";
-import {
-    getViewSection,
-    openCommandPrompt,
-    openFolder,
-    waitForTreeItems,
-} from "./utils";
+import {getViewSection, openFolder, waitForTreeItems} from "./utils";
 
 describe("Configure Databricks Extension", function () {
     // these will be populated by the before() function

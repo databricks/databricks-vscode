@@ -38,4 +38,15 @@ describe(__filename, () => {
             "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices/jobs"
         );
     });
+
+    it("should get repo name", async () => {
+        let mapper = new PathMapper(
+            Uri.file(
+                "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
+            ),
+            Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
+        );
+
+        assert.equal(mapper.remoteWorkspaceName, "notebook-best-practices");
+    });
 });

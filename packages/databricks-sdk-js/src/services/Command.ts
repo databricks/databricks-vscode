@@ -1,12 +1,20 @@
 import EventEmitter from "node:events";
 import {CommandsService, CommandsStatusResponse} from "../apis/commands";
-import {Language} from "../apis/executionContext";
 import {ExecutionContext} from "./ExecutionContext";
+
+export interface CommandWithResult {
+    cmd: Command;
+    result: CommandsStatusResponse;
+}
+
+export type StatusUpdateListener = (result: CommandsStatusResponse) => void;
 
 export class Command extends EventEmitter {
     readonly context: ExecutionContext;
     readonly commandsApi: CommandsService;
     id?: string;
+
+    private static statusUpdateEvent: string = "statusUpdate";
 
     constructor(context: ExecutionContext) {
         super();
@@ -17,12 +25,12 @@ export class Command extends EventEmitter {
     async response(): Promise<CommandsStatusResponse> {
         while (true) {
             let result = await this.commandsApi.status({
-                clusterId: this.context.clusterId,
+                clusterId: this.context.cluster.id,
                 contextId: this.context.id!,
                 commandId: this.id!,
             });
 
-            this.emit("statusUpdate", result);
+            this.emit(Command.statusUpdateEvent, result);
 
             if (
                 result.status === "Cancelled" ||
@@ -41,19 +49,23 @@ export class Command extends EventEmitter {
     static async execute(
         context: ExecutionContext,
         command: string,
-        language: Language = "python"
-    ): Promise<Command> {
+        onStatusUpdate: StatusUpdateListener = () => {}
+    ): Promise<CommandWithResult> {
         //console.log(`Executing (${language}): ${command}`);
         let cmd = new Command(context);
 
+        cmd.on(Command.statusUpdateEvent, onStatusUpdate);
+
         let result = await cmd.commandsApi.execute({
-            clusterId: cmd.context.clusterId,
+            clusterId: cmd.context.cluster.id,
             contextId: cmd.context.id!,
-            language,
+            language: cmd.context.language,
             command,
         });
 
         cmd.id = result.id;
-        return cmd;
+        const executionResult = await cmd.response();
+
+        return {cmd: cmd, result: executionResult};
     }
 }
