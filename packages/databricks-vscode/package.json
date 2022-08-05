@@ -42,6 +42,9 @@
         "onCommand:databricks.connection.openDatabricksConfigFile",
         "onCommand:databricks.connection.attachCluster",
         "onCommand:databricks.connection.detachCluster",
+        "onCommand:databricks.cli.startSync",
+        "onCommand:databricks.cli.startSyncFull",
+        "onCommand:databricks.cli.stopSync",
         "onCommand:databricks.cluster.refresh",
         "onCommand:databricks.cluster.filterByAll",
         "onCommand:databricks.cluster.filterByMe",
@@ -80,6 +83,18 @@
                 "command": "databricks.connection.detachCluster",
                 "title": "Detach cluster",
                 "icon": "$(debug-disconnect)"
+            },
+            {
+                "command": "databricks.cli.startSync",
+                "title": "Databricks: Start synchronization"
+            },
+            {
+                "command": "databricks.cli.startSyncFull",
+                "title": "Databricks: Start synchronization (full sync)"
+            },
+            {
+                "command": "databricks.cli.stopSync",
+                "title": "Databricks: Stop synchronization"
             },
             {
                 "command": "databricks.cluster.filterByAll",
@@ -198,6 +213,22 @@
                 "id": "databricks.cluster.filter",
                 "label": "Filter clusters ...",
                 "icon": "$(filter)"
+            }
+        ],
+        "problemMatchers": [
+            {
+                "name": "bricks-sync",
+                "owner": "bricks",
+                "fileLocation": "relative",
+                "pattern": {
+                    "regexp": "Putting (/Repos/.*)$",
+                    "file": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Syncing from",
+                    "endsPattern": "Done(\\. Watching for changes\\.\\.\\.)$"
+                }
             }
         ]
     },
