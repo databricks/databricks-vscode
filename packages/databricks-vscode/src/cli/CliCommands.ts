@@ -47,7 +47,7 @@ export class CliCommands {
                 );
                 return;
             }
-            if (!me || !pathMapper || !profile) {
+            if (!pathMapper) {
                 window.showErrorMessage(
                     "Can't start sync: Databricks synchronization destination not configured!"
                 );
