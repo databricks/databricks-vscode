@@ -1,4 +1,10 @@
 import {spawn} from "child_process";
+import {PathMapper} from "../configuration/PathMapper";
+
+interface Command {
+    command: string;
+    args: string[];
+}
 
 /**
  * Entrypoint for all wrapped CLI commands
@@ -9,9 +15,46 @@ import {spawn} from "child_process";
 export class CliWrapper {
     constructor() {}
 
-    get bricksExecutable(): string {
-        // TODO: Point to the bricks CLI
-        return "dbx";
+    /**
+     * Constructs the dbx sync command
+     */
+    getSyncCommand(
+        profile: string,
+        me: string,
+        pathMapper: PathMapper,
+        syncType: "full" | "incremental"
+    ): Command {
+        const command = "dbx";
+        const args = [
+            "sync",
+            "repo",
+            "--profile",
+            profile,
+            "--user",
+            me,
+            "--dest-repo",
+            pathMapper.remoteWorkspaceName,
+        ];
+
+        if (syncType === "full") {
+            args.push("--full-sync");
+        }
+
+        return {command, args};
+    }
+
+    getAddProfileCommand(profile: string, host: URL): Command {
+        return {
+            command: "databricks",
+            args: [
+                "configure",
+                "--profile",
+                profile,
+                "--host",
+                host.href,
+                "--token",
+            ],
+        };
     }
 
     async addProfile(
@@ -20,20 +63,10 @@ export class CliWrapper {
         token: string
     ): Promise<{stdout: string; stderr: string}> {
         return new Promise((resolve, reject) => {
-            let child = spawn(
-                "databricks",
-                [
-                    "configure",
-                    "--profile",
-                    name,
-                    "--host",
-                    host.href,
-                    "--token",
-                ],
-                {
-                    stdio: ["pipe", 0, 0],
-                }
-            );
+            const {command, args} = this.getAddProfileCommand(name, host);
+            let child = spawn(command, args, {
+                stdio: ["pipe", 0, 0],
+            });
 
             child.stdin!.write(token);
             child.stdin!.end();

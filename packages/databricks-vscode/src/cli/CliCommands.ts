@@ -58,39 +58,23 @@ export class CliCommands {
                 this.currentTaskExecution.terminate();
             }
 
-            const args = [
-                "sync",
-                "repo",
-                "--profile",
+            const {command, args} = this.cli.getSyncCommand(
                 profile,
-                "--user",
                 me,
-                "--dest-repo",
-                pathMapper.remoteWorkspaceName,
-            ];
-
-            if (syncType === "full") {
-                args.push("--full-sync");
-            }
-
-            const definition = {
-                type: "bricks",
-                command: this.cli.bricksExecutable,
-                args: args,
-            };
+                pathMapper,
+                syncType
+            );
 
             const task = new Task(
-                definition,
+                {
+                    type: "bricks",
+                },
                 TaskScope.Workspace,
                 "$(rocket) Databricks Sync",
                 "bricks",
-                new ProcessExecution(
-                    this.cli.bricksExecutable,
-                    definition.args,
-                    {
-                        cwd: workspacePath,
-                    }
-                )
+                new ProcessExecution(command, args, {
+                    cwd: workspacePath,
+                })
             );
             task.isBackground = true;
             task.problemMatchers = ["$bricks-sync"];
