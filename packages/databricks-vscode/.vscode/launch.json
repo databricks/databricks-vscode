@@ -8,28 +8,20 @@
         {
             "name": "Run Extension",
             "type": "extensionHost",
-            "cwd": "${workspaceFolder}/packages/databricks-vscode",
             "request": "launch",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}/packages/databricks-vscode"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/packages/databricks-vscode/out/**/*.js"
-            ],
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}"
         },
         {
             "name": "Extension Tests",
             "type": "extensionHost",
-            "cwd": "${workspaceFolder}/packages/databricks-vscode",
             "request": "launch",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}/packages/databricks-vscode",
-                "--extensionTestsPath=${workspaceFolder}/packages/databricks-vscode/out/test/suite"
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--extensionTestsPath=${workspaceFolder}/out/test/suite"
             ],
-            "outFiles": [
-                "${workspaceFolder}/packages/databricks-vscode/out/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}"
         }
     ]

@@ -1,0 +1,24 @@
+{
+    "folders": [
+        {
+            "path": ".",
+            "name": "databricks-vscode.git"
+        },
+        {
+            "path": "packages/databricks-sdk-js",
+            "name": "SDK"
+        },
+        {
+            "path": "packages/databricks-vscode",
+            "name": "Extension"
+        }
+    ],
+    "settings": {
+        "typescript.tsc.autoDetect": "off",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[javascript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+        }
+    }
+}
