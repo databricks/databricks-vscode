@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import fetch from "node-fetch";
+import * as https from "node:https";
 import {TextDecoder} from "node:util";
 import {fromDefaultChain} from "./auth/fromChain";
 
@@ -18,11 +19,18 @@ export class HttpError extends Error {
 }
 
 export class ApiClient {
+    private agent: https.Agent;
+
     constructor(
         private readonly product: string,
         private readonly productVersion: string,
         private credentialProvider = fromDefaultChain
-    ) {}
+    ) {
+        this.agent = new https.Agent({
+            keepAlive: true,
+            keepAliveMsecs: 15_000,
+        });
+    }
 
     userAgent(): string {
         let pairs = [
@@ -54,6 +62,7 @@ export class ApiClient {
         let options: any = {
             method,
             headers,
+            agent: this.agent,
         };
 
         if (payload) {

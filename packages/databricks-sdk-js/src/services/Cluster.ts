@@ -13,12 +13,9 @@ import {
     RunLifeCycleState,
     SubmitRunRequest,
 } from "../apis/jobs";
+import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-
-interface CancellationToken {
-    isCancellationRequested: boolean;
-}
 
 export class Cluster {
     private clusterApi: ClusterService;
