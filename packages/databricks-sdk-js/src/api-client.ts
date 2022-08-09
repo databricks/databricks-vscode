@@ -6,7 +6,7 @@ import {fromDefaultChain} from "./auth/fromChain";
 
 const sdkVersion = require("../package.json").version;
 
-type HttpMethod = "POST" | "GET";
+type HttpMethod = "POST" | "GET" | "DELETE" | "PATCH";
 
 export class HttpError extends Error {
     constructor(

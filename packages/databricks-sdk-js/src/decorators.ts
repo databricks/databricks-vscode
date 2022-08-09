@@ -1,5 +1,9 @@
 import {CancellationToken} from "./types";
 
+/**
+ * Wraps an API client function that uses pagination and calles it iteratively to
+ * fetch all data.
+ */
 export function paginated<REQ, RES>(
     paginationKey: keyof (REQ | RES),
     itemsKey: keyof RES
@@ -9,7 +13,11 @@ export function paginated<REQ, RES>(
         _propertyKey: string,
         descriptor: PropertyDescriptor
     ): PropertyDescriptor {
-        const childFunction = descriptor.value as (req: REQ) => Promise<RES>;
+        const childFunction = descriptor.value as (
+            req: REQ,
+            token?: CancellationToken
+        ) => Promise<RES>;
+
         descriptor.value = async function (
             req: REQ,
             token?: CancellationToken
@@ -23,7 +31,7 @@ export function paginated<REQ, RES>(
                 } else {
                     delete req[paginationKey];
                 }
-                response = await childFunction.call(this, req);
+                response = await childFunction.call(this, req, token);
 
                 if (token && token.isCancellationRequested) {
                     return response;
