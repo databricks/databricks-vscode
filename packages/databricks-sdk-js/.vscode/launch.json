@@ -10,10 +10,7 @@
             "request": "launch",
             "runtimeArgs": ["run", "test:unit"],
             "runtimeExecutable": "npm",
-            "cwd": "${workspaceFolder}/packages/databricks-sdk-js",
-            "outFiles": [
-                "${workspaceFolder}/packages/databricks-sdk-js/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/**/*.js", "!**/node_modules/**"],
             "type": "node"
         }
     ]
