@@ -54,8 +54,23 @@ export function activate(context: ExtensionContext) {
             connectionCommands
         ),
         commands.registerCommand(
+            "databricks.connection.attachClusterQuickPick",
+            connectionCommands.attachClusterQuickPickCommand(),
+            connectionCommands
+        ),
+        commands.registerCommand(
             "databricks.connection.detachCluster",
             connectionCommands.detachClusterCommand(),
+            connectionCommands
+        ),
+        commands.registerCommand(
+            "databricks.connection.attachSyncDestination",
+            connectionCommands.attachSyncDestinationCommand(),
+            connectionCommands
+        ),
+        commands.registerCommand(
+            "databricks.connection.detachSyncDestination",
+            connectionCommands.detachWorkspaceCommand(),
             connectionCommands
         )
     );
@@ -65,7 +80,7 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand(
             "databricks.run.runEditorContentsAsWorkflow",
-            workflowCommands.runEditorContentsAsWorkflow(),
+            workflowCommands.runEditorContentsAsWorkflowCommand(),
             workflowCommands
         )
     );

@@ -41,7 +41,10 @@
         "onCommand:databricks.connection.configureProject",
         "onCommand:databricks.connection.openDatabricksConfigFile",
         "onCommand:databricks.connection.attachCluster",
+        "onCommand:databricks.connection.attachClusterQuickPick",
         "onCommand:databricks.connection.detachCluster",
+        "onCommand:databricks.connection.attachSyncDestination",
+        "onCommand:databricks.connection.detachSyncDestination",
         "onCommand:databricks.cli.startSync",
         "onCommand:databricks.cli.startSyncFull",
         "onCommand:databricks.cli.stopSync",
@@ -80,6 +83,11 @@
                 "icon": "$(plug)"
             },
             {
+                "command": "databricks.connection.attachClusterQuickPick",
+                "title": "Attach cluster",
+                "icon": "$(plug)"
+            },
+            {
                 "command": "databricks.connection.detachCluster",
                 "title": "Detach cluster",
                 "icon": "$(debug-disconnect)"
@@ -112,6 +120,16 @@
                 "command": "databricks.cluster.refresh",
                 "icon": "$(refresh)",
                 "title": "Refresh"
+            },
+            {
+                "command": "databricks.connection.attachSyncDestination",
+                "title": "Attach workspace",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.connection.detachSyncDestination",
+                "title": "Detach workspace",
+                "icon": "$(debug-disconnect)"
             },
             {
                 "command": "databricks.run.runEditorContentsAsWorkflow",
@@ -184,13 +202,23 @@
                     "group": "inline@0"
                 },
                 {
-                    "command": "databricks.connection.detachCluster",
-                    "when": "view == configurationView && viewItem == clusterRunning",
+                    "command": "databricks.connection.attachClusterQuickPick",
+                    "when": "view == configurationView && viewItem == clusterDetached",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.connection.detachCluster",
-                    "when": "view == configurationView && viewItem == clusterStopped",
+                    "when": "view == configurationView && viewItem == clusterAttached",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.connection.attachSyncDestination",
+                    "when": "view == configurationView && viewItem == syncDestinationDetached",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.connection.detachSyncDestination",
+                    "when": "view == configurationView && viewItem == syncDestinationAttached",
                     "group": "inline@0"
                 }
             ],
