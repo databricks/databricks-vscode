@@ -13,7 +13,7 @@ import {
     workspace as vscodeWorkspace,
 } from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
-import {PathMapper} from "./PathMapper";
+import {SyncDestination} from "./SyncDestination";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
 
@@ -31,7 +31,7 @@ export class ConnectionManager {
     private _state: ConnectionState = "DISCONNECTED";
     private _cluster?: Cluster;
     private _apiClient?: ApiClient;
-    private _pathMapper?: PathMapper;
+    private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
     private _me?: string;
     private _profile?: string;
@@ -40,9 +40,14 @@ export class ConnectionManager {
         new EventEmitter();
     private readonly onChangeClusterEmitter: EventEmitter<Cluster | undefined> =
         new EventEmitter();
+    private readonly onChangeSyncDestinationEmitter: EventEmitter<
+        SyncDestination | undefined
+    > = new EventEmitter();
 
     public readonly onChangeState = this.onChangeStateEmitter.event;
     public readonly onChangeCluster = this.onChangeClusterEmitter.event;
+    public readonly onChangeSyncDestination =
+        this.onChangeSyncDestinationEmitter.event;
 
     constructor(private cli: CliWrapper) {}
 
@@ -58,8 +63,16 @@ export class ConnectionManager {
         return this._state;
     }
 
-    get pathMapper(): PathMapper | undefined {
-        return this._pathMapper;
+    get cluster(): Cluster | undefined {
+        if (this.state === "DISCONNECTED") {
+            return;
+        }
+
+        return this._cluster;
+    }
+
+    get syncDestination(): SyncDestination | undefined {
+        return this._syncDestination;
     }
 
     /**
@@ -123,13 +136,18 @@ export class ConnectionManager {
         this.updateState("CONNECTED");
 
         if (projectConfigFile.config.clusterId) {
-            await this.attachCluster(projectConfigFile.config.clusterId);
+            await this.attachCluster(projectConfigFile.config.clusterId, false);
+        } else {
+            this.updateCluster(undefined);
         }
 
         if (projectConfigFile.config.workspacePath) {
-            await this.attachWorkspace(
-                Uri.file(projectConfigFile.config.workspacePath)
+            await this.attachSyncDestination(
+                Uri.file(projectConfigFile.config.workspacePath),
+                false
             );
+        } else {
+            this.updateSyncDestination(undefined);
         }
     }
 
@@ -196,31 +214,20 @@ export class ConnectionManager {
             throw new Error("Not in a VSCode workspace");
         }
 
-        let projectConfigFile;
-        try {
-            projectConfigFile = await ProjectConfigFile.load(
-                vscodeWorkspace.rootPath
-            );
-        } catch (e) {
-            projectConfigFile = new ProjectConfigFile(
-                {},
-                vscodeWorkspace.rootPath
-            );
-        }
+        const projectConfigFile = new ProjectConfigFile(
+            {},
+            vscodeWorkspace.rootPath
+        );
 
         projectConfigFile.profile = profile;
+
         await projectConfigFile.write();
     }
 
-    get cluster(): Cluster | undefined {
-        if (this.state === "DISCONNECTED") {
-            return;
-        }
-
-        return this._cluster;
-    }
-
-    async attachCluster(cluster: Cluster | string): Promise<void> {
+    async attachCluster(
+        cluster: Cluster | string,
+        skipWrite = false
+    ): Promise<void> {
         if (this._cluster === cluster) {
             return;
         }
@@ -233,8 +240,10 @@ export class ConnectionManager {
             cluster = await Cluster.fromClusterId(this._apiClient!, cluster);
         }
 
-        this._projectConfigFile!.clusterId = cluster.id;
-        await this._projectConfigFile!.write();
+        if (!skipWrite) {
+            this._projectConfigFile!.clusterId = cluster.id;
+            await this._projectConfigFile!.write();
+        }
 
         this.updateCluster(cluster);
     }
@@ -252,7 +261,10 @@ export class ConnectionManager {
         this.updateCluster(undefined);
     }
 
-    async attachWorkspace(workspacePath: Uri): Promise<void> {
+    async attachSyncDestination(
+        workspacePath: Uri,
+        skipWrite = false
+    ): Promise<void> {
         if (
             !vscodeWorkspace.workspaceFolders ||
             !vscodeWorkspace.workspaceFolders.length
@@ -261,8 +273,26 @@ export class ConnectionManager {
             return;
         }
 
+        if (!skipWrite) {
+            this._projectConfigFile!.workspacePath = workspacePath.path;
+            await this._projectConfigFile!.write();
+        }
+
         const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
-        this._pathMapper = new PathMapper(workspacePath, wsUri);
+        this.updateSyncDestination(new SyncDestination(workspacePath, wsUri));
+    }
+
+    async detachSyncDestination(): Promise<void> {
+        if (!this._syncDestination) {
+            return;
+        }
+
+        if (this._projectConfigFile) {
+            this._projectConfigFile.workspacePath = undefined;
+            await this._projectConfigFile.write();
+        }
+
+        this.updateSyncDestination(undefined);
     }
 
     private async getMe(apiClient: ApiClient): Promise<string> {
@@ -284,6 +314,15 @@ export class ConnectionManager {
         if (this._cluster !== newCluster) {
             this._cluster = newCluster;
             this.onChangeClusterEmitter.fire(this._cluster);
+        }
+    }
+
+    private updateSyncDestination(
+        newSyncDestination: SyncDestination | undefined
+    ) {
+        if (this._syncDestination !== newSyncDestination) {
+            this._syncDestination = newSyncDestination;
+            this.onChangeSyncDestinationEmitter.fire(this._syncDestination);
         }
     }
 

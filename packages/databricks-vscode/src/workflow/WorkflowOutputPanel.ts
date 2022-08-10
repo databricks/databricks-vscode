@@ -9,19 +9,19 @@ import {
     WebviewPanel,
     window,
 } from "vscode";
-import {PathMapper} from "../configuration/PathMapper";
+import {SyncDestination} from "../configuration/SyncDestination";
 
 // TODO: add dispose, add persistence
 
 export async function runNotebookAsWorkflow({
     notebookUri,
     cluster,
-    pathMapper,
+    syncDestination,
     context,
 }: {
     notebookUri: Uri;
     cluster: Cluster;
-    pathMapper: PathMapper;
+    syncDestination: SyncDestination;
     context: ExtensionContext;
 }) {
     const panel = new WorkflowOutputPanel(
@@ -40,15 +40,11 @@ export async function runNotebookAsWorkflow({
     const cancellation = new CancellationTokenSource();
     panel.onDidDispose(() => cancellation.cancel());
 
-    const clusterNotebookPath = pathMapper
-        .localToRemote(notebookUri)
-        .replace(/^\/Workspace(\/.*).py/g, "$1");
-
     try {
         let response = await cluster.runNotebookAndWait({
-            path: clusterNotebookPath,
+            path: syncDestination.localToRemoteNotebook(notebookUri),
             onProgress: (state: jobs.RunLifeCycleState, run: WorkflowRun) => {
-                panel.updateState(state, run.runPageUrl);
+                panel.updateState(state, run);
             },
             token: cancellation.token,
         });
@@ -79,12 +75,17 @@ export class WorkflowOutputPanel {
         this.panel.webview.html = htmlContent;
     }
 
-    updateState(state: jobs.RunLifeCycleState, pageUrl: string) {
-        this.panel.webview.postMessage({
-            type: "status",
-            state,
-            pageUrl,
-        });
+    updateState(state: jobs.RunLifeCycleState, run: WorkflowRun) {
+        if (state === "INTERNAL_ERROR") {
+            // TODO
+            this.showError(run.state!.state_message!);
+        } else {
+            this.panel.webview.postMessage({
+                type: "status",
+                state,
+                pageUrl: run.runPageUrl,
+            });
+        }
     }
 
     showError(error: string) {
@@ -126,7 +127,7 @@ export class WorkflowOutputPanel {
 
                             case "error":
                                 const pre = document.createElement("pre");
-                                pre.innterText = event.data.error;
+                                pre.innerText = event.data.error;
                                 messageEl.appendChild(pre);
 
                                 clearInterval(interval);

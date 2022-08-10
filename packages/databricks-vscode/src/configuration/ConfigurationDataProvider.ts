@@ -3,6 +3,7 @@ import {
     Event,
     EventEmitter,
     ProviderResult,
+    ThemeIcon,
     TreeDataProvider,
     TreeItem,
     TreeItemCollapsibleState,
@@ -25,17 +26,21 @@ export class ConfigurationDataProvider
 
     constructor(private connectionManager: ConnectionManager) {
         this.disposables.push(
-            this.connectionManager.onChangeState((state) => {
+            this.connectionManager.onChangeState(() => {
                 this._onDidChangeTreeData.fire();
             }),
-            this.connectionManager.onChangeCluster((cluster) => {
-                // console.log("change cluster event", cluster);
+            this.connectionManager.onChangeCluster(() => {
+                this._onDidChangeTreeData.fire();
+            }),
+            this.connectionManager.onChangeSyncDestination(() => {
                 this._onDidChangeTreeData.fire();
             })
         );
     }
 
-    dispose() {}
+    dispose() {
+        this.disposables.forEach((d) => d.dispose());
+    }
 
     getTreeItem(element: TreeItem): TreeItem | Thenable<TreeItem> {
         return element;
@@ -48,49 +53,93 @@ export class ConfigurationDataProvider
             return [];
         }
         return (async () => {
+            let cluster = this.connectionManager.cluster;
+            let syncDestination = this.connectionManager.syncDestination;
+
             if (!element) {
-                let cluster = this.connectionManager.cluster;
                 let children: Array<TreeItem> = [];
                 children.push({
-                    label: `Profile: ${this.connectionManager.profile}`,
-                    id: "CONNECTION",
-                    collapsibleState: TreeItemCollapsibleState.None,
+                    label: `Profile`,
+                    iconPath: new ThemeIcon("tools"),
+                    id: "PROFILE",
+                    collapsibleState: TreeItemCollapsibleState.Expanded,
                 });
 
                 if (cluster) {
-                    let clusterItem =
-                        ClusterListDataProvider.clusterNodeToTreeItem(cluster);
-
                     children.push({
-                        ...clusterItem,
-                        label: `Cluster: ${cluster.name}`,
+                        label: `Cluster`,
+                        iconPath: new ThemeIcon("server"),
                         id: "CLUSTER",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
+                        contextValue: "clusterAttached",
                     });
                 } else {
                     children.push({
-                        label: `Cluster: "None attached"`,
+                        label: `Cluster - "None attached"`,
+                        iconPath: new ThemeIcon("server"),
                         id: "CLUSTER",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
+                        contextValue: "clusterDetached",
                     });
                 }
 
-                children.push({
-                    label: "Workspace",
-                    id: "WORKSPACE",
-                    collapsibleState: TreeItemCollapsibleState.Expanded,
-                });
+                if (syncDestination) {
+                    children.push({
+                        label: `Workspace`,
+                        iconPath: new ThemeIcon("repo"),
+                        id: "WORKSPACE",
+                        collapsibleState: TreeItemCollapsibleState.Expanded,
+                        contextValue: "syncDestinationAttached",
+                    });
+                } else {
+                    children.push({
+                        label: `Workspace - "None attached"`,
+                        iconPath: new ThemeIcon("repo"),
+                        id: "WORKSPACE",
+                        collapsibleState: TreeItemCollapsibleState.Expanded,
+                        contextValue: "syncDestinationDetached",
+                    });
+                }
 
                 return children;
             }
 
-            if (element.id === "CLUSTER") {
-                let cluster = this.connectionManager.cluster;
-                if (cluster) {
-                    return ClusterListDataProvider.clusterNodeToTreeItems(
-                        cluster
-                    );
-                }
+            if (element.id === "PROFILE" && this.connectionManager.profile) {
+                return [
+                    {
+                        label: "Name",
+                        description: this.connectionManager.profile,
+                        collapsibleState: TreeItemCollapsibleState.None,
+                    },
+                ];
+            }
+
+            if (element.id === "CLUSTER" && cluster) {
+                let clusterItem =
+                    ClusterListDataProvider.clusterNodeToTreeItem(cluster);
+
+                return [
+                    {
+                        label: "Name",
+                        description: cluster.name,
+                        iconPath: clusterItem.iconPath,
+                        collapsibleState: TreeItemCollapsibleState.None,
+                    },
+                    ...ClusterListDataProvider.clusterNodeToTreeItems(cluster),
+                ];
+            }
+
+            if (element.id === "WORKSPACE" && syncDestination) {
+                return [
+                    {
+                        label: `Name: ${syncDestination.name}`,
+                        collapsibleState: TreeItemCollapsibleState.None,
+                    },
+                    {
+                        label: `Path: ${syncDestination.path.path}`,
+                        collapsibleState: TreeItemCollapsibleState.None,
+                    },
+                ];
             }
         })();
     }

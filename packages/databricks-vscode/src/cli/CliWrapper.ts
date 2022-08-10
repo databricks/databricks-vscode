@@ -1,5 +1,5 @@
 import {spawn} from "child_process";
-import {PathMapper} from "../configuration/PathMapper";
+import {SyncDestination} from "../configuration/SyncDestination";
 
 interface Command {
     command: string;
@@ -21,7 +21,7 @@ export class CliWrapper {
     getSyncCommand(
         profile: string,
         me: string,
-        pathMapper: PathMapper,
+        syncDestination: SyncDestination,
         syncType: "full" | "incremental"
     ): Command {
         const command = "dbx";
@@ -33,7 +33,7 @@ export class CliWrapper {
             "--user",
             me,
             "--dest-repo",
-            pathMapper.remoteWorkspaceName,
+            syncDestination.name,
         ];
 
         if (syncType === "full") {

@@ -31,7 +31,7 @@ export class CliCommands {
         return async () => {
             const workspacePath = workspace.rootPath;
             const me = this.connection.me;
-            const pathMapper = this.connection.pathMapper;
+            const syncDestination = this.connection.syncDestination;
             const profile = this.connection.profile;
 
             if (!workspacePath) {
@@ -47,7 +47,7 @@ export class CliCommands {
                 );
                 return;
             }
-            if (!pathMapper) {
+            if (!syncDestination) {
                 window.showErrorMessage(
                     "Can't start sync: Databricks synchronization destination not configured!"
                 );
@@ -61,7 +61,7 @@ export class CliCommands {
             const {command, args} = this.cli.getSyncCommand(
                 profile,
                 me,
-                pathMapper,
+                syncDestination,
                 syncType
             );
 

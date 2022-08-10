@@ -1,13 +1,13 @@
 import * as assert from "assert";
 import {Uri} from "vscode";
-import {PathMapper} from "../configuration/PathMapper";
+import {SyncDestination} from "../configuration/SyncDestination";
 
 import {CliWrapper} from "./CliWrapper";
 
 describe(__filename, () => {
     it("should create sync command", () => {
         const cli = new CliWrapper();
-        const mapper = new PathMapper(
+        const mapper = new SyncDestination(
             Uri.file(
                 "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
             ),
@@ -29,7 +29,7 @@ describe(__filename, () => {
 
     it("should create full sync command", () => {
         const cli = new CliWrapper();
-        const mapper = new PathMapper(
+        const mapper = new SyncDestination(
             Uri.file(
                 "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
             ),

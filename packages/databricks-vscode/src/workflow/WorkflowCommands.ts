@@ -14,7 +14,7 @@ export class WorkflowCommands {
     /**
      * Run a Python file or notebook as a workflow on the connected cluster
      */
-    runEditorContentsAsWorkflow() {
+    runEditorContentsAsWorkflowCommand() {
         return async (resource: Uri) => {
             let targetResource = resource;
             if (!targetResource && window.activeTextEditor) {
@@ -31,8 +31,8 @@ export class WorkflowCommands {
                 return;
             }
 
-            let pathMapper = this.connectionManager.pathMapper;
-            if (!pathMapper) {
+            let syncDestination = this.connectionManager.syncDestination;
+            if (!syncDestination) {
                 window.showErrorMessage(
                     "You must configure code synchronization to run a workflow"
                 );
@@ -52,7 +52,7 @@ export class WorkflowCommands {
                 await runNotebookAsWorkflow({
                     notebookUri: targetResource,
                     cluster,
-                    pathMapper,
+                    syncDestination: syncDestination,
                     context: this.context,
                 });
             }
