@@ -17,7 +17,7 @@
         "/dist"
     ],
     "scripts": {
-        "build": "tsc -p tsconfig.json",
+        "build": "tsc -p tsconfig.json && cp src/fetch.* dist/",
         "watch": "tsc -w -p tsconfig.json",
         "clean": "rm -rf dist node_modules",
         "fix": "prettier . --write",
@@ -30,14 +30,13 @@
     },
     "dependencies": {
         "ini": "^3.0.0",
-        "node-fetch": "^2.6.7"
+        "node-fetch": "^3.2.10"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
         "@types/ini": "^1.3.31",
         "@types/mocha": "^9.1.1",
-        "@types/node": "^18.6.4",
-        "@types/node-fetch": "^2.6.2",
+        "@types/node": "^18.7.1",
         "@types/tmp": "^0.2.3",
         "@types/uuid": "^8.3.4",
         "eslint": "^8.21.0",

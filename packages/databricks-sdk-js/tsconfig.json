@@ -6,11 +6,12 @@
         "moduleResolution": "Node",
         "esModuleInterop": true,
         "isolatedModules": true,
-        "lib": ["ES2020"],
+        "lib": ["ES2020", "DOM"],
         "sourceMap": true,
         "rootDir": "src",
         "outDir": "dist",
         "strict": true /* enable all strict type-checking options */,
         "experimentalDecorators": true
-    }
+    },
+    "include": ["src"]
 }

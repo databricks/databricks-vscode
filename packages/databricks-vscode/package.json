@@ -290,13 +290,13 @@
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.1",
-        "@types/node": "^18.6.4",
+        "@types/node": "^18.7.1",
         "@types/tmp": "^0.2.3",
         "@types/vscode": "^1.69.1",
-        "@typescript-eslint/eslint-plugin": "^5.32.0",
-        "@typescript-eslint/parser": "^5.32.0",
+        "@typescript-eslint/eslint-plugin": "^5.33.0",
+        "@typescript-eslint/parser": "^5.33.0",
         "@vscode/test-electron": "^2.1.5",
-        "esbuild": "^0.14.53",
+        "esbuild": "^0.15.1",
         "eslint": "^8.21.0",
         "glob": "^8.0.3",
         "mocha": "^10.0.0",
@@ -306,7 +306,7 @@
         "ts-mockito": "^2.6.1",
         "typescript": "^4.7.4",
         "vsce": "^2.10.0",
-        "vscode-extension-tester": "^4.4.0"
+        "vscode-extension-tester": "^4.4.1"
     },
     "nyc": {
         "extends": "@istanbuljs/nyc-config-typescript",
