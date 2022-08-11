@@ -7,29 +7,46 @@ import {ConfigurationDataProvider} from "./ConfigurationDataProvider";
 import {ApiClient, Cluster} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "./ConnectionManager";
 import {resolveProviderResult} from "../test/utils";
+import {SyncDestination} from "./SyncDestination";
 
 describe(__filename, () => {
     let mockedConnectionManager: ConnectionManager;
     let disposables: Array<Disposable>;
     let onChangeClusterListener: (e: Cluster) => void;
+    let onChangeSyncDestinationListener: (e: SyncDestination) => void;
 
     beforeEach(() => {
         disposables = [];
         mockedConnectionManager = mock(ConnectionManager);
         onChangeClusterListener = () => {};
+        onChangeSyncDestinationListener = () => {};
+
+        when(mockedConnectionManager.onChangeState).thenReturn((_handler) => {
+            return {
+                dispose() {},
+            };
+        });
         when(mockedConnectionManager.onChangeCluster).thenReturn((_handler) => {
             onChangeClusterListener = _handler;
             return {
                 dispose() {},
             };
         });
+        when(mockedConnectionManager.onChangeSyncDestination).thenReturn(
+            (_handler) => {
+                onChangeSyncDestinationListener = _handler;
+                return {
+                    dispose() {},
+                };
+            }
+        );
     });
 
     afterEach(() => {
         disposables.forEach((d) => d.dispose());
     });
 
-    it("should reload tree on model change", async () => {
+    it("should reload tree on cluster change", async () => {
         let connectionManager = instance(mockedConnectionManager);
         let provider = new ConfigurationDataProvider(connectionManager);
         disposables.push(provider);
@@ -43,6 +60,23 @@ describe(__filename, () => {
 
         assert(!called);
         onChangeClusterListener(new Cluster(instance(mock(ApiClient)), {}));
+        assert(called);
+    });
+
+    it("should reload tree on sync destination change", async () => {
+        let connectionManager = instance(mockedConnectionManager);
+        let provider = new ConfigurationDataProvider(connectionManager);
+        disposables.push(provider);
+
+        let called = false;
+        disposables.push(
+            provider.onDidChangeTreeData(() => {
+                called = true;
+            })
+        );
+
+        assert(!called);
+        onChangeSyncDestinationListener(instance(mock(SyncDestination)));
         assert(called);
     });
 
@@ -76,24 +110,33 @@ describe(__filename, () => {
         let children = await resolveProviderResult(provider.getChildren());
         assert.deepEqual(children, [
             {
-                collapsibleState: 0,
-                id: "CONNECTION",
-                label: "Profile: null",
-            },
-            {
                 collapsibleState: 2,
-                contextValue: "clusterStopped",
                 iconPath: {
                     color: undefined,
-                    id: "debug-stop",
+                    id: "tools",
                 },
-                id: "CLUSTER",
-                label: "Cluster: cluster-name-2",
+                id: "PROFILE",
+                label: "Profile",
             },
             {
                 collapsibleState: 2,
+                contextValue: "clusterAttached",
+                iconPath: {
+                    color: undefined,
+                    id: "server",
+                },
+                id: "CLUSTER",
+                label: "Cluster",
+            },
+            {
+                collapsibleState: 2,
+                contextValue: "syncDestinationDetached",
+                iconPath: {
+                    color: undefined,
+                    id: "repo",
+                },
                 id: "WORKSPACE",
-                label: "Workspace",
+                label: 'Workspace - "None attached"',
             },
         ]);
     });

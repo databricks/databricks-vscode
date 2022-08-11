@@ -3,11 +3,21 @@ import {
     Cluster,
     fromConfigFile,
     ScimService,
+    CredentialProvider,
 } from "@databricks/databricks-sdk";
-import {commands, EventEmitter, window, workspace} from "vscode";
+import {
+    commands,
+    EventEmitter,
+    Uri,
+    window,
+    workspace as vscodeWorkspace,
+} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
+import {SyncDestination} from "./SyncDestination";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
+
+const extensionVersion = require("../../package.json").version;
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
@@ -21,6 +31,7 @@ export class ConnectionManager {
     private _state: ConnectionState = "DISCONNECTED";
     private _cluster?: Cluster;
     private _apiClient?: ApiClient;
+    private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
     private _me?: string;
     private _profile?: string;
@@ -29,9 +40,14 @@ export class ConnectionManager {
         new EventEmitter();
     private readonly onChangeClusterEmitter: EventEmitter<Cluster | undefined> =
         new EventEmitter();
+    private readonly onChangeSyncDestinationEmitter: EventEmitter<
+        SyncDestination | undefined
+    > = new EventEmitter();
 
     public readonly onChangeState = this.onChangeStateEmitter.event;
     public readonly onChangeCluster = this.onChangeClusterEmitter.event;
+    public readonly onChangeSyncDestination =
+        this.onChangeSyncDestinationEmitter.event;
 
     constructor(private cli: CliWrapper) {}
 
@@ -47,6 +63,18 @@ export class ConnectionManager {
         return this._state;
     }
 
+    get cluster(): Cluster | undefined {
+        if (this.state === "DISCONNECTED") {
+            return;
+        }
+
+        return this._cluster;
+    }
+
+    get syncDestination(): SyncDestination | undefined {
+        return this._syncDestination;
+    }
+
     /**
      * Get a pre-configured APIClient. Do not hold on to references to this class as
      * it might be invalidated as the configuration changes. If you have to store a reference
@@ -54,6 +82,10 @@ export class ConnectionManager {
      */
     get apiClient(): ApiClient | undefined {
         return this._apiClient;
+    }
+
+    private apiClientFrom(creds: CredentialProvider): ApiClient {
+        return new ApiClient("vscode-extension", extensionVersion, creds);
     }
 
     async login(interactive: boolean = false): Promise<void> {
@@ -64,14 +96,14 @@ export class ConnectionManager {
         let profile;
 
         try {
-            if (!workspace.rootPath) {
+            if (!vscodeWorkspace.rootPath) {
                 throw new Error(
                     "Can't login to Databricks: Not in a VSCode workspace"
                 );
             }
 
             projectConfigFile = await ProjectConfigFile.load(
-                workspace.rootPath
+                vscodeWorkspace.rootPath
             );
 
             profile = projectConfigFile.config.profile;
@@ -85,7 +117,7 @@ export class ConnectionManager {
 
             await credentialProvider();
 
-            apiClient = new ApiClient(credentialProvider);
+            apiClient = this.apiClientFrom(credentialProvider);
             this._me = await this.getMe(apiClient);
         } catch (e: any) {
             const message = `Can't login to Databricks: ${e.message}`;
@@ -104,7 +136,18 @@ export class ConnectionManager {
         this.updateState("CONNECTED");
 
         if (projectConfigFile.config.clusterId) {
-            await this.attachCluster(projectConfigFile.config.clusterId);
+            await this.attachCluster(projectConfigFile.config.clusterId, false);
+        } else {
+            this.updateCluster(undefined);
+        }
+
+        if (projectConfigFile.config.workspacePath) {
+            await this.attachSyncDestination(
+                Uri.file(projectConfigFile.config.workspacePath),
+                false
+            );
+        } else {
+            this.updateSyncDestination(undefined);
         }
     }
 
@@ -131,7 +174,7 @@ export class ConnectionManager {
             }
 
             try {
-                await this.getMe(new ApiClient(fromConfigFile(profile)));
+                await this.getMe(this.apiClientFrom(fromConfigFile(profile)));
             } catch (e: any) {
                 console.error(e);
                 const response = await window.showWarningMessage(
@@ -167,32 +210,24 @@ export class ConnectionManager {
     }
 
     private async writeConfigFile(profile: string) {
-        if (!workspace.rootPath) {
+        if (!vscodeWorkspace.rootPath) {
             throw new Error("Not in a VSCode workspace");
         }
 
-        let projectConfigFile;
-        try {
-            projectConfigFile = await ProjectConfigFile.load(
-                workspace.rootPath
-            );
-        } catch (e) {
-            projectConfigFile = new ProjectConfigFile({}, workspace.rootPath);
-        }
+        const projectConfigFile = new ProjectConfigFile(
+            {},
+            vscodeWorkspace.rootPath
+        );
 
         projectConfigFile.profile = profile;
+
         await projectConfigFile.write();
     }
 
-    get cluster(): Cluster | undefined {
-        if (this.state === "DISCONNECTED") {
-            return;
-        }
-
-        return this._cluster;
-    }
-
-    async attachCluster(cluster: Cluster | string): Promise<void> {
+    async attachCluster(
+        cluster: Cluster | string,
+        skipWrite = false
+    ): Promise<void> {
         if (this._cluster === cluster) {
             return;
         }
@@ -205,8 +240,10 @@ export class ConnectionManager {
             cluster = await Cluster.fromClusterId(this._apiClient!, cluster);
         }
 
-        this._projectConfigFile!.clusterId = cluster.id;
-        await this._projectConfigFile!.write();
+        if (!skipWrite) {
+            this._projectConfigFile!.clusterId = cluster.id;
+            await this._projectConfigFile!.write();
+        }
 
         this.updateCluster(cluster);
     }
@@ -222,6 +259,40 @@ export class ConnectionManager {
         }
 
         this.updateCluster(undefined);
+    }
+
+    async attachSyncDestination(
+        workspacePath: Uri,
+        skipWrite = false
+    ): Promise<void> {
+        if (
+            !vscodeWorkspace.workspaceFolders ||
+            !vscodeWorkspace.workspaceFolders.length
+        ) {
+            // TODO how do we handle this?
+            return;
+        }
+
+        if (!skipWrite) {
+            this._projectConfigFile!.workspacePath = workspacePath.path;
+            await this._projectConfigFile!.write();
+        }
+
+        const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
+        this.updateSyncDestination(new SyncDestination(workspacePath, wsUri));
+    }
+
+    async detachSyncDestination(): Promise<void> {
+        if (!this._syncDestination) {
+            return;
+        }
+
+        if (this._projectConfigFile) {
+            this._projectConfigFile.workspacePath = undefined;
+            await this._projectConfigFile.write();
+        }
+
+        this.updateSyncDestination(undefined);
     }
 
     private async getMe(apiClient: ApiClient): Promise<string> {
@@ -243,6 +314,15 @@ export class ConnectionManager {
         if (this._cluster !== newCluster) {
             this._cluster = newCluster;
             this.onChangeClusterEmitter.fire(this._cluster);
+        }
+    }
+
+    private updateSyncDestination(
+        newSyncDestination: SyncDestination | undefined
+    ) {
+        if (this._syncDestination !== newSyncDestination) {
+            this._syncDestination = newSyncDestination;
+            this.onChangeSyncDestinationEmitter.fire(this._syncDestination);
         }
     }
 

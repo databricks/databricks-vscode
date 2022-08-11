@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import fetch from "node-fetch";
+import * as https from "node:https";
 import {TextDecoder} from "node:util";
 import {fromDefaultChain} from "./auth/fromChain";
 
-type HttpMethod = "POST" | "GET";
+const sdkVersion = require("../package.json").version;
+
+type HttpMethod = "POST" | "GET" | "DELETE" | "PATCH";
 
 export class HttpError extends Error {
     constructor(
@@ -16,7 +19,30 @@ export class HttpError extends Error {
 }
 
 export class ApiClient {
-    constructor(private credentialProvider = fromDefaultChain) {}
+    private agent: https.Agent;
+
+    constructor(
+        private readonly product: string,
+        private readonly productVersion: string,
+        private credentialProvider = fromDefaultChain
+    ) {
+        this.agent = new https.Agent({
+            keepAlive: true,
+            keepAliveMsecs: 15_000,
+        });
+    }
+
+    userAgent(): string {
+        let pairs = [
+            `${this.product}/${this.productVersion}`,
+            `databricks-sdk-js/${sdkVersion}`,
+            `nodejs/${process.version.slice(1)}`,
+            `os/${process.platform}`,
+        ];
+        // TODO: add ability of per-request extra-information,
+        // so that we can track sub-functionality, like in Terraform
+        return pairs.join(" ");
+    }
 
     async request(
         path: string,
@@ -26,7 +52,7 @@ export class ApiClient {
         const credentials = await this.credentialProvider();
         const headers = {
             "Authorization": `Bearer ${credentials.token}`,
-            "User-Agent": `vscode-notebook`,
+            "User-Agent": this.userAgent(),
             "Content-Type": "text/json",
         };
 
@@ -36,6 +62,7 @@ export class ApiClient {
         let options: any = {
             method,
             headers,
+            agent: this.agent,
         };
 
         if (payload) {

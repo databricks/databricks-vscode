@@ -7,8 +7,8 @@ on:
         branches: [main]
 
 jobs:
-    unit-test-sdk:
-        name: Unit Test Databricks SDK
+    test-sdk:
+        name: Test Databricks SDK
         runs-on: ${{ matrix.os }}
 
         strategy:
@@ -38,39 +38,28 @@ jobs:
             - name: Prettier and Linting
               run: yarn run test:lint
 
-            - name: Unit Tests
-              run: yarn test:run
+            - name: Unit Tests With Code Cov
+              run: yarn test:cov
 
-    integ-test-sdk:
-        name: Integration Test Databricks SDK
-        runs-on: ubuntu-latest
-
-        defaults:
-            run:
-                working-directory: packages/databricks-sdk-js
-
-        steps:
-            - uses: actions/checkout@v3
-
-            - name: Use Node.js 18.x
-              uses: actions/setup-node@v3
-              with:
-                  node-version: 18.x
-                  cache: "yarn"
-
-            - run: yarn install --immutable
-
-            - name: Integration Tests
-              run: yarn run test:integ
+            - name: Integration Tests With Code Cov
+              run: yarn run test:integ:cov
               env:
                   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
                   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
                   TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
 
+            - run: |
+                  cd coverage
+                  mkdir -p all && mkdir -p final
+                  mv integration/coverage-final.json all/integration.json
+                  mv unit/coverage-final.json all/unit.json
+                  yarn nyc merge all final/final.json
+                  yarn nyc report --reporter text -t ./coverage/final >> $GITHUB_STEP_SUMMARY
+
     test-extension:
         name: Test VSCode Extension
         runs-on: ${{ matrix.os }}
-        needs: [unit-test-sdk, integ-test-sdk]
+        needs: [test-sdk]
 
         strategy:
             matrix:
@@ -102,19 +91,20 @@ jobs:
             - name: Building packages
               run: yarn run build
 
-            - run: yarn run test:compile
-              working-directory: packages/databricks-vscode
-
-            - name: Tests (OSX)
+            - name: Unit Tests with Coverage (OSX)
               uses: GabrielBB/xvfb-action@v1
               if: matrix.os != 'windows-latest'
               with:
-                  run: yarn run test:unit
+                  run: yarn run test:cov
                   working-directory: packages/databricks-vscode
 
-            - name: Tests (Windows)
+            - name: Unit Tests with Coverage (Windows)
               if: matrix.os == 'windows-latest'
-              run: yarn run test:unit
+              run: yarn run test:cov
+              working-directory: packages/databricks-vscode
+
+            - name: Show coverage test result
+              run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
               working-directory: packages/databricks-vscode
 
             - name: Integration Tests
@@ -150,7 +140,7 @@ jobs:
             - run: mkdir -p packages/databricks-vscode/artifacts
 
             - name: Build VSIX
-              run: yarn workspace databricks vscode:package -o artifacts
+              run: yarn workspace databricks package -o artifacts
 
             - name: Upload artifacts
               uses: actions/upload-artifact@v3

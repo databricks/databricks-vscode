@@ -5,19 +5,13 @@ import * as tmp from "tmp-promise";
 import {
     VSBrowser,
     WebDriver,
-    ActivityBar,
     InputBox,
     Workbench,
     TreeItem,
     ContextMenu,
     CustomTreeSection,
 } from "vscode-extension-tester";
-import {
-    getViewSection,
-    openCommandPrompt,
-    openFolder,
-    waitForTreeItems,
-} from "./utils";
+import {getViewSection, openFolder, waitForTreeItems} from "./utils";
 
 describe("Configure Databricks Extension", function () {
     // these will be populated by the before() function
@@ -34,6 +28,9 @@ describe("Configure Databricks Extension", function () {
     before(async () => {
         browser = VSBrowser.instance;
         driver = browser.driver;
+
+        assert(process.env.TEST_DEFAULT_CLUSTER_ID);
+        clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
 
         ({path: projectDir, cleanup} = await tmp.dir());
         await openFolder(browser, projectDir);
@@ -83,10 +80,9 @@ describe("Configure Databricks Extension", function () {
         assert(labels.length > 0);
     });
 
+    // test is skipped because context menus currently don't work in vscode-extension-tester
+    // https://github.com/redhat-developer/vscode-extension-tester/issues/444
     it.skip("should filter clusters", async () => {
-        // test is skipped because context menus currently don't work in vscode-extension-tester
-        // https://github.com/redhat-developer/vscode-extension-tester/issues/444
-
         const section = await getViewSection("Clusters");
         assert(section);
         const action = await section!.getAction("Filter clusters ...");
@@ -102,26 +98,6 @@ describe("Configure Databricks Extension", function () {
     });
 
     it("should attach cluster", async () => {
-        const section = await getViewSection("Clusters");
-        assert(section);
-
-        const items = await section.getVisibleItems();
-        assert(items.length > 0);
-
-        // find top level cluster tree item
-        let item: TreeItem | undefined;
-        for (const i of items) {
-            if (await (i as TreeItem).hasChildren()) {
-                item = i as TreeItem;
-                break;
-            }
-        }
-        assert(item);
-
-        const buttons = await (item as TreeItem).getActionButtons();
-        await buttons[0].click();
-
-        // check if cluster is attached
         const config = await getViewSection("Configuration");
         assert(config);
         const configTree = config as CustomTreeSection;
@@ -131,15 +107,28 @@ describe("Configure Databricks Extension", function () {
         const configItems = await configTree.getVisibleItems();
 
         let clusterConfigItem: TreeItem | undefined;
-        const itemLabel = await item.getLabel();
         for (const i of configItems) {
             const label = await i.getLabel();
-            if (label === `Cluster: ${itemLabel}`) {
+            if (label.startsWith("Cluster")) {
                 clusterConfigItem = i;
                 break;
             }
         }
         assert(clusterConfigItem);
+
+        const buttons = await (
+            clusterConfigItem as TreeItem
+        ).getActionButtons();
+        await buttons[0].click();
+
+        const input = await InputBox.create();
+        while (await input.hasProgress()) {
+            await driver.sleep(200);
+        }
+
+        await input.setText(clusterId);
+        await input.confirm();
+        await input.selectQuickPick(0);
 
         // get cluster ID
         const clusterPropsItems = await clusterConfigItem.getChildren();

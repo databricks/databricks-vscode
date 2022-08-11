@@ -6,7 +6,7 @@
     "license": "Apache-2.0",
     "version": "0.0.1",
     "engines": {
-        "vscode": "^1.69.0"
+        "vscode": "^1.69.1"
     },
     "categories": [
         "Data Science",
@@ -41,15 +41,23 @@
         "onCommand:databricks.connection.configureProject",
         "onCommand:databricks.connection.openDatabricksConfigFile",
         "onCommand:databricks.connection.attachCluster",
+        "onCommand:databricks.connection.attachClusterQuickPick",
         "onCommand:databricks.connection.detachCluster",
+        "onCommand:databricks.connection.attachSyncDestination",
+        "onCommand:databricks.connection.detachSyncDestination",
+        "onCommand:databricks.cli.startSync",
+        "onCommand:databricks.cli.startSyncFull",
+        "onCommand:databricks.cli.stopSync",
         "onCommand:databricks.cluster.refresh",
         "onCommand:databricks.cluster.filterByAll",
         "onCommand:databricks.cluster.filterByMe",
         "onCommand:databricks.cluster.filterByRunning",
+        "onCommand:databricks.run.getProgramName",
+        "onCommand:databricks.run.runEditorContentsAsWorkflow",
         "onView:clusterManager",
         "onView:clusterList"
     ],
-    "main": "./dist/extension.js",
+    "main": "out/extension.js",
     "contributes": {
         "commands": [
             {
@@ -75,9 +83,26 @@
                 "icon": "$(plug)"
             },
             {
+                "command": "databricks.connection.attachClusterQuickPick",
+                "title": "Attach cluster",
+                "icon": "$(plug)"
+            },
+            {
                 "command": "databricks.connection.detachCluster",
                 "title": "Detach cluster",
                 "icon": "$(debug-disconnect)"
+            },
+            {
+                "command": "databricks.cli.startSync",
+                "title": "Databricks: Start synchronization"
+            },
+            {
+                "command": "databricks.cli.startSyncFull",
+                "title": "Databricks: Start synchronization (full sync)"
+            },
+            {
+                "command": "databricks.cli.stopSync",
+                "title": "Databricks: Stop synchronization"
             },
             {
                 "command": "databricks.cluster.filterByAll",
@@ -95,6 +120,23 @@
                 "command": "databricks.cluster.refresh",
                 "icon": "$(refresh)",
                 "title": "Refresh"
+            },
+            {
+                "command": "databricks.connection.attachSyncDestination",
+                "title": "Attach workspace",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.connection.detachSyncDestination",
+                "title": "Detach workspace",
+                "icon": "$(debug-disconnect)"
+            },
+            {
+                "command": "databricks.run.runEditorContentsAsWorkflow",
+                "title": "Run File as Workflow on Databricks",
+                "category": "Databricks",
+                "enablement": "!inDebugMode",
+                "icon": "$(play)"
             }
         ],
         "viewsContainers": {
@@ -160,14 +202,37 @@
                     "group": "inline@0"
                 },
                 {
-                    "command": "databricks.connection.detachCluster",
-                    "when": "view == configurationView && viewItem == clusterRunning",
+                    "command": "databricks.connection.attachClusterQuickPick",
+                    "when": "view == configurationView && viewItem == clusterDetached",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.connection.detachCluster",
-                    "when": "view == configurationView && viewItem == clusterStopped",
+                    "when": "view == configurationView && viewItem == clusterAttached",
                     "group": "inline@0"
+                },
+                {
+                    "command": "databricks.connection.attachSyncDestination",
+                    "when": "view == configurationView && viewItem == syncDestinationDetached",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.connection.detachSyncDestination",
+                    "when": "view == configurationView && viewItem == syncDestinationAttached",
+                    "group": "inline@0"
+                }
+            ],
+            "editor/title/run": [
+                {
+                    "command": "databricks.run.runEditorContentsAsWorkflow",
+                    "when": "resourceLangId == python",
+                    "group": "navigation@1"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "databricks.run.runEditorContentsAsWorkflow",
+                    "when": "resourceLangId == python"
                 }
             ]
         },
@@ -177,6 +242,22 @@
                 "label": "Filter clusters ...",
                 "icon": "$(filter)"
             }
+        ],
+        "problemMatchers": [
+            {
+                "name": "bricks-sync",
+                "owner": "bricks",
+                "fileLocation": "relative",
+                "pattern": {
+                    "regexp": "Putting (/Repos/.*)$",
+                    "file": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Syncing from",
+                    "endsPattern": "Done(\\. Watching for changes\\.\\.\\.)$"
+                }
+            }
         ]
     },
     "vsce": {
@@ -184,47 +265,65 @@
         "useYarn": false
     },
     "scripts": {
-        "vscode:prepublish": "yarn run package",
-        "vscode:package": "vsce package",
-        "compile": "webpack",
-        "watch": "webpack --watch",
-        "package": "webpack --mode production --devtool hidden-source-map",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
+        "package": "vsce package",
+        "package:compile": "yarn run esbuild:base --minify",
+        "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
+        "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+        "compile": "tsc",
+        "watch": "yarn run package:copy-webview-toolkit && tsc -w",
         "fix": "prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
-        "test:compile": "tsc -p . --outDir out",
-        "test:watch": "tsc -p . -w --outDir out",
-        "test:unit": "node ./out/test/runTest.js",
-        "test:integ:prepare": "yarn run vscode:package && extest get-vscode --type ${VSCODE_TEST_VERSION:-stable} --storage /tmp/vscode-test-databricks && extest get-chromedriver --storage /tmp/vscode-test-databricks && extest install-vsix -f databricks-0.0.1.vsix --storage /tmp/vscode-test-databricks",
-        "test:integ:run": "yarn run test:compile && ts-node src/test/e2e/scripts/e2e.ts --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json 'out/**/*.e2e.js'",
+        "test:unit": "yarn run compile && node ./out/test/runTest.js",
+        "test:integ:prepare": "yarn run package && extest get-vscode --code_version 1.69.1 --storage /tmp/vscode-test-databricks && extest get-chromedriver --storage /tmp/vscode-test-databricks && extest install-vsix -f databricks-0.0.1.vsix --storage /tmp/vscode-test-databricks",
+        "test:integ:run": "yarn run compile && node out/test/e2e/scripts/e2e.js --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json 'out/**/*.e2e.js'",
         "test:integ": "yarn run test:integ:prepare && yarn run test:integ:run",
-        "test": "yarn run test:compile && yarn run compile && yarn run test:lint && yarn run test:unit",
-        "build": "yarn run vscode:prepublish",
-        "clean": "rm -rf node_modules out dist .vscode-test"
+        "test:cov": "nyc yarn run test:unit",
+        "test": "yarn run test:lint && yarn run test:unit",
+        "clean": "rm -rf node_modules out .vscode-test"
     },
     "dependencies": {
         "@databricks/databricks-sdk": "*",
         "@vscode/webview-ui-toolkit": "^1.0.0"
     },
     "devDependencies": {
+        "@istanbuljs/nyc-config-typescript": "^1.0.2",
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.1",
-        "@types/node": "^18.0.6",
+        "@types/node": "^18.6.4",
         "@types/tmp": "^0.2.3",
-        "@types/vscode": "^1.69.0",
-        "@typescript-eslint/eslint-plugin": "^5.30.7",
+        "@types/vscode": "^1.69.1",
+        "@typescript-eslint/eslint-plugin": "^5.32.0",
+        "@typescript-eslint/parser": "^5.32.0",
         "@vscode/test-electron": "^2.1.5",
-        "eslint": "^8.20.0",
+        "esbuild": "^0.14.53",
+        "eslint": "^8.21.0",
         "glob": "^8.0.3",
         "mocha": "^10.0.0",
+        "nyc": "^15.1.0",
         "prettier": "^2.7.1",
         "tmp-promise": "^3.0.3",
-        "ts-loader": "^9.3.1",
         "ts-mockito": "^2.6.1",
-        "ts-node": "^10.9.1",
         "typescript": "^4.7.4",
         "vsce": "^2.10.0",
-        "vscode-extension-tester": "^4.3.0",
-        "webpack": "^5.73.0",
-        "webpack-cli": "^4.10.0"
+        "vscode-extension-tester": "^4.4.0"
+    },
+    "nyc": {
+        "extends": "@istanbuljs/nyc-config-typescript",
+        "check-coverage": false,
+        "all": true,
+        "skip-empty": true,
+        "include": [
+            "src/**/*.ts"
+        ],
+        "exclude": [
+            "src/**/*.test.ts",
+            "src/**/*.integ.ts"
+        ],
+        "reporter": [
+            "lcov",
+            "json"
+        ],
+        "report-dir": "coverage"
     }
 }

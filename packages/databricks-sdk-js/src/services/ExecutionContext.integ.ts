@@ -17,20 +17,20 @@ describe(__filename, function () {
     it("should run python with high level API", async () => {
         let context = await ExecutionContext.create(
             integSetup.client,
-            integSetup.clusterId
+            integSetup.cluster
         );
 
-        var command = await context.execute("print('juhu')");
-
         let statusUpdateCalled = false;
-        command.on("statusUpdate", (e) => (statusUpdateCalled = true));
+        var {cmd, result} = await context.execute(
+            "print('juhu')",
+            (e) => (statusUpdateCalled = true)
+        );
 
-        var result = await command.response();
-        // console.log(result);
-
-        command = await context.execute("print('kinners')");
-        result = await command.response();
-        // console.log(result);
+        statusUpdateCalled = false;
+        ({cmd, result} = await context.execute(
+            "print('kinners')",
+            (e) => (statusUpdateCalled = true)
+        ));
 
         assert(statusUpdateCalled);
         assert(result.results);

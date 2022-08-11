@@ -1,7 +1,7 @@
 import path from "path";
 import os from "os";
 
-import {runTests} from "@vscode/test-electron";
+import {downloadAndUnzipVSCode, runTests} from "@vscode/test-electron";
 
 async function main() {
     try {
@@ -13,8 +13,13 @@ async function main() {
         // Passed to --extensionTestsPath
         const extensionTestsPath = path.resolve(__dirname, "./suite");
 
+        const vscodeExecutablePath = await downloadAndUnzipVSCode(
+            process.env.VSCODE_TEST_VERSION || "stable"
+        );
+
         // Download VS Code, unzip it and run the integration test
         await runTests({
+            vscodeExecutablePath,
             extensionDevelopmentPath,
             extensionTestsPath,
             launchArgs: ["--user-data-dir", `${os.tmpdir()}`],

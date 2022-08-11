@@ -32,7 +32,7 @@ describe(__filename, function () {
             tasks: [
                 {
                     task_key: "hello_world",
-                    existing_cluster_id: integSetup.clusterId,
+                    existing_cluster_id: integSetup.cluster.id,
                     spark_python_task: {
                         python_file: `dbfs:${jobPath}`,
                     },
