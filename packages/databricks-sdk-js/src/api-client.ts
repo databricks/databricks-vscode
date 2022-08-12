@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import fetch from "node-fetch";
 import * as https from "node:https";
 import {TextDecoder} from "node:util";
 import {fromDefaultChain} from "./auth/fromChain";
+import {fetch} from "./fetch";
 
 const sdkVersion = require("../package.json").version;
 

@@ -2,7 +2,6 @@
 
 import {v4 as uuidv4} from "uuid";
 import {ApiClient} from "../api-client";
-import {ClusterService} from "../apis/cluster";
 import {Cluster} from "../services/Cluster";
 
 export class IntegrationTestSetup {
