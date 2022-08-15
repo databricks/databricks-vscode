@@ -7,6 +7,8 @@ import {
     ClusterState,
     ClusterSource,
 } from "../apis/cluster";
+import retry, {RetriableError} from "../retries/retries";
+import Time, {TimeUnits} from "../retries/Time";
 import {
     GetRunOutputResponse,
     JobsService,
@@ -17,6 +19,8 @@ import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
 
+export class ClusterRetriableError extends RetriableError {}
+export class ClusterError extends Error {}
 export class Cluster {
     private clusterApi: ClusterService;
 
@@ -74,8 +78,46 @@ export class Cluster {
     }
 
     async start() {
-        await this.clusterApi.start({
-            cluster_id: this.clusterDetails.cluster_id!,
+        await this.refresh();
+        if (this.state === "RUNNING") {
+            return;
+        }
+
+        if (
+            this.state === "TERMINATED" ||
+            this.state === "ERROR" ||
+            this.state === "UNKNOWN"
+        ) {
+            await this.clusterApi.start({
+                cluster_id: this.id,
+            });
+        }
+
+        await retry({
+            fn: async () => {
+                await this.refresh();
+
+                switch (this.state) {
+                    case "RUNNING":
+                        return;
+                    case "TERMINATED":
+                        throw new ClusterError(
+                            `Cluster[${
+                                this.name
+                            }]: CurrentState - Terminated; Reason - ${JSON.stringify(
+                                this.clusterDetails.termination_reason
+                            )}`
+                        );
+                    case "ERROR":
+                        throw new ClusterError(
+                            `Cluster[${this.name}]: Error in starting the cluster (${this.clusterDetails.state_message})`
+                        );
+                    default:
+                        throw new ClusterRetriableError(
+                            `Cluster[${this.name}]: CurrentState - ${this.state}; Reason - ${this.clusterDetails.state_message}`
+                        );
+                }
+            },
         });
     }
 
@@ -83,18 +125,25 @@ export class Cluster {
         await this.clusterApi.delete({
             cluster_id: this.clusterDetails.cluster_id!,
         });
-    }
 
-    async waitForState(state: ClusterState) {
-        while (true) {
-            await this.refresh();
+        await retry({
+            fn: async () => {
+                await this.refresh();
 
-            if (this.clusterDetails.state === state) {
-                return;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 3000));
-        }
+                switch (this.state) {
+                    case "TERMINATED":
+                        return;
+                    case "ERROR":
+                        throw new ClusterError(
+                            `Cluster[${this.name}]: Error while terminating - ${this.clusterDetails.state_message}`
+                        );
+                    default:
+                        throw new ClusterRetriableError(
+                            `Cluster[${this.name}]: CurrentState - ${this.state}; Reason - ${this.clusterDetails.state_message}`
+                        );
+                }
+            },
+        });
     }
 
     async createExecutionContext(): Promise<ExecutionContext> {

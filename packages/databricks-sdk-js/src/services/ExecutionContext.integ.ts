@@ -25,14 +25,14 @@ describe(__filename, function () {
             "print('juhu')",
             (e) => (statusUpdateCalled = true)
         );
+        assert(statusUpdateCalled);
+        assert(result.results);
+        assert(result.results.resultType === "text");
+        assert.equal(result.results.data, "juhu");
 
         statusUpdateCalled = false;
-        ({cmd, result} = await context.execute(
-            "print('kinners')",
-            (e) => (statusUpdateCalled = true)
-        ));
-
-        assert(statusUpdateCalled);
+        ({cmd, result} = await context.execute("print('kinners')"));
+        assert(!statusUpdateCalled);
         assert(result.results);
         assert(result.results.resultType === "text");
         assert.equal(result.results.data, "kinners");
