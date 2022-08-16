@@ -123,6 +123,15 @@ jobs:
         name: Package VSIX
         needs: "test-extension"
         runs-on: "macos-latest"
+
+        strategy:
+            matrix:
+                bricks_arch: ["darwin_arm64"]
+
+        env:
+            BRICKS_ARCH: ${{ matrix.bricks_arch }}
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
         steps:
             - uses: actions/checkout@v3
 
