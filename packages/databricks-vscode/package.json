@@ -270,7 +270,7 @@
         "useYarn": false
     },
     "scripts": {
-        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit && yarn run package:cli:release",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
         "package": "vsce package",
         "package:cli:release": "bash ./scripts/fetch-latest-bricks-cli.sh $BRICKS_ARCH",
         "package:compile": "yarn run esbuild:base --minify",
