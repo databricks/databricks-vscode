@@ -9,3 +9,4 @@ src/**
 **/.eslintrc.json
 **/*.map
 **/*.ts
+scripts/**
