@@ -1,4 +1,6 @@
+import {spawn} from "child_process";
 import {
+    ExtensionContext,
     ProcessExecution,
     Task,
     TaskExecution,
@@ -18,6 +20,16 @@ export class CliCommands {
         private connection: ConnectionManager,
         private cli: CliWrapper
     ) {}
+
+    testBricksCommand(context: ExtensionContext) {
+        return () => {
+            const {command, args} = this.cli.getTestBricksCommand(context);
+            const cmd = spawn(command, args);
+            cmd.stdout.on("data", (data) => {
+                console.log((data as Buffer).toString());
+            });
+        };
+    }
 
     stopSyncCommand() {
         return () => {

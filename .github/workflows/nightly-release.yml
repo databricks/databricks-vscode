@@ -7,6 +7,13 @@ on:
 jobs:
     archive-build-artifacts:
         runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                bricks_arch: ["darwin_arm64"]
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            BRICKS_ARCH: ${{ matrix.bricks_arch }}
+
         steps:
             - uses: actions/checkout@v3
 

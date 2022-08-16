@@ -48,6 +48,7 @@
         "onCommand:databricks.cli.startSync",
         "onCommand:databricks.cli.startSyncFull",
         "onCommand:databricks.cli.stopSync",
+        "onCommand:databricks.cli.testBricksCli",
         "onCommand:databricks.cluster.refresh",
         "onCommand:databricks.cluster.filterByAll",
         "onCommand:databricks.cluster.filterByMe",
@@ -103,6 +104,10 @@
             {
                 "command": "databricks.cli.stopSync",
                 "title": "Databricks: Stop synchronization"
+            },
+            {
+                "command": "databricks.cli.testBricksCli",
+                "title": "Databricks: test bricks cli"
             },
             {
                 "command": "databricks.cluster.filterByAll",
@@ -265,8 +270,9 @@
         "useYarn": false
     },
     "scripts": {
-        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit && yarn run package:cli:release",
         "package": "vsce package",
+        "package:cli:release": "bash ./scripts/fetch-latest-bricks-cli.sh $BRICKS_ARCH",
         "package:compile": "yarn run esbuild:base --minify",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",

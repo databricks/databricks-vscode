@@ -134,6 +134,11 @@ export function activate(context: ExtensionContext) {
             "databricks.cli.stopSync",
             cliCommands.stopSyncCommand(),
             cliCommands
+        ),
+        commands.registerCommand(
+            "databricks.cli.testBricksCli",
+            cliCommands.testBricksCommand(context),
+            cliCommands
         )
     );
 }

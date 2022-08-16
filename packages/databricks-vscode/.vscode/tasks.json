@@ -2,8 +2,20 @@
 // for the documentation about the tasks.json format
 {
     "version": "2.0.0",
+    "options": {
+        "env": {
+            "BRICKS_ARCH": "darwin_arm64"
+        }
+    },
     "tasks": [
         {
+            "label": "Fetch bricks cli",
+            "type": "shell",
+            "command": "yarn",
+            "args": ["run", "package:cli:release"]
+        },
+        {
+            "label": "NPM watch",
             "type": "npm",
             "script": "watch",
             "problemMatcher": "$tsc-watch",
@@ -11,7 +23,11 @@
             "presentation": {
                 "reveal": "never",
                 "group": "watchers"
-            },
+            }
+        },
+        {
+            "label": "Build",
+            "dependsOn": ["Fetch bricks cli", "NPM watch"],
             "group": {
                 "kind": "build",
                 "isDefault": true
