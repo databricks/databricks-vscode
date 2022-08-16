@@ -1,6 +1,28 @@
-import EventEmitter from "node:events";
-import {CommandsService, CommandsStatusResponse} from "../apis/commands";
+import {EventEmitter} from "events";
+import retry, {RetriableError} from "../retries/retries";
 import {ExecutionContext} from "./ExecutionContext";
+import {CommandsService, CommandsStatusResponse} from "../apis/commands";
+
+interface CommandErrorParams {
+    commandId: string;
+    clusterId: string;
+    contextId: string;
+    message?: string;
+}
+
+function getCommandErrorMessage(errorParams: CommandErrorParams): string {
+    return `Command [${errorParams.commandId}] Context [${errorParams.contextId}] Cluster [${errorParams.clusterId}]: ${errorParams.message}`;
+}
+class CommandRetriableError extends RetriableError {
+    constructor(errorParams: CommandErrorParams) {
+        super(getCommandErrorMessage(errorParams));
+    }
+}
+class CommandError extends Error {
+    constructor(errorParams: CommandErrorParams) {
+        super(getCommandErrorMessage(errorParams));
+    }
+}
 
 export interface CommandWithResult {
     cmd: Command;
@@ -22,28 +44,46 @@ export class Command extends EventEmitter {
         this.commandsApi = new CommandsService(context.client);
     }
 
+    private get commandErrorParams(): CommandErrorParams {
+        return {
+            commandId: this.id!,
+            clusterId: this.context.cluster.id,
+            contextId: this.context.id!,
+        };
+    }
+
     async response(): Promise<CommandsStatusResponse> {
-        while (true) {
-            let result = await this.commandsApi.status({
-                clusterId: this.context.cluster.id,
-                contextId: this.context.id!,
-                commandId: this.id!,
-            });
+        const result = await retry({
+            fn: async () => {
+                let result = await this.commandsApi.status({
+                    clusterId: this.context.cluster.id,
+                    contextId: this.context.id!,
+                    commandId: this.id!,
+                });
 
-            this.emit(Command.statusUpdateEvent, result);
+                this.emit(Command.statusUpdateEvent, result);
 
-            if (
-                result.status === "Cancelled" ||
-                result.status === "Error" ||
-                result.status === "Finished"
-            ) {
+                if (
+                    !["Cancelled", "Error", "Finished"].includes(result.status)
+                ) {
+                    throw new CommandRetriableError({
+                        ...this.commandErrorParams,
+                        message: `Current state of command is ${result.status}`,
+                    });
+                }
+
                 return result;
-            }
+            },
+        });
 
-            await new Promise((resolve) => {
-                setTimeout(resolve, 1000);
+        if (!result) {
+            throw new CommandError({
+                ...this.commandErrorParams,
+                message: `Command did not return a result`,
             });
         }
+
+        return result;
     }
 
     static async execute(
@@ -51,19 +91,19 @@ export class Command extends EventEmitter {
         command: string,
         onStatusUpdate: StatusUpdateListener = () => {}
     ): Promise<CommandWithResult> {
-        //console.log(`Executing (${language}): ${command}`);
         let cmd = new Command(context);
 
         cmd.on(Command.statusUpdateEvent, onStatusUpdate);
 
-        let result = await cmd.commandsApi.execute({
+        const executeApiResponse = await cmd.commandsApi.execute({
             clusterId: cmd.context.cluster.id,
             contextId: cmd.context.id!,
             language: cmd.context.language,
             command,
         });
 
-        cmd.id = result.id;
+        cmd.id = executeApiResponse.id;
+
         const executionResult = await cmd.response();
 
         return {cmd: cmd, result: executionResult};

@@ -26,9 +26,7 @@ export class IntegrationTestSetup {
                 process.env["TEST_DEFAULT_CLUSTER_ID"]!.split("'").join("");
 
             const cluster = await Cluster.fromClusterId(client, clusterId);
-            cluster.start();
-            // wait for cluster to be running
-            await cluster.waitForState("RUNNING");
+            await cluster.start();
 
             this._instance = new IntegrationTestSetup(client, cluster);
         }
