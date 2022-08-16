@@ -6,7 +6,6 @@ on:
 jobs:
     package:
         name: Package VSIX
-        needs: "test-extension"
         runs-on: "macos-latest"
 
         strategy:
