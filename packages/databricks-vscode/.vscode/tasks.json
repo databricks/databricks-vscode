@@ -12,7 +12,7 @@
             "label": "Fetch bricks cli",
             "type": "shell",
             "command": "yarn",
-            "args": ["run", "package:cli:release"]
+            "args": ["run", "package:cli:fetch"]
         },
         {
             "label": "NPM watch",
