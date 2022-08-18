@@ -1,4 +1,5 @@
 import {spawn} from "child_process";
+import {ExtensionContext} from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
 
 interface Command {
@@ -14,6 +15,13 @@ interface Command {
  */
 export class CliWrapper {
     constructor() {}
+
+    getTestBricksCommand(context: ExtensionContext): Command {
+        return {
+            command: context.asAbsolutePath("./bin/bricks"),
+            args: [],
+        };
+    }
 
     /**
      * Constructs the dbx sync command
