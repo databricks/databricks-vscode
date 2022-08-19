@@ -14,9 +14,9 @@ describe(__filename, function () {
 
     this.timeout(10 * 60 * 1000);
 
-    // before(async () => {
-    //     integSetup = await IntegrationTestSetup.getInstance();
-    // });
+    before(async () => {
+        integSetup = await IntegrationTestSetup.getInstance();
+    });
 
     it("should create an execution context", async () => {
         await integSetup.cluster.canExecute();
