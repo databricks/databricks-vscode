@@ -4,6 +4,8 @@ import {ExecutionContext} from "..";
 import assert from "assert";
 
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
+import {mock, when, instance} from "ts-mockito";
+import TokenFixture from "../test/fixtures/TokenFixture";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
@@ -38,5 +40,24 @@ describe(__filename, function () {
         assert.equal(result.results.data, "kinners");
 
         await context.destroy();
+    });
+
+    it("should cancel running command", async () => {
+        let context = await ExecutionContext.create(
+            integSetup.client,
+            integSetup.cluster
+        );
+
+        const token = mock(TokenFixture);
+        when(token.isCancellationRequested).thenReturn(false, false, true);
+
+        const {cmd, result} = await context.execute(
+            "while True: pass",
+            undefined,
+            instance(token)
+        );
+        assert.equal(result.status, "Finished");
+        assert(result.results?.resultType === "error");
+        assert(result.results.cause.includes("CommandCancelledException"));
     });
 });

@@ -8,7 +8,6 @@ import {
     ClusterSource,
 } from "../apis/cluster";
 import retry, {RetriableError} from "../retries/retries";
-import Time, {TimeUnits} from "../retries/Time";
 import {
     GetRunOutputResponse,
     JobsService,
@@ -18,6 +17,7 @@ import {
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
+import {Language} from "../apis/executionContext";
 
 export class ClusterRetriableError extends RetriableError {}
 export class ClusterError extends Error {}
@@ -77,7 +77,7 @@ export class Cluster {
         });
     }
 
-    async start() {
+    async start(cancellationToken?: CancellationToken) {
         await this.refresh();
         if (this.state === "RUNNING") {
             return;
@@ -95,6 +95,11 @@ export class Cluster {
 
         await retry({
             fn: async () => {
+                if (cancellationToken?.isCancellationRequested) {
+                    await this.stop();
+                    return;
+                }
+
                 await this.refresh();
 
                 switch (this.state) {
@@ -146,8 +151,10 @@ export class Cluster {
         });
     }
 
-    async createExecutionContext(): Promise<ExecutionContext> {
-        return await ExecutionContext.create(this.client, this);
+    async createExecutionContext(
+        language: Language = "python"
+    ): Promise<ExecutionContext> {
+        return await ExecutionContext.create(this.client, this, language);
     }
 
     async canExecute(): Promise<boolean> {
