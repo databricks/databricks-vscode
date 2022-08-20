@@ -72,6 +72,9 @@ export class Command extends EventEmitter {
         await retry({
             fn: async () => {
                 await this.refresh();
+                // The API surfaces an exception when a command is cancelled
+                // The cancellation itself proceeds as expected, but the status
+                // is FINISHED instead of CANCELLED.
                 if (
                     this.result!.results?.resultType === "error" &&
                     !this.result!.results.cause.includes(

@@ -56,6 +56,9 @@ describe(__filename, function () {
             undefined,
             instance(token)
         );
+        // The API surfaces an exception when a command is cancelled
+        // The cancellation itself proceeds as expected, but the status
+        // is FINISHED instead of CANCELLED
         assert.equal(result.status, "Finished");
         assert(result.results?.resultType === "error");
         assert(result.results.cause.includes("CommandCancelledException"));
