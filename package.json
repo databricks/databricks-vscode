@@ -34,5 +34,8 @@
         "eslint": "^8.21.0",
         "eslint-config-prettier": "^8.5.0",
         "typescript": "^4.7.4"
+    },
+    "resolutions": {
+        "got@11.8.5": "patch:got@npm:11.8.5#.yarn/patches/got-npm-11.8.5-787b5e3116.patch"
     }
 }
