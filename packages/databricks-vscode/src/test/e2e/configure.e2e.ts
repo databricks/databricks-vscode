@@ -68,7 +68,7 @@ describe("Configure Databricks Extension", async function () {
                 cleanup: async () => {
                     await imageLogger.dump();
                 },
-                every: new Time(2, TimeUnits.seconds),
+                every: new Time(1, TimeUnits.seconds),
             });
 
         periodicRunner.start();
