@@ -20,7 +20,6 @@ export class PeriodicRunner {
             const jitter = new Time(Math.random(), TimeUnits.seconds);
 
             setTimeout(() => {
-                console.log("here", jitter.toMillSeconds().value);
                 this.runFunctions[idx].timer = setInterval(
                     runFunction.fn,
                     runFunction.every.toMillSeconds().value
@@ -31,7 +30,6 @@ export class PeriodicRunner {
 
     async stop() {
         this.runFunctions.forEach(async (runFunction) => {
-            console.log(runFunction.timer);
             if (runFunction.timer) {
                 clearInterval(runFunction.timer);
             }
