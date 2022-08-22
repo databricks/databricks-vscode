@@ -13,3 +13,4 @@ out/
 !.yarn/versions
 **/coverage/
 **/.nyc_output/
+.databricks/**
