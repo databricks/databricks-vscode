@@ -22,11 +22,15 @@ async function main(args: string[]) {
     );
 
     const {path: configFile, cleanup} = await tmp.file();
+    let host = process.env["DATABRICKS_HOST"];
+    if (!host.startsWith("http")) {
+        host = `https://${host}`;
+    }
     try {
         await fs.writeFile(
             configFile,
             `[DEFAULT]
-host = ${process.env["DATABRICKS_HOST"]}
+host = ${host}
 token = ${process.env["DATABRICKS_TOKEN"]}`
         );
 

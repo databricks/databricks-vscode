@@ -128,7 +128,6 @@ describe("Configure Databricks Extension", function () {
 
         await input.setText(clusterId);
         await input.confirm();
-        await input.selectQuickPick(0);
 
         // get cluster ID
         const clusterPropsItems = await clusterConfigItem.getChildren();
