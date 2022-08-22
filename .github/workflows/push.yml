@@ -121,6 +121,13 @@ jobs:
                       cd packages/databricks-vscode
                       yarn run test:integ
 
+            - name: Upload test logs
+              if: failure()
+              uses: actions/upload-artifact@v3
+              with:
+                  name: test-logs
+                  path: packages/databricks-vscode/src/test/logs
+
     package:
         name: Package VSIX
         needs: "test-extension"
