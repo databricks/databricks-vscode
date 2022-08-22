@@ -282,6 +282,7 @@
         "fix": "prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",
+        "test:integ:clean": "yarn run clean && rm -rf /tmp/vscode-test-databricks /tmp/databricks-vscode-test-extensions",
         "test:integ:prepare": "yarn run package && extest get-vscode --code_version 1.69.1 --storage /tmp/vscode-test-databricks && extest get-chromedriver --storage /tmp/vscode-test-databricks",
         "test:integ:install-vsix": "extest install-vsix --storage /tmp/vscode-test-databricks -f databricks-0.0.1.vsix -e /tmp/databricks-vscode-test-extensions",
         "test:integ:run": "yarn run build && node out/test/e2e/scripts/e2e.js -e /tmp/databricks-vscode-test-extensions --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json 'out/**/*.e2e.js'",
