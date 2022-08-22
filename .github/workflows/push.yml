@@ -125,7 +125,7 @@ jobs:
               if: always()
               uses: actions/upload-artifact@v3
               with:
-                  name: test-logs
+                  name: test-logs ${{ join(matrix.*, ' - ') }} - ${{ github.event_name }}
                   path: packages/databricks-vscode/src/test/logs
 
     package:
