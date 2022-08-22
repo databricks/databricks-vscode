@@ -34,8 +34,5 @@
         "eslint": "^8.21.0",
         "eslint-config-prettier": "^8.5.0",
         "typescript": "^4.7.4"
-    },
-    "resolutions": {
-        "p-cancelable@2.1.1": "patch:p-cancelable@npm:2.1.1#.yarn/patches/p-cancelable-npm-2.1.1-9388305f02.patch"
     }
 }
