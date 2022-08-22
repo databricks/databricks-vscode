@@ -115,8 +115,10 @@ jobs:
                   timeout_minutes: 2
                   retry_on: error
                   command: |
-                      yarn cache clean && yarn clean
-                      yarn install --immutable && yarn build
+                      yarn cache clean
+                      yarn clean
+                      yarn install --immutable
+                      yarn build
                       cd packages/databricks-vscode
                       yarn run test:integ:prepare
                       yarn run test:integ:run
