@@ -56,7 +56,7 @@ jobs:
                   yarn nyc merge all final/final.json
                   yarn nyc report --reporter text -t ./coverage/final >> $GITHUB_STEP_SUMMARY
 
-    test-extension-unit:
+    test-extension:
         name: Test VSCode Extension
         runs-on: ${{ matrix.os }}
         needs: [test-sdk]
