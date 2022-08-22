@@ -1,0 +1,14 @@
+diff --git a/index.js b/index.js
+index 186adcee59b4d82f7fd0700c5fb68cdeaff0c33e..a2953575731805e795009a570744d0228d19650b 100644
+--- a/index.js
++++ b/index.js
+@@ -45,7 +45,8 @@ class PCancelable {
+ 
+ 			const onCancel = handler => {
+ 				if (!this._isPending) {
+-					throw new Error('The `onCancel` handler was attached after the promise settled.');
++					// throw new Error('The `onCancel` handler was attached after the promise settled.');
++					console.error('The `onCancel` handler was attached after the promise settled')
+ 				}
+ 
+ 				this._cancelHandlers.push(handler);
