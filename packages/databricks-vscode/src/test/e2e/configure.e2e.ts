@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import path from "node:path";
+import path, {resolve} from "node:path";
 import * as fs from "fs/promises";
 import * as tmp from "tmp-promise";
 import {
@@ -12,8 +12,11 @@ import {
     CustomTreeSection,
 } from "vscode-extension-tester";
 import {getViewSection, openFolder, waitForTreeItems} from "./utils";
+import Time, {TimeUnits} from "@databricks/databricks-sdk/dist/retries/Time";
+import {PeriodicRunner} from "../PeriodicRunner";
+import {ImageLogger, Logger} from "../loggingUtils";
 
-describe("Configure Databricks Extension", function () {
+describe("Configure Databricks Extension", async function () {
     // these will be populated by the before() function
     let browser: VSBrowser;
     let driver: WebDriver;
@@ -22,10 +25,11 @@ describe("Configure Databricks Extension", function () {
 
     // this will be populated by the tests
     let clusterId: string;
+    let periodicRunner: PeriodicRunner;
 
     this.timeout(10 * 60 * 1000);
 
-    before(async () => {
+    before(async function () {
         browser = VSBrowser.instance;
         driver = browser.driver;
 
@@ -36,16 +40,60 @@ describe("Configure Databricks Extension", function () {
         await openFolder(browser, projectDir);
     });
 
-    after(() => {
+    beforeEach(async function () {
+        const logger = await Logger.getLogger(
+            this.currentTest?.parent?.title ?? "Default",
+            this.currentTest?.title ?? "Default"
+        );
+        const imageLogger = ImageLogger.getLogger(
+            this.currentTest?.parent?.title ?? "Default",
+            this.currentTest?.title ?? "Default"
+        );
+
+        periodicRunner = new PeriodicRunner()
+            .runFunction({
+                fn: async () => {
+                    (await driver.manage().logs().get("browser")).map(
+                        (entry) => {
+                            logger.info(entry.message);
+                        }
+                    );
+                },
+                every: new Time(1, TimeUnits.seconds),
+            })
+            .runFunction({
+                fn: async () => {
+                    await imageLogger.log(await driver.takeScreenshot());
+                },
+                cleanup: async () => {
+                    await imageLogger.dump();
+                },
+                every: new Time(2, TimeUnits.seconds),
+            });
+
+        periodicRunner.start();
+    });
+
+    afterEach(async function () {
+        await new Promise((resolve) => {
+            setTimeout(
+                resolve,
+                new Time(2, TimeUnits.seconds).toMillSeconds().value
+            );
+        });
+        periodicRunner.stop();
+    });
+
+    after(function () {
         cleanup();
     });
 
-    it("should open VSCode", async () => {
+    it("should open VSCode", async function () {
         const title = await driver.getTitle();
         assert(title.indexOf("Get Started") >= 0);
     });
 
-    it("should open databricks panel and login", async () => {
+    it("should open databricks panel and login", async function () {
         const section = await getViewSection("Configuration");
         assert(section);
         const welcome = await section.findWelcomeContent();
@@ -61,14 +109,14 @@ describe("Configure Databricks Extension", function () {
         assert(await waitForTreeItems(section));
     });
 
-    it("should dismiss notifications", async () => {
+    it("should dismiss notifications", async function () {
         const notifications = await new Workbench().getNotifications();
         for (const n of notifications) {
             await n.dismiss();
         }
     });
 
-    it("shoult list clusters", async () => {
+    it("shoult list clusters", async function () {
         const section = await getViewSection("Clusters");
         assert(section);
         const tree = section as CustomTreeSection;
@@ -82,7 +130,7 @@ describe("Configure Databricks Extension", function () {
 
     // test is skipped because context menus currently don't work in vscode-extension-tester
     // https://github.com/redhat-developer/vscode-extension-tester/issues/444
-    it.skip("should filter clusters", async () => {
+    it.skip("should filter clusters", async function () {
         const section = await getViewSection("Clusters");
         assert(section);
         const action = await section!.getAction("Filter clusters ...");
@@ -97,7 +145,7 @@ describe("Configure Databricks Extension", function () {
         assert(items.length > 0);
     });
 
-    it("should attach cluster", async () => {
+    it("should attach cluster", async function () {
         const config = await getViewSection("Configuration");
         assert(config);
         const configTree = config as CustomTreeSection;
@@ -141,7 +189,7 @@ describe("Configure Databricks Extension", function () {
         assert(clusterId);
     });
 
-    it("should write the project config file", async () => {
+    it("should write the project config file", async function () {
         let projectConfig = JSON.parse(
             await fs.readFile(
                 path.join(projectDir, ".databricks", "project.json"),
