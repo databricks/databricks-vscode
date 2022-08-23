@@ -15,6 +15,7 @@ jobs:
             matrix:
                 os: [windows-latest, ubuntu-latest]
                 node-version: [14.x, 18.x]
+            fail-fast: false
 
         defaults:
             run:
@@ -66,6 +67,7 @@ jobs:
                 os: [windows-latest, macos-latest]
                 node-version: [16.x]
                 vscode-version: [stable, insiders]
+            fail-fast: false
 
         env:
             VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
