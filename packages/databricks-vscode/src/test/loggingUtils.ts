@@ -8,7 +8,7 @@ import AsyncLock from "async-lock";
 export const defaultLogsPath = path.join(
     findGitRoot()!,
     "packages/databricks-vscode/src/test/logs",
-    Date.now()
+    Date.now().toString()
 );
 
 export class Logger {
