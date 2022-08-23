@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {ApiClient, Cluster, ClusterService} from "..";
+import {Cluster} from "..";
 import assert from "assert";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
-import {mock, when, instance, deepEqual, verify, anything} from "ts-mockito";
 
 chai.use(chaiAsPromised);
 

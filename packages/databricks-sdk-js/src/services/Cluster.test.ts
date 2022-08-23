@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {ApiClient, CancellationToken, Cluster} from "..";
+import {ApiClient, Cluster} from "..";
 import chai, {assert} from "chai";
 import {mock, when, instance, deepEqual, verify, anything} from "ts-mockito";
 import chaiAsPromised from "chai-as-promised";
@@ -8,6 +8,7 @@ import Time, {TimeUnits} from "../retries/Time";
 import getMockTestCluster from "../test/fixtures/ClusterFixtures";
 import {GetClusterResponse} from "../apis/cluster";
 import TokenFixture from "../test/fixtures/TokenFixture";
+import {RetryConfigs} from "../retries/retries";
 
 chai.use(chaiAsPromised);
 
@@ -21,6 +22,10 @@ describe(__filename, function () {
     beforeEach(async () => {
         ({mockedCluster, mockedClient, testClusterDetails} =
             await getMockTestCluster());
+
+        RetryConfigs.waitTime = (attempt) => {
+            return new Time(0, TimeUnits.milliseconds);
+        };
     });
 
     it("calling start on a non terminated state should not throw an error", async () => {
@@ -33,6 +38,18 @@ describe(__filename, function () {
                 })
             )
         ).thenResolve(
+            {
+                ...testClusterDetails,
+                state: "PENDING",
+            },
+            {
+                ...testClusterDetails,
+                state: "PENDING",
+            },
+            {
+                ...testClusterDetails,
+                state: "PENDING",
+            },
             {
                 ...testClusterDetails,
                 state: "PENDING",
@@ -59,7 +76,7 @@ describe(__filename, function () {
                 anything(),
                 anything()
             )
-        ).times(3);
+        ).times(6);
 
         verify(
             mockedClient.request(
@@ -220,5 +237,6 @@ describe(__filename, function () {
         await mockedCluster.start(instance(token));
 
         verify(token.isCancellationRequested).thrice();
+        assert.equal(mockedCluster.state, "TERMINATED");
     });
 });

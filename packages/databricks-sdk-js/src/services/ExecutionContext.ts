@@ -1,4 +1,4 @@
-import {CancellationToken, cluster} from "..";
+import {CancellationToken} from "..";
 import {ApiClient} from "../api-client";
 import {ExecutionContextService, Language} from "../apis/executionContext";
 import {Cluster} from "./Cluster";
@@ -34,14 +34,9 @@ export class ExecutionContext {
     async execute(
         command: string,
         onStatusUpdate: StatusUpdateListener = () => {},
-        cancelationToken?: CancellationToken
+        token?: CancellationToken
     ): Promise<CommandWithResult> {
-        return await Command.execute(
-            this,
-            command,
-            onStatusUpdate,
-            cancelationToken
-        );
+        return await Command.execute(this, command, onStatusUpdate, token);
     }
 
     async destroy() {

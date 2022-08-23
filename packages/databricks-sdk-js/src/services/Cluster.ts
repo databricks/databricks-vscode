@@ -77,7 +77,7 @@ export class Cluster {
         });
     }
 
-    async start(cancellationToken?: CancellationToken) {
+    async start(token?: CancellationToken) {
         await this.refresh();
         if (this.state === "RUNNING") {
             return;
@@ -95,7 +95,7 @@ export class Cluster {
 
         await retry({
             fn: async () => {
-                if (cancellationToken?.isCancellationRequested) {
+                if (token?.isCancellationRequested) {
                     await this.stop();
                     return;
                 }
