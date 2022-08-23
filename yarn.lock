@@ -592,6 +592,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/async-lock@npm:^1.1.5":
+  version: 1.1.5
+  resolution: "@types/async-lock@npm:1.1.5"
+  checksum: 0e54293601fa43bd4f7641020ad04f063a8dd3df4cf9198194ddaa13660534815bb75d6571dbcad6e9c3757104c02a49f58bbe791204c6d89bc948ab8482cfed
+  languageName: node
+  linkType: hard
+
 "@types/cacheable-request@npm:^6.0.1":
   version: 6.0.2
   resolution: "@types/cacheable-request@npm:6.0.2"
@@ -1105,6 +1112,13 @@ __metadata:
   version: 1.1.0
   resolution: "assertion-error@npm:1.1.0"
   checksum: fd9429d3a3d4fd61782eb3962ae76b6d08aa7383123fca0596020013b3ebd6647891a85b05ce821c47d1471ed1271f00b0545cf6a4326cf2fc91efcc3b0fbecf
+  languageName: node
+  linkType: hard
+
+"async-lock@npm:^1.3.2":
+  version: 1.3.2
+  resolution: "async-lock@npm:1.3.2"
+  checksum: d66d6163d4a5c1d09f60118d850da53394a2b8ccae28e0613a88fc33e8b0c2b3266c4f6ed0bc5c9889ad8a926fc886a3e06600775c7264289e8814e39018cd7f
   languageName: node
   linkType: hard
 
@@ -1816,6 +1830,7 @@ __metadata:
   dependencies:
     "@databricks/databricks-sdk": "*"
     "@istanbuljs/nyc-config-typescript": ^1.0.2
+    "@types/async-lock": ^1.1.5
     "@types/glob": ^7.2.0
     "@types/mocha": ^9.1.1
     "@types/node": ^18.7.1
@@ -1825,6 +1840,7 @@ __metadata:
     "@typescript-eslint/parser": ^5.33.0
     "@vscode/test-electron": ^2.1.5
     "@vscode/webview-ui-toolkit": ^1.0.0
+    async-lock: ^1.3.2
     esbuild: ^0.15.1
     eslint: ^8.21.0
     glob: ^8.0.3

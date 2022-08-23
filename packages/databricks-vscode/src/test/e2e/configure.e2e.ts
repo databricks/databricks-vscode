@@ -66,7 +66,7 @@ describe("Configure Databricks Extension", async function () {
                     await imageLogger.log(await driver.takeScreenshot());
                 },
                 cleanup: async () => {
-                    await imageLogger.dump();
+                    await imageLogger.flush();
                 },
                 every: new Time(1, TimeUnits.seconds),
             });
@@ -81,7 +81,7 @@ describe("Configure Databricks Extension", async function () {
                 new Time(2, TimeUnits.seconds).toMillSeconds().value
             );
         });
-        periodicRunner.stop();
+        await periodicRunner.stop();
     });
 
     after(function () {

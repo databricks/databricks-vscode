@@ -3,10 +3,12 @@ import {mkdir, writeFile} from "fs/promises";
 import path from "path";
 import winston, {format, transports} from "winston";
 import {findGitRoot} from "./utils";
+import AsyncLock from "async-lock";
 
 export const defaultLogsPath = path.join(
     findGitRoot()!,
-    "packages/databricks-vscode/src/test/logs"
+    "packages/databricks-vscode/src/test/logs",
+    new Date().toLocaleTimeString()
 );
 
 export class Logger {
@@ -51,6 +53,8 @@ export class Logger {
 export class ImageLogger {
     private count = 0;
     private images: string[] = [];
+    private static lock = new AsyncLock();
+
     private constructor(readonly dirname: string) {
         mkdirSync(dirname, {recursive: true});
     }
@@ -65,7 +69,7 @@ export class ImageLogger {
         );
     }
 
-    async dump() {
+    private async _flush() {
         for (let image of this.images) {
             await writeFile(
                 path.join(this.dirname, `image-${this.count}.png`),
@@ -78,13 +82,21 @@ export class ImageLogger {
         this.images = [];
     }
 
+    /** flushes all collected images to disk */
+    async flush() {
+        await ImageLogger.lock.acquire("image-array", this._flush);
+    }
+
+    /** Buffer images and flushes to disk once every 10 images */
     async log(image: string) {
-        this.images.push(image);
+        await ImageLogger.lock.acquire("image-array", () =>
+            this.images.push(image)
+        );
 
         if (this.images.length < 10) {
             return;
         }
 
-        await this.dump();
+        await this.flush();
     }
 }
