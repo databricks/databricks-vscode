@@ -31,7 +31,6 @@ export class RetryConfigs {
 interface RetryArgs<T> {
     timeout?: Time;
     fn: () => Promise<T>;
-    waitTime?: (attempt: number) => Time;
 }
 
 export default async function retry<T>({
