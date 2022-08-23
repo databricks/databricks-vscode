@@ -106,6 +106,7 @@ jobs:
               working-directory: packages/databricks-vscode
 
             - name: Show coverage test result
+              continue-on-error: true
               run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
               working-directory: packages/databricks-vscode
 
@@ -125,6 +126,7 @@ jobs:
 
             - name: Upload test logs
               if: always()
+              continue-on-error: true
               uses: actions/upload-artifact@v3
               with:
                   name: test-logs ${{ join(matrix.*, ' - ') }} - ${{ github.event_name }}
