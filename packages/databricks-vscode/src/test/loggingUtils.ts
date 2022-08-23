@@ -53,7 +53,7 @@ export class Logger {
 export class ImageLogger {
     private count = 0;
     private images: string[] = [];
-    private static lock = new AsyncLock();
+    private lock = new AsyncLock();
 
     private constructor(readonly dirname: string) {
         mkdirSync(dirname, {recursive: true});
@@ -69,7 +69,8 @@ export class ImageLogger {
         );
     }
 
-    private async _flush() {
+    /** flushes all collected images to disk */
+    async flush() {
         for (let image of this.images) {
             await writeFile(
                 path.join(this.dirname, `image-${this.count}.png`),
@@ -82,17 +83,9 @@ export class ImageLogger {
         this.images = [];
     }
 
-    /** flushes all collected images to disk */
-    async flush() {
-        await ImageLogger.lock.acquire("image-array", this._flush);
-    }
-
     /** Buffer images and flushes to disk once every 10 images */
     async log(image: string) {
-        await ImageLogger.lock.acquire("image-array", () =>
-            this.images.push(image)
-        );
-
+        this.images.push(image);
         if (this.images.length < 10) {
             return;
         }

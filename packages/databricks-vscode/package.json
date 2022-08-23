@@ -297,7 +297,6 @@
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
-        "@types/async-lock": "^1.1.5",
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.1",
         "@types/node": "^18.7.1",
@@ -306,7 +305,6 @@
         "@typescript-eslint/eslint-plugin": "^5.33.0",
         "@typescript-eslint/parser": "^5.33.0",
         "@vscode/test-electron": "^2.1.5",
-        "async-lock": "^1.3.2",
         "esbuild": "^0.15.1",
         "eslint": "^8.21.0",
         "glob": "^8.0.3",
