@@ -3,7 +3,6 @@ import {mkdir, writeFile} from "fs/promises";
 import path from "path";
 import winston, {format, transports} from "winston";
 import {findGitRoot} from "./utils";
-import AsyncLock from "async-lock";
 
 export const defaultLogsPath = path.join(
     findGitRoot()!,
@@ -53,7 +52,6 @@ export class Logger {
 export class ImageLogger {
     private count = 0;
     private images: string[] = [];
-    private lock = new AsyncLock();
 
     private constructor(readonly dirname: string) {
         mkdirSync(dirname, {recursive: true});

@@ -21,7 +21,10 @@ jobs:
             run:
                 shell: bash
                 working-directory: packages/databricks-sdk-js
-
+        env:
+            DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+            DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
         steps:
             - uses: actions/checkout@v3
 
@@ -42,12 +45,14 @@ jobs:
             - name: Unit Tests With Code Cov
               run: yarn test:cov
 
-            - name: Integration Tests With Code Cov
-              run: yarn run test:integ:cov
-              env:
-                  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-                  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-                  TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
+            - name: Integration Tests
+              uses: nick-fields/retry@v2
+              with:
+                  max_attempts: 3
+                  retry_wait_seconds: 2
+                  timeout_minutes: 10
+                  retry_on: any
+                  command: yarn run test:integ:cov
 
             - run: |
                   cd coverage
