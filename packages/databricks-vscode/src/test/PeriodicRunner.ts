@@ -17,22 +17,21 @@ export class PeriodicRunner {
 
     start() {
         this.runFunctions.forEach((runFunction, idx) => {
-            const jitter = new Time(Math.random(), TimeUnits.seconds);
-
-            setTimeout(() => {
-                this.runFunctions[idx].timer = setInterval(
-                    runFunction.fn,
-                    runFunction.every.toMillSeconds().value
-                );
-            }, jitter.toMillSeconds().value);
+            this.runFunctions[idx].timer = setInterval(
+                runFunction.fn,
+                runFunction.every.toMillSeconds().value
+            );
         });
     }
 
     async stop() {
-        this.runFunctions.forEach(async (runFunction) => {
+        this.runFunctions.forEach((runFunction) => {
             if (runFunction.timer) {
                 clearInterval(runFunction.timer);
             }
+        });
+
+        this.runFunctions.forEach(async (runFunction) => {
             if (runFunction.cleanup) {
                 await runFunction.cleanup();
             }

@@ -25,7 +25,7 @@ describe("Configure Databricks Extension", async function () {
 
     // this will be populated by the tests
     let clusterId: string;
-    let periodicRunner: PeriodicRunner;
+    let periodicRunners = new Map<string, PeriodicRunner>();
 
     this.timeout(10 * 60 * 1000);
 
@@ -41,16 +41,13 @@ describe("Configure Databricks Extension", async function () {
     });
 
     beforeEach(async function () {
-        const logger = await Logger.getLogger(
-            this.currentTest?.parent?.title ?? "Default",
-            this.currentTest?.title ?? "Default"
-        );
-        const imageLogger = ImageLogger.getLogger(
-            this.currentTest?.parent?.title ?? "Default",
-            this.currentTest?.title ?? "Default"
-        );
+        const testName = this.currentTest?.title ?? "Default";
+        const suiteName = this.currentTest?.parent?.title ?? "Default";
 
-        periodicRunner = new PeriodicRunner()
+        const logger = await Logger.getLogger(suiteName, testName);
+        const imageLogger = ImageLogger.getLogger(suiteName, testName);
+
+        const periodicRunner = new PeriodicRunner()
             .runFunction({
                 fn: async () => {
                     (await driver.manage().logs().get("browser")).map(
@@ -72,10 +69,13 @@ describe("Configure Databricks Extension", async function () {
             });
 
         periodicRunner.start();
+        periodicRunners.set(testName, periodicRunner);
     });
 
     afterEach(async function () {
-        await periodicRunner.stop();
+        const testName = this.currentTest?.title ?? "Default";
+        await periodicRunners.get(testName)?.stop();
+        periodicRunners.delete(testName);
     });
 
     after(function () {
