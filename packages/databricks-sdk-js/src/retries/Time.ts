@@ -17,22 +17,22 @@ export default class Time {
     }
 
     public toMillSeconds(): Time {
-        let secondsValue = 0;
+        let milliSecondsValue = 0;
         switch (this.units) {
             case TimeUnits.hours:
-                secondsValue = this.value * 60 * 60 * 1000;
+                milliSecondsValue = this.value * 60 * 60 * 1000;
                 break;
             case TimeUnits.minutes:
-                secondsValue = this.value * 60 * 1000;
+                milliSecondsValue = this.value * 60 * 1000;
                 break;
             case TimeUnits.seconds:
-                secondsValue = this.value * 1000;
+                milliSecondsValue = this.value * 1000;
                 break;
             case TimeUnits.milliseconds:
-                secondsValue = this.value;
+                milliSecondsValue = this.value;
                 break;
         }
-        return new Time(secondsValue, TimeUnits.seconds);
+        return new Time(milliSecondsValue, TimeUnits.milliseconds);
     }
 
     public add(other: Time): Time {

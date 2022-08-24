@@ -15,12 +15,16 @@ jobs:
             matrix:
                 os: [windows-latest, ubuntu-latest]
                 node-version: [14.x, 18.x]
+            fail-fast: false
 
         defaults:
             run:
                 shell: bash
                 working-directory: packages/databricks-sdk-js
-
+        env:
+            DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+            DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
         steps:
             - uses: actions/checkout@v3
 
@@ -41,12 +45,14 @@ jobs:
             - name: Unit Tests With Code Cov
               run: yarn test:cov
 
-            - name: Integration Tests With Code Cov
-              run: yarn run test:integ:cov
-              env:
-                  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-                  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-                  TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
+            - name: Integration Tests
+              uses: nick-fields/retry@v2
+              with:
+                  max_attempts: 3
+                  retry_wait_seconds: 2
+                  timeout_minutes: 10
+                  retry_on: any
+                  command: yarn run test:integ:cov
 
             - run: |
                   cd coverage
@@ -66,6 +72,7 @@ jobs:
                 os: [windows-latest, macos-latest]
                 node-version: [16.x]
                 vscode-version: [stable, insiders]
+            fail-fast: false
 
         env:
             VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
@@ -104,6 +111,7 @@ jobs:
               working-directory: packages/databricks-vscode
 
             - name: Show coverage test result
+              continue-on-error: true
               run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
               working-directory: packages/databricks-vscode
 
@@ -112,12 +120,22 @@ jobs:
               with:
                   max_attempts: 3
                   retry_wait_seconds: 2
-                  timeout_minutes: 2
-                  retry_on: error
+                  timeout_minutes: 10
+                  retry_on: any
                   command: |
+                      yarn workspace databricks run test:integ:clean
+                      yarn install --immutable
+                      yarn build
                       cd packages/databricks-vscode
-                      yarn run test:integ:prepare
-                      yarn run test:integ:run
+                      yarn run test:integ
+
+            - name: Upload test logs
+              if: always()
+              continue-on-error: true
+              uses: actions/upload-artifact@v3
+              with:
+                  name: test-logs ${{ join(matrix.*, ' - ') }} - ${{ github.event_name }}
+                  path: packages/databricks-vscode/src/test/logs
 
     package:
         name: Package VSIX
