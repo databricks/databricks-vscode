@@ -2,6 +2,7 @@ import {EventEmitter} from "events";
 import retry, {RetriableError} from "../retries/retries";
 import {ExecutionContext} from "./ExecutionContext";
 import {CommandsService, CommandsStatusResponse} from "../apis/commands";
+import {CancellationToken} from "../types";
 
 interface CommandErrorParams {
     commandId: string;
@@ -34,11 +35,12 @@ export type StatusUpdateListener = (result: CommandsStatusResponse) => void;
 export class Command extends EventEmitter {
     readonly context: ExecutionContext;
     readonly commandsApi: CommandsService;
+    result?: CommandsStatusResponse;
     id?: string;
 
     private static statusUpdateEvent: string = "statusUpdate";
 
-    constructor(context: ExecutionContext) {
+    private constructor(context: ExecutionContext) {
         super();
         this.context = context;
         this.commandsApi = new CommandsService(context.client);
@@ -52,44 +54,103 @@ export class Command extends EventEmitter {
         };
     }
 
-    async response(): Promise<CommandsStatusResponse> {
-        const result = await retry({
+    async refresh() {
+        this.result = await this.commandsApi.status({
+            clusterId: this.context.cluster.id,
+            contextId: this.context.id!,
+            commandId: this.id!,
+        });
+    }
+
+    async cancel() {
+        await this.commandsApi.cancel({
+            commandId: this.id!,
+            contextId: this.context.id!,
+            clusterId: this.context.cluster.id!,
+        });
+
+        await retry({
             fn: async () => {
-                let result = await this.commandsApi.status({
-                    clusterId: this.context.cluster.id,
-                    contextId: this.context.id!,
-                    commandId: this.id!,
-                });
-
-                this.emit(Command.statusUpdateEvent, result);
-
+                await this.refresh();
+                // The API surfaces an exception when a command is cancelled
+                // The cancellation itself proceeds as expected, but the status
+                // is FINISHED instead of CANCELLED.
                 if (
-                    !["Cancelled", "Error", "Finished"].includes(result.status)
+                    this.result!.results?.resultType === "error" &&
+                    !this.result!.results.cause.includes(
+                        "CommandCancelledException"
+                    )
                 ) {
-                    throw new CommandRetriableError({
+                    throw new CommandError({
                         ...this.commandErrorParams,
-                        message: `Current state of command is ${result.status}`,
+                        message: this.result!.results.cause,
                     });
                 }
 
-                return result;
+                if (["Cancelled", "Finished"].includes(this.result!.status)) {
+                    return;
+                }
+
+                if (this.result!.status === "Error") {
+                    throw new CommandError({
+                        ...this.commandErrorParams,
+                        message: "Error while cancelling the command",
+                    });
+                }
+
+                throw new CommandRetriableError({
+                    ...this.commandErrorParams,
+                    message: `Current state of command is ${
+                        this.result!.status
+                    }`,
+                });
+            },
+        });
+    }
+
+    async response(
+        cancellationToken?: CancellationToken
+    ): Promise<CommandsStatusResponse> {
+        await retry({
+            fn: async () => {
+                await this.refresh();
+
+                this.emit(Command.statusUpdateEvent, this.result!);
+
+                if (
+                    !["Cancelled", "Error", "Finished"].includes(
+                        this.result!.status
+                    )
+                ) {
+                    if (cancellationToken?.isCancellationRequested) {
+                        await this.cancel();
+                        return;
+                    }
+                    throw new CommandRetriableError({
+                        ...this.commandErrorParams,
+                        message: `Current state of command is ${
+                            this.result!.status
+                        }`,
+                    });
+                }
+
+                if (this.result!.results?.resultType === "error") {
+                    throw new CommandError({
+                        ...this.commandErrorParams,
+                        message: this.result!.results.cause,
+                    });
+                }
             },
         });
 
-        if (!result) {
-            throw new CommandError({
-                ...this.commandErrorParams,
-                message: `Command did not return a result`,
-            });
-        }
-
-        return result;
+        return this.result!;
     }
 
     static async execute(
         context: ExecutionContext,
         command: string,
-        onStatusUpdate: StatusUpdateListener = () => {}
+        onStatusUpdate: StatusUpdateListener = () => {},
+        cancellationToken?: CancellationToken
     ): Promise<CommandWithResult> {
         let cmd = new Command(context);
 
@@ -104,7 +165,7 @@ export class Command extends EventEmitter {
 
         cmd.id = executeApiResponse.id;
 
-        const executionResult = await cmd.response();
+        const executionResult = await cmd.response(cancellationToken);
 
         return {cmd: cmd, result: executionResult};
     }
