@@ -71,7 +71,10 @@ export class ImageLogger {
     async flush() {
         for (let image of this.images) {
             await writeFile(
-                path.join(this.dirname, `image-${this.count}.png`),
+                path.join(
+                    this.dirname,
+                    `image-${this.count.toString().padStart(4, "0")}.png`
+                ),
                 image,
                 "base64"
             );

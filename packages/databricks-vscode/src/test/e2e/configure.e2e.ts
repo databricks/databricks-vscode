@@ -75,12 +75,6 @@ describe("Configure Databricks Extension", async function () {
     });
 
     afterEach(async function () {
-        await new Promise((resolve) => {
-            setTimeout(
-                resolve,
-                new Time(2, TimeUnits.seconds).toMillSeconds().value
-            );
-        });
         await periodicRunner.stop();
     });
 
