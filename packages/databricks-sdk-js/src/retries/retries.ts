@@ -9,19 +9,23 @@ export interface RetriableResult<T> {
     error?: unknown;
 }
 
-const maxJitter = new Time(750, TimeUnits.milliseconds);
-const minJitter = new Time(50, TimeUnits.milliseconds);
-const maxWaitTime = new Time(10, TimeUnits.seconds);
-const defaultTimeout = new Time(10, TimeUnits.minutes);
+export class RetryConfigs {
+    static maxJitter = new Time(750, TimeUnits.milliseconds);
+    static minJitter = new Time(50, TimeUnits.milliseconds);
+    static maxWaitTime = new Time(10, TimeUnits.seconds);
+    static defaultTimeout = new Time(10, TimeUnits.minutes);
 
-function waitTime(attempt: number) {
-    const jitter = maxJitter
-        .sub(minJitter)
-        .multiply(Math.random())
-        .add(minJitter);
-    const timeout = new Time(attempt, TimeUnits.seconds).add(jitter);
+    static waitTime(attempt: number) {
+        const jitter = RetryConfigs.maxJitter
+            .sub(RetryConfigs.minJitter)
+            .multiply(Math.random())
+            .add(RetryConfigs.minJitter);
+        const timeout = new Time(attempt, TimeUnits.seconds).add(jitter);
 
-    return timeout.gt(maxWaitTime) ? maxWaitTime : timeout;
+        return timeout.gt(RetryConfigs.maxWaitTime)
+            ? RetryConfigs.maxWaitTime
+            : timeout;
+    }
 }
 
 interface RetryArgs<T> {
@@ -30,7 +34,7 @@ interface RetryArgs<T> {
 }
 
 export default async function retry<T>({
-    timeout = defaultTimeout,
+    timeout = RetryConfigs.defaultTimeout,
     fn,
 }: RetryArgs<T>): Promise<T> {
     let attempt = 1;
@@ -60,7 +64,10 @@ export default async function retry<T>({
         }
 
         await new Promise((resolve) =>
-            setTimeout(resolve, waitTime(attempt).toMillSeconds().value)
+            setTimeout(
+                resolve,
+                RetryConfigs.waitTime(attempt).toMillSeconds().value
+            )
         );
 
         attempt += 1;
