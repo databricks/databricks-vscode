@@ -3,32 +3,49 @@
 import {IntegrationTestSetup, sleep} from "../test/IntegrationTestSetup";
 import * as assert from "node:assert";
 import {Repos} from "./Repos";
-import {ReposService} from "../apis/repos";
+import {GetRepoResponse, ReposService} from "../apis/repos";
 import {randomUUID} from "node:crypto";
+import {WorkspaceService} from "../apis/workspace";
+import path from "node:path";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
+    const repoDir = "/Repos/js-sdk-tests";
+    let testRepoDetails: GetRepoResponse;
 
     this.timeout(10 * 60 * 1000);
 
-    before(async () => {
-        integSetup = await IntegrationTestSetup.getInstance();
-    });
-
-    it("should create a repo", async () => {
-        const repos = new ReposService(integSetup.client);
-        const id = randomUUID();
-        const response = await repos.createRepo({
-            path: `/Repos/fabian.jakobs@databricks.com/test-${id}`,
+    async function createRepo(repoName: string, repoService?: ReposService) {
+        repoService = repoService ?? new ReposService(integSetup.client);
+        return await repoService.createRepo({
+            path: path.join(repoDir, repoName),
             url: "https://github.com/fjakobs/empty-repo.git",
             provider: "github",
         });
+    }
 
+    before(async () => {
+        integSetup = await IntegrationTestSetup.getInstance();
+        let workspaceService = new WorkspaceService(integSetup.client);
+        await workspaceService.mkdirs({
+            path: repoDir,
+        });
+        const id = randomUUID();
+        testRepoDetails = await createRepo(`test-${id}`);
+        assert.equal(testRepoDetails.path, path.join(repoDir, `test-${id}`));
+    });
+
+    after(async () => {
+        const repos = new ReposService(integSetup.client);
+        await repos.deleteRepo({id: testRepoDetails.id});
+    });
+
+    it("should create a repo", async () => {
+        const id = randomUUID();
+        const repos = new ReposService(integSetup.client);
+        const response = await createRepo(`test-${id}`, repos);
         try {
-            assert.equal(
-                response.path,
-                `/Repos/fabian.jakobs@databricks.com/test-${id}`
-            );
+            assert.equal(response.path, path.join(repoDir, `test-${id}`));
         } finally {
             await repos.deleteRepo({id: response.id});
         }
@@ -37,7 +54,7 @@ describe(__filename, function () {
     it("should list repos by prefix", async () => {
         let repos = new Repos(integSetup.client);
         let response = await repos.getRepos({
-            path_prefix: "/Repos/fabian.jakobs@databricks.com",
+            path_prefix: repoDir,
         });
         assert.ok(response.repos.length > 0);
     });
@@ -59,7 +76,7 @@ describe(__filename, function () {
 
         let response = repos.getRepos(
             {
-                path_prefix: "/Repos/.internal",
+                path_prefix: repoDir,
             },
             token
         );
