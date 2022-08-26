@@ -18,7 +18,7 @@ describe(__filename, function () {
     async function createRepo(repoName: string, repoService?: ReposService) {
         repoService = repoService ?? new ReposService(integSetup.client);
         return await repoService.createRepo({
-            path: path.join(repoDir, repoName),
+            path: `${repoDir}/${repoName}`,
             url: "https://github.com/fjakobs/empty-repo.git",
             provider: "github",
         });
@@ -32,7 +32,7 @@ describe(__filename, function () {
         });
         const id = randomUUID();
         testRepoDetails = await createRepo(`test-${id}`);
-        assert.equal(testRepoDetails.path, path.join(repoDir, `test-${id}`));
+        assert.equal(testRepoDetails.path, `${repoDir}/test-${id}`);
     });
 
     after(async () => {
