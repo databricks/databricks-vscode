@@ -23,7 +23,7 @@ jobs:
 
     package:
         name: Package VSIX
-        needs: "test-extension"
+        needs: "run-tests"
         runs-on: "macos-latest"
         steps:
             - uses: actions/checkout@v3
