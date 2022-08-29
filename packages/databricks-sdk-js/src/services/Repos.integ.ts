@@ -15,13 +15,19 @@ describe(__filename, function () {
 
     this.timeout(10 * 60 * 1000);
 
-    async function createRepo(repoName: string, repoService?: ReposService) {
+    async function createRandomRepo(
+        repoService?: ReposService
+    ): Promise<GetRepoResponse> {
         repoService = repoService ?? new ReposService(integSetup.client);
-        return await repoService.createRepo({
-            path: `${repoDir}/${repoName}`,
+        const id = randomUUID();
+        const resp = await repoService.createRepo({
+            path: `${repoDir}/test-${id}`,
             url: "https://github.com/fjakobs/empty-repo.git",
             provider: "github",
         });
+        assert.equal(resp.path, `${repoDir}/test-${id}`);
+
+        return resp;
     }
 
     before(async () => {
@@ -30,25 +36,15 @@ describe(__filename, function () {
         await workspaceService.mkdirs({
             path: repoDir,
         });
-        const id = randomUUID();
-        testRepoDetails = await createRepo(`test-${id}`);
-        assert.equal(testRepoDetails.path, `${repoDir}/test-${id}`);
+
+        testRepoDetails = await createRandomRepo(
+            new ReposService(integSetup.client)
+        );
     });
 
     after(async () => {
         const repos = new ReposService(integSetup.client);
         await repos.deleteRepo({id: testRepoDetails.id});
-    });
-
-    it("should create a repo", async () => {
-        const id = randomUUID();
-        const repos = new ReposService(integSetup.client);
-        const response = await createRepo(`test-${id}`, repos);
-        try {
-            assert.equal(response.path, `${repoDir}/test-${id}`);
-        } finally {
-            await repos.deleteRepo({id: response.id});
-        }
     });
 
     it("should list repos by prefix", async () => {
