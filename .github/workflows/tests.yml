@@ -14,7 +14,7 @@ on:
                 type: string
 
 jobs:
-     test-sdk:
+    test-sdk:
         name: Test Databricks SDK
         runs-on: ${{ inputs.os }}
 
