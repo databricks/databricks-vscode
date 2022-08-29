@@ -20,6 +20,7 @@ jobs:
             os: ${{ matrix.os }}
             node-version: ${{ matrix.node-version }}
             vscode-version: ${{ matrix.vscode-version }}
+        secrets: inherit
 
     package:
         name: Package VSIX
