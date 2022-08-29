@@ -7,117 +7,19 @@ on:
         branches: [main]
 
 jobs:
-    test-sdk:
-        name: Test Databricks SDK
-        runs-on: ${{ matrix.os }}
-
+    run-tests:
         strategy:
+            fail-fast: false
             matrix:
-                os: [macos-latest, ubuntu-latest]
-                node-version: [14.x, 18.x]
-
-        defaults:
-            run:
-                shell: bash
-                working-directory: packages/databricks-sdk-js
-
-        steps:
-            - uses: actions/checkout@v3
-
-            - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ matrix.node-version }}
-                  cache: "yarn"
-
-            - run: yarn install --immutable
-
-            - name: Building packages
-              run: yarn run build
-
-            - name: Prettier and Linting
-              run: yarn run test:lint
-
-            - name: Unit Tests With Code Cov
-              run: yarn test:cov
-
-            - name: Integration Tests With Code Cov
-              run: yarn run test:integ:cov
-              env:
-                  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-                  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-                  TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
-
-            - run: |
-                  cd coverage
-                  mkdir -p all && mkdir -p final
-                  mv integration/coverage-final.json all/integration.json
-                  mv unit/coverage-final.json all/unit.json
-                  yarn nyc merge all final/final.json
-                  yarn nyc report --reporter text -t ./coverage/final >> $GITHUB_STEP_SUMMARY
-
-    test-extension:
-        name: Test VSCode Extension
-        runs-on: ${{ matrix.os }}
-        needs: [test-sdk]
-
-        strategy:
-            matrix:
-                os: [windows-latest, macos-latest]
+                os: [macos-latest, windows-latest]
                 node-version: [16.x]
                 vscode-version: [stable, insiders]
 
-        env:
-            VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
-            DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-            DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
-
-        steps:
-            - uses: actions/checkout@v3
-
-            - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ matrix.node-version }}
-                  cache: "yarn"
-
-            - run: yarn install --immutable
-
-            - name: Prettier and Linting
-              run: yarn run test:lint
-              working-directory: packages/databricks-vscode
-
-            - name: Building packages
-              run: yarn run build
-
-            - name: Unit Tests with Coverage (OSX)
-              uses: GabrielBB/xvfb-action@v1
-              if: matrix.os != 'windows-latest'
-              with:
-                  run: yarn run test:cov
-                  working-directory: packages/databricks-vscode
-
-            - name: Unit Tests with Coverage (Windows)
-              if: matrix.os == 'windows-latest'
-              run: yarn run test:cov
-              working-directory: packages/databricks-vscode
-
-            - name: Show coverage test result
-              run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
-              working-directory: packages/databricks-vscode
-
-            - name: Integration Tests
-              uses: nick-fields/retry@v2
-              with:
-                  max_attempts: 3
-                  retry_wait_seconds: 2
-                  timeout_minutes: 2
-                  retry_on: error
-                  command: |
-                      cd packages/databricks-vscode
-                      yarn run test:integ:prepare
-                      yarn run test:integ:run
+        uses: ./.github/workflows/tests.yml
+        with:
+            os: ${{ matrix.os }}
+            node-version: ${{ matrix.node-version }}
+            vscode-version: ${{ matrix.vscode-version }}
 
     package:
         name: Package VSIX
