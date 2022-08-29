@@ -45,7 +45,7 @@ describe(__filename, function () {
         const repos = new ReposService(integSetup.client);
         const response = await createRepo(`test-${id}`, repos);
         try {
-            assert.equal(response.path, path.join(repoDir, `test-${id}`));
+            assert.equal(response.path, `${repoDir}/test-${id}`);
         } finally {
             await repos.deleteRepo({id: response.id});
         }
