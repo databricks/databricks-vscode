@@ -272,8 +272,8 @@
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
         "package": "vsce package",
-        "package:cli:fetch": "bash ./scripts/fetch-latest-bricks-cli.sh $BRICKS_ARCH",
-        "package:cli:release": "bash ./scripts/fetch-latest-bricks-cli.sh $BRICKS_ARCH",
+        "package:cli:fetch": "bash ./scripts/fetch-bricks-cli.sh v0.0.1 ${BRICKS_ARCH:-}",
+        "package:cli:link": "rm -f ./bin/bricks && ln -s ../../../../bricks/bricks bin",
         "package:compile": "yarn run esbuild:base --minify",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
