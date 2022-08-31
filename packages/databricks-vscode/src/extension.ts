@@ -1,4 +1,4 @@
-import {commands, ExtensionContext, window} from "vscode";
+import {commands, debug, ExtensionContext, window} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -6,8 +6,9 @@ import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
-import {WorkflowCommands} from "./workflow/WorkflowCommands";
+import {RunCommands} from "./run/RunCommands";
 import {CliCommands} from "./cli/CliCommands";
+import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
@@ -75,14 +76,23 @@ export function activate(context: ExtensionContext) {
         )
     );
 
-    // Workflow group
-    const workflowCommands = new WorkflowCommands(connectionManager, context);
+    // Run/debug group
+    const runCommands = new RunCommands(connectionManager, context);
+    const debugFactory = new DatabricksDebugAdapterFactory(connectionManager);
+
     context.subscriptions.push(
         commands.registerCommand(
+            "databricks.run.runEditorContents",
+            runCommands.runEditorContentsCommand(),
+            runCommands
+        ),
+        commands.registerCommand(
             "databricks.run.runEditorContentsAsWorkflow",
-            workflowCommands.runEditorContentsAsWorkflowCommand(),
-            workflowCommands
-        )
+            runCommands.runEditorContentsAsWorkflowCommand(),
+            runCommands
+        ),
+        debug.registerDebugAdapterDescriptorFactory("databricks", debugFactory),
+        debugFactory
     );
 
     // Cluster group

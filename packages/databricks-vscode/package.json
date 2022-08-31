@@ -55,8 +55,10 @@
         "onCommand:databricks.cluster.filterByRunning",
         "onCommand:databricks.run.getProgramName",
         "onCommand:databricks.run.runEditorContentsAsWorkflow",
+        "onCommand:databricks.run.runEditorContents",
         "onView:clusterManager",
-        "onView:clusterList"
+        "onView:clusterList",
+        "onDebugResolve:databricks"
     ],
     "main": "out/extension.js",
     "contributes": {
@@ -139,6 +141,13 @@
             {
                 "command": "databricks.run.runEditorContentsAsWorkflow",
                 "title": "Run File as Workflow on Databricks",
+                "category": "Databricks",
+                "enablement": "!inDebugMode",
+                "icon": "$(play)"
+            },
+            {
+                "command": "databricks.run.runEditorContents",
+                "title": "Run File on Databricks",
                 "category": "Databricks",
                 "enablement": "!inDebugMode",
                 "icon": "$(play)"
@@ -229,12 +238,21 @@
             ],
             "editor/title/run": [
                 {
+                    "command": "databricks.run.runEditorContents",
+                    "when": "resourceLangId == python",
+                    "group": "navigation@1"
+                },
+                {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python",
                     "group": "navigation@1"
                 }
             ],
             "commandPalette": [
+                {
+                    "command": "databricks.run.runEditorContents",
+                    "when": "resourceLangId == python"
+                },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python"
@@ -262,6 +280,57 @@
                     "beginsPattern": "Syncing from",
                     "endsPattern": "Done(\\. Watching for changes\\.\\.\\.)$"
                 }
+            }
+        ],
+        "debuggers": [
+            {
+                "type": "databricks",
+                "languages": [
+                    "python"
+                ],
+                "label": "Databricks",
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "program"
+                        ],
+                        "properties": {
+                            "program": {
+                                "type": "string",
+                                "description": "Absolute path to a text file."
+                            },
+                            "args": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Command line arguments."
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "type": "databricks",
+                        "request": "launch",
+                        "name": "Run on Databricks",
+                        "program": "${file}",
+                        "stopOnEntry": true
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "Databricks: Launch",
+                        "description": "A new configuration for running a user selected Python file on Databricks.",
+                        "body": {
+                            "type": "databricks",
+                            "request": "launch",
+                            "name": "Run on Databricks",
+                            "program": "^\"\\${file}\"",
+                            "stopOnEntry": true
+                        }
+                    }
+                ]
             }
         ]
     },
@@ -293,6 +362,7 @@
     },
     "dependencies": {
         "@databricks/databricks-sdk": "*",
+        "@vscode/debugadapter": "^1.57.0",
         "@vscode/webview-ui-toolkit": "^1.0.0"
     },
     "devDependencies": {

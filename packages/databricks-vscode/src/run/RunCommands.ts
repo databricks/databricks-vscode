@@ -1,15 +1,39 @@
-import {ExtensionContext, Uri, window} from "vscode";
+import {debug, ExtensionContext, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {runNotebookAsWorkflow} from "./WorkflowOutputPanel";
 
 /**
- * workflow related commands
+ * Run related commands
  */
-export class WorkflowCommands {
+export class RunCommands {
     constructor(
         private connectionManager: ConnectionManager,
         private context: ExtensionContext
     ) {}
+
+    /**
+     * Run a Python file or notebook as a workflow on the connected cluster
+     */
+    runEditorContentsCommand() {
+        return async (resource: Uri) => {
+            let targetResource = resource;
+            if (!targetResource && window.activeTextEditor) {
+                targetResource = window.activeTextEditor.document.uri;
+            }
+            if (targetResource) {
+                debug.startDebugging(
+                    undefined,
+                    {
+                        type: "databricks",
+                        name: "Run File",
+                        request: "launch",
+                        program: targetResource.fsPath,
+                    },
+                    {noDebug: true}
+                );
+            }
+        };
+    }
 
     /**
      * Run a Python file or notebook as a workflow on the connected cluster
