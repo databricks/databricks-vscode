@@ -1,6 +1,7 @@
 import {Cluster, WorkflowRun, jobs} from "@databricks/databricks-sdk";
 import {basename} from "path";
 import {
+    CancellationToken,
     CancellationTokenSource,
     Disposable,
     ExtensionContext,
@@ -15,14 +16,18 @@ import {SyncDestination} from "../configuration/SyncDestination";
 
 export async function runNotebookAsWorkflow({
     notebookUri,
+    parameters = {},
     cluster,
     syncDestination,
     context,
+    token,
 }: {
     notebookUri: Uri;
+    parameters?: Record<string, string>;
     cluster: Cluster;
     syncDestination: SyncDestination;
     context: ExtensionContext;
+    token?: CancellationToken;
 }) {
     const panel = new WorkflowOutputPanel(
         window.createWebviewPanel(
@@ -40,9 +45,16 @@ export async function runNotebookAsWorkflow({
     const cancellation = new CancellationTokenSource();
     panel.onDidDispose(() => cancellation.cancel());
 
+    if (token) {
+        token.onCancellationRequested(() => {
+            cancellation.cancel();
+        });
+    }
+
     try {
         let response = await cluster.runNotebookAndWait({
             path: syncDestination.localToRemoteNotebook(notebookUri),
+            parameters,
             onProgress: (state: jobs.RunLifeCycleState, run: WorkflowRun) => {
                 panel.updateState(state, run);
             },
@@ -69,6 +81,10 @@ export class WorkflowOutputPanel {
 
     onDidDispose(listener: () => void): Disposable {
         return this.panel.onDidDispose(listener);
+    }
+
+    dispose() {
+        this.panel.dispose();
     }
 
     set html(htmlContent: string) {

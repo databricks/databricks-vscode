@@ -1,6 +1,5 @@
 import {debug, ExtensionContext, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {runNotebookAsWorkflow} from "./WorkflowOutputPanel";
 
 /**
  * Run related commands
@@ -12,20 +11,17 @@ export class RunCommands {
     ) {}
 
     /**
-     * Run a Python file or notebook as a workflow on the connected cluster
+     * Run a Python file using the command execution API
      */
     runEditorContentsCommand() {
         return async (resource: Uri) => {
-            let targetResource = resource;
-            if (!targetResource && window.activeTextEditor) {
-                targetResource = window.activeTextEditor.document.uri;
-            }
+            let targetResource = this.getTargetResource(resource);
             if (targetResource) {
                 debug.startDebugging(
                     undefined,
                     {
                         type: "databricks",
-                        name: "Run File",
+                        name: "Run File on Databricks",
                         request: "launch",
                         program: targetResource.fsPath,
                     },
@@ -40,46 +36,26 @@ export class RunCommands {
      */
     runEditorContentsAsWorkflowCommand() {
         return async (resource: Uri) => {
-            let targetResource = resource;
-            if (!targetResource && window.activeTextEditor) {
-                targetResource = window.activeTextEditor.document.uri;
-            }
-
-            let cluster = this.connectionManager.cluster;
-            let apiClient = this.connectionManager.apiClient;
-
-            if (!cluster || !apiClient) {
-                window.showErrorMessage(
-                    "You must attach to a cluster to run a workflow"
-                );
-                return;
-            }
-
-            let syncDestination = this.connectionManager.syncDestination;
-            if (!syncDestination) {
-                window.showErrorMessage(
-                    "You must configure code synchronization to run a workflow"
-                );
-                return;
-            }
-
-            await cluster.refresh();
-            if (cluster.state !== "RUNNING") {
-                // TODO: add option to start cluster
-                window.showErrorMessage(
-                    `Cluster ${cluster.name} is not running.`
-                );
-                return;
-            }
-
+            let targetResource = this.getTargetResource(resource);
             if (targetResource) {
-                await runNotebookAsWorkflow({
-                    notebookUri: targetResource,
-                    cluster,
-                    syncDestination: syncDestination,
-                    context: this.context,
-                });
+                debug.startDebugging(
+                    undefined,
+                    {
+                        type: "databricks-workflow",
+                        name: "Run File Run File on Databricks as Workflow",
+                        request: "launch",
+                        program: targetResource.fsPath,
+                    },
+                    {noDebug: true}
+                );
             }
         };
+    }
+
+    private getTargetResource(resource: Uri): Uri | undefined {
+        if (!resource && window.activeTextEditor) {
+            return window.activeTextEditor.document.uri;
+        }
+        return resource;
     }
 }

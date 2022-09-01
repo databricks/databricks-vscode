@@ -9,6 +9,7 @@ import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvid
 import {RunCommands} from "./run/RunCommands";
 import {CliCommands} from "./cli/CliCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
+import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
@@ -79,6 +80,10 @@ export function activate(context: ExtensionContext) {
     // Run/debug group
     const runCommands = new RunCommands(connectionManager, context);
     const debugFactory = new DatabricksDebugAdapterFactory(connectionManager);
+    const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
+        connectionManager,
+        context
+    );
 
     context.subscriptions.push(
         commands.registerCommand(
@@ -92,7 +97,12 @@ export function activate(context: ExtensionContext) {
             runCommands
         ),
         debug.registerDebugAdapterDescriptorFactory("databricks", debugFactory),
-        debugFactory
+        debugFactory,
+        debug.registerDebugAdapterDescriptorFactory(
+            "databricks-workflow",
+            debugWorkflowFactory
+        ),
+        debugWorkflowFactory
     );
 
     // Cluster group

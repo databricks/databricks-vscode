@@ -349,12 +349,12 @@
                                 "type": "string",
                                 "description": "Absolute path to a python file."
                             },
-                            "args": {
-                                "type": "array",
+                            "parameters": {
+                                "type": "object",
                                 "items": {
                                     "type": "string"
                                 },
-                                "description": "Command line arguments."
+                                "description": "Values of the notebook widget parameters as specified by the key of the parameter."
                             }
                         }
                     }

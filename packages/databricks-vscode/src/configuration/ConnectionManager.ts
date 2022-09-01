@@ -64,7 +64,7 @@ export class ConnectionManager {
     }
 
     get cluster(): Cluster | undefined {
-        if (this.state === "DISCONNECTED") {
+        if (this.state !== "CONNECTED") {
             return;
         }
 
@@ -90,6 +90,7 @@ export class ConnectionManager {
 
     async login(interactive: boolean = false): Promise<void> {
         await this.logout();
+        this.updateState("CONNECTING");
 
         let projectConfigFile;
         let apiClient;
@@ -133,7 +134,6 @@ export class ConnectionManager {
         this._apiClient = apiClient;
         this._projectConfigFile = projectConfigFile;
         this._profile = profile;
-        this.updateState("CONNECTED");
 
         if (projectConfigFile.config.clusterId) {
             await this.attachCluster(projectConfigFile.config.clusterId, false);
@@ -149,6 +149,8 @@ export class ConnectionManager {
         } else {
             this.updateSyncDestination(undefined);
         }
+
+        this.updateState("CONNECTED");
     }
 
     async logout() {
@@ -230,10 +232,6 @@ export class ConnectionManager {
     ): Promise<void> {
         if (this._cluster === cluster) {
             return;
-        }
-
-        if (this.state !== "CONNECTED") {
-            throw new Error("Can't attach to cluster while not connected.");
         }
 
         if (typeof cluster === "string") {
@@ -326,7 +324,7 @@ export class ConnectionManager {
         }
     }
 
-    private async waitForConnect() {
+    async waitForConnect() {
         if (this._state === "CONNECTED") {
             return;
         } else if (this._state === "CONNECTING") {
