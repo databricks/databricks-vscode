@@ -220,10 +220,12 @@ export class Cluster {
      */
     async runNotebookAndWait({
         path,
+        parameters = {},
         onProgress,
         token,
     }: {
         path: string;
+        parameters?: Record<string, string>;
         onProgress?: (state: RunLifeCycleState, run: WorkflowRun) => void;
         token?: CancellationToken;
     }) {
@@ -234,6 +236,12 @@ export class Cluster {
                     existing_cluster_id: this.id,
                     notebook_task: {
                         notebook_path: path,
+                        base_parameters: Object.keys(parameters).map((key) => {
+                            return {
+                                key,
+                                value: parameters[key],
+                            };
+                        }),
                     },
                 },
             ],
