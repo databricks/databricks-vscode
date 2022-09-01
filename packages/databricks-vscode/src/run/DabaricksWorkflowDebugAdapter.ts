@@ -19,13 +19,11 @@ import {
     ProviderResult,
     Uri,
     window,
-    workspace,
 } from "vscode";
 import {DebugProtocol} from "@vscode/debugprotocol";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
-import {runNotebookAsWorkflow} from "./WorkflowOutputPanel";
-import {TextDecoder} from "node:util";
+import {runAsWorkflow} from "./WorkflowOutputPanel";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -145,10 +143,6 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         program: string,
         parameters: Record<string, string>
     ): Promise<void> {
-        if (!(await this.isNotebook(program))) {
-            return this.onError("Only notebooks can be run as workflows");
-        }
-
         if (this.connection.state === "CONNECTING") {
             await this.connection.waitForConnect();
         }
@@ -174,24 +168,14 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             return this.onError(`Cluster ${cluster.name} is not running.`);
         }
 
-        await runNotebookAsWorkflow({
-            notebookUri: Uri.file(program),
+        await runAsWorkflow({
+            program: Uri.file(program),
             parameters,
             cluster,
             syncDestination: syncDestination,
             context: this.context,
             token: this.token,
         });
-    }
-
-    private async isNotebook(path: string): Promise<boolean> {
-        let uri = Uri.file(path);
-        let bytes = await workspace.fs.readFile(uri);
-        const lines = new TextDecoder().decode(bytes).split(/\r?\n/);
-        return (
-            lines.length > 0 &&
-            lines[0].startsWith("# Databricks notebook source")
-        );
     }
 
     private onError(errorMessage: string) {

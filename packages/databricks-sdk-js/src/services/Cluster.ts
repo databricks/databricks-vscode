@@ -286,7 +286,7 @@ export class Cluster {
     ): Promise<void> {
         while (true) {
             if (run.lifeCycleState === "INTERNAL_ERROR") {
-                throw new Error(run.state?.state_message || "");
+                return;
             }
             if (run.lifeCycleState === "TERMINATED") {
                 return;
