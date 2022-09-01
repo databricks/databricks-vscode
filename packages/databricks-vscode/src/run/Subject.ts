@@ -16,7 +16,7 @@ export class Subject {
         await Promise.race([
             new Promise((_resolve, reject) =>
                 setTimeout(() => {
-                    reject("timeout");
+                    reject(new Error("timeout"));
                 }, timeout)
             ),
             this.promise,

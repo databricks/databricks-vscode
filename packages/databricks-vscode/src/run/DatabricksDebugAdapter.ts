@@ -8,6 +8,7 @@ import {
 } from "@vscode/debugadapter";
 import {DebugProtocol} from "@vscode/debugprotocol";
 import {basename} from "node:path";
+import {TextDecoder} from "node:util";
 
 import {
     DebugAdapterDescriptor,
@@ -58,13 +59,11 @@ export class DatabricksDebugAdapterFactory
 }
 
 export const workspaceFileAccessor: FileAccessor = {
-    async readFile(path: string): Promise<Uint8Array> {
+    async readFile(path: string): Promise<string> {
         let uri = Uri.file(path);
 
-        return await workspace.fs.readFile(uri);
-    },
-    async writeFile(path: string, contents: Uint8Array) {
-        await workspace.fs.writeFile(Uri.file(path), contents);
+        const bytes = await workspace.fs.readFile(uri);
+        return new TextDecoder().decode(bytes);
     },
 };
 

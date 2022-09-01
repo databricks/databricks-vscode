@@ -8,7 +8,6 @@ import {CancellationTokenSource, Event, EventEmitter, Uri} from "vscode";
 
 import {SyncDestination} from "../configuration/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {TextDecoder} from "util";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -19,8 +18,7 @@ export interface OutputEvent {
 }
 
 export interface FileAccessor {
-    readFile(path: string): Promise<Uint8Array>;
-    writeFile(path: string, contents: Uint8Array): Promise<void>;
+    readFile(path: string): Promise<string>;
 }
 
 export class DatabricksRuntime {
@@ -73,8 +71,9 @@ export class DatabricksRuntime {
             );
         }
 
-        const bytes = await this.fileAccessor.readFile(program);
-        const lines = new TextDecoder().decode(bytes).split(/\r?\n/);
+        const lines = (await this.fileAccessor.readFile(program)).split(
+            /\r?\n/
+        );
 
         let executionContext = await cluster.createExecutionContext("python");
 

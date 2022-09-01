@@ -27,7 +27,7 @@
         },
         {
             "label": "Build",
-            "dependsOn": ["Fetch bricks cli", "NPM watch"],
+            "dependsOn": ["NPM watch"],
             "group": {
                 "kind": "build",
                 "isDefault": true

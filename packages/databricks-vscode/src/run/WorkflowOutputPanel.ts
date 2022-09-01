@@ -14,7 +14,7 @@ import {
 } from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
 
-// TODO: add dispose, add persistence
+// TODO: add dispose, add persistence, reuse panel
 
 export async function runAsWorkflow({
     program,

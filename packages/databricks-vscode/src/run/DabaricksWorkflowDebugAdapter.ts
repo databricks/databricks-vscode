@@ -1,5 +1,5 @@
 /**
- * Debug adapter for funning code as notebooks
+ * Debug adapter for running code as workflows on Databricks.
  */
 
 import {
