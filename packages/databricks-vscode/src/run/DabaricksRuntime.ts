@@ -147,6 +147,11 @@ export class DatabricksRuntime {
         args: Array<string>,
         syncDestination: SyncDestination
     ): string {
+        const argv = [
+            syncDestination.localToRemote(Uri.file(program)),
+            ...args,
+        ];
+
         return [
             // set working directory
             `import os; os.chdir("${syncDestination.localToRemoteDir(
@@ -157,7 +162,7 @@ export class DatabricksRuntime {
             `import sys; sys.path.append("${syncDestination.path.path}")`,
 
             // inject command line arguments
-            `import sys; sys.argv = ['${args
+            `import sys; sys.argv = ['${argv
                 .map((arg) => this.escapePythonString(arg))
                 .join("', '")}'];`,
 

@@ -365,7 +365,7 @@
                         "request": "launch",
                         "name": "Run on Databricks as Workflow",
                         "program": "${file}",
-                        "args": []
+                        "parameters": {}
                     }
                 ],
                 "configurationSnippets": [

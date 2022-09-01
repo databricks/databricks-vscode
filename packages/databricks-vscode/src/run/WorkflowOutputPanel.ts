@@ -80,7 +80,6 @@ export async function runAsWorkflow({
                     state: jobs.RunLifeCycleState,
                     run: WorkflowRun
                 ) => {
-                    console.log("progress", state, run);
                     panel.updateState(state, run);
                 },
                 token: cancellation.token,
