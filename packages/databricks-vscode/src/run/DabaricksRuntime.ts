@@ -158,7 +158,7 @@ export class DatabricksRuntime {
                 Uri.file(program)
             )}");`,
 
-            // update class path
+            // update python path
             `import sys; sys.path.append("${syncDestination.path.path}")`,
 
             // inject command line arguments

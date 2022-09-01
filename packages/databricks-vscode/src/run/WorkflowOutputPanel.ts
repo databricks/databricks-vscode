@@ -19,6 +19,7 @@ import {SyncDestination} from "../configuration/SyncDestination";
 export async function runAsWorkflow({
     program,
     parameters = {},
+    args = [],
     cluster,
     syncDestination,
     context,
@@ -26,6 +27,7 @@ export async function runAsWorkflow({
 }: {
     program: Uri;
     parameters?: Record<string, string>;
+    args?: Array<string>;
     cluster: Cluster;
     syncDestination: SyncDestination;
     context: ExtensionContext;
@@ -76,6 +78,7 @@ export async function runAsWorkflow({
         } else {
             let response = await cluster.runPythonAndWait({
                 path: syncDestination.localToRemoteNotebook(program) + ".py",
+                args,
                 onProgress: (
                     state: jobs.RunLifeCycleState,
                     run: WorkflowRun

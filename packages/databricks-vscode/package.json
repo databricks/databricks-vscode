@@ -355,6 +355,13 @@
                                     "type": "string"
                                 },
                                 "description": "Values of the notebook widget parameters as specified by the key of the parameter."
+                            },
+                            "args": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Command line arguments for Python tasks."
                             }
                         }
                     }

@@ -37,6 +37,9 @@ interface ILaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 
     /** Command line arguments */
     parameters?: Record<string, string>;
+
+    /** Command line arguments */
+    args?: string[];
 }
 
 interface IAttachRequestArguments extends ILaunchRequestArguments {}
@@ -131,7 +134,11 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         await this._configurationDone.wait(1000);
 
         // start the program in the runtime
-        await this.startWorkflow(args.program, args.parameters || {});
+        await this.startWorkflow(
+            args.program,
+            args.parameters || {},
+            args.args || []
+        );
         this.sendEvent(new TerminatedEvent());
         this.sendResponse(response);
     }
@@ -141,7 +148,8 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
      */
     private async startWorkflow(
         program: string,
-        parameters: Record<string, string>
+        parameters: Record<string, string>,
+        args: Array<string>
     ): Promise<void> {
         if (this.connection.state === "CONNECTING") {
             await this.connection.waitForConnect();
@@ -171,6 +179,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         await runAsWorkflow({
             program: Uri.file(program),
             parameters,
+            args,
             cluster,
             syncDestination: syncDestination,
             context: this.context,

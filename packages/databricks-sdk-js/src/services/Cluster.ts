@@ -256,10 +256,12 @@ export class Cluster {
      */
     async runPythonAndWait({
         path,
+        args = [],
         onProgress,
         token,
     }: {
         path: string;
+        args?: string[];
         onProgress?: (state: RunLifeCycleState, run: WorkflowRun) => void;
         token?: CancellationToken;
     }): Promise<GetRunOutputResponse> {
@@ -270,6 +272,7 @@ export class Cluster {
                     existing_cluster_id: this.id,
                     spark_python_task: {
                         python_file: path,
+                        parameters: args,
                     },
                 },
             ],
