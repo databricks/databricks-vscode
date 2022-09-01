@@ -17,6 +17,7 @@ import {
     Disposable,
     ProviderResult,
     Uri,
+    commands,
     window,
     workspace,
 } from "vscode";
@@ -233,6 +234,9 @@ export class DatabricksDebugSession extends LoggingDebugSession {
     ) {
         // wait 1 second until configuration has finished (and configurationDoneRequest has been called)
         await this._configurationDone.wait(1000);
+
+        // show debug output view
+        await commands.executeCommand("workbench.panel.repl.view.focus");
 
         // start the program in the runtime
         await this.runtime.start(args.program, args.args || []);

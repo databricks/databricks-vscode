@@ -133,13 +133,6 @@ export class Command extends EventEmitter {
                         }`,
                     });
                 }
-
-                if (this.result!.results?.resultType === "error") {
-                    throw new CommandError({
-                        ...this.commandErrorParams,
-                        message: this.result!.results.cause,
-                    });
-                }
             },
         });
 

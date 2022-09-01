@@ -58,7 +58,8 @@
         "onCommand:databricks.run.runEditorContents",
         "onView:clusterManager",
         "onView:clusterList",
-        "onDebugResolve:databricks"
+        "onDebugResolve:databricks",
+        "onDebugResolve:databricks-workflow"
     ],
     "main": "out/extension.js",
     "contributes": {
@@ -297,7 +298,7 @@
                         "properties": {
                             "program": {
                                 "type": "string",
-                                "description": "Absolute path to a text file."
+                                "description": "Absolute path to a python file."
                             },
                             "args": {
                                 "type": "array",
@@ -315,7 +316,7 @@
                         "request": "launch",
                         "name": "Run on Databricks",
                         "program": "${file}",
-                        "stopOnEntry": true
+                        "args": []
                     }
                 ],
                 "configurationSnippets": [
@@ -327,7 +328,56 @@
                             "request": "launch",
                             "name": "Run on Databricks",
                             "program": "^\"\\${file}\"",
-                            "stopOnEntry": true
+                            "args": []
+                        }
+                    }
+                ]
+            },
+            {
+                "type": "databricks-workflow",
+                "languages": [
+                    "python"
+                ],
+                "label": "Databricks Workflow",
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "program"
+                        ],
+                        "properties": {
+                            "program": {
+                                "type": "string",
+                                "description": "Absolute path to a python file."
+                            },
+                            "args": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Command line arguments."
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "type": "databricks-workflow",
+                        "request": "launch",
+                        "name": "Run on Databricks as Workflow",
+                        "program": "${file}",
+                        "args": []
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "Databricks: Launch as Workflow",
+                        "description": "A new configuration for running a user selected Python file on Databricks as a workflow.",
+                        "body": {
+                            "type": "databricks-workflow",
+                            "request": "launch",
+                            "name": "Run on Databricks as a Workflow",
+                            "program": "^\"\\${file}\"",
+                            "args": []
                         }
                     }
                 ]

@@ -13,7 +13,7 @@ export class Subject {
     }
 
     async wait(timeout: number = 0) {
-        Promise.race([
+        await Promise.race([
             new Promise((_resolve, reject) =>
                 setTimeout(() => {
                     reject("timeout");

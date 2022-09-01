@@ -8,6 +8,7 @@ import {CancellationTokenSource, Event, EventEmitter, Uri} from "vscode";
 
 import {SyncDestination} from "../configuration/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {TextDecoder} from "util";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -40,15 +41,24 @@ export class DatabricksRuntime {
     constructor(
         private connection: ConnectionManager,
         private fileAccessor: FileAccessor
-    ) {
-        console.log("Activate Databricks debugger");
-    }
+    ) {}
 
     /**
      * Start executing the given program.
      */
     public async start(program: string, args: Array<string>): Promise<void> {
-        console.log(`starting program ${program}`);
+        const start = Date.now();
+
+        if (this.connection.state === "CONNECTING") {
+            this._onDidSendOutputEmitter.fire({
+                type: "out",
+                text: `${new Date()} Connecting to cluster ...`,
+                filePath: program,
+                line: 0,
+                column: 0,
+            });
+            await this.connection.waitForConnect();
+        }
 
         let cluster = this.connection.cluster;
         if (!cluster) {
@@ -74,7 +84,7 @@ export class DatabricksRuntime {
 
         this._onDidSendOutputEmitter.fire({
             type: "out",
-            text: `${new Date()} Running on Databricks ...`,
+            text: `${new Date()} Running on Cluster ${cluster.id} ...`,
             filePath: program,
             line: lines.length,
             column: 0,
@@ -95,6 +105,21 @@ export class DatabricksRuntime {
                 line: lines.length,
                 column: 0,
             });
+        } else if (result.results!.resultType === "error") {
+            this._onDidSendOutputEmitter.fire({
+                type: "out",
+                text: (result.results! as any).cause,
+                filePath: program,
+                line: lines.length,
+                column: 0,
+            });
+            this._onDidSendOutputEmitter.fire({
+                type: "out",
+                text: (result.results! as any).summary,
+                filePath: program,
+                line: lines.length,
+                column: 0,
+            });
         } else {
             this._onDidSendOutputEmitter.fire({
                 type: "out",
@@ -104,6 +129,14 @@ export class DatabricksRuntime {
                 column: 0,
             });
         }
+
+        this._onDidSendOutputEmitter.fire({
+            type: "out",
+            text: `${new Date()} Done (took ${Date.now() - start}ms)`,
+            filePath: program,
+            line: lines.length,
+            column: 0,
+        });
 
         await executionContext.destroy();
         this._onDidEndEmitter.fire();
@@ -140,7 +173,6 @@ export class DatabricksRuntime {
     }
 
     public async disconnect(): Promise<void> {
-        console.log("disconnect");
         this.tokenSource.cancel();
     }
 }
