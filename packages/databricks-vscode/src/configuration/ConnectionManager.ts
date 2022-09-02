@@ -127,6 +127,7 @@ export class ConnectionManager {
                 window.showErrorMessage(message);
             }
 
+            this.updateState("DISCONNECTED");
             await this.logout();
             return;
         }
