@@ -99,7 +99,7 @@ describe(__filename, () => {
             code,
             `import os; os.chdir("/Workspace/Repos/fabian@databricks.com/test");
 import sys; sys.path.append("/Workspace/Repos/fabian@databricks.com/test")
-import sys; sys.argv = [''];
+import sys; sys.argv = ['/Workspace/Repos/fabian@databricks.com/test/hello.py'];
 import logging; logger = spark._jvm.org.apache.log4j; logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
 print('43')`
         );
