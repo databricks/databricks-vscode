@@ -149,7 +149,7 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand(
             "databricks.sync.start",
-            syncCommands.starCommand("incremental"),
+            syncCommands.startCommand("incremental"),
             syncCommands
         ),
         commands.registerCommand(
