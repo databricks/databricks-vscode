@@ -154,7 +154,7 @@ export function activate(context: ExtensionContext) {
         ),
         commands.registerCommand(
             "databricks.sync.startFull",
-            syncCommands.starCommand("full"),
+            syncCommands.startCommand("full"),
             syncCommands
         ),
         commands.registerCommand(
