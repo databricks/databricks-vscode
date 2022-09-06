@@ -9,7 +9,7 @@ export class SyncCommands {
         };
     }
 
-    starCommand(syncType: "full" | "incremental") {
+    startCommand(syncType: "full" | "incremental") {
         return async () => {
             await this.sync.start(syncType);
         };
