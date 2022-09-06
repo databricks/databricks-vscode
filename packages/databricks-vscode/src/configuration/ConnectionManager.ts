@@ -44,9 +44,9 @@ export class ConnectionManager {
         SyncDestination | undefined
     > = new EventEmitter();
 
-    public readonly onChangeState = this.onChangeStateEmitter.event;
-    public readonly onChangeCluster = this.onChangeClusterEmitter.event;
-    public readonly onChangeSyncDestination =
+    public readonly onDidChangeState = this.onChangeStateEmitter.event;
+    public readonly onDidChangeCluster = this.onChangeClusterEmitter.event;
+    public readonly onDidChangeSyncDestination =
         this.onChangeSyncDestinationEmitter.event;
 
     constructor(private cli: CliWrapper) {}
@@ -330,7 +330,7 @@ export class ConnectionManager {
             return;
         } else if (this._state === "CONNECTING") {
             return await new Promise((resolve) => {
-                const changeListener = this.onChangeState(() => {
+                const changeListener = this.onDidChangeState(() => {
                     changeListener.dispose();
                     resolve(resolve);
                 }, this);

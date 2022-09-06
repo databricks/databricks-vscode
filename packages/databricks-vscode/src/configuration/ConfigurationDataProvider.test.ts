@@ -8,12 +8,14 @@ import {ApiClient, Cluster} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "./ConnectionManager";
 import {resolveProviderResult} from "../test/utils";
 import {SyncDestination} from "./SyncDestination";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 describe(__filename, () => {
     let mockedConnectionManager: ConnectionManager;
     let disposables: Array<Disposable>;
     let onChangeClusterListener: (e: Cluster) => void;
     let onChangeSyncDestinationListener: (e: SyncDestination) => void;
+    let sync: CodeSynchronizer;
 
     beforeEach(() => {
         disposables = [];
@@ -21,18 +23,22 @@ describe(__filename, () => {
         onChangeClusterListener = () => {};
         onChangeSyncDestinationListener = () => {};
 
-        when(mockedConnectionManager.onChangeState).thenReturn((_handler) => {
-            return {
-                dispose() {},
-            };
-        });
-        when(mockedConnectionManager.onChangeCluster).thenReturn((_handler) => {
-            onChangeClusterListener = _handler;
-            return {
-                dispose() {},
-            };
-        });
-        when(mockedConnectionManager.onChangeSyncDestination).thenReturn(
+        when(mockedConnectionManager.onDidChangeState).thenReturn(
+            (_handler) => {
+                return {
+                    dispose() {},
+                };
+            }
+        );
+        when(mockedConnectionManager.onDidChangeCluster).thenReturn(
+            (_handler) => {
+                onChangeClusterListener = _handler;
+                return {
+                    dispose() {},
+                };
+            }
+        );
+        when(mockedConnectionManager.onDidChangeSyncDestination).thenReturn(
             (_handler) => {
                 onChangeSyncDestinationListener = _handler;
                 return {
@@ -40,6 +46,8 @@ describe(__filename, () => {
                 };
             }
         );
+
+        sync = mock(CodeSynchronizer);
     });
 
     afterEach(() => {
@@ -48,7 +56,7 @@ describe(__filename, () => {
 
     it("should reload tree on cluster change", async () => {
         let connectionManager = instance(mockedConnectionManager);
-        let provider = new ConfigurationDataProvider(connectionManager);
+        let provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let called = false;
@@ -65,7 +73,7 @@ describe(__filename, () => {
 
     it("should reload tree on sync destination change", async () => {
         let connectionManager = instance(mockedConnectionManager);
-        let provider = new ConfigurationDataProvider(connectionManager);
+        let provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let called = false;
@@ -82,7 +90,7 @@ describe(__filename, () => {
 
     it("should get empty roots", async () => {
         let connectionManager = instance(mockedConnectionManager);
-        let provider = new ConfigurationDataProvider(connectionManager);
+        let provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let children = await resolveProviderResult(provider.getChildren());
@@ -104,7 +112,7 @@ describe(__filename, () => {
         when(mockedConnectionManager.cluster).thenReturn(cluster);
 
         let connectionManager = instance(mockedConnectionManager);
-        let provider = new ConfigurationDataProvider(connectionManager);
+        let provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let children = await resolveProviderResult(provider.getChildren());
