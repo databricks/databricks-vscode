@@ -2,11 +2,6 @@
 // for the documentation about the tasks.json format
 {
     "version": "2.0.0",
-    "options": {
-        "env": {
-            "BRICKS_ARCH": "darwin_arm64"
-        }
-    },
     "tasks": [
         {
             "label": "Fetch bricks cli",
