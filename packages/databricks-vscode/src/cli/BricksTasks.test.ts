@@ -6,7 +6,7 @@ import {SyncDestination} from "../configuration/SyncDestination";
 import {BricksTaskProvider, SyncTask} from "./BricksTasks";
 import {CliWrapper} from "./CliWrapper";
 
-describe.only(__filename, () => {
+describe(__filename, () => {
     let connection: ConnectionManager;
     let cli: CliWrapper;
 

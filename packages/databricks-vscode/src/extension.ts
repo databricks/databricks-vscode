@@ -85,7 +85,7 @@ export function activate(context: ExtensionContext) {
     );
 
     // Run/debug group
-    const runCommands = new RunCommands(connectionManager, context);
+    const runCommands = new RunCommands(connectionManager);
     const debugFactory = new DatabricksDebugAdapterFactory(connectionManager);
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,

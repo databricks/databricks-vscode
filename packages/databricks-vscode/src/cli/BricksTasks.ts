@@ -48,7 +48,7 @@ export class SyncTask extends Task {
         this.problemMatchers = ["$bricks-sync"];
         this.presentationOptions.echo = true;
         this.group = TaskGroup.Build;
-        this.presentationOptions.reveal = TaskRevealKind.Always;
+        this.presentationOptions.reveal = TaskRevealKind.Silent;
     }
 }
 
