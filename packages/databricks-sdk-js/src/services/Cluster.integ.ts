@@ -18,7 +18,7 @@ describe(__filename, function () {
     });
 
     it("should create an execution context", async () => {
-        await integSetup.cluster.canExecute();
+        assert(await integSetup.cluster.canExecute());
 
         let ctx = await integSetup.cluster.createExecutionContext();
         let {result} = await ctx.execute("print('hello')");

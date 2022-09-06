@@ -30,7 +30,7 @@ export class ProjectConfigFile {
         );
         await fs.mkdir(path.dirname(fileName), {recursive: true});
 
-        fs.writeFile(fileName, JSON.stringify(this.config, null, 2), {
+        await fs.writeFile(fileName, JSON.stringify(this.config, null, 2), {
             encoding: "utf-8",
         });
     }
@@ -45,7 +45,9 @@ export class ProjectConfigFile {
             });
         } catch (e: any) {
             if (e.code && e.code === "ENOENT") {
-                throw new ConfigFileError("Project config file does not exist");
+                throw new ConfigFileError(
+                    `Project config file does not exist: ${projectConfigFilePath}`
+                );
             } else {
                 throw e;
             }

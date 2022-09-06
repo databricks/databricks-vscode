@@ -884,6 +884,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@vscode/debugadapter@npm:^1.57.0":
+  version: 1.57.0
+  resolution: "@vscode/debugadapter@npm:1.57.0"
+  dependencies:
+    "@vscode/debugprotocol": 1.57.0
+  checksum: 85205bffc01a4b41e17f9ccd642a81df3944792440d5a1f4be7d40db8a60251c8d2e07582459e0724c3518840a61d0c25defc817911c725d98587379e87996b4
+  languageName: node
+  linkType: hard
+
+"@vscode/debugprotocol@npm:1.57.0":
+  version: 1.57.0
+  resolution: "@vscode/debugprotocol@npm:1.57.0"
+  checksum: f7fa884849c6d10bb2b5b89a91e3972005c653676c91ec2223c56c070437952ec9807e92c7789a08ea56cd042b02c5bf74e469e78142774eda51334a19008977
+  languageName: node
+  linkType: hard
+
 "@vscode/test-electron@npm:^2.1.5":
   version: 2.1.5
   resolution: "@vscode/test-electron@npm:2.1.5"
@@ -1825,6 +1841,7 @@ __metadata:
     "@types/vscode": ^1.69.1
     "@typescript-eslint/eslint-plugin": ^5.33.0
     "@typescript-eslint/parser": ^5.33.0
+    "@vscode/debugadapter": ^1.57.0
     "@vscode/test-electron": ^2.1.5
     "@vscode/webview-ui-toolkit": ^1.0.0
     esbuild: ^0.15.1

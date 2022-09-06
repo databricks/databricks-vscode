@@ -220,10 +220,12 @@ export class Cluster {
      */
     async runNotebookAndWait({
         path,
+        parameters = {},
         onProgress,
         token,
     }: {
         path: string;
+        parameters?: Record<string, string>;
         onProgress?: (state: RunLifeCycleState, run: WorkflowRun) => void;
         token?: CancellationToken;
     }) {
@@ -234,6 +236,12 @@ export class Cluster {
                     existing_cluster_id: this.id,
                     notebook_task: {
                         notebook_path: path,
+                        base_parameters: Object.keys(parameters).map((key) => {
+                            return {
+                                key,
+                                value: parameters[key],
+                            };
+                        }),
                     },
                 },
             ],
@@ -248,10 +256,12 @@ export class Cluster {
      */
     async runPythonAndWait({
         path,
+        args = [],
         onProgress,
         token,
     }: {
         path: string;
+        args?: string[];
         onProgress?: (state: RunLifeCycleState, run: WorkflowRun) => void;
         token?: CancellationToken;
     }): Promise<GetRunOutputResponse> {
@@ -262,6 +272,7 @@ export class Cluster {
                     existing_cluster_id: this.id,
                     spark_python_task: {
                         python_file: path,
+                        parameters: args,
                     },
                 },
             ],
@@ -278,7 +289,7 @@ export class Cluster {
     ): Promise<void> {
         while (true) {
             if (run.lifeCycleState === "INTERNAL_ERROR") {
-                throw new Error(run.state?.state_message || "");
+                return;
             }
             if (run.lifeCycleState === "TERMINATED") {
                 return;
