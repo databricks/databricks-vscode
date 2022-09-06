@@ -1,6 +1,7 @@
 import {spawn} from "child_process";
 import {ExtensionContext} from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
+import {ExtensionContextManager} from "../ExtensionContextManager";
 
 interface Command {
     command: string;
@@ -16,9 +17,10 @@ interface Command {
 export class CliWrapper {
     constructor() {}
 
-    getTestBricksCommand(context: ExtensionContext): Command {
+    getTestBricksCommand(): Command {
         return {
-            command: context.asAbsolutePath("./bin/bricks"),
+            command:
+                ExtensionContextManager.get().asAbsolutePath("./bin/bricks"),
             args: [],
         };
     }
@@ -53,9 +55,11 @@ export class CliWrapper {
 
     getAddProfileCommand(profile: string, host: URL): Command {
         return {
-            command: "databricks",
+            command:
+                ExtensionContextManager.get().asAbsolutePath("./bin/bricks"),
             args: [
                 "configure",
+                "--no-interactive",
                 "--profile",
                 profile,
                 "--host",
@@ -76,7 +80,7 @@ export class CliWrapper {
                 stdio: ["pipe", 0, 0],
             });
 
-            child.stdin!.write(token);
+            child.stdin!.write(`${token}\n`);
             child.stdin!.end();
 
             child.on("error", reject);

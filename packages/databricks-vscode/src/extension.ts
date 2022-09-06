@@ -10,10 +10,10 @@ import {RunCommands} from "./run/RunCommands";
 import {CliCommands} from "./cli/CliCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
+import {ExtensionContextManager} from "./ExtensionContextManager";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
-
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
     connectionManager.login(false);
@@ -28,6 +28,8 @@ export function activate(context: ExtensionContext) {
     );
 
     context.subscriptions.push(
+        new ExtensionContextManager(context),
+
         configurationDataProvider,
 
         commands.registerCommand(
@@ -157,7 +159,7 @@ export function activate(context: ExtensionContext) {
         ),
         commands.registerCommand(
             "databricks.cli.testBricksCli",
-            cliCommands.testBricksCommand(context),
+            cliCommands.testBricksCommand(),
             cliCommands
         )
     );

@@ -1,8 +1,11 @@
 import * as assert from "assert";
 import {Uri} from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
+import {ExtensionContext} from "vscode";
 
 import {CliWrapper} from "./CliWrapper";
+import {mock, spy} from "ts-mockito";
+import {ExtensionContextManager} from "../ExtensionContextManager";
 
 describe(__filename, () => {
     it("should create sync command", () => {
@@ -50,6 +53,11 @@ describe(__filename, () => {
     });
 
     it("should create an 'add profile' command", () => {
+        new ExtensionContextManager({
+            asAbsolutePath(path: string) {
+                return path;
+            },
+        } as any);
         const cli = new CliWrapper();
 
         const {command, args} = cli.getAddProfileCommand(
@@ -59,7 +67,7 @@ describe(__filename, () => {
 
         assert.equal(
             [command, ...args].join(" "),
-            "databricks configure --profile DEFAULT --host https://databricks.com/ --token"
+            "./bin/bricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
         );
     });
 });

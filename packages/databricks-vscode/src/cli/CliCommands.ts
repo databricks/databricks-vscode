@@ -21,9 +21,9 @@ export class CliCommands {
         private cli: CliWrapper
     ) {}
 
-    testBricksCommand(context: ExtensionContext) {
+    testBricksCommand() {
         return () => {
-            const {command, args} = this.cli.getTestBricksCommand(context);
+            const {command, args} = this.cli.getTestBricksCommand();
             const cmd = spawn(command, args);
 
             cmd.stdout.on("data", (data) => {
