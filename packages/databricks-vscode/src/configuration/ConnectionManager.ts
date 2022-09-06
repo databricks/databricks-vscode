@@ -36,18 +36,19 @@ export class ConnectionManager {
     private _me?: string;
     private _profile?: string;
 
-    private readonly onChangeStateEmitter: EventEmitter<ConnectionState> =
+    private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
-    private readonly onChangeClusterEmitter: EventEmitter<Cluster | undefined> =
-        new EventEmitter();
-    private readonly onChangeSyncDestinationEmitter: EventEmitter<
+    private readonly onDidChangeClusterEmitter: EventEmitter<
+        Cluster | undefined
+    > = new EventEmitter();
+    private readonly onDidChangeSyncDestinationEmitter: EventEmitter<
         SyncDestination | undefined
     > = new EventEmitter();
 
-    public readonly onDidChangeState = this.onChangeStateEmitter.event;
-    public readonly onDidChangeCluster = this.onChangeClusterEmitter.event;
+    public readonly onDidChangeState = this.onDidChangeStateEmitter.event;
+    public readonly onDidChangeCluster = this.onDidChangeClusterEmitter.event;
     public readonly onDidChangeSyncDestination =
-        this.onChangeSyncDestinationEmitter.event;
+        this.onDidChangeSyncDestinationEmitter.event;
 
     constructor(private cli: CliWrapper) {}
 
@@ -305,14 +306,14 @@ export class ConnectionManager {
         console.log("change state", this._state, newState);
         if (this._state !== newState) {
             this._state = newState;
-            this.onChangeStateEmitter.fire(this._state);
+            this.onDidChangeStateEmitter.fire(this._state);
         }
     }
 
     private updateCluster(newCluster: Cluster | undefined) {
         if (this._cluster !== newCluster) {
             this._cluster = newCluster;
-            this.onChangeClusterEmitter.fire(this._cluster);
+            this.onDidChangeClusterEmitter.fire(this._cluster);
         }
     }
 
@@ -321,7 +322,7 @@ export class ConnectionManager {
     ) {
         if (this._syncDestination !== newSyncDestination) {
             this._syncDestination = newSyncDestination;
-            this.onChangeSyncDestinationEmitter.fire(this._syncDestination);
+            this.onDidChangeSyncDestinationEmitter.fire(this._syncDestination);
         }
     }
 

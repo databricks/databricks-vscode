@@ -40,7 +40,7 @@ export class SyncTask extends Task {
             TaskScope.Workspace,
             "sync",
             "databricks",
-            new LazyProcessExecution(connection, cli, syncType)
+            new LazySyncProcessExecution(connection, cli, syncType)
         );
 
         this.isBackground = true;
@@ -57,7 +57,7 @@ export class SyncTask extends Task {
  * and args properties. This is necessary because the process and args properties
  * re not known up front can only be computed dynamically at runtime.
  */
-class LazyProcessExecution extends ProcessExecution {
+class LazySyncProcessExecution extends ProcessExecution {
     private command?: Command;
     constructor(
         private connection: ConnectionManager,
