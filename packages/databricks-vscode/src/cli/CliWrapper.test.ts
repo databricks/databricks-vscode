@@ -8,9 +8,10 @@ describe(__filename, () => {
     it("should create sync command", () => {
         const cli = new CliWrapper();
         const mapper = new SyncDestination(
-            Uri.file(
-                "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
-            ),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 
@@ -30,9 +31,10 @@ describe(__filename, () => {
     it("should create full sync command", () => {
         const cli = new CliWrapper();
         const mapper = new SyncDestination(
-            Uri.file(
-                "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
-            ),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 

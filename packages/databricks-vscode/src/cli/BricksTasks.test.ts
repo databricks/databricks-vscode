@@ -39,7 +39,10 @@ describe(__filename, () => {
         when(connectionMock.me).thenReturn("fabian.jakobs@databricks.com");
         when(connectionMock.syncDestination).thenReturn(
             new SyncDestination(
-                Uri.file("/Workspace/notebook-best-practices"),
+                Uri.from({
+                    scheme: "dbws",
+                    path: "/Workspace/notebook-best-practices",
+                }),
                 Uri.file("/Desktop/notebook-best-practices")
             )
         );

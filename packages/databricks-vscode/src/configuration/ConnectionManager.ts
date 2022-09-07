@@ -145,7 +145,10 @@ export class ConnectionManager {
 
         if (projectConfigFile.config.workspacePath) {
             await this.attachSyncDestination(
-                Uri.file(projectConfigFile.config.workspacePath),
+                Uri.from({
+                    scheme: "dbws",
+                    path: projectConfigFile.config.workspacePath,
+                }),
                 false
             );
         } else {
@@ -196,7 +199,6 @@ export class ConnectionManager {
                         return;
 
                     case "Open configuration file":
-                        console.log("open file ...");
                         await commands.executeCommand(
                             "databricks.openDatabricksConfigFile"
                         );
@@ -303,7 +305,6 @@ export class ConnectionManager {
     }
 
     private updateState(newState: ConnectionState) {
-        console.log("change state", this._state, newState);
         if (this._state !== newState) {
             this._state = newState;
             this.onDidChangeStateEmitter.fire(this._state);

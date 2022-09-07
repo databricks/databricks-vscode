@@ -83,7 +83,9 @@ export class DatabricksRuntime {
 
         this._onDidSendOutputEmitter.fire({
             type: "out",
-            text: `${new Date()} Running on Cluster ${cluster.id} ...`,
+            text: `${new Date()} Running ${syncDestination.getRelativePath(
+                Uri.file(program)
+            )} on Cluster ${cluster.id} ...`,
             filePath: program,
             line: lines.length,
             column: 0,
