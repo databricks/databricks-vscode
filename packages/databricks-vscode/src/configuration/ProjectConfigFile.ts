@@ -25,9 +25,9 @@ export class ProjectConfigFile {
         this.config.workspacePath = workspacePath;
     }
 
-    async write() {
+    async write(rootPath?: string) {
         try {
-            const originalConfig = await ProjectConfigFile.load();
+            const originalConfig = await ProjectConfigFile.load(rootPath);
             if (
                 JSON.stringify(originalConfig.config, null, 2) ===
                 JSON.stringify(this.config, null, 2)
@@ -36,7 +36,7 @@ export class ProjectConfigFile {
             }
         } catch (e) {}
 
-        let fileName = ProjectConfigFile.getProjectConfigFilePath();
+        let fileName = ProjectConfigFile.getProjectConfigFilePath(rootPath);
         await fs.mkdir(path.dirname(fileName), {recursive: true});
 
         await fs.writeFile(fileName, JSON.stringify(this.config, null, 2), {
@@ -44,8 +44,8 @@ export class ProjectConfigFile {
         });
     }
 
-    static async load(): Promise<ProjectConfigFile> {
-        const projectConfigFilePath = this.getProjectConfigFilePath();
+    static async load(rootPath?: string): Promise<ProjectConfigFile> {
+        const projectConfigFilePath = this.getProjectConfigFilePath(rootPath);
 
         let rawConfig;
         try {
@@ -72,11 +72,11 @@ export class ProjectConfigFile {
         return new ProjectConfigFile(config);
     }
 
-    static getProjectConfigFilePath(): string {
-        if (!workspace.rootPath) {
+    static getProjectConfigFilePath(rootPath?: string): string {
+        if (!rootPath) {
             throw new Error("Not in a VSCode workspace");
         }
-        let cwd = path.normalize(workspace.rootPath);
+        let cwd = path.normalize(rootPath);
         return path.join(cwd, ".databricks", "project.json");
     }
 }

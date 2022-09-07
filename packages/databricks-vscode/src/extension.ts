@@ -164,11 +164,14 @@ export function activate(context: ExtensionContext) {
     );
 
     const configFileWatcher = workspace.createFileSystemWatcher(
-        ProjectConfigFile.getProjectConfigFilePath(),
-        true
+        ProjectConfigFile.getProjectConfigFilePath(workspace.rootPath)
     );
 
     context.subscriptions.push(
+        configFileWatcher,
+        configFileWatcher.onDidChange(async (e) => {
+            await connectionManager.login();
+        }),
         configFileWatcher.onDidChange(async (e) => {
             await connectionManager.login();
         }),

@@ -97,7 +97,9 @@ export class ConnectionManager {
         let profile;
 
         try {
-            projectConfigFile = await ProjectConfigFile.load();
+            projectConfigFile = await ProjectConfigFile.load(
+                vscodeWorkspace.rootPath
+            );
 
             profile = projectConfigFile.config.profile;
             if (!profile) {
@@ -209,7 +211,7 @@ export class ConnectionManager {
 
         projectConfigFile.profile = profile;
 
-        await projectConfigFile.write();
+        await projectConfigFile.write(vscodeWorkspace.rootPath);
     }
 
     async attachCluster(
@@ -226,7 +228,7 @@ export class ConnectionManager {
 
         if (!skipWrite) {
             this._projectConfigFile!.clusterId = cluster.id;
-            await this._projectConfigFile!.write();
+            await this._projectConfigFile!.write(vscodeWorkspace.rootPath);
         }
 
         this.updateCluster(cluster);
@@ -239,7 +241,7 @@ export class ConnectionManager {
 
         if (this._projectConfigFile) {
             this._projectConfigFile.clusterId = undefined;
-            await this._projectConfigFile.write();
+            await this._projectConfigFile.write(vscodeWorkspace.rootPath);
         }
 
         this.updateCluster(undefined);
@@ -259,7 +261,7 @@ export class ConnectionManager {
 
         if (!skipWrite) {
             this._projectConfigFile!.workspacePath = workspacePath.path;
-            await this._projectConfigFile!.write();
+            await this._projectConfigFile!.write(vscodeWorkspace.rootPath);
         }
 
         const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
@@ -273,7 +275,7 @@ export class ConnectionManager {
 
         if (this._projectConfigFile) {
             this._projectConfigFile.workspacePath = undefined;
-            await this._projectConfigFile.write();
+            await this._projectConfigFile.write(vscodeWorkspace.rootPath);
         }
 
         this.updateSyncDestination(undefined);
