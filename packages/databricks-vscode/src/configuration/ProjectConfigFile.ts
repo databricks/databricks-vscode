@@ -10,7 +10,7 @@ export interface ProjectConfig {
 export class ConfigFileError extends Error {}
 
 export class ProjectConfigFile {
-    constructor(public config: ProjectConfig) {}
+    constructor(public config: ProjectConfig, readonly rootPath?: string) {}
 
     set profile(profile: string | undefined) {
         this.config.profile = profile;
@@ -24,9 +24,9 @@ export class ProjectConfigFile {
         this.config.workspacePath = workspacePath;
     }
 
-    async write(rootPath?: string) {
+    async write() {
         try {
-            const originalConfig = await ProjectConfigFile.load(rootPath);
+            const originalConfig = await ProjectConfigFile.load(this.rootPath);
             if (
                 JSON.stringify(originalConfig.config, null, 2) ===
                 JSON.stringify(this.config, null, 2)
@@ -35,7 +35,9 @@ export class ProjectConfigFile {
             }
         } catch (e) {}
 
-        let fileName = ProjectConfigFile.getProjectConfigFilePath(rootPath);
+        let fileName = ProjectConfigFile.getProjectConfigFilePath(
+            this.rootPath
+        );
         await fs.mkdir(path.dirname(fileName), {recursive: true});
 
         await fs.writeFile(fileName, JSON.stringify(this.config, null, 2), {

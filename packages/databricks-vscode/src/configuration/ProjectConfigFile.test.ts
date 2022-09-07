@@ -20,7 +20,7 @@ describe(__filename, () => {
             profile: "testProfile",
             workspacePath: "workspacePath",
         };
-        await new ProjectConfigFile(expected).write(tempDir);
+        await new ProjectConfigFile(expected, tempDir).write();
 
         const rawData = await readFile(
             ProjectConfigFile.getProjectConfigFilePath(tempDir),
