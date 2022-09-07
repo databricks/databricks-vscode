@@ -169,7 +169,7 @@ export function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         configFileWatcher,
-        configFileWatcher.onDidChange(async (e) => {
+        configFileWatcher.onDidCreate(async (e) => {
             await connectionManager.login();
         }),
         configFileWatcher.onDidChange(async (e) => {
