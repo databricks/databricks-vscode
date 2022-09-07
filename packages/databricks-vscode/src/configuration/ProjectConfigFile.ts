@@ -1,6 +1,5 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import {workspace} from "vscode";
 
 export interface ProjectConfig {
     profile?: string;
