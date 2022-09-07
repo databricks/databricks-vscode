@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import {workspace} from "vscode";
 
 export interface ProjectConfig {
     profile?: string;
@@ -10,7 +11,7 @@ export interface ProjectConfig {
 export class ConfigFileError extends Error {}
 
 export class ProjectConfigFile {
-    constructor(public config: ProjectConfig, private projectDir: string) {}
+    constructor(public config: ProjectConfig) {}
 
     set profile(profile: string | undefined) {
         this.config.profile = profile;
@@ -25,9 +26,17 @@ export class ProjectConfigFile {
     }
 
     async write() {
-        let fileName = ProjectConfigFile.getProjectConfigFilePath(
-            this.projectDir
-        );
+        try {
+            const originalConfig = await ProjectConfigFile.load();
+            if (
+                JSON.stringify(originalConfig.config, null, 2) ===
+                JSON.stringify(this.config, null, 2)
+            ) {
+                return;
+            }
+        } catch (e) {}
+
+        let fileName = ProjectConfigFile.getProjectConfigFilePath();
         await fs.mkdir(path.dirname(fileName), {recursive: true});
 
         await fs.writeFile(fileName, JSON.stringify(this.config, null, 2), {
@@ -35,8 +44,8 @@ export class ProjectConfigFile {
         });
     }
 
-    static async load(projectDir: string): Promise<ProjectConfigFile> {
-        const projectConfigFilePath = this.getProjectConfigFilePath(projectDir);
+    static async load(): Promise<ProjectConfigFile> {
+        const projectConfigFilePath = this.getProjectConfigFilePath();
 
         let rawConfig;
         try {
@@ -60,11 +69,14 @@ export class ProjectConfigFile {
             throw new ConfigFileError("Error parsing project config file");
         }
 
-        return new ProjectConfigFile(config, projectDir);
+        return new ProjectConfigFile(config);
     }
 
-    private static getProjectConfigFilePath(projectDir: string): string {
-        let cwd = path.normalize(projectDir);
+    static getProjectConfigFilePath(): string {
+        if (!workspace.rootPath) {
+            throw new Error("Not in a VSCode workspace");
+        }
+        let cwd = path.normalize(workspace.rootPath);
         return path.join(cwd, ".databricks", "project.json");
     }
 }

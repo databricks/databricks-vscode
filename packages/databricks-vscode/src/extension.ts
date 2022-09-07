@@ -1,4 +1,4 @@
-import {commands, debug, ExtensionContext, window} from "vscode";
+import {commands, debug, ExtensionContext, window, workspace} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -10,6 +10,7 @@ import {RunCommands} from "./run/RunCommands";
 import {CliCommands} from "./cli/CliCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
+import {ProjectConfigFile} from "./configuration/ProjectConfigFile";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
@@ -160,6 +161,20 @@ export function activate(context: ExtensionContext) {
             cliCommands.testBricksCommand(context),
             cliCommands
         )
+    );
+
+    const configFileWatcher = workspace.createFileSystemWatcher(
+        ProjectConfigFile.getProjectConfigFilePath(),
+        true
+    );
+
+    context.subscriptions.push(
+        configFileWatcher.onDidChange(async (e) => {
+            await connectionManager.login();
+        }),
+        configFileWatcher.onDidDelete(async (e) => {
+            await connectionManager.logout();
+        })
     );
 }
 

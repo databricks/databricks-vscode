@@ -97,15 +97,7 @@ export class ConnectionManager {
         let profile;
 
         try {
-            if (!vscodeWorkspace.rootPath) {
-                throw new Error(
-                    "Can't login to Databricks: Not in a VSCode workspace"
-                );
-            }
-
-            projectConfigFile = await ProjectConfigFile.load(
-                vscodeWorkspace.rootPath
-            );
+            projectConfigFile = await ProjectConfigFile.load();
 
             profile = projectConfigFile.config.profile;
             if (!profile) {
@@ -169,7 +161,7 @@ export class ConnectionManager {
     }
 
     async configureProject() {
-        let profile;
+        let profile: string | undefined;
         while (true) {
             profile = await selectProfile(this.cli);
             if (!profile) {
@@ -197,7 +189,7 @@ export class ConnectionManager {
                     case "Open configuration file":
                         console.log("open file ...");
                         await commands.executeCommand(
-                            "databricks.openDatabricksConfigFile"
+                            "databricks.connection.openDatabricksConfigFile"
                         );
                         return;
                 }
@@ -213,14 +205,7 @@ export class ConnectionManager {
     }
 
     private async writeConfigFile(profile: string) {
-        if (!vscodeWorkspace.rootPath) {
-            throw new Error("Not in a VSCode workspace");
-        }
-
-        const projectConfigFile = new ProjectConfigFile(
-            {},
-            vscodeWorkspace.rootPath
-        );
+        const projectConfigFile = new ProjectConfigFile({});
 
         projectConfigFile.profile = profile;
 
