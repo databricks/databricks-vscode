@@ -10,7 +10,6 @@ import {RunCommands} from "./run/RunCommands";
 import {CliCommands} from "./cli/CliCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
-import {ExtensionContextManager} from "./ExtensionContextManager";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper(context);
