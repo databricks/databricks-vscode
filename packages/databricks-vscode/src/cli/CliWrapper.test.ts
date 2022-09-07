@@ -5,11 +5,14 @@ import {ExtensionContext} from "vscode";
 
 import {CliWrapper} from "./CliWrapper";
 import {mock, spy} from "ts-mockito";
-import {ExtensionContextManager} from "../ExtensionContextManager";
 
 describe(__filename, () => {
     it("should create sync command", () => {
-        const cli = new CliWrapper();
+        const cli = new CliWrapper({
+            asAbsolutePath(path: string) {
+                return path;
+            },
+        } as any);
         const mapper = new SyncDestination(
             Uri.file(
                 "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
@@ -31,7 +34,11 @@ describe(__filename, () => {
     });
 
     it("should create full sync command", () => {
-        const cli = new CliWrapper();
+        const cli = new CliWrapper({
+            asAbsolutePath(path: string) {
+                return path;
+            },
+        } as any);
         const mapper = new SyncDestination(
             Uri.file(
                 "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
@@ -53,12 +60,11 @@ describe(__filename, () => {
     });
 
     it("should create an 'add profile' command", () => {
-        new ExtensionContextManager({
+        const cli = new CliWrapper({
             asAbsolutePath(path: string) {
                 return path;
             },
         } as any);
-        const cli = new CliWrapper();
 
         const {command, args} = cli.getAddProfileCommand(
             "DEFAULT",

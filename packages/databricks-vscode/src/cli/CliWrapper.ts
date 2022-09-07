@@ -1,7 +1,6 @@
 import {spawn} from "child_process";
 import {ExtensionContext} from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
-import {ExtensionContextManager} from "../ExtensionContextManager";
 
 interface Command {
     command: string;
@@ -15,12 +14,11 @@ interface Command {
  * of the bricks CLI
  */
 export class CliWrapper {
-    constructor() {}
+    constructor(private context: ExtensionContext) {}
 
     getTestBricksCommand(): Command {
         return {
-            command:
-                ExtensionContextManager.get().asAbsolutePath("./bin/bricks"),
+            command: this.context.asAbsolutePath("./bin/bricks"),
             args: [],
         };
     }
@@ -55,8 +53,7 @@ export class CliWrapper {
 
     getAddProfileCommand(profile: string, host: URL): Command {
         return {
-            command:
-                ExtensionContextManager.get().asAbsolutePath("./bin/bricks"),
+            command: this.context.asAbsolutePath("./bin/bricks"),
             args: [
                 "configure",
                 "--no-interactive",

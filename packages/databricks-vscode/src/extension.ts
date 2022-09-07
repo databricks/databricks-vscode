@@ -13,7 +13,7 @@ import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebu
 import {ExtensionContextManager} from "./ExtensionContextManager";
 
 export function activate(context: ExtensionContext) {
-    let cli = new CliWrapper();
+    let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
     connectionManager.login(false);
@@ -28,8 +28,6 @@ export function activate(context: ExtensionContext) {
     );
 
     context.subscriptions.push(
-        new ExtensionContextManager(context),
-
         configurationDataProvider,
 
         commands.registerCommand(
