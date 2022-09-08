@@ -15,8 +15,7 @@ import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
 
 export function activate(context: ExtensionContext) {
-    let cli = new CliWrapper();
-
+    let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
     connectionManager.login(false);
@@ -173,7 +172,7 @@ export function activate(context: ExtensionContext) {
         ),
         commands.registerCommand(
             "databricks.cli.testBricksCli",
-            cliCommands.testBricksCommand(context),
+            cliCommands.testBricksCommand(),
             cliCommands
         )
     );
