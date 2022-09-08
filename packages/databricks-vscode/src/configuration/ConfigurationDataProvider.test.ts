@@ -145,8 +145,8 @@ describe(__filename, () => {
                     color: undefined,
                     id: "repo",
                 },
-                id: "WORKSPACE",
-                label: 'Workspace - "None attached"',
+                id: "REPO",
+                label: 'Repo - "None attached"',
             },
         ]);
     });

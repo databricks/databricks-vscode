@@ -4,6 +4,7 @@ dist/**
 node_modules/**
 src/**
 .gitignore
+.prettierignore
 .yarnrc
 **/tsconfig.json
 **/.eslintrc.json
