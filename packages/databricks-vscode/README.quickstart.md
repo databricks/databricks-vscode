@@ -15,3 +15,5 @@ The Databricks extension for VSCode allows you to develop for the Databricks Lak
 1. Download and install dbx
    `pip install dbx`
 2. Download extension from
+
+(c) by Databricks 2022
