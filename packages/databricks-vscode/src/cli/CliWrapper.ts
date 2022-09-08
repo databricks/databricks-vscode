@@ -14,11 +14,11 @@ export interface Command {
  * of the bricks CLI
  */
 export class CliWrapper {
-    constructor() {}
+    constructor(private context: ExtensionContext) {}
 
-    getTestBricksCommand(context: ExtensionContext): Command {
+    getTestBricksCommand(): Command {
         return {
-            command: context.asAbsolutePath("./bin/bricks"),
+            command: this.context.asAbsolutePath("./bin/bricks"),
             args: [],
         };
     }
@@ -53,9 +53,10 @@ export class CliWrapper {
 
     getAddProfileCommand(profile: string, host: URL): Command {
         return {
-            command: "databricks",
+            command: this.context.asAbsolutePath("./bin/bricks"),
             args: [
                 "configure",
+                "--no-interactive",
                 "--profile",
                 profile,
                 "--host",
@@ -76,7 +77,7 @@ export class CliWrapper {
                 stdio: ["pipe", 0, 0],
             });
 
-            child.stdin!.write(token);
+            child.stdin!.write(`${token}\n`);
             child.stdin!.end();
 
             child.on("error", reject);
