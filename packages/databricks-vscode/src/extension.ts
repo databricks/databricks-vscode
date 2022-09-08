@@ -1,4 +1,11 @@
-import {commands, debug, ExtensionContext, tasks, window, workspace} from "vscode";
+import {
+    commands,
+    debug,
+    ExtensionContext,
+    tasks,
+    window,
+    workspace,
+} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
