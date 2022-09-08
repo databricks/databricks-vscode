@@ -1,14 +1,11 @@
-import {debug, ExtensionContext, Uri, window} from "vscode";
+import {commands, debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 /**
  * Run related commands
  */
 export class RunCommands {
-    constructor(
-        private connectionManager: ConnectionManager,
-        private context: ExtensionContext
-    ) {}
+    constructor(private connection: ConnectionManager) {}
 
     /**
      * Run a Python file using the command execution API
@@ -17,7 +14,12 @@ export class RunCommands {
         return async (resource: Uri) => {
             let targetResource = this.getTargetResource(resource);
             if (targetResource) {
-                debug.startDebugging(
+                if (this.connection.state === "CONNECTING") {
+                    await this.connection.waitForConnect();
+                }
+
+                await commands.executeCommand("databricks.sync.start");
+                await debug.startDebugging(
                     undefined,
                     {
                         type: "databricks",
@@ -38,7 +40,12 @@ export class RunCommands {
         return async (resource: Uri) => {
             let targetResource = this.getTargetResource(resource);
             if (targetResource) {
-                debug.startDebugging(
+                if (this.connection.state === "CONNECTING") {
+                    await this.connection.waitForConnect();
+                }
+
+                await commands.executeCommand("databricks.sync.start");
+                await debug.startDebugging(
                     undefined,
                     {
                         type: "databricks-workflow",
