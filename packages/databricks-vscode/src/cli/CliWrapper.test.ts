@@ -14,9 +14,10 @@ describe(__filename, () => {
             },
         } as any);
         const mapper = new SyncDestination(
-            Uri.file(
-                "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
-            ),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 
@@ -40,9 +41,10 @@ describe(__filename, () => {
             },
         } as any);
         const mapper = new SyncDestination(
-            Uri.file(
-                "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
-            ),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 

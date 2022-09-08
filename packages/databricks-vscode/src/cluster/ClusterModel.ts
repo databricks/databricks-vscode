@@ -24,7 +24,7 @@ export class ClusterModel implements Disposable {
 
     constructor(private connectionManager: ConnectionManager) {
         this.disposables = [
-            connectionManager.onChangeState(this.refresh, this),
+            connectionManager.onDidChangeState(this.refresh, this),
         ];
     }
 
