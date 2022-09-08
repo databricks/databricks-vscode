@@ -13,6 +13,7 @@ import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebu
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
+import {QuickstartCommands} from "./quickstart/QuickStartCommands";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
@@ -175,6 +176,16 @@ export function activate(context: ExtensionContext) {
             "databricks.cli.testBricksCli",
             cliCommands.testBricksCommand(context),
             cliCommands
+        )
+    );
+
+    // Quickstart
+    const quickstartCommands = new QuickstartCommands(context);
+    context.subscriptions.push(
+        commands.registerCommand(
+            "databricks.quickstart.open",
+            quickstartCommands.openQuickstartCommand(),
+            quickstartCommands
         )
     );
 }
