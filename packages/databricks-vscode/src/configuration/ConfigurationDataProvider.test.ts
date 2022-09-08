@@ -1,38 +1,42 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {mock, when, instance} from "ts-mockito";
+import {mock, when, instance, anything} from "ts-mockito";
 import {Disposable} from "vscode";
 import {ConfigurationDataProvider} from "./ConfigurationDataProvider";
 import {ApiClient, Cluster} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "./ConnectionManager";
 import {resolveProviderResult} from "../test/utils";
 import {SyncDestination} from "./SyncDestination";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 describe(__filename, () => {
-    let mockedConnectionManager: ConnectionManager;
+    let connectionManagerMock: ConnectionManager;
     let disposables: Array<Disposable>;
     let onChangeClusterListener: (e: Cluster) => void;
     let onChangeSyncDestinationListener: (e: SyncDestination) => void;
+    let sync: CodeSynchronizer;
 
     beforeEach(() => {
         disposables = [];
-        mockedConnectionManager = mock(ConnectionManager);
+        connectionManagerMock = mock(ConnectionManager);
         onChangeClusterListener = () => {};
         onChangeSyncDestinationListener = () => {};
 
-        when(mockedConnectionManager.onChangeState).thenReturn((_handler) => {
+        when(connectionManagerMock.onDidChangeState).thenReturn((_handler) => {
             return {
                 dispose() {},
             };
         });
-        when(mockedConnectionManager.onChangeCluster).thenReturn((_handler) => {
-            onChangeClusterListener = _handler;
-            return {
-                dispose() {},
-            };
-        });
-        when(mockedConnectionManager.onChangeSyncDestination).thenReturn(
+        when(connectionManagerMock.onDidChangeCluster).thenReturn(
+            (_handler) => {
+                onChangeClusterListener = _handler;
+                return {
+                    dispose() {},
+                };
+            }
+        );
+        when(connectionManagerMock.onDidChangeSyncDestination).thenReturn(
             (_handler) => {
                 onChangeSyncDestinationListener = _handler;
                 return {
@@ -40,6 +44,12 @@ describe(__filename, () => {
                 };
             }
         );
+
+        const syncMock = mock(CodeSynchronizer);
+        when(syncMock.onDidChangeState(anything())).thenReturn({
+            dispose() {},
+        });
+        sync = instance(syncMock);
     });
 
     afterEach(() => {
@@ -47,8 +57,8 @@ describe(__filename, () => {
     });
 
     it("should reload tree on cluster change", async () => {
-        let connectionManager = instance(mockedConnectionManager);
-        let provider = new ConfigurationDataProvider(connectionManager);
+        let connectionManager = instance(connectionManagerMock);
+        let provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let called = false;
@@ -64,8 +74,8 @@ describe(__filename, () => {
     });
 
     it("should reload tree on sync destination change", async () => {
-        let connectionManager = instance(mockedConnectionManager);
-        let provider = new ConfigurationDataProvider(connectionManager);
+        let connectionManager = instance(connectionManagerMock);
+        let provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let called = false;
@@ -81,8 +91,8 @@ describe(__filename, () => {
     });
 
     it("should get empty roots", async () => {
-        let connectionManager = instance(mockedConnectionManager);
-        let provider = new ConfigurationDataProvider(connectionManager);
+        let connectionManager = instance(connectionManagerMock);
+        let provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let children = await resolveProviderResult(provider.getChildren());
@@ -100,11 +110,11 @@ describe(__filename, () => {
             state: "TERMINATED",
         });
 
-        when(mockedConnectionManager.state).thenReturn("CONNECTED");
-        when(mockedConnectionManager.cluster).thenReturn(cluster);
+        when(connectionManagerMock.state).thenReturn("CONNECTED");
+        when(connectionManagerMock.cluster).thenReturn(cluster);
 
-        let connectionManager = instance(mockedConnectionManager);
-        let provider = new ConfigurationDataProvider(connectionManager);
+        let connectionManager = instance(connectionManagerMock);
+        let provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let children = await resolveProviderResult(provider.getChildren());
@@ -130,7 +140,7 @@ describe(__filename, () => {
             },
             {
                 collapsibleState: 2,
-                contextValue: "syncDestinationDetached",
+                contextValue: "syncDetached",
                 iconPath: {
                     color: undefined,
                     id: "repo",

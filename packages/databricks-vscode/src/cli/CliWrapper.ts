@@ -2,7 +2,7 @@ import {spawn} from "child_process";
 import {ExtensionContext} from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
 
-interface Command {
+export interface Command {
     command: string;
     args: string[];
 }
