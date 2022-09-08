@@ -12,12 +12,24 @@ export class ConfigFileError extends Error {}
 export class ProjectConfigFile {
     constructor(public config: ProjectConfig, readonly rootPath?: string) {}
 
+    get profile() {
+        return this.config.profile;
+    }
+
     set profile(profile: string | undefined) {
         this.config.profile = profile;
     }
 
+    get clusterId() {
+        return this.config.clusterId;
+    }
+
     set clusterId(clusterId: string | undefined) {
         this.config.clusterId = clusterId;
+    }
+
+    get workspacePath() {
+        return this.config.workspacePath;
     }
 
     set workspacePath(workspacePath: string | undefined) {
@@ -70,7 +82,7 @@ export class ProjectConfigFile {
             throw new ConfigFileError("Error parsing project config file");
         }
 
-        return new ProjectConfigFile(config);
+        return new ProjectConfigFile(config, rootPath);
     }
 
     static getProjectConfigFilePath(rootPath?: string): string {

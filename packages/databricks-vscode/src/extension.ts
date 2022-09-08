@@ -17,10 +17,10 @@ import {RunCommands} from "./run/RunCommands";
 import {CliCommands} from "./cli/CliCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
-import {ProjectConfigFile} from "./configuration/ProjectConfigFile";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
+import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper();
@@ -186,21 +186,8 @@ export function activate(context: ExtensionContext) {
         )
     );
 
-    const configFileWatcher = workspace.createFileSystemWatcher(
-        ProjectConfigFile.getProjectConfigFilePath(workspace.rootPath)
-    );
-
     context.subscriptions.push(
-        configFileWatcher,
-        configFileWatcher.onDidCreate(async (e) => {
-            await connectionManager.login();
-        }),
-        configFileWatcher.onDidChange(async (e) => {
-            await connectionManager.login();
-        }),
-        configFileWatcher.onDidDelete(async (e) => {
-            await connectionManager.logout();
-        })
+        new ProjectConfigFileWatcher(connectionManager, workspace.rootPath)
     );
 }
 
