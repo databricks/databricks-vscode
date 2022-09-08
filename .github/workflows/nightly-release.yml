@@ -2,7 +2,7 @@ name: Publish nightly release
 
 on:
     push:
-        branches: [main]
+        branches: [main, quickstart]
 
 jobs:
     archive-build-artifacts:
@@ -17,6 +17,9 @@ jobs:
 
             - run: yarn install
             - run: yarn run build
+
+            - run: yarn run package:cli:fetch
+              working-directory: packages/databricks-vscode
 
             - run: yarn run package
               working-directory: packages/databricks-vscode
