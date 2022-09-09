@@ -128,5 +128,5 @@ jobs:
               continue-on-error: true
               uses: actions/upload-artifact@v3
               with:
-                  name: test-logs ${{ join(inputs.*, ' - ') }} -  ${{ github.event_name }}
+                  name: test-logs ${{ join(inputs.*, ' - ') }} - ${{ github.event_name }}
                   path: packages/databricks-vscode/src/test/logs
