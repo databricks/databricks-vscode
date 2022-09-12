@@ -89,16 +89,20 @@ export interface AwsAttributes {
     zone_id: string;
 }
 export const DefaultAwsAttributes = {};
+
 // Availability type used for all subsequent nodes past the ``first_on_demand``
 // ones. Note: If ``first_on_demand`` is zero, this availability type will be
 // used for the entire cluster.
 export type AwsAttributesAvailability =
-    | "ONDEMAND"
+    | "ON_DEMAND"
     | "SPOT"
-    | "SPOTWITHFALLBACK"; // The type of EBS volumes that will be launched with this cluster.
+    | "SPOT_WITH_FALLBACK";
+
+// The type of EBS volumes that will be launched with this cluster.
 export type AwsAttributesEbsVolumeType =
-    | "GENERALPURPOSESSD"
-    | "THROUGHPUTOPTIMIZEDHDD";
+    | "GENERAL_PURPOSE_SSD"
+    | "THROUGHPUT_OPTIMIZED_HDD";
+
 export interface AzureAttributes {
     // Availability type used for all subsequent nodes past the
     // ``first_on_demand`` ones. Note: If ``first_on_demand`` is zero (which
@@ -125,13 +129,15 @@ export interface AzureAttributes {
     spot_bid_max_price: number;
 }
 export const DefaultAzureAttributes = {};
+
 // Availability type used for all subsequent nodes past the ``first_on_demand``
 // ones. Note: If ``first_on_demand`` is zero (which only happens on pool
 // clusters), this availability type will be used for the entire cluster.
 export type AzureAttributesAvailability =
-    | "ONDEMANDAZURE"
-    | "SPOTAZURE"
-    | "SPOTWITHFALLBACKAZURE";
+    | "ON_DEMAND_AZURE"
+    | "SPOT_AZURE"
+    | "SPOT_WITH_FALLBACK_AZURE";
+
 export interface ChangeClusterOwner {
     // <needs content added>
     cluster_id: string;
@@ -157,8 +163,9 @@ export interface CloudProviderNodeInfo {
 export const DefaultCloudProviderNodeInfo = {};
 
 export type CloudProviderNodeStatus =
-    | "NOTAVAILABLEINREGION"
-    | "NOTENABLEDONSUBSCRIPTION";
+    | "NotAvailableInRegion"
+    | "NotEnabledOnSubscription";
+
 export interface ClusterAttributes {
     // Automatically terminates the cluster after it is inactive for this time
     // in minutes. If not set, this cluster will not be automatically
@@ -276,6 +283,7 @@ export const DefaultClusterAttributes: Pick<
     enable_elastic_disk: false,
     enable_local_disk_encryption: false,
 };
+
 // Determines whether the cluster was created by a user through the UI, created
 // by the Databricks Jobs Scheduler, or through an API request. This is the same
 // as cluster_creator, but read only.
@@ -284,11 +292,14 @@ export type ClusterAttributesClusterSource =
     | "JOB"
     | "MODELS"
     | "PIPELINE"
-    | "PIPELINEMAINTENANCE"
+    | "PIPELINE_MAINTENANCE"
     | "SQL"
-    | "UI"; // Decides which runtime engine to be use, e.g. Standard vs. Photon. If
+    | "UI";
+
+// Decides which runtime engine to be use, e.g. Standard vs. Photon. If
 // unspecified, the runtime engine is inferred from spark_version.
 export type ClusterAttributesRuntimeEngine = "NULL" | "PHOTON" | "STANDARD";
+
 export interface ClusterEvent {
     // <needs content added>
     cluster_id: string;
@@ -304,33 +315,35 @@ export interface ClusterEvent {
     type: ClusterEventType;
 }
 export const DefaultClusterEvent = {};
+
 // <needs content added>
 export type ClusterEventType =
-    | "AUTOSCALINGSTATSREPORT"
+    | "AUTOSCALING_STATS_REPORT"
     | "CREATING"
-    | "DBFSDOWN"
-    | "DIDNOTEXPANDDISK"
-    | "DRIVERHEALTHY"
-    | "DRIVERNOTRESPONDING"
-    | "DRIVERUNAVAILABLE"
+    | "DBFS_DOWN"
+    | "DID_NOT_EXPAND_DISK"
+    | "DRIVER_HEALTHY"
+    | "DRIVER_NOT_RESPONDING"
+    | "DRIVER_UNAVAILABLE"
     | "EDITED"
-    | "EXPANDEDDISK"
-    | "FAILEDTOEXPANDDISK"
-    | "INITSCRIPTSFINISHED"
-    | "INITSCRIPTSSTARTED"
-    | "METASTOREDOWN"
-    | "NODEBLACKLISTED"
-    | "NODEEXCLUDEDDECOMMISSIONED"
-    | "NODESLOST"
+    | "EXPANDED_DISK"
+    | "FAILED_TO_EXPAND_DISK"
+    | "INIT_SCRIPTS_FINISHED"
+    | "INIT_SCRIPTS_STARTED"
+    | "METASTORE_DOWN"
+    | "NODE_BLACKLISTED"
+    | "NODE_EXCLUDED_DECOMMISSIONED"
+    | "NODES_LOST"
     | "PINNED"
     | "RESIZING"
     | "RESTARTING"
     | "RUNNING"
-    | "SPARKEXCEPTION"
+    | "SPARK_EXCEPTION"
     | "STARTING"
     | "TERMINATING"
     | "UNPINNED"
-    | "UPSIZECOMPLETED";
+    | "UPSIZE_COMPLETED";
+
 export interface ClusterInfo {
     // Parameters needed in order to automatically scale clusters up and down
     // based on load. Note: autoscaling works best with DB runtime versions 3.0
@@ -512,6 +525,7 @@ export const DefaultClusterInfo: Pick<
     enable_elastic_disk: false,
     enable_local_disk_encryption: false,
 };
+
 // Determines whether the cluster was created by a user through the UI, created
 // by the Databricks Jobs Scheduler, or through an API request. This is the same
 // as cluster_creator, but read only.
@@ -520,11 +534,15 @@ export type ClusterInfoClusterSource =
     | "JOB"
     | "MODELS"
     | "PIPELINE"
-    | "PIPELINEMAINTENANCE"
+    | "PIPELINE_MAINTENANCE"
     | "SQL"
-    | "UI"; // Decides which runtime engine to be use, e.g. Standard vs. Photon. If
+    | "UI";
+
+// Decides which runtime engine to be use, e.g. Standard vs. Photon. If
 // unspecified, the runtime engine is inferred from spark_version.
-export type ClusterInfoRuntimeEngine = "NULL" | "PHOTON" | "STANDARD"; // Current state of the cluster.
+export type ClusterInfoRuntimeEngine = "NULL" | "PHOTON" | "STANDARD";
+
+// Current state of the cluster.
 export type ClusterInfoState =
     | "ERROR"
     | "PENDING"
@@ -534,6 +552,7 @@ export type ClusterInfoState =
     | "TERMINATED"
     | "TERMINATING"
     | "UNKNOWN";
+
 export interface ClusterLogConf {
     // destination needs to be provided. e.g. ``{ "dbfs" : { "destination" :
     // "dbfs:/home/cluster_log" } }``
@@ -701,6 +720,7 @@ export const DefaultCreateCluster: Pick<
     enable_elastic_disk: false,
     enable_local_disk_encryption: false,
 };
+
 // Determines whether the cluster was created by a user through the UI, created
 // by the Databricks Jobs Scheduler, or through an API request. This is the same
 // as cluster_creator, but read only.
@@ -709,16 +729,19 @@ export type CreateClusterClusterSource =
     | "JOB"
     | "MODELS"
     | "PIPELINE"
-    | "PIPELINEMAINTENANCE"
+    | "PIPELINE_MAINTENANCE"
     | "SQL"
     | "UI";
+
 export interface CreateClusterResponse {
     cluster_id: string;
 }
 export const DefaultCreateClusterResponse = {};
+
 // Decides which runtime engine to be use, e.g. Standard vs. Photon. If
 // unspecified, the runtime engine is inferred from spark_version.
 export type CreateClusterRuntimeEngine = "NULL" | "PHOTON" | "STANDARD";
+
 export interface DataPlaneEventDetails {
     // <needs content added>
     event_type: DataPlaneEventDetailsEventType;
@@ -730,10 +753,12 @@ export interface DataPlaneEventDetails {
     timestamp: number;
 }
 export const DefaultDataPlaneEventDetails = {};
+
 // <needs content added>
 export type DataPlaneEventDetailsEventType =
-    | "NODEBLACKLISTED"
-    | "NODEEXCLUDEDDECOMMISSIONED";
+    | "NODE_BLACKLISTED"
+    | "NODE_EXCLUDED_DECOMMISSIONED";
+
 export interface DbfsStorageInfo {
     // dbfs destination, e.g. ``dbfs:/my/path``
     destination: string;
@@ -885,6 +910,7 @@ export const DefaultEditCluster: Pick<
     enable_elastic_disk: false,
     enable_local_disk_encryption: false,
 };
+
 // Determines whether the cluster was created by a user through the UI, created
 // by the Databricks Jobs Scheduler, or through an API request. This is the same
 // as cluster_creator, but read only.
@@ -893,11 +919,14 @@ export type EditClusterClusterSource =
     | "JOB"
     | "MODELS"
     | "PIPELINE"
-    | "PIPELINEMAINTENANCE"
+    | "PIPELINE_MAINTENANCE"
     | "SQL"
-    | "UI"; // Decides which runtime engine to be use, e.g. Standard vs. Photon. If
+    | "UI";
+
+// Decides which runtime engine to be use, e.g. Standard vs. Photon. If
 // unspecified, the runtime engine is inferred from spark_version.
 export type EditClusterRuntimeEngine = "NULL" | "PHOTON" | "STANDARD";
+
 export interface EventDetails {
     // * For created clusters, the attributes of the cluster. * For edited
     // clusters, the new attributes of the cluster.
@@ -951,12 +980,14 @@ export const DefaultEventDetails: Pick<
 > = {
     enable_termination_for_node_blocklisted: false,
 };
+
 // The cause of a change in target size.
 export type EventDetailsCause =
     | "AUTORECOVERY"
     | "AUTOSCALE"
-    | "REPLACEBADNODES"
-    | "USERREQUEST";
+    | "REPLACE_BAD_NODES"
+    | "USER_REQUEST";
+
 export interface GcpAttributes {
     // This field determines whether the spark executors will be scheduled to
     // run on preemptible VMs, on-demand VMs, or preemptible VMs with a fallback
@@ -971,13 +1002,15 @@ export interface GcpAttributes {
     google_service_account: string;
 }
 export const DefaultGcpAttributes = {};
+
 // This field determines whether the spark executors will be scheduled to run on
 // preemptible VMs, on-demand VMs, or preemptible VMs with a fallback to
 // on-demand VMs if the former is unavailable.
 export type GcpAttributesAvailability =
-    | "ONDEMANDGCP"
-    | "PREEMPTIBLEGCP"
-    | "PREEMPTIBLEWITHFALLBACKGCP";
+    | "ON_DEMAND_GCP"
+    | "PREEMPTIBLE_GCP"
+    | "PREEMPTIBLE_WITH_FALLBACK_GCP";
+
 export interface GetEvents {
     // The ID of the cluster to retrieve events about.
     cluster_id: string;
@@ -1003,32 +1036,35 @@ export interface GetEvents {
 export const DefaultGetEvents = {};
 
 export type GetEventsEventTypesItem =
-    | "AUTOSCALINGSTATSREPORT"
+    | "AUTOSCALING_STATS_REPORT"
     | "CREATING"
-    | "DBFSDOWN"
-    | "DIDNOTEXPANDDISK"
-    | "DRIVERHEALTHY"
-    | "DRIVERNOTRESPONDING"
-    | "DRIVERUNAVAILABLE"
+    | "DBFS_DOWN"
+    | "DID_NOT_EXPAND_DISK"
+    | "DRIVER_HEALTHY"
+    | "DRIVER_NOT_RESPONDING"
+    | "DRIVER_UNAVAILABLE"
     | "EDITED"
-    | "EXPANDEDDISK"
-    | "FAILEDTOEXPANDDISK"
-    | "INITSCRIPTSFINISHED"
-    | "INITSCRIPTSSTARTED"
-    | "METASTOREDOWN"
-    | "NODEBLACKLISTED"
-    | "NODEEXCLUDEDDECOMMISSIONED"
-    | "NODESLOST"
+    | "EXPANDED_DISK"
+    | "FAILED_TO_EXPAND_DISK"
+    | "INIT_SCRIPTS_FINISHED"
+    | "INIT_SCRIPTS_STARTED"
+    | "METASTORE_DOWN"
+    | "NODE_BLACKLISTED"
+    | "NODE_EXCLUDED_DECOMMISSIONED"
+    | "NODES_LOST"
     | "PINNED"
     | "RESIZING"
     | "RESTARTING"
     | "RUNNING"
-    | "SPARKEXCEPTION"
+    | "SPARK_EXCEPTION"
     | "STARTING"
     | "TERMINATING"
     | "UNPINNED"
-    | "UPSIZECOMPLETED"; // The order to list events in; either "ASC" or "DESC". Defaults to "DESC".
+    | "UPSIZE_COMPLETED";
+
+// The order to list events in; either "ASC" or "DESC". Defaults to "DESC".
 export type GetEventsOrder = "ASC" | "DESC";
+
 export interface GetEventsResponse {
     // <content needs to be added>
     events: ClusterEvent[];
@@ -1311,92 +1347,96 @@ export interface TerminationReason {
     type: TerminationReasonType;
 }
 export const DefaultTerminationReason = {};
+
 // status code indicating why the cluster was terminated
 export type TerminationReasonCode =
-    | "ABUSEDETECTED"
-    | "ATTACHPROJECTFAILURE"
-    | "AWSAUTHORIZATIONFAILURE"
-    | "AWSINSUFFICIENTFREEADDRESSESINSUBNETFAILURE"
-    | "AWSINSUFFICIENTINSTANCECAPACITYFAILURE"
-    | "AWSMAXSPOTINSTANCECOUNTEXCEEDEDFAILURE"
-    | "AWSREQUESTLIMITEXCEEDED"
-    | "AWSUNSUPPORTEDFAILURE"
-    | "AZUREBYOKKEYPERMISSIONFAILURE"
-    | "AZUREEPHEMERALDISKFAILURE"
-    | "AZUREINVALIDDEPLOYMENTTEMPLATE"
-    | "AZUREOPERATIONNOTALLOWEDEXCEPTION"
-    | "AZUREQUOTAEXCEEDEDEXCEPTION"
-    | "AZURERESOURCEMANAGERTHROTTLING"
-    | "AZURERESOURCEPROVIDERTHROTTLING"
-    | "AZUREUNEXPECTEDDEPLOYMENTTEMPLATEFAILURE"
-    | "AZUREVMEXTENSIONFAILURE"
-    | "AZUREVNETCONFIGURATIONFAILURE"
-    | "BOOTSTRAPTIMEOUT"
-    | "BOOTSTRAPTIMEOUTCLOUDPROVIDEREXCEPTION"
-    | "CLOUDPROVIDERDISKSETUPFAILURE"
-    | "CLOUDPROVIDERLAUNCHFAILURE"
-    | "CLOUDPROVIDERRESOURCESTOCKOUT"
-    | "CLOUDPROVIDERSHUTDOWN"
-    | "COMMUNICATIONLOST"
-    | "CONTAINERLAUNCHFAILURE"
-    | "CONTROLPLANEREQUESTFAILURE"
-    | "DATABASECONNECTIONFAILURE"
-    | "DBFSCOMPONENTUNHEALTHY"
-    | "DOCKERIMAGEPULLFAILURE"
-    | "DRIVERUNREACHABLE"
-    | "DRIVERUNRESPONSIVE"
-    | "EXECUTIONCOMPONENTUNHEALTHY"
-    | "GCPQUOTAEXCEEDED"
-    | "GCPSERVICEACCOUNTDELETED"
-    | "GLOBALINITSCRIPTFAILURE"
-    | "HIVEMETASTOREPROVISIONINGFAILURE"
-    | "IMAGEPULLPERMISSIONDENIED"
+    | "ABUSE_DETECTED"
+    | "ATTACH_PROJECT_FAILURE"
+    | "AWS_AUTHORIZATION_FAILURE"
+    | "AWS_INSUFFICIENT_FREE_ADDRESSES_IN_SUBNET_FAILURE"
+    | "AWS_INSUFFICIENT_INSTANCE_CAPACITY_FAILURE"
+    | "AWS_MAX_SPOT_INSTANCE_COUNT_EXCEEDED_FAILURE"
+    | "AWS_REQUEST_LIMIT_EXCEEDED"
+    | "AWS_UNSUPPORTED_FAILURE"
+    | "AZURE_BYOK_KEY_PERMISSION_FAILURE"
+    | "AZURE_EPHEMERAL_DISK_FAILURE"
+    | "AZURE_INVALID_DEPLOYMENT_TEMPLATE"
+    | "AZURE_OPERATION_NOT_ALLOWED_EXCEPTION"
+    | "AZURE_QUOTA_EXCEEDED_EXCEPTION"
+    | "AZURE_RESOURCE_MANAGER_THROTTLING"
+    | "AZURE_RESOURCE_PROVIDER_THROTTLING"
+    | "AZURE_UNEXPECTED_DEPLOYMENT_TEMPLATE_FAILURE"
+    | "AZURE_VM_EXTENSION_FAILURE"
+    | "AZURE_VNET_CONFIGURATION_FAILURE"
+    | "BOOTSTRAP_TIMEOUT"
+    | "BOOTSTRAP_TIMEOUT_CLOUD_PROVIDER_EXCEPTION"
+    | "CLOUD_PROVIDER_DISK_SETUP_FAILURE"
+    | "CLOUD_PROVIDER_LAUNCH_FAILURE"
+    | "CLOUD_PROVIDER_RESOURCE_STOCKOUT"
+    | "CLOUD_PROVIDER_SHUTDOWN"
+    | "COMMUNICATION_LOST"
+    | "CONTAINER_LAUNCH_FAILURE"
+    | "CONTROL_PLANE_REQUEST_FAILURE"
+    | "DATABASE_CONNECTION_FAILURE"
+    | "DBFS_COMPONENT_UNHEALTHY"
+    | "DOCKER_IMAGE_PULL_FAILURE"
+    | "DRIVER_UNREACHABLE"
+    | "DRIVER_UNRESPONSIVE"
+    | "EXECUTION_COMPONENT_UNHEALTHY"
+    | "GCP_QUOTA_EXCEEDED"
+    | "GCP_SERVICE_ACCOUNT_DELETED"
+    | "GLOBAL_INIT_SCRIPT_FAILURE"
+    | "HIVE_METASTORE_PROVISIONING_FAILURE"
+    | "IMAGE_PULL_PERMISSION_DENIED"
     | "INACTIVITY"
-    | "INITSCRIPTFAILURE"
-    | "INSTANCEPOOLCLUSTERFAILURE"
-    | "INSTANCEUNREACHABLE"
-    | "INTERNALERROR"
-    | "INVALIDARGUMENT"
-    | "INVALIDSPARKIMAGE"
-    | "IPEXHAUSTIONFAILURE"
-    | "JOBFINISHED"
-    | "KSAUTOSCALINGFAILURE"
-    | "KSDBRCLUSTERLAUNCHTIMEOUT"
-    | "METASTORECOMPONENTUNHEALTHY"
-    | "NEPHOSRESOURCEMANAGEMENT"
-    | "NETWORKCONFIGURATIONFAILURE"
-    | "NFSMOUNTFAILURE"
-    | "NPIPTUNNELSETUPFAILURE"
-    | "NPIPTUNNELTOKENFAILURE"
-    | "REQUESTREJECTED"
-    | "REQUESTTHROTTLED"
-    | "SECRETRESOLUTIONERROR"
-    | "SECURITYDAEMONREGISTRATIONEXCEPTION"
-    | "SELFBOOTSTRAPFAILURE"
-    | "SKIPPEDSLOWNODES"
-    | "SLOWIMAGEDOWNLOAD"
-    | "SPARKERROR"
-    | "SPARKIMAGEDOWNLOADFAILURE"
-    | "SPARKSTARTUPFAILURE"
-    | "SPOTINSTANCETERMINATION"
-    | "STORAGEDOWNLOADFAILURE"
-    | "STSCLIENTSETUPFAILURE"
-    | "SUBNETEXHAUSTEDFAILURE"
-    | "TEMPORARILYUNAVAILABLE"
-    | "TRIALEXPIRED"
-    | "UNEXPECTEDLAUNCHFAILURE"
+    | "INIT_SCRIPT_FAILURE"
+    | "INSTANCE_POOL_CLUSTER_FAILURE"
+    | "INSTANCE_UNREACHABLE"
+    | "INTERNAL_ERROR"
+    | "INVALID_ARGUMENT"
+    | "INVALID_SPARK_IMAGE"
+    | "IP_EXHAUSTION_FAILURE"
+    | "JOB_FINISHED"
+    | "K8S_AUTOSCALING_FAILURE"
+    | "K8S_DBR_CLUSTER_LAUNCH_TIMEOUT"
+    | "METASTORE_COMPONENT_UNHEALTHY"
+    | "NEPHOS_RESOURCE_MANAGEMENT"
+    | "NETWORK_CONFIGURATION_FAILURE"
+    | "NFS_MOUNT_FAILURE"
+    | "NPIP_TUNNEL_SETUP_FAILURE"
+    | "NPIP_TUNNEL_TOKEN_FAILURE"
+    | "REQUEST_REJECTED"
+    | "REQUEST_THROTTLED"
+    | "SECRET_RESOLUTION_ERROR"
+    | "SECURITY_DAEMON_REGISTRATION_EXCEPTION"
+    | "SELF_BOOTSTRAP_FAILURE"
+    | "SKIPPED_SLOW_NODES"
+    | "SLOW_IMAGE_DOWNLOAD"
+    | "SPARK_ERROR"
+    | "SPARK_IMAGE_DOWNLOAD_FAILURE"
+    | "SPARK_STARTUP_FAILURE"
+    | "SPOT_INSTANCE_TERMINATION"
+    | "STORAGE_DOWNLOAD_FAILURE"
+    | "STS_CLIENT_SETUP_FAILURE"
+    | "SUBNET_EXHAUSTED_FAILURE"
+    | "TEMPORARILY_UNAVAILABLE"
+    | "TRIAL_EXPIRED"
+    | "UNEXPECTED_LAUNCH_FAILURE"
     | "UNKNOWN"
-    | "UNSUPPORTEDINSTANCETYPE"
-    | "UPDATEINSTANCEPROFILEFAILURE"
-    | "USERREQUEST"
-    | "WORKERSETUPFAILURE"
-    | "WORKSPACECANCELLEDERROR"
-    | "WORKSPACECONFIGURATIONERROR"; // type of the termination
+    | "UNSUPPORTED_INSTANCE_TYPE"
+    | "UPDATE_INSTANCE_PROFILE_FAILURE"
+    | "USER_REQUEST"
+    | "WORKER_SETUP_FAILURE"
+    | "WORKSPACE_CANCELLED_ERROR"
+    | "WORKSPACE_CONFIGURATION_ERROR";
+
+// type of the termination
 export type TerminationReasonType =
-    | "CLIENTERROR"
-    | "CLOUDFAILURE"
-    | "SERVICEFAULT"
+    | "CLIENT_ERROR"
+    | "CLOUD_FAILURE"
+    | "SERVICE_FAULT"
     | "SUCCESS";
+
 export interface UnpinCluster {
     // <needs content added>
     cluster_id: string;

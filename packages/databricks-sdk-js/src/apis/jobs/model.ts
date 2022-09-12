@@ -70,6 +70,7 @@ export interface ClusterSpec {
     new_cluster?: NewCluster;
 }
 export const DefaultClusterSpec = {};
+
 // An object with key value pairs. The key length must be between 1 and 127
 // UTF-8 characters, inclusive. The value length must be less than or equal to
 // 255 UTF-8 characters.
@@ -123,10 +124,12 @@ export interface CreateJob {
     timeout_seconds: number;
 }
 export const DefaultCreateJob = {};
+
 // Used to tell what is the format of the job. This field is ignored in
 // Create/Update/Reset calls. When using the Jobs API 2.1 this value is always
 // set to `"MULTI_TASK"`.
-export type CreateJobFormat = "MULTITASK" | "SINGLETASK";
+export type CreateJobFormat = "MULTI_TASK" | "SINGLE_TASK";
+
 export interface CronSchedule {
     // Indicate whether this schedule is paused or not.
     pause_status: CronSchedulePauseStatus;
@@ -142,8 +145,10 @@ export interface CronSchedule {
     timezone_id: string;
 }
 export const DefaultCronSchedule = {};
+
 // Indicate whether this schedule is paused or not.
 export type CronSchedulePauseStatus = "PAUSED" | "UNPAUSED";
+
 export interface DbfsStorageInfo {
     // DBFS destination. Example: `dbfs:/my/path`
     destination: string;
@@ -173,6 +178,7 @@ export interface FileStorageInfo {
     destination: string;
 }
 export const DefaultFileStorageInfo = {};
+
 // Read-only state of the remote repository at the time the job was run. This
 // field is only included on job runs.
 export interface GitSnapshot {
@@ -182,6 +188,7 @@ export interface GitSnapshot {
     used_commit: string;
 }
 export const DefaultGitSnapshot = {};
+
 // An optional specification for a remote repository containing the notebooks
 // used by this job's notebook tasks.
 export interface GitSource {
@@ -207,17 +214,19 @@ export interface GitSource {
     git_url: string;
 }
 export const DefaultGitSource = {};
+
 // Unique identifier of the service used to host the Git repository. The value
 // is case insensitive.
 export type GitSourceGitProvider =
-    | "AWSCODECOMMIT"
-    | "AZUREDEVOPSSERVICES"
-    | "BITBUCKETCLOUD"
-    | "BITBUCKETSERVER"
-    | "GITHUB"
-    | "GITHUBENTERPRISE"
-    | "GITLAB"
-    | "GITLABENTERPRISEEDITION";
+    | "awsCodeCommit"
+    | "azureDevOpsServices"
+    | "bitbucketCloud"
+    | "bitbucketServer"
+    | "gitHub"
+    | "gitHubEnterprise"
+    | "gitLab"
+    | "gitLabEnterpriseEdition";
+
 export interface InitScriptInfo {
     // S3 location of init script. Destination and either region or endpoint
     // must be provided. For example, `{ "s3": { "destination" :
@@ -331,10 +340,12 @@ export interface JobSettings {
     timeout_seconds: number;
 }
 export const DefaultJobSettings = {};
+
 // Used to tell what is the format of the job. This field is ignored in
 // Create/Update/Reset calls. When using the Jobs API 2.1 this value is always
 // set to `"MULTI_TASK"`.
-export type JobSettingsFormat = "MULTITASK" | "SINGLETASK";
+export type JobSettingsFormat = "MULTI_TASK" | "SINGLE_TASK";
+
 export interface JobTaskSettings {
     depends_on: TaskDependenciesItem[];
 
@@ -633,9 +644,11 @@ export interface RepairHistoryItem {
     type: RepairHistoryItemType;
 }
 export const DefaultRepairHistoryItem = {};
+
 // The repair history item type. Indicates whether a run is the original run or
 // a repair run.
 export type RepairHistoryItemType = "ORIGINAL" | "REPAIR";
+
 export interface RepairRun {
     // A list of parameters for jobs with Spark JAR tasks, for example
     // `"jar_params": ["john doe", "35"]`. The parameters are used to invoke the
@@ -799,6 +812,7 @@ export interface Run {
     trigger: TriggerType;
 }
 export const DefaultRun = {};
+
 // * `PENDING`: The run has been triggered. If there is not already an active
 // run of the same job, the cluster and execution context are being prepared. If
 // there is already an active run of the same job, the run immediately
@@ -828,7 +842,7 @@ export type RunLifeCycleState =
     // over a long period. If a run on a new cluster ends in the `INTERNAL_ERROR`
     // state, the Jobs service terminates the cluster as soon as possible. This
     // state is terminal.
-    | "INTERNALERROR"
+    | "INTERNAL_ERROR"
     // * `PENDING`: The run has been triggered. If there is not already an active
     // run of the same job, the cluster and execution context are being prepared. If
     // there is already an active run of the same job, the run immediately
@@ -904,6 +918,7 @@ export type RunLifeCycleState =
     // state, the Jobs service terminates the cluster as soon as possible. This
     // state is terminal.
     | "TERMINATING";
+
 export interface RunNow {
     // An optional token to guarantee the idempotency of job run requests. If a
     // run with the provided token already exists, the request does not create a
@@ -1093,6 +1108,7 @@ export const DefaultRunParametersPipelineParams: Pick<
     RunParametersPipelineParams,
     "full_refresh"
 > = {full_refresh: false};
+
 // * `SUCCESS`: The task completed successfully. * `FAILED`: The task completed
 // with an error. * `TIMEDOUT`: The run was stopped after reaching the timeout.
 // * `CANCELED`: The run was canceled at user request.
@@ -1112,7 +1128,9 @@ export type RunResultState =
     // * `SUCCESS`: The task completed successfully. * `FAILED`: The task completed
     // with an error. * `TIMEDOUT`: The run was stopped after reaching the timeout.
     // * `CANCELED`: The run was canceled at user request.
-    | "TIMEDOUT"; // The result and lifecycle state of the run.
+    | "TIMEDOUT";
+
+// The result and lifecycle state of the run.
 export interface RunState {
     // A description of a run?s current location in the run lifecycle. This
     // field is always available in the response.
@@ -1236,6 +1254,7 @@ export interface RunTask {
     task_key: string;
 }
 export const DefaultRunTask = {};
+
 // The type of the run. * `JOB_RUN` \- Normal job run. A run created with [Run
 // now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow). * `WORKFLOW_RUN`
 // \- Workflow run. A run created with
@@ -1249,22 +1268,25 @@ export type RunType =
     // [dbutils.notebook.run](..dev-tools/databricks-utilshtml#dbutils-workflow). *
     // `SUBMIT_RUN` \- Submit run. A run created with [Run
     // now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow).
-    | "JOBRUN"
+    | "JOB_RUN"
     // The type of the run. * `JOB_RUN` \- Normal job run. A run created with [Run
     // now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow). * `WORKFLOW_RUN`
     // \- Workflow run. A run created with
     // [dbutils.notebook.run](..dev-tools/databricks-utilshtml#dbutils-workflow). *
     // `SUBMIT_RUN` \- Submit run. A run created with [Run
     // now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow).
-    | "SUBMITRUN"
+    | "SUBMIT_RUN"
     // The type of the run. * `JOB_RUN` \- Normal job run. A run created with [Run
     // now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow). * `WORKFLOW_RUN`
     // \- Workflow run. A run created with
     // [dbutils.notebook.run](..dev-tools/databricks-utilshtml#dbutils-workflow). *
     // `SUBMIT_RUN` \- Submit run. A run created with [Run
     // now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow).
-    | "WORKFLOWRUN"; // An arbitrary object where the object key is a configuration propery name and
+    | "WORKFLOW_RUN";
+
+// An arbitrary object where the object key is a configuration propery name and
 // the value is a configuration property value.
+
 // An arbitrary object where the object key is an environment variable name and
 // the value is an environment variable value.
 
@@ -1334,6 +1356,7 @@ export interface SubmitRunResponse {
     run_id: number;
 }
 export const DefaultSubmitRunResponse = {};
+
 // An optional array of objects specifying the dependency graph of the task. All
 // tasks specified in this field must complete successfully before executing
 // this task. The key is `task_key`, and the value is the name assigned to the
@@ -1344,11 +1367,14 @@ export interface TaskDependenciesItem {
     task_key: string;
 }
 export const DefaultTaskDependenciesItem = {};
+
 // An optional description for this task. The maximum length is 4096 bytes.
+
 // A unique name for the task. This field is used to refer to this task from
 // other tasks. This field is required and must be unique within its parent job.
 // On Update or Reset, this field is used to reference the tasks to be updated
 // or reset. The maximum length is 100 characters.
+
 // * `PERIODIC`: Schedules that periodically trigger runs, such as a cron
 // scheduler. * `ONE_TIME`: One time triggers that fire a single run. This
 // occurs you triggered a single run on demand through the UI or the API. *
@@ -1360,7 +1386,7 @@ export type TriggerType =
     // occurs you triggered a single run on demand through the UI or the API. *
     // `RETRY`: Indicates a run that is triggered as a retry of a previously failed
     // run. This occurs when you request to re-run the job in case of failures.
-    | "ONETIME"
+    | "ONE_TIME"
     // * `PERIODIC`: Schedules that periodically trigger runs, such as a cron
     // scheduler. * `ONE_TIME`: One time triggers that fire a single run. This
     // occurs you triggered a single run on demand through the UI or the API. *
@@ -1373,6 +1399,7 @@ export type TriggerType =
     // `RETRY`: Indicates a run that is triggered as a retry of a previously failed
     // run. This occurs when you request to re-run the job in case of failures.
     | "RETRY";
+
 export interface UpdateJob {
     // Remove top-level fields in the job settings. Removing nested fields is
     // not supported. This field is optional.
@@ -1399,12 +1426,15 @@ export interface ViewItem {
     type: ViewType;
 }
 export const DefaultViewItem = {};
+
 // * `NOTEBOOK`: Notebook view item. * `DASHBOARD`: Dashboard view item.
 export type ViewType =
     // * `NOTEBOOK`: Notebook view item. * `DASHBOARD`: Dashboard view item.
     | "DASHBOARD"
     // * `NOTEBOOK`: Notebook view item. * `DASHBOARD`: Dashboard view item.
-    | "NOTEBOOK"; // * `CODE`: Code view of the notebook. * `DASHBOARDS`: All dashboard views of
+    | "NOTEBOOK";
+
+// * `CODE`: Code view of the notebook. * `DASHBOARDS`: All dashboard views of
 // the notebook. * `ALL`: All views of the notebook.
 export type ViewsToExport =
     // * `CODE`: Code view of the notebook. * `DASHBOARDS`: All dashboard views of
@@ -1416,6 +1446,7 @@ export type ViewsToExport =
     // * `CODE`: Code view of the notebook. * `DASHBOARDS`: All dashboard views of
     // the notebook. * `ALL`: All views of the notebook.
     | "DASHBOARDS";
+
 export interface CreateResponse {
     // The canonical identifier for the newly created job.
     job_id: number;
@@ -1515,7 +1546,8 @@ export const DefaultListRunsRequest: Pick<
     "active_only" | "completed_only" | "expand_tasks"
 > = {active_only: false, completed_only: false, expand_tasks: false};
 
-export type ListRunsRunType = "JOBRUN" | "SUBMITRUN" | "WORKFLOWRUN";
+export type ListRunsRunType = "JOB_RUN" | "SUBMIT_RUN" | "WORKFLOW_RUN";
+
 export interface RepairRunResponse {
     // The ID of the repair.
     repair_id: number;

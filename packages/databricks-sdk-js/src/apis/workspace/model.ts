@@ -77,20 +77,25 @@ export interface GetStatusResponse {
     size: number;
 }
 export const DefaultGetStatusResponse = {};
+
 // The location (bucket and prefix) enum value of the content blob. This field
 // is used in conjunction with the blob_path field to determine where the blob
 // is located.
-export type GetStatusResponseBlobLocation = "DBFSROOT" | "INTERNALDBFSJOBS"; // The language of the object. This value is set only if the object type is
+export type GetStatusResponseBlobLocation = "DBFS_ROOT" | "INTERNAL_DBFS_JOBS";
+
+// The language of the object. This value is set only if the object type is
 // ``NOTEBOOK``.
 export type GetStatusResponseLanguage = "PYTHON" | "R" | "SCALA" | "SQL";
+
 export type GetStatusResponseObjectType =
     | "DIRECTORY"
     | "FILE"
     | "LIBRARY"
-    | "MLFLOWEXPERIMENT"
+    | "MLFLOW_EXPERIMENT"
     | "NOTEBOOK"
     | "PROJECT"
     | "REPO";
+
 export interface ImportRequest {
     // The base64-encoded content. This has a limit of 10 MB. If the limit
     // (10MB) is exceeded, exception with error code
@@ -117,6 +122,7 @@ export interface ImportRequest {
 export const DefaultImportRequest: Pick<ImportRequest, "overwrite"> = {
     overwrite: false,
 };
+
 // This specifies the format of the file to be imported. By default, this is
 // ``SOURCE``. However it may be one of: ``SOURCE``, ``HTML``, ``JUPYTER``,
 // ``DBC``. The value is case sensitive.
@@ -124,10 +130,13 @@ export type ImportRequestFormat =
     | "DBC"
     | "HTML"
     | "JUPYTER"
-    | "RMARKDOWN"
-    | "SOURCE"; // The language. If format is set to ``SOURCE``, this field is required;
+    | "R_MARKDOWN"
+    | "SOURCE";
+
+// The language. If format is set to ``SOURCE``, this field is required;
 // otherwise, it will be ignored.
 export type ImportRequestLanguage = "PYTHON" | "R" | "SCALA" | "SQL";
+
 export interface ListRequest {
     notebooks_modified_after: number;
     // The absolute path of the notebook or directory.
@@ -178,17 +187,21 @@ export interface ObjectInfo {
     size: number;
 }
 export const DefaultObjectInfo = {};
+
 // The location (bucket and prefix) enum value of the content blob. This field
 // is used in conjunction with the blob_path field to determine where the blob
 // is located.
-export type ObjectInfoBlobLocation = "DBFSROOT" | "INTERNALDBFSJOBS"; // The language of the object. This value is set only if the object type is
+export type ObjectInfoBlobLocation = "DBFS_ROOT" | "INTERNAL_DBFS_JOBS";
+
+// The language of the object. This value is set only if the object type is
 // ``NOTEBOOK``.
 export type ObjectInfoLanguage = "PYTHON" | "R" | "SCALA" | "SQL";
+
 export type ObjectInfoObjectType =
     | "DIRECTORY"
     | "FILE"
     | "LIBRARY"
-    | "MLFLOWEXPERIMENT"
+    | "MLFLOW_EXPERIMENT"
     | "NOTEBOOK"
     | "PROJECT"
     | "REPO";

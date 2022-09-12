@@ -17,8 +17,10 @@ export const Default{{.PascalName}} {{if .HasBooleanField}}: Pick<{{.PascalName}
 }
 {{else if .Enum}}export type {{.PascalName}} = 
 {{range $i, $e:=.Enum }}{{if $e.Comment "// " 80}}{{$e.Comment "// " 80}}
-{{end}}{{if $i}} |{{end}}"{{$e.UpperName}}"
-{{end}};{{end}}{{end}}
+{{end}}{{if $i}} |{{end}}"{{$e.Content}}"
+{{end}};
+{{end}}
+{{end}}
 
 {{range .EmptyTypes}}export interface {{.PascalName}}{};
 {{end}}
