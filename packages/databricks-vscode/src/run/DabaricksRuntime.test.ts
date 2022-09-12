@@ -46,7 +46,10 @@ describe(__filename, () => {
         );
 
         const syncDestination = new SyncDestination(
-            Uri.file("/Repos/fabian@databricks.com/test"),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Repos/fabian@databricks.com/test",
+            }),
             Uri.file("/Desktop/workspaces")
         );
         when(connectionManagerMock.syncDestination).thenReturn(syncDestination);
@@ -86,7 +89,9 @@ describe(__filename, () => {
 
         assert.equal(outputs.length, 4);
         assert(outputs[0].text.includes("Connecting to cluster"));
-        assert(outputs[1].text.includes("Running on Cluster cluster-1"));
+        assert(
+            outputs[1].text.includes("Running /hello.py on Cluster cluster-1")
+        );
         assert.equal(outputs[2].text, "43");
         assert(outputs[3].text.includes("Done"));
     });
