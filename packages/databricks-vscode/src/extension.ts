@@ -1,4 +1,11 @@
-import {commands, debug, ExtensionContext, tasks, window} from "vscode";
+import {
+    commands,
+    debug,
+    ExtensionContext,
+    tasks,
+    window,
+    workspace,
+} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -13,6 +20,7 @@ import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebu
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
+import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper(context);
@@ -175,6 +183,10 @@ export function activate(context: ExtensionContext) {
             cliCommands.testBricksCommand(),
             cliCommands
         )
+    );
+
+    context.subscriptions.push(
+        new ProjectConfigFileWatcher(connectionManager, workspace.rootPath)
     );
 }
 
