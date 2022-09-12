@@ -10,23 +10,31 @@ import retry, {RetriableError} from "../../retries/retries";
 {{- range $i, $s := .Services }}
 export class {{$s.PascalName}}RetriableError extends RetriableError {}
 export class {{$s.PascalName}}Error extends Error {}
-{{$s.Comment "// " 80}}
+
+/**
+{{$s.Comment "* " 80}}
+*/
 export class {{$s.PascalName}}Service {
 	constructor(readonly client: ApiClient){}
 
 	{{- range $s.Methods}}
-    {{.Comment "    // " 80}}
+	/**
+    {{.Comment "    * " 80}}
+	*/
     async {{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}}{{end}}): Promise<model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}> {
+			const path = {{if .PathParts}}`{{range .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.SnakeName}}}{{end}}{{end}}`{{else}}"{{.Path}}"{{end}}
 			return await this.client.request(
-				"{{.Path}}",
+				path,
 				"{{.Verb}}",
 				{{if .Request}}request{{end}}
 			) as model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}
 		}
 
 	{{if .Wait}}
-	// {{.CamelName}} and wait to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state
-	// {{if .Wait.Failure}} or fail on reaching {{range $i, $e := .Wait.Failure}}{{if $i}} or {{end}}{{.Content}}{{end}} state{{end}}
+	/**
+	* {{.CamelName}} and wait to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state
+	* {{if .Wait.Failure}} or fail on reaching {{range $i, $e := .Wait.Failure}}{{if $i}} or {{end}}{{.Content}}{{end}} state{{end}}
+	*/
 	async {{.CamelName}}AndWait({{if .Request}}request: model.{{.Request.PascalName}}{{end}}, timeout?: Time): Promise<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}> {
 		const response = await this.{{.CamelName}}(request);
 
@@ -34,8 +42,7 @@ export class {{$s.PascalName}}Service {
 			timeout: timeout,
 			fn: async () => {
 				const pollResponse = await this.{{.Wait.Poll.CamelName}}({
-					...model.Default{{.Wait.Poll.Request.PascalName}},
-					{{.Wait.Bind.SnakeName}}: {{if .Wait.ForceBindRequest}}request{{else if .Response}}response{{else}}request{{end}}.{{.Wait.Bind.SnakeName}}
+					{{.Wait.Bind.SnakeName}}: {{if .Wait.ForceBindRequest}}request{{else if .Response}}response{{else}}request{{end}}.{{.Wait.Bind.SnakeName}}!
 				})
 				const status = pollResponse{{range $i, $e := .Wait.StatusPath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}
 				const statusMessage = pollResponse{{range $i, $e := .Wait.MessagePath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}

@@ -28,7 +28,7 @@ describe(__filename, function () {
             overwrite: true,
         });
 
-        let res = await jobsService.submitRun({
+        let res = await jobsService.submit({
             tasks: [
                 {
                     task_key: "hello_world",

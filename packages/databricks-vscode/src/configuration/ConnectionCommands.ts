@@ -156,11 +156,11 @@ export class ConnectionCommands {
                 })
             ).repos;
 
-            quickPick.items = repos.map((r) => ({
-                label: r.path.split("/").pop() || "",
-                detail: r.path,
-                path: r.path,
-                id: r.id,
+            quickPick.items = repos!.map((r) => ({
+                label: r.path!.split("/").pop() || "",
+                detail: r.path!,
+                path: r.path!,
+                id: r.id!,
             }));
             quickPick.busy = false;
 

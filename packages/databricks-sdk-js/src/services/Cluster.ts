@@ -3,10 +3,10 @@
 import {ApiClient} from "../api-client";
 import retry, {RetriableError} from "../retries/retries";
 import {
-    GetRunOutputResponse,
     JobsService,
     RunLifeCycleState,
-    SubmitRunRequest,
+    RunOutput,
+    SubmitRun,
 } from "../apis/jobs";
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
@@ -70,33 +70,55 @@ export class Cluster {
     get details() {
         return this.clusterDetails;
     }
+    set details(details: ClusterInfo) {
+        this.clusterDetails = details;
+    }
 
     async refresh() {
-        this.clusterDetails = await this.clusterApi.get({
+        this.details = await this.clusterApi.get({
             cluster_id: this.clusterDetails.cluster_id!,
         });
     }
 
     async start(token?: CancellationToken) {
-        await this.clusterApi.startAndWait({cluster_id: this.id});
         await this.refresh();
-    }
+        if (this.state === "RUNNING") {
+            return;
+        }
 
-    async stop() {
-        await this.clusterApi.delete({
-            cluster_id: this.clusterDetails.cluster_id!,
-        });
+        if (
+            this.state === "TERMINATED" ||
+            this.state === "ERROR" ||
+            this.state === "UNKNOWN"
+        ) {
+            await this.clusterApi.start({
+                cluster_id: this.id,
+            });
+        }
 
         await retry({
             fn: async () => {
+                if (token?.isCancellationRequested) {
+                    await this.stop();
+                    return;
+                }
+
                 await this.refresh();
 
                 switch (this.state) {
-                    case "TERMINATED":
+                    case "RUNNING":
                         return;
+                    case "TERMINATED":
+                        throw new ClusterError(
+                            `Cluster[${
+                                this.name
+                            }]: CurrentState - Terminated; Reason - ${JSON.stringify(
+                                this.clusterDetails.termination_reason
+                            )}`
+                        );
                     case "ERROR":
                         throw new ClusterError(
-                            `Cluster[${this.name}]: Error while terminating - ${this.clusterDetails.state_message}`
+                            `Cluster[${this.name}]: Error in starting the cluster (${this.clusterDetails.state_message})`
                         );
                     default:
                         throw new ClusterRetriableError(
@@ -104,6 +126,12 @@ export class Cluster {
                         );
                 }
             },
+        });
+    }
+
+    async stop() {
+        this.details = await this.clusterApi.deleteAndWait({
+            cluster_id: this.id,
         });
     }
 
@@ -165,9 +193,9 @@ export class Cluster {
         return response.clusters.map((c) => new Cluster(client, c));
     }
 
-    async submitRun(submitRunRequest: SubmitRunRequest): Promise<WorkflowRun> {
+    async submitRun(submitRunRequest: SubmitRun): Promise<WorkflowRun> {
         const jobsService = new JobsService(this.client);
-        let res = await jobsService.submitRun(submitRunRequest);
+        let res = await jobsService.submit(submitRunRequest);
         return await WorkflowRun.fromId(this.client, res.run_id!);
     }
 
@@ -199,6 +227,8 @@ export class Cluster {
                             };
                         }),
                     },
+                    depends_on: [],
+                    libraries: [],
                 },
             ],
         });
@@ -220,7 +250,7 @@ export class Cluster {
         args?: string[];
         onProgress?: (state: RunLifeCycleState, run: WorkflowRun) => void;
         token?: CancellationToken;
-    }): Promise<GetRunOutputResponse> {
+    }): Promise<RunOutput> {
         const run = await this.submitRun({
             tasks: [
                 {

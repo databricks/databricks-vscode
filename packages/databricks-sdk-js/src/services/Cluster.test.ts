@@ -6,7 +6,7 @@ import {mock, when, instance, deepEqual, verify, anything} from "ts-mockito";
 import chaiAsPromised from "chai-as-promised";
 import Time, {TimeUnits} from "../retries/Time";
 import getMockTestCluster from "../test/fixtures/ClusterFixtures";
-import {GetClusterResponse} from "../apis/cluster";
+import {ClusterInfo} from "../apis/clusters";
 import TokenFixture from "../test/fixtures/TokenFixture";
 import {RetryConfigs} from "../retries/retries";
 
@@ -17,7 +17,7 @@ describe(__filename, function () {
 
     let mockedClient: ApiClient;
     let mockedCluster: Cluster;
-    let testClusterDetails: GetClusterResponse;
+    let testClusterDetails: ClusterInfo;
 
     beforeEach(async () => {
         ({mockedCluster, mockedClient, testClusterDetails} =

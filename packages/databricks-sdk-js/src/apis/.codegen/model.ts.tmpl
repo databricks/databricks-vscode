@@ -3,20 +3,21 @@
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
 
 // all definitions in this file are in alphabetical order
-{{range .Types}}{{.Comment "// " 80}}
-{{if .Fields}}export interface {{.PascalName}} {
+{{range .Types}}{{if .Comment "" 80}}/**
+{{.Comment "* " 80}}
+*/
+{{end}}{{if .Fields}}export interface {{.PascalName}} {
     {{range .Fields}}
-    {{.Comment "    // " 80}}
-    {{.SnakeName}}{{if .IsOptionalObject}}?{{end}}: {{template "type" .Entity}};{{end}}
+	{{if .Comment "" 80}}/**
+    {{.Comment "    * " 80}}
+	*/
+	{{end}}{{.SnakeName}}{{if not .Required}}?{{end}}: {{template "type" .Entity}};{{end}}
 }
-export const Default{{.PascalName}} {{if .HasBooleanField}}: Pick<{{.PascalName}}, {{- range $i, $f := .Fields -}}
-	{{- if and $f.Entity $f.Entity.IsBool -}}{{if $i}} |{{end}}"{{$f.SnakeName}}"{{end}}{{end}}>{{end}} = {
-	{{- range .Fields -}}
-	{{if and .Entity .Entity.IsBool}}{{.SnakeName}}: false,{{end}}
-	{{end}}
-}
+
 {{else if .Enum}}export type {{.PascalName}} = 
-{{range $i, $e:=.Enum }}{{if $e.Comment "// " 80}}{{$e.Comment "// " 80}}
+{{range $i, $e:=.Enum }}{{if $e.Comment "" 80}}/**
+{{$e.Comment "* " 80}}
+*/
 {{end}}{{if $i}} |{{end}}"{{$e.Content}}"
 {{end}};
 {{end}}
@@ -32,7 +33,7 @@ export const Default{{.PascalName}} {{if .HasBooleanField}}: Pick<{{.PascalName}
 	{{- else if .IsInt64}}number
 	{{- else if .IsFloat64}}number
 	{{- else if .IsInt}}number
-	{{- else if .ArrayValue }}{{template "type" .ArrayValue}}[]
+	{{- else if .ArrayValue }}Array<{{template "type" .ArrayValue}}>
 	{{- else if .MapValue }}Record<string, {{template "type" .MapValue}}>
 	{{- else if .IsObject }}{{.PascalName}}
 	{{- else if .Enum }}{{.PascalName}}

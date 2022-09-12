@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiClient} from "../api-client";
 import {
-    ExportRunResponse,
-    GetRunOutputResponse,
-    GetRunResponse,
+    ExportRunOutput,
     JobsService,
+    Run,
     RunLifeCycleState,
+    RunOutput,
     RunState,
     RunTask,
 } from "../apis/jobs";
 
 export class WorkflowRun {
-    constructor(readonly client: ApiClient, private details: GetRunResponse) {}
+    constructor(readonly client: ApiClient, private details: Run) {}
 
     static async fromId(
         client: ApiClient,
@@ -50,7 +50,7 @@ export class WorkflowRun {
         this.details = await jobsService.getRun({run_id: this.details.run_id!});
     }
 
-    async getOutput(task?: RunTask): Promise<GetRunOutputResponse> {
+    async getOutput(task?: RunTask): Promise<RunOutput> {
         task = task || this.tasks![0];
         if (!task) {
             throw new Error("Run has no tasks");
@@ -60,7 +60,7 @@ export class WorkflowRun {
         return jobsService.getRunOutput({run_id: task.run_id!});
     }
 
-    async export(task?: RunTask): Promise<ExportRunResponse> {
+    async export(task?: RunTask): Promise<ExportRunOutput> {
         task = task || this.tasks![0];
         if (this.lifeCycleState !== "TERMINATED") {
             throw new Error("Run is not terminated");
