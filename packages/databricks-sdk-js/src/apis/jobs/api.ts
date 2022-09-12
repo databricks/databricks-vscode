@@ -57,7 +57,7 @@ export class JobsService {
                     case "SKIPPED": {
                         return pollResponse;
                     }
-                    case "INTERNALERROR": {
+                    case "INTERNAL_ERROR": {
                         throw new JobsError(
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
@@ -152,7 +152,7 @@ export class JobsService {
                     case "SKIPPED": {
                         return pollResponse;
                     }
-                    case "INTERNALERROR": {
+                    case "INTERNAL_ERROR": {
                         throw new JobsError(
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
@@ -242,7 +242,7 @@ export class JobsService {
                     case "SKIPPED": {
                         return pollResponse;
                     }
-                    case "INTERNALERROR": {
+                    case "INTERNAL_ERROR": {
                         throw new JobsError(
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
@@ -298,7 +298,7 @@ export class JobsService {
                     case "SKIPPED": {
                         return pollResponse;
                     }
-                    case "INTERNALERROR": {
+                    case "INTERNAL_ERROR": {
                         throw new JobsError(
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
@@ -347,7 +347,7 @@ export class JobsService {
                     case "SKIPPED": {
                         return pollResponse;
                     }
-                    case "INTERNALERROR": {
+                    case "INTERNAL_ERROR": {
                         throw new JobsError(
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );

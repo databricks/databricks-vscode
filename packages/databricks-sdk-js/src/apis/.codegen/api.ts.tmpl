@@ -40,10 +40,10 @@ export class {{$s.PascalName}}Service {
 				const status = pollResponse{{range $i, $e := .Wait.StatusPath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}
 				const statusMessage = pollResponse{{range $i, $e := .Wait.MessagePath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}
 				switch(status) {
-					{{range $i, $e := .Wait.Success}}{{if $i}} {{end}}case '{{$e.UpperName}}':{{end}}{
+					{{range $i, $e := .Wait.Success}}{{if $i}} {{end}}case '{{$e.Content}}':{{end}}{
 						return pollResponse
 					}
-					{{if .Wait.Failure}}{{range $i, $e := .Wait.Failure}}{{if $i}} {{end}}case '{{$e.UpperName}}':{{end}}{
+					{{if .Wait.Failure}}{{range $i, $e := .Wait.Failure}}{{if $i}} {{end}}case '{{$e.Content}}':{{end}}{
 						throw new {{$s.PascalName}}Error(`failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`)
 					}
 					{{end}}default:{
