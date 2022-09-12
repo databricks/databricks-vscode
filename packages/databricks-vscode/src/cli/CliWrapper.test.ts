@@ -1,12 +1,20 @@
 import * as assert from "assert";
 import {Uri} from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
-import {ExtensionContext} from "vscode";
+import {promisify} from "node:util";
+import {execFile as execFileCb} from "node:child_process";
 
 import {CliWrapper} from "./CliWrapper";
-import {mock, spy} from "ts-mockito";
+
+const execFile = promisify(execFileCb);
 
 describe(__filename, () => {
+    it("should embed a working bricks CLI", async () => {
+        let bricksPath = __dirname + "/../../bin/bricks";
+        let result = await execFile(bricksPath, ["--help"]);
+        assert.ok(result.stdout.indexOf("bricks") > 0);
+    });
+
     it("should create sync command", () => {
         const cli = new CliWrapper({
             asAbsolutePath(path: string) {
