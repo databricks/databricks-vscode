@@ -92,9 +92,9 @@ export class ConfigurationDataProvider
 
                 if (syncDestination) {
                     children.push({
-                        label: `Workspace`,
+                        label: `Repo`,
                         iconPath: new ThemeIcon("repo"),
-                        id: "WORKSPACE",
+                        id: "REPO",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
                         contextValue:
                             this.sync.state === "RUNNING"
@@ -103,9 +103,9 @@ export class ConfigurationDataProvider
                     });
                 } else {
                     children.push({
-                        label: `Workspace - "None attached"`,
+                        label: `Repo - "None attached"`,
                         iconPath: new ThemeIcon("repo"),
-                        id: "WORKSPACE",
+                        id: "REPO",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
                         contextValue: "syncDetached",
                     });
@@ -139,7 +139,7 @@ export class ConfigurationDataProvider
                 ];
             }
 
-            if (element.id === "WORKSPACE" && syncDestination) {
+            if (element.id === "REPO" && syncDestination) {
                 return [
                     {
                         label: `Sync state:`,

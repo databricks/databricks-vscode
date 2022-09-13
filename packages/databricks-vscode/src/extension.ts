@@ -21,6 +21,7 @@ import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
+import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 
 export function activate(context: ExtensionContext) {
     let cli = new CliWrapper(context);
@@ -187,6 +188,16 @@ export function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         new ProjectConfigFileWatcher(connectionManager, workspace.rootPath)
+    );
+
+    // Quickstart
+    const quickstartCommands = new QuickstartCommands(context);
+    context.subscriptions.push(
+        commands.registerCommand(
+            "databricks.quickstart.open",
+            quickstartCommands.openQuickstartCommand(),
+            quickstartCommands
+        )
     );
 }
 
