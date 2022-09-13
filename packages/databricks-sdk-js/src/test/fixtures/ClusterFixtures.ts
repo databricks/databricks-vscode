@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {ApiClient, Cluster} from "../..";
-import {GetClusterResponse} from "../../apis/cluster";
+import {ClusterInfo} from "../../apis/clusters";
 import {mock, when, deepEqual, resetCalls, instance} from "ts-mockito";
 
-const testClusterDetails: GetClusterResponse = {
+const testClusterDetails: ClusterInfo = {
     cluster_id: "testClusterId",
     cluster_name: "testClusterName",
 };

@@ -1,7 +1,7 @@
 export * from "./api-client";
 
-export * as cluster from "./apis/cluster";
-export {ClusterService} from "./apis/cluster";
+export * as cluster from "./apis/clusters";
+export {ClustersService} from "./apis/clusters";
 export * as commands from "./apis/commands";
 export {CommandsService} from "./apis/commands";
 export * as dbfs from "./apis/dbfs";

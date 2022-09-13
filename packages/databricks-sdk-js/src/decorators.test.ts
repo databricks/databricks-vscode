@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "node:assert";
-import {GetReposRequest, GetReposResponse} from "./apis/repos";
+import {ListRequest, ListReposResponse} from "./apis/repos";
 import {paginated} from "./decorators";
 import {CancellationToken} from "./types";
 
@@ -11,7 +11,7 @@ describe(__filename, () => {
             public count = 0;
 
             @paginated("next_page_token", "repos")
-            async getRepos(req: GetReposRequest): Promise<GetReposResponse> {
+            async getRepos(req: ListRequest): Promise<ListReposResponse> {
                 this.count += 1;
                 if (this.count === 3) {
                     return {
@@ -38,7 +38,8 @@ describe(__filename, () => {
         const t = new Test();
         const response = await t.getRepos({});
         assert.equal(t.count, 3);
-        assert.equal(response.repos.length, 3);
+        assert.notEqual(response.repos, undefined);
+        assert.equal(response.repos!.length, 3);
     });
 
     it("should cancel", async () => {
@@ -51,9 +52,9 @@ describe(__filename, () => {
 
             @paginated("next_page_token", "repos")
             async getRepos(
-                req: GetReposRequest,
+                req: ListRequest,
                 _token: CancellationToken
-            ): Promise<GetReposResponse> {
+            ): Promise<ListReposResponse> {
                 this.count += 1;
                 if (this.count === 3) {
                     token.isCancellationRequested = true;

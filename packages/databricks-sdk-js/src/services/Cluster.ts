@@ -1,34 +1,34 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {ApiClient} from "../api-client";
-import {
-    ClusterService,
-    GetClusterResponse,
-    ClusterState,
-    ClusterSource,
-} from "../apis/cluster";
 import retry, {RetriableError} from "../retries/retries";
 import {
-    GetRunOutputResponse,
     JobsService,
     RunLifeCycleState,
-    SubmitRunRequest,
+    RunOutput,
+    SubmitRun,
 } from "../apis/jobs";
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
 import {Language} from "../apis/executionContext";
+import {
+    ClusterInfo,
+    ClustersService,
+    ClusterInfoState,
+    ClusterInfoClusterSource,
+} from "../apis/clusters";
 
 export class ClusterRetriableError extends RetriableError {}
 export class ClusterError extends Error {}
 export class Cluster {
-    private clusterApi: ClusterService;
+    private clusterApi: ClustersService;
 
     constructor(
         private client: ApiClient,
-        private clusterDetails: GetClusterResponse
+        private clusterDetails: ClusterInfo
     ) {
-        this.clusterApi = new ClusterService(client);
+        this.clusterApi = new ClustersService(client);
     }
 
     get id(): string {
@@ -55,7 +55,7 @@ export class Cluster {
         return this.clusterDetails.creator_user_name || "";
     }
 
-    get state(): ClusterState {
+    get state(): ClusterInfoState {
         return this.clusterDetails.state!;
     }
 
@@ -63,16 +63,19 @@ export class Cluster {
         return this.clusterDetails.state_message || "";
     }
 
-    get source(): ClusterSource {
+    get source(): ClusterInfoClusterSource {
         return this.clusterDetails.cluster_source!;
     }
 
     get details() {
         return this.clusterDetails;
     }
+    set details(details: ClusterInfo) {
+        this.clusterDetails = details;
+    }
 
     async refresh() {
-        this.clusterDetails = await this.clusterApi.get({
+        this.details = await this.clusterApi.get({
             cluster_id: this.clusterDetails.cluster_id!,
         });
     }
@@ -127,27 +130,8 @@ export class Cluster {
     }
 
     async stop() {
-        await this.clusterApi.delete({
-            cluster_id: this.clusterDetails.cluster_id!,
-        });
-
-        await retry({
-            fn: async () => {
-                await this.refresh();
-
-                switch (this.state) {
-                    case "TERMINATED":
-                        return;
-                    case "ERROR":
-                        throw new ClusterError(
-                            `Cluster[${this.name}]: Error while terminating - ${this.clusterDetails.state_message}`
-                        );
-                    default:
-                        throw new ClusterRetriableError(
-                            `Cluster[${this.name}]: CurrentState - ${this.state}; Reason - ${this.clusterDetails.state_message}`
-                        );
-                }
-            },
+        this.details = await this.clusterApi.deleteAndWait({
+            cluster_id: this.id,
         });
     }
 
@@ -176,8 +160,8 @@ export class Cluster {
         client: ApiClient,
         clusterName: string
     ): Promise<Cluster | undefined> {
-        let clusterApi = new ClusterService(client);
-        let clusterList = await clusterApi.listClusters({});
+        let clusterApi = new ClustersService(client);
+        let clusterList = await clusterApi.list({can_use_client: ""});
         let cluster = clusterList.clusters?.find((cluster) => {
             return cluster.cluster_name === clusterName;
         });
@@ -193,14 +177,14 @@ export class Cluster {
         client: ApiClient,
         clusterId: string
     ): Promise<Cluster> {
-        let clusterApi = new ClusterService(client);
+        let clusterApi = new ClustersService(client);
         let response = await clusterApi.get({cluster_id: clusterId});
         return new Cluster(client, response);
     }
 
     static async list(client: ApiClient): Promise<Array<Cluster>> {
-        let clusterApi = new ClusterService(client);
-        let response = await clusterApi.listClusters({});
+        let clusterApi = new ClustersService(client);
+        let response = await clusterApi.list({can_use_client: ""});
 
         if (!response.clusters) {
             return [];
@@ -209,9 +193,9 @@ export class Cluster {
         return response.clusters.map((c) => new Cluster(client, c));
     }
 
-    async submitRun(submitRunRequest: SubmitRunRequest): Promise<WorkflowRun> {
+    async submitRun(submitRunRequest: SubmitRun): Promise<WorkflowRun> {
         const jobsService = new JobsService(this.client);
-        let res = await jobsService.submitRun(submitRunRequest);
+        let res = await jobsService.submit(submitRunRequest);
         return await WorkflowRun.fromId(this.client, res.run_id!);
     }
 
@@ -243,6 +227,8 @@ export class Cluster {
                             };
                         }),
                     },
+                    depends_on: [],
+                    libraries: [],
                 },
             ],
         });
@@ -264,7 +250,7 @@ export class Cluster {
         args?: string[];
         onProgress?: (state: RunLifeCycleState, run: WorkflowRun) => void;
         token?: CancellationToken;
-    }): Promise<GetRunOutputResponse> {
+    }): Promise<RunOutput> {
         const run = await this.submitRun({
             tasks: [
                 {
