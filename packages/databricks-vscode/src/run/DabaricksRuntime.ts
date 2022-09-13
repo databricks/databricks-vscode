@@ -4,10 +4,20 @@
  * The runner should be independend from the VSCode UI and testable using only unit tests.
  */
 
-import {CancellationTokenSource, Event, EventEmitter, Uri} from "vscode";
+import {
+    CancellationTokenSource,
+    commands,
+    Event,
+    EventEmitter,
+    Uri,
+    window,
+} from "vscode";
 
 import {SyncDestination} from "../configuration/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {runAsWorkflow} from "./WorkflowOutputPanel";
+import {Cluster} from "@databricks/databricks-sdk";
+import {promptForClusterStart} from "../ui/prompts";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -38,7 +48,11 @@ export class DatabricksRuntime {
 
     constructor(
         private connection: ConnectionManager,
-        private fileAccessor: FileAccessor
+        private fileAccessor: FileAccessor = {
+            readFile: async (path) => {
+                return "";
+            },
+        }
     ) {}
 
     /**
@@ -47,100 +61,134 @@ export class DatabricksRuntime {
     public async start(program: string, args: Array<string>): Promise<void> {
         const start = Date.now();
 
-        if (this.connection.state === "CONNECTING") {
+        try {
+            if (this.connection.state === "CONNECTING") {
+                this._onDidSendOutputEmitter.fire({
+                    type: "out",
+                    text: `${new Date()} Connecting to cluster ...`,
+                    filePath: program,
+                    line: 0,
+                    column: 0,
+                });
+                await this.connection.waitForConnect();
+            }
+
+            let cluster = this.connection.cluster;
+            if (!cluster) {
+                return this._onErrorEmitter.fire(
+                    "You must attach to a cluster to run on Databricks"
+                );
+            }
+
+            const isClusterRunning = await promptForClusterStart(
+                cluster,
+                async () => {
+                    this._onErrorEmitter.fire(
+                        "Cancel execution because cluster is not running."
+                    );
+                }
+            );
+            if (!isClusterRunning) {
+                return;
+            }
+
+            let syncDestination = this.connection.syncDestination;
+            if (!syncDestination) {
+                return this._onErrorEmitter.fire(
+                    "You must configure code synchronization to run on Databricks"
+                );
+            }
+
+            const lines = (await this.fileAccessor.readFile(program)).split(
+                /\r?\n/
+            );
+
+            let executionContext = await cluster.createExecutionContext(
+                "python"
+            );
+
+            this.token.onCancellationRequested(async () => {
+                await executionContext.destroy();
+            });
+
             this._onDidSendOutputEmitter.fire({
                 type: "out",
-                text: `${new Date()} Connecting to cluster ...`,
+                text: `${new Date()} Running ${syncDestination.getRelativePath(
+                    Uri.file(program)
+                )} on Cluster ${cluster.id} ...`,
                 filePath: program,
-                line: 0,
+                line: lines.length,
                 column: 0,
             });
-            await this.connection.waitForConnect();
-        }
 
-        let cluster = this.connection.cluster;
-        if (!cluster) {
-            return this._onErrorEmitter.fire(
-                "You must attach to a cluster to run on Databricks"
+            let response = await executionContext.execute(
+                this.compileCommandString(
+                    program,
+                    lines,
+                    args,
+                    syncDestination
+                ),
+                undefined,
+                this.token
             );
-        }
-        let syncDestination = this.connection.syncDestination;
-        if (!syncDestination) {
-            return this._onErrorEmitter.fire(
-                "You must configure code synchronization to run on Databricks"
-            );
-        }
+            let result = response.result;
 
-        const lines = (await this.fileAccessor.readFile(program)).split(
-            /\r?\n/
-        );
+            if (result.results!.resultType === "text") {
+                this._onDidSendOutputEmitter.fire({
+                    type: "out",
+                    text: (result.results as any).data,
+                    filePath: program,
+                    line: lines.length,
+                    column: 0,
+                });
+            } else if (result.results!.resultType === "error") {
+                this._onDidSendOutputEmitter.fire({
+                    type: "out",
+                    text: (result.results! as any).cause,
+                    filePath: program,
+                    line: lines.length,
+                    column: 0,
+                });
+                this._onDidSendOutputEmitter.fire({
+                    type: "out",
+                    text: (result.results! as any).summary,
+                    filePath: program,
+                    line: lines.length,
+                    column: 0,
+                });
+            } else {
+                this._onDidSendOutputEmitter.fire({
+                    type: "out",
+                    text: JSON.stringify(result.results as any, null, 2),
+                    filePath: program,
+                    line: lines.length,
+                    column: 0,
+                });
+            }
 
-        let executionContext = await cluster.createExecutionContext("python");
+            this._onDidSendOutputEmitter.fire({
+                type: "out",
+                text: `${new Date()} Done (took ${Date.now() - start}ms)`,
+                filePath: program,
+                line: lines.length,
+                column: 0,
+            });
 
-        this.token.onCancellationRequested(async () => {
             await executionContext.destroy();
-        });
-
-        this._onDidSendOutputEmitter.fire({
-            type: "out",
-            text: `${new Date()} Running ${syncDestination.getRelativePath(
-                Uri.file(program)
-            )} on Cluster ${cluster.id} ...`,
-            filePath: program,
-            line: lines.length,
-            column: 0,
-        });
-
-        let response = await executionContext.execute(
-            this.compileCommandString(program, lines, args, syncDestination),
-            undefined,
-            this.token
-        );
-        let result = response.result;
-
-        if (result.results!.resultType === "text") {
-            this._onDidSendOutputEmitter.fire({
-                type: "out",
-                text: (result.results as any).data,
-                filePath: program,
-                line: lines.length,
-                column: 0,
-            });
-        } else if (result.results!.resultType === "error") {
-            this._onDidSendOutputEmitter.fire({
-                type: "out",
-                text: (result.results! as any).cause,
-                filePath: program,
-                line: lines.length,
-                column: 0,
-            });
-            this._onDidSendOutputEmitter.fire({
-                type: "out",
-                text: (result.results! as any).summary,
-                filePath: program,
-                line: lines.length,
-                column: 0,
-            });
-        } else {
-            this._onDidSendOutputEmitter.fire({
-                type: "out",
-                text: JSON.stringify(result.results as any, null, 2),
-                filePath: program,
-                line: lines.length,
-                column: 0,
-            });
+        } catch (e) {
+            if (e instanceof Error) {
+                this._onDidSendOutputEmitter.fire({
+                    type: "err",
+                    text: `${e.name}: ${e.message}`,
+                    filePath: program,
+                    line: 0,
+                    column: 0,
+                });
+                this._onErrorEmitter.fire(`${e.name}: ${e.message}`);
+            }
+        } finally {
+            this._onDidEndEmitter.fire();
         }
-
-        this._onDidSendOutputEmitter.fire({
-            type: "out",
-            text: `${new Date()} Done (took ${Date.now() - start}ms)`,
-            filePath: program,
-            line: lines.length,
-            column: 0,
-        });
-
-        await executionContext.destroy();
-        this._onDidEndEmitter.fire();
     }
 
     private compileCommandString(

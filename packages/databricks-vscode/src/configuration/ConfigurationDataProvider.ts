@@ -76,9 +76,14 @@ export class ConfigurationDataProvider
                     children.push({
                         label: `Cluster`,
                         iconPath: new ThemeIcon("server"),
-                        id: "CLUSTER",
+                        id: `CLUSTER_${cluster.id}`,
                         collapsibleState: TreeItemCollapsibleState.Expanded,
-                        contextValue: "clusterAttached",
+                        contextValue:
+                            cluster.state === "RUNNING"
+                                ? "clusterRunning"
+                                : cluster.state === "PENDING"
+                                ? "clusterPending"
+                                : "clusterStopped",
                     });
                 } else {
                     children.push({
@@ -124,7 +129,7 @@ export class ConfigurationDataProvider
                 ];
             }
 
-            if (element.id === "CLUSTER" && cluster) {
+            if (element.id?.startsWith("CLUSTER") && cluster) {
                 let clusterItem =
                     ClusterListDataProvider.clusterNodeToTreeItem(cluster);
 

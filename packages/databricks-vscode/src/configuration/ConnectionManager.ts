@@ -16,6 +16,7 @@ import {CliWrapper} from "../cli/CliWrapper";
 import {SyncDestination} from "./SyncDestination";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
+import {ClusterManager} from "../cluster/ClusterManager";
 
 const extensionVersion = require("../../package.json").version;
 
@@ -29,12 +30,12 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
  */
 export class ConnectionManager {
     private _state: ConnectionState = "DISCONNECTED";
-    private _cluster?: Cluster;
     private _apiClient?: ApiClient;
     private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
     private _me?: string;
     private _profile?: string;
+    private _clusterManager?: ClusterManager;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -69,7 +70,7 @@ export class ConnectionManager {
             return;
         }
 
-        return this._cluster;
+        return this._clusterManager?.cluster;
     }
 
     get syncDestination(): SyncDestination | undefined {
@@ -162,7 +163,7 @@ export class ConnectionManager {
         this._apiClient = undefined;
         this._me = undefined;
         this._projectConfigFile = undefined;
-        this._cluster = undefined;
+        this.updateCluster(undefined);
         this.updateState("DISCONNECTED");
     }
 
@@ -224,7 +225,7 @@ export class ConnectionManager {
         cluster: Cluster | string,
         skipWrite = false
     ): Promise<void> {
-        if (this._cluster === cluster) {
+        if (this.cluster === cluster) {
             return;
         }
 
@@ -241,7 +242,7 @@ export class ConnectionManager {
     }
 
     async detachCluster(): Promise<void> {
-        if (!this._cluster) {
+        if (!this.cluster) {
             return;
         }
 
@@ -302,9 +303,12 @@ export class ConnectionManager {
     }
 
     private updateCluster(newCluster: Cluster | undefined) {
-        if (this._cluster !== newCluster) {
-            this._cluster = newCluster;
-            this.onDidChangeClusterEmitter.fire(this._cluster);
+        if (this.cluster !== newCluster) {
+            this._clusterManager?.dispose();
+            this._clusterManager = newCluster
+                ? new ClusterManager(newCluster)
+                : undefined;
+            this.onDidChangeClusterEmitter.fire(this.cluster);
         }
     }
 
@@ -315,6 +319,18 @@ export class ConnectionManager {
             this._syncDestination = newSyncDestination;
             this.onDidChangeSyncDestinationEmitter.fire(this._syncDestination);
         }
+    }
+
+    async startCluster() {
+        await this._clusterManager?.start((state) => {
+            this.onDidChangeClusterEmitter.fire(this.cluster);
+        });
+    }
+
+    async stopCluster() {
+        await this._clusterManager?.stop((state) => {
+            this.onDidChangeClusterEmitter.fire(this.cluster);
+        });
     }
 
     async waitForConnect() {
