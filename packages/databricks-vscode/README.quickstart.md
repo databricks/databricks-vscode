@@ -44,7 +44,7 @@ This will run the active python file on a cluster using the command execution AP
 ### Running PySpark and notebooks as a Workflow
 
 1. Create a python file or a python based notebook
-2. Click the "Run" icon in the tab bar and select "Run File on Databricks"
+2. Click the "Run" icon in the tab bar and select "Run File as Workflow on Databricks"
 
 This will run the file using the Jobs API on a cluster and render the result in a WebView.
 
