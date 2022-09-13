@@ -3,7 +3,7 @@
 import {IntegrationTestSetup, sleep} from "../test/IntegrationTestSetup";
 import * as assert from "node:assert";
 import {Repos} from "./Repos";
-import {GetRepoResponse, ReposService} from "../apis/repos";
+import {ListReposResponse, RepoInfo, ReposService} from "../apis/repos";
 import {randomUUID} from "node:crypto";
 import {WorkspaceService} from "../apis/workspace";
 import path from "node:path";
@@ -11,16 +11,16 @@ import path from "node:path";
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
     const repoDir = "/Repos/js-sdk-tests";
-    let testRepoDetails: GetRepoResponse;
+    let testRepoDetails: RepoInfo;
 
     this.timeout(10 * 60 * 1000);
 
     async function createRandomRepo(
         repoService?: ReposService
-    ): Promise<GetRepoResponse> {
+    ): Promise<RepoInfo> {
         repoService = repoService ?? new ReposService(integSetup.client);
         const id = randomUUID();
-        const resp = await repoService.createRepo({
+        const resp = await repoService.create({
             path: `${repoDir}/test-${id}`,
             url: "https://github.com/fjakobs/empty-repo.git",
             provider: "github",
@@ -44,7 +44,7 @@ describe(__filename, function () {
 
     after(async () => {
         const repos = new ReposService(integSetup.client);
-        await repos.deleteRepo({id: testRepoDetails.id});
+        await repos.delete({repo_id: `${testRepoDetails.id}`});
     });
 
     it("should list repos by prefix", async () => {
@@ -52,15 +52,16 @@ describe(__filename, function () {
         let response = await repos.getRepos({
             path_prefix: repoDir,
         });
-        assert.ok(response.repos.length > 0);
+        assert.ok(response.repos!.length > 0);
     });
 
     // skip test as it takes too long to run
     it.skip("should list all repos", async () => {
         let repos = new Repos(integSetup.client);
-        let response = repos.getRepos({});
+        let response = await repos.getRepos({});
 
-        assert.ok((await response).repos.length > 0);
+        assert.notEqual(response.repos, undefined);
+        assert.ok(response.repos!.length > 0);
     });
 
     it("should cancel listing repos", async () => {
@@ -84,7 +85,7 @@ describe(__filename, function () {
         const start = Date.now();
         await response;
         assert.ok(Date.now() - start < 600);
-
-        assert.ok((await response).repos.length > 0);
+        assert.notEqual((await response).repos, undefined);
+        assert.ok((await response).repos!.length > 0);
     });
 });

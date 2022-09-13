@@ -66,7 +66,7 @@ export class ClusterModel implements Disposable {
             })
             .sort((a, b) => {
                 // Sort by descending state priority
-                const stateWeight: Record<cluster.ClusterState, number> = {
+                const stateWeight: Record<cluster.ClusterInfoState, number> = {
                     RUNNING: 10,
                     PENDING: 9,
                     RESTARTING: 8,

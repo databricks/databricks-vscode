@@ -1,0 +1,42 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
+// Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
+
+// all definitions in this file are in alphabetical order
+{{range .Types}}{{if .Comment "" 80}}/**
+{{.Comment "* " 80}}
+*/
+{{end}}{{if .Fields}}export interface {{.PascalName}} {
+    {{range .Fields}}
+	{{if .Comment "" 80}}/**
+    {{.Comment "    * " 80}}
+	*/
+	{{end}}{{.SnakeName}}{{if not .Required}}?{{end}}: {{template "type" .Entity}};{{end}}
+}
+
+{{else if .Enum}}export type {{.PascalName}} = 
+{{range $i, $e:=.Enum }}{{if $e.Comment "" 80}}/**
+{{$e.Comment "* " 80}}
+*/
+{{end}}{{if $i}} |{{end}}"{{$e.Content}}"
+{{end}};
+{{end}}
+{{end}}
+
+{{range .EmptyTypes}}export interface {{.PascalName}}{};
+{{end}}
+
+{{- define "type" -}}
+	{{- if not . }}any /* ERROR */
+	{{- else if .IsString}}string
+	{{- else if .IsBool}}boolean
+	{{- else if .IsInt64}}number
+	{{- else if .IsFloat64}}number
+	{{- else if .IsInt}}number
+	{{- else if .ArrayValue }}Array<{{template "type" .ArrayValue}}>
+	{{- else if .MapValue }}Record<string, {{template "type" .MapValue}}>
+	{{- else if .IsObject }}{{.PascalName}}
+	{{- else if .Enum }}{{.PascalName}}
+	{{- else}}any /* MISSING TYPE */
+	{{- end -}}
+{{- end -}}
