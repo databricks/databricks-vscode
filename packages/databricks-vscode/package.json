@@ -462,30 +462,30 @@
     "dependencies": {
         "@databricks/databricks-sdk": "*",
         "@vscode/debugadapter": "^1.57.0",
-        "@vscode/webview-ui-toolkit": "^1.0.0"
+        "@vscode/webview-ui-toolkit": "^1.0.1"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
-        "@types/glob": "^7.2.0",
+        "@types/glob": "^8.0.0",
         "@types/mocha": "^9.1.1",
-        "@types/node": "^18.7.1",
+        "@types/node": "^18.7.17",
         "@types/tmp": "^0.2.3",
-        "@types/vscode": "^1.69.1",
-        "@typescript-eslint/eslint-plugin": "^5.33.0",
-        "@typescript-eslint/parser": "^5.33.0",
+        "@types/vscode": "^1.71.0",
+        "@typescript-eslint/eslint-plugin": "^5.37.0",
+        "@typescript-eslint/parser": "^5.37.0",
         "@vscode/test-electron": "^2.1.5",
-        "esbuild": "^0.15.1",
-        "eslint": "^8.21.0",
+        "esbuild": "^0.15.7",
+        "eslint": "^8.23.1",
         "glob": "^8.0.3",
         "mocha": "^10.0.0",
         "nyc": "^15.1.0",
         "prettier": "^2.7.1",
         "tmp-promise": "^3.0.3",
         "ts-mockito": "^2.6.1",
-        "typescript": "^4.7.4",
-        "vsce": "^2.10.0",
+        "typescript": "^4.8.3",
+        "vsce": "^2.11.0",
         "vscode-extension-tester": "^4.4.1",
-        "winston": "^3.8.1"
+        "winston": "^3.8.2"
     },
     "nyc": {
         "extends": "@istanbuljs/nyc-config-typescript",
