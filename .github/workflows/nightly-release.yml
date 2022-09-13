@@ -3,28 +3,107 @@ name: Publish nightly release
 on:
     push:
         branches: [main]
+        tags:
+            - "v*.*.*"
+    workflow_dispatch:
 
 jobs:
-    archive-build-artifacts:
-        runs-on: ubuntu-latest
+    create-build-artifacts:
+        strategy:
+            matrix:
+                # VSIX architextures: https://github.com/microsoft/vscode-vsce/blob/main/src/package.ts
+                arch:
+                    [
+                        {
+                            bricks_arch: darwin_arm64,
+                            vsix_arch: darwin-arm64,
+                            os: macos-latest,
+                        },
+                        {
+                            bricks_arch: darwin_amd64,
+                            vsix_arch: darwin-x64,
+                            os: macos-latest,
+                        },
+                        {
+                            bricks_arch: linux_arm64,
+                            vsix_arch: linux-arm64,
+                            os: ubuntu-latest,
+                        },
+                        {
+                            bricks_arch: linux_amd64,
+                            vsix_arch: linux-x64,
+                            os: ubuntu-latest,
+                        },
+                        {
+                            bricks_arch: windows_arm64,
+                            vsix_arch: win32-arm64,
+                            os: windows-latest,
+                        },
+                        {
+                            bricks_arch: windows_amd64,
+                            vsix_arch: win32-x64,
+                            os: windows-latest,
+                        },
+                        {
+                            bricks_arch: windows_386,
+                            vsix_arch: win32-ia32,
+                            os: windows-latest,
+                        },
+                    ]
+                node-version: [16.x]
+
+        runs-on: ${{ matrix.arch.os }}
+
+        env:
+            BRICKS_ARCH: ${{ matrix.arch.bricks_arch }}
+
         steps:
             - uses: actions/checkout@v3
 
-            - name: Use Node.js 18.x
+            - name: Use Node.js ${{ matrix.node-version }}
               uses: actions/setup-node@v3
               with:
-                  node-version: 18.x
+                  node-version: ${{ matrix.node-version }}
 
             - run: yarn install
             - run: yarn run build
 
-            - run: yarn run package
+            - run: yarn run package:cli:fetch
+              working-directory: packages/databricks-vscode
+              env:
+                  # TODO: Remove this once the bricks repo is public
+                  GH_TOKEN: ${{ secrets.DECO_GITHUB_TOKEN }}
+
+            - run: yarn run package -t ${{ matrix.arch.vsix_arch }}
               working-directory: packages/databricks-vscode
 
+            - uses: actions/upload-artifact@v2
+              with:
+                  name: databricks-${{ matrix.arch.vsix_arch }}
+                  path: "packages/databricks-vscode/*.vsix"
+
+    create-release:
+        needs: "create-build-artifacts"
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/download-artifact@v3
+              with:
+                  path: packages/databricks-vscode
+
+            - run: ls -lR packages/databricks-vscode
+
             - name: Update nightly release
-              uses: eine/tip@master
+              uses: pyTooling/Actions/releaser@r0
+              if: startsWith(github.ref, 'refs/heads/')
               with:
                   tag: nightly
                   rm: true
                   token: ${{ secrets.GITHUB_TOKEN }}
-                  files: "packages/databricks-vscode/*.vsix"
+                  files: "packages/databricks-vscode/databricks*/*.vsix"
+
+            - name: Release
+              uses: softprops/action-gh-release@v1
+              if: startsWith(github.ref, 'refs/tags/')
+              with:
+                  files: "packages/databricks-vscode/databricks*/*.vsix"

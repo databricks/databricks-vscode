@@ -5,9 +5,10 @@ import {SyncDestination} from "./SyncDestination";
 describe(__filename, () => {
     it("should map a file", async () => {
         let mapper = new SyncDestination(
-            Uri.file(
-                "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
-            ),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 
@@ -23,9 +24,10 @@ describe(__filename, () => {
 
     it("should prepend '/Workspace' if missing", async () => {
         let mapper = new SyncDestination(
-            Uri.file(
-                "/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
-            ),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 
@@ -41,9 +43,10 @@ describe(__filename, () => {
 
     it("should map a directory", async () => {
         let mapper = new SyncDestination(
-            Uri.file(
-                "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
-            ),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 
@@ -59,9 +62,10 @@ describe(__filename, () => {
 
     it("should get repo name", async () => {
         let mapper = new SyncDestination(
-            Uri.file(
-                "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
-            ),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 
@@ -70,9 +74,10 @@ describe(__filename, () => {
 
     it("should map notebooks", async () => {
         let mapper = new SyncDestination(
-            Uri.file(
-                "/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
-            ),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 

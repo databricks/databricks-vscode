@@ -167,7 +167,10 @@ export class ConnectionCommands {
             quickPick.onDidAccept(async () => {
                 const repoPath = quickPick.selectedItems[0].path;
                 await this.connectionManager.attachSyncDestination(
-                    Uri.file(repoPath)
+                    Uri.from({
+                        scheme: "dbws",
+                        path: repoPath,
+                    })
                 );
                 quickPick.dispose();
             });

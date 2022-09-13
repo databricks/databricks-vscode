@@ -214,9 +214,6 @@ export class DatabricksDebugSession extends LoggingDebugSession {
         args: DebugProtocol.DisconnectArguments,
         _request?: DebugProtocol.Request
     ): Promise<void> {
-        console.log(
-            `disconnectRequest suspend: ${args.suspendDebuggee}, terminate: ${args.terminateDebuggee}`
-        );
         await this.runtime.disconnect();
     }
 

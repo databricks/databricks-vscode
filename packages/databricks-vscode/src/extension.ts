@@ -1,4 +1,11 @@
-import {commands, debug, ExtensionContext, window} from "vscode";
+import {
+    commands,
+    debug,
+    ExtensionContext,
+    tasks,
+    window,
+    workspace,
+} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -10,26 +17,33 @@ import {RunCommands} from "./run/RunCommands";
 import {CliCommands} from "./cli/CliCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
+import {SyncCommands} from "./sync/SyncCommands";
+import {CodeSynchronizer} from "./sync/CodeSynchronizer";
+import {BricksTaskProvider} from "./cli/BricksTasks";
+import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 
 export function activate(context: ExtensionContext) {
-    let cli = new CliWrapper();
-
+    let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
     connectionManager.login(false);
 
+    const synchronizer = new CodeSynchronizer(connectionManager, cli);
+
     let connectionCommands = new ConnectionCommands(connectionManager);
     let configurationDataProvider = new ConfigurationDataProvider(
-        connectionManager
-    );
-    window.registerTreeDataProvider(
-        "configurationView",
-        configurationDataProvider
+        connectionManager,
+        synchronizer
     );
 
     context.subscriptions.push(
         configurationDataProvider,
+        synchronizer,
 
+        window.registerTreeDataProvider(
+            "configurationView",
+            configurationDataProvider
+        ),
         commands.registerCommand(
             "databricks.connection.login",
             connectionCommands.loginCommand(),
@@ -78,7 +92,7 @@ export function activate(context: ExtensionContext) {
     );
 
     // Run/debug group
-    const runCommands = new RunCommands(connectionManager, context);
+    const runCommands = new RunCommands(connectionManager);
     const debugFactory = new DatabricksDebugAdapterFactory(connectionManager);
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,
@@ -113,7 +127,7 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         clusterModel,
         clusterTreeDataProvider,
-        window.registerTreeDataProvider("clusterList", clusterTreeDataProvider),
+        window.registerTreeDataProvider("clusterView", clusterTreeDataProvider),
 
         commands.registerCommand(
             "databricks.cluster.refresh",
@@ -137,29 +151,42 @@ export function activate(context: ExtensionContext) {
         )
     );
 
-    // Tasks
-    const cliCommands = new CliCommands(connectionManager, cli);
+    // Sync
+    const syncCommands = new SyncCommands(synchronizer);
     context.subscriptions.push(
         commands.registerCommand(
-            "databricks.cli.startSync",
-            cliCommands.startSyncCommand("incremental"),
-            cliCommands
+            "databricks.sync.start",
+            syncCommands.startCommand("incremental"),
+            syncCommands
         ),
         commands.registerCommand(
-            "databricks.cli.startSyncFull",
-            cliCommands.startSyncCommand("full"),
-            cliCommands
+            "databricks.sync.startFull",
+            syncCommands.startCommand("full"),
+            syncCommands
         ),
         commands.registerCommand(
-            "databricks.cli.stopSync",
-            cliCommands.stopSyncCommand(),
-            cliCommands
+            "databricks.sync.stop",
+            syncCommands.stopCommand(),
+            syncCommands
+        )
+    );
+
+    // CLI commands
+    const cliCommands = new CliCommands(cli);
+    context.subscriptions.push(
+        tasks.registerTaskProvider(
+            "databricks",
+            new BricksTaskProvider(connectionManager, cli)
         ),
         commands.registerCommand(
             "databricks.cli.testBricksCli",
-            cliCommands.testBricksCommand(context),
+            cliCommands.testBricksCommand(),
             cliCommands
         )
+    );
+
+    context.subscriptions.push(
+        new ProjectConfigFileWatcher(connectionManager, workspace.rootPath)
     );
 }
 

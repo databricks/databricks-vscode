@@ -45,9 +45,9 @@
         "onCommand:databricks.connection.detachCluster",
         "onCommand:databricks.connection.attachSyncDestination",
         "onCommand:databricks.connection.detachSyncDestination",
-        "onCommand:databricks.cli.startSync",
-        "onCommand:databricks.cli.startSyncFull",
-        "onCommand:databricks.cli.stopSync",
+        "onCommand:databricks.sync.start",
+        "onCommand:databricks.sync.startFull",
+        "onCommand:databricks.sync.stop",
         "onCommand:databricks.cli.testBricksCli",
         "onCommand:databricks.cluster.refresh",
         "onCommand:databricks.cluster.filterByAll",
@@ -56,8 +56,9 @@
         "onCommand:databricks.run.getProgramName",
         "onCommand:databricks.run.runEditorContentsAsWorkflow",
         "onCommand:databricks.run.runEditorContents",
-        "onView:clusterManager",
-        "onView:clusterList",
+        "onView:configurationView",
+        "onView:clusterView",
+        "onTaskType:databricks",
         "onDebugResolve:databricks",
         "onDebugResolve:databricks-workflow"
     ],
@@ -97,16 +98,19 @@
                 "icon": "$(debug-disconnect)"
             },
             {
-                "command": "databricks.cli.startSync",
-                "title": "Databricks: Start synchronization"
+                "command": "databricks.sync.start",
+                "title": "Databricks: Start synchronization",
+                "icon": "$(sync)"
             },
             {
-                "command": "databricks.cli.startSyncFull",
-                "title": "Databricks: Start synchronization (full sync)"
+                "command": "databricks.sync.startFull",
+                "title": "Databricks: Start synchronization (full sync)",
+                "icon": "$(sync)"
             },
             {
-                "command": "databricks.cli.stopSync",
-                "title": "Databricks: Stop synchronization"
+                "command": "databricks.sync.stop",
+                "title": "Databricks: Stop synchronization",
+                "icon": "$(sync-ignored)"
             },
             {
                 "command": "databricks.cli.testBricksCli",
@@ -170,7 +174,7 @@
                     "name": "Configuration"
                 },
                 {
-                    "id": "clusterList",
+                    "id": "clusterView",
                     "name": "Clusters"
                 }
             ]
@@ -189,13 +193,13 @@
                     "group": "navigation@3"
                 },
                 {
-                    "when": "view == clusterList",
+                    "when": "view == clusterView",
                     "group": "navigation@1",
                     "submenu": "databricks.cluster.filter"
                 },
                 {
                     "command": "databricks.cluster.refresh",
-                    "when": "view == clusterList",
+                    "when": "view == clusterView",
                     "group": "navigation@2"
                 }
             ],
@@ -213,7 +217,7 @@
             "view/item/context": [
                 {
                     "command": "databricks.connection.attachCluster",
-                    "when": "view == clusterList",
+                    "when": "view == clusterView",
                     "group": "inline@0"
                 },
                 {
@@ -228,12 +232,22 @@
                 },
                 {
                     "command": "databricks.connection.attachSyncDestination",
-                    "when": "view == configurationView && viewItem == syncDestinationDetached",
+                    "when": "view == configurationView && viewItem == syncDetached",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.connection.detachSyncDestination",
-                    "when": "view == configurationView && viewItem == syncDestinationAttached",
+                    "when": "view == configurationView && viewItem == syncStopped || view == configurationView && viewItem == syncRunning",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.sync.start",
+                    "when": "view == configurationView && viewItem == syncStopped",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.sync.stop",
+                    "when": "view == configurationView && viewItem == syncRunning",
                     "group": "inline@0"
                 }
             ],
@@ -265,6 +279,23 @@
                 "id": "databricks.cluster.filter",
                 "label": "Filter clusters ...",
                 "icon": "$(filter)"
+            }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "databricks",
+                "required": [
+                    "task"
+                ],
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "enum": [
+                            "sync"
+                        ],
+                        "default": "sync"
+                    }
+                }
             }
         ],
         "problemMatchers": [
@@ -316,7 +347,8 @@
                         "request": "launch",
                         "name": "Run on Databricks",
                         "program": "${file}",
-                        "args": []
+                        "args": [],
+                        "preLaunchTask": "databricks: sync"
                     }
                 ],
                 "configurationSnippets": [
@@ -328,7 +360,8 @@
                             "request": "launch",
                             "name": "Run on Databricks",
                             "program": "^\"\\${file}\"",
-                            "args": []
+                            "args": [],
+                            "preLaunchTask": "databricks: sync"
                         }
                     }
                 ]
@@ -372,7 +405,9 @@
                         "request": "launch",
                         "name": "Run on Databricks as Workflow",
                         "program": "${file}",
-                        "parameters": {}
+                        "parameters": {},
+                        "args": [],
+                        "preLaunchTask": "databricks: sync"
                     }
                 ],
                 "configurationSnippets": [
@@ -384,7 +419,9 @@
                             "request": "launch",
                             "name": "Run on Databricks as a Workflow",
                             "program": "^\"\\${file}\"",
-                            "args": []
+                            "parameters": {},
+                            "args": [],
+                            "preLaunchTask": "databricks: sync"
                         }
                     }
                 ]
@@ -398,7 +435,7 @@
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
         "package": "vsce package",
-        "package:cli:fetch": "bash ./scripts/fetch-bricks-cli.sh v0.0.1 ${BRICKS_ARCH:-}",
+        "package:cli:fetch": "BRICKS_VERSION=v0.0.2 && bash ./scripts/fetch-bricks-cli.sh ${BRICKS_VERSION} ${BRICKS_ARCH:-}",
         "package:cli:link": "rm -f ./bin/bricks && ln -s ../../../../bricks/bricks bin",
         "package:compile": "yarn run esbuild:base --minify",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",

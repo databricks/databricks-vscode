@@ -9,6 +9,7 @@ import {
     TreeItemCollapsibleState,
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
 
 /**
@@ -24,15 +25,21 @@ export class ConfigurationDataProvider
 
     private disposables: Array<Disposable> = [];
 
-    constructor(private connectionManager: ConnectionManager) {
+    constructor(
+        private connectionManager: ConnectionManager,
+        private sync: CodeSynchronizer
+    ) {
         this.disposables.push(
-            this.connectionManager.onChangeState(() => {
+            this.connectionManager.onDidChangeState(() => {
                 this._onDidChangeTreeData.fire();
             }),
-            this.connectionManager.onChangeCluster(() => {
+            this.connectionManager.onDidChangeCluster(() => {
                 this._onDidChangeTreeData.fire();
             }),
-            this.connectionManager.onChangeSyncDestination(() => {
+            this.connectionManager.onDidChangeSyncDestination(() => {
+                this._onDidChangeTreeData.fire();
+            }),
+            this.sync.onDidChangeState(() => {
                 this._onDidChangeTreeData.fire();
             })
         );
@@ -89,7 +96,10 @@ export class ConfigurationDataProvider
                         iconPath: new ThemeIcon("repo"),
                         id: "WORKSPACE",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
-                        contextValue: "syncDestinationAttached",
+                        contextValue:
+                            this.sync.state === "RUNNING"
+                                ? "syncRunning"
+                                : "syncStopped",
                     });
                 } else {
                     children.push({
@@ -97,7 +107,7 @@ export class ConfigurationDataProvider
                         iconPath: new ThemeIcon("repo"),
                         id: "WORKSPACE",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
-                        contextValue: "syncDestinationDetached",
+                        contextValue: "syncDetached",
                     });
                 }
 
@@ -120,7 +130,7 @@ export class ConfigurationDataProvider
 
                 return [
                     {
-                        label: "Name",
+                        label: "Name:",
                         description: cluster.name,
                         iconPath: clusterItem.iconPath,
                         collapsibleState: TreeItemCollapsibleState.None,
@@ -132,11 +142,22 @@ export class ConfigurationDataProvider
             if (element.id === "WORKSPACE" && syncDestination) {
                 return [
                     {
-                        label: `Name: ${syncDestination.name}`,
+                        label: `Sync state:`,
+                        description: this.sync.state,
+                        iconPath:
+                            this.sync.state === "RUNNING"
+                                ? new ThemeIcon("debug-start")
+                                : new ThemeIcon("debug-stop"),
                         collapsibleState: TreeItemCollapsibleState.None,
                     },
                     {
-                        label: `Path: ${syncDestination.path.path}`,
+                        label: `Name:`,
+                        description: syncDestination.name,
+                        collapsibleState: TreeItemCollapsibleState.None,
+                    },
+                    {
+                        label: `Path:`,
+                        description: syncDestination.path.path,
                         collapsibleState: TreeItemCollapsibleState.None,
                     },
                 ];
