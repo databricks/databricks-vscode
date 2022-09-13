@@ -24,13 +24,13 @@ The Databricks extension for VSCode allows you to develop for the Databricks Lak
 2. Click the "Configure Databricks" button
 3. Follow the wizard to select or configure a CLI profile
 4. Click the "plug" icon in the clusters tree item to select an interactive cluster for running code on (you might have to create a cluster first if none is available)
-5. Click the "plug" icon in the Repo tree item to select an repo to sync code to (you might have to create a repo first if none is available. The repos doesn't need to have a git remote configured.)
+5. Click the "plug" icon in the Repo tree item to select an repo to sync code to (you might have to create a repo first if none is available. The repo doesn't need to have a git remote configured.)
 
 ![configure](./images/configure.gif)
 
 ## Running Code
 
-Once you have you project configured you can sync you local code to the repo and run it on a cluster.
+Once you have your project configured you can sync your local code to the repo and run it on a cluster.
 
 ### Running PySpark code
 
