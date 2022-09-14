@@ -1,5 +1,4 @@
-import {Cluster} from "@databricks/databricks-sdk";
-import {ClusterInfoState} from "@databricks/databricks-sdk/dist/apis/clusters";
+import {cluster, Cluster} from "@databricks/databricks-sdk";
 import {CancellationToken, CancellationTokenSource, Disposable} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
@@ -14,7 +13,9 @@ export class ClusterManager implements Disposable {
         this.cancellationTokenSource?.dispose();
     }
 
-    async start(onProgress: (state: ClusterInfoState) => void = (state) => {}) {
+    async start(
+        onProgress: (state: cluster.ClusterInfoState) => void = (state) => {}
+    ) {
         this.cancellationTokenSource?.cancel();
         this.cancellationTokenSource = new CancellationTokenSource();
 
@@ -26,7 +27,9 @@ export class ClusterManager implements Disposable {
         onProgress(this.cluster.state);
     }
 
-    async stop(onProgress: (state: ClusterInfoState) => void = (state) => {}) {
+    async stop(
+        onProgress: (state: cluster.ClusterInfoState) => void = (state) => {}
+    ) {
         this.cancellationTokenSource?.cancel();
         this.cancellationTokenSource = new CancellationTokenSource();
 

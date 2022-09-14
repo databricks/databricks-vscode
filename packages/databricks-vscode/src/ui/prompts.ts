@@ -4,9 +4,7 @@ import {commands, window} from "vscode";
 export async function promptForClusterStart(
     cluster: Cluster,
     onReject: () => Promise<void>,
-    onAccept: () => Promise<void> = async () => {
-        await commands.executeCommand("databricks.cluster.start");
-    }
+    onAccept: () => Promise<void> = async () => {}
 ) {
     if (cluster.state !== "RUNNING") {
         const response = await window.showErrorMessage(
@@ -17,6 +15,7 @@ export async function promptForClusterStart(
         switch (response) {
             case "Start Cluster":
                 await onAccept();
+                await commands.executeCommand("databricks.cluster.start");
                 return true;
             case "Cancel Execution":
                 await onReject();

@@ -41,6 +41,7 @@ describe(__filename, () => {
             executionContext
         );
         when(cluster.id).thenReturn("cluster-1");
+        when(cluster.state).thenReturn("RUNNING");
         when(connectionManagerMock.cluster).thenReturn(
             instance<Cluster>(cluster)
         );

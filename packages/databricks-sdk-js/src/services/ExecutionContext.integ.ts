@@ -5,7 +5,7 @@ import assert from "assert";
 
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
 import {mock, when, instance} from "ts-mockito";
-import TokenFixture from "../test/fixtures/TokenFixture";
+import {TokenFixture} from "../test/fixtures/TokenFixtures";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;

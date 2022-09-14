@@ -15,8 +15,6 @@ import {
 
 import {SyncDestination} from "../configuration/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {runAsWorkflow} from "./WorkflowOutputPanel";
-import {Cluster} from "@databricks/databricks-sdk";
 import {promptForClusterStart} from "../ui/prompts";
 
 export interface OutputEvent {
@@ -86,6 +84,15 @@ export class DatabricksRuntime {
                     this._onErrorEmitter.fire(
                         "Cancel execution because cluster is not running."
                     );
+                },
+                async () => {
+                    this._onDidSendOutputEmitter.fire({
+                        type: "err",
+                        text: `Starting cluster ${cluster?.name} ...`,
+                        filePath: program,
+                        column: 0,
+                        line: 0,
+                    });
                 }
             );
             if (!isClusterRunning) {

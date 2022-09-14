@@ -74,9 +74,9 @@ export class ConfigurationDataProvider
 
                 if (cluster) {
                     children.push({
-                        label: `Cluster`,
+                        label: "Cluster",
                         iconPath: new ThemeIcon("server"),
-                        id: `CLUSTER_${cluster.id}`,
+                        id: "CLUSTER",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
                         contextValue:
                             cluster.state === "RUNNING"

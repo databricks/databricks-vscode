@@ -9,7 +9,7 @@ const testClusterDetails: ClusterInfo = {
     cluster_name: "testClusterName",
 };
 
-export default async function getMockTestCluster() {
+export async function getMockTestCluster() {
     const mockedClient = mock(ApiClient);
     when(
         mockedClient.request(
