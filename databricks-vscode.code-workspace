@@ -11,6 +11,10 @@
         {
             "path": "packages/databricks-vscode",
             "name": "Extension"
+        },
+        {
+            "path": "packages/databricks-vscode-types",
+            "name": "Extension Types"
         }
     ],
     "settings": {

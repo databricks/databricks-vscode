@@ -317,14 +317,14 @@ export class ConnectionManager {
         }
     }
 
-    async waitForConnect() {
+    async waitForConnect(): Promise<void> {
         if (this._state === "CONNECTED") {
             return;
         } else if (this._state === "CONNECTING") {
             return await new Promise((resolve) => {
                 const changeListener = this.onDidChangeState(() => {
                     changeListener.dispose();
-                    resolve(resolve);
+                    resolve();
                 }, this);
             });
         }
