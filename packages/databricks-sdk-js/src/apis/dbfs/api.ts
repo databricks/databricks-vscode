@@ -5,9 +5,19 @@
 import {ApiClient} from "../../api-client";
 import * as model from "./model";
 import Time from "../../retries/Time";
-import retry, {RetriableError} from "../../retries/retries";
-export class DbfsRetriableError extends RetriableError {}
-export class DbfsError extends Error {}
+import retry from "../../retries/retries";
+import {CancellationToken} from "../../types";
+import {ApiError, ApiRetriableError} from "../apiError";
+export class DbfsRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
+export class DbfsError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
 
 /**
 

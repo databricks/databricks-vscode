@@ -4,9 +4,10 @@ export class RetriableError extends Error {
     name: string = "RetriableError";
 }
 
-export interface RetriableResult<T> {
-    result?: T;
-    error?: unknown;
+export class TimeoutError extends Error {
+    constructor(message?: string) {
+        super(`Timeout: ${message}`);
+    }
 }
 
 export class RetryConfigs {
@@ -79,7 +80,7 @@ export default async function retry<T>({
         throw nonRetriableErr;
     }
     if (!success) {
-        throw retriableErr;
+        throw new TimeoutError(retriableErr.message);
     }
     return result!;
 }

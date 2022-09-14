@@ -129,9 +129,12 @@ export class Cluster {
         });
     }
 
-    async stop() {
+    async stop(token?: CancellationToken) {
         this.details = await this.clusterApi.deleteAndWait({
-            cluster_id: this.id,
+            request: {
+                cluster_id: this.id,
+            },
+            cancellationToken: token,
         });
     }
 

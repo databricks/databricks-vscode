@@ -5,9 +5,19 @@
 import {ApiClient} from "../../api-client";
 import * as model from "./model";
 import Time from "../../retries/Time";
-import retry, {RetriableError} from "../../retries/retries";
-export class JobsRetriableError extends RetriableError {}
-export class JobsError extends Error {}
+import retry from "../../retries/retries";
+import {CancellationToken} from "../../types";
+import {ApiError, ApiRetriableError} from "../apiError";
+export class JobsRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
+export class JobsError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
 
 /**
  * The Jobs API allows you to create, edit, and delete jobs.
@@ -48,10 +58,17 @@ export class JobsService {
      * cancelRun and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async cancelRunAndWait(
-        request: model.CancelRun,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async cancelRunAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.CancelRun;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.cancelRun(request);
 
         return await retry<model.Run>({
@@ -60,6 +77,10 @@ export class JobsService {
                 const pollResponse = await this.getRun({
                     run_id: request.run_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("cancelRunAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -69,11 +90,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "cancelRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "cancelRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -154,10 +177,17 @@ export class JobsService {
      * getRun and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async getRunAndWait(
-        request: model.GetRunRequest,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async getRunAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.GetRunRequest;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.getRun(request);
 
         return await retry<model.Run>({
@@ -166,6 +196,10 @@ export class JobsService {
                 const pollResponse = await this.getRun({
                     run_id: response.run_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("getRunAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -175,11 +209,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "getRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "getRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -257,10 +293,17 @@ export class JobsService {
      * repairRun and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async repairRunAndWait(
-        request: model.RepairRun,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async repairRunAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.RepairRun;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.repairRun(request);
 
         return await retry<model.Run>({
@@ -269,6 +312,10 @@ export class JobsService {
                 const pollResponse = await this.getRun({
                     run_id: request.run_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("repairRunAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -278,11 +325,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "repairRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "repairRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -320,10 +369,17 @@ export class JobsService {
      * runNow and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async runNowAndWait(
-        request: model.RunNow,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async runNowAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.RunNow;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.runNow(request);
 
         return await retry<model.Run>({
@@ -332,6 +388,10 @@ export class JobsService {
                 const pollResponse = await this.getRun({
                     run_id: response.run_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("runNowAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -341,11 +401,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "runNowAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "runNowAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -373,10 +435,17 @@ export class JobsService {
      * submit and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async submitAndWait(
-        request: model.SubmitRun,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async submitAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.SubmitRun;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.submit(request);
 
         return await retry<model.Run>({
@@ -385,6 +454,10 @@ export class JobsService {
                 const pollResponse = await this.getRun({
                     run_id: response.run_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("submitAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -394,11 +467,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "submitAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "submitAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }

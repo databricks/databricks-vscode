@@ -5,9 +5,19 @@
 import {ApiClient} from "../../api-client";
 import * as model from "./model";
 import Time from "../../retries/Time";
-import retry, {RetriableError} from "../../retries/retries";
-export class ClustersRetriableError extends RetriableError {}
-export class ClustersError extends Error {}
+import retry from "../../retries/retries";
+import {CancellationToken} from "../../types";
+import {ApiError, ApiRetriableError} from "../apiError";
+export class ClustersRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
+export class ClustersError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
 
 /**
  * <needs content added>
@@ -64,10 +74,17 @@ export class ClustersService {
      * create and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async createAndWait(
-        request: model.CreateCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async createAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.CreateCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.create(request);
 
         return await retry<model.ClusterInfo>({
@@ -76,6 +93,10 @@ export class ClustersService {
                 const pollResponse = await this.get({
                     cluster_id: response.cluster_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("createAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -84,11 +105,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "createAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "createAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -119,10 +142,17 @@ export class ClustersService {
      * delete and wait to reach TERMINATED state
      *  or fail on reaching ERROR state
      */
-    async deleteAndWait(
-        request: model.DeleteCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async deleteAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.DeleteCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.delete(request);
 
         return await retry<model.ClusterInfo>({
@@ -131,6 +161,10 @@ export class ClustersService {
                 const pollResponse = await this.get({
                     cluster_id: request.cluster_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("deleteAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -139,11 +173,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "deleteAndWait",
                             `failed to reach TERMINATED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "deleteAndWait",
                             `failed to reach TERMINATED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -178,10 +214,17 @@ export class ClustersService {
      * edit and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async editAndWait(
-        request: model.EditCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async editAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.EditCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.edit(request);
 
         return await retry<model.ClusterInfo>({
@@ -190,6 +233,10 @@ export class ClustersService {
                 const pollResponse = await this.get({
                     cluster_id: request.cluster_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("editAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -198,11 +245,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "editAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "editAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -255,10 +304,17 @@ export class ClustersService {
      * get and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async getAndWait(
-        request: model.GetRequest,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async getAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.GetRequest;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.get(request);
 
         return await retry<model.ClusterInfo>({
@@ -267,6 +323,10 @@ export class ClustersService {
                 const pollResponse = await this.get({
                     cluster_id: response.cluster_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("getAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -275,11 +335,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "getAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "getAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -386,10 +448,17 @@ export class ClustersService {
      * resize and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async resizeAndWait(
-        request: model.ResizeCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async resizeAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.ResizeCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.resize(request);
 
         return await retry<model.ClusterInfo>({
@@ -398,6 +467,10 @@ export class ClustersService {
                 const pollResponse = await this.get({
                     cluster_id: request.cluster_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("resizeAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -406,11 +479,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "resizeAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "resizeAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -439,10 +514,17 @@ export class ClustersService {
      * restart and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async restartAndWait(
-        request: model.RestartCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async restartAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.RestartCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.restart(request);
 
         return await retry<model.ClusterInfo>({
@@ -451,6 +533,10 @@ export class ClustersService {
                 const pollResponse = await this.get({
                     cluster_id: request.cluster_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("restartAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -459,11 +545,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "restartAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "restartAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -509,10 +597,17 @@ export class ClustersService {
      * start and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async startAndWait(
-        request: model.StartCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async startAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.StartCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.start(request);
 
         return await retry<model.ClusterInfo>({
@@ -521,6 +616,10 @@ export class ClustersService {
                 const pollResponse = await this.get({
                     cluster_id: request.cluster_id!,
                 });
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("startAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -529,11 +628,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "startAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "startAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
