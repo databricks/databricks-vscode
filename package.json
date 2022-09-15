@@ -1,5 +1,5 @@
 {
-    "name": "databricks-vscode",
+    "name": "@databricks/databricks-vscode",
     "version": "0.0.1",
     "private": true,
     "workspaces": [

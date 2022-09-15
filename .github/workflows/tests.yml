@@ -129,7 +129,7 @@ jobs:
                   timeout_minutes: 10
                   retry_on: any
                   command: |
-                      yarn workspace databricks run test:integ:clean
+                      yarn workspace databricks-vscode run test:integ:clean
                       yarn install --immutable
                       yarn build
                       cd packages/databricks-vscode
