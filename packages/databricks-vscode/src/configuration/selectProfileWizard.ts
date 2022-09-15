@@ -4,7 +4,7 @@ import {
     Profiles,
     resolveConfigFilePath,
 } from "@databricks/databricks-sdk";
-import {existsSync, stat, unlinkSync} from "fs";
+import {stat, unlink} from "fs/promises";
 import {QuickPickItem, QuickPickItemKind, window} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {MultiStepInput} from "../ui/wizard";
@@ -38,7 +38,13 @@ export async function selectProfile(
                 throw e;
             }
             const path = resolveConfigFilePath();
-            if (existsSync(path)) {
+            let stats;
+            try {
+                stats = await stat(path);
+            } catch (e) {
+                /*file doesn't exist*/
+            }
+            if (stats?.isFile()) {
                 const option = await window.showErrorMessage(
                     e.message,
                     "Overwrite",
@@ -47,7 +53,7 @@ export async function selectProfile(
                 if (option === "Cancel") {
                     return;
                 }
-                unlinkSync(path);
+                await unlink(path);
             }
         }
 
