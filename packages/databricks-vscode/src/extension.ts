@@ -22,8 +22,9 @@ import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
+import {PublicApi} from "@databricks/databricks-vscode-types";
 
-export function activate(context: ExtensionContext) {
+export function activate(context: ExtensionContext): PublicApi {
     let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
@@ -209,6 +210,10 @@ export function activate(context: ExtensionContext) {
             quickstartCommands
         )
     );
+
+    return {
+        connectionManager: connectionManager,
+    };
 }
 
 // this method is called when your extension is deactivated
