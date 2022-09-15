@@ -31,13 +31,16 @@ export class {{$s.PascalName}}Service {
 	/**
     {{.Comment "    * " 80}}
 	*/
-    async {{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}}{{end}}): Promise<model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}> {
+    async {{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}},{{end}}
+        cancellationToken?: CancellationToken
+	): Promise<model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}> {
 			const path = {{if .PathParts}}`{{range .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.SnakeName}}}{{end}}{{end}}`{{else}}"{{.Path}}"{{end}}
-			return await this.client.request(
+			return (await this.client.request(
 				path,
 				"{{.Verb}}",
-				{{if .Request}}request{{end}}
-			) as model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}
+				{{if .Request -}}request{{else}}undefined{{end}}, 
+				cancellationToken
+			) as model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}})
 		}
 
 	{{if .Wait}}
@@ -58,7 +61,7 @@ export class {{$s.PascalName}}Service {
 			fn: async () => {
 				const pollResponse = await this.{{.Wait.Poll.CamelName}}({
 					{{.Wait.Bind.SnakeName}}: {{if .Wait.ForceBindRequest}}request{{else if .Response}}response{{else}}request{{end}}.{{.Wait.Bind.SnakeName}}!
-				})
+				}, cancellationToken)
 				if(cancellationToken?.isCancellationRequested) {
 					throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", "cancelled");
 				}

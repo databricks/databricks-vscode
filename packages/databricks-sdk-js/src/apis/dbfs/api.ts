@@ -32,13 +32,15 @@ export class DbfsService {
      * request: .. code:: { "data": "ZGF0YWJyaWNrcwo=", "handle": 7904256 }
      */
     async addBlock(
-        request: model.AddBlockRequest
+        request: model.AddBlockRequest,
+        cancellationToken?: CancellationToken
     ): Promise<model.AddBlockResponse> {
         const path = "/api/2.0/dbfs/add-block";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.AddBlockResponse;
     }
 
@@ -46,12 +48,16 @@ export class DbfsService {
      * Closes the stream specified by the input handle. If the handle does not
      * exist, this call will throw an exception with ``RESOURCE_DOES_NOT_EXIST``.
      */
-    async close(request: model.CloseRequest): Promise<model.CloseResponse> {
+    async close(
+        request: model.CloseRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.CloseResponse> {
         const path = "/api/2.0/dbfs/close";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.CloseResponse;
     }
 
@@ -64,12 +70,16 @@ export class DbfsService {
      * handle. 2) Issue one or more ``add-block`` calls with the handle you have.
      * 3) Issue a ``close`` call with the handle you have.
      */
-    async create(request: model.CreateRequest): Promise<model.CreateResponse> {
+    async create(
+        request: model.CreateRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.CreateResponse> {
         const path = "/api/2.0/dbfs/create";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.CreateResponse;
     }
 
@@ -79,12 +89,16 @@ export class DbfsService {
      * path is a non-empty directory and recursive is set to false or on other
      * similar errors.
      */
-    async delete(request: model.DeleteRequest): Promise<model.DeleteResponse> {
+    async delete(
+        request: model.DeleteRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.DeleteResponse> {
         const path = "/api/2.0/dbfs/delete";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.DeleteResponse;
     }
 
@@ -94,13 +108,15 @@ export class DbfsService {
      * ``RESOURCE_DOES_NOT_EXIST``.
      */
     async getStatus(
-        request: model.GetStatusRequest
+        request: model.GetStatusRequest,
+        cancellationToken?: CancellationToken
     ): Promise<model.GetStatusResponse> {
         const path = "/api/2.0/dbfs/get-status";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.GetStatusResponse;
     }
 
@@ -112,13 +128,15 @@ export class DbfsService {
      * "/databricks-results", "is_dir": true, "file_size": 0 } ] }
      */
     async list(
-        request: model.ListStatusRequest
+        request: model.ListStatusRequest,
+        cancellationToken?: CancellationToken
     ): Promise<model.ListStatusResponse> {
         const path = "/api/2.0/dbfs/list";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ListStatusResponse;
     }
 
@@ -129,12 +147,16 @@ export class DbfsService {
      * ``RESOURCE_ALREADY_EXISTS``. Note that if this operation fails it may have
      * succeeded in creating some of the necessary parent directories.
      */
-    async mkdirs(request: model.MkDirsRequest): Promise<model.MkDirsResponse> {
+    async mkdirs(
+        request: model.MkDirsRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.MkDirsResponse> {
         const path = "/api/2.0/dbfs/mkdirs";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.MkDirsResponse;
     }
 
@@ -146,12 +168,16 @@ export class DbfsService {
      * ``RESOURCE_ALREADY_EXISTS``. If the given source path is a directory, this
      * call will always recursively move all files.
      */
-    async move(request: model.MoveRequest): Promise<model.MoveResponse> {
+    async move(
+        request: model.MoveRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.MoveResponse> {
         const path = "/api/2.0/dbfs/move";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.MoveResponse;
     }
 
@@ -175,12 +201,16 @@ export class DbfsService {
      * :ref:`dbfsDbfsServicecreate`, :ref:`dbfsDbfsServiceaddBlock` and
      * :ref:`dbfsDbfsServiceclose` for details.
      */
-    async put(request: model.PutRequest): Promise<model.PutResponse> {
+    async put(
+        request: model.PutRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.PutResponse> {
         const path = "/api/2.0/dbfs/put";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.PutResponse;
     }
 
@@ -193,12 +223,16 @@ export class DbfsService {
      * ``MAX_READ_SIZE_EXCEEDED``. If ``offset + length`` exceeds the number of
      * bytes in a file, we will read contents until the end of file.
      */
-    async read(request: model.ReadRequest): Promise<model.ReadResponse> {
+    async read(
+        request: model.ReadRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.ReadResponse> {
         const path = "/api/2.0/dbfs/read";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ReadResponse;
     }
 }

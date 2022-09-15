@@ -3,6 +3,7 @@ import * as https from "node:https";
 import {TextDecoder} from "node:util";
 import {fromDefaultChain} from "./auth/fromChain";
 import {fetch} from "./fetch";
+import {CancellationToken} from "./types";
 
 const sdkVersion = require("../package.json").version;
 
@@ -47,7 +48,8 @@ export class ApiClient {
     async request(
         path: string,
         method: HttpMethod,
-        payload?: any
+        payload?: any,
+        cancellationToken?: CancellationToken
     ): Promise<Object> {
         const credentials = await this.credentialProvider();
         const headers = {
@@ -76,7 +78,14 @@ export class ApiClient {
         let response;
 
         try {
-            response = await fetch(url.toString(), options);
+            const {abort, response: responsePromise} = fetch(
+                url.toString(),
+                options
+            );
+            if (cancellationToken?.onCancellationRequested) {
+                cancellationToken?.onCancellationRequested(abort);
+            }
+            response = await responsePromise;
         } catch (e: any) {
             if (e.code && e.code === "ENOTFOUND") {
                 throw new HttpError(`Can't connect to ${url.toString()}`, 500);

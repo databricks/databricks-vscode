@@ -2,5 +2,12 @@
 
 exports.fetch = async function (url, init) {
     const {default: fetch} = await import("node-fetch");
-    return await fetch(url, init);
+    const controller = AbortController();
+    const signal = controller.signal;
+    return {
+        abort: () => {
+            controller.abort();
+        },
+        response: fetch(url, {signal, ...init}),
+    };
 };
