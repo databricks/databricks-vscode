@@ -4,7 +4,10 @@ import fs from "node:fs/promises";
 export interface ProjectConfig {
     profile?: string;
     clusterId?: string;
-    workspacePath?: string;
+    workspacePath?: {
+        scheme: string;
+        path: string;
+    };
 }
 
 export class ConfigFileError extends Error {}
@@ -32,7 +35,9 @@ export class ProjectConfigFile {
         return this.config.workspacePath;
     }
 
-    set workspacePath(workspacePath: string | undefined) {
+    set workspacePath(
+        workspacePath: {scheme: string; path: string} | undefined
+    ) {
         this.config.workspacePath = workspacePath;
     }
 

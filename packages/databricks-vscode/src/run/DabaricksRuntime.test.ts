@@ -83,7 +83,7 @@ describe(__filename, () => {
             })
         );
 
-        await runtime.start("/Desktop/workspaces/hello.py", []);
+        await runtime.startFromFile("/Desktop/workspaces/hello.py", []);
 
         verify(connectionManagerMock.waitForConnect()).called();
 
@@ -97,7 +97,7 @@ describe(__filename, () => {
     });
 
     it("should have the right code", async () => {
-        await runtime.start("/Desktop/workspaces/hello.py", []);
+        await runtime.startFromFile("/Desktop/workspaces/hello.py", []);
 
         const code = capture(executionContextMock.execute).first()[0];
         assert.equal(
@@ -137,7 +137,7 @@ print('43')`
             })
         );
 
-        await runtime.start("/Desktop/workspaces/hello.py", []);
+        await runtime.startFromFile("/Desktop/workspaces/hello.py", []);
 
         assert.equal(outputs.length, 5);
         assert.equal(outputs[2].text, "something went wrong");

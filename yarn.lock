@@ -1850,6 +1850,8 @@ __metadata:
     typescript: ^4.8.3
     vsce: ^2.11.0
     vscode-extension-tester: ^4.4.1
+    vscode-test-adapter-api: ^1.9.0
+    vscode-test-adapter-util: ^0.7.1
     winston: ^3.8.2
   languageName: unknown
   linkType: soft
@@ -5469,7 +5471,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^1.13.0, tslib@npm:^1.8.1":
+"tslib@npm:^1.11.1, tslib@npm:^1.13.0, tslib@npm:^1.8.1":
   version: 1.14.1
   resolution: "tslib@npm:1.14.1"
   checksum: dbe628ef87f66691d5d2959b3e41b9ca0045c3ee3c7c7b906cc1e328b39f199bb1ad9e671c39025bd56122ac57dfbf7385a94843b1cc07c60a4db74795829acd
@@ -5773,6 +5775,23 @@ __metadata:
   bin:
     extest: out/cli.js
   checksum: 49ecc4f11b73903fb60cf0debb56b317e325b089096b5b9745617f2303aab11bd4621a99586c316c52fa2ee1645119f42b86fbe8f7430e2a042946628134bc7c
+  languageName: node
+  linkType: hard
+
+"vscode-test-adapter-api@npm:^1.8.0, vscode-test-adapter-api@npm:^1.9.0":
+  version: 1.9.0
+  resolution: "vscode-test-adapter-api@npm:1.9.0"
+  checksum: fbfbe9ced4fdc3e300e7f32650198abf707777df32c28c3fee2b96ea98e9d7699afc74044e2f0e307d1299c4057763a34d737e888012c2c7d2536e5c3ca1d3bf
+  languageName: node
+  linkType: hard
+
+"vscode-test-adapter-util@npm:^0.7.1":
+  version: 0.7.1
+  resolution: "vscode-test-adapter-util@npm:0.7.1"
+  dependencies:
+    tslib: ^1.11.1
+    vscode-test-adapter-api: ^1.8.0
+  checksum: 59b3a76b0e470c31c3034971dd93a4e487500ef5582d855c8d9d46f55462e90dad3be61c3be540de95697b5051b140b263162464d85878a820e600a5838bd52e
   languageName: node
   linkType: hard
 

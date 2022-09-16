@@ -2,6 +2,7 @@ import {Cluster, Repos} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {QuickPickItem, ThemeIcon, Uri, window, workspace} from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
+import {MultiStepInput} from "../ui/wizard";
 import {ConnectionManager} from "./ConnectionManager";
 
 export interface WorkspaceItem extends QuickPickItem {
@@ -135,47 +136,115 @@ export class ConnectionCommands {
 
     attachSyncDestinationCommand() {
         return async () => {
-            const apiClient = this.connectionManager.apiClient;
-            const me = this.connectionManager.me;
-            if (!apiClient || !me) {
-                // TODO
-                return;
+            let protocol: "REPO" | "DBFS" = "DBFS",
+                destination: string = "";
+
+            await MultiStepInput.run((input) =>
+                selectProtocol(input, this.connectionManager)
+            );
+            async function selectProtocol(
+                input: MultiStepInput,
+                connectionManager: ConnectionManager
+            ) {
+                interface RepoOrDbfsItem extends QuickPickItem {
+                    choice: "REPO" | "DBFS";
+                }
+                const items: RepoOrDbfsItem[] = [
+                    {
+                        choice: "REPO",
+                        label: "REPO",
+                        detail: "Sync to a Repo in databricks workspace",
+                    },
+                    {
+                        choice: "DBFS",
+                        label: "DBFS",
+                        detail: "Sync to a temporary location in databricks workspace",
+                    },
+                ];
+
+                protocol =
+                    (
+                        await input.showQuickPick({
+                            title: "Protocol",
+                            step: 1,
+                            totalSteps: 2,
+                            items: items,
+                            placeholder: "",
+                            shouldResume: async () => {
+                                return false;
+                            },
+                        })
+                    ).label === "DBFS"
+                        ? "DBFS"
+                        : "REPO";
+
+                return (input: MultiStepInput) =>
+                    selectDestination(input, connectionManager);
             }
 
-            const reposApi = new Repos(apiClient);
-            const quickPick = window.createQuickPick<WorkspaceItem>();
+            async function selectDestination(
+                input: MultiStepInput,
+                connectionManager: ConnectionManager
+            ) {
+                const apiClient = connectionManager.apiClient;
+                const me = connectionManager.me;
+                if (!apiClient || !me) {
+                    // TODO
+                    return;
+                }
+                if (protocol === "REPO") {
+                    const reposApi = new Repos(apiClient);
 
-            quickPick.busy = true;
-            quickPick.canSelectMany = false;
-            quickPick.show();
+                    destination = (
+                        await input.showQuickPick({
+                            title: "Sync Destination",
+                            step: 2,
+                            totalSteps: 4,
+                            items: async () => {
+                                let repos = (
+                                    await reposApi.getRepos({
+                                        // eslint-disable-next-line @typescript-eslint/naming-convention
+                                        path_prefix: `/Repos/${me}`,
+                                    })
+                                ).repos;
+                                return repos!.map((r) => ({
+                                    label: r.path!.split("/").pop() || "",
+                                    detail: r.path!,
+                                    path: r.path!,
+                                    id: r.id!,
+                                }));
+                            },
+                            placeholder: "",
+                            shouldResume: async () => {
+                                return false;
+                            },
+                        })
+                    ).detail!;
+                } else {
+                    destination = await input.showInputBox({
+                        title: "Sync Destination",
+                        step: 2,
+                        totalSteps: 2,
+                        prompt: "Path to destination",
+                        value: `/tmp/${me}/${workspace.rootPath
+                            ?.split("/")
+                            .pop()}`,
+                        shouldResume: async () => {
+                            return false;
+                        },
+                        validate: async (value) => {
+                            return undefined;
+                        },
+                    });
+                }
+            }
 
-            let repos = (
-                await reposApi.getRepos({
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    path_prefix: `/Repos/${me}`,
+            this.connectionManager.attachSyncDestination(
+                Uri.from({
+                    scheme: protocol === "DBFS" ? "dbfs" : "dbws",
+                    path: destination,
                 })
-            ).repos;
-
-            quickPick.items = repos!.map((r) => ({
-                label: r.path!.split("/").pop() || "",
-                detail: r.path!,
-                path: r.path!,
-                id: r.id!,
-            }));
-            quickPick.busy = false;
-
-            quickPick.onDidAccept(async () => {
-                const repoPath = quickPick.selectedItems[0].path;
-                await this.connectionManager.attachSyncDestination(
-                    Uri.from({
-                        scheme: "dbws",
-                        path: repoPath,
-                    })
-                );
-                quickPick.dispose();
-            });
-
-            quickPick.onDidHide(() => quickPick.dispose());
+            );
         };
     }
 

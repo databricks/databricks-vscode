@@ -2,7 +2,7 @@ import * as assert from "assert";
 import path = require("path");
 import {Uri} from "vscode";
 
-type SyncDestinationType = "workspace" | "repo";
+type SyncDestinationType = "workspace" | "repo" | "dbfs";
 
 /**
  * Either Databricks repo or workspace that acts as a sync target for the current workspace.
@@ -11,21 +11,24 @@ export class SyncDestination {
     private repoPath: Uri;
 
     constructor(repoPath: Uri, readonly vscodeWorkspacePath: Uri) {
-        assert.equal(repoPath.scheme, "dbws");
+        assert.ok(["dbws", "dbfs"].includes(repoPath.scheme));
 
         this.repoPath = repoPath;
 
         // Repo paths always start with "/Workspace" but the repos API strips this off.
-        if (!this.repoPath.path.startsWith("/Workspace/")) {
+        if (
+            !this.repoPath.path.startsWith("/Workspace/") &&
+            this.repoPath.scheme !== "dbfs"
+        ) {
             this.repoPath = Uri.from({
-                scheme: "dbws",
+                scheme: this.repoPath.scheme,
                 path: `/Workspace${this.repoPath.path}`,
             });
         }
     }
 
     get type(): SyncDestinationType {
-        return "repo";
+        return this.repoPath.scheme === "dbfs" ? "dbfs" : "repo";
     }
 
     get name(): string {
@@ -36,6 +39,11 @@ export class SyncDestination {
         return this.repoPath;
     }
 
+    get remotePath(): string {
+        return this.type === "dbfs"
+            ? `/dbfs${this.path.path}`
+            : this.repoPath.path;
+    }
     /**
      * Strips the workspace path from an absolute path
      */
@@ -45,7 +53,7 @@ export class SyncDestination {
                 throw new Error("local path is not within the workspace");
             }
             return path.path.replace(this.vscodeWorkspacePath.path, "");
-        } else if (path.scheme === "dbws") {
+        } else if (["dbfs", "dbws"].includes(path.scheme)) {
             return path.path.replace(this.repoPath.path, "");
         } else {
             throw new Error(`Invalid path scheme: ${path.scheme}`);

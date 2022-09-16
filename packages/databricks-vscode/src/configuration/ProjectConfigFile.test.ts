@@ -18,7 +18,10 @@ describe(__filename, () => {
         const expected = {
             clusterId: "testClusterId",
             profile: "testProfile",
-            workspacePath: "workspacePath",
+            workspacePath: {
+                scheme: "dbws",
+                path: "workspacePath",
+            },
         };
         await new ProjectConfigFile(expected, tempDir).write();
 

@@ -38,13 +38,44 @@ export class DatabricksRuntime {
 
     constructor(
         private connection: ConnectionManager,
-        private fileAccessor: FileAccessor
+        private fileAccessor?: FileAccessor
     ) {}
 
+    public async startFromFile(
+        program: string,
+        args: Array<string>
+    ): Promise<void> {
+        let syncDestination = this.connection.syncDestination;
+        if (!syncDestination) {
+            return this._onErrorEmitter.fire(
+                "You must configure code synchronization to run on Databricks"
+            );
+        }
+
+        if (!this.fileAccessor) {
+            return this._onErrorEmitter.fire("File accessor is null");
+        }
+        const lines = (await this.fileAccessor.readFile(program)).split(
+            /\r?\n/
+        );
+
+        const code = this.compileCommandString(
+            program,
+            lines,
+            args,
+            syncDestination
+        );
+
+        await this.start(program, code, lines.length);
+    }
     /**
      * Start executing the given program.
      */
-    public async start(program: string, args: Array<string>): Promise<void> {
+    public async start(
+        program: string,
+        code: string,
+        numLine: number
+    ): Promise<void> {
         const start = Date.now();
 
         if (this.connection.state === "CONNECTING") {
@@ -64,16 +95,6 @@ export class DatabricksRuntime {
                 "You must attach to a cluster to run on Databricks"
             );
         }
-        let syncDestination = this.connection.syncDestination;
-        if (!syncDestination) {
-            return this._onErrorEmitter.fire(
-                "You must configure code synchronization to run on Databricks"
-            );
-        }
-
-        const lines = (await this.fileAccessor.readFile(program)).split(
-            /\r?\n/
-        );
 
         let executionContext = await cluster.createExecutionContext("python");
 
@@ -83,16 +104,14 @@ export class DatabricksRuntime {
 
         this._onDidSendOutputEmitter.fire({
             type: "out",
-            text: `${new Date()} Running ${syncDestination.getRelativePath(
-                Uri.file(program)
-            )} on Cluster ${cluster.id} ...`,
+            text: `${new Date()} Running on Cluster ${cluster.id} ...`,
             filePath: program,
-            line: lines.length,
+            line: numLine,
             column: 0,
         });
 
         let response = await executionContext.execute(
-            this.compileCommandString(program, lines, args, syncDestination),
+            code,
             undefined,
             this.token
         );
@@ -103,7 +122,7 @@ export class DatabricksRuntime {
                 type: "out",
                 text: (result.results as any).data,
                 filePath: program,
-                line: lines.length,
+                line: numLine,
                 column: 0,
             });
         } else if (result.results!.resultType === "error") {
@@ -111,14 +130,14 @@ export class DatabricksRuntime {
                 type: "out",
                 text: (result.results! as any).cause,
                 filePath: program,
-                line: lines.length,
+                line: numLine,
                 column: 0,
             });
             this._onDidSendOutputEmitter.fire({
                 type: "out",
                 text: (result.results! as any).summary,
                 filePath: program,
-                line: lines.length,
+                line: numLine,
                 column: 0,
             });
         } else {
@@ -126,7 +145,7 @@ export class DatabricksRuntime {
                 type: "out",
                 text: JSON.stringify(result.results as any, null, 2),
                 filePath: program,
-                line: lines.length,
+                line: numLine,
                 column: 0,
             });
         }
@@ -135,7 +154,7 @@ export class DatabricksRuntime {
             type: "out",
             text: `${new Date()} Done (took ${Date.now() - start}ms)`,
             filePath: program,
-            line: lines.length,
+            line: numLine,
             column: 0,
         });
 

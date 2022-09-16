@@ -1,10 +1,13 @@
 import {
     commands,
+    ConfigurationTarget,
     debug,
     ExtensionContext,
+    extensions,
     tasks,
     window,
     workspace,
+    WorkspaceFolder,
 } from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
@@ -23,12 +26,43 @@ import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {PublicApi} from "@databricks/databricks-vscode-types";
+import {testExplorerExtensionId, TestHub} from "vscode-test-adapter-api";
+import {Log, TestAdapterRegistrar} from "vscode-test-adapter-util";
+import {PytestAdapter} from "./testAdapter/pytestAdapter";
 
-export function activate(context: ExtensionContext): PublicApi {
+export async function activate(context: ExtensionContext): Promise<PublicApi> {
     let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
     connectionManager.login(false);
+
+    const testExplorerExtension = extensions.getExtension<TestHub>(
+        testExplorerExtensionId
+    );
+
+    const workspaceFolder = (workspace.workspaceFolders || [])[0];
+
+    const log = new Log(
+        "databricks.exampleExplorer",
+        workspaceFolder,
+        "Databricks Pytest Logs"
+    );
+    await workspace
+        .getConfiguration("databricks.exampleExplorer")
+        .update("logpanel", true, ConfigurationTarget.Workspace);
+
+    context.subscriptions.push(log);
+
+    if (testExplorerExtension) {
+        context.subscriptions.push(
+            new TestAdapterRegistrar(
+                testExplorerExtension.exports,
+                (workspaceFolder) =>
+                    new PytestAdapter(connectionManager, workspaceFolder, log),
+                log
+            )
+        );
+    }
 
     const synchronizer = new CodeSynchronizer(connectionManager, cli);
 

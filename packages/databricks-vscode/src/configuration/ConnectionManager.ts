@@ -140,8 +140,8 @@ export class ConnectionManager {
         if (projectConfigFile.config.workspacePath) {
             await this.attachSyncDestination(
                 Uri.from({
-                    scheme: "dbws",
-                    path: projectConfigFile.config.workspacePath,
+                    scheme: projectConfigFile.config.workspacePath.scheme,
+                    path: projectConfigFile.config.workspacePath.path,
                 }),
                 false
             );
@@ -266,7 +266,10 @@ export class ConnectionManager {
         }
 
         if (!skipWrite) {
-            this._projectConfigFile!.workspacePath = workspacePath.path;
+            this._projectConfigFile!.workspacePath = {
+                scheme: workspacePath.scheme,
+                path: workspacePath.path,
+            };
             await this._projectConfigFile!.write();
         }
 

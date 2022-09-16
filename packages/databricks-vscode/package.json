@@ -35,6 +35,10 @@
         "type": "git",
         "url": "https://github.com/databricks/databricks-vscode.git"
     },
+    "extensionDependencies": [
+        "ms-python.python",
+        "hbenl.vscode-test-explorer"
+    ],
     "activationEvents": [
         "onCommand:databricks.connection.login",
         "onCommand:databricks.connection.logout",
@@ -66,6 +70,15 @@
     "main": "out/extension.js",
     "types": "out/extension.d.ts",
     "contributes": {
+        "configuration": {
+            "title": "Databricks",
+            "properties": {
+                "databricks.exampleExplorer.logpanel": {
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        },
         "commands": [
             {
                 "command": "databricks.connection.login",
@@ -464,7 +477,9 @@
         "@databricks/databricks-sdk": "*",
         "@databricks/databricks-vscode-types": "workspace:^",
         "@vscode/debugadapter": "^1.57.0",
-        "@vscode/webview-ui-toolkit": "^1.0.1"
+        "@vscode/webview-ui-toolkit": "^1.0.1",
+        "vscode-test-adapter-api": "^1.9.0",
+        "vscode-test-adapter-util": "^0.7.1"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",

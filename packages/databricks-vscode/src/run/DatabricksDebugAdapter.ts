@@ -235,7 +235,7 @@ export class DatabricksDebugSession extends LoggingDebugSession {
         await commands.executeCommand("workbench.panel.repl.view.focus");
 
         // start the program in the runtime
-        await this.runtime.start(args.program, args.args || []);
+        await this.runtime.startFromFile(args.program, args.args || []);
         this.sendResponse(response);
     }
 

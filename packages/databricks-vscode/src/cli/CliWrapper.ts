@@ -33,16 +33,13 @@ export class CliWrapper {
         syncType: "full" | "incremental"
     ): Command {
         const command = "dbx";
-        const args = [
-            "sync",
-            "repo",
-            "--profile",
-            profile,
-            "--user",
-            me,
-            "--dest-repo",
-            syncDestination.name,
-        ];
+        const args = ["sync"];
+        if (syncDestination.type === "repo") {
+            args.push("repo", "--dest-repo", syncDestination.name);
+        } else {
+            args.push("dbfs", "-d", syncDestination.path.path, "--source", ".");
+        }
+        args.push("--profile", profile, "--user", me);
 
         if (syncType === "full") {
             args.push("--full-sync");

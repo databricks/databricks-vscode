@@ -25,7 +25,7 @@ interface QuickPickParameters<T extends QuickPickItem> {
     title: string;
     step: number;
     totalSteps: number;
-    items: T[];
+    items: T[] | (() => Promise<T[]>);
     activeItem?: T;
     placeholder: string;
     buttons?: QuickInputButton[];
@@ -97,13 +97,20 @@ export class MultiStepInput {
         try {
             return await new Promise<
                 T | (P extends {buttons: (infer I)[]} ? I : never)
-            >((resolve, reject) => {
+            >(async (resolve, reject) => {
                 const input = window.createQuickPick<T>();
                 input.title = title;
                 input.step = step;
                 input.totalSteps = totalSteps;
                 input.placeholder = placeholder;
-                input.items = items;
+                if (!Array.isArray(items)) {
+                    input.busy = true;
+                    input.show();
+                    input.items = await items();
+                    input.busy = false;
+                } else {
+                    input.items = items;
+                }
                 if (activeItem) {
                     input.activeItems = [activeItem];
                 }
