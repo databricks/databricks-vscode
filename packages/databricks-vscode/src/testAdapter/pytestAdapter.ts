@@ -15,6 +15,88 @@ import {DatabricksRuntime} from "../run/DabaricksRuntime";
 import {loadFakeTests, runFakeTests} from "./fakeTests";
 import {parseCollectedTests} from "./pytestParser";
 
+const PLUGIN = `import base64
+import json
+
+
+class JsonCollector:
+    def check_children(hierarchy, l):
+        for data in l:
+            if data in hierarchy:
+                hierarchy[data]["children"] = JsonCollector.check_children(
+                    hierarchy[data].get("children", {}), l[data].get("children", {})
+                )
+            else:
+                return {**hierarchy, **l}
+        return hierarchy
+
+    def remove_keys_and_make_lists(hierarchy):
+        array = []
+        for k, v in hierarchy.items():
+            v["children"] = JsonCollector.remove_keys_and_make_lists(v["children"])
+            if v["type"] == "Function":  # since Function is the minimal unit in pytest
+                array.append({"type": v["type"], "title": v["title"]})
+            else:
+                array.append(
+                    {"type": v["type"], "title": v["title"], "children": v["children"]}
+                )
+        return array
+
+    def path_collection(session):
+        hierarchy = {}
+        for item in session.items:
+            l = {}
+            cur_h = {}
+            parameterized = item.nodeid.find("[")
+            if parameterized < 0:
+                path = item.nodeid.split("/")
+            else:
+                path = item.nodeid[0:parameterized].split("/")
+                path[-1] = path[-1] + item.nodeid[parameterized:]
+            pytest_items = path[-1].split("::")
+            path[-1] = pytest_items[0]
+            pytest_items = pytest_items[1:]
+            pytest_items.reverse()
+            path.reverse()
+            for p in pytest_items:
+                l = {
+                    "pytest_unit"
+                    + p: {"type": "pytest_unit", "title": p, "children": cur_h}
+                }
+                cur_h = l
+            for p in path:
+                l = {"path" + p: {"type": "path", "title": p, "children": cur_h}}
+                cur_h = l
+
+            if hierarchy:
+                hierarchy = JsonCollector.check_children(hierarchy, l)
+            else:
+                hierarchy = l
+
+        return hierarchy
+
+    def pytest_addoption(self, parser):
+        parser.addoption(
+            "--collect-output-file-2",
+            action="store",
+            default=False,
+            help="Saves collected test items to the file",
+        )
+        
+    def pytest_collection_finish(self, session):
+        output_file = session.config.getoption("--collect-output-file-2")
+
+        hierarchy = {}
+        hierarchy = JsonCollector.path_collection(session)
+        hierarchy = JsonCollector.remove_keys_and_make_lists(hierarchy)
+
+        if output_file:
+            with open(output_file, "w+") as fil:
+                byt = json.dumps(hierarchy).encode("utf-8")
+                message = base64.b64encode(byt).decode("ascii")
+                with open(output_file, "w+") as fil:
+                    fil.write(message)`;
+
 /**
  * This class is intended as a starting point for implementing a "real" TestAdapter.
  * The file `README.md` contains further instructions.
@@ -82,10 +164,11 @@ export class PytestAdapter implements TestAdapter {
             `tfile = tempfile.NamedTemporaryFile(dir = dir, prefix="pytest-hack", delete=False)`,
             `tfile.close()`,
 
+            PLUGIN,
+
             `import sys`,
             `sys.path.append(dir)`,
-            `from Plugins import Plugin`,
-            `pytest.main(["--collect-only", "--no-summary", "-qq", "--collect-output-file", tfile.name, "-o", "console_output_style=classic", dir], [Plugin])`,
+            `pytest.main(["--collect-only", "--no-summary", "-qq", "--collect-output-file-2", tfile.name, "-o", "console_output_style=classic", dir], [JsonCollector()])`,
 
             `with open(tfile.name, "r") as fil:`,
             `  print("===start collect output===")`,
