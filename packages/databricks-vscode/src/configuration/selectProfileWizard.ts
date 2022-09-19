@@ -1,4 +1,10 @@
-import {loadConfigFile, Profiles} from "@databricks/databricks-sdk";
+import {
+    ConfigFileError,
+    loadConfigFile,
+    Profiles,
+    resolveConfigFilePath,
+} from "@databricks/databricks-sdk";
+import {stat, unlink} from "fs/promises";
 import {QuickPickItem, QuickPickItemKind, window} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {MultiStepInput} from "../ui/wizard";
@@ -24,12 +30,31 @@ export async function selectProfile(
     const title = "Select Databricks Profile";
 
     async function pickProfile(input: MultiStepInput, state: Partial<State>) {
-        let profiles: Profiles;
+        let profiles: Profiles = {};
         try {
             profiles = await loadConfigFile();
         } catch (e) {
-            console.error(e);
-            throw e;
+            if (!(e instanceof ConfigFileError)) {
+                throw e;
+            }
+            const path = resolveConfigFilePath();
+            let stats;
+            try {
+                stats = await stat(path);
+            } catch (e) {
+                /*file doesn't exist*/
+            }
+            if (stats?.isFile()) {
+                const option = await window.showErrorMessage(
+                    e.message,
+                    "Overwrite",
+                    "Cancel"
+                );
+                if (option === "Cancel") {
+                    return;
+                }
+                await unlink(path);
+            }
         }
 
         let items: Array<QuickPickItem> = Object.keys(profiles).map(

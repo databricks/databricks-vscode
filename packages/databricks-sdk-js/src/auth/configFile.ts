@@ -37,18 +37,23 @@ export async function loadConfigFile(filePath?: string): Promise<Profiles> {
     }
 
     let config: any;
+    let profiles: Profiles = {};
     try {
         config = parse(fileContents);
-    } catch (e) {
-        throw new ConfigFileError(`Can't parse ${filePath}`);
-    }
-
-    let profiles: Profiles = {};
-    for (let profile in config) {
-        profiles[profile] = {
-            host: new URL(config[profile].host),
-            token: config[profile].token,
-        };
+        for (let profile in config) {
+            profiles[profile] = {
+                host: new URL(config[profile].host),
+                token: config[profile].token,
+            };
+        }
+    } catch (e: unknown) {
+        let message;
+        if (e instanceof Error) {
+            message = `${e.name}: ${e.message}`;
+        } else {
+            message = e;
+        }
+        throw new ConfigFileError(`Can't parse ${filePath}: ${message}`);
     }
 
     return profiles;
