@@ -1,10 +1,8 @@
 import {cluster, Cluster} from "@databricks/databricks-sdk";
 import {CancellationToken, CancellationTokenSource, Disposable} from "vscode";
-import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export class ClusterManager implements Disposable {
     private cancellationTokenSource?: CancellationTokenSource;
-    // cancellationToken?: CancellationToken
 
     constructor(readonly cluster: Cluster) {}
 
@@ -28,13 +26,17 @@ export class ClusterManager implements Disposable {
     }
 
     async stop(
-        onProgress: (state: cluster.ClusterInfoState) => void = (state) => {}
+        onProgress: (state?: cluster.ClusterInfoState) => void = (state) => {}
     ) {
         this.cancellationTokenSource?.cancel();
         this.cancellationTokenSource = new CancellationTokenSource();
 
         //TODO: add cancellation and onProgress cb after adding these to API generator
-        await this.cluster.stop();
+        await this.cluster.stop(
+            this.cancellationTokenSource.token,
+            async (clusterInfo: cluster.ClusterInfo) =>
+                onProgress(clusterInfo.state)
+        );
         onProgress(this.cluster.state);
     }
 }

@@ -78,7 +78,7 @@ export class ApiClient {
         let response;
 
         try {
-            const {abort, response: responsePromise} = fetch(
+            const {abort, response: responsePromise} = await fetch(
                 url.toString(),
                 options
             );
@@ -118,7 +118,7 @@ export class ApiClient {
         }
 
         if ("error" in response) {
-            throw new Error(response.error);
+            throw new Error(response);
         }
 
         if ("error_code" in response) {

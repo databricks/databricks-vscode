@@ -102,7 +102,6 @@ export class Cluster {
         await retry({
             fn: async () => {
                 if (token?.isCancellationRequested) {
-                    await this.stop();
                     return;
                 }
 
@@ -133,12 +132,21 @@ export class Cluster {
         });
     }
 
-    async stop(token?: CancellationToken) {
+    async stop(
+        token?: CancellationToken,
+        onProgress?: (newPollResponse: ClusterInfo) => Promise<void>
+    ) {
         this.details = await this.clusterApi.deleteAndWait({
             request: {
                 cluster_id: this.id,
             },
             cancellationToken: token,
+            onProgress: async (clusterInfo) => {
+                this.details = clusterInfo;
+                if (onProgress) {
+                    await onProgress(clusterInfo);
+                }
+            },
         });
     }
 
