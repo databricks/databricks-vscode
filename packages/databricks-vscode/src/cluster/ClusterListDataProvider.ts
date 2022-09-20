@@ -112,10 +112,6 @@ export class ClusterListDataProvider
             iconPath: icon,
             id: element.id,
             collapsibleState: TreeItemCollapsibleState.Collapsed,
-            contextValue:
-                element.state === "RUNNING"
-                    ? "clusterRunning"
-                    : "clusterStopped",
         };
     }
 

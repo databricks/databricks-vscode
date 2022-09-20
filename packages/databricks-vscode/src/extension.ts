@@ -22,8 +22,9 @@ import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
+import {PublicApi} from "@databricks/databricks-vscode-types";
 
-export function activate(context: ExtensionContext) {
+export function activate(context: ExtensionContext): PublicApi {
     let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
@@ -123,7 +124,7 @@ export function activate(context: ExtensionContext) {
     // Cluster group
     const clusterModel = new ClusterModel(connectionManager);
     const clusterTreeDataProvider = new ClusterListDataProvider(clusterModel);
-    let clusterCommands = new ClusterCommands(clusterModel);
+    let clusterCommands = new ClusterCommands(clusterModel, connectionManager);
 
     context.subscriptions.push(
         clusterModel,
@@ -148,6 +149,16 @@ export function activate(context: ExtensionContext) {
         commands.registerCommand(
             "databricks.cluster.filterByMe",
             clusterCommands.filterCommand("ME"),
+            clusterCommands
+        ),
+        commands.registerCommand(
+            "databricks.cluster.start",
+            clusterCommands.startClusterCommand,
+            clusterCommands
+        ),
+        commands.registerCommand(
+            "databricks.cluster.stop",
+            clusterCommands.stopClusterCommand,
             clusterCommands
         )
     );
@@ -199,6 +210,10 @@ export function activate(context: ExtensionContext) {
             quickstartCommands
         )
     );
+
+    return {
+        connectionManager: connectionManager,
+    };
 }
 
 // this method is called when your extension is deactivated

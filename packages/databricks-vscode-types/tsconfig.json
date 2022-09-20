@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "module": "CommonJS",
+        "target": "ES2020",
+        "declaration": true,
+        "esModuleInterop": true,
+        "isolatedModules": true,
+        "lib": ["ES2020", "ES2021.String"],
+        "rootDir": ".",
+        "strict": true /* enable all strict type-checking options */
+    },
+    "include": ["*.ts"]
+}

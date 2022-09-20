@@ -1,5 +1,5 @@
 {
-    "name": "databricks",
+    "name": "databricks-vscode",
     "displayName": "Databricks for Visual Studio Code",
     "description": "IDE support for Databricks",
     "publisher": "databricks",
@@ -64,6 +64,7 @@
         "onDebugResolve:databricks-workflow"
     ],
     "main": "out/extension.js",
+    "types": "out/extension.d.ts",
     "contributes": {
         "commands": [
             {
@@ -161,6 +162,15 @@
             {
                 "command": "databricks.quickstart.open",
                 "title": "Databricks: Open Quickstart"
+            },
+            {  "command": "databricks.cluster.start",
+                "title": "Start Cluster",
+                "icon": "$(debug-start)"
+            },
+            {
+                "command": "databricks.cluster.stop",
+                "title": "Stop Cluster",
+                "icon": "$(debug-stop)"
             }
         ],
         "viewsContainers": {
@@ -228,12 +238,12 @@
                 {
                     "command": "databricks.connection.attachClusterQuickPick",
                     "when": "view == configurationView && viewItem == clusterDetached",
-                    "group": "inline@0"
+                    "group": "inline@1"
                 },
                 {
                     "command": "databricks.connection.detachCluster",
-                    "when": "view == configurationView && viewItem == clusterAttached",
-                    "group": "inline@0"
+                    "when": "view == configurationView && viewItem == clusterRunning || view == configurationView && viewItem == clusterStopped || view == configurationView && viewItem == clusterPending",
+                    "group": "inline@1"
                 },
                 {
                     "command": "databricks.connection.attachSyncDestination",
@@ -253,6 +263,16 @@
                 {
                     "command": "databricks.sync.stop",
                     "when": "view == configurationView && viewItem == syncRunning",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.cluster.stop",
+                    "when": "view == configurationView && viewItem == clusterRunning || view == configurationView && viewItem == clusterPending",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.cluster.start",
+                    "when": "view == configurationView && viewItem == clusterStopped",
                     "group": "inline@0"
                 }
             ],
@@ -452,7 +472,7 @@
         "test:unit": "yarn run build && node ./out/test/runTest.js",
         "test:integ:clean": "yarn run clean && rm -rf /tmp/vscode-test-databricks /tmp/databricks-vscode-test-extensions",
         "test:integ:prepare": "CODE_VERSION=1.69.1 && yarn run package && extest get-vscode --code_version $CODE_VERSION --storage /tmp/vscode-test-databricks && extest get-chromedriver --code_version 1.69.1 --storage /tmp/vscode-test-databricks",
-        "test:integ:install-vsix": "extest install-vsix --storage /tmp/vscode-test-databricks -f databricks-0.0.1.vsix -e /tmp/databricks-vscode-test-extensions",
+        "test:integ:install-vsix": "extest install-vsix --storage /tmp/vscode-test-databricks -f databricks-vscode*.vsix -e /tmp/databricks-vscode-test-extensions",
         "test:integ:run": "yarn run build && node out/test/e2e/scripts/e2e.js -e /tmp/databricks-vscode-test-extensions --storage /tmp/vscode-test-databricks --code_settings src/test/e2e/settings.json 'out/**/*.e2e.js'",
         "test:integ": "yarn run test:integ:prepare && yarn run test:integ:install-vsix && yarn run test:integ:run",
         "test:cov": "nyc yarn run test:unit",
@@ -461,6 +481,7 @@
     },
     "dependencies": {
         "@databricks/databricks-sdk": "*",
+        "@databricks/databricks-vscode-types": "workspace:^",
         "@vscode/debugadapter": "^1.57.0",
         "@vscode/webview-ui-toolkit": "^1.0.1"
     },

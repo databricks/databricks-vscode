@@ -80,7 +80,10 @@ export class Cluster {
         });
     }
 
-    async start(token?: CancellationToken) {
+    async start(
+        token?: CancellationToken,
+        onProgress: (state: ClusterInfoState) => void = (state) => {}
+    ) {
         await this.refresh();
         if (this.state === "RUNNING") {
             return;
@@ -104,6 +107,7 @@ export class Cluster {
                 }
 
                 await this.refresh();
+                onProgress(this.state);
 
                 switch (this.state) {
                     case "RUNNING":
