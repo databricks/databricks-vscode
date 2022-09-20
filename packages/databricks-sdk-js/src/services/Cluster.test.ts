@@ -5,9 +5,9 @@ import chai, {assert} from "chai";
 import {mock, when, instance, deepEqual, verify, anything} from "ts-mockito";
 import chaiAsPromised from "chai-as-promised";
 import Time, {TimeUnits} from "../retries/Time";
-import getMockTestCluster from "../test/fixtures/ClusterFixtures";
+import {getMockTestCluster} from "../test/fixtures/ClusterFixtures";
 import {ClusterInfo} from "../apis/clusters";
-import TokenFixture from "../test/fixtures/TokenFixture";
+import {TokenFixture} from "../test/fixtures/TokenFixtures";
 import {RetryConfigs} from "../retries/retries";
 
 chai.use(chaiAsPromised);

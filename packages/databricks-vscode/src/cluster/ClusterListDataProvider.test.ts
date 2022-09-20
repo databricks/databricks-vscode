@@ -149,7 +149,6 @@ describe(__filename, () => {
         let item = ClusterListDataProvider.clusterNodeToTreeItem(cluster);
         assert.deepEqual(item, {
             collapsibleState: 1,
-            contextValue: "clusterStopped",
             iconPath: {
                 color: undefined,
                 id: "debug-stop",
@@ -166,7 +165,6 @@ describe(__filename, () => {
         item = ClusterListDataProvider.clusterNodeToTreeItem(cluster);
         assert.deepEqual(item, {
             collapsibleState: 1,
-            contextValue: "clusterRunning",
             iconPath: {
                 color: undefined,
                 id: "debug-start",

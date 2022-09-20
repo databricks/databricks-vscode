@@ -24,6 +24,7 @@ import {DebugProtocol} from "@vscode/debugprotocol";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
 import {runAsWorkflow} from "./WorkflowOutputPanel";
+import {promptForClusterStart} from "../ui/prompts";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -171,9 +172,16 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         }
 
         await cluster.refresh();
-        if (cluster.state !== "RUNNING") {
-            // TODO: add option to start cluster
-            return this.onError(`Cluster ${cluster.name} is not running.`);
+        const isClusterRunning = await promptForClusterStart(
+            cluster,
+            async () => {
+                this.onError(
+                    "Cancel execution because cluster is not running."
+                );
+            }
+        );
+        if (!isClusterRunning) {
+            return;
         }
 
         await runAsWorkflow({

@@ -124,7 +124,7 @@ export function activate(context: ExtensionContext): PublicApi {
     // Cluster group
     const clusterModel = new ClusterModel(connectionManager);
     const clusterTreeDataProvider = new ClusterListDataProvider(clusterModel);
-    let clusterCommands = new ClusterCommands(clusterModel);
+    let clusterCommands = new ClusterCommands(clusterModel, connectionManager);
 
     context.subscriptions.push(
         clusterModel,
@@ -149,6 +149,16 @@ export function activate(context: ExtensionContext): PublicApi {
         commands.registerCommand(
             "databricks.cluster.filterByMe",
             clusterCommands.filterCommand("ME"),
+            clusterCommands
+        ),
+        commands.registerCommand(
+            "databricks.cluster.start",
+            clusterCommands.startClusterCommand,
+            clusterCommands
+        ),
+        commands.registerCommand(
+            "databricks.cluster.stop",
+            clusterCommands.stopClusterCommand,
             clusterCommands
         )
     );
