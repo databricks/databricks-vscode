@@ -118,7 +118,7 @@ export class ApiClient {
         }
 
         if ("error" in response) {
-            throw new Error(response);
+            throw new Error(response.error);
         }
 
         if ("error_code" in response) {
