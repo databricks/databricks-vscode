@@ -5,9 +5,19 @@
 import {ApiClient} from "../../api-client";
 import * as model from "./model";
 import Time from "../../retries/Time";
-import retry, {RetriableError} from "../../retries/retries";
-export class WorkspaceRetriableError extends RetriableError {}
-export class WorkspaceError extends Error {}
+import retry from "../../retries/retries";
+import {CancellationToken} from "../../types";
+import {ApiError, ApiRetriableError} from "../apiError";
+export class WorkspaceRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
+export class WorkspaceError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
 
 /**
 
@@ -23,12 +33,16 @@ export class WorkspaceService {
      * directory recursively is not atomic. Example of request: .. code :: json {
      * "path": "/Users/user@example.com/project", "recursive": true }
      */
-    async delete(request: model.DeleteRequest): Promise<model.DeleteResponse> {
+    async delete(
+        request: model.DeleteRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.DeleteResponse> {
         const path = "/api/2.0/workspace/delete";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.DeleteResponse;
     }
 
@@ -46,12 +60,16 @@ export class WorkspaceService {
      * ``direct_download``: .. code :: shell curl -n -o example.scala \
      * 'https://XX.cloud.databricks.com/api/2.0/workspace/export?path=/Users/user@example.com/ScalaExampleNotebook&direct_download=true'
      */
-    async export(request: model.ExportRequest): Promise<model.ExportResponse> {
+    async export(
+        request: model.ExportRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.ExportResponse> {
         const path = "/api/2.0/workspace/export";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ExportResponse;
     }
 
@@ -65,13 +83,15 @@ export class WorkspaceService {
      * "SCALA", "object_type": "NOTEBOOK", "object_id": 789 }
      */
     async getStatus(
-        request: model.GetStatusRequest
+        request: model.GetStatusRequest,
+        cancellationToken?: CancellationToken
     ): Promise<model.GetStatusResponse> {
         const path = "/api/2.0/workspace/get-status";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.GetStatusResponse;
     }
 
@@ -88,12 +108,16 @@ export class WorkspaceService {
      * language=SCALA \ -F content=@example.scala \
      * https://XX.cloud.databricks.com/api/2.0/workspace/import
      */
-    async import(request: model.ImportRequest): Promise<model.ImportResponse> {
+    async import(
+        request: model.ImportRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.ImportResponse> {
         const path = "/api/2.0/workspace/import";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.ImportResponse;
     }
 
@@ -107,12 +131,16 @@ export class WorkspaceService {
      * "/Users/user@example.com/PythonExampleNotebook", "language": "PYTHON",
      * "object_type": "NOTEBOOK", "object_id": 456 } ] }
      */
-    async list(request: model.ListRequest): Promise<model.ListResponse> {
+    async list(
+        request: model.ListRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.ListResponse> {
         const path = "/api/2.0/workspace/list";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ListResponse;
     }
 
@@ -124,12 +152,16 @@ export class WorkspaceService {
      * of the necessary parrent directories. Example of request: .. code:: json {
      * "path": "/Users/user@example.com/project" }
      */
-    async mkdirs(request: model.MkdirsRequest): Promise<model.MkdirsResponse> {
+    async mkdirs(
+        request: model.MkdirsRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.MkdirsResponse> {
         const path = "/api/2.0/workspace/mkdirs";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.MkdirsResponse;
     }
 }

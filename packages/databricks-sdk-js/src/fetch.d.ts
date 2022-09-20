@@ -6,4 +6,7 @@
 export function fetch(
     url: import("node-fetch").RequestInfo,
     init: import("node-fetch").RequestInit
-): Promise<import("node-fetch").Response>;
+): Promise<{
+    abort: () => void;
+    response: Promise<import("node-fetch").Response>;
+}>;

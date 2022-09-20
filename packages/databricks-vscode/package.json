@@ -163,7 +163,8 @@
                 "command": "databricks.quickstart.open",
                 "title": "Databricks: Open Quickstart"
             },
-            {  "command": "databricks.cluster.start",
+            {
+                "command": "databricks.cluster.start",
                 "title": "Start Cluster",
                 "icon": "$(debug-start)"
             },

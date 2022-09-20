@@ -9,7 +9,15 @@ import {
     Time,
     TimeUnits,
 } from "@databricks/databricks-sdk";
-import {deepEqual, instance, mock, resetCalls, verify, when} from "ts-mockito";
+import {
+    anything,
+    deepEqual,
+    instance,
+    mock,
+    resetCalls,
+    verify,
+    when,
+} from "ts-mockito";
 import assert from "assert";
 
 describe(__filename, async () => {
@@ -26,7 +34,8 @@ describe(__filename, async () => {
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
-                })
+                }),
+                anything()
             )
         ).thenResolve({
             ...testClusterDetails,
@@ -51,7 +60,8 @@ describe(__filename, async () => {
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
-                })
+                }),
+                anything()
             )
         ).thenResolve(
             {
