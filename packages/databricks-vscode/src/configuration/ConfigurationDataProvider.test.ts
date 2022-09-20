@@ -130,7 +130,7 @@ describe(__filename, () => {
             },
             {
                 collapsibleState: 2,
-                contextValue: "clusterAttached",
+                contextValue: "clusterStopped",
                 iconPath: {
                     color: undefined,
                     id: "server",

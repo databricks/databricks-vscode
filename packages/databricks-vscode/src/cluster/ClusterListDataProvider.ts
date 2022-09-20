@@ -100,6 +100,9 @@ export class ClusterListDataProvider
                 break;
 
             case "TERMINATING":
+                icon = new ThemeIcon("stop-circle");
+                break;
+
             case "TERMINATED":
             case "ERROR":
             case "UNKNOWN":
@@ -112,10 +115,6 @@ export class ClusterListDataProvider
             iconPath: icon,
             id: element.id,
             collapsibleState: TreeItemCollapsibleState.Collapsed,
-            contextValue:
-                element.state === "RUNNING"
-                    ? "clusterRunning"
-                    : "clusterStopped",
         };
     }
 
@@ -158,7 +157,10 @@ export class ClusterListDataProvider
             }
         );
 
-        if (element.stateMessage) {
+        if (
+            element.stateMessage &&
+            !["RUNNING", "TERMINATED"].includes(element.state)
+        ) {
             children.push({
                 label: "State message:",
                 description: element.stateMessage,

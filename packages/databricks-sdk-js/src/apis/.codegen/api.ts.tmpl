@@ -5,11 +5,21 @@
 import {ApiClient} from "../../api-client";
 import * as model from "./model";
 import Time from "../../retries/Time";
-import retry, {RetriableError} from "../../retries/retries";
+import retry from "../../retries/retries";
+import {CancellationToken} from "../../types"
+import {ApiError, ApiRetriableError} from "../apiError";
 
 {{- range $i, $s := .Services }}
-export class {{$s.PascalName}}RetriableError extends RetriableError {}
-export class {{$s.PascalName}}Error extends Error {}
+export class {{$s.PascalName}}RetriableError extends ApiRetriableError {
+	constructor(method: string, message?: string){
+		super("$s.PascalName", method, message)
+	}
+}
+export class {{$s.PascalName}}Error extends ApiError {
+	constructor(method: string, message?: string){
+		super("$s.PascalName", method, message)
+	}
+}
 
 /**
 {{$s.Comment "* " 80}}
@@ -21,13 +31,16 @@ export class {{$s.PascalName}}Service {
 	/**
     {{.Comment "    * " 80}}
 	*/
-    async {{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}}{{end}}): Promise<model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}> {
+    async {{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}},{{end}}
+        cancellationToken?: CancellationToken
+	): Promise<model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}> {
 			const path = {{if .PathParts}}`{{range .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.SnakeName}}}{{end}}{{end}}`{{else}}"{{.Path}}"{{end}}
-			return await this.client.request(
+			return (await this.client.request(
 				path,
 				"{{.Verb}}",
-				{{if .Request}}request{{end}}
-			) as model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}
+				{{if .Request -}}request{{else}}undefined{{end}}, 
+				cancellationToken
+			) as model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}})
 		}
 
 	{{if .Wait}}
@@ -35,7 +48,12 @@ export class {{$s.PascalName}}Service {
 	* {{.CamelName}} and wait to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state
 	* {{if .Wait.Failure}} or fail on reaching {{range $i, $e := .Wait.Failure}}{{if $i}} or {{end}}{{.Content}}{{end}} state{{end}}
 	*/
-	async {{.CamelName}}AndWait({{if .Request}}request: model.{{.Request.PascalName}}{{end}}, timeout?: Time): Promise<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}> {
+	async {{.CamelName}}AndWait({request, timeout, cancellationToken, onProgress= async (newPollResponse) => {}}:{
+		{{if .Request}}request: model.{{.Request.PascalName}}{{end}}, 
+		timeout?: Time,
+		cancellationToken?: CancellationToken,
+		onProgress?: (newPollResponse: model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}) => Promise<void>
+		}): Promise<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}> {
 		const response = await this.{{.CamelName}}(request);
 
 		return await retry<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}>({
@@ -43,7 +61,11 @@ export class {{$s.PascalName}}Service {
 			fn: async () => {
 				const pollResponse = await this.{{.Wait.Poll.CamelName}}({
 					{{.Wait.Bind.SnakeName}}: {{if .Wait.ForceBindRequest}}request{{else if .Response}}response{{else}}request{{end}}.{{.Wait.Bind.SnakeName}}!
-				})
+				}, cancellationToken)
+				if(cancellationToken?.isCancellationRequested) {
+					throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", "cancelled");
+				}
+				await onProgress(pollResponse);
 				const status = pollResponse{{range $i, $e := .Wait.StatusPath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}
 				const statusMessage = pollResponse{{range $i, $e := .Wait.MessagePath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}
 				switch(status) {
@@ -51,10 +73,10 @@ export class {{$s.PascalName}}Service {
 						return pollResponse
 					}
 					{{if .Wait.Failure}}{{range $i, $e := .Wait.Failure}}{{if $i}} {{end}}case '{{$e.Content}}':{{end}}{
-						throw new {{$s.PascalName}}Error(`failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`)
+						throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`)
 					}
 					{{end}}default:{
-						throw new {{$s.PascalName}}RetriableError(`failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`)
+						throw new {{$s.PascalName}}RetriableError("{{.CamelName}}AndWait", `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`)
 					}
 				}
 			}

@@ -80,7 +80,10 @@ export class Cluster {
         });
     }
 
-    async start(token?: CancellationToken) {
+    async start(
+        token?: CancellationToken,
+        onProgress: (state: ClusterInfoState) => void = (state) => {}
+    ) {
         await this.refresh();
         if (this.state === "RUNNING") {
             return;
@@ -99,11 +102,11 @@ export class Cluster {
         await retry({
             fn: async () => {
                 if (token?.isCancellationRequested) {
-                    await this.stop();
                     return;
                 }
 
                 await this.refresh();
+                onProgress(this.state);
 
                 switch (this.state) {
                     case "RUNNING":
@@ -129,9 +132,21 @@ export class Cluster {
         });
     }
 
-    async stop() {
+    async stop(
+        token?: CancellationToken,
+        onProgress?: (newPollResponse: ClusterInfo) => Promise<void>
+    ) {
         this.details = await this.clusterApi.deleteAndWait({
-            cluster_id: this.id,
+            request: {
+                cluster_id: this.id,
+            },
+            cancellationToken: token,
+            onProgress: async (clusterInfo) => {
+                this.details = clusterInfo;
+                if (onProgress) {
+                    await onProgress(clusterInfo);
+                }
+            },
         });
     }
 

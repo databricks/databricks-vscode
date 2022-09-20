@@ -1,4 +1,4 @@
-import retry, {RetriableError} from "./retries";
+import retry, {RetriableError, TimeoutError} from "./retries";
 import Time, {TimeUnits} from "./Time";
 import chai, {assert, expect} from "chai";
 import spies from "chai-spies";
@@ -43,7 +43,7 @@ describe(__filename, function () {
                     );
                 },
             })
-        ).to.be.rejectedWith(RetriableError);
+        ).to.be.rejectedWith(TimeoutError);
     });
 
     it("should throw non retriable error immediately", async function () {

@@ -5,9 +5,9 @@ import chai, {assert} from "chai";
 import {mock, when, instance, deepEqual, verify, anything} from "ts-mockito";
 import chaiAsPromised from "chai-as-promised";
 import Time, {TimeUnits} from "../retries/Time";
-import getMockTestCluster from "../test/fixtures/ClusterFixtures";
+import {getMockTestCluster} from "../test/fixtures/ClusterFixtures";
 import {ClusterInfo} from "../apis/clusters";
-import TokenFixture from "../test/fixtures/TokenFixture";
+import {TokenFixture} from "../test/fixtures/TokenFixtures";
 import {RetryConfigs} from "../retries/retries";
 
 chai.use(chaiAsPromised);
@@ -35,7 +35,8 @@ describe(__filename, function () {
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
-                })
+                }),
+                anything()
             )
         ).thenResolve(
             {
@@ -74,6 +75,7 @@ describe(__filename, function () {
             mockedClient.request(
                 "/api/2.0/clusters/get",
                 anything(),
+                anything(),
                 anything()
             )
         ).times(6);
@@ -81,6 +83,7 @@ describe(__filename, function () {
         verify(
             mockedClient.request(
                 "/api/2.0/clusters/start",
+                anything(),
                 anything(),
                 anything()
             )
@@ -94,7 +97,8 @@ describe(__filename, function () {
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
-                })
+                }),
+                anything()
             )
         ).thenResolve(
             {
@@ -117,7 +121,8 @@ describe(__filename, function () {
                 "POST",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
-                })
+                }),
+                anything()
             )
         ).thenResolve({});
 
@@ -130,6 +135,7 @@ describe(__filename, function () {
             mockedClient.request(
                 "/api/2.0/clusters/get",
                 anything(),
+                anything(),
                 anything()
             )
         ).times(3);
@@ -137,6 +143,7 @@ describe(__filename, function () {
         verify(
             mockedClient.request(
                 "/api/2.0/clusters/delete",
+                anything(),
                 anything(),
                 anything()
             )
@@ -150,7 +157,8 @@ describe(__filename, function () {
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
-                })
+                }),
+                anything()
             )
         ).thenResolve(
             {
@@ -177,6 +185,7 @@ describe(__filename, function () {
             mockedClient.request(
                 "/api/2.0/clusters/get",
                 anything(),
+                anything(),
                 anything()
             )
         ).times(3);
@@ -184,6 +193,7 @@ describe(__filename, function () {
         verify(
             mockedClient.request(
                 "/api/2.0/clusters/delete",
+                anything(),
                 anything(),
                 anything()
             )
@@ -197,7 +207,8 @@ describe(__filename, function () {
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
-                })
+                }),
+                anything()
             )
         );
 
@@ -212,7 +223,8 @@ describe(__filename, function () {
                 "POST",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
-                })
+                }),
+                anything()
             )
         ).thenCall(() => {
             whenMockGetCluster.thenResolve(
@@ -237,6 +249,5 @@ describe(__filename, function () {
         await mockedCluster.start(instance(token));
 
         verify(token.isCancellationRequested).thrice();
-        assert.equal(mockedCluster.state, "TERMINATED");
     });
 });

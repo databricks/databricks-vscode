@@ -5,9 +5,19 @@
 import {ApiClient} from "../../api-client";
 import * as model from "./model";
 import Time from "../../retries/Time";
-import retry, {RetriableError} from "../../retries/retries";
-export class ReposRetriableError extends RetriableError {}
-export class ReposError extends Error {}
+import retry from "../../retries/retries";
+import {CancellationToken} from "../../types";
+import {ApiError, ApiRetriableError} from "../apiError";
+export class ReposRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
+export class ReposError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
 
 /**
  * The Repos API allows users to manage their git repos.
@@ -19,36 +29,48 @@ export class ReposService {
      * specified. Note that repos created programmatically must be linked to a
      * remote Git repo, unlike repos created in the browser.
      */
-    async create(request: model.CreateRepo): Promise<model.RepoInfo> {
+    async create(
+        request: model.CreateRepo,
+        cancellationToken?: CancellationToken
+    ): Promise<model.RepoInfo> {
         const path = "/api/2.0/repos";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.RepoInfo;
     }
 
     /**
      * Deletes the specified repo
      */
-    async delete(request: model.DeleteRequest): Promise<model.DeleteResponse> {
+    async delete(
+        request: model.DeleteRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.DeleteResponse> {
         const path = `/api/2.0/repos/${request.repo_id}`;
         return (await this.client.request(
             path,
             "DELETE",
-            request
+            request,
+            cancellationToken
         )) as model.DeleteResponse;
     }
 
     /**
      * Returns the repo with the given repo ID.
      */
-    async get(request: model.GetRequest): Promise<model.RepoInfo> {
+    async get(
+        request: model.GetRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.RepoInfo> {
         const path = `/api/2.0/repos/${request.repo_id}`;
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.RepoInfo;
     }
 
@@ -56,12 +78,16 @@ export class ReposService {
      * Returns repos that the calling user has Manage permissions on. Results are
      * paginated with each page containing twenty repos.
      */
-    async list(request: model.ListRequest): Promise<model.ListReposResponse> {
+    async list(
+        request: model.ListRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.ListReposResponse> {
         const path = "/api/2.0/repos";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ListReposResponse;
     }
 
@@ -69,12 +95,16 @@ export class ReposService {
      * Updates the repo to a different branch or tag, or updates the repo to the
      * latest commit on the same branch.
      */
-    async update(request: model.UpdateRepo): Promise<model.UpdateResponse> {
+    async update(
+        request: model.UpdateRepo,
+        cancellationToken?: CancellationToken
+    ): Promise<model.UpdateResponse> {
         const path = `/api/2.0/repos/${request.repo_id}`;
         return (await this.client.request(
             path,
             "PATCH",
-            request
+            request,
+            cancellationToken
         )) as model.UpdateResponse;
     }
 }

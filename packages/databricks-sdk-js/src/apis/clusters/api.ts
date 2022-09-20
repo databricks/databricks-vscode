@@ -5,9 +5,19 @@
 import {ApiClient} from "../../api-client";
 import * as model from "./model";
 import Time from "../../retries/Time";
-import retry, {RetriableError} from "../../retries/retries";
-export class ClustersRetriableError extends RetriableError {}
-export class ClustersError extends Error {}
+import retry from "../../retries/retries";
+import {CancellationToken} from "../../types";
+import {ApiError, ApiRetriableError} from "../apiError";
+export class ClustersRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
+export class ClustersError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
 
 /**
  * <needs content added>
@@ -19,13 +29,15 @@ export class ClustersService {
      * owner
      */
     async changeOwner(
-        request: model.ChangeClusterOwner
+        request: model.ChangeClusterOwner,
+        cancellationToken?: CancellationToken
     ): Promise<model.ChangeClusterOwnerResponse> {
         const path = "/api/2.0/clusters/change-owner";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.ChangeClusterOwnerResponse;
     }
 
@@ -50,13 +62,15 @@ export class ClustersService {
      * "max_workers": 50 } }
      */
     async create(
-        request: model.CreateCluster
+        request: model.CreateCluster,
+        cancellationToken?: CancellationToken
     ): Promise<model.CreateClusterResponse> {
         const path = "/api/2.0/clusters/create";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.CreateClusterResponse;
     }
 
@@ -64,18 +78,32 @@ export class ClustersService {
      * create and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async createAndWait(
-        request: model.CreateCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async createAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.CreateCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.create(request);
 
         return await retry<model.ClusterInfo>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.get({
-                    cluster_id: response.cluster_id!,
-                });
+                const pollResponse = await this.get(
+                    {
+                        cluster_id: response.cluster_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("createAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -84,11 +112,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "createAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "createAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -105,13 +135,15 @@ export class ClustersService {
      * "cluster_id": "1202-211320-brick1" }
      */
     async delete(
-        request: model.DeleteCluster
+        request: model.DeleteCluster,
+        cancellationToken?: CancellationToken
     ): Promise<model.DeleteClusterResponse> {
         const path = "/api/2.0/clusters/delete";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.DeleteClusterResponse;
     }
 
@@ -119,18 +151,32 @@ export class ClustersService {
      * delete and wait to reach TERMINATED state
      *  or fail on reaching ERROR state
      */
-    async deleteAndWait(
-        request: model.DeleteCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async deleteAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.DeleteCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.delete(request);
 
         return await retry<model.ClusterInfo>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.get({
-                    cluster_id: request.cluster_id!,
-                });
+                const pollResponse = await this.get(
+                    {
+                        cluster_id: request.cluster_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("deleteAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -139,11 +185,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "deleteAndWait",
                             `failed to reach TERMINATED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "deleteAndWait",
                             `failed to reach TERMINATED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -165,12 +213,16 @@ export class ClustersService {
      * request: .. code:: { "cluster_id": "1202-211320-brick1", "num_workers":
      * 10, "spark_version": "3.3.x-scala2.11", "node_type_id": "i3.2xlarge" }
      */
-    async edit(request: model.EditCluster): Promise<model.EditClusterResponse> {
+    async edit(
+        request: model.EditCluster,
+        cancellationToken?: CancellationToken
+    ): Promise<model.EditClusterResponse> {
         const path = "/api/2.0/clusters/edit";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.EditClusterResponse;
     }
 
@@ -178,18 +230,32 @@ export class ClustersService {
      * edit and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async editAndWait(
-        request: model.EditCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async editAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.EditCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.edit(request);
 
         return await retry<model.ClusterInfo>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.get({
-                    cluster_id: request.cluster_id!,
-                });
+                const pollResponse = await this.get(
+                    {
+                        cluster_id: request.cluster_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("editAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -198,11 +264,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "editAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "editAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -227,12 +295,16 @@ export class ClustersService {
      * page of events
      * ``/clusters/events?cluster_id=1202-211320-brick1&end_time=1509572145487&order=DESC&offset=50``
      */
-    async events(request: model.GetEvents): Promise<model.GetEventsResponse> {
+    async events(
+        request: model.GetEvents,
+        cancellationToken?: CancellationToken
+    ): Promise<model.GetEventsResponse> {
         const path = "/api/2.0/clusters/events";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.GetEventsResponse;
     }
 
@@ -242,12 +314,16 @@ export class ClustersService {
      * terminated. An example request:
      * ``/clusters/get?cluster_id=1202-211320-brick1``
      */
-    async get(request: model.GetRequest): Promise<model.ClusterInfo> {
+    async get(
+        request: model.GetRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.ClusterInfo> {
         const path = "/api/2.0/clusters/get";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ClusterInfo;
     }
 
@@ -255,18 +331,32 @@ export class ClustersService {
      * get and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async getAndWait(
-        request: model.GetRequest,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async getAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.GetRequest;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.get(request);
 
         return await retry<model.ClusterInfo>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.get({
-                    cluster_id: response.cluster_id!,
-                });
+                const pollResponse = await this.get(
+                    {
+                        cluster_id: response.cluster_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("getAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -275,11 +365,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "getAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "getAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -299,13 +391,15 @@ export class ClustersService {
      * the 30 most recently terminated job clusters.
      */
     async list(
-        request: model.ListRequest
+        request: model.ListRequest,
+        cancellationToken?: CancellationToken
     ): Promise<model.ListClustersResponse> {
         const path = "/api/2.0/clusters/list";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ListClustersResponse;
     }
 
@@ -313,11 +407,15 @@ export class ClustersService {
      * Returns a list of supported Spark node types. These node types can be used
      * to launch a cluster.
      */
-    async listNodeTypes(): Promise<model.ListNodeTypesResponse> {
+    async listNodeTypes(
+        cancellationToken?: CancellationToken
+    ): Promise<model.ListNodeTypesResponse> {
         const path = "/api/2.0/clusters/list-node-types";
         return (await this.client.request(
             path,
-            "GET"
+            "GET",
+            undefined,
+            cancellationToken
         )) as model.ListNodeTypesResponse;
     }
 
@@ -325,11 +423,15 @@ export class ClustersService {
      * Returns a list of availability zones where clusters can be created in (ex:
      * us-west-2a). These zones can be used to launch a cluster.
      */
-    async listZones(): Promise<model.ListAvailableZonesResponse> {
+    async listZones(
+        cancellationToken?: CancellationToken
+    ): Promise<model.ListAvailableZonesResponse> {
         const path = "/api/2.0/clusters/list-zones";
         return (await this.client.request(
             path,
-            "GET"
+            "GET",
+            undefined,
+            cancellationToken
         )) as model.ListAvailableZonesResponse;
     }
 
@@ -341,13 +443,15 @@ export class ClustersService {
      * request: .. code:: { "cluster_id": "1202-211320-brick1" }
      */
     async permanentDelete(
-        request: model.PermanentDeleteCluster
+        request: model.PermanentDeleteCluster,
+        cancellationToken?: CancellationToken
     ): Promise<model.PermanentDeleteClusterResponse> {
         const path = "/api/2.0/clusters/permanent-delete";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.PermanentDeleteClusterResponse;
     }
 
@@ -357,12 +461,16 @@ export class ClustersService {
      * effect. This API can only be called by workspace admins. An example
      * request: ``/clusters/pin?cluster_id=1202-211320-brick1``
      */
-    async pin(request: model.PinCluster): Promise<model.PinClusterResponse> {
+    async pin(
+        request: model.PinCluster,
+        cancellationToken?: CancellationToken
+    ): Promise<model.PinClusterResponse> {
         const path = "/api/2.0/clusters/pin";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.PinClusterResponse;
     }
 
@@ -372,13 +480,15 @@ export class ClustersService {
      * code:: { "cluster_id": "1202-211320-brick1", "num_workers": 30 }
      */
     async resize(
-        request: model.ResizeCluster
+        request: model.ResizeCluster,
+        cancellationToken?: CancellationToken
     ): Promise<model.ResizeClusterResponse> {
         const path = "/api/2.0/clusters/resize";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.ResizeClusterResponse;
     }
 
@@ -386,18 +496,32 @@ export class ClustersService {
      * resize and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async resizeAndWait(
-        request: model.ResizeCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async resizeAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.ResizeCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.resize(request);
 
         return await retry<model.ClusterInfo>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.get({
-                    cluster_id: request.cluster_id!,
-                });
+                const pollResponse = await this.get(
+                    {
+                        cluster_id: request.cluster_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("resizeAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -406,11 +530,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "resizeAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "resizeAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -425,13 +551,15 @@ export class ClustersService {
      * "cluster_id": "1202-211320-brick1" }
      */
     async restart(
-        request: model.RestartCluster
+        request: model.RestartCluster,
+        cancellationToken?: CancellationToken
     ): Promise<model.RestartClusterResponse> {
         const path = "/api/2.0/clusters/restart";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.RestartClusterResponse;
     }
 
@@ -439,18 +567,32 @@ export class ClustersService {
      * restart and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async restartAndWait(
-        request: model.RestartCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async restartAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.RestartCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.restart(request);
 
         return await retry<model.ClusterInfo>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.get({
-                    cluster_id: request.cluster_id!,
-                });
+                const pollResponse = await this.get(
+                    {
+                        cluster_id: request.cluster_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("restartAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -459,11 +601,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "restartAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "restartAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -476,11 +620,15 @@ export class ClustersService {
      * Returns the list of available Spark versions. These versions can be used
      * to launch a cluster.
      */
-    async sparkVersions(): Promise<model.GetSparkVersionsResponse> {
+    async sparkVersions(
+        cancellationToken?: CancellationToken
+    ): Promise<model.GetSparkVersionsResponse> {
         const path = "/api/2.0/clusters/spark-versions";
         return (await this.client.request(
             path,
-            "GET"
+            "GET",
+            undefined,
+            cancellationToken
         )) as model.GetSparkVersionsResponse;
     }
 
@@ -495,13 +643,15 @@ export class ClustersService {
      * "1202-211320-brick1" }
      */
     async start(
-        request: model.StartCluster
+        request: model.StartCluster,
+        cancellationToken?: CancellationToken
     ): Promise<model.StartClusterResponse> {
         const path = "/api/2.0/clusters/start";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.StartClusterResponse;
     }
 
@@ -509,18 +659,32 @@ export class ClustersService {
      * start and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async startAndWait(
-        request: model.StartCluster,
-        timeout?: Time
-    ): Promise<model.ClusterInfo> {
+    async startAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.StartCluster;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+    }): Promise<model.ClusterInfo> {
         const response = await this.start(request);
 
         return await retry<model.ClusterInfo>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.get({
-                    cluster_id: request.cluster_id!,
-                });
+                const pollResponse = await this.get(
+                    {
+                        cluster_id: request.cluster_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new ClustersError("startAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state;
                 const statusMessage = pollResponse.state_message;
                 switch (status) {
@@ -529,11 +693,13 @@ export class ClustersService {
                     }
                     case "ERROR": {
                         throw new ClustersError(
+                            "startAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new ClustersRetriableError(
+                            "startAndWait",
                             `failed to reach RUNNING state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -549,13 +715,15 @@ export class ClustersService {
      * request: ``/clusters/unpin?cluster_id=1202-211320-brick1``
      */
     async unpin(
-        request: model.UnpinCluster
+        request: model.UnpinCluster,
+        cancellationToken?: CancellationToken
     ): Promise<model.UnpinClusterResponse> {
         const path = "/api/2.0/clusters/unpin";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.UnpinClusterResponse;
     }
 }

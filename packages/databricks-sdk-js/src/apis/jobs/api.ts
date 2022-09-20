@@ -5,9 +5,19 @@
 import {ApiClient} from "../../api-client";
 import * as model from "./model";
 import Time from "../../retries/Time";
-import retry, {RetriableError} from "../../retries/retries";
-export class JobsRetriableError extends RetriableError {}
-export class JobsError extends Error {}
+import retry from "../../retries/retries";
+import {CancellationToken} from "../../types";
+import {ApiError, ApiRetriableError} from "../apiError";
+export class JobsRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
+export class JobsError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("$s.PascalName", method, message);
+    }
+}
 
 /**
  * The Jobs API allows you to create, edit, and delete jobs.
@@ -19,13 +29,15 @@ export class JobsService {
      * it doesn't prevent new runs from being started.
      */
     async cancelAllRuns(
-        request: model.CancelAllRuns
+        request: model.CancelAllRuns,
+        cancellationToken?: CancellationToken
     ): Promise<model.CancelAllRunsResponse> {
         const path = "/api/2.1/jobs/runs/cancel-all";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.CancelAllRunsResponse;
     }
 
@@ -34,13 +46,15 @@ export class JobsService {
      * running when this request completes.
      */
     async cancelRun(
-        request: model.CancelRun
+        request: model.CancelRun,
+        cancellationToken?: CancellationToken
     ): Promise<model.CancelRunResponse> {
         const path = "/api/2.1/jobs/runs/cancel";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.CancelRunResponse;
     }
 
@@ -48,18 +62,32 @@ export class JobsService {
      * cancelRun and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async cancelRunAndWait(
-        request: model.CancelRun,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async cancelRunAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.CancelRun;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.cancelRun(request);
 
         return await retry<model.Run>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.getRun({
-                    run_id: request.run_id!,
-                });
+                const pollResponse = await this.getRun(
+                    {
+                        run_id: request.run_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("cancelRunAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -69,11 +97,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "cancelRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "cancelRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -85,24 +115,32 @@ export class JobsService {
     /**
      * Create a new job.
      */
-    async create(request: model.CreateJob): Promise<model.CreateResponse> {
+    async create(
+        request: model.CreateJob,
+        cancellationToken?: CancellationToken
+    ): Promise<model.CreateResponse> {
         const path = "/api/2.1/jobs/create";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.CreateResponse;
     }
 
     /**
      * Deletes a job.
      */
-    async delete(request: model.DeleteJob): Promise<model.DeleteResponse> {
+    async delete(
+        request: model.DeleteJob,
+        cancellationToken?: CancellationToken
+    ): Promise<model.DeleteResponse> {
         const path = "/api/2.1/jobs/delete";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.DeleteResponse;
     }
 
@@ -110,13 +148,15 @@ export class JobsService {
      * Deletes a non-active run. Returns an error if the run is active.
      */
     async deleteRun(
-        request: model.DeleteRun
+        request: model.DeleteRun,
+        cancellationToken?: CancellationToken
     ): Promise<model.DeleteRunResponse> {
         const path = "/api/2.1/jobs/runs/delete";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.DeleteRunResponse;
     }
 
@@ -124,48 +164,80 @@ export class JobsService {
      * Export and retrieve the job run task.
      */
     async exportRun(
-        request: model.ExportRunRequest
+        request: model.ExportRunRequest,
+        cancellationToken?: CancellationToken
     ): Promise<model.ExportRunOutput> {
         const path = "/api/2.1/jobs/runs/export";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ExportRunOutput;
     }
 
     /**
      * Retrieves the details for a single job.
      */
-    async get(request: model.GetRequest): Promise<model.Job> {
+    async get(
+        request: model.GetRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.Job> {
         const path = "/api/2.1/jobs/get";
-        return (await this.client.request(path, "GET", request)) as model.Job;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            cancellationToken
+        )) as model.Job;
     }
 
     /**
      * Retrieve the metadata of a run.
      */
-    async getRun(request: model.GetRunRequest): Promise<model.Run> {
+    async getRun(
+        request: model.GetRunRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.Run> {
         const path = "/api/2.1/jobs/runs/get";
-        return (await this.client.request(path, "GET", request)) as model.Run;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            cancellationToken
+        )) as model.Run;
     }
 
     /**
      * getRun and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async getRunAndWait(
-        request: model.GetRunRequest,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async getRunAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.GetRunRequest;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.getRun(request);
 
         return await retry<model.Run>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.getRun({
-                    run_id: response.run_id!,
-                });
+                const pollResponse = await this.getRun(
+                    {
+                        run_id: response.run_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("getRunAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -175,11 +247,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "getRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "getRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -201,25 +275,31 @@ export class JobsService {
      * results. To export using the Jobs API, see Runs export.
      */
     async getRunOutput(
-        request: model.GetRunOutputRequest
+        request: model.GetRunOutputRequest,
+        cancellationToken?: CancellationToken
     ): Promise<model.RunOutput> {
         const path = "/api/2.1/jobs/runs/get-output";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.RunOutput;
     }
 
     /**
      * Retrieves a list of jobs.
      */
-    async list(request: model.ListRequest): Promise<model.ListResponse> {
+    async list(
+        request: model.ListRequest,
+        cancellationToken?: CancellationToken
+    ): Promise<model.ListResponse> {
         const path = "/api/2.1/jobs/list";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ListResponse;
     }
 
@@ -227,13 +307,15 @@ export class JobsService {
      * List runs in descending order by start time.
      */
     async listRuns(
-        request: model.ListRunsRequest
+        request: model.ListRunsRequest,
+        cancellationToken?: CancellationToken
     ): Promise<model.ListRunsResponse> {
         const path = "/api/2.1/jobs/runs/list";
         return (await this.client.request(
             path,
             "GET",
-            request
+            request,
+            cancellationToken
         )) as model.ListRunsResponse;
     }
 
@@ -243,13 +325,15 @@ export class JobsService {
      * history for the original job run.
      */
     async repairRun(
-        request: model.RepairRun
+        request: model.RepairRun,
+        cancellationToken?: CancellationToken
     ): Promise<model.RepairRunResponse> {
         const path = "/api/2.1/jobs/runs/repair";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.RepairRunResponse;
     }
 
@@ -257,18 +341,32 @@ export class JobsService {
      * repairRun and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async repairRunAndWait(
-        request: model.RepairRun,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async repairRunAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.RepairRun;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.repairRun(request);
 
         return await retry<model.Run>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.getRun({
-                    run_id: request.run_id!,
-                });
+                const pollResponse = await this.getRun(
+                    {
+                        run_id: request.run_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("repairRunAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -278,11 +376,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "repairRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "repairRunAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -295,24 +395,32 @@ export class JobsService {
      * Overwrites all the settings for a specific job. Use the Update endpoint to
      * update job settings partially.
      */
-    async reset(request: model.ResetJob): Promise<model.ResetResponse> {
+    async reset(
+        request: model.ResetJob,
+        cancellationToken?: CancellationToken
+    ): Promise<model.ResetResponse> {
         const path = "/api/2.1/jobs/reset";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.ResetResponse;
     }
 
     /**
      * Run a job and return the `run_id` of the triggered run.
      */
-    async runNow(request: model.RunNow): Promise<model.RunNowResponse> {
+    async runNow(
+        request: model.RunNow,
+        cancellationToken?: CancellationToken
+    ): Promise<model.RunNowResponse> {
         const path = "/api/2.1/jobs/run-now";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.RunNowResponse;
     }
 
@@ -320,18 +428,32 @@ export class JobsService {
      * runNow and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async runNowAndWait(
-        request: model.RunNow,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async runNowAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.RunNow;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.runNow(request);
 
         return await retry<model.Run>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.getRun({
-                    run_id: response.run_id!,
-                });
+                const pollResponse = await this.getRun(
+                    {
+                        run_id: response.run_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("runNowAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -341,11 +463,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "runNowAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "runNowAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -360,12 +484,16 @@ export class JobsService {
      * display in the UI. Use the `jobs/runs/get` API to check the run state
      * after the job is submitted.
      */
-    async submit(request: model.SubmitRun): Promise<model.SubmitRunResponse> {
+    async submit(
+        request: model.SubmitRun,
+        cancellationToken?: CancellationToken
+    ): Promise<model.SubmitRunResponse> {
         const path = "/api/2.1/jobs/runs/submit";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.SubmitRunResponse;
     }
 
@@ -373,18 +501,32 @@ export class JobsService {
      * submit and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async submitAndWait(
-        request: model.SubmitRun,
-        timeout?: Time
-    ): Promise<model.Run> {
+    async submitAndWait({
+        request,
+        timeout,
+        cancellationToken,
+        onProgress = async (newPollResponse) => {},
+    }: {
+        request: model.SubmitRun;
+        timeout?: Time;
+        cancellationToken?: CancellationToken;
+        onProgress?: (newPollResponse: model.Run) => Promise<void>;
+    }): Promise<model.Run> {
         const response = await this.submit(request);
 
         return await retry<model.Run>({
             timeout: timeout,
             fn: async () => {
-                const pollResponse = await this.getRun({
-                    run_id: response.run_id!,
-                });
+                const pollResponse = await this.getRun(
+                    {
+                        run_id: response.run_id!,
+                    },
+                    cancellationToken
+                );
+                if (cancellationToken?.isCancellationRequested) {
+                    throw new JobsError("submitAndWait", "cancelled");
+                }
+                await onProgress(pollResponse);
                 const status = pollResponse.state!.life_cycle_state;
                 const statusMessage = pollResponse.state!.state_message;
                 switch (status) {
@@ -394,11 +536,13 @@ export class JobsService {
                     }
                     case "INTERNAL_ERROR": {
                         throw new JobsError(
+                            "submitAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
                     default: {
                         throw new JobsRetriableError(
+                            "submitAndWait",
                             `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`
                         );
                     }
@@ -411,12 +555,16 @@ export class JobsService {
      * Add, update, or remove specific settings of an existing job. Use the
      * ResetJob to overwrite all job settings.
      */
-    async update(request: model.UpdateJob): Promise<model.UpdateResponse> {
+    async update(
+        request: model.UpdateJob,
+        cancellationToken?: CancellationToken
+    ): Promise<model.UpdateResponse> {
         const path = "/api/2.1/jobs/update";
         return (await this.client.request(
             path,
             "POST",
-            request
+            request,
+            cancellationToken
         )) as model.UpdateResponse;
     }
 }

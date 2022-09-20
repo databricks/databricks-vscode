@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {JobsService, DbfsService} from "..";
+import {JobsService, DbfsService} from "../..";
 import assert from "assert";
 
-import {IntegrationTestSetup, sleep} from "../test/IntegrationTestSetup";
+import {IntegrationTestSetup, sleep} from "../../test/IntegrationTestSetup";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;

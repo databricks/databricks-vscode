@@ -44,7 +44,7 @@ describe(__filename, () => {
         mockedConnectionManager = mock(ConnectionManager);
         mockedApiClient = mock<ApiClient>();
         when<cluster.ListClustersResponse>(
-            mockedApiClient.request(anyString(), "GET", anything())
+            mockedApiClient.request(anyString(), "GET", anything(), anything())
         ).thenResolve(mockListClustersResponse);
         when(mockedConnectionManager.apiClient).thenReturn(
             instance(mockedApiClient)
@@ -114,24 +114,24 @@ describe(__filename, () => {
             })
         );
 
-        verify(mockedApiClient.request(anyString(), "GET", anything())).times(
-            1
-        );
+        verify(
+            mockedApiClient.request(anyString(), "GET", anything(), anything())
+        ).times(1);
         assert(!called);
 
         // no reload should happen here
         roots = await model.roots;
-        verify(mockedApiClient.request(anyString(), "GET", anything())).times(
-            1
-        );
+        verify(
+            mockedApiClient.request(anyString(), "GET", anything(), anything())
+        ).times(1);
         assert(!called);
 
         // reload after refresh
         model.refresh();
         roots = await model.roots;
-        verify(mockedApiClient.request(anyString(), "GET", anything())).times(
-            2
-        );
+        verify(
+            mockedApiClient.request(anyString(), "GET", anything(), anything())
+        ).times(2);
         assert(called);
 
         assert(roots);
