@@ -33,6 +33,7 @@ describe(__filename, async () => {
                 "/api/2.0/clusters/get",
                 "GET",
                 deepEqual({
+                    // eslint-disable-next-line
                     cluster_id: testClusterDetails.cluster_id,
                 }),
                 anything()
@@ -59,6 +60,7 @@ describe(__filename, async () => {
                 "/api/2.0/clusters/get",
                 "GET",
                 deepEqual({
+                    // eslint-disable-next-line
                     cluster_id: testClusterDetails.cluster_id,
                 }),
                 anything()

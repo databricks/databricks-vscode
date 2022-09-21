@@ -29,43 +29,11 @@ describe(__filename, () => {
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 
-        const {command, args} = cli.getSyncCommand(
-            "DEFAULT",
-            "fabian@databricks.com",
-            mapper,
-            "incremental"
-        );
+        const {command, args} = cli.getSyncCommand(mapper);
 
         assert.equal(
             [command, ...args].join(" "),
-            "dbx sync repo --profile DEFAULT --user fabian@databricks.com --dest-repo notebook-best-practices"
-        );
-    });
-
-    it("should create full sync command", () => {
-        const cli = new CliWrapper({
-            asAbsolutePath(path: string) {
-                return path;
-            },
-        } as any);
-        const mapper = new SyncDestination(
-            Uri.from({
-                scheme: "dbws",
-                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
-            }),
-            Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
-        );
-
-        const {command, args} = cli.getSyncCommand(
-            "DEFAULT",
-            "fabian@databricks.com",
-            mapper,
-            "full"
-        );
-
-        assert.equal(
-            [command, ...args].join(" "),
-            "dbx sync repo --profile DEFAULT --user fabian@databricks.com --dest-repo notebook-best-practices --full-sync"
+            "./bin/bricks sync --remote-path /Repos/fabian.jakobs@databricks.com/notebook-best-practices --persist-snapshot=false"
         );
     });
 
