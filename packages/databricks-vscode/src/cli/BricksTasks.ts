@@ -30,6 +30,10 @@ export class SyncTask extends Task {
     constructor(
         connection: ConnectionManager,
         cli: CliWrapper,
+        // TODO: https://github.com/databricks/databricks-vscode/issues/111
+        // use syncType to decide the sync type for bricks cli. Right now bricks cli
+        // only supports full sync for multiple profiles.
+        // see: https://github.com/databricks/bricks/issues/71
         syncType: "full" | "incremental"
     ) {
         super(

@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import {anything, instance, mock, when, verify} from "ts-mockito";
-import {ProcessExecution, Uri} from "vscode";
+import {ProcessExecution, Uri, workspace} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncDestination} from "../configuration/SyncDestination";
 import {BricksTaskProvider, SyncTask} from "./BricksTasks";
@@ -48,16 +48,9 @@ describe(__filename, () => {
         );
 
         let cliMock = mock(CliWrapper);
-        when(
-            cliMock.getSyncCommand(
-                anything(),
-                anything(),
-                anything(),
-                anything()
-            )
-        ).thenReturn({
+        when(cliMock.getSyncCommand(anything())).thenReturn({
             command: "bricks",
-            args: ["sync", "incremental"],
+            args: ["sync"],
         });
 
         let task = new SyncTask(
@@ -69,17 +62,12 @@ describe(__filename, () => {
 
         let execution = task.execution as ProcessExecution;
 
-        const syncCommandMock = cliMock.getSyncCommand(
-            anything(),
-            anything(),
-            anything(),
-            anything()
-        );
+        const syncCommandMock = cliMock.getSyncCommand(anything());
 
         verify(syncCommandMock).never();
         assert.equal(execution.process, "bricks");
         verify(syncCommandMock).once();
-        assert.deepEqual(execution.args, ["sync", "incremental"]);
+        assert.deepEqual(execution.args, ["sync"]);
         verify(syncCommandMock).once();
     });
 });

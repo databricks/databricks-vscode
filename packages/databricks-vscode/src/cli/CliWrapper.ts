@@ -27,7 +27,7 @@ export class CliWrapper {
      * Constructs the bricks sync command
      */
     getSyncCommand(syncDestination: SyncDestination): Command {
-        const command = "bricks";
+        const command = this.context.asAbsolutePath("./bin/bricks");
         const args = [
             "sync",
             "--remote-path",
