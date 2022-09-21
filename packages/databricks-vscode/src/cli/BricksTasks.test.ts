@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import {anything, instance, mock, when, verify} from "ts-mockito";
-import {ProcessExecution, Uri, workspace} from "vscode";
+import {ProcessExecution, Uri} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncDestination} from "../configuration/SyncDestination";
 import {BricksTaskProvider, SyncTask} from "./BricksTasks";
