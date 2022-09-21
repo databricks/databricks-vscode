@@ -38,12 +38,35 @@ export async function loadConfigFile(filePath?: string): Promise<Profiles> {
 
     let config: any;
     let profiles: Profiles = {};
+    let defaultSection: Record<string, any> = {};
+    let defaultSectionFound = false;
     try {
         config = parse(fileContents);
-        for (let profile in config) {
-            profiles[profile] = {
-                host: new URL(config[profile].host),
-                token: config[profile].token,
+        for (let key in config) {
+            if (key === "DEFAULT") {
+                for (let defaultSectionKey in config[key]) {
+                    defaultSection[defaultSectionKey] =
+                        config[key][defaultSectionKey];
+                }
+                defaultSectionFound = true;
+                continue;
+            }
+            // for global values without a section header
+            // put them in the default sections
+            if (typeof config[key] === "string") {
+                defaultSection[key] = config[key];
+                defaultSectionFound = true;
+                continue;
+            }
+            profiles[key] = {
+                host: new URL(config[key].host),
+                token: config[key].token,
+            };
+        }
+        if (defaultSectionFound) {
+            profiles["DEFAULT"] = {
+                host: new URL(defaultSection.host),
+                token: defaultSection.token,
             };
         }
     } catch (e: unknown) {
@@ -53,7 +76,8 @@ export async function loadConfigFile(filePath?: string): Promise<Profiles> {
         } else {
             message = e;
         }
-        throw new ConfigFileError(`Can't parse ${filePath}: ${message}`);
+        console.error(message);
+        throw new ConfigFileError(`${message}`);
     }
 
     return profiles;

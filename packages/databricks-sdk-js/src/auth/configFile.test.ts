@@ -31,7 +31,37 @@ describe(__filename, () => {
         );
     });
 
-    it("should parse a config file", async () => {
+    it("should parse a config file w/o DEFAULT header", async () => {
+        await withFile(async ({path}) => {
+            await writeFile(
+                path,
+                `
+host = https://cloud.databricks.com/
+token = dapitest1234
+
+[STAGING]
+host = https://staging.cloud.databricks.com/
+token = dapitest54321
+`
+            );
+
+            const profiles = await loadConfigFile(path);
+
+            assert.equal(Object.keys(profiles).length, 2);
+            assert.equal(
+                profiles.DEFAULT.host.href,
+                "https://cloud.databricks.com/"
+            );
+            assert.equal(profiles.DEFAULT.token, "dapitest1234");
+            assert.equal(
+                profiles.STAGING.host.href,
+                "https://staging.cloud.databricks.com/"
+            );
+            assert.equal(profiles.STAGING.token, "dapitest54321");
+        });
+    });
+
+    it("should parse a config file with DEFAULT header", async () => {
         await withFile(async ({path}) => {
             await writeFile(
                 path,
@@ -41,7 +71,8 @@ token = dapitest1234
 
 [STAGING]
 host = https://staging.cloud.databricks.com/
-token = dapitest54321`
+token = dapitest54321
+`
             );
 
             const profiles = await loadConfigFile(path);
