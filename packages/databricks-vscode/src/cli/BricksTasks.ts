@@ -101,8 +101,10 @@ class LazySyncProcessExecution extends ProcessExecution {
                     return {
                         cwd: workspacePath,
                         env: {
+                            /* eslint-disable @typescript-eslint/naming-convention */
                             BRICKS_ROOT: workspacePath,
                             DATABRICKS_CONFIG_PROFILE: profile,
+                            /* eslint-enable @typescript-eslint/naming-convention */
                         },
                     };
                 },
