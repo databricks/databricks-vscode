@@ -121,6 +121,7 @@ describe(__filename, () => {
         assert.deepEqual(children, [
             {
                 collapsibleState: 2,
+                contextValue: "profile",
                 iconPath: {
                     color: undefined,
                     id: "tools",
