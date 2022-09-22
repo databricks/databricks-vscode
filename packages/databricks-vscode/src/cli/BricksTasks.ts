@@ -130,7 +130,10 @@ class LazySyncProcessExecution extends ProcessExecution {
     }
 
     getSyncCommand(): Command {
-        if (SyncTask.killAll() || this.killThis) {
+        if (
+            this.connection.state !== "CONNECTED" &&
+            (SyncTask.killAll() || this.killThis)
+        ) {
             this.killThis = true;
             return {
                 args: [],
