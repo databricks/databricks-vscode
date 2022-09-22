@@ -50,6 +50,17 @@ export class SyncTask extends Task {
         this.group = TaskGroup.Build;
         this.presentationOptions.reveal = TaskRevealKind.Silent;
     }
+
+    static killAll() {
+        let found: boolean = false;
+        window.terminals.forEach((terminal) => {
+            if (terminal.name === "sync") {
+                found = true;
+                terminal.dispose();
+            }
+        });
+        return found;
+    }
 }
 
 /**
@@ -59,6 +70,8 @@ export class SyncTask extends Task {
  */
 class LazySyncProcessExecution extends ProcessExecution {
     private command?: Command;
+    private killThis: Boolean = false;
+
     constructor(
         private connection: ConnectionManager,
         private cli: CliWrapper,
@@ -97,6 +110,13 @@ class LazySyncProcessExecution extends ProcessExecution {
     }
 
     getSyncCommand(): Command {
+        if (SyncTask.killAll() || this.killThis) {
+            this.killThis = true;
+            return {
+                args: [],
+                command: "",
+            };
+        }
         if (this.command) {
             return this.command;
         }

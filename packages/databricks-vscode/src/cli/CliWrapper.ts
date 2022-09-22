@@ -42,6 +42,8 @@ export class CliWrapper {
             me,
             "--dest-repo",
             syncDestination.name,
+            "--source",
+            ".",
         ];
 
         if (syncType === "full") {
