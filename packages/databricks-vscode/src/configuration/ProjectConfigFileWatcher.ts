@@ -1,4 +1,4 @@
-import {Disposable, workspace} from "vscode";
+import {Disposable, Uri, workspace} from "vscode";
 import {ConnectionManager} from "./ConnectionManager";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 
@@ -23,6 +23,28 @@ export class ProjectConfigFileWatcher implements Disposable {
                 const configFile = await ProjectConfigFile.load(rootPath);
                 if (configFile.profile !== connectionManager.profile) {
                     connectionManager.login();
+                }
+                if (connectionManager.cluster?.id !== configFile.clusterId) {
+                    if (configFile.clusterId) {
+                        connectionManager.attachCluster(configFile.clusterId);
+                    } else {
+                        connectionManager.detachCluster();
+                    }
+                }
+                if (
+                    connectionManager.syncDestination?.path.path !==
+                    configFile.workspacePath
+                ) {
+                    if (configFile.workspacePath) {
+                        connectionManager.attachSyncDestination(
+                            Uri.from({
+                                scheme: "dbws",
+                                path: configFile.workspacePath,
+                            })
+                        );
+                    } else {
+                        connectionManager.detachSyncDestination();
+                    }
                 }
             }, this),
             fileSystemWatcher.onDidDelete((e) => {

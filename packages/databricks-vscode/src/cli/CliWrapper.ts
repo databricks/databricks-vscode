@@ -24,32 +24,16 @@ export class CliWrapper {
     }
 
     /**
-     * Constructs the dbx sync command
+     * Constructs the bricks sync command
      */
-    getSyncCommand(
-        profile: string,
-        me: string,
-        syncDestination: SyncDestination,
-        syncType: "full" | "incremental"
-    ): Command {
-        const command = "dbx";
+    getSyncCommand(syncDestination: SyncDestination): Command {
+        const command = this.context.asAbsolutePath("./bin/bricks");
         const args = [
             "sync",
-            "repo",
-            "--profile",
-            profile,
-            "--user",
-            me,
-            "--dest-repo",
-            syncDestination.name,
-            "--source",
-            ".",
+            "--remote-path",
+            syncDestination.relativeRepoPath,
+            "--persist-snapshot=false",
         ];
-
-        if (syncType === "full") {
-            args.push("--full-sync");
-        }
-
         return {command, args};
     }
 

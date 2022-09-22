@@ -30,6 +30,10 @@ export class SyncTask extends Task {
     constructor(
         connection: ConnectionManager,
         cli: CliWrapper,
+        // TODO: https://github.com/databricks/databricks-vscode/issues/111
+        // use syncType to decide the sync type for bricks cli. Right now bricks cli
+        // only supports full sync for multiple profiles.
+        // see: https://github.com/databricks/bricks/issues/71
         syncType: "full" | "incremental"
     ) {
         super(
@@ -101,8 +105,24 @@ class LazySyncProcessExecution extends ProcessExecution {
                         throw new Error("!!!!!");
                     }
 
+                    const profile = this.connection.profile;
+                    if (!profile) {
+                        window.showErrorMessage(
+                            "Can't start sync: Databricks connection not configured!"
+                        );
+                        throw new Error(
+                            "Can't start sync: Databricks connection not configured!"
+                        );
+                    }
+
                     return {
                         cwd: workspacePath,
+                        env: {
+                            /* eslint-disable @typescript-eslint/naming-convention */
+                            BRICKS_ROOT: workspacePath,
+                            DATABRICKS_CONFIG_PROFILE: profile,
+                            /* eslint-enable @typescript-eslint/naming-convention */
+                        },
                     };
                 },
             },
@@ -120,19 +140,8 @@ class LazySyncProcessExecution extends ProcessExecution {
         if (this.command) {
             return this.command;
         }
-
-        const me = this.connection.me;
         const syncDestination = this.connection.syncDestination;
-        const profile = this.connection.profile;
 
-        if (!me || !profile) {
-            window.showErrorMessage(
-                "Can't start sync: Databricks connection not configured!"
-            );
-            throw new Error(
-                "Can't start sync: Databricks connection not configured!"
-            );
-        }
         if (!syncDestination) {
             window.showErrorMessage(
                 "Can't start sync: Databricks synchronization destination not configured!"
@@ -142,12 +151,7 @@ class LazySyncProcessExecution extends ProcessExecution {
             );
         }
 
-        this.command = this.cli.getSyncCommand(
-            profile,
-            me,
-            syncDestination,
-            this.syncType
-        );
+        this.command = this.cli.getSyncCommand(syncDestination);
 
         return this.command;
     }
