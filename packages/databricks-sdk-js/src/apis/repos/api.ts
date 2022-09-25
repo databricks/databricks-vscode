@@ -20,11 +20,14 @@ export class ReposError extends ApiError {
 }
 
 /**
- * The Repos API allows users to manage their git repos.
+ * The Repos API allows users to manage their git repos. Users can use the API to
+ * access all repos that they have manage permissions on.
  */
 export class ReposService {
     constructor(readonly client: ApiClient) {}
     /**
+     * Create a repo
+     *
      * Creates a repo in the workspace and links it to the remote Git repo
      * specified. Note that repos created programmatically must be linked to a
      * remote Git repo, unlike repos created in the browser.
@@ -43,6 +46,8 @@ export class ReposService {
     }
 
     /**
+     * Deletes the repo
+     *
      * Deletes the specified repo
      */
     async delete(
@@ -59,6 +64,8 @@ export class ReposService {
     }
 
     /**
+     * Get a repo
+     *
      * Returns the repo with the given repo ID.
      */
     async get(
@@ -75,6 +82,8 @@ export class ReposService {
     }
 
     /**
+     * Get repos
+     *
      * Returns repos that the calling user has Manage permissions on. Results are
      * paginated with each page containing twenty repos.
      */
@@ -92,6 +101,8 @@ export class ReposService {
     }
 
     /**
+     * Updates the repo to the given branch or tag
+     *
      * Updates the repo to a different branch or tag, or updates the repo to the
      * latest commit on the same branch.
      */

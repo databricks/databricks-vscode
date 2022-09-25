@@ -59,8 +59,8 @@ export class {{$s.PascalName}}Service {
 		return await retry<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}>({
 			timeout: timeout,
 			fn: async () => {
-				const pollResponse = await this.{{.Wait.Poll.CamelName}}({
-					{{.Wait.Bind.SnakeName}}: {{if .Wait.ForceBindRequest}}request{{else if .Response}}response{{else}}request{{end}}.{{.Wait.Bind.SnakeName}}!
+				const pollResponse = await this.{{.Wait.Poll.CamelName}}({ {{$e := .}}{{range .Wait.Binding}}
+					{{.Bind.SnakeName}}: {{if $e.Wait.ForceBindRequest}}request{{else if $e.Response}}response{{else}}request{{end}}.{{.Bind.SnakeName}}{{end}}!
 				}, cancellationToken)
 				if(cancellationToken?.isCancellationRequested) {
 					throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", "cancelled");

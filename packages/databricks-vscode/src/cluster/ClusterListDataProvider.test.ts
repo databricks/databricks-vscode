@@ -45,7 +45,7 @@ describe(__filename, () => {
             };
         });
         let apiClient = instance(mock(ApiClient));
-        when(mockedClusterModel.roots).thenResolve(
+        when(mockedClusterModel.roots).thenReturn(
             mockListClustersResponse.clusters!.map(
                 (m: any) => new Cluster(apiClient, m)
             )
@@ -100,7 +100,7 @@ describe(__filename, () => {
     });
 
     it("should return placeholder if list is empty", async () => {
-        when(mockedClusterModel.roots).thenResolve([]);
+        when(mockedClusterModel.roots).thenReturn([]);
 
         let model = instance(mockedClusterModel);
         let provider = new ClusterListDataProvider(model);

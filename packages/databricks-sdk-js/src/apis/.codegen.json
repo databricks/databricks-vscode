@@ -1,7 +1,14 @@
 {
-    "includeTags": ["Clusters", "Jobs", "Repos", "Workspace", "Dbfs"],
+    "includeTags": [
+        "Clusters",
+        "Jobs",
+        "Repos",
+        "Workspace",
+        "Dbfs",
+        "Permissions"
+    ],
     "formatter": "yarn fix",
-    "fileset": {
+    "packages": {
         ".codegen/api.ts.tmpl": "{{.Name}}/api.ts",
         ".codegen/index.ts.tmpl": "{{.Name}}/index.ts",
         ".codegen/model.ts.tmpl": "{{.Name}}/model.ts"

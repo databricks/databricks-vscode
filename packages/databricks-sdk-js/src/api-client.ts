@@ -7,7 +7,7 @@ import {CancellationToken} from "./types";
 
 const sdkVersion = require("../package.json").version;
 
-type HttpMethod = "POST" | "GET" | "DELETE" | "PATCH";
+type HttpMethod = "POST" | "GET" | "DELETE" | "PATCH" | "PUT";
 
 export class HttpError extends Error {
     constructor(

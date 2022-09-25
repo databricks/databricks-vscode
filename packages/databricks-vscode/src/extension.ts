@@ -31,8 +31,12 @@ export function activate(context: ExtensionContext): PublicApi {
     connectionManager.login(false);
 
     const synchronizer = new CodeSynchronizer(connectionManager, cli);
+    const clusterModel = new ClusterModel(connectionManager);
 
-    let connectionCommands = new ConnectionCommands(connectionManager);
+    let connectionCommands = new ConnectionCommands(
+        connectionManager,
+        clusterModel
+    );
     let configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         synchronizer
@@ -122,7 +126,6 @@ export function activate(context: ExtensionContext): PublicApi {
     );
 
     // Cluster group
-    const clusterModel = new ClusterModel(connectionManager);
     const clusterTreeDataProvider = new ClusterListDataProvider(clusterModel);
     let clusterCommands = new ClusterCommands(clusterModel, connectionManager);
 

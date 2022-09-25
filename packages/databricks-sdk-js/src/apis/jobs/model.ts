@@ -3,6 +3,13 @@
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
 
 // all definitions in this file are in alphabetical order
+export interface AccessControlRequest {
+    group_name?: string;
+    permission_level?: any /* MISSING TYPE */;
+    service_principal_name?: string;
+    user_name?: string;
+}
+
 export interface AutoScale {
     /**
      * The maximum number of workers to which the cluster can scale up when
@@ -16,6 +23,200 @@ export interface AutoScale {
      */
     min_workers?: number;
 }
+
+export interface AwsAttributes {
+    /**
+     * Availability type used for all subsequent nodes past the `first_on_demand`
+     * ones. **Note:** If `first_on_demand` is zero, this availability type is
+     * used for the entire cluster.
+     *
+     * `SPOT`: use spot instances. `ON_DEMAND`: use on-demand instances.
+     * `SPOT_WITH_FALLBACK`: preferably use spot instances, but fall back to
+     * on-demand instances if spot instances cannot be acquired (for example, if
+     * AWS spot prices are too high).
+     */
+    availability?: AwsAttributesAvailability;
+    /**
+     * The number of volumes launched for each instance. You can choose up to 10
+     * volumes. This feature is only enabled for supported node types. Legacy
+     * node types cannot specify custom EBS volumes. For node types with no
+     * instance store, at least one EBS volume needs to be specified; otherwise,
+     * cluster creation fails.
+     *
+     * These EBS volumes are mounted at `/ebs0`, `/ebs1`, and etc. Instance store
+     * volumes are mounted at `/local_disk0`, `/local_disk1`, and etc.
+     *
+     * If EBS volumes are attached, Databricks configures Spark to use only the
+     * EBS volumes for scratch storage because heterogeneously sized scratch
+     * devices can lead to inefficient disk utilization. If no EBS volumes are
+     * attached, Databricks configures Spark to use instance store volumes.
+     *
+     * If EBS volumes are specified, then the Spark configuration
+     * `spark.local.dir` is overridden.
+     */
+    ebs_volume_count?: number;
+    /**
+     * The number of IOPS per EBS gp3 volume.
+     *
+     * This value must be between 3000 and 16000.
+     *
+     * The value of IOPS and throughput is calculated based on AWS documentation
+     * to match the maximum performance of a gp2 volume with the same volume
+     * size.
+     *
+     * For more information, see the [EBS volume limit
+     * calculator](https://github.com/awslabs/aws-support-tools/tree/master/EBS/VolumeLimitCalculator).
+     */
+    ebs_volume_iops?: number;
+    /**
+     * The size of each EBS volume (in GiB) launched for each instance. For
+     * general purpose SSD, this value must be within the range 100 - 4096\. For
+     * throughput optimized HDD, this value must be within the range 500 - 4096\.
+     * Custom EBS volumes cannot be specified for the legacy node types
+     * (_memory-optimized_ and _compute-optimized_).
+     */
+    ebs_volume_size?: number;
+    /**
+     * The throughput per EBS gp3 volume, in MiB per second.
+     *
+     * This value must be between 125 and 1000.
+     */
+    ebs_volume_throughput?: number;
+    /**
+     * The type of EBS volume that is launched with this cluster.
+     *
+     * `GENERAL_PURPOSE_SSD`: provision extra storage using AWS gp2 EBS volumes.
+     * `THROUGHPUT_OPTIMIZED_HDD`: provision extra storage using AWS st1 volumes.
+     */
+    ebs_volume_type?: AwsAttributesEbsVolumeType;
+    /**
+     * The first first_on_demand nodes of the cluster are placed on on-demand
+     * instances. If this value is greater than 0, the cluster driver node is
+     * placed on an on-demand instance. If this value is greater than or equal to
+     * the current cluster size, all nodes are placed on on-demand instances. If
+     * this value is less than the current cluster size, first_on_demand nodes
+     * are placed on on-demand instances and the remainder are placed on
+     * `availability` instances. This value does not affect cluster size and
+     * cannot be mutated over the lifetime of a cluster.
+     */
+    first_on_demand?: number;
+    /**
+     * Nodes for this cluster are only be placed on AWS instances with this
+     * instance profile. If omitted, nodes are placed on instances without an
+     * instance profile. The instance profile must have previously been added to
+     * the Databricks environment by an account administrator.
+     *
+     * This feature may only be available to certain customer plans.
+     */
+    instance_profile_arn?: string;
+    /**
+     * The max price for AWS spot instances, as a percentage of the corresponding
+     * instance type?s on-demand price. For example, if this field is set to 50,
+     * and the cluster needs a new `i3.xlarge` spot instance, then the max price
+     * is half of the price of on-demand `i3.xlarge` instances. Similarly, if
+     * this field is set to 200, the max price is twice the price of on-demand
+     * `i3.xlarge` instances. If not specified, the default value is 100\. When
+     * spot instances are requested for this cluster, only spot instances whose
+     * max price percentage matches this field is considered. For safety, we
+     * enforce this field to be no more than 10000.
+     */
+    spot_bid_price_percent?: number;
+    /**
+     * Identifier for the availability zone/datacenter in which the cluster
+     * resides. You have three options:
+     *
+     * **Specify an availability zone as a string**, for example: ?us-west-2a?.
+     * The provided availability zone must be in the same region as the
+     * Databricks deployment. For example, ?us-west-2a? is not a valid zone ID if
+     * the Databricks deployment resides in the ?us-east-1? region.
+     *
+     * **Enable automatic availability zone selection (?Auto-AZ?)**, by setting
+     * the value ?auto?. Databricks selects the AZ based on available IPs in the
+     * workspace subnets and retries in other availability zones if AWS returns
+     * insufficient capacity errors.
+     *
+     * **Do not specify a value**. If not specified, a default zone is used.
+     *
+     * The list of available zones as well as the default value can be found by
+     * using the [List zones](..dev-tools/api/latest/clustershtml#list-zones)
+     * API.
+     */
+    zone_id?: string;
+}
+
+/**
+ * Availability type used for all subsequent nodes past the `first_on_demand`
+ * ones. **Note:** If `first_on_demand` is zero, this availability type is used
+ * for the entire cluster.
+ *
+ * `SPOT`: use spot instances. `ON_DEMAND`: use on-demand instances.
+ * `SPOT_WITH_FALLBACK`: preferably use spot instances, but fall back to
+ * on-demand instances if spot instances cannot be acquired (for example, if AWS
+ * spot prices are too high).
+ */
+export type AwsAttributesAvailability =
+    | "ON_DEMAND"
+    | "SPOT"
+    | "SPOT_WITH_FALLBACK";
+
+/**
+ * The type of EBS volume that is launched with this cluster.
+ *
+ * `GENERAL_PURPOSE_SSD`: provision extra storage using AWS gp2 EBS volumes.
+ * `THROUGHPUT_OPTIMIZED_HDD`: provision extra storage using AWS st1 volumes.
+ */
+export type AwsAttributesEbsVolumeType =
+    | "GENERAL_PURPOSE_SSD"
+    | "THROUGHPUT_OPTIMIZED_HDD";
+
+export interface AzureAttributes {
+    /**
+     * Availability type used for all subsequent nodes past the `first_on_demand`
+     * ones.
+     *
+     * `SPOT_AZURE`: use spot instances. `ON_DEMAND_AZURE`: use on demand
+     * instances. `SPOT_WITH_FALLBACK_AZURE`: preferably use spot instances, but
+     * fall back to on-demand instances if spot instances cannot be acquired (for
+     * example, if Azure spot prices are too high or out of quota). Does not
+     * apply to pool availability.
+     */
+    availability?: AzureAttributesAvailability;
+    /**
+     * The first `first_on_demand` nodes of the cluster are placed on on-demand
+     * instances. This value must be greater than 0, or else cluster creation
+     * validation fails. If this value is greater than or equal to the current
+     * cluster size, all nodes are placed on on-demand instances. If this value
+     * is less than the current cluster size, `first_on_demand` nodes are placed
+     * on on-demand instances and the remainder are placed on availability
+     * instances. This value does not affect cluster size and cannot be mutated
+     * over the lifetime of a cluster.
+     */
+    first_on_demand?: number;
+    /**
+     * The max bid price used for Azure spot instances. You can set this to
+     * greater than or equal to the current spot price. You can also set this to
+     * -1 (the default), which specifies that the instance cannot be evicted on
+     * the basis of price. The price for the instance is the current price for
+     * spot instances or the price for a standard instance. You can view
+     * historical pricing and eviction rates in the Azure portal.
+     */
+    spot_bid_max_price?: number;
+}
+
+/**
+ * Availability type used for all subsequent nodes past the `first_on_demand`
+ * ones.
+ *
+ * `SPOT_AZURE`: use spot instances. `ON_DEMAND_AZURE`: use on demand instances.
+ * `SPOT_WITH_FALLBACK_AZURE`: preferably use spot instances, but fall back to
+ * on-demand instances if spot instances cannot be acquired (for example, if
+ * Azure spot prices are too high or out of quota). Does not apply to pool
+ * availability.
+ */
+export type AzureAttributesAvailability =
+    | "ON_DEMAND_AZURE"
+    | "SPOT_AZURE"
+    | "SPOT_WITH_FALLBACK_AZURE";
 
 export interface CancelAllRuns {
     /**
@@ -38,8 +239,10 @@ export interface ClusterInstance {
      * always available for runs on existing clusters. For runs on new clusters,
      * it becomes available once the cluster is created. This value can be used
      * to view logs by browsing to `/#setting/sparkui/$cluster_id/driver-logs`.
-     * The logs continue to be available after the run completes. The response
-     * won?t include this field if the identifier is not available yet.
+     * The logs continue to be available after the run completes.
+     *
+     * The response won?t include this field if the identifier is not available
+     * yet.
      */
     cluster_id?: string;
     /**
@@ -47,8 +250,10 @@ export interface ClusterInstance {
      * is filled in once the run begins execution. This value can be used to view
      * the Spark UI by browsing to
      * `/#setting/sparkui/$cluster_id/$spark_context_id`. The Spark UI continues
-     * to be available after the run has completed. The response won?t include
-     * this field if the identifier is not available yet.
+     * to be available after the run has completed.
+     *
+     * The response won?t include this field if the identifier is not available
+     * yet.
      */
     spark_context_id?: string;
 }
@@ -64,7 +269,7 @@ export interface ClusterLogConf {
      * `endpoint` must be provided. For example, `{ "s3": { "destination" :
      * "s3://cluster_log_bucket/prefix", "region" : "us-west-2" } }`
      */
-    s3?: any /* ERROR */;
+    s3?: S3StorageInfo;
 }
 
 export interface ClusterSpec {
@@ -96,7 +301,7 @@ export interface CreateJob {
     /**
      * List of permissions to set on the job.
      */
-    access_control_list?: Array<any /* MISSING TYPE */>;
+    access_control_list?: Array<AccessControlRequest>;
     /**
      * An optional set of email addresses that is notified when runs of this job
      * begin or complete as well as when this job is deleted. The default
@@ -121,17 +326,21 @@ export interface CreateJob {
      */
     job_clusters?: Array<JobCluster>;
     /**
-     * An optional maximum allowed number of concurrent runs of the job. Set this
-     * value if you want to be able to execute multiple runs of the same job
-     * concurrently. This is useful for example if you trigger your job on a
+     * An optional maximum allowed number of concurrent runs of the job.
+     *
+     * Set this value if you want to be able to execute multiple runs of the same
+     * job concurrently. This is useful for example if you trigger your job on a
      * frequent schedule and want to allow consecutive runs to overlap with each
      * other, or if you want to trigger multiple runs which differ by their input
-     * parameters. This setting affects only new runs. For example, suppose the
-     * job?s concurrency is 4 and there are 4 concurrent active runs. Then
-     * setting the concurrency to 3 won?t kill any of the active runs. However,
-     * from then on, new runs are skipped unless there are fewer than 3 active
-     * runs. This value cannot exceed 1000\. Setting this value to 0 causes all
-     * new runs to be skipped. The default behavior is to allow only 1 concurrent
+     * parameters.
+     *
+     * This setting affects only new runs. For example, suppose the job?s
+     * concurrency is 4 and there are 4 concurrent active runs. Then setting the
+     * concurrency to 3 won?t kill any of the active runs. However, from then on,
+     * new runs are skipped unless there are fewer than 3 active runs.
+     *
+     * This value cannot exceed 1000\. Setting this value to 0 causes all new
+     * runs to be skipped. The default behavior is to allow only 1 concurrent
      * run.
      */
     max_concurrent_runs?: number;
@@ -150,7 +359,7 @@ export interface CreateJob {
      * as cluster tags for jobs clusters, and are subject to the same limitations
      * as cluster tags. A maximum of 25 tags can be added to the job.
      */
-    tags?: any /* MISSING TYPE */;
+    tags?: Record<string, string>;
     /**
      * A list of task specifications to be executed by this job.
      */
@@ -230,6 +439,20 @@ export interface FileStorageInfo {
     destination?: string;
 }
 
+export interface GcpAttributes {
+    /**
+     * Google service account email address that the cluster uses to authenticate
+     * with Google Identity. This field is used for authentication with the
+     * [GCS](..data/data-sources/google/gcshtml) and
+     * [BigQuery](..data/data-sources/google/bigqueryhtml) data sources.
+     */
+    google_service_account?: string;
+    /**
+     * Use preemptible executors.
+     */
+    use_preemptible_executors?: boolean;
+}
+
 /**
  * Read-only state of the remote repository at the time the job was run. This
  * field is only included on job runs.
@@ -253,7 +476,7 @@ export interface GitSource {
      * cannot be specified in conjunction with git_tag or git_commit. The maximum
      * length is 255 characters.
      */
-    git_branch: string;
+    git_branch?: string;
     /**
      * Commit to be checked out and used by this job. This field cannot be
      * specified in conjunction with git_branch or git_tag. The maximum length is
@@ -293,13 +516,18 @@ export type GitSourceGitProvider =
     | "gitLab"
     | "gitLabEnterpriseEdition";
 
+/**
+ * Group name. There are two built-in groups: `users` for all users, and `admins`
+ * for administrators.
+ */
+
 export interface InitScriptInfo {
     /**
      * S3 location of init script. Destination and either region or endpoint must
      * be provided. For example, `{ "s3": { "destination" :
      * "s3://init_script_bucket/prefix", "region" : "us-west-2" } }`
      */
-    s3?: any /* ERROR */;
+    s3?: S3StorageInfo;
     /**
      * DBFS location of init script. Destination must be provided. For example,
      * `{ "dbfs" : { "destination" : "dbfs:/home/init_script" } }`
@@ -399,17 +627,21 @@ export interface JobSettings {
      */
     job_clusters?: Array<JobCluster>;
     /**
-     * An optional maximum allowed number of concurrent runs of the job. Set this
-     * value if you want to be able to execute multiple runs of the same job
-     * concurrently. This is useful for example if you trigger your job on a
+     * An optional maximum allowed number of concurrent runs of the job.
+     *
+     * Set this value if you want to be able to execute multiple runs of the same
+     * job concurrently. This is useful for example if you trigger your job on a
      * frequent schedule and want to allow consecutive runs to overlap with each
      * other, or if you want to trigger multiple runs which differ by their input
-     * parameters. This setting affects only new runs. For example, suppose the
-     * job?s concurrency is 4 and there are 4 concurrent active runs. Then
-     * setting the concurrency to 3 won?t kill any of the active runs. However,
-     * from then on, new runs are skipped unless there are fewer than 3 active
-     * runs. This value cannot exceed 1000\. Setting this value to 0 causes all
-     * new runs to be skipped. The default behavior is to allow only 1 concurrent
+     * parameters.
+     *
+     * This setting affects only new runs. For example, suppose the job?s
+     * concurrency is 4 and there are 4 concurrent active runs. Then setting the
+     * concurrency to 3 won?t kill any of the active runs. However, from then on,
+     * new runs are skipped unless there are fewer than 3 active runs.
+     *
+     * This value cannot exceed 1000\. Setting this value to 0 causes all new
+     * runs to be skipped. The default behavior is to allow only 1 concurrent
      * run.
      */
     max_concurrent_runs?: number;
@@ -428,7 +660,7 @@ export interface JobSettings {
      * as cluster tags for jobs clusters, and are subject to the same limitations
      * as cluster tags. A maximum of 25 tags can be added to the job.
      */
-    tags?: any /* MISSING TYPE */;
+    tags?: Record<string, string>;
     /**
      * A list of task specifications to be executed by this job.
      */
@@ -572,7 +804,9 @@ export interface MavenLibrary {
     coordinates: string;
     /**
      * List of dependences to exclude. For example: `["slf4j:slf4j",
-     * "*:hadoop-client"]`. Maven dependency exclusions:
+     * "*:hadoop-client"]`.
+     *
+     * Maven dependency exclusions:
      * <https://maven.apache.org/guides/introduction/introduction-to-optional-and-excludes-dependencies.html>.
      */
     exclusions?: Array<string>;
@@ -593,13 +827,13 @@ export interface NewCluster {
      * Attributes related to clusters running on Amazon Web Services. If not
      * specified at cluster creation, a set of default values is used.
      */
-    aws_attributes?: any /* ERROR */;
+    aws_attributes?: AwsAttributes;
     /**
      * Defines attributes such as the instance availability type, node placement,
      * and max bid price. If not specified during cluster creation, a set of
      * default values is used.
      */
-    azure_attributes?: any /* ERROR */;
+    azure_attributes?: AzureAttributes;
     /**
      * The configuration for delivering Spark logs to a long-term storage
      * destination. Only one destination can be specified for one cluster. If the
@@ -626,7 +860,7 @@ export interface NewCluster {
      * Attributes related to clusters running on Google Cloud. If not specified
      * at cluster creation, a set of default values is used.
      */
-    gcp_attributes?: any /* ERROR */;
+    gcp_attributes?: GcpAttributes;
     /**
      * The configuration for storing init scripts. Any number of scripts can be
      * specified. The scripts are executed sequentially in the order provided. If
@@ -670,8 +904,10 @@ export interface NewCluster {
      * An object containing a set of optional, user-specified Spark configuration
      * key-value pairs. You can also pass in a string of extra JVM options to the
      * driver and the executors via `spark.driver.extraJavaOptions` and
-     * `spark.executor.extraJavaOptions` respectively. Example Spark confs:
-     * `{"spark.speculation": true, "spark.streaming.ui.retainedBatches": 5}` or
+     * `spark.executor.extraJavaOptions` respectively.
+     *
+     * Example Spark confs: `{"spark.speculation": true,
+     * "spark.streaming.ui.retainedBatches": 5}` or
      * `{"spark.driver.extraJavaOptions": "-verbose:gc -XX:+PrintGCDetails"}`
      */
     spark_conf?: Record<string, any /* MISSING TYPE */>;
@@ -679,13 +915,15 @@ export interface NewCluster {
      * An object containing a set of optional, user-specified environment
      * variable key-value pairs. Key-value pair of the form (X,Y) are exported as
      * is (for example, `export X='Y'`) while launching the driver and workers.
+     *
      * To specify an additional set of `SPARK_DAEMON_JAVA_OPTS`, we recommend
      * appending them to `$SPARK_DAEMON_JAVA_OPTS` as shown in the following
      * example. This ensures that all default databricks managed environmental
-     * variables are included as well. Example Spark environment variables:
-     * `{"SPARK_WORKER_MEMORY": "28000m", "SPARK_LOCAL_DIRS": "/local_disk0"}` or
-     * `{"SPARK_DAEMON_JAVA_OPTS": "$SPARK_DAEMON_JAVA_OPTS
-     * -Dspark.shuffle.service.enabled=true"}`
+     * variables are included as well.
+     *
+     * Example Spark environment variables: `{"SPARK_WORKER_MEMORY": "28000m",
+     * "SPARK_LOCAL_DIRS": "/local_disk0"}` or `{"SPARK_DAEMON_JAVA_OPTS":
+     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}`
      */
     spark_env_vars?: Record<string, any /* MISSING TYPE */>;
     /**
@@ -720,12 +958,16 @@ export interface NotebookTask {
      * [`run-now`](..dev-tools/api/latest/jobshtml#operation/JobsRunNow) with
      * parameters specified, the two parameters maps are merged. If the same key
      * is specified in `base_parameters` and in `run-now`, the value from
-     * `run-now` is used. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs. If the notebook takes a parameter that is not
-     * specified in the job?s `base_parameters` or the `run-now` override
-     * parameters, the default value from the notebook is used. Retrieve these
-     * parameters in a notebook using
+     * `run-now` is used.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
+     *
+     * If the notebook takes a parameter that is not specified in the job?s
+     * `base_parameters` or the `run-now` override parameters, the default value
+     * from the notebook is used.
+     *
+     * Retrieve these parameters in a notebook using
      * [dbutils.widgets.get](..dev-tools/databricks-utilshtml#dbutils-widgets).
      */
     base_parameters?: Record<string, any /* MISSING TYPE */>;
@@ -736,6 +978,13 @@ export interface NotebookTask {
      * repository, the path must be relative. This field is required.
      */
     notebook_path: string;
+}
+
+export interface PipelineParams {
+    /**
+     * If true, triggers a full refresh on the delta live table.
+     */
+    full_refresh?: boolean;
 }
 
 export interface PipelineTask {
@@ -839,9 +1088,10 @@ export interface RepairRun {
      * specified upon `run-now`, it defaults to an empty list. jar_params cannot
      * be specified in conjunction with notebook_params. The JSON representation
      * of this field (for example `{"jar_params":["john doe","35"]}`) cannot
-     * exceed 10,000 bytes. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs.
+     * exceed 10,000 bytes.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
      */
     jar_params?: Array<string>;
     /**
@@ -855,16 +1105,22 @@ export interface RepairRun {
      * `"notebook_params": {"name": "john doe", "age": "35"}`. The map is passed
      * to the notebook and is accessible through the
      * [dbutils.widgets.get](..dev-tools/databricks-utilshtml#dbutils-widgets)
-     * function. If not specified upon `run-now`, the triggered run uses the
-     * job?s base parameters. notebook_params cannot be specified in conjunction
-     * with jar_params. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs. The JSON representation of this field (for
-     * example `{"notebook_params":{"name":"john doe","age":"35"}}`) cannot
-     * exceed 10,000 bytes.
+     * function.
+     *
+     * If not specified upon `run-now`, the triggered run uses the job?s base
+     * parameters.
+     *
+     * notebook_params cannot be specified in conjunction with jar_params.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
+     *
+     * The JSON representation of this field (for example
+     * `{"notebook_params":{"name":"john doe","age":"35"}}`) cannot exceed 10,000
+     * bytes.
      */
     notebook_params?: Record<string, string>;
-    pipeline_params?: RepairRunPipelineParams;
+    pipeline_params?: PipelineParams;
     /**
      * A map from keys to values for jobs with Python wheel task, for example
      * `"python_named_params": {"name": "task", "data":
@@ -877,12 +1133,16 @@ export interface RepairRun {
      * file as command-line parameters. If specified upon `run-now`, it would
      * overwrite the parameters specified in job setting. The JSON representation
      * of this field (for example `{"python_params":["john doe","35"]}`) cannot
-     * exceed 10,000 bytes. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs. Important These parameters accept only Latin
-     * characters (ASCII character set). Using non-ASCII characters returns an
-     * error. Examples of invalid, non-ASCII characters are Chinese, Japanese
-     * kanjis, and emojis.
+     * exceed 10,000 bytes.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
+     *
+     * Important
+     *
+     * These parameters accept only Latin characters (ASCII character set). Using
+     * non-ASCII characters returns an error. Examples of invalid, non-ASCII
+     * characters are Chinese, Japanese kanjis, and emojis.
      */
     python_params?: Array<string>;
     /**
@@ -900,20 +1160,17 @@ export interface RepairRun {
      * parameters. If specified upon `run-now`, it would overwrite the parameters
      * specified in job setting. The JSON representation of this field (for
      * example `{"python_params":["john doe","35"]}`) cannot exceed 10,000 bytes.
+     *
      * Use [Task parameter variables](..jobshtml#parameter-variables) to set
-     * parameters containing information about job runs. Important These
-     * parameters accept only Latin characters (ASCII character set). Using
+     * parameters containing information about job runs.
+     *
+     * Important
+     *
+     * These parameters accept only Latin characters (ASCII character set). Using
      * non-ASCII characters returns an error. Examples of invalid, non-ASCII
      * characters are Chinese, Japanese kanjis, and emojis.
      */
     spark_submit_params?: Array<string>;
-}
-
-export interface RepairRunPipelineParams {
-    /**
-     * If true, triggers a full refresh on the delta live table.
-     */
-    full_refresh?: boolean;
 }
 
 export interface ResetJob {
@@ -923,8 +1180,10 @@ export interface ResetJob {
     job_id: number;
     /**
      * The new settings of the job. These settings completely replace the old
-     * settings. Changes to the field `JobSettings.timeout_seconds` are applied
-     * to active runs. Changes to other fields are applied to future runs only.
+     * settings.
+     *
+     * Changes to the field `JobSettings.timeout_seconds` are applied to active
+     * runs. Changes to other fields are applied to future runs only.
      */
     new_settings?: JobSettings;
 }
@@ -1054,122 +1313,40 @@ export interface Run {
 }
 
 /**
- * * `PENDING`: The run has been triggered. If there is not already an active run
- * of the same job, the cluster and execution context are being prepared. If
- * there is already an active run of the same job, the run immediately
- * transitions into the `SKIPPED` state without preparing any resources. *
- * `RUNNING`: The task of this run is being executed. * `TERMINATING`: The task
- * of this run has completed, and the cluster and execution context are being
- * cleaned up. * `TERMINATED`: The task of this run has completed, and the
- * cluster and execution context have been cleaned up. This state is terminal. *
- * `SKIPPED`: This run was aborted because a previous run of the same job was
- * already active. This state is terminal. * `INTERNAL_ERROR`: An exceptional
- * state that indicates a failure in the Jobs service, such as network failure
- * over a long period. If a run on a new cluster ends in the `INTERNAL_ERROR`
- * state, the Jobs service terminates the cluster as soon as possible. This state
- * is terminal.
+ * This describes an enum
  */
 export type RunLifeCycleState =
     /**
-     * * `PENDING`: The run has been triggered. If there is not already an active run
-     * of the same job, the cluster and execution context are being prepared. If
-     * there is already an active run of the same job, the run immediately
-     * transitions into the `SKIPPED` state without preparing any resources. *
-     * `RUNNING`: The task of this run is being executed. * `TERMINATING`: The task
-     * of this run has completed, and the cluster and execution context are being
-     * cleaned up. * `TERMINATED`: The task of this run has completed, and the
-     * cluster and execution context have been cleaned up. This state is terminal. *
-     * `SKIPPED`: This run was aborted because a previous run of the same job was
-     * already active. This state is terminal. * `INTERNAL_ERROR`: An exceptional
-     * state that indicates a failure in the Jobs service, such as network failure
-     * over a long period. If a run on a new cluster ends in the `INTERNAL_ERROR`
-     * state, the Jobs service terminates the cluster as soon as possible. This state
-     * is terminal.
+     * An exceptional state that indicates a failure in the Jobs service, such as
+     * network failure over a long period. If a run on a new cluster ends in the
+     * `INTERNAL_ERROR` state, the Jobs service terminates the cluster as soon as
+     * possible. This state is terminal.
      */
     | "INTERNAL_ERROR"
     /**
-     * * `PENDING`: The run has been triggered. If there is not already an active run
-     * of the same job, the cluster and execution context are being prepared. If
-     * there is already an active run of the same job, the run immediately
-     * transitions into the `SKIPPED` state without preparing any resources. *
-     * `RUNNING`: The task of this run is being executed. * `TERMINATING`: The task
-     * of this run has completed, and the cluster and execution context are being
-     * cleaned up. * `TERMINATED`: The task of this run has completed, and the
-     * cluster and execution context have been cleaned up. This state is terminal. *
-     * `SKIPPED`: This run was aborted because a previous run of the same job was
-     * already active. This state is terminal. * `INTERNAL_ERROR`: An exceptional
-     * state that indicates a failure in the Jobs service, such as network failure
-     * over a long period. If a run on a new cluster ends in the `INTERNAL_ERROR`
-     * state, the Jobs service terminates the cluster as soon as possible. This state
-     * is terminal.
+     * The run has been triggered. If there is not already an active run of the same
+     * job, the cluster and execution context are being prepared. If there is already
+     * an active run of the same job, the run immediately transitions into the
+     * `SKIPPED` state without preparing any resources.
      */
     | "PENDING"
     /**
-     * * `PENDING`: The run has been triggered. If there is not already an active run
-     * of the same job, the cluster and execution context are being prepared. If
-     * there is already an active run of the same job, the run immediately
-     * transitions into the `SKIPPED` state without preparing any resources. *
-     * `RUNNING`: The task of this run is being executed. * `TERMINATING`: The task
-     * of this run has completed, and the cluster and execution context are being
-     * cleaned up. * `TERMINATED`: The task of this run has completed, and the
-     * cluster and execution context have been cleaned up. This state is terminal. *
-     * `SKIPPED`: This run was aborted because a previous run of the same job was
-     * already active. This state is terminal. * `INTERNAL_ERROR`: An exceptional
-     * state that indicates a failure in the Jobs service, such as network failure
-     * over a long period. If a run on a new cluster ends in the `INTERNAL_ERROR`
-     * state, the Jobs service terminates the cluster as soon as possible. This state
-     * is terminal.
+     * The task of this run is being executed.
      */
     | "RUNNING"
     /**
-     * * `PENDING`: The run has been triggered. If there is not already an active run
-     * of the same job, the cluster and execution context are being prepared. If
-     * there is already an active run of the same job, the run immediately
-     * transitions into the `SKIPPED` state without preparing any resources. *
-     * `RUNNING`: The task of this run is being executed. * `TERMINATING`: The task
-     * of this run has completed, and the cluster and execution context are being
-     * cleaned up. * `TERMINATED`: The task of this run has completed, and the
-     * cluster and execution context have been cleaned up. This state is terminal. *
-     * `SKIPPED`: This run was aborted because a previous run of the same job was
-     * already active. This state is terminal. * `INTERNAL_ERROR`: An exceptional
-     * state that indicates a failure in the Jobs service, such as network failure
-     * over a long period. If a run on a new cluster ends in the `INTERNAL_ERROR`
-     * state, the Jobs service terminates the cluster as soon as possible. This state
-     * is terminal.
+     * This run was aborted because a previous run of the same job was already
+     * active. This state is terminal.
      */
     | "SKIPPED"
     /**
-     * * `PENDING`: The run has been triggered. If there is not already an active run
-     * of the same job, the cluster and execution context are being prepared. If
-     * there is already an active run of the same job, the run immediately
-     * transitions into the `SKIPPED` state without preparing any resources. *
-     * `RUNNING`: The task of this run is being executed. * `TERMINATING`: The task
-     * of this run has completed, and the cluster and execution context are being
-     * cleaned up. * `TERMINATED`: The task of this run has completed, and the
-     * cluster and execution context have been cleaned up. This state is terminal. *
-     * `SKIPPED`: This run was aborted because a previous run of the same job was
-     * already active. This state is terminal. * `INTERNAL_ERROR`: An exceptional
-     * state that indicates a failure in the Jobs service, such as network failure
-     * over a long period. If a run on a new cluster ends in the `INTERNAL_ERROR`
-     * state, the Jobs service terminates the cluster as soon as possible. This state
-     * is terminal.
+     * The task of this run has completed, and the cluster and execution context have
+     * been cleaned up. This state is terminal.
      */
     | "TERMINATED"
     /**
-     * * `PENDING`: The run has been triggered. If there is not already an active run
-     * of the same job, the cluster and execution context are being prepared. If
-     * there is already an active run of the same job, the run immediately
-     * transitions into the `SKIPPED` state without preparing any resources. *
-     * `RUNNING`: The task of this run is being executed. * `TERMINATING`: The task
-     * of this run has completed, and the cluster and execution context are being
-     * cleaned up. * `TERMINATED`: The task of this run has completed, and the
-     * cluster and execution context have been cleaned up. This state is terminal. *
-     * `SKIPPED`: This run was aborted because a previous run of the same job was
-     * already active. This state is terminal. * `INTERNAL_ERROR`: An exceptional
-     * state that indicates a failure in the Jobs service, such as network failure
-     * over a long period. If a run on a new cluster ends in the `INTERNAL_ERROR`
-     * state, the Jobs service terminates the cluster as soon as possible. This state
-     * is terminal.
+     * The task of this run has completed, and the cluster and execution context are
+     * being cleaned up.
      */
     | "TERMINATING";
 
@@ -1178,11 +1355,15 @@ export interface RunNow {
      * An optional token to guarantee the idempotency of job run requests. If a
      * run with the provided token already exists, the request does not create a
      * new run but returns the ID of the existing run instead. If a run with the
-     * provided token is deleted, an error is returned. If you specify the
-     * idempotency token, upon failure you can retry until the request succeeds.
-     * Databricks guarantees that exactly one run is launched with that
-     * idempotency token. This token must have at most 64 characters. For more
-     * information, see [How to ensure idempotency for
+     * provided token is deleted, an error is returned.
+     *
+     * If you specify the idempotency token, upon failure you can retry until the
+     * request succeeds. Databricks guarantees that exactly one run is launched
+     * with that idempotency token.
+     *
+     * This token must have at most 64 characters.
+     *
+     * For more information, see [How to ensure idempotency for
      * jobs](https://kb.databricks.com/jobs/jobs-idempotency.html).
      */
     idempotency_token?: string;
@@ -1193,9 +1374,10 @@ export interface RunNow {
      * specified upon `run-now`, it defaults to an empty list. jar_params cannot
      * be specified in conjunction with notebook_params. The JSON representation
      * of this field (for example `{"jar_params":["john doe","35"]}`) cannot
-     * exceed 10,000 bytes. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs.
+     * exceed 10,000 bytes.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
      */
     jar_params?: Array<string>;
     /**
@@ -1207,16 +1389,22 @@ export interface RunNow {
      * `"notebook_params": {"name": "john doe", "age": "35"}`. The map is passed
      * to the notebook and is accessible through the
      * [dbutils.widgets.get](..dev-tools/databricks-utilshtml#dbutils-widgets)
-     * function. If not specified upon `run-now`, the triggered run uses the
-     * job?s base parameters. notebook_params cannot be specified in conjunction
-     * with jar_params. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs. The JSON representation of this field (for
-     * example `{"notebook_params":{"name":"john doe","age":"35"}}`) cannot
-     * exceed 10,000 bytes.
+     * function.
+     *
+     * If not specified upon `run-now`, the triggered run uses the job?s base
+     * parameters.
+     *
+     * notebook_params cannot be specified in conjunction with jar_params.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
+     *
+     * The JSON representation of this field (for example
+     * `{"notebook_params":{"name":"john doe","age":"35"}}`) cannot exceed 10,000
+     * bytes.
      */
     notebook_params?: Record<string, string>;
-    pipeline_params?: RunNowPipelineParams;
+    pipeline_params?: PipelineParams;
     /**
      * A map from keys to values for jobs with Python wheel task, for example
      * `"python_named_params": {"name": "task", "data":
@@ -1229,12 +1417,16 @@ export interface RunNow {
      * file as command-line parameters. If specified upon `run-now`, it would
      * overwrite the parameters specified in job setting. The JSON representation
      * of this field (for example `{"python_params":["john doe","35"]}`) cannot
-     * exceed 10,000 bytes. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs. Important These parameters accept only Latin
-     * characters (ASCII character set). Using non-ASCII characters returns an
-     * error. Examples of invalid, non-ASCII characters are Chinese, Japanese
-     * kanjis, and emojis.
+     * exceed 10,000 bytes.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
+     *
+     * Important
+     *
+     * These parameters accept only Latin characters (ASCII character set). Using
+     * non-ASCII characters returns an error. Examples of invalid, non-ASCII
+     * characters are Chinese, Japanese kanjis, and emojis.
      */
     python_params?: Array<string>;
     /**
@@ -1244,20 +1436,17 @@ export interface RunNow {
      * parameters. If specified upon `run-now`, it would overwrite the parameters
      * specified in job setting. The JSON representation of this field (for
      * example `{"python_params":["john doe","35"]}`) cannot exceed 10,000 bytes.
+     *
      * Use [Task parameter variables](..jobshtml#parameter-variables) to set
-     * parameters containing information about job runs. Important These
-     * parameters accept only Latin characters (ASCII character set). Using
+     * parameters containing information about job runs.
+     *
+     * Important
+     *
+     * These parameters accept only Latin characters (ASCII character set). Using
      * non-ASCII characters returns an error. Examples of invalid, non-ASCII
      * characters are Chinese, Japanese kanjis, and emojis.
      */
     spark_submit_params?: Array<string>;
-}
-
-export interface RunNowPipelineParams {
-    /**
-     * If true, triggers a full refresh on the delta live table.
-     */
-    full_refresh?: boolean;
 }
 
 export interface RunNowResponse {
@@ -1326,9 +1515,10 @@ export interface RunParameters {
      * specified upon `run-now`, it defaults to an empty list. jar_params cannot
      * be specified in conjunction with notebook_params. The JSON representation
      * of this field (for example `{"jar_params":["john doe","35"]}`) cannot
-     * exceed 10,000 bytes. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs.
+     * exceed 10,000 bytes.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
      */
     jar_params?: Array<string>;
     /**
@@ -1336,16 +1526,22 @@ export interface RunParameters {
      * `"notebook_params": {"name": "john doe", "age": "35"}`. The map is passed
      * to the notebook and is accessible through the
      * [dbutils.widgets.get](..dev-tools/databricks-utilshtml#dbutils-widgets)
-     * function. If not specified upon `run-now`, the triggered run uses the
-     * job?s base parameters. notebook_params cannot be specified in conjunction
-     * with jar_params. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs. The JSON representation of this field (for
-     * example `{"notebook_params":{"name":"john doe","age":"35"}}`) cannot
-     * exceed 10,000 bytes.
+     * function.
+     *
+     * If not specified upon `run-now`, the triggered run uses the job?s base
+     * parameters.
+     *
+     * notebook_params cannot be specified in conjunction with jar_params.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
+     *
+     * The JSON representation of this field (for example
+     * `{"notebook_params":{"name":"john doe","age":"35"}}`) cannot exceed 10,000
+     * bytes.
      */
     notebook_params?: Record<string, string>;
-    pipeline_params?: RunParametersPipelineParams;
+    pipeline_params?: PipelineParams;
     /**
      * A map from keys to values for jobs with Python wheel task, for example
      * `"python_named_params": {"name": "task", "data":
@@ -1358,12 +1554,16 @@ export interface RunParameters {
      * file as command-line parameters. If specified upon `run-now`, it would
      * overwrite the parameters specified in job setting. The JSON representation
      * of this field (for example `{"python_params":["john doe","35"]}`) cannot
-     * exceed 10,000 bytes. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs. Important These parameters accept only Latin
-     * characters (ASCII character set). Using non-ASCII characters returns an
-     * error. Examples of invalid, non-ASCII characters are Chinese, Japanese
-     * kanjis, and emojis.
+     * exceed 10,000 bytes.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
+     *
+     * Important
+     *
+     * These parameters accept only Latin characters (ASCII character set). Using
+     * non-ASCII characters returns an error. Examples of invalid, non-ASCII
+     * characters are Chinese, Japanese kanjis, and emojis.
      */
     python_params?: Array<string>;
     /**
@@ -1373,50 +1573,37 @@ export interface RunParameters {
      * parameters. If specified upon `run-now`, it would overwrite the parameters
      * specified in job setting. The JSON representation of this field (for
      * example `{"python_params":["john doe","35"]}`) cannot exceed 10,000 bytes.
+     *
      * Use [Task parameter variables](..jobshtml#parameter-variables) to set
-     * parameters containing information about job runs. Important These
-     * parameters accept only Latin characters (ASCII character set). Using
+     * parameters containing information about job runs.
+     *
+     * Important
+     *
+     * These parameters accept only Latin characters (ASCII character set). Using
      * non-ASCII characters returns an error. Examples of invalid, non-ASCII
      * characters are Chinese, Japanese kanjis, and emojis.
      */
     spark_submit_params?: Array<string>;
 }
 
-export interface RunParametersPipelineParams {
-    /**
-     * If true, triggers a full refresh on the delta live table.
-     */
-    full_refresh?: boolean;
-}
-
 /**
- * * `SUCCESS`: The task completed successfully. * `FAILED`: The task completed
- * with an error. * `TIMEDOUT`: The run was stopped after reaching the timeout. *
- * `CANCELED`: The run was canceled at user request.
+ * This describes an enum
  */
 export type RunResultState =
     /**
-     * * `SUCCESS`: The task completed successfully. * `FAILED`: The task completed
-     * with an error. * `TIMEDOUT`: The run was stopped after reaching the timeout. *
-     * `CANCELED`: The run was canceled at user request.
+     * The run was canceled at user request.
      */
     | "CANCELED"
     /**
-     * * `SUCCESS`: The task completed successfully. * `FAILED`: The task completed
-     * with an error. * `TIMEDOUT`: The run was stopped after reaching the timeout. *
-     * `CANCELED`: The run was canceled at user request.
+     * The task completed with an error.
      */
     | "FAILED"
     /**
-     * * `SUCCESS`: The task completed successfully. * `FAILED`: The task completed
-     * with an error. * `TIMEDOUT`: The run was stopped after reaching the timeout. *
-     * `CANCELED`: The run was canceled at user request.
+     * The task completed successfully.
      */
     | "SUCCESS"
     /**
-     * * `SUCCESS`: The task completed successfully. * `FAILED`: The task completed
-     * with an error. * `TIMEDOUT`: The run was stopped after reaching the timeout. *
-     * `CANCELED`: The run was canceled at user request.
+     * The run was stopped after reaching the timeout.
      */
     | "TIMEDOUT";
 
@@ -1609,34 +1796,55 @@ export interface RunTask {
  * `SUBMIT_RUN` \- Submit run. A run created with [Run
  * now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow).
  */
-export type RunType =
+export type RunType = "JOB_RUN" | "SUBMIT_RUN" | "WORKFLOW_RUN";
+
+export interface S3StorageInfo {
     /**
-     * The type of the run. * `JOB_RUN` \- Normal job run. A run created with [Run
-     * now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow). * `WORKFLOW_RUN`
-     * \- Workflow run. A run created with
-     * [dbutils.notebook.run](..dev-tools/databricks-utilshtml#dbutils-workflow). *
-     * `SUBMIT_RUN` \- Submit run. A run created with [Run
-     * now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow).
+     * (Optional) Set canned access control list. For example:
+     * `bucket-owner-full-control`. If canned_acl is set, the cluster instance
+     * profile must have `s3:PutObjectAcl` permission on the destination bucket
+     * and prefix. The full list of possible canned ACLs can be found at
+     * <https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overviewhtml#canned-acl>.
+     * By default only the object owner gets full control. If you are using cross
+     * account role for writing data, you may want to set
+     * `bucket-owner-full-control` to make bucket owner able to read the logs.
      */
-    | "JOB_RUN"
+    canned_acl?: string;
     /**
-     * The type of the run. * `JOB_RUN` \- Normal job run. A run created with [Run
-     * now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow). * `WORKFLOW_RUN`
-     * \- Workflow run. A run created with
-     * [dbutils.notebook.run](..dev-tools/databricks-utilshtml#dbutils-workflow). *
-     * `SUBMIT_RUN` \- Submit run. A run created with [Run
-     * now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow).
+     * S3 destination. For example: `s3://my-bucket/some-prefix` You must
+     * configure the cluster with an instance profile and the instance profile
+     * must have write access to the destination. You _cannot_ use AWS keys.
      */
-    | "SUBMIT_RUN"
+    destination?: string;
     /**
-     * The type of the run. * `JOB_RUN` \- Normal job run. A run created with [Run
-     * now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow). * `WORKFLOW_RUN`
-     * \- Workflow run. A run created with
-     * [dbutils.notebook.run](..dev-tools/databricks-utilshtml#dbutils-workflow). *
-     * `SUBMIT_RUN` \- Submit run. A run created with [Run
-     * now](..dev-tools/api/latest/jobshtml#operation/JobsRunNow).
+     * (Optional)Enable server side encryption, `false` by default.
      */
-    | "WORKFLOW_RUN";
+    enable_encryption?: boolean;
+    /**
+     * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It is
+     * used only when encryption is enabled and the default type is `sse-s3`.
+     */
+    encryption_type?: string;
+    /**
+     * S3 endpoint. For example: `https://s3-us-west-2.amazonaws.com`. Either
+     * region or endpoint must be set. If both are set, endpoint is used.
+     */
+    endpoint?: string;
+    /**
+     * (Optional) KMS key used if encryption is enabled and encryption type is
+     * set to `sse-kms`.
+     */
+    kms_key?: string;
+    /**
+     * S3 region. For example: `us-west-2`. Either region or endpoint must be
+     * set. If both are set, endpoint is used.
+     */
+    region?: string;
+}
+
+/**
+ * Name of an Azure service principal.
+ */
 
 /**
  * An arbitrary object where the object key is a configuration propery name and
@@ -1657,24 +1865,27 @@ export interface SparkJarTask {
     jar_uri?: string;
     /**
      * The full name of the class containing the main method to be executed. This
-     * class must be contained in a JAR provided as a library. The code must use
-     * `SparkContext.getOrCreate` to obtain a Spark context; otherwise, runs of
-     * the job fail.
+     * class must be contained in a JAR provided as a library.
+     *
+     * The code must use `SparkContext.getOrCreate` to obtain a Spark context;
+     * otherwise, runs of the job fail.
      */
     main_class_name?: string;
     /**
-     * Parameters passed to the main method. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs.
+     * Parameters passed to the main method.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
      */
     parameters?: Array<string>;
 }
 
 export interface SparkPythonTask {
     /**
-     * Command line parameters passed to the Python file. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs.
+     * Command line parameters passed to the Python file.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
      */
     parameters?: Array<string>;
     python_file: string;
@@ -1682,9 +1893,10 @@ export interface SparkPythonTask {
 
 export interface SparkSubmitTask {
     /**
-     * Command-line parameters passed to spark submit. Use [Task parameter
-     * variables](..jobshtml#parameter-variables) to set parameters containing
-     * information about job runs.
+     * Command-line parameters passed to spark submit.
+     *
+     * Use [Task parameter variables](..jobshtml#parameter-variables) to set
+     * parameters containing information about job runs.
      */
     parameters?: Array<string>;
 }
@@ -1693,7 +1905,7 @@ export interface SubmitRun {
     /**
      * List of permissions to set on the job.
      */
-    access_control_list?: Array<any /* MISSING TYPE */>;
+    access_control_list?: Array<AccessControlRequest>;
     /**
      * An optional specification for a remote repository containing the notebooks
      * used by this job's notebook tasks.
@@ -1703,10 +1915,14 @@ export interface SubmitRun {
      * An optional token that can be used to guarantee the idempotency of job run
      * requests. If a run with the provided token already exists, the request
      * does not create a new run but returns the ID of the existing run instead.
-     * If a run with the provided token is deleted, an error is returned. If you
-     * specify the idempotency token, upon failure you can retry until the
+     * If a run with the provided token is deleted, an error is returned.
+     *
+     * If you specify the idempotency token, upon failure you can retry until the
      * request succeeds. Databricks guarantees that exactly one run is launched
-     * with that idempotency token. This token must have at most 64 characters.
+     * with that idempotency token.
+     *
+     * This token must have at most 64 characters.
+     *
      * For more information, see [How to ensure idempotency for
      * jobs](https://kb.databricks.com/jobs/jobs-idempotency.html).
      */
@@ -1730,14 +1946,6 @@ export interface SubmitRunResponse {
     run_id?: number;
 }
 
-/**
- * An optional array of objects specifying the dependency graph of the task. All
- * tasks specified in this field must complete successfully before executing this
- * task. The key is `task_key`, and the value is the name assigned to the
- * dependent task. This field is required when a job consists of more than one
- * task.
- */
-
 export interface TaskDependenciesItem {
     task_key?: string;
 }
@@ -1754,33 +1962,19 @@ export interface TaskDependenciesItem {
  */
 
 /**
- * * `PERIODIC`: Schedules that periodically trigger runs, such as a cron
- * scheduler. * `ONE_TIME`: One time triggers that fire a single run. This occurs
- * you triggered a single run on demand through the UI or the API. * `RETRY`:
- * Indicates a run that is triggered as a retry of a previously failed run. This
- * occurs when you request to re-run the job in case of failures.
+ * This describes an enum
  */
 export type TriggerType =
     /**
-     * * `PERIODIC`: Schedules that periodically trigger runs, such as a cron
-     * scheduler. * `ONE_TIME`: One time triggers that fire a single run. This occurs
-     * you triggered a single run on demand through the UI or the API. * `RETRY`:
-     * Indicates a run that is triggered as a retry of a previously failed run. This
-     * occurs when you request to re-run the job in case of failures.
+     * One time triggers that fire a single run. This occurs you triggered a single
+     * run on demand through the UI or the API.
      */
     | "ONE_TIME"
     /**
-     * * `PERIODIC`: Schedules that periodically trigger runs, such as a cron
-     * scheduler. * `ONE_TIME`: One time triggers that fire a single run. This occurs
-     * you triggered a single run on demand through the UI or the API. * `RETRY`:
-     * Indicates a run that is triggered as a retry of a previously failed run. This
-     * occurs when you request to re-run the job in case of failures.
+     * Schedules that periodically trigger runs, such as a cron scheduler.
      */
     | "PERIODIC"
     /**
-     * * `PERIODIC`: Schedules that periodically trigger runs, such as a cron
-     * scheduler. * `ONE_TIME`: One time triggers that fire a single run. This occurs
-     * you triggered a single run on demand through the UI or the API. * `RETRY`:
      * Indicates a run that is triggered as a retry of a previously failed run. This
      * occurs when you request to re-run the job in case of failures.
      */
@@ -1799,12 +1993,17 @@ export interface UpdateJob {
     /**
      * The new settings for the job. Any top-level fields specified in
      * `new_settings` are completely replaced. Partially updating nested fields
-     * is not supported. Changes to the field `JobSettings.timeout_seconds` are
-     * applied to active runs. Changes to other fields are applied to future runs
-     * only.
+     * is not supported.
+     *
+     * Changes to the field `JobSettings.timeout_seconds` are applied to active
+     * runs. Changes to other fields are applied to future runs only.
      */
     new_settings?: JobSettings;
 }
+
+/**
+ * Email address for the user.
+ */
 
 export interface ViewItem {
     /**
@@ -1824,36 +2023,32 @@ export interface ViewItem {
 }
 
 /**
- * * `NOTEBOOK`: Notebook view item. * `DASHBOARD`: Dashboard view item.
+ * This describes an enum
  */
 export type ViewType =
     /**
-     * * `NOTEBOOK`: Notebook view item. * `DASHBOARD`: Dashboard view item.
+     * Dashboard view item.
      */
     | "DASHBOARD"
     /**
-     * * `NOTEBOOK`: Notebook view item. * `DASHBOARD`: Dashboard view item.
+     * Notebook view item.
      */
     | "NOTEBOOK";
 
 /**
- * * `CODE`: Code view of the notebook. * `DASHBOARDS`: All dashboard views of
- * the notebook. * `ALL`: All views of the notebook.
+ * This describes an enum
  */
 export type ViewsToExport =
     /**
-     * * `CODE`: Code view of the notebook. * `DASHBOARDS`: All dashboard views of
-     * the notebook. * `ALL`: All views of the notebook.
+     * All views of the notebook.
      */
     | "ALL"
     /**
-     * * `CODE`: Code view of the notebook. * `DASHBOARDS`: All dashboard views of
-     * the notebook. * `ALL`: All views of the notebook.
+     * Code view of the notebook.
      */
     | "CODE"
     /**
-     * * `CODE`: Code view of the notebook. * `DASHBOARDS`: All dashboard views of
-     * the notebook. * `ALL`: All views of the notebook.
+     * All dashboard views of the notebook.
      */
     | "DASHBOARDS";
 
@@ -1988,8 +2183,8 @@ export interface RepairRunResponse {
     repair_id?: number;
 }
 
-export interface AccessControlRequest {}
-export interface AccessControlRequest {}
+export interface PermissionLevel {}
+export interface PermissionLevel {}
 export interface CancelAllRunsResponse {}
 export interface CancelRunResponse {}
 export interface DeleteResponse {}
