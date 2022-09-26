@@ -36,6 +36,10 @@ export class SyncDestination {
         return this.repoPath;
     }
 
+    get relativeRepoPath(): string {
+        return this.repoPath.path.replace("/Workspace", "");
+    }
+
     /**
      * Strips the workspace path from an absolute path
      */
