@@ -76,7 +76,6 @@ export async function loadConfigFile(filePath?: string): Promise<Profiles> {
         } else {
             message = e;
         }
-        console.error(message);
         throw new ConfigFileError(`${message}`);
     }
 
