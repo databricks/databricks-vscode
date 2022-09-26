@@ -1,4 +1,10 @@
-import {Cluster, WorkflowRun, jobs} from "@databricks/databricks-sdk";
+import {
+    Cluster,
+    WorkflowRun,
+    jobs,
+    ApiClientResponseError,
+} from "@databricks/databricks-sdk";
+import {RunOutput} from "@databricks/databricks-sdk/dist/apis/jobs";
 import {TextDecoder} from "node:util";
 import {basename} from "path";
 import {
@@ -89,8 +95,20 @@ export async function runAsWorkflow({
             });
             panel.showStdoutResult(response.logs || "");
         }
-    } catch (e: any) {
-        panel.showError(e.message);
+    } catch (e: unknown) {
+        if (e instanceof ApiClientResponseError) {
+            panel.showError({
+                message: e.message,
+                stack:
+                    "error_trace" in e.response
+                        ? e.response.error_trace
+                        : undefined,
+            });
+        } else {
+            panel.showError({
+                message: (e as any).message,
+            });
+        }
     }
 }
 
@@ -103,6 +121,7 @@ async function isNotebook(uri: Uri): Promise<boolean> {
 }
 
 export class WorkflowOutputPanel {
+    private run?: WorkflowRun;
     constructor(private panel: WebviewPanel, private extensionUri: Uri) {
         panel.webview.html = this.getWebviewContent("Starting ...");
     }
@@ -132,9 +151,10 @@ export class WorkflowOutputPanel {
         </html>`;
     }
 
-    showError(error: string) {
+    showError({message, stack}: {message?: string; stack?: string}) {
         /* html */
-        this.html = `<html>
+        this.html = [
+            `<html>
             <head>
                 <script type="module" src="${this.getToolkitUri()}"></script>
                 <style>
@@ -150,13 +170,19 @@ export class WorkflowOutputPanel {
                 </style>
             </head>
             <body>
-                <h1>Error</h1><hr>
-                <pre class="alert-error">${error}</pre>
-            </body>
-        </html>`;
+                <h1>Error</h1><hr>`,
+            message ? `<pre class="alert-error">${message}</pre>` : "",
+            stack ? `<pre class="alert-error">${stack}</pre>` : "",
+            this.run?.runPageUrl
+                ? `<vscode-link href="${this.run?.runPageUrl}">View job on Databricks</vscode-link>`
+                : "",
+            `</body>
+        </html>`,
+        ].join("\n");
     }
 
     updateState(state: jobs.RunLifeCycleState, run: WorkflowRun) {
+        this.run = run;
         this.panel.webview.postMessage({
             type: "status",
             state,
