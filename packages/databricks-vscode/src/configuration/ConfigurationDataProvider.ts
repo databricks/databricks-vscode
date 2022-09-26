@@ -70,6 +70,7 @@ export class ConfigurationDataProvider
                     iconPath: new ThemeIcon("tools"),
                     id: "PROFILE",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
+                    contextValue: "profile",
                 });
 
                 if (cluster) {
