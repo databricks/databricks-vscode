@@ -4,8 +4,16 @@ import {
     Profiles,
     resolveConfigFilePath,
 } from "@databricks/databricks-sdk";
-import {stat, unlink} from "fs/promises";
-import {QuickPickItem, QuickPickItemKind, window} from "vscode";
+import {copyFile, stat, unlink} from "fs/promises";
+import path from "path";
+import {
+    commands,
+    QuickPickItem,
+    QuickPickItemKind,
+    Uri,
+    window,
+    workspace,
+} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {MultiStepInput} from "../ui/wizard";
 
@@ -37,23 +45,49 @@ export async function selectProfile(
             if (!(e instanceof ConfigFileError)) {
                 throw e;
             }
-            const path = resolveConfigFilePath();
+            const confPath = resolveConfigFilePath();
             let stats;
             try {
-                stats = await stat(path);
+                stats = await stat(confPath);
             } catch (e) {
                 /*file doesn't exist*/
             }
             if (stats?.isFile()) {
                 const option = await window.showErrorMessage(
-                    e.message,
-                    "Overwrite",
-                    "Cancel"
+                    `Can't parse config file`,
+                    {
+                        detail: e.message,
+                    },
+                    "Open Config File",
+                    "Backup and Overwrite Config File"
                 );
-                if (option === "Cancel") {
+                if (option === undefined) {
                     return;
                 }
-                await unlink(path);
+                if (option === "Open Config File") {
+                    await commands.executeCommand(
+                        "databricks.connection.openDatabricksConfigFile"
+                    );
+                    return;
+                }
+                const backupPath = path.join(
+                    path.dirname(confPath),
+                    `${path.basename(confPath)}.${Date.now()}.bak`
+                );
+                await copyFile(confPath, backupPath);
+
+                const openBackup = await window.showErrorMessage(
+                    `Config file backed up at "${backupPath}"`,
+                    "Open Backup File",
+                    "Continue Without Opening"
+                );
+                if (openBackup === "Open Backup File") {
+                    const doc = await workspace.openTextDocument(
+                        Uri.file(backupPath)
+                    );
+                    await window.showTextDocument(doc);
+                }
+                await unlink(confPath);
             }
         }
 
