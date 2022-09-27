@@ -3,12 +3,7 @@ import * as https from "node:https";
 import {TextDecoder} from "node:util";
 import {fromDefaultChain} from "./auth/fromChain";
 import {fetch} from "./fetch";
-import {
-    loggerInstance,
-    logOpId,
-    withLogContext,
-} from "./logging/loggingDecorators";
-import {NamedLogger} from "./logging/NamedLogger";
+import {NamedLogger, loggerInstance, logOpId, withLogContext} from "./logging";
 import {CancellationToken} from "./types";
 
 const sdkVersion = require("../package.json").version;

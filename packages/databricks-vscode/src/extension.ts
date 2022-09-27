@@ -24,13 +24,13 @@ import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {
-    ExposedLogger,
+    ExposedLoggers,
     NamedLogger,
 } from "@databricks/databricks-sdk/dist/logging";
 import {transports} from "winston";
 
 export function activate(context: ExtensionContext): PublicApi {
-    NamedLogger.getOrCreate(ExposedLogger.SDK).configure({
+    NamedLogger.getOrCreate(ExposedLoggers.SDK).configure({
         level: "error",
         transports: [new transports.Console()],
     });
