@@ -20,6 +20,12 @@ export class HttpError extends Error {
     }
 }
 
+export class ApiClientResponseError extends Error {
+    constructor(readonly message: string, readonly response: any) {
+        super(message);
+    }
+}
+
 export class ApiClient {
     private agent: https.Agent;
 
@@ -120,11 +126,11 @@ export class ApiClient {
             response = JSON.parse(responseText);
             logger?.debug({message: url.toString(), response: response});
         } catch (e) {
-            throw new Error(responseText);
+            throw new ApiClientResponseError(responseText, response);
         }
 
         if ("error" in response) {
-            throw new Error(response.error);
+            throw new ApiClientResponseError(response.error, response);
         }
 
         if ("error_code" in response) {
