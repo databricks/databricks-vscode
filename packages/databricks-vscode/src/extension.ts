@@ -23,8 +23,17 @@ import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {PublicApi} from "@databricks/databricks-vscode-types";
+import {
+    ExposedLogger,
+    NamedLogger,
+} from "@databricks/databricks-sdk/dist/logging";
+import {transports} from "winston";
 
 export function activate(context: ExtensionContext): PublicApi {
+    NamedLogger.getOrCreate(ExposedLogger.SDK).configure({
+        level: "error",
+        transports: [new transports.Console()],
+    });
     let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);

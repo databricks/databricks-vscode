@@ -30,7 +30,10 @@
     },
     "dependencies": {
         "ini": "^3.0.1",
-        "node-fetch": "^3.2.10"
+        "inversify": "^6.0.1",
+        "node-fetch": "^3.2.10",
+        "reflect-metadata": "^0.1.13",
+        "winston": "^3.8.2"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",

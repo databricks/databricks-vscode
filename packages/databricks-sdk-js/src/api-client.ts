@@ -3,6 +3,12 @@ import * as https from "node:https";
 import {TextDecoder} from "node:util";
 import {fromDefaultChain} from "./auth/fromChain";
 import {fetch} from "./fetch";
+import {
+    loggerInstance,
+    logOpId,
+    withLogContext,
+} from "./logging/loggingDecorators";
+import {NamedLogger} from "./logging/NamedLogger";
 import {CancellationToken} from "./types";
 
 const sdkVersion = require("../package.json").version;
@@ -45,11 +51,14 @@ export class ApiClient {
         return pairs.join(" ");
     }
 
+    @withLogContext("SDK")
     async request(
         path: string,
         method: HttpMethod,
         payload?: any,
-        cancellationToken?: CancellationToken
+        cancellationToken?: CancellationToken,
+        @logOpId() opId?: string,
+        @loggerInstance() logger?: NamedLogger
     ): Promise<Object> {
         const credentials = await this.credentialProvider();
         const headers = {
@@ -78,6 +87,7 @@ export class ApiClient {
         let response;
 
         try {
+            logger?.debug({message: url.toString(), request: options});
             const {abort, response: responsePromise} = await fetch(
                 url.toString(),
                 options
@@ -113,6 +123,7 @@ export class ApiClient {
 
         try {
             response = JSON.parse(responseText);
+            logger?.debug({message: url.toString(), response: response});
         } catch (e) {
             throw new Error(responseText);
         }

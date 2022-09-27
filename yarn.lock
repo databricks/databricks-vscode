@@ -285,10 +285,12 @@ __metadata:
     chai-spies: ^1.0.0
     eslint: ^8.23.1
     ini: ^3.0.1
+    inversify: ^6.0.1
     mocha: ^10.0.0
     node-fetch: ^3.2.10
     nyc: ^15.1.0
     prettier: ^2.7.1
+    reflect-metadata: ^0.1.13
     tmp-promise: ^3.0.3
     ts-loader: ^9.3.1
     ts-mocha: ^10.0.0
@@ -296,6 +298,7 @@ __metadata:
     ts-node: ^10.9.1
     typescript: ^4.8.3
     uuid: ^9.0.0
+    winston: ^3.8.2
   languageName: unknown
   linkType: soft
 
@@ -3247,6 +3250,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"inversify@npm:^6.0.1":
+  version: 6.0.1
+  resolution: "inversify@npm:6.0.1"
+  checksum: b6c9b56ef7817a71534b06101c2b0a0130b67c47a769f58794d9c0643591a83ac02be30a48c00cb729c0c83ece96dde369c419d48c32d0201c6cc7407629fbc5
+  languageName: node
+  linkType: hard
+
 "ip@npm:^2.0.0":
   version: 2.0.0
   resolution: "ip@npm:2.0.0"
@@ -4683,6 +4693,13 @@ __metadata:
   dependencies:
     picomatch: ^2.2.1
   checksum: 1ced032e6e45670b6d7352d71d21ce7edf7b9b928494dcaba6f11fba63180d9da6cd7061ebc34175ffda6ff529f481818c962952004d273178acd70f7059b320
+  languageName: node
+  linkType: hard
+
+"reflect-metadata@npm:^0.1.13":
+  version: 0.1.13
+  resolution: "reflect-metadata@npm:0.1.13"
+  checksum: 798d379a7b6f6455501145419505c97dd11cbc23857a386add2b9ef15963ccf15a48d9d15507afe01d4cd74116df8a213247200bac00320bd7c11ddeaa5e8fb4
   languageName: node
   linkType: hard
 
