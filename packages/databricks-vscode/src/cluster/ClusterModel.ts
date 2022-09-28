@@ -9,6 +9,7 @@ import {
 } from "@databricks/databricks-sdk";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {ClusterLoader} from "./ClusterLoader";
 
 export type ClusterFilter = "ALL" | "ME" | "RUNNING";
 
@@ -18,137 +19,6 @@ export type ClusterFilter = "ALL" | "ME" | "RUNNING";
  * We are using a pull model where clients listen to the change event and
  * then pull the data py reading the 'roots' property.
  */
-class ClusterLoader implements Disposable {
-    private _clusters: Map<string, Cluster> = new Map();
-    public get clusters() {
-        return this._clusters;
-    }
-
-    private running: Boolean = false;
-    public refreshTime: Time;
-
-    private _stopped: EventEmitter<void> = new EventEmitter<void>();
-    private readonly onDidStop: Event<void> = this._stopped.event;
-
-    private _onDidChange: EventEmitter<void> = new EventEmitter<void>();
-    readonly onDidChange: Event<void> = this._onDidChange.event;
-
-    private disposables: Disposable[] = [];
-
-    constructor(
-        private connectionManager: ConnectionManager,
-        refreshTime: Time = new Time(5, TimeUnits.seconds)
-    ) {
-        this.refreshTime = refreshTime;
-    }
-
-    private async load() {
-        let apiClient = this.connectionManager.apiClient;
-
-        if (!apiClient) {
-            return;
-        }
-        let clusters = (await Cluster.list(apiClient)).filter((c) =>
-            ["UI", "API"].includes(c.source)
-        );
-        const permissionApi = new PermissionsService(apiClient);
-
-        for (let c of clusters) {
-            if (!this.running) {
-                break;
-            }
-
-            const isValidSingleuser = () => {
-                return (
-                    c.details.data_security_mode === "SINGLE_USER" &&
-                    c.details.single_user_name === this.connectionManager.me
-                );
-            };
-
-            const hasPerm = async () => {
-                const perms = await permissionApi.getObjectPermissions({
-                    object_id: c.id,
-                    object_type: "clusters",
-                });
-                return (
-                    (perms.access_control_list ?? []).find((ac) => {
-                        return (
-                            ac.user_name === this.connectionManager.me ||
-                            this.connectionManager.meDetails?.groups
-                                ?.map((v) => v.display)
-                                .includes(ac.group_name ?? "")
-                        );
-                    }) !== undefined
-                );
-            };
-
-            const keepCluster = isValidSingleuser() || (await hasPerm());
-
-            if (this._clusters.has(c.id) && !keepCluster) {
-                this._clusters.delete(c.id);
-                this._onDidChange.fire();
-            }
-            if (keepCluster) {
-                this._clusters.set(c.id, c);
-                this._onDidChange.fire();
-            }
-        }
-        const clusterIds = clusters.map((c) => c.id);
-        const toDelete = [];
-        for (let key in this._clusters) {
-            if (!clusterIds.includes(key)) {
-                toDelete.push(key);
-            }
-        }
-        toDelete.forEach((key) => this._clusters.delete(key));
-        if (toDelete.length !== 0) {
-            this._onDidChange.fire();
-        }
-    }
-
-    async start() {
-        this.running = true;
-        while (this.running) {
-            await this.load();
-            if (!this.running) {
-                break;
-            }
-            await new Promise((resolve) => {
-                setTimeout(resolve, this.refreshTime.toMillSeconds().value);
-            });
-        }
-
-        this._stopped.fire();
-    }
-
-    async stop() {
-        if (!this.running) {
-            return;
-        }
-
-        await new Promise((resolve) => {
-            this.disposables.push(this.onDidStop(resolve));
-            this.running = false;
-        });
-    }
-
-    cleanup() {
-        this._clusters.clear();
-    }
-
-    async restart(cleanup = false) {
-        await this.stop();
-        if (cleanup) {
-            this.cleanup();
-        }
-        this.start();
-    }
-
-    dispose() {
-        this.disposables.forEach((e) => e.dispose());
-    }
-}
-
 export class ClusterModel implements Disposable {
     private _onDidChange: EventEmitter<void> = new EventEmitter<void>();
     readonly onDidChange: Event<void> = this._onDidChange.event;
@@ -156,9 +26,18 @@ export class ClusterModel implements Disposable {
     private _filter: ClusterFilter = "ALL";
     private disposables: Disposable[] = [];
 
-    public readonly clusterLoader = new ClusterLoader(this.connectionManager);
+    private clusterLoader: ClusterLoader;
 
-    constructor(private connectionManager: ConnectionManager) {
+    constructor(
+        private connectionManager: ConnectionManager,
+        clusterLoader?: ClusterLoader
+    ) {
+        this.clusterLoader =
+            clusterLoader ??
+            (() => {
+                console.log("here");
+                return new ClusterLoader(this.connectionManager);
+            })();
         this.disposables.push(
             connectionManager.onDidChangeState(async (e) => {
                 switch (e) {
@@ -174,6 +53,7 @@ export class ClusterModel implements Disposable {
             this.clusterLoader,
             this.clusterLoader.onDidChange((e) => this._onDidChange.fire())
         );
+        this.clusterLoader.start();
     }
 
     refresh() {

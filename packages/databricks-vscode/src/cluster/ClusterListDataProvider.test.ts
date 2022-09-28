@@ -99,20 +99,6 @@ describe(__filename, () => {
         assert.equal(children.length, 4);
     });
 
-    it("should return placeholder if list is empty", async () => {
-        when(mockedClusterModel.roots).thenReturn([]);
-
-        let model = instance(mockedClusterModel);
-        let provider = new ClusterListDataProvider(model);
-        disposables.push(provider);
-
-        let children = await resolveProviderResult(provider.getChildren());
-        assert(children);
-        assert.equal(children.length, 1);
-        assert(children[0] instanceof TreeItem);
-        assert.equal(children[0].label, "No clusters found");
-    });
-
     it("should get cluster tree node items", () => {
         let cluster = new Cluster(
             instance(mock(ApiClient)),

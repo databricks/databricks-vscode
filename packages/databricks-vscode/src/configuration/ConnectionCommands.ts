@@ -12,6 +12,29 @@ import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 
+function formatQuickPickClusterSize(sizeInMB: number): string {
+    if (sizeInMB > 1024) {
+        return Math.round(sizeInMB / 1024).toString() + " GB";
+    } else {
+        return `${sizeInMB} MB`;
+    }
+}
+export function formatQuickPickClusterDetails(cluster: Cluster) {
+    let details = [];
+    if (cluster.memoryMb) {
+        details.push(formatQuickPickClusterSize(cluster.memoryMb));
+    }
+
+    if (cluster.cores) {
+        details.push(`${cluster.cores} Cores`);
+    }
+
+    details.push(cluster.sparkVersion);
+    details.push(cluster.creator);
+
+    return details.join(" | ");
+}
+
 export interface WorkspaceItem extends QuickPickItem {
     id: number;
     path: string;
@@ -90,31 +113,6 @@ export class ConnectionCommands implements Disposable {
             let disposables = [
                 this.clusterModel.onDidChange((e) => {
                     let clusters = this.clusterModel.roots ?? [];
-
-                    function formatSize(sizeInMB: number): string {
-                        if (sizeInMB > 1024) {
-                            return (
-                                Math.round(sizeInMB / 1024).toString() + " GB"
-                            );
-                        } else {
-                            return `${sizeInMB} MB`;
-                        }
-                    }
-                    function formatDetails(cluster: Cluster) {
-                        let details = [];
-                        if (cluster.memoryMb) {
-                            details.push(formatSize(cluster.memoryMb));
-                        }
-
-                        if (cluster.cores) {
-                            details.push(`${cluster.cores} Cores`);
-                        }
-
-                        details.push(cluster.sparkVersion);
-                        details.push(cluster.creator);
-
-                        return details.join(" | ");
-                    }
                     quickPick.items = clusters.map((c) => {
                         let treeItem =
                             ClusterListDataProvider.clusterNodeToTreeItem(c);
@@ -122,7 +120,7 @@ export class ConnectionCommands implements Disposable {
                             label: `$(${
                                 (treeItem.iconPath as ThemeIcon).id
                             }) ${c.name!} (${c.id})`,
-                            detail: formatDetails(c),
+                            detail: formatQuickPickClusterDetails(c),
                             cluster: c,
                         };
                     });
