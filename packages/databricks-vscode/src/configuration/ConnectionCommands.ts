@@ -1,15 +1,7 @@
 import {Cluster, Repos} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
-import {
-    Disposable,
-    QuickPickItem,
-    ThemeIcon,
-    Uri,
-    window,
-    workspace,
-} from "vscode";
+import {QuickPickItem, ThemeIcon, Uri, window, workspace} from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
-import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 
 export interface WorkspaceItem extends QuickPickItem {
@@ -21,12 +13,8 @@ export interface ClusterItem extends QuickPickItem {
     cluster: Cluster;
 }
 
-export class ConnectionCommands implements Disposable {
-    private disposables: Disposable[] = [];
-    constructor(
-        private connectionManager: ConnectionManager,
-        private readonly clusterModel: ClusterModel
-    ) {}
+export class ConnectionCommands {
+    constructor(private connectionManager: ConnectionManager) {}
     /**
      * Try logging in with previously selected profile. If login fails or no profile
      * exists then ask user to configure or select a profile. The selected profile
@@ -84,64 +72,55 @@ export class ConnectionCommands implements Disposable {
             }
 
             const quickPick = window.createQuickPick<ClusterItem>();
-            quickPick.keepScrollPosition = true;
+
             quickPick.busy = true;
-
-            let disposables = [
-                this.clusterModel.onDidChange((e) => {
-                    let clusters = this.clusterModel.roots ?? [];
-
-                    function formatSize(sizeInMB: number): string {
-                        if (sizeInMB > 1024) {
-                            return (
-                                Math.round(sizeInMB / 1024).toString() + " GB"
-                            );
-                        } else {
-                            return `${sizeInMB} MB`;
-                        }
-                    }
-                    function formatDetails(cluster: Cluster) {
-                        let details = [];
-                        if (cluster.memoryMb) {
-                            details.push(formatSize(cluster.memoryMb));
-                        }
-
-                        if (cluster.cores) {
-                            details.push(`${cluster.cores} Cores`);
-                        }
-
-                        details.push(cluster.sparkVersion);
-                        details.push(cluster.creator);
-
-                        return details.join(" | ");
-                    }
-                    quickPick.items = clusters.map((c) => {
-                        let treeItem =
-                            ClusterListDataProvider.clusterNodeToTreeItem(c);
-                        return {
-                            label: `$(${
-                                (treeItem.iconPath as ThemeIcon).id
-                            }) ${c.name!} (${c.id})`,
-                            detail: formatDetails(c),
-                            cluster: c,
-                        };
-                    });
-                }),
-                quickPick,
-            ];
-
             quickPick.show();
+
+            let clusters = await Cluster.list(apiClient);
+
+            function formatSize(sizeInMB: number): string {
+                if (sizeInMB > 1024) {
+                    return Math.round(sizeInMB / 1024).toString() + " GB";
+                } else {
+                    return `${sizeInMB} MB`;
+                }
+            }
+
+            function formatDetails(cluster: Cluster) {
+                let details = [];
+                if (cluster.memoryMb) {
+                    details.push(formatSize(cluster.memoryMb));
+                }
+
+                if (cluster.cores) {
+                    details.push(`${cluster.cores} Cores`);
+                }
+
+                details.push(cluster.sparkVersion);
+                details.push(cluster.creator);
+
+                return details.join(" | ");
+            }
+
+            quickPick.items = clusters.map((c) => {
+                let treeItem = ClusterListDataProvider.clusterNodeToTreeItem(c);
+                return {
+                    label: `$(${
+                        (treeItem.iconPath as ThemeIcon).id
+                    }) ${c.name!} (${c.id})`,
+                    detail: formatDetails(c),
+                    cluster: c,
+                };
+            });
+            quickPick.busy = false;
 
             quickPick.onDidAccept(async () => {
                 const cluster = quickPick.selectedItems[0].cluster;
                 await this.connectionManager.attachCluster(cluster);
-                disposables.forEach((d) => d.dispose());
-            });
-
-            quickPick.onDidHide(() => {
-                disposables.forEach((d) => d.dispose());
                 quickPick.dispose();
             });
+
+            quickPick.onDidHide(() => quickPick.dispose());
         };
     }
 
@@ -207,9 +186,5 @@ export class ConnectionCommands implements Disposable {
         return () => {
             this.connectionManager.detachSyncDestination();
         };
-    }
-
-    dispose() {
-        this.disposables.forEach((d) => d.dispose());
     }
 }

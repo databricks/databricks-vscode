@@ -30,8 +30,8 @@ export class ClusterListDataProvider
             model.onDidChange(() => {
                 this._onDidChangeTreeData.fire();
             }),
+            this.autoReload(15000),
         ];
-        this.model.refresh();
     }
 
     dispose() {
@@ -54,6 +54,17 @@ export class ClusterListDataProvider
         return (element as Cluster).state !== undefined;
     }
 
+    private autoReload(refreshRateInMs: number): Disposable {
+        let interval = setInterval(() => {
+            this.model.refresh();
+        }, refreshRateInMs);
+        return {
+            dispose() {
+                clearInterval(interval);
+            },
+        };
+    }
+
     getChildren(
         element?: Cluster | TreeItem | undefined
     ): ProviderResult<Array<Cluster | TreeItem>> {
@@ -64,8 +75,13 @@ export class ClusterListDataProvider
                 return [];
             }
         } else {
-            return (() => {
-                return this.model.roots;
+            return (async () => {
+                let roots = await this.model.roots;
+                if (roots && roots.length === 0) {
+                    return [new TreeItem("No clusters found")];
+                } else {
+                    return roots;
+                }
             })();
         }
     }
