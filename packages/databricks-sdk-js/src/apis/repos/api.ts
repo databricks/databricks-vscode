@@ -8,14 +8,15 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+
 export class ReposRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
-        super("$s.PascalName", method, message);
+        super("Repos", method, message);
     }
 }
 export class ReposError extends ApiError {
     constructor(method: string, message?: string) {
-        super("$s.PascalName", method, message);
+        super("Repos", method, message);
     }
 }
 
