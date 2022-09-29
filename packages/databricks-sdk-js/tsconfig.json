@@ -1,19 +1,13 @@
 {
     "compilerOptions": {
         "declaration": true,
-        "types": [
-            "reflect-metadata",
-            "mocha"
-        ],
+        "types": ["reflect-metadata", "mocha"],
         "module": "CommonJS",
         "target": "ES6",
         "moduleResolution": "Node",
         "esModuleInterop": true,
         "isolatedModules": true,
-        "lib": [
-            "ES2020",
-            "DOM"
-        ],
+        "lib": ["ES2020", "DOM"],
         "sourceMap": true,
         "rootDir": "src",
         "outDir": "dist",
@@ -21,7 +15,5 @@
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true
     },
-    "include": [
-        "src"
-    ]
+    "include": ["src"]
 }
