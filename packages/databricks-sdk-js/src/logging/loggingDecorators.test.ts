@@ -1,3 +1,4 @@
+import "..";
 import {transports} from "winston";
 import {loggerInstance, logOpId, withLogContext, LogItem, NamedLogger} from ".";
 import {PassThrough} from "stream";

@@ -1,5 +1,6 @@
 import {randomUUID} from "crypto";
 import {format, LogEntry, LoggerOptions, loggers} from "winston";
+import {defaultRedactor} from "../Redactor";
 
 export enum LEVELS {
     error = "error",
@@ -24,7 +25,13 @@ function createNamedLogger(
             format.timestamp({
                 format: () => Date.now().toString(),
             }),
-            format.json()
+            format.json(),
+            format((info) => {
+                const currentMessage = (info as any)[Symbol.for("message")];
+                (info as any)[Symbol.for("message")] =
+                    defaultRedactor.redactToString(currentMessage);
+                return info;
+            })()
         ),
         levels: {
             error: 40,

@@ -2,6 +2,7 @@ import path from "node:path";
 import {readFile, stat} from "node:fs/promises";
 import {parse} from "ini";
 import {homedir} from "node:os";
+import {defaultRedactor} from "../Redactor";
 
 export type Profiles = Record<
     string,
@@ -23,6 +24,15 @@ export function resolveConfigFilePath(filePath?: string): string {
     }
 
     return filePath;
+}
+
+function getProfile(config: any) {
+    defaultRedactor.addPattern(config.host);
+    defaultRedactor.addPattern(config.token);
+    return {
+        host: new URL(config.host),
+        token: config.token,
+    };
 }
 
 export async function loadConfigFile(filePath?: string): Promise<Profiles> {
@@ -58,16 +68,10 @@ export async function loadConfigFile(filePath?: string): Promise<Profiles> {
                 defaultSectionFound = true;
                 continue;
             }
-            profiles[key] = {
-                host: new URL(config[key].host),
-                token: config[key].token,
-            };
+            profiles[key] = getProfile(config[key]);
         }
         if (defaultSectionFound) {
-            profiles["DEFAULT"] = {
-                host: new URL(defaultSection.host),
-                token: defaultSection.token,
-            };
+            profiles["DEFAULT"] = getProfile(defaultSection);
         }
     } catch (e: unknown) {
         let message;

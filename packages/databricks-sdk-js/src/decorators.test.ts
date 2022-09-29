@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-
+import ".";
 import assert from "node:assert";
 import {ListRequest, ListReposResponse} from "./apis/repos";
 import {paginated} from "./decorators";
