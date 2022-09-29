@@ -10,6 +10,7 @@ export interface ScimMeResponse {
         value: string;
     }>;
     groups: Array<{
+        display: string;
         value: string;
     }>;
     userName: string;
