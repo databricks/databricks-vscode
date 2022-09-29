@@ -237,6 +237,11 @@
                     "group": "inline@0"
                 },
                 {
+                    "command": "databricks.connection.configureProject",
+                    "when": "view == configurationView && viewItem == profile",
+                    "group": "inline@1"
+                },
+                {
                     "command": "databricks.connection.attachClusterQuickPick",
                     "when": "view == configurationView && viewItem == clusterDetached",
                     "group": "inline@1"

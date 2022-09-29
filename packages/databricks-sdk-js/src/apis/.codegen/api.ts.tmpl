@@ -9,15 +9,15 @@ import retry from "../../retries/retries";
 import {CancellationToken} from "../../types"
 import {ApiError, ApiRetriableError} from "../apiError";
 
-{{- range $i, $s := .Services }}
+{{range $i, $s := .Services }}
 export class {{$s.PascalName}}RetriableError extends ApiRetriableError {
 	constructor(method: string, message?: string){
-		super("$s.PascalName", method, message)
+		super("{{$s.PascalName}}", method, message)
 	}
 }
 export class {{$s.PascalName}}Error extends ApiError {
 	constructor(method: string, message?: string){
-		super("$s.PascalName", method, message)
+		super("{{$s.PascalName}}", method, message)
 	}
 }
 
