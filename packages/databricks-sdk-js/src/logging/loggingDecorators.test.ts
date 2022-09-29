@@ -1,13 +1,5 @@
-import "..";
 import {transports} from "winston";
-import {
-    loggerInstance,
-    LOGGER_ELEMENT_KEY,
-    logOpId,
-    LOG_ID_ELEMENT_KEY,
-    withLogContext,
-} from "./loggingDecorators";
-import {LogItem, NamedLogger} from "./NamedLogger";
+import {loggerInstance, logOpId, withLogContext, LogItem, NamedLogger} from ".";
 import {PassThrough} from "stream";
 import assert from "assert";
 

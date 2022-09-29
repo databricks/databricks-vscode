@@ -1,4 +1,3 @@
-import "reflect-metadata";
 export * from "./api-client";
 
 export * as cluster from "./apis/clusters";
