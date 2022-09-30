@@ -35,7 +35,6 @@ export class ClusterModel implements Disposable {
         this.clusterLoader =
             clusterLoader ??
             (() => {
-                console.log("here");
                 return new ClusterLoader(this.connectionManager);
             })();
         this.disposables.push(
