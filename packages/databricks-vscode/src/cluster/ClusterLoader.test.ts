@@ -124,7 +124,8 @@ describe(__filename, () => {
             new ClusterLoader(instance(mockedConnectionManager))
         );
         when(loader.running).thenReturn(true);
-        await instance(loader)._load();
+        when(loader.stopped).thenReturn(false);
+        instance(loader)._load();
         for (let [id, _] of instance(loader).clusters.entries()) {
             assert.ok(
                 ["cluster-id-2", "cluster-id-1", "cluster-id-4"].includes(id)

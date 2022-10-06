@@ -16,7 +16,7 @@ export class ClusterLoader implements Disposable {
         return this._clusters;
     }
 
-    /**
+    /*
      * We have 2 flags. Stopped and Running.
      * Stopped | Running | Explaination
      *   T         T       Should never happen
@@ -24,7 +24,13 @@ export class ClusterLoader implements Disposable {
      *   F         T       There is 1 loading task running
      *   F         F       The loading task is trying to stop (waiting for any remaing calls to finish)
      */
-    private stopped = true;
+    private _stopped = true;
+    private set stopped(v: boolean) {
+        this._stopped = v;
+    }
+    get stopped() {
+        return this._stopped;
+    }
     private _running: Boolean = false;
     private set running(v: Boolean) {
         this._running = v;
