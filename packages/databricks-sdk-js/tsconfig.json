@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "declaration": true,
-        "types": ["reflect-metadata", "mocha"],
+        "types": ["reflect-metadata", "mocha", "node"],
         "module": "CommonJS",
         "target": "ES6",
         "moduleResolution": "Node",

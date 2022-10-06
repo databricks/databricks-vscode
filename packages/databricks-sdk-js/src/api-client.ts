@@ -88,7 +88,7 @@ export class ApiClient {
         let response;
 
         try {
-            logger?.debug({message: url.toString(), request: options});
+            logger?.debug(url.toString(), {request: options});
             const {abort, response: responsePromise} = await fetch(
                 url.toString(),
                 options
@@ -124,7 +124,7 @@ export class ApiClient {
 
         try {
             response = JSON.parse(responseText);
-            logger?.debug({message: url.toString(), response: response});
+            logger?.debug(url.toString(), {response: response});
         } catch (e) {
             throw new ApiClientResponseError(responseText, response);
         }

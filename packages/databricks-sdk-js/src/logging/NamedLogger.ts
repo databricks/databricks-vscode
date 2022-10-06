@@ -1,6 +1,7 @@
 import {randomUUID} from "crypto";
-import {format, LogEntry, LoggerOptions, loggers} from "winston";
 import {defaultRedactor} from "../Redactor";
+import {DefaultLogger} from "./DefaultLogger";
+import {Logger} from "./types";
 
 export enum LEVELS {
     error = "error",
@@ -9,38 +10,34 @@ export enum LEVELS {
     debug = "debug",
 }
 
-export type LogItem = {
-    level: string;
-    message: string;
-    operationId?: string;
-    [k: string]: any;
+const loggers = new Map<string, LoggerDetails>();
+
+export interface LoggerOpts {
+    fieldNameDenyList: string[];
+    factory: (name: string) => Logger;
+}
+
+export const defaultOpts: LoggerOpts = {
+    get fieldNameDenyList(): string[] {
+        const denyList: string[] = [];
+        if (
+            !(
+                process.env["DATABRICKS_DEBUG_HEADERS"] &&
+                process.env["DATABRICKS_DEBUG_HEADERS"] === "true"
+            )
+        ) {
+            denyList.push(...["headers", "agent"]);
+        }
+        return denyList;
+    },
+
+    factory: (name) => new DefaultLogger(),
 };
 
-function createNamedLogger(
-    name: string,
-    opts?: Omit<LoggerOptions, "format" | "levels">
-) {
-    loggers.add(name, {
-        format: format.combine(
-            format.timestamp({
-                format: () => Date.now().toString(),
-            }),
-            format.json(),
-            format((info) => {
-                const currentMessage = (info as any)[Symbol.for("message")];
-                (info as any)[Symbol.for("message")] =
-                    defaultRedactor.redactToString(currentMessage);
-                return info;
-            })()
-        ),
-        levels: {
-            error: 40,
-            warn: 30,
-            info: 20,
-            debug: 10,
-        },
-        ...opts,
-    });
+interface LoggerDetails {
+    name: string;
+    logger: Logger;
+    opts: LoggerOpts;
 }
 
 export class NamedLogger {
@@ -61,37 +58,47 @@ export class NamedLogger {
         return this._opName;
     }
 
-    get _logger() {
-        return loggers.get(this.name);
+    private get _logger() {
+        return loggers.get(this.name)?.logger;
+    }
+
+    private get _loggerOpts() {
+        return loggers.get(this.name)?.opts;
     }
 
     //TODO: consistently obfuscate the names of non exposed loggers
-    static getOrCreate(name: string) {
-        if (!loggers.has(name)) {
-            createNamedLogger(name);
+    static getOrCreate(
+        name: string,
+        opts?: Partial<LoggerOpts>,
+        replace = false
+    ) {
+        const loggerOpts = {...defaultOpts, ...opts};
+
+        if (replace || !loggers.has(name)) {
+            loggers.set(name, {
+                name: name,
+                logger: loggerOpts.factory(name),
+                opts: loggerOpts,
+            });
         }
         return new NamedLogger(name);
     }
 
-    log({level, ...rest}: LogEntry) {
-        this._logger.log({
-            level: level.toString(),
+    log(level: string, message?: string, meta?: any) {
+        meta = defaultRedactor.sanitize(
+            meta,
+            this._loggerOpts?.fieldNameDenyList ?? []
+        );
+        this._logger?.log(level, message, {
             operationId: this.opId,
             operationName: this.opName,
-            ...rest,
+            timestamp: Date.now(),
+            ...meta,
         });
     }
 
-    configure(opts: Omit<LoggerOptions, "format" | "levels">) {
-        this._logger.configure(opts);
-    }
-
-    debug({message, ...rest}: Omit<LogEntry, "level">) {
-        this.log({
-            level: LEVELS.debug,
-            message,
-            ...rest,
-        });
+    debug(message?: string, obj?: any) {
+        this.log(LEVELS.debug, message, obj);
     }
 
     withContext<T>({

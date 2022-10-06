@@ -27,13 +27,23 @@ import {
     ExposedLoggers,
     NamedLogger,
 } from "@databricks/databricks-sdk/dist/logging";
-import {transports} from "winston";
+import {format, loggers, transports} from "winston";
 
 export function activate(context: ExtensionContext): PublicApi {
-    NamedLogger.getOrCreate(ExposedLoggers.SDK).configure({
-        level: "error",
-        transports: [new transports.Console()],
-    });
+    NamedLogger.getOrCreate(
+        ExposedLoggers.SDK,
+        {
+            factory: (name) => {
+                return loggers.add(name, {
+                    level: "debug",
+                    format: format.json(),
+                    transports: [new transports.Console()],
+                });
+            },
+        },
+        true
+    );
+
     let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
