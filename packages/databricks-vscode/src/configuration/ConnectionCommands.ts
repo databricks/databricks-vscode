@@ -110,24 +110,27 @@ export class ConnectionCommands implements Disposable {
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
 
+            const refreshQuickPickItems = () => {
+                let clusters = this.clusterModel.roots ?? [];
+                quickPick.items = clusters.map((c) => {
+                    let treeItem =
+                        ClusterListDataProvider.clusterNodeToTreeItem(c);
+                    return {
+                        label: `$(${
+                            (treeItem.iconPath as ThemeIcon).id
+                        }) ${c.name!} (${c.id})`,
+                        detail: formatQuickPickClusterDetails(c),
+                        cluster: c,
+                    };
+                });
+            };
+
             let disposables = [
-                this.clusterModel.onDidChange((e) => {
-                    let clusters = this.clusterModel.roots ?? [];
-                    quickPick.items = clusters.map((c) => {
-                        let treeItem =
-                            ClusterListDataProvider.clusterNodeToTreeItem(c);
-                        return {
-                            label: `$(${
-                                (treeItem.iconPath as ThemeIcon).id
-                            }) ${c.name!} (${c.id})`,
-                            detail: formatQuickPickClusterDetails(c),
-                            cluster: c,
-                        };
-                    });
-                }),
+                this.clusterModel.onDidChange(refreshQuickPickItems),
                 quickPick,
             ];
 
+            refreshQuickPickItems();
             quickPick.show();
 
             quickPick.onDidAccept(async () => {

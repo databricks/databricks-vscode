@@ -65,23 +65,11 @@ export class ClusterModel implements Disposable {
     }
 
     public get roots(): Cluster[] | undefined {
-        return this.applyFilter(
-            Array.from(this.clusterLoader.clusters.values())
-        )?.sort((a, b) => {
-            // Sort by descending state priority
-            const stateWeight: Record<cluster.ClusterInfoState, number> = {
-                RUNNING: 10,
-                PENDING: 9,
-                RESTARTING: 8,
-                RESIZING: 7,
-                TERMINATING: 6,
-                TERMINATED: 5,
-                ERROR: 4,
-                UNKNOWN: 3,
-            };
-
-            return stateWeight[a.state] > stateWeight[b.state] ? -1 : 1;
-        });
+        return sortClusters(
+            this.applyFilter(
+                Array.from(this.clusterLoader.clusters.values())
+            ) ?? []
+        );
     }
 
     private applyFilter(nodes: Cluster[] | undefined): Cluster[] | undefined {
@@ -106,4 +94,25 @@ export class ClusterModel implements Disposable {
     dispose() {
         this.disposables.forEach((e) => e.dispose());
     }
+}
+
+export function sortClusters(clusters: Cluster[]) {
+    return clusters.sort((a, b) => {
+        // Sort by descending state priority
+        const stateWeight: Record<cluster.ClusterInfoState, number> = {
+            RUNNING: 10,
+            PENDING: 9,
+            RESTARTING: 8,
+            RESIZING: 7,
+            TERMINATING: 6,
+            TERMINATED: 5,
+            ERROR: 4,
+            UNKNOWN: 3,
+        };
+
+        return stateWeight[a.state] > stateWeight[b.state] ||
+            (stateWeight[a.state] === stateWeight[b.state] && a.name < b.name)
+            ? -1
+            : 1;
+    });
 }
