@@ -9,25 +9,10 @@ function isPrimitveType(obj: any) {
 }
 
 export class Redactor {
-    constructor(
-        private patterns: (RegExp | string)[] = [],
-        private fieldNames: string[] = []
-    ) {}
+    constructor(private fieldNames: string[] = []) {}
 
     addFieldName(fieldName: string) {
         this.fieldNames.push(fieldName);
-    }
-
-    sanitizedToString(obj: any) {
-        let jsonString = typeof obj === "string" ? obj : JSON.stringify(obj);
-        this.patterns.forEach((pattern) => {
-            jsonString =
-                typeof pattern === "string"
-                    ? jsonString.replaceAll(pattern, "***REDACTED***")
-                    : jsonString.replace(pattern, "***REDACTED***");
-        });
-
-        return jsonString;
     }
 
     sanitize(
@@ -68,7 +53,8 @@ export class Redactor {
     }
 }
 
-export const defaultRedactor = new Redactor(
-    [],
-    ["string_value", "token_value", "content"]
-);
+export const defaultRedactor = new Redactor([
+    "string_value",
+    "token_value",
+    "content",
+]);
