@@ -119,31 +119,32 @@ export class ClusterLoader implements Disposable {
                 if (!this.running) {
                     break;
                 }
-                let completed: (value: void) => void;
                 runningMiniTasks.push(
                     new Promise((resolve) => {
-                        completed = resolve;
+                        this.hasPerm(c, permissionApi)
+                            .then((hasPerm) => {
+                                if (!this.running) {
+                                    return resolve();
+                                }
+                                const keepCluster =
+                                    (c.details.data_security_mode !==
+                                        "SINGLE_USER" ||
+                                        this.isValidSingleUser(c)) &&
+                                    hasPerm;
+
+                                if (this._clusters.has(c.id) && !keepCluster) {
+                                    this._clusters.delete(c.id);
+                                    this._onDidChange.fire();
+                                }
+                                if (keepCluster) {
+                                    this._clusters.set(c.id, c);
+                                    this._onDidChange.fire();
+                                }
+                                resolve();
+                            })
+                            .catch(resolve);
                     })
                 );
-                this.hasPerm(c, permissionApi).then((hasPerm) => {
-                    if (!this.running) {
-                        return completed();
-                    }
-                    const keepCluster =
-                        (c.details.data_security_mode !== "SINGLE_USER" ||
-                            this.isValidSingleUser(c)) &&
-                        hasPerm;
-
-                    if (this._clusters.has(c.id) && !keepCluster) {
-                        this._clusters.delete(c.id);
-                        this._onDidChange.fire();
-                    }
-                    if (keepCluster) {
-                        this._clusters.set(c.id, c);
-                        this._onDidChange.fire();
-                    }
-                    completed();
-                });
             }
             for (let task of runningMiniTasks) {
                 await task;
