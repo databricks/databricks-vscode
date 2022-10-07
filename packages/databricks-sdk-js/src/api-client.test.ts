@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-
+import ".";
 import assert from "node:assert";
 import {ApiClient} from "./api-client";
 

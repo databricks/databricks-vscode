@@ -1,3 +1,5 @@
+import "reflect-metadata";
+
 export * from "./api-client";
 
 export * as cluster from "./apis/clusters";
@@ -40,3 +42,7 @@ export {ClusterFixture, TokenFixture} from "./test/fixtures";
 
 export {RetryConfigs, default as retry} from "./retries/retries";
 export {TimeUnits, default as Time} from "./retries/Time";
+
+export * as logging from "./logging";
+
+export {Redactor, defaultRedactor} from "./Redactor";
