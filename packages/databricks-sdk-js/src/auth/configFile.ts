@@ -27,8 +27,6 @@ export function resolveConfigFilePath(filePath?: string): string {
 }
 
 function getProfile(config: any) {
-    defaultRedactor.addPattern(config.host);
-    defaultRedactor.addPattern(config.token);
     return {
         host: new URL(config.host),
         token: config.token,
