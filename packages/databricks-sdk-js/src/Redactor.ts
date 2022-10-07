@@ -1,4 +1,8 @@
-import {onlyNBytes} from "./logging";
+export function onlyNBytes(str: string, numBytes: number) {
+    return str.length > numBytes
+        ? str.slice(0, numBytes) + `...(${str.length - numBytes} more bytes)`
+        : str;
+}
 
 function isPrimitveType(obj: any) {
     return Object(obj) !== obj;
@@ -10,19 +14,8 @@ export class Redactor {
         private fieldNames: string[] = []
     ) {}
 
-    addPattern(patternOrExact: RegExp | string) {
-        this.patterns.push(patternOrExact);
-    }
-
     addFieldName(fieldName: string) {
         this.fieldNames.push(fieldName);
-    }
-
-    getNewChildRedactor() {
-        //We want to pass a copy of the patterns and fieldNames to the child redactor,
-        //since we don't want any changes in the child redactor to persist in the
-        //parent. Slice with no params to creates a copy.
-        return new Redactor(this.patterns.slice(), this.fieldNames.slice());
     }
 
     sanitizedToString(obj: any) {
@@ -77,5 +70,5 @@ export class Redactor {
 
 export const defaultRedactor = new Redactor(
     [],
-    ["string_value", "token_value", "content", "Authorization"]
+    ["string_value", "token_value", "content"]
 );

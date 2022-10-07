@@ -1,35 +1,8 @@
 import assert from "assert";
 import {defaultRedactor} from ".";
+import {onlyNBytes} from "./Redactor";
 
 describe(__filename, () => {
-    it("should redact exact strings", () => {
-        const testObj = {
-            prop1: "value1",
-            prop2: "value2 to-redact.+$/something",
-        };
-        defaultRedactor.addPattern("to-redact.+$");
-        const actual = defaultRedactor.sanitizedToString(testObj);
-        const expected = JSON.stringify({
-            prop1: "value1",
-            prop2: "value2 ***REDACTED***/something",
-        });
-        assert.equal(actual, expected);
-    });
-
-    it("should redact by patterns", () => {
-        const testObj = {
-            prop1: "value1",
-            prop2: "value2 to-redact/something",
-        };
-        defaultRedactor.addPattern(new RegExp(/to-redact[^"]+/));
-        const actual = defaultRedactor.sanitizedToString(testObj);
-        const expected = JSON.stringify({
-            prop1: "value1",
-            prop2: "value2 ***REDACTED***",
-        });
-        assert.equal(actual, expected);
-    });
-
     it("should redact by field names", () => {
         const testObj = {
             prop: "value1",
@@ -52,5 +25,11 @@ describe(__filename, () => {
             },
         };
         assert.deepEqual(actual, expected);
+    });
+
+    it("should truncate string to n bytes", () => {
+        const n = 5;
+        const str = "1234567890";
+        assert.equal(onlyNBytes(str, n), "12345...(5 more bytes)");
     });
 });
