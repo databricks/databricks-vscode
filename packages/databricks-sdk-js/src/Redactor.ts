@@ -37,7 +37,11 @@ export class Redactor {
         return jsonString;
     }
 
-    sanitize(obj: any, dropFields: string[] = [], maxFieldLength: number = 96) {
+    sanitize(
+        obj: any,
+        dropFields: string[] = [],
+        maxFieldLength: number = 96
+    ): any {
         if (isPrimitveType(obj)) {
             if (typeof obj === "string") {
                 return onlyNBytes(obj, maxFieldLength);
@@ -46,6 +50,10 @@ export class Redactor {
                 return onlyNBytes(obj.toString(), maxFieldLength);
             }
             return obj;
+        }
+
+        if (Array.isArray(obj)) {
+            return obj.map((e) => this.sanitize(e, dropFields, maxFieldLength));
         }
 
         //make a copy of the object

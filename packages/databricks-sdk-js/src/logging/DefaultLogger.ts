@@ -1,6 +1,5 @@
 import {Writable} from "stream";
 import {LogEntry, Logger} from "./types";
-import {onlyNBytes} from "./utils";
 
 export class DefaultLogger implements Logger {
     private _stream: Writable;
