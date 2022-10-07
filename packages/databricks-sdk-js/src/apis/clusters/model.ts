@@ -30,15 +30,19 @@ export interface AwsAttributes {
      * 10 volumes. This feature is only enabled for supported node types. Legacy
      * node types cannot specify custom EBS volumes. For node types with no
      * instance store, at least one EBS volume needs to be specified; otherwise,
-     * cluster creation will fail. These EBS volumes will be mounted at
-     * ``/ebs0``, ``/ebs1``, and etc. Instance store volumes will be mounted at
-     * ``/local_disk0``, ``/local_disk1``, and etc. If EBS volumes are attached,
-     * Databricks will configure Spark to use only the EBS volumes for scratch
-     * storage because heterogenously sized scratch devices can lead to
-     * inefficient disk utilization. If no EBS volumes are attached, Databricks
-     * will configure Spark to use instance store volumes. Please note that if
-     * EBS volumes are specified, then the Spark configuration
-     * ``spark.local.dir`` will be overridden.
+     * cluster creation will fail.
+     *
+     * These EBS volumes will be mounted at ``/ebs0``, ``/ebs1``, and etc.
+     * Instance store volumes will be mounted at ``/local_disk0``,
+     * ``/local_disk1``, and etc.
+     *
+     * If EBS volumes are attached, Databricks will configure Spark to use only
+     * the EBS volumes for scratch storage because heterogenously sized scratch
+     * devices can lead to inefficient disk utilization. If no EBS volumes are
+     * attached, Databricks will configure Spark to use instance store volumes.
+     *
+     * Please note that if EBS volumes are specified, then the Spark
+     * configuration ``spark.local.dir`` will be overridden.
      */
     ebs_volume_count?: number;
     /**
@@ -75,9 +79,12 @@ export interface AwsAttributes {
      * Nodes for this cluster will only be placed on AWS instances with this
      * instance profile. If ommitted, nodes will be placed on instances without
      * an IAM instance profile. The instance profile must have previously been
-     * added to the Databricks environment by an account administrator. This
-     * feature may only be available to certain customer plans. If this field is
-     * ommitted, we will pull in the default from the conf if it exists.
+     * added to the Databricks environment by an account administrator.
+     *
+     * This feature may only be available to certain customer plans.
+     *
+     * If this field is ommitted, we will pull in the default from the conf if it
+     * exists.
      */
     instance_profile_arn?: string;
     /**
@@ -90,8 +97,10 @@ export interface AwsAttributes {
      * is 100. When spot instances are requested for this cluster, only spot
      * instances whose bid price percentage matches this field will be
      * considered. Note that, for safety, we enforce this field to be no more
-     * than 10000. The default value and documentation here should be kept
-     * consistent with CommonConf.defaultSpotBidPricePercent and
+     * than 10000.
+     *
+     * The default value and documentation here should be kept consistent with
+     * CommonConf.defaultSpotBidPricePercent and
      * CommonConf.maxSpotBidPricePercent.
      */
     spot_bid_price_percent?: number;
@@ -127,6 +136,29 @@ export type AwsAttributesAvailability =
 export type AwsAttributesEbsVolumeType =
     | "GENERAL_PURPOSE_SSD"
     | "THROUGHPUT_OPTIMIZED_HDD";
+
+export interface AwsCpalError {
+    /**
+     * <needs content added>
+     */
+    aws_api_error_code?: string;
+    /**
+     * <needs content added>
+     */
+    aws_error_message?: string;
+    /**
+     * <needs content added>
+     */
+    aws_instance_state_reason?: string;
+    /**
+     * <needs content added>
+     */
+    aws_spot_request_fault_code?: string;
+    /**
+     * <needs content added>
+     */
+    aws_spot_request_status?: string;
+}
 
 export interface AzureAttributes {
     /**
@@ -243,9 +275,12 @@ export interface ClusterAttributes {
     /**
      * Additional tags for cluster resources. Databricks will tag all cluster
      * resources (e.g., AWS instances and EBS volumes) with these tags in
-     * addition to ``default_tags``. Notes: - Currently, Databricks allows at
-     * most 45 custom tags - Clusters can only reuse cloud resources if the
-     * resources' tags are a subset of the cluster tags
+     * addition to ``default_tags``. Notes:
+     *
+     * - Currently, Databricks allows at most 45 custom tags
+     *
+     * - Clusters can only reuse cloud resources if the resources' tags are a
+     * subset of the cluster tags
      */
     custom_tags?: Record<string, string>;
     /**
@@ -257,10 +292,12 @@ export interface ClusterAttributes {
     /**
      * The node type of the Spark driver. Note that this field is optional; if
      * unset, the driver node type will be set as the same value as
-     * `node_type_id` defined above. This field, along with node_type_id, should
-     * not be set if virtual_cluster_size is set. If both driver_node_type_id,
-     * node_type_id, and virtual_cluster_size are specified, driver_node_type_id
-     * and node_type_id take precedence.
+     * `node_type_id` defined above.
+     *
+     * This field, along with node_type_id, should not be set if
+     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
+     * and virtual_cluster_size are specified, driver_node_type_id and
+     * node_type_id take precedence.
      */
     driver_node_type_id?: string;
     /**
@@ -296,10 +333,12 @@ export interface ClusterAttributes {
      * each of the Spark nodes in this cluster. For example, the Spark nodes can
      * be provisioned and optimized for memory or compute intensive workloads A
      * list of available node types can be retrieved by using the
-     * :ref:`clusterClusterServicelistNodeTypes` API call. This field, along with
-     * driver_node_type_id, should not be set if virtual_cluster_size is set. If
-     * both driver_node_type_id, node_type_id, and virtual_cluster_size are
-     * specified, driver_node_type_id and node_type_id take precedence.
+     * :ref:`clusterClusterServicelistNodeTypes` API call.
+     *
+     * This field, along with driver_node_type_id, should not be set if
+     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
+     * and virtual_cluster_size are specified, driver_node_type_id and
+     * node_type_id take precedence.
      */
     node_type_id?: string;
     /**
@@ -315,24 +354,27 @@ export interface ClusterAttributes {
      * An object containing a set of optional, user-specified Spark configuration
      * key-value pairs. Users can also pass in a string of extra JVM options to
      * the driver and the executors via ``spark.driver.extraJavaOptions`` and
-     * ``spark.executor.extraJavaOptions`` respectively. Example Spark confs:
-     * ``{"spark.speculation": true, "spark.streaming.ui.retainedBatches": 5}``
-     * or ``{"spark.driver.extraJavaOptions": "-verbose:gc
-     * -XX:+PrintGCDetails"}``
+     * ``spark.executor.extraJavaOptions`` respectively.
+     *
+     * Example Spark confs: ``{"spark.speculation": true,
+     * "spark.streaming.ui.retainedBatches": 5}`` or
+     * ``{"spark.driver.extraJavaOptions": "-verbose:gc -XX:+PrintGCDetails"}``
      */
     spark_conf?: Record<string, string>;
     /**
      * An object containing a set of optional, user-specified environment
      * variable key-value pairs. Please note that key-value pair of the form
      * (X,Y) will be exported as is (i.e., ``export X='Y'``) while launching the
-     * driver and workers. In order to specify an additional set of
-     * ``SPARK_DAEMON_JAVA_OPTS``, we recommend appending them to
-     * ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the example below. This ensures
-     * that all default databricks managed environmental variables are included
-     * as well. Example Spark environment variables: ``{"SPARK_WORKER_MEMORY":
-     * "28000m", "SPARK_LOCAL_DIRS": "/local_disk0"}`` or
-     * ``{"SPARK_DAEMON_JAVA_OPTS": "$SPARK_DAEMON_JAVA_OPTS
-     * -Dspark.shuffle.service.enabled=true"}``
+     * driver and workers.
+     *
+     * In order to specify an additional set of ``SPARK_DAEMON_JAVA_OPTS``, we
+     * recommend appending them to ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the
+     * example below. This ensures that all default databricks managed
+     * environmental variables are included as well.
+     *
+     * Example Spark environment variables: ``{"SPARK_WORKER_MEMORY": "28000m",
+     * "SPARK_LOCAL_DIRS": "/local_disk0"}`` or ``{"SPARK_DAEMON_JAVA_OPTS":
+     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}``
      */
     spark_env_vars?: Record<string, string>;
     /**
@@ -499,16 +541,31 @@ export interface ClusterInfo {
     /**
      * Additional tags for cluster resources. Databricks will tag all cluster
      * resources (e.g., AWS instances and EBS volumes) with these tags in
-     * addition to ``default_tags``. Notes: - Currently, Databricks allows at
-     * most 45 custom tags - Clusters can only reuse cloud resources if the
-     * resources' tags are a subset of the cluster tags
+     * addition to ``default_tags``. Notes:
+     *
+     * - Currently, Databricks allows at most 45 custom tags
+     *
+     * - Clusters can only reuse cloud resources if the resources' tags are a
+     * subset of the cluster tags
      */
     custom_tags?: Record<string, string>;
     /**
+     * The data isolation level for UC data
+     */
+    data_security_mode?: ClusterInfoDataSecurityMode;
+    /**
      * Tags that are added by Databricks regardless of any ``custom_tags``,
-     * including: - Vendor: Databricks - Creator: <username_of_creator> -
-     * ClusterName: <name_of_cluster> - ClusterId: <id_of_cluster> - Name:
-     * <Databricks internal use>
+     * including:
+     *
+     * - Vendor: Databricks
+     *
+     * - Creator: <username_of_creator>
+     *
+     * - ClusterName: <name_of_cluster>
+     *
+     * - ClusterId: <id_of_cluster>
+     *
+     * - Name: <Databricks internal use>
      */
     default_tags?: Record<string, string>;
     /**
@@ -526,10 +583,12 @@ export interface ClusterInfo {
     /**
      * The node type of the Spark driver. Note that this field is optional; if
      * unset, the driver node type will be set as the same value as
-     * `node_type_id` defined above. This field, along with node_type_id, should
-     * not be set if virtual_cluster_size is set. If both driver_node_type_id,
-     * node_type_id, and virtual_cluster_size are specified, driver_node_type_id
-     * and node_type_id take precedence.
+     * `node_type_id` defined above.
+     *
+     * This field, along with node_type_id, should not be set if
+     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
+     * and virtual_cluster_size are specified, driver_node_type_id and
+     * node_type_id take precedence.
      */
     driver_node_type_id?: string;
     /**
@@ -581,23 +640,27 @@ export interface ClusterInfo {
     /**
      * This field encodes, through a single value, the resources available to
      * each of the Spark nodes in this cluster. For example, the Spark nodes can
-     * be provisioned and optimized for memory or compute intensive workloads A
+     * be provisioned and optimized for memory or compute intensive workloads. A
      * list of available node types can be retrieved by using the
-     * :ref:`clusterClusterServicelistNodeTypes` API call. This field, along with
-     * driver_node_type_id, should not be set if virtual_cluster_size is set. If
-     * both driver_node_type_id, node_type_id, and virtual_cluster_size are
-     * specified, driver_node_type_id and node_type_id take precedence.
+     * :ref:`clusterClusterServicelistNodeTypes` API call.
+     *
+     * This field, along with driver_node_type_id, should not be set if
+     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
+     * and virtual_cluster_size are specified, driver_node_type_id and
+     * node_type_id take precedence.
      */
     node_type_id?: string;
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
      * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes. Note: When reading the properties of a cluster, this
-     * field reflects the desired number of workers rather than the actual
-     * current number of workers. For instance, if a cluster is resized from 5 to
-     * 10 workers, this field will immediately be updated to reflect the target
-     * size of 10 workers, whereas the workers listed in ``spark_info`` will
-     * gradually increase from 5 to 10 as the new nodes are provisioned.
+     * + 1 Spark nodes.
+     *
+     * Note: When reading the properties of a cluster, this field reflects the
+     * desired number of workers rather than the actual current number of
+     * workers. For instance, if a cluster is resized from 5 to 10 workers, this
+     * field will immediately be updated to reflect the target size of 10
+     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
     /**
@@ -610,13 +673,18 @@ export interface ClusterInfo {
      */
     runtime_engine?: ClusterInfoRuntimeEngine;
     /**
+     * Single user name if data_security_mode is 'SINGLE_USER'
+     */
+    single_user_name?: string;
+    /**
      * An object containing a set of optional, user-specified Spark configuration
      * key-value pairs. Users can also pass in a string of extra JVM options to
      * the driver and the executors via ``spark.driver.extraJavaOptions`` and
-     * ``spark.executor.extraJavaOptions`` respectively. Example Spark confs:
-     * ``{"spark.speculation": true, "spark.streaming.ui.retainedBatches": 5}``
-     * or ``{"spark.driver.extraJavaOptions": "-verbose:gc
-     * -XX:+PrintGCDetails"}``
+     * ``spark.executor.extraJavaOptions`` respectively.
+     *
+     * Example Spark confs: ``{"spark.speculation": true,
+     * "spark.streaming.ui.retainedBatches": 5}`` or
+     * ``{"spark.driver.extraJavaOptions": "-verbose:gc -XX:+PrintGCDetails"}``
      */
     spark_conf?: Record<string, string>;
     /**
@@ -628,15 +696,11 @@ export interface ClusterInfo {
     /**
      * An object containing a set of optional, user-specified environment
      * variable key-value pairs. Please note that key-value pair of the form
-     * (X,Y) will be exported as is (i.e., ``export X='Y'``) while launching the
+     * (X,Y) will be exported as is (i.e., `export X='Y'`) while launching the
      * driver and workers. In order to specify an additional set of
      * ``SPARK_DAEMON_JAVA_OPTS``, we recommend appending them to
-     * ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the example below. This ensures
-     * that all default databricks managed environmental variables are included
-     * as well. Example Spark environment variables: ``{"SPARK_WORKER_MEMORY":
-     * "28000m", "SPARK_LOCAL_DIRS": "/local_disk0"}`` or
-     * ``{"SPARK_DAEMON_JAVA_OPTS": "$SPARK_DAEMON_JAVA_OPTS
-     * -Dspark.shuffle.service.enabled=true"}``
+     * ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the example. This ensures that all
+     * default databricks managed environmental variables are included as well.
      */
     spark_env_vars?: Record<string, string>;
     /**
@@ -696,6 +760,14 @@ export type ClusterInfoClusterSource =
     | "UI";
 
 /**
+ * The data isolation level for UC data
+ */
+export type ClusterInfoDataSecurityMode =
+    | "NONE"
+    | "SINGLE_USER"
+    | "USER_ISOLATION";
+
+/**
  * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
  * unspecified, the runtime engine is inferred from spark_version.
  */
@@ -740,15 +812,98 @@ export interface ClusterSize {
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
      * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes. Note: When reading the properties of a cluster, this
-     * field reflects the desired number of workers rather than the actual
-     * current number of workers. For instance, if a cluster is resized from 5 to
-     * 10 workers, this field will immediately be updated to reflect the target
-     * size of 10 workers, whereas the workers listed in ``spark_info`` will
-     * gradually increase from 5 to 10 as the new nodes are provisioned.
+     * + 1 Spark nodes.
+     *
+     * Note: When reading the properties of a cluster, this field reflects the
+     * desired number of workers rather than the actual current number of
+     * workers. For instance, if a cluster is resized from 5 to 10 workers, this
+     * field will immediately be updated to reflect the target size of 10
+     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
 }
+
+export interface CpalFailureResponse {
+    /**
+     * <needs content added>
+     */
+    aws_cpal_error_code?: CpalFailureResponseAwsCpalErrorCode;
+    /**
+     * <needs content added>
+     */
+    aws_error?: AwsCpalError;
+    /**
+     * <needs content added>
+     */
+    azure_cpal_error_code?: CpalFailureResponseAzureCpalErrorCode;
+    /**
+     * Deprecated after using cloud_provider_error field TODO define
+     * AzureCpalError with code and message
+     */
+    cloud_provider_error_code?: string;
+    /**
+     * Deprecated after using cloud_provider_error field TODO define
+     * AzureCpalError with code and message
+     */
+    cloud_provider_error_message?: string;
+    /**
+     * <needs content added>
+     */
+    delegate_error_code?: CpalFailureResponseDelegateErrorCode;
+    /**
+     * <needs content added>
+     */
+    error_message?: string;
+    /**
+     * <needs content added>
+     */
+    stack_trace?: string;
+}
+
+/**
+ * <needs content added>
+ */
+export type CpalFailureResponseAwsCpalErrorCode =
+    | "AWS_INSUFFICIENT_FREE_ADDRESSES_IN_SUBNET_FAILURE"
+    | "AWS_INSUFFICIENT_INSTANCE_CAPACITY_FAILURE"
+    | "AWS_INVALID_INSTANCE_TYPE_FAILURE"
+    | "AWS_MAX_SPOT_INSTANCE_COUNT_EXCEEDED"
+    | "AWS_REQUEST_LIMIT_EXCEEDED"
+    | "AWS_SERVICE_EXCEPTION"
+    | "AWS_SPOT_REQUEST_FAILED"
+    | "AWS_UNEXPECTED_EXCEPTION"
+    | "AWS_UNEXPECTED_INSTANCE_STATE"
+    | "AWS_UNSUPPORTED_INSTANCE_TYPE_FAILURE";
+
+/**
+ * <needs content added>
+ */
+export type CpalFailureResponseAzureCpalErrorCode =
+    | "AZURE_AUTHENTICATION_EXCEPTION"
+    | "AZURE_CLOUD_EXCEPTION"
+    | "AZURE_INVALID_DEPLOYMENT_TEMPLATE"
+    | "AZURE_LOAD_BALANCER_CONFIGURATION_EXCEPTION"
+    | "AZURE_NOT_RUNNING_VM_EXCEPTION"
+    | "AZURE_NULL_POINTER"
+    | "AZURE_OPERATION_NOT_ALLOWED_EXCEPTION"
+    | "AZURE_QUOTA_EXCEEDED_EXCEPTION"
+    | "AZURE_RESOURCE_MANAGER_THROTTLING"
+    | "AZURE_RESOURCE_PROVIDER_THROTTLING"
+    | "AZURE_SERVER_EXCEPTION"
+    | "AZURE_SERVER_UNREACHABLE"
+    | "AZURE_SPOT_REQUEST_EXCEPTION"
+    | "AZURE_SUBNET_EXHAUSTED_FAILURE"
+    | "AZURE_UNEXPECTED_DEPLOYMENT_TEMPLATE_FAILURE"
+    | "AZURE_UNKNOWN_EXCEPTION"
+    | "AZURE_VNET_CONFIGURATION_EXCEPTION";
+
+/**
+ * <needs content added>
+ */
+export type CpalFailureResponseDelegateErrorCode =
+    | "DELEGATE_UNEXPECTED_EXCEPTION"
+    | "NO_SUCH_WORKER_ENVIRONMENT_EXCEPTION";
 
 export interface CreateCluster {
     /**
@@ -802,9 +957,12 @@ export interface CreateCluster {
     /**
      * Additional tags for cluster resources. Databricks will tag all cluster
      * resources (e.g., AWS instances and EBS volumes) with these tags in
-     * addition to ``default_tags``. Notes: - Currently, Databricks allows at
-     * most 45 custom tags - Clusters can only reuse cloud resources if the
-     * resources' tags are a subset of the cluster tags
+     * addition to ``default_tags``. Notes:
+     *
+     * - Currently, Databricks allows at most 45 custom tags
+     *
+     * - Clusters can only reuse cloud resources if the resources' tags are a
+     * subset of the cluster tags
      */
     custom_tags?: Record<string, string>;
     /**
@@ -816,10 +974,12 @@ export interface CreateCluster {
     /**
      * The node type of the Spark driver. Note that this field is optional; if
      * unset, the driver node type will be set as the same value as
-     * `node_type_id` defined above. This field, along with node_type_id, should
-     * not be set if virtual_cluster_size is set. If both driver_node_type_id,
-     * node_type_id, and virtual_cluster_size are specified, driver_node_type_id
-     * and node_type_id take precedence.
+     * `node_type_id` defined above.
+     *
+     * This field, along with node_type_id, should not be set if
+     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
+     * and virtual_cluster_size are specified, driver_node_type_id and
+     * node_type_id take precedence.
      */
     driver_node_type_id?: string;
     /**
@@ -855,21 +1015,25 @@ export interface CreateCluster {
      * each of the Spark nodes in this cluster. For example, the Spark nodes can
      * be provisioned and optimized for memory or compute intensive workloads A
      * list of available node types can be retrieved by using the
-     * :ref:`clusterClusterServicelistNodeTypes` API call. This field, along with
-     * driver_node_type_id, should not be set if virtual_cluster_size is set. If
-     * both driver_node_type_id, node_type_id, and virtual_cluster_size are
-     * specified, driver_node_type_id and node_type_id take precedence.
+     * :ref:`clusterClusterServicelistNodeTypes` API call.
+     *
+     * This field, along with driver_node_type_id, should not be set if
+     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
+     * and virtual_cluster_size are specified, driver_node_type_id and
+     * node_type_id take precedence.
      */
     node_type_id?: string;
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
      * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes. Note: When reading the properties of a cluster, this
-     * field reflects the desired number of workers rather than the actual
-     * current number of workers. For instance, if a cluster is resized from 5 to
-     * 10 workers, this field will immediately be updated to reflect the target
-     * size of 10 workers, whereas the workers listed in ``spark_info`` will
-     * gradually increase from 5 to 10 as the new nodes are provisioned.
+     * + 1 Spark nodes.
+     *
+     * Note: When reading the properties of a cluster, this field reflects the
+     * desired number of workers rather than the actual current number of
+     * workers. For instance, if a cluster is resized from 5 to 10 workers, this
+     * field will immediately be updated to reflect the target size of 10
+     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
     /**
@@ -885,24 +1049,23 @@ export interface CreateCluster {
      * An object containing a set of optional, user-specified Spark configuration
      * key-value pairs. Users can also pass in a string of extra JVM options to
      * the driver and the executors via ``spark.driver.extraJavaOptions`` and
-     * ``spark.executor.extraJavaOptions`` respectively. Example Spark confs:
-     * ``{"spark.speculation": true, "spark.streaming.ui.retainedBatches": 5}``
-     * or ``{"spark.driver.extraJavaOptions": "-verbose:gc
-     * -XX:+PrintGCDetails"}``
+     * ``spark.executor.extraJavaOptions`` respectively.
      */
     spark_conf?: Record<string, string>;
     /**
      * An object containing a set of optional, user-specified environment
      * variable key-value pairs. Please note that key-value pair of the form
      * (X,Y) will be exported as is (i.e., ``export X='Y'``) while launching the
-     * driver and workers. In order to specify an additional set of
-     * ``SPARK_DAEMON_JAVA_OPTS``, we recommend appending them to
-     * ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the example below. This ensures
-     * that all default databricks managed environmental variables are included
-     * as well. Example Spark environment variables: ``{"SPARK_WORKER_MEMORY":
-     * "28000m", "SPARK_LOCAL_DIRS": "/local_disk0"}`` or
-     * ``{"SPARK_DAEMON_JAVA_OPTS": "$SPARK_DAEMON_JAVA_OPTS
-     * -Dspark.shuffle.service.enabled=true"}``
+     * driver and workers.
+     *
+     * In order to specify an additional set of ``SPARK_DAEMON_JAVA_OPTS``, we
+     * recommend appending them to ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the
+     * example below. This ensures that all default databricks managed
+     * environmental variables are included as well.
+     *
+     * Example Spark environment variables: ``{"SPARK_WORKER_MEMORY": "28000m",
+     * "SPARK_LOCAL_DIRS": "/local_disk0"}`` or ``{"SPARK_DAEMON_JAVA_OPTS":
+     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}``
      */
     spark_env_vars?: Record<string, string>;
     /**
@@ -1043,9 +1206,12 @@ export interface EditCluster {
     /**
      * Additional tags for cluster resources. Databricks will tag all cluster
      * resources (e.g., AWS instances and EBS volumes) with these tags in
-     * addition to ``default_tags``. Notes: - Currently, Databricks allows at
-     * most 45 custom tags - Clusters can only reuse cloud resources if the
-     * resources' tags are a subset of the cluster tags
+     * addition to ``default_tags``. Notes:
+     *
+     * - Currently, Databricks allows at most 45 custom tags
+     *
+     * - Clusters can only reuse cloud resources if the resources' tags are a
+     * subset of the cluster tags
      */
     custom_tags?: Record<string, string>;
     /**
@@ -1057,10 +1223,12 @@ export interface EditCluster {
     /**
      * The node type of the Spark driver. Note that this field is optional; if
      * unset, the driver node type will be set as the same value as
-     * `node_type_id` defined above. This field, along with node_type_id, should
-     * not be set if virtual_cluster_size is set. If both driver_node_type_id,
-     * node_type_id, and virtual_cluster_size are specified, driver_node_type_id
-     * and node_type_id take precedence.
+     * `node_type_id` defined above.
+     *
+     * This field, along with node_type_id, should not be set if
+     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
+     * and virtual_cluster_size are specified, driver_node_type_id and
+     * node_type_id take precedence.
      */
     driver_node_type_id?: string;
     /**
@@ -1096,21 +1264,25 @@ export interface EditCluster {
      * each of the Spark nodes in this cluster. For example, the Spark nodes can
      * be provisioned and optimized for memory or compute intensive workloads A
      * list of available node types can be retrieved by using the
-     * :ref:`clusterClusterServicelistNodeTypes` API call. This field, along with
-     * driver_node_type_id, should not be set if virtual_cluster_size is set. If
-     * both driver_node_type_id, node_type_id, and virtual_cluster_size are
-     * specified, driver_node_type_id and node_type_id take precedence.
+     * :ref:`clusterClusterServicelistNodeTypes` API call.
+     *
+     * This field, along with driver_node_type_id, should not be set if
+     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
+     * and virtual_cluster_size are specified, driver_node_type_id and
+     * node_type_id take precedence.
      */
     node_type_id?: string;
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
      * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes. Note: When reading the properties of a cluster, this
-     * field reflects the desired number of workers rather than the actual
-     * current number of workers. For instance, if a cluster is resized from 5 to
-     * 10 workers, this field will immediately be updated to reflect the target
-     * size of 10 workers, whereas the workers listed in ``spark_info`` will
-     * gradually increase from 5 to 10 as the new nodes are provisioned.
+     * + 1 Spark nodes.
+     *
+     * Note: When reading the properties of a cluster, this field reflects the
+     * desired number of workers rather than the actual current number of
+     * workers. For instance, if a cluster is resized from 5 to 10 workers, this
+     * field will immediately be updated to reflect the target size of 10
+     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
     /**
@@ -1126,24 +1298,27 @@ export interface EditCluster {
      * An object containing a set of optional, user-specified Spark configuration
      * key-value pairs. Users can also pass in a string of extra JVM options to
      * the driver and the executors via ``spark.driver.extraJavaOptions`` and
-     * ``spark.executor.extraJavaOptions`` respectively. Example Spark confs:
-     * ``{"spark.speculation": true, "spark.streaming.ui.retainedBatches": 5}``
-     * or ``{"spark.driver.extraJavaOptions": "-verbose:gc
-     * -XX:+PrintGCDetails"}``
+     * ``spark.executor.extraJavaOptions`` respectively.
+     *
+     * Example Spark confs: ``{"spark.speculation": true,
+     * "spark.streaming.ui.retainedBatches": 5}`` or
+     * ``{"spark.driver.extraJavaOptions": "-verbose:gc -XX:+PrintGCDetails"}``
      */
     spark_conf?: Record<string, string>;
     /**
      * An object containing a set of optional, user-specified environment
      * variable key-value pairs. Please note that key-value pair of the form
      * (X,Y) will be exported as is (i.e., ``export X='Y'``) while launching the
-     * driver and workers. In order to specify an additional set of
-     * ``SPARK_DAEMON_JAVA_OPTS``, we recommend appending them to
-     * ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the example below. This ensures
-     * that all default databricks managed environmental variables are included
-     * as well. Example Spark environment variables: ``{"SPARK_WORKER_MEMORY":
-     * "28000m", "SPARK_LOCAL_DIRS": "/local_disk0"}`` or
-     * ``{"SPARK_DAEMON_JAVA_OPTS": "$SPARK_DAEMON_JAVA_OPTS
-     * -Dspark.shuffle.service.enabled=true"}``
+     * driver and workers.
+     *
+     * In order to specify an additional set of ``SPARK_DAEMON_JAVA_OPTS``, we
+     * recommend appending them to ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the
+     * example below. This ensures that all default databricks managed
+     * environmental variables are included as well.
+     *
+     * Example Spark environment variables: ``{"SPARK_WORKER_MEMORY": "28000m",
+     * "SPARK_LOCAL_DIRS": "/local_disk0"}`` or ``{"SPARK_DAEMON_JAVA_OPTS":
+     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}``
      */
     spark_env_vars?: Record<string, string>;
     /**
@@ -1426,9 +1601,17 @@ export interface ListClustersResponse {
 
 export interface ListNodeTypesResponse {
     /**
+     * <needs content added>
+     */
+    failure?: CpalFailureResponse;
+    /**
      * The list of available Spark node types.
      */
     node_types?: Array<NodeType>;
+    /**
+     * <needs content added>
+     */
+    success?: any /* MISSING TYPE */;
 }
 
 export interface LogAnalyticsInfo {
@@ -1540,12 +1723,14 @@ export interface ResizeCluster {
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
      * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes. Note: When reading the properties of a cluster, this
-     * field reflects the desired number of workers rather than the actual
-     * current number of workers. For instance, if a cluster is resized from 5 to
-     * 10 workers, this field will immediately be updated to reflect the target
-     * size of 10 workers, whereas the workers listed in ``spark_info`` will
-     * gradually increase from 5 to 10 as the new nodes are provisioned.
+     * + 1 Spark nodes.
+     *
+     * Note: When reading the properties of a cluster, this field reflects the
+     * desired number of workers rather than the actual current number of
+     * workers. For instance, if a cluster is resized from 5 to 10 workers, this
+     * field will immediately be updated to reflect the target size of 10
+     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
 }
@@ -1633,15 +1818,17 @@ export interface SparkNode {
      * Public DNS address of this node. This address can be used to access the
      * Spark JDBC server on the driver node. To communicate with the JDBC server,
      * traffic must be manually authorized by adding security group rules to the
-     * "worker-unmanaged" security group via the AWS console. Actually it's the
-     * public DNS address of the host instance.
+     * "worker-unmanaged" security group via the AWS console.
+     *
+     * Actually it's the public DNS address of the host instance.
      */
     public_dns?: string;
     /**
-     * The timestamp (in millisecond) when the Spark node is launched. The
-     * start_timestamp is set right before the container is being launched. The
-     * timestamp when the container is placed on the ResourceManager, before its
-     * launch and setup by the NodeDaemon. This timestamp is the same as the
+     * The timestamp (in millisecond) when the Spark node is launched.
+     *
+     * The start_timestamp is set right before the container is being launched.
+     * The timestamp when the container is placed on the ResourceManager, before
+     * its launch and setup by the NodeDaemon. This timestamp is the same as the
      * creation timestamp in the database.
      */
     start_timestamp?: number;
@@ -1816,6 +2003,7 @@ export interface ListRequest {
 }
 
 export interface ChangeClusterOwnerResponse {}
+export interface CpalSuccessResponse {}
 export interface DeleteClusterResponse {}
 export interface EditClusterResponse {}
 export interface PermanentDeleteClusterResponse {}

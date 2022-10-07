@@ -3,7 +3,7 @@
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
 
 // all definitions in this file are in alphabetical order
-export interface AddBlockRequest {
+export interface AddBlock {
     /**
      * The base64-encoded data to append to the stream. This has a limit of 1 MB.
      */
@@ -14,14 +14,14 @@ export interface AddBlockRequest {
     handle: number;
 }
 
-export interface CloseRequest {
+export interface Close {
     /**
      * The handle on an open stream.
      */
     handle: number;
 }
 
-export interface CreateRequest {
+export interface Create {
     /**
      * The flag that specifies whether to overwrite existing file/files.
      */
@@ -41,7 +41,7 @@ export interface CreateResponse {
     handle?: number;
 }
 
-export interface DeleteRequest {
+export interface Delete {
     /**
      * The path of the file or directory to delete. The path should be the
      * absolute DBFS path (e.g. "/mnt/foo/").
@@ -73,41 +73,6 @@ export interface FileInfo {
     path?: string;
 }
 
-export interface GetStatusRequest {
-    /**
-     * The path of the file or directory. The path should be the absolute DBFS
-     * path (e.g. "/mnt/foo/").
-     */
-    path: string;
-}
-
-export interface GetStatusResponse {
-    /**
-     * The length of the file in bytes or zero if the path is a directory.
-     */
-    file_size?: number;
-    /**
-     * True if the path is a directory.
-     */
-    is_dir?: boolean;
-    /**
-     * Last modification time of given file/dir in milliseconds since Epoch.
-     */
-    modification_time?: number;
-    /**
-     * The path of the file or directory.
-     */
-    path?: string;
-}
-
-export interface ListStatusRequest {
-    /**
-     * The path of the file or directory. The path should be the absolute DBFS
-     * path (e.g. "/mnt/foo/").
-     */
-    path: string;
-}
-
 export interface ListStatusResponse {
     /**
      * A list of FileInfo's that describe contents of directory or file. See
@@ -116,7 +81,7 @@ export interface ListStatusResponse {
     files?: Array<FileInfo>;
 }
 
-export interface MkDirsRequest {
+export interface MkDirs {
     /**
      * The path of the new directory. The path should be the absolute DBFS path
      * (e.g. "/mnt/foo/").
@@ -124,7 +89,7 @@ export interface MkDirsRequest {
     path: string;
 }
 
-export interface MoveRequest {
+export interface Move {
     /**
      * The destination path of the file or directory. The path should be the
      * absolute DBFS path (e.g. "/mnt/bar/").
@@ -137,7 +102,7 @@ export interface MoveRequest {
     source_path: string;
 }
 
-export interface PutRequest {
+export interface Put {
     /**
      * This parameter might be absent, and instead a posted file will be used.
      */
@@ -149,6 +114,35 @@ export interface PutRequest {
     /**
      * The path of the new file. The path should be the absolute DBFS path (e.g.
      * "/mnt/foo/").
+     */
+    path: string;
+}
+
+export interface ReadResponse {
+    /**
+     * The number of bytes read (could be less than ``length`` if we hit end of
+     * file). This refers to number of bytes read in unencoded version (response
+     * data is base64-encoded).
+     */
+    bytes_read?: number;
+    /**
+     * The base64-encoded contents of the file read.
+     */
+    data?: string;
+}
+
+export interface GetStatusRequest {
+    /**
+     * The path of the file or directory. The path should be the absolute DBFS
+     * path (e.g. "/mnt/foo/").
+     */
+    path: string;
+}
+
+export interface ListRequest {
+    /**
+     * The path of the file or directory. The path should be the absolute DBFS
+     * path (e.g. "/mnt/foo/").
      */
     path: string;
 }
@@ -168,19 +162,6 @@ export interface ReadRequest {
      * (e.g. "/mnt/foo/").
      */
     path: string;
-}
-
-export interface ReadResponse {
-    /**
-     * The number of bytes read (could be less than ``length`` if we hit end of
-     * file). This refers to number of bytes read in unencoded version (response
-     * data is base64-encoded).
-     */
-    bytes_read?: number;
-    /**
-     * The base64-encoded contents of the file read.
-     */
-    data?: string;
 }
 
 export interface AddBlockResponse {}

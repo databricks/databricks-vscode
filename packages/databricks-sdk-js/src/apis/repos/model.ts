@@ -9,36 +9,9 @@ export interface CreateRepo {
     url: string;
 }
 
-export interface DeleteRequest {
-    /**
-     * The ID for the corresponding repo to access.
-     */
-    repo_id: string;
-}
-
-export interface GetRequest {
-    /**
-     * The ID for the corresponding repo to access.
-     */
-    repo_id: string;
-}
-
 export interface ListReposResponse {
     next_page_token?: string;
     repos?: Array<RepoInfo>;
-}
-
-export interface ListRequest {
-    /**
-     * Token used to get the next page of results. If not specified, returns the
-     * first page of results as well as a next page token if there are more
-     * results.
-     */
-    next_page_token?: string;
-    /**
-     * Filters repos that have paths starting with the given path prefix.
-     */
-    path_prefix?: string;
 }
 
 export interface RepoInfo {
@@ -63,6 +36,20 @@ export interface UpdateRepo {
  * Branch that the local version of the repo is checked out to.
  */
 
+export interface DeleteRequest {
+    /**
+     * The ID for the corresponding repo to access.
+     */
+    repo_id: string;
+}
+
+export interface GetRequest {
+    /**
+     * The ID for the corresponding repo to access.
+     */
+    repo_id: string;
+}
+
 /**
  * SHA-1 hash representing the commit ID of the current HEAD of the repo.
  */
@@ -70,6 +57,19 @@ export interface UpdateRepo {
 /**
  * ID of the repo object in the workspace.
  */
+
+export interface ListRequest {
+    /**
+     * Token used to get the next page of results. If not specified, returns the
+     * first page of results as well as a next page token if there are more
+     * results.
+     */
+    next_page_token?: string;
+    /**
+     * Filters repos that have paths starting with the given path prefix.
+     */
+    path_prefix?: string;
+}
 
 /**
  * Token that can be specified as a query parameter to the GET /repos endpoint to

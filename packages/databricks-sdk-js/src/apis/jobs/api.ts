@@ -8,14 +8,15 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+
 export class JobsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
-        super("$s.PascalName", method, message);
+        super("Jobs", method, message);
     }
 }
 export class JobsError extends ApiError {
     constructor(method: string, message?: string) {
-        super("$s.PascalName", method, message);
+        super("Jobs", method, message);
     }
 }
 
@@ -25,6 +26,8 @@ export class JobsError extends ApiError {
 export class JobsService {
     constructor(readonly client: ApiClient) {}
     /**
+     * Cancel all runs of a job
+     *
      * Cancels all active runs of a job. The runs are canceled asynchronously, so
      * it doesn't prevent new runs from being started.
      */
@@ -42,6 +45,8 @@ export class JobsService {
     }
 
     /**
+     * Cancel a job run
+     *
      * Cancels a job run. The run is canceled asynchronously, so it may still be
      * running when this request completes.
      */
@@ -113,6 +118,8 @@ export class JobsService {
     }
 
     /**
+     * Create a new job
+     *
      * Create a new job.
      */
     async create(
@@ -129,6 +136,8 @@ export class JobsService {
     }
 
     /**
+     * Delete a job
+     *
      * Deletes a job.
      */
     async delete(
@@ -145,6 +154,8 @@ export class JobsService {
     }
 
     /**
+     * Delete a job run
+     *
      * Deletes a non-active run. Returns an error if the run is active.
      */
     async deleteRun(
@@ -161,6 +172,8 @@ export class JobsService {
     }
 
     /**
+     * Export and retrieve a job run
+     *
      * Export and retrieve the job run task.
      */
     async exportRun(
@@ -177,6 +190,8 @@ export class JobsService {
     }
 
     /**
+     * Get a single job
+     *
      * Retrieves the details for a single job.
      */
     async get(
@@ -193,6 +208,8 @@ export class JobsService {
     }
 
     /**
+     * Get a single job run
+     *
      * Retrieve the metadata of a run.
      */
     async getRun(
@@ -263,16 +280,18 @@ export class JobsService {
     }
 
     /**
+     * Get the output for a single run
+     *
      * Retrieve the output and metadata of a single task run. When a notebook
-     * task returns a value through the dbutils.notebook.exit() call, you can use
-     * this endpoint to retrieve that value. jobs restricts this API to return
-     * the first 5 MB of the output. To return a larger result, you can store job
-     * results in a cloud storage service. This endpoint validates that the
-     * run_id parameter is valid and returns an HTTP status code 400 if the
-     * run_id parameter is invalid. Runs are automatically removed after 60 days.
-     * If you to want to reference them beyond 60 days, you must save old run
-     * results before they expire. To export using the UI, see Export job run
-     * results. To export using the Jobs API, see Runs export.
+     * task returns a value through the `dbutils.notebook.exit()` call, you can
+     * use this endpoint to retrieve that value. " + serviceName + " restricts
+     * this API to returning the first 5 MB of the output. To return a larger
+     * result, you can store job results in a cloud storage service.
+     *
+     * This endpoint validates that the __run_id__ parameter is valid and returns
+     * an HTTP status code 400 if the __run_id__ parameter is invalid. Runs are
+     * automatically removed after 60 days. If you to want to reference them
+     * beyond 60 days, you must save old run results before they expire.
      */
     async getRunOutput(
         request: model.GetRunOutputRequest,
@@ -288,6 +307,8 @@ export class JobsService {
     }
 
     /**
+     * List all jobs
+     *
      * Retrieves a list of jobs.
      */
     async list(
@@ -304,6 +325,8 @@ export class JobsService {
     }
 
     /**
+     * List runs for a job
+     *
      * List runs in descending order by start time.
      */
     async listRuns(
@@ -320,8 +343,10 @@ export class JobsService {
     }
 
     /**
+     * Repair a job run
+     *
      * Re-run one or more tasks. Tasks are re-run as part of the original job
-     * run, use the current job and task settings, and can be viewed in the
+     * run. They use the current job and task settings, and can be viewed in the
      * history for the original job run.
      */
     async repairRun(
@@ -392,6 +417,8 @@ export class JobsService {
     }
 
     /**
+     * Overwrites all settings for a job
+     *
      * Overwrites all the settings for a specific job. Use the Update endpoint to
      * update job settings partially.
      */
@@ -409,6 +436,8 @@ export class JobsService {
     }
 
     /**
+     * Trigger a new job run
+     *
      * Run a job and return the `run_id` of the triggered run.
      */
     async runNow(
@@ -479,6 +508,8 @@ export class JobsService {
     }
 
     /**
+     * Create and trigger a one-time run
+     *
      * Submit a one-time run. This endpoint allows you to submit a workload
      * directly without creating a job. Runs submitted using this endpoint don?t
      * display in the UI. Use the `jobs/runs/get` API to check the run state
@@ -552,6 +583,8 @@ export class JobsService {
     }
 
     /**
+     * Partially updates a job
+     *
      * Add, update, or remove specific settings of an existing job. Use the
      * ResetJob to overwrite all job settings.
      */
