@@ -109,11 +109,11 @@ export class ClusterLoader implements Disposable {
 
         const permissionApi = new PermissionsService(apiClient);
 
+        // TODO: Find exact rate limit and update this.
+        //       Rate limit is 100 on dogfood.
         const maxConcurrent = 50;
         const wip: Promise<void>[] = [];
 
-        // TODO: Find exact rate limit and update this.
-        //       Rate limit is 100 on dogfood.
         for (let c of allClusters) {
             if (!this.running) {
                 break;
