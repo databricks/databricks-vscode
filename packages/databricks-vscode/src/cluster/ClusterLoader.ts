@@ -109,49 +109,50 @@ export class ClusterLoader implements Disposable {
 
         const permissionApi = new PermissionsService(apiClient);
 
+        const maxConcurrent = 50;
+        const wip: Promise<void>[] = [];
+
         // TODO: Find exact rate limit and update this.
         //       Rate limit is 100 on dogfood.
-        for (let i = 0; i < allClusters.length; i += 50) {
-            const runningMiniTasks: Promise<void>[] = [];
-            let clusters = allClusters.splice(i, i + 50);
+        for (let c of allClusters) {
+            if (!this.running) {
+                break;
+            }
+            while (wip.length === maxConcurrent) {
+                await Promise.race(wip);
+            }
 
-            for (let c of clusters) {
-                if (!this.running) {
-                    break;
-                }
-                runningMiniTasks.push(
-                    new Promise((resolve) => {
-                        this.hasPerm(c, permissionApi)
-                            .then((hasPerm) => {
-                                if (!this.running) {
-                                    return resolve();
-                                }
-                                const keepCluster =
-                                    (c.details.data_security_mode !==
-                                        "SINGLE_USER" ||
-                                        this.isValidSingleUser(c)) &&
-                                    hasPerm;
+            const task = new Promise<void>((resolve) => {
+                this.hasPerm(c, permissionApi)
+                    .then((hasPerm) => {
+                        if (!this.running) {
+                            return resolve();
+                        }
+                        const keepCluster =
+                            (c.details.data_security_mode !== "SINGLE_USER" ||
+                                this.isValidSingleUser(c)) &&
+                            hasPerm;
 
-                                if (this._clusters.has(c.id) && !keepCluster) {
-                                    this._clusters.delete(c.id);
-                                    this._onDidChange.fire();
-                                }
-                                if (keepCluster) {
-                                    this._clusters.set(c.id, c);
-                                    this._onDidChange.fire();
-                                }
-                                resolve();
-                            })
-                            .catch(resolve);
+                        if (this._clusters.has(c.id) && !keepCluster) {
+                            this._clusters.delete(c.id);
+                            this._onDidChange.fire();
+                        }
+                        if (keepCluster) {
+                            this._clusters.set(c.id, c);
+                            this._onDidChange.fire();
+                        }
+                        resolve();
                     })
-                );
-            }
-            for (let task of runningMiniTasks) {
-                await task;
-            }
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+                    .catch(resolve);
+            });
+
+            wip.push(task);
+            task.then(() => {
+                wip.splice(wip.indexOf(task), 1);
+            });
         }
 
+        await Promise.allSettled(wip);
         this.cleanupClustersMap(allClusters);
     }
 
