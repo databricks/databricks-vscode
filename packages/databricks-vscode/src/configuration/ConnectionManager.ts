@@ -17,6 +17,7 @@ import {SyncDestination} from "./SyncDestination";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
+import {ScimMeResponse} from "@databricks/databricks-sdk/dist/apis/scim";
 
 const extensionVersion = require("../../package.json").version;
 
@@ -33,7 +34,7 @@ export class ConnectionManager {
     private _apiClient?: ApiClient;
     private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
-    private _me?: string;
+    private _me?: ScimMeResponse;
     private _profile?: string;
     private _clusterManager?: ClusterManager;
 
@@ -54,6 +55,10 @@ export class ConnectionManager {
     constructor(private cli: CliWrapper) {}
 
     get me(): string | undefined {
+        return this._me?.userName;
+    }
+
+    get meDetails(): ScimMeResponse | undefined {
         return this._me;
     }
 
@@ -288,11 +293,11 @@ export class ConnectionManager {
         this.updateSyncDestination(undefined);
     }
 
-    private async getMe(apiClient: ApiClient): Promise<string> {
+    private async getMe(apiClient: ApiClient): Promise<ScimMeResponse> {
         let scimApi = new ScimService(apiClient);
         let response = await scimApi.me({});
 
-        return response.userName;
+        return response;
     }
 
     private updateState(newState: ConnectionState) {

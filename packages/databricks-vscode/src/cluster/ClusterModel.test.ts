@@ -1,11 +1,20 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {mock, when, anything, anyString, instance, verify} from "ts-mockito";
-import {ApiClient, cluster} from "@databricks/databricks-sdk";
+import {
+    mock,
+    when,
+    anything,
+    anyString,
+    instance,
+    verify,
+    spy,
+} from "ts-mockito";
+import {ApiClient, Cluster, cluster} from "@databricks/databricks-sdk";
 import {ClusterModel} from "./ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Disposable} from "vscode";
+import {ClusterLoader} from "./ClusterLoader";
 
 const me = "user-1";
 const mockListClustersResponse: cluster.ListClustersResponse = {
@@ -24,13 +33,6 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             creator_user_name: me,
             state: "RUNNING",
         },
-        {
-            cluster_id: "cluster-id-3",
-            cluster_name: "cluster-name-3",
-            cluster_source: "JOB",
-            creator_user_name: "user-3",
-            state: "RUNNING",
-        },
     ],
 };
 
@@ -38,6 +40,7 @@ describe(__filename, () => {
     let mockedConnectionManager: ConnectionManager;
     let mockedApiClient: ApiClient;
     let disposables: Array<Disposable>;
+    let mockedClusterLoader: ClusterLoader;
 
     beforeEach(() => {
         disposables = [];
@@ -49,27 +52,31 @@ describe(__filename, () => {
         when(mockedConnectionManager.apiClient).thenReturn(
             instance(mockedApiClient)
         );
+        mockedClusterLoader = spy(
+            new ClusterLoader(instance(mockedConnectionManager))
+        );
+        when(mockedClusterLoader.clusters).thenReturn(
+            new Map(
+                mockListClustersResponse.clusters?.map((c) => {
+                    return [
+                        c.cluster_id!,
+                        new Cluster(instance(mockedApiClient), c),
+                    ];
+                })
+            )
+        );
     });
 
     afterEach(() => {
         disposables.forEach((d) => d.dispose());
     });
 
-    it("should filter out jobs clusters", async () => {
-        let model = new ClusterModel(instance(mockedConnectionManager));
-        let roots = await model.roots;
-
-        assert(roots);
-        assert.equal(roots.length, 2);
-
-        for (let cluster of roots) {
-            assert.equal(cluster.source, "UI");
-        }
-    });
-
     it("should sort by state", async () => {
-        let model = new ClusterModel(instance(mockedConnectionManager));
-        let roots = await model.roots;
+        let model = new ClusterModel(
+            instance(mockedConnectionManager),
+            instance(mockedClusterLoader)
+        );
+        let roots = model.roots;
 
         assert(roots);
         assert.equal(roots.length, 2);
@@ -80,8 +87,11 @@ describe(__filename, () => {
     it("should filter by me", async () => {
         when(mockedConnectionManager.me).thenReturn(me);
 
-        let model = new ClusterModel(instance(mockedConnectionManager));
-        let roots = await model.roots;
+        let model = new ClusterModel(
+            instance(mockedConnectionManager),
+            instance(mockedClusterLoader)
+        );
+        let roots = model.roots;
 
         assert(roots);
         assert.equal(roots.length, 2);
@@ -96,45 +106,10 @@ describe(__filename, () => {
         model.filter = "ME";
         assert(called);
 
-        roots = await model.roots;
+        roots = model.roots;
 
         assert(roots);
         assert.equal(roots.length, 1);
         assert.equal(roots[0].creator, me);
-    });
-
-    it("should reload clusters after refresh()", async () => {
-        let model = new ClusterModel(instance(mockedConnectionManager));
-        let roots = await model.roots;
-
-        let called = false;
-        disposables.push(
-            model.onDidChange(() => {
-                called = true;
-            })
-        );
-
-        verify(
-            mockedApiClient.request(anyString(), "GET", anything(), anything())
-        ).times(1);
-        assert(!called);
-
-        // no reload should happen here
-        roots = await model.roots;
-        verify(
-            mockedApiClient.request(anyString(), "GET", anything(), anything())
-        ).times(1);
-        assert(!called);
-
-        // reload after refresh
-        model.refresh();
-        roots = await model.roots;
-        verify(
-            mockedApiClient.request(anyString(), "GET", anything(), anything())
-        ).times(2);
-        assert(called);
-
-        assert(roots);
-        assert.equal(roots.length, 2);
     });
 });
