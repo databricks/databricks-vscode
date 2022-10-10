@@ -11,7 +11,10 @@
             "request": "launch",
             "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
-            "preLaunchTask": "${defaultBuildTask}"
+            "preLaunchTask": "${defaultBuildTask}",
+            "env": {
+                "DATABRICKS_DEBUG_HEADERS": "true"
+            }
         },
         {
             "name": "Extension Tests",
@@ -22,7 +25,10 @@
                 "--extensionTestsPath=${workspaceFolder}/out/test/suite"
             ],
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
-            "preLaunchTask": "${defaultBuildTask}"
+            "preLaunchTask": "${defaultBuildTask}",
+            "env": {
+                "DATABRICKS_DEBUG_HEADERS": "true"
+            }
         }
     ]
 }
