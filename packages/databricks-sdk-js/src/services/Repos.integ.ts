@@ -44,7 +44,7 @@ describe(__filename, function () {
 
     after(async () => {
         const repos = new ReposService(integSetup.client);
-        await repos.delete({repo_id: `${testRepoDetails.id}`});
+        await repos.delete({repo_id: testRepoDetails.id!});
     });
 
     it("should list repos by prefix", async () => {

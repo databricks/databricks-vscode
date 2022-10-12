@@ -21,6 +21,8 @@ export {ReposService} from "./apis/repos";
 export {ScimService} from "./apis/scim";
 export * as workspace from "./apis/workspace";
 export {WorkspaceService} from "./apis/workspace";
+export * as workspaceconf from "./apis/workspaceconf";
+export {WorkspaceConfService} from "./apis/workspaceconf";
 export * as permissions from "./apis/permissions";
 export {PermissionsService} from "./apis/permissions";
 
@@ -29,6 +31,7 @@ export * from "./services/Command";
 export * from "./services/ExecutionContext";
 export * from "./services/Repos";
 export * from "./services/WorkflowRun";
+export * from "./services/WorkspaceConf";
 
 export * from "./auth/types";
 export * from "./auth/fromEnv";

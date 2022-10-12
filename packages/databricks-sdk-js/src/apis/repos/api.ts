@@ -47,9 +47,9 @@ export class ReposService {
     }
 
     /**
-     * Deletes the repo
+     * Delete a repo
      *
-     * Deletes the specified repo
+     * Deletes the specified repo.
      */
     async delete(
         request: model.DeleteRequest,
@@ -102,7 +102,7 @@ export class ReposService {
     }
 
     /**
-     * Updates the repo to the given branch or tag
+     * Update a repo
      *
      * Updates the repo to a different branch or tag, or updates the repo to the
      * latest commit on the same branch.

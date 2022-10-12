@@ -28,7 +28,7 @@ export interface UpdateRepo {
     /**
      * The ID for the corresponding repo to access.
      */
-    repo_id: string;
+    repo_id: number;
     tag?: string;
 }
 
@@ -40,14 +40,14 @@ export interface DeleteRequest {
     /**
      * The ID for the corresponding repo to access.
      */
-    repo_id: string;
+    repo_id: number;
 }
 
 export interface GetRequest {
     /**
      * The ID for the corresponding repo to access.
      */
-    repo_id: string;
+    repo_id: number;
 }
 
 /**

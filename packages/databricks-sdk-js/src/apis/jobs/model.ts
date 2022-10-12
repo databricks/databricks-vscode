@@ -296,6 +296,7 @@ export interface ClusterSpec {
  * characters, inclusive. The value length must be less than or equal to 255
  * UTF-8 characters.
  */
+export type ClusterTag = Record<string, string>;
 
 export interface CreateJob {
     /**
@@ -1850,11 +1851,13 @@ export interface S3StorageInfo {
  * An arbitrary object where the object key is a configuration propery name and
  * the value is a configuration property value.
  */
+export type SparkConfPair = Record<string, any /* MISSING TYPE */>;
 
 /**
  * An arbitrary object where the object key is an environment variable name and
  * the value is an environment variable value.
  */
+export type SparkEnvPair = Record<string, any /* MISSING TYPE */>;
 
 export interface SparkJarTask {
     /**

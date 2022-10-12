@@ -13,7 +13,7 @@
 	*/
 	{{end}}{{.SnakeName}}{{if not .Required}}?{{end}}: {{template "type" .Entity}};{{end}}
 }
-
+{{else if .MapValue}}export type {{.PascalName}} = {{template "type" .}};
 {{else if .Enum}}export type {{.PascalName}} = 
 {{range $i, $e:=.Enum }}{{if $e.Comment "" 80}}/**
 {{$e.Comment "* " 80}}

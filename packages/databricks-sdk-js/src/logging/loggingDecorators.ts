@@ -1,4 +1,5 @@
 import {NamedLogger} from "./NamedLogger";
+import "reflect-metadata";
 
 export const LOG_ID_ELEMENT_KEY = Symbol.for("log_id");
 export const LOGGER_ELEMENT_KEY = Symbol.for("logger");

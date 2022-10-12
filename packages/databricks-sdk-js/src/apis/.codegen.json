@@ -5,7 +5,8 @@
         "Repos",
         "Workspace",
         "Dbfs",
-        "Permissions"
+        "Permissions",
+        "Workspace Conf"
     ],
     "formatter": "yarn fix",
     "packages": {
