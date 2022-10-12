@@ -137,29 +137,6 @@ export type AwsAttributesEbsVolumeType =
     | "GENERAL_PURPOSE_SSD"
     | "THROUGHPUT_OPTIMIZED_HDD";
 
-export interface AwsCpalError {
-    /**
-     * <needs content added>
-     */
-    aws_api_error_code?: string;
-    /**
-     * <needs content added>
-     */
-    aws_error_message?: string;
-    /**
-     * <needs content added>
-     */
-    aws_instance_state_reason?: string;
-    /**
-     * <needs content added>
-     */
-    aws_spot_request_fault_code?: string;
-    /**
-     * <needs content added>
-     */
-    aws_spot_request_status?: string;
-}
-
 export interface AzureAttributes {
     /**
      * Availability type used for all subsequent nodes past the
@@ -549,10 +526,7 @@ export interface ClusterInfo {
      * subset of the cluster tags
      */
     custom_tags?: Record<string, string>;
-    /**
-     * The data isolation level for UC data
-     */
-    data_security_mode?: ClusterInfoDataSecurityMode;
+    data_security_mode?: DataSecurityMode;
     /**
      * Tags that are added by Databricks regardless of any ``custom_tags``,
      * including:
@@ -673,7 +647,7 @@ export interface ClusterInfo {
      */
     runtime_engine?: ClusterInfoRuntimeEngine;
     /**
-     * Single user name if data_security_mode is 'SINGLE_USER'
+     * Single user name if data_security_mode is `SINGLE_USER`
      */
     single_user_name?: string;
     /**
@@ -760,14 +734,6 @@ export type ClusterInfoClusterSource =
     | "UI";
 
 /**
- * The data isolation level for UC data
- */
-export type ClusterInfoDataSecurityMode =
-    | "NONE"
-    | "SINGLE_USER"
-    | "USER_ISOLATION";
-
-/**
  * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
  * unspecified, the runtime engine is inferred from spark_version.
  */
@@ -823,87 +789,6 @@ export interface ClusterSize {
      */
     num_workers?: number;
 }
-
-export interface CpalFailureResponse {
-    /**
-     * <needs content added>
-     */
-    aws_cpal_error_code?: CpalFailureResponseAwsCpalErrorCode;
-    /**
-     * <needs content added>
-     */
-    aws_error?: AwsCpalError;
-    /**
-     * <needs content added>
-     */
-    azure_cpal_error_code?: CpalFailureResponseAzureCpalErrorCode;
-    /**
-     * Deprecated after using cloud_provider_error field TODO define
-     * AzureCpalError with code and message
-     */
-    cloud_provider_error_code?: string;
-    /**
-     * Deprecated after using cloud_provider_error field TODO define
-     * AzureCpalError with code and message
-     */
-    cloud_provider_error_message?: string;
-    /**
-     * <needs content added>
-     */
-    delegate_error_code?: CpalFailureResponseDelegateErrorCode;
-    /**
-     * <needs content added>
-     */
-    error_message?: string;
-    /**
-     * <needs content added>
-     */
-    stack_trace?: string;
-}
-
-/**
- * <needs content added>
- */
-export type CpalFailureResponseAwsCpalErrorCode =
-    | "AWS_INSUFFICIENT_FREE_ADDRESSES_IN_SUBNET_FAILURE"
-    | "AWS_INSUFFICIENT_INSTANCE_CAPACITY_FAILURE"
-    | "AWS_INVALID_INSTANCE_TYPE_FAILURE"
-    | "AWS_MAX_SPOT_INSTANCE_COUNT_EXCEEDED"
-    | "AWS_REQUEST_LIMIT_EXCEEDED"
-    | "AWS_SERVICE_EXCEPTION"
-    | "AWS_SPOT_REQUEST_FAILED"
-    | "AWS_UNEXPECTED_EXCEPTION"
-    | "AWS_UNEXPECTED_INSTANCE_STATE"
-    | "AWS_UNSUPPORTED_INSTANCE_TYPE_FAILURE";
-
-/**
- * <needs content added>
- */
-export type CpalFailureResponseAzureCpalErrorCode =
-    | "AZURE_AUTHENTICATION_EXCEPTION"
-    | "AZURE_CLOUD_EXCEPTION"
-    | "AZURE_INVALID_DEPLOYMENT_TEMPLATE"
-    | "AZURE_LOAD_BALANCER_CONFIGURATION_EXCEPTION"
-    | "AZURE_NOT_RUNNING_VM_EXCEPTION"
-    | "AZURE_NULL_POINTER"
-    | "AZURE_OPERATION_NOT_ALLOWED_EXCEPTION"
-    | "AZURE_QUOTA_EXCEEDED_EXCEPTION"
-    | "AZURE_RESOURCE_MANAGER_THROTTLING"
-    | "AZURE_RESOURCE_PROVIDER_THROTTLING"
-    | "AZURE_SERVER_EXCEPTION"
-    | "AZURE_SERVER_UNREACHABLE"
-    | "AZURE_SPOT_REQUEST_EXCEPTION"
-    | "AZURE_SUBNET_EXHAUSTED_FAILURE"
-    | "AZURE_UNEXPECTED_DEPLOYMENT_TEMPLATE_FAILURE"
-    | "AZURE_UNKNOWN_EXCEPTION"
-    | "AZURE_VNET_CONFIGURATION_EXCEPTION";
-
-/**
- * <needs content added>
- */
-export type CpalFailureResponseDelegateErrorCode =
-    | "DELEGATE_UNEXPECTED_EXCEPTION"
-    | "NO_SUCH_WORKER_ENVIRONMENT_EXCEPTION";
 
 export interface CreateCluster {
     /**
@@ -1135,6 +1020,42 @@ export interface DataPlaneEventDetails {
 export type DataPlaneEventDetailsEventType =
     | "NODE_BLACKLISTED"
     | "NODE_EXCLUDED_DECOMMISSIONED";
+
+/**
+ * This describes an enum
+ */
+export type DataSecurityMode =
+    /**
+     * This mode is for users migrating from legacy Passthrough on high concurrency
+     * clusters.
+     */
+    | "LEGACY_PASSTHROUGH"
+    /**
+     * This mode is for users migrating from legacy Passthrough on standard clusters.
+     */
+    | "LEGACY_SINGLE_USER"
+    /**
+     * This mode is for users migrating from legacy Table ACL clusters.
+     */
+    | "LEGACY_TABLE_ACL"
+    /**
+     * No security isolation for multiple users sharing the cluster. Data governance
+     * features are not available in this mode.
+     */
+    | "NONE"
+    /**
+     * A secure cluster that can only be exclusively used by a single user specified
+     * in `single_user_name`. Most programming languages, cluster features and data
+     * governance features are available in this mode.
+     */
+    | "SINGLE_USER"
+    /**
+     * A secure cluster that can be shared by multiple users. Cluster users are fully
+     * isolated so that they cannot see each other's data and credentials. Most data
+     * governance features are supported in this mode. But programming languages and
+     * cluster features might be limited.
+     */
+    | "USER_ISOLATION";
 
 export interface DbfsStorageInfo {
     /**
@@ -1601,17 +1522,9 @@ export interface ListClustersResponse {
 
 export interface ListNodeTypesResponse {
     /**
-     * <needs content added>
-     */
-    failure?: CpalFailureResponse;
-    /**
      * The list of available Spark node types.
      */
     node_types?: Array<NodeType>;
-    /**
-     * <needs content added>
-     */
-    success?: any /* MISSING TYPE */;
 }
 
 export interface LogAnalyticsInfo {
@@ -2003,7 +1916,6 @@ export interface ListRequest {
 }
 
 export interface ChangeClusterOwnerResponse {}
-export interface CpalSuccessResponse {}
 export interface DeleteClusterResponse {}
 export interface EditClusterResponse {}
 export interface PermanentDeleteClusterResponse {}

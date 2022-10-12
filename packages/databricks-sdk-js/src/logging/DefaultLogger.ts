@@ -13,7 +13,7 @@ export class DefaultLogger implements Logger {
                 level: level,
                 message: message,
                 ...obj,
-            } as LogEntry)
+            } as LogEntry) + "\n"
         );
     }
 }
