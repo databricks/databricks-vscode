@@ -6,7 +6,6 @@
 
 import {
     CancellationTokenSource,
-    commands,
     Event,
     EventEmitter,
     Uri,
@@ -98,6 +97,13 @@ export class DatabricksRuntime {
                 }
             );
             if (!isClusterRunning) {
+                return;
+            }
+
+            if (!(await cluster.canExecute())) {
+                await window.showErrorMessage(
+                    "Can't execute code on the attached cluster. Please select a different cluster."
+                );
                 return;
             }
 

@@ -169,7 +169,10 @@ export class Cluster {
         let context: ExecutionContext | undefined;
         try {
             context = await this.createExecutionContext();
-            await context.execute("print('hello')");
+            let result = await context.execute("print('hello')");
+            if (result.result?.results?.resultType === "error") {
+                return false;
+            }
             return true;
         } catch (e) {
             return false;

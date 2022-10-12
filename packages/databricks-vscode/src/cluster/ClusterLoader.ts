@@ -168,8 +168,8 @@ export class ClusterLoader implements Disposable {
         if (this.running) {
             return;
         }
-        this.running = true;
-        this.stopped = false;
+        this._running = true;
+        this._stopped = false;
         while (this.running) {
             try {
                 await this._load();
