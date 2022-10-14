@@ -18,7 +18,13 @@ export {ManagedLibraryService} from "./apis/libraries";
 export * as notebook from "./apis/notebook";
 export * as repos from "./apis/repos";
 export {ReposService} from "./apis/repos";
-export {ScimService} from "./apis/scim";
+export * as scim from "./apis/scim";
+export {
+    CurrentUserService,
+    UsersService,
+    GroupsService,
+    ServicePrincipalsService,
+} from "./apis/scim";
 export * as workspace from "./apis/workspace";
 export {WorkspaceService} from "./apis/workspace";
 export * as workspaceconf from "./apis/workspaceconf";

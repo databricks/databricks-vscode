@@ -6,7 +6,11 @@
         "Workspace",
         "Dbfs",
         "Permissions",
-        "Workspace Conf"
+        "Workspace Conf",
+        "Users",
+        "Groups",
+        "CurrentUser",
+        "Service Principals"
     ],
     "formatter": "yarn fix",
     "packages": {

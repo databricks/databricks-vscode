@@ -32,7 +32,7 @@ export class ApiClient {
     constructor(
         private readonly product: string,
         private readonly productVersion: string,
-        private credentialProvider = fromDefaultChain
+        readonly credentialProvider = fromDefaultChain
     ) {
         this.agent = new https.Agent({
             keepAlive: true,
@@ -68,7 +68,8 @@ export class ApiClient {
             "Content-Type": "text/json",
         };
 
-        let url = credentials.host;
+        // create a copy of the URL, so that we can modify it
+        let url = new URL(credentials.host.toString());
         url.pathname = path;
 
         let options: any = {
