@@ -10,7 +10,9 @@
         "Users",
         "Groups",
         "CurrentUser",
-        "Service Principals"
+        "Service Principals",
+        "ManagedLibraries",
+        "Command Execution"
     ],
     "formatter": "yarn fix",
     "packages": {
