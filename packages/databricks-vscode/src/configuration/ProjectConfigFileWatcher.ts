@@ -23,6 +23,7 @@ export class ProjectConfigFileWatcher implements Disposable {
                 const configFile = await ProjectConfigFile.load(rootPath);
                 if (configFile.profile !== connectionManager.profile) {
                     connectionManager.login();
+                    return;
                 }
                 if (connectionManager.cluster?.id !== configFile.clusterId) {
                     if (configFile.clusterId) {
