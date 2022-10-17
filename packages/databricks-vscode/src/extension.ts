@@ -2,6 +2,7 @@ import {
     commands,
     debug,
     ExtensionContext,
+    StatusBarAlignment,
     tasks,
     window,
     workspace,
@@ -28,6 +29,7 @@ import {
     NamedLogger,
 } from "@databricks/databricks-sdk/dist/logging";
 import {format, loggers, transports} from "winston";
+import {DatabricksStatusBarItem} from "./ui/statusBar";
 
 export function activate(context: ExtensionContext): PublicApi {
     NamedLogger.getOrCreate(
@@ -61,6 +63,29 @@ export function activate(context: ExtensionContext): PublicApi {
         synchronizer
     );
 
+    const configureProjectCommand = "databricks.connection.configureProject";
+    const configureStatusBarItem = new DatabricksStatusBarItem(
+        configureProjectCommand,
+        "Databricks Profile",
+        "No Profile",
+        "Select Databricks Profile",
+        "tools",
+        StatusBarAlignment.Left,
+        200
+    );
+
+    const quickPickClusterCommand =
+        "databricks.connection.attachClusterQuickPick";
+    const clusterStatusBarItem = new DatabricksStatusBarItem(
+        quickPickClusterCommand,
+        "Databricks Cluster",
+        "No Cluster",
+        "Select Databricks Cluster",
+        "server",
+        StatusBarAlignment.Left,
+        199
+    );
+
     context.subscriptions.push(
         configurationDataProvider,
         synchronizer,
@@ -80,7 +105,7 @@ export function activate(context: ExtensionContext): PublicApi {
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.connection.configureProject",
+            configureProjectCommand,
             connectionCommands.configureProjectCommand(),
             connectionCommands
         ),
@@ -95,7 +120,7 @@ export function activate(context: ExtensionContext): PublicApi {
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.connection.attachClusterQuickPick",
+            quickPickClusterCommand,
             connectionCommands.attachClusterQuickPickCommand(),
             connectionCommands
         ),
@@ -113,7 +138,14 @@ export function activate(context: ExtensionContext): PublicApi {
             "databricks.connection.detachSyncDestination",
             connectionCommands.detachWorkspaceCommand(),
             connectionCommands
-        )
+        ),
+        connectionManager.onDidChangeCluster((e) =>
+            clusterStatusBarItem.update(e?.name)
+        ),
+        connectionManager.onDidChangeState((e) => {
+            configureStatusBarItem.update(connectionManager.profile);
+            clusterStatusBarItem.update(connectionManager.cluster?.name);
+        })
     );
 
     // Run/debug group
