@@ -2,17 +2,15 @@ import path from "node:path";
 import {readFile, stat} from "node:fs/promises";
 import {parse} from "ini";
 import {homedir} from "node:os";
-import {defaultRedactor} from "../Redactor";
-
-export type Profiles = Record<
-    string,
-    {
-        host: URL;
-        token: string;
-    }
->;
+import {Profile, Profiles, WithError} from "./types";
 
 export class ConfigFileError extends Error {}
+export class ConfigFileProfileParsingError extends Error {
+    constructor(name?: string, message?: string) {
+        super(message);
+        this.name = name ?? "";
+    }
+}
 
 export function resolveConfigFilePath(filePath?: string): string {
     if (!filePath) {
@@ -26,9 +24,37 @@ export function resolveConfigFilePath(filePath?: string): string {
     return filePath;
 }
 
-function getProfile(config: any) {
+function getProfile(config: any): Profile {
+    if (config.host === undefined) {
+        throw new ConfigFileProfileParsingError(
+            "HostParsingError",
+            '"host" it not defined'
+        );
+    }
+
+    let host;
+    try {
+        host = new URL(config.host);
+    } catch (e: unknown) {
+        if (typeof e === "string") {
+            throw new ConfigFileProfileParsingError("HostParsingError", e);
+        } else if (e instanceof Error) {
+            throw new ConfigFileProfileParsingError(
+                "HostParsingError",
+                `${e.name}: ${e.message}`
+            );
+        }
+        throw e;
+    }
+
+    if (config.token === undefined) {
+        throw new ConfigFileProfileParsingError(
+            "TokenParsingError",
+            '"token" it not defined'
+        );
+    }
     return {
-        host: new URL(config.host),
+        host: host,
         token: config.token,
     };
 }
@@ -66,10 +92,16 @@ export async function loadConfigFile(filePath?: string): Promise<Profiles> {
                 defaultSectionFound = true;
                 continue;
             }
-            profiles[key] = getProfile(config[key]);
+            profiles[key] = WithError.fromTry<
+                Profile,
+                ConfigFileProfileParsingError
+            >(() => getProfile(config[key]));
         }
         if (defaultSectionFound) {
-            profiles["DEFAULT"] = getProfile(defaultSection);
+            profiles["DEFAULT"] = WithError.fromTry<
+                Profile,
+                ConfigFileProfileParsingError
+            >(() => getProfile(defaultSection));
         }
     } catch (e: unknown) {
         let message;

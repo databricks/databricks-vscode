@@ -91,9 +91,17 @@ export async function selectProfile(
             }
         }
 
-        let items: Array<QuickPickItem> = Object.keys(profiles).map(
-            (label) => ({label})
-        );
+        let items: Array<QuickPickItem> = Object.keys(profiles)
+            .filter((label) => profiles[label].error === undefined)
+            .map((label) => ({label}));
+
+        Object.keys(profiles)
+            .filter((label) => profiles[label].error !== undefined)
+            .forEach((label) => {
+                window.showWarningMessage(
+                    `Can't parse profile "${label}": ${profiles[label].error?.name}: ${profiles[label].error?.message}`
+                );
+            });
 
         if (items.length) {
             items = [

@@ -49,15 +49,15 @@ token = dapitest54321
 
             assert.equal(Object.keys(profiles).length, 2);
             assert.equal(
-                profiles.DEFAULT.host.href,
+                profiles.DEFAULT.value?.host.href,
                 "https://cloud.databricks.com/"
             );
-            assert.equal(profiles.DEFAULT.token, "dapitest1234");
+            assert.equal(profiles.DEFAULT.value?.token, "dapitest1234");
             assert.equal(
-                profiles.STAGING.host.href,
+                profiles.STAGING.value?.host.href,
                 "https://staging.cloud.databricks.com/"
             );
-            assert.equal(profiles.STAGING.token, "dapitest54321");
+            assert.equal(profiles.STAGING.value?.token, "dapitest54321");
         });
     });
 
@@ -79,15 +79,15 @@ token = dapitest54321
 
             assert.equal(Object.keys(profiles).length, 2);
             assert.equal(
-                profiles.DEFAULT.host.href,
+                profiles.DEFAULT.value?.host.href,
                 "https://cloud.databricks.com/"
             );
-            assert.equal(profiles.DEFAULT.token, "dapitest1234");
+            assert.equal(profiles.DEFAULT.value?.token, "dapitest1234");
             assert.equal(
-                profiles.STAGING.host.href,
+                profiles.STAGING.value?.host.href,
                 "https://staging.cloud.databricks.com/"
             );
-            assert.equal(profiles.STAGING.token, "dapitest54321");
+            assert.equal(profiles.STAGING.value?.token, "dapitest54321");
         });
     });
 });

@@ -20,13 +20,18 @@ export const fromConfigFile = (
 
         const config = await loadConfigFile(configFile);
 
-        if (config[profile].host && config[profile].token) {
-            cachedValue = config[profile];
-            return cachedValue;
+        if (!(config as Object).hasOwnProperty(profile)) {
+            throw new CredentialsProviderError(`Can't find profile ${profile}`);
         }
 
-        throw new CredentialsProviderError(
-            "Can't load credentials from config file"
-        );
+        const details = config[profile];
+        if (details.value === undefined) {
+            throw new CredentialsProviderError(
+                `Can't load profile ${profile}: ${config[profile].error?.name}: ${config[profile].error?.message}`
+            );
+        }
+
+        cachedValue = details.value;
+        return cachedValue;
     };
 };
