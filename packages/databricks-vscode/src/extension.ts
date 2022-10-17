@@ -143,7 +143,9 @@ export function activate(context: ExtensionContext): PublicApi {
             clusterStatusBarItem.update(e?.name)
         ),
         connectionManager.onDidChangeState((e) => {
-            configureStatusBarItem.update(connectionManager.profile);
+            configureStatusBarItem.update(
+                e !== "DISCONNECTED" ? connectionManager.profile : undefined
+            );
             clusterStatusBarItem.update(connectionManager.cluster?.name);
         })
     );
