@@ -33,6 +33,7 @@ describe(__filename, () => {
     let mockedClusterModel: ClusterModel;
     let disposables: Array<Disposable>;
     let onModelChangeListener: () => void;
+    let mockApiClient: ApiClient;
 
     beforeEach(() => {
         disposables = [];
@@ -44,11 +45,14 @@ describe(__filename, () => {
                 dispose() {},
             };
         });
-        let apiClient = instance(mock(ApiClient));
+        mockApiClient = mock(ApiClient);
         when(mockedClusterModel.roots).thenReturn(
             mockListClustersResponse.clusters!.map(
-                (m: any) => new Cluster(apiClient, m)
+                (m: any) => new Cluster(instance(mockApiClient), m)
             )
+        );
+        when(mockApiClient.host).thenResolve(
+            new URL("https://www.example.com")
         );
     });
 
@@ -89,19 +93,19 @@ describe(__filename, () => {
         disposables.push(provider);
 
         let cluster = new Cluster(
-            instance(mock(ApiClient)),
+            instance(mockApiClient),
             mockListClustersResponse.clusters![0]
         );
         let children = await resolveProviderResult(
             provider.getChildren(cluster)
         );
         assert(children);
-        assert.equal(children.length, 4);
+        assert.equal(children.length, 5);
     });
 
     it("should get cluster tree node items", async () => {
         let cluster = new Cluster(
-            instance(mock(ApiClient)),
+            instance(mockApiClient),
             mockListClustersResponse.clusters![0]
         );
 
@@ -112,6 +116,12 @@ describe(__filename, () => {
             {
                 description: "cluster-id-2",
                 label: "Cluster ID:",
+            },
+            {
+                contextValue: "copyable",
+                description:
+                    "www.example.com/#setting/clusters/cluster-id-2/configuration",
+                label: "URL:",
             },
             {
                 description: "Spark 3.2.1",
