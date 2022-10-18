@@ -44,6 +44,20 @@ export function activate(context: ExtensionContext): PublicApi {
         true
     );
 
+    NamedLogger.getOrCreate(
+        "Extension",
+        {
+            factory: (name) => {
+                return loggers.add(name, {
+                    level: "error",
+                    format: format.json(),
+                    transports: [new transports.Console()],
+                });
+            },
+        },
+        true
+    );
+
     let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);

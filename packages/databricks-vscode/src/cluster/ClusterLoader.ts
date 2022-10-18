@@ -5,7 +5,7 @@ import {
     Time,
     TimeUnits,
 } from "@databricks/databricks-sdk";
-import {ClusterInfoState} from "@databricks/databricks-sdk/dist/apis/clusters";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {sortClusters} from "./ClusterModel";
@@ -163,7 +163,25 @@ export class ClusterLoader implements Disposable {
         this.running = true;
         this.stopped = false;
         while (this.running) {
-            await this._load();
+            try {
+                await this._load();
+            } catch (e) {
+                let err = e;
+                if (Object(err) === err) {
+                    err = {
+                        ...Object.getOwnPropertyNames(err).reduce((acc, i) => {
+                            acc[i] = (err as any)[i];
+                            return acc;
+                        }, {} as any),
+                        ...(err as any),
+                    };
+                }
+                NamedLogger.getOrCreate("Extension").log(
+                    "error",
+                    "Error loading clusters:",
+                    err
+                );
+            }
             if (!this.running) {
                 break;
             }
