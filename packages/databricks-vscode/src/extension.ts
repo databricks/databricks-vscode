@@ -44,6 +44,25 @@ export function activate(context: ExtensionContext): PublicApi {
         true
     );
 
+    /** 
+    This logger collects all the logs in the extension.
+    
+    TODO Make this logger log to a seperate (or common?) output console in vscode
+    */
+    NamedLogger.getOrCreate(
+        "Extension",
+        {
+            factory: (name) => {
+                return loggers.add(name, {
+                    level: "error",
+                    format: format.json(),
+                    transports: [new transports.Console()],
+                });
+            },
+        },
+        true
+    );
+
     let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
