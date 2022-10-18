@@ -172,6 +172,11 @@
                 "command": "databricks.cluster.stop",
                 "title": "Stop Cluster",
                 "icon": "$(debug-stop)"
+            },
+            {
+                "command": "databricks.utils.copyvalue",
+                "title": "Copy to clipboard",
+                "icon": "$(clippy)"
             }
         ],
         "viewsContainers": {
@@ -234,7 +239,7 @@
                 {
                     "command": "databricks.connection.attachCluster",
                     "when": "view == clusterView",
-                    "group": "inline@0"
+                    "group": "inline@1"
                 },
                 {
                     "command": "databricks.connection.configureProject",
@@ -279,6 +284,11 @@
                 {
                     "command": "databricks.cluster.start",
                     "when": "view == configurationView && viewItem == clusterStopped",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.utils.copyvalue",
+                    "when": "view == configurationView && viewItem =~ /^.*copyable.*$/ || view == clusterView && viewItem =~ /^.*copyable.*$/",
                     "group": "inline@0"
                 }
             ],

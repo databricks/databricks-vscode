@@ -1,4 +1,4 @@
-import {Cluster, Repos} from "@databricks/databricks-sdk";
+import {Cluster, Repo} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
     Disposable,
@@ -164,25 +164,22 @@ export class ConnectionCommands implements Disposable {
                 return;
             }
 
-            const reposApi = new Repos(apiClient);
             const quickPick = window.createQuickPick<WorkspaceItem>();
 
             quickPick.busy = true;
             quickPick.canSelectMany = false;
             quickPick.show();
 
-            let repos = (
-                await reposApi.getRepos({
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    path_prefix: `/Repos/${me}`,
-                })
-            ).repos;
+            let repos = await Repo.list(apiClient, {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                path_prefix: `/Repos/${me}`,
+            });
 
             quickPick.items = repos!.map((r) => ({
-                label: r.path!.split("/").pop() || "",
-                detail: r.path!,
-                path: r.path!,
-                id: r.id!,
+                label: r.path.split("/").pop() || "",
+                detail: r.path,
+                path: r.path,
+                id: r.id,
             }));
             quickPick.busy = false;
 

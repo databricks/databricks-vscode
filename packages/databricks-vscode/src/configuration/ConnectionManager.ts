@@ -277,7 +277,14 @@ export class ConnectionManager {
         }
 
         const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
-        this.updateSyncDestination(new SyncDestination(workspacePath, wsUri));
+        if (this.apiClient === undefined) {
+            throw new Error(
+                "Can't attach a Repo when profile is not connected"
+            );
+        }
+        this.updateSyncDestination(
+            await SyncDestination.from(this.apiClient, workspacePath, wsUri)
+        );
     }
 
     async detachSyncDestination(): Promise<void> {

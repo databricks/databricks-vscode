@@ -39,6 +39,13 @@ export class Cluster {
         return this.clusterDetails.cluster_name!;
     }
 
+    get url(): Promise<string> {
+        return (async () =>
+            `${(await this.client.host).host}/#setting/clusters/${
+                this.id
+            }/configuration`)();
+    }
+
     get memoryMb(): number | undefined {
         return this.clusterDetails.cluster_memory_mb;
     }

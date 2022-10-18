@@ -1,3 +1,4 @@
+import {ApiClient, Repo} from "@databricks/databricks-sdk";
 import * as assert from "assert";
 import path = require("path");
 import {Uri} from "vscode";
@@ -8,20 +9,35 @@ type SyncDestinationType = "workspace" | "repo";
  * Either Databricks repo or workspace that acts as a sync target for the current workspace.
  */
 export class SyncDestination {
-    private repoPath: Uri;
+    /**
+     * ONLY USE FOR TESTING
+     */
+    constructor(
+        readonly repo: Repo,
+        readonly repoPath: Uri,
+        readonly vscodeWorkspacePath: Uri
+    ) {}
 
-    constructor(repoPath: Uri, readonly vscodeWorkspacePath: Uri) {
-        assert.equal(repoPath.scheme, "dbws");
-
-        this.repoPath = repoPath;
+    static async from(
+        client: ApiClient,
+        repoUri: Uri,
+        vscodeWorkspacePath: Uri
+    ) {
+        assert.equal(repoUri.scheme, "dbws");
 
         // Repo paths always start with "/Workspace" but the repos API strips this off.
-        if (!this.repoPath.path.startsWith("/Workspace/")) {
-            this.repoPath = Uri.from({
+        if (!repoUri.path.startsWith("/Workspace/")) {
+            repoUri = Uri.from({
                 scheme: "dbws",
-                path: `/Workspace${this.repoPath.path}`,
+                path: `/Workspace${repoUri.path}`,
             });
         }
+
+        const repo = await Repo.fromPath(
+            client,
+            repoUri.path.replace("/Workspace", "")
+        );
+        return new SyncDestination(repo, repoUri, vscodeWorkspacePath);
     }
 
     get type(): SyncDestinationType {

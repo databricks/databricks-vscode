@@ -28,6 +28,7 @@ import {
     NamedLogger,
 } from "@databricks/databricks-sdk/dist/logging";
 import {format, loggers, transports} from "winston";
+import {UtilsCommands} from "./utils/UtilsCommands";
 
 export function activate(context: ExtensionContext): PublicApi {
     NamedLogger.getOrCreate(
@@ -230,6 +231,16 @@ export function activate(context: ExtensionContext): PublicApi {
             "databricks.quickstart.open",
             quickstartCommands.openQuickstartCommand(),
             quickstartCommands
+        )
+    );
+
+    //utils
+    const utilCommands = new UtilsCommands();
+    context.subscriptions.push(
+        commands.registerCommand(
+            "databricks.utils.copyvalue",
+            utilCommands.copyValueCommand(),
+            utilCommands
         )
     );
 

@@ -28,6 +28,16 @@ export class ApiClientResponseError extends Error {
 
 export class ApiClient {
     private agent: https.Agent;
+    private _host?: URL;
+    get host() {
+        return (async () => {
+            if (!this._host) {
+                const credentials = await this.credentialProvider();
+                this._host = credentials.host;
+            }
+            return this._host;
+        })();
+    }
 
     constructor(
         private readonly product: string,

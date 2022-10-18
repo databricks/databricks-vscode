@@ -99,13 +99,15 @@ describe(__filename, () => {
         assert.equal(children.length, 4);
     });
 
-    it("should get cluster tree node items", () => {
+    it("should get cluster tree node items", async () => {
         let cluster = new Cluster(
             instance(mock(ApiClient)),
             mockListClustersResponse.clusters![0]
         );
 
-        let items = ClusterListDataProvider.clusterNodeToTreeItems(cluster);
+        let items = await ClusterListDataProvider.clusterNodeToTreeItems(
+            cluster
+        );
         assert.deepEqual(items, [
             {
                 description: "cluster-id-2",

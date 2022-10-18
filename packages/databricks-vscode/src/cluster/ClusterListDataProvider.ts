@@ -107,11 +107,18 @@ export class ClusterListDataProvider
      * in the TreeItems match the information presented in cluster list
      * of the Databricks webapp.
      */
-    public static clusterNodeToTreeItems(element: Cluster): Array<TreeItem> {
-        let children = [
+    public static async clusterNodeToTreeItems(
+        element: Cluster
+    ): Promise<Array<TreeItem>> {
+        let children: TreeItem[] = [
             {
                 label: "Cluster ID:",
                 description: element.id,
+            },
+            {
+                label: "URL:",
+                description: await element.url,
+                contextValue: "copyable",
             },
         ];
         if (element.cores) {
