@@ -1,4 +1,5 @@
-import {commands, debug, Uri, window} from "vscode";
+import {resolve} from "path";
+import {commands, debug, languages, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 /**
@@ -19,6 +20,17 @@ export class RunCommands {
                 }
 
                 await commands.executeCommand("databricks.sync.start");
+                let diag;
+                while (diag === undefined) {
+                    diag = languages
+                        .getDiagnostics(targetResource)
+                        .find((v) => v.source === "bricks-sync");
+
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, 1 * 1000)
+                    );
+                }
+
                 await debug.startDebugging(
                     undefined,
                     {

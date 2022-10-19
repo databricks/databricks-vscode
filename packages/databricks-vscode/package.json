@@ -334,14 +334,19 @@
                 "name": "bricks-sync",
                 "owner": "bricks",
                 "fileLocation": "relative",
+                "severity": "info",
+                "label": "bricks-sync",
+                "source": "bricks-sync",
                 "pattern": {
-                    "regexp": "Putting (/Repos/.*)$",
-                    "file": 1
+                    "regexp": "^.* (Uploaded) (.*)$",
+                    "file": 2,
+                    "kind": "file",
+                    "message": 1
                 },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "Syncing from",
-                    "endsPattern": "Done(\\. Watching for changes\\.\\.\\.)$"
+                    "beginsPattern": "^.*Remote file sync location: .*",
+                    "endsPattern": "^NAN$"
                 }
             }
         ],
