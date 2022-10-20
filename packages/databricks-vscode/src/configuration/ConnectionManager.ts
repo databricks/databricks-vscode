@@ -167,10 +167,11 @@ export class ConnectionManager {
             await this.waitForConnect();
         }
 
+        this._projectConfigFile = undefined;
         this._apiClient = undefined;
         this._me = undefined;
-        this._projectConfigFile = undefined;
         this.updateCluster(undefined);
+        this.updateSyncDestination(undefined);
         this.updateState("DISCONNECTED");
     }
 
@@ -303,6 +304,9 @@ export class ConnectionManager {
     }
 
     private updateState(newState: ConnectionState) {
+        if (newState === "DISCONNECTED") {
+            this._profile = undefined;
+        }
         if (this._state !== newState) {
             this._state = newState;
             this.onDidChangeStateEmitter.fire(this._state);
