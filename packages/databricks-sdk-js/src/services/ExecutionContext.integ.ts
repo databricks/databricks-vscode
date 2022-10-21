@@ -61,6 +61,6 @@ describe(__filename, function () {
         // is FINISHED instead of CANCELLED
         assert.equal(result.status, "Finished");
         assert(result.results?.resultType === "error");
-        assert(result.results.cause.includes("CommandCancelledException"));
+        assert(result.results!.cause!.includes("CommandCancelledException"));
     });
 });

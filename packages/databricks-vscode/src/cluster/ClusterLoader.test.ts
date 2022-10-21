@@ -1,12 +1,16 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiClient, cluster, permissions} from "@databricks/databricks-sdk";
-import {ScimMeResponse} from "@databricks/databricks-sdk/dist/apis/scim";
+import {
+    ApiClient,
+    cluster,
+    permissions,
+    scim,
+} from "@databricks/databricks-sdk";
 import assert from "assert";
-import {anyString, anything, instance, mock, spy, when} from "ts-mockito";
+import {anything, instance, mock, spy, when} from "ts-mockito";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ClusterLoader} from "./ClusterLoader";
 
-const me: ScimMeResponse = {
+const me: scim.User = {
     entitlements: [],
     groups: [
         {
@@ -16,7 +20,6 @@ const me: ScimMeResponse = {
     ],
     userName: "user-1",
     roles: [],
-    schemas: [],
 };
 const mockListClustersResponse: cluster.ListClustersResponse = {
     clusters: [
@@ -71,7 +74,7 @@ const mockClusterPermissions: Map<string, permissions.ObjectPermissions> =
         [
             "cluster-id-2",
             {
-                access_control_list: [{group_name: me.groups[0].display}],
+                access_control_list: [{group_name: me.groups![0].display}],
             },
         ],
         [
@@ -83,7 +86,7 @@ const mockClusterPermissions: Map<string, permissions.ObjectPermissions> =
         [
             "cluster-id-4",
             {
-                access_control_list: [{group_name: me.groups[0].display}],
+                access_control_list: [{group_name: me.groups![0].display}],
             },
         ],
     ]);

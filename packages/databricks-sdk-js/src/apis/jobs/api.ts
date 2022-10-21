@@ -67,25 +67,27 @@ export class JobsService {
      * cancelRun and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async cancelRunAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.CancelRun;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.Run) => Promise<void>;
-    }): Promise<model.Run> {
-        const response = await this.cancelRun(request);
+    async cancelRunAndWait(
+        cancelRun: model.CancelRun,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.Run) => Promise<void>;
+        }
+    ): Promise<model.Run> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        await this.cancelRun(cancelRun);
 
         return await retry<model.Run>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.getRun(
                     {
-                        run_id: request.run_id!,
+                        run_id: cancelRun.run_id!,
                     },
                     cancellationToken
                 );
@@ -229,25 +231,27 @@ export class JobsService {
      * getRun and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async getRunAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.GetRunRequest;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.Run) => Promise<void>;
-    }): Promise<model.Run> {
-        const response = await this.getRun(request);
+    async getRunAndWait(
+        getRunRequest: model.GetRunRequest,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.Run) => Promise<void>;
+        }
+    ): Promise<model.Run> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        const run = await this.getRun(getRunRequest);
 
         return await retry<model.Run>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.getRun(
                     {
-                        run_id: response.run_id!,
+                        run_id: run.run_id!,
                     },
                     cancellationToken
                 );
@@ -366,25 +370,27 @@ export class JobsService {
      * repairRun and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async repairRunAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.RepairRun;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.Run) => Promise<void>;
-    }): Promise<model.Run> {
-        const response = await this.repairRun(request);
+    async repairRunAndWait(
+        repairRun: model.RepairRun,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.Run) => Promise<void>;
+        }
+    ): Promise<model.Run> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        await this.repairRun(repairRun);
 
         return await retry<model.Run>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.getRun(
                     {
-                        run_id: request.run_id!,
+                        run_id: repairRun.run_id!,
                     },
                     cancellationToken
                 );
@@ -457,25 +463,27 @@ export class JobsService {
      * runNow and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async runNowAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.RunNow;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.Run) => Promise<void>;
-    }): Promise<model.Run> {
-        const response = await this.runNow(request);
+    async runNowAndWait(
+        runNow: model.RunNow,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.Run) => Promise<void>;
+        }
+    ): Promise<model.Run> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        const runNowResponse = await this.runNow(runNow);
 
         return await retry<model.Run>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.getRun(
                     {
-                        run_id: response.run_id!,
+                        run_id: runNowResponse.run_id!,
                     },
                     cancellationToken
                 );
@@ -532,25 +540,27 @@ export class JobsService {
      * submit and wait to reach TERMINATED or SKIPPED state
      *  or fail on reaching INTERNAL_ERROR state
      */
-    async submitAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.SubmitRun;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.Run) => Promise<void>;
-    }): Promise<model.Run> {
-        const response = await this.submit(request);
+    async submitAndWait(
+        submitRun: model.SubmitRun,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.Run) => Promise<void>;
+        }
+    ): Promise<model.Run> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        const submitRunResponse = await this.submit(submitRun);
 
         return await retry<model.Run>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.getRun(
                     {
-                        run_id: response.run_id!,
+                        run_id: submitRunResponse.run_id!,
                     },
                     cancellationToken
                 );
