@@ -16,19 +16,21 @@ export class ProjectConfigFileWatcher implements Disposable {
             fileSystemWatcher,
             fileSystemWatcher.onDidCreate(async (e) => {
                 if (connectionManager.state !== "CONNECTED") {
-                    connectionManager.login();
+                    await connectionManager.login();
                 }
             }, this),
             fileSystemWatcher.onDidChange(async (e) => {
                 const configFile = await ProjectConfigFile.load(rootPath);
                 if (configFile.profile !== connectionManager.profile) {
-                    connectionManager.login();
+                    await connectionManager.login();
                 }
                 if (connectionManager.cluster?.id !== configFile.clusterId) {
                     if (configFile.clusterId) {
-                        connectionManager.attachCluster(configFile.clusterId);
+                        await connectionManager.attachCluster(
+                            configFile.clusterId
+                        );
                     } else {
-                        connectionManager.detachCluster();
+                        await connectionManager.detachCluster();
                     }
                 }
                 if (
@@ -36,19 +38,19 @@ export class ProjectConfigFileWatcher implements Disposable {
                     configFile.workspacePath
                 ) {
                     if (configFile.workspacePath) {
-                        connectionManager.attachSyncDestination(
+                        await connectionManager.attachSyncDestination(
                             Uri.from({
                                 scheme: "dbws",
                                 path: configFile.workspacePath,
                             })
                         );
                     } else {
-                        connectionManager.detachSyncDestination();
+                        await connectionManager.detachSyncDestination();
                     }
                 }
             }, this),
-            fileSystemWatcher.onDidDelete((e) => {
-                connectionManager.logout();
+            fileSystemWatcher.onDidDelete(async (e) => {
+                await connectionManager.logout();
             }, this)
         );
     }
