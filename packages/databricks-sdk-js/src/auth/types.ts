@@ -31,7 +31,7 @@ export type Profiles = Record<
 >;
 
 export class WithError<L, ErrType> {
-    constructor(readonly value?: L, readonly error?: ErrType) {
+    private constructor(readonly value?: L, readonly error?: ErrType) {
         if (
             (value === undefined && error === undefined) ||
             (value !== undefined && error !== undefined)

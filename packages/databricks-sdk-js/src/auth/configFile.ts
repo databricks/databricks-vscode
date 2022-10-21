@@ -12,6 +12,18 @@ export class ConfigFileProfileParsingError extends Error {
     }
 }
 
+export class HostParsingError extends ConfigFileProfileParsingError {
+    constructor(message?: string) {
+        super("HostParsingError", message);
+    }
+}
+
+export class TokenParsingError extends ConfigFileProfileParsingError {
+    constructor(message?: string) {
+        super("TokenParsingError", message);
+    }
+}
+
 export function resolveConfigFilePath(filePath?: string): string {
     if (!filePath) {
         if (process.env.DATABRICKS_CONFIG_FILE) {
@@ -26,10 +38,7 @@ export function resolveConfigFilePath(filePath?: string): string {
 
 function getProfile(config: any): Profile {
     if (config.host === undefined) {
-        throw new ConfigFileProfileParsingError(
-            "HostParsingError",
-            '"host" it not defined'
-        );
+        throw new HostParsingError('"host" it not defined');
     }
 
     let host;
@@ -37,21 +46,15 @@ function getProfile(config: any): Profile {
         host = new URL(config.host);
     } catch (e: unknown) {
         if (typeof e === "string") {
-            throw new ConfigFileProfileParsingError("HostParsingError", e);
+            throw new HostParsingError(e);
         } else if (e instanceof Error) {
-            throw new ConfigFileProfileParsingError(
-                "HostParsingError",
-                `${e.name}: ${e.message}`
-            );
+            throw new HostParsingError(`${e.name}: ${e.message}`);
         }
         throw e;
     }
 
     if (config.token === undefined) {
-        throw new ConfigFileProfileParsingError(
-            "TokenParsingError",
-            '"token" it not defined'
-        );
+        throw new TokenParsingError('"token" it not defined');
     }
     return {
         host: host,
