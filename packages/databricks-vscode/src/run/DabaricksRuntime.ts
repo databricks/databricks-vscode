@@ -100,12 +100,12 @@ export class DatabricksRuntime {
                 return;
             }
 
-            if (!(await cluster.canExecute())) {
-                await window.showErrorMessage(
-                    "Can't execute code on the attached cluster. Please select a different cluster."
-                );
-                return;
-            }
+            // if (!(await cluster.canExecute())) {
+            //     await window.showErrorMessage(
+            //         "Can't execute code on the attached cluster. Please select a different cluster."
+            //     );
+            //     return;
+            // }
 
             let syncDestination = this.connection.syncDestination;
             if (!syncDestination) {

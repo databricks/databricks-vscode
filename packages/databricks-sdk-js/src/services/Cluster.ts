@@ -58,6 +58,20 @@ export class Cluster {
         return this.clusterDetails.spark_version!;
     }
 
+    get dbrVersion(): Array<number | "x"> {
+        const sparkVersion = this.clusterDetails.spark_version!;
+        const match = sparkVersion.match(/^(custom:.*?__)?(.*?)-/);
+        if (!match) {
+            return ["x", "x", "x"];
+        }
+        const parts = match[2].split(".");
+        return [
+            parseInt(parts[0], 10) || "x",
+            parseInt(parts[1], 10) || "x",
+            parseInt(parts[2], 10) || "x",
+        ];
+    }
+
     get creator(): string {
         return this.clusterDetails.creator_user_name || "";
     }

@@ -139,6 +139,10 @@ export class ClusterListDataProvider
                 description: element.sparkVersion,
             },
             {
+                label: "Databricks Runtime:",
+                description: element.dbrVersion.join("."),
+            },
+            {
                 label: "State:",
                 description: element.state,
             },

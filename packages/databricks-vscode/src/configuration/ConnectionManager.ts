@@ -135,6 +135,41 @@ export class ConnectionManager {
             return;
         }
 
+        const wsConfApi = new WorkspaceConf(apiClient);
+        const state = await wsConfApi.getStatus([
+            "enableProjectTypeInWorkspace",
+            "enableWorkspaceFilesystem",
+        ]);
+        if (
+            state.enableProjectTypeInWorkspace === "false" ||
+            state.enableWorkspaceFilesystem === "false"
+        ) {
+            let message = "";
+            if (state.enableProjectTypeInWorkspace === "false") {
+                message =
+                    "Repos are not enabled for this workspace. Please enable it in the Databricks UI.";
+            } else if (state.enableWorkspaceFilesystem === "false") {
+                message =
+                    "Files in Repos is not enabled for this workspace. Please enable it in the Databricks UI.";
+            }
+            console.error(message);
+            if (interactive) {
+                let result = await window.showWarningMessage(
+                    message,
+                    "Open Databricks UI"
+                );
+                if (result === "Open Databricks UI") {
+                    let host = (await apiClient.credentialProvider()).host;
+                    await env.openExternal(
+                        Uri.parse(
+                            host.toString() +
+                                "#setting/accounts/workspace-settings"
+                        )
+                    );
+                }
+            }
+        }
+
         this._apiClient = apiClient;
         this._projectConfigFile = projectConfigFile;
         this._profile = profile;
@@ -215,7 +250,7 @@ export class ConnectionManager {
         await this.writeConfigFile(profile);
         window.showInformationMessage(`Selected profile: ${profile}`);
 
-        await this.login(false);
+        await this.login(true);
     }
 
     private async writeConfigFile(profile: string) {
