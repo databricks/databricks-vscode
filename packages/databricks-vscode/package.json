@@ -174,9 +174,9 @@
                 "icon": "$(debug-stop)"
             },
             {
-                "command": "databricks.utils.copyvalue",
-                "title": "Copy to clipboard",
-                "icon": "$(clippy)"
+                "command": "databricks.utils.openExternal",
+                "title": "Open link externally",
+                "icon": "$(link)"
             }
         ],
         "viewsContainers": {
@@ -287,8 +287,8 @@
                     "group": "inline@0"
                 },
                 {
-                    "command": "databricks.utils.copyvalue",
-                    "when": "view == configurationView && viewItem =~ /^.*copyable.*$/ || view == clusterView && viewItem =~ /^.*copyable.*$/",
+                    "command": "databricks.utils.openExternal",
+                    "when": "view == configurationView && viewItem =~ /^.*databricks-link.*$/ || view == clusterView && viewItem =~ /^.*databricks-link.*$/",
                     "group": "inline@0"
                 }
             ],

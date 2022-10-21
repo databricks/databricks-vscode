@@ -118,7 +118,7 @@ describe(__filename, () => {
                 label: "Cluster ID:",
             },
             {
-                contextValue: "copyable",
+                contextValue: "databricks-link",
                 description:
                     "www.example.com/#setting/clusters/cluster-id-2/configuration",
                 label: "URL:",

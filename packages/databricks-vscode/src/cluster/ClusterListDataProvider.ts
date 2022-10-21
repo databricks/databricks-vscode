@@ -118,7 +118,7 @@ export class ClusterListDataProvider
             {
                 label: "URL:",
                 description: await element.url,
-                contextValue: "copyable",
+                contextValue: "databricks-link",
             },
         ];
         if (element.cores) {

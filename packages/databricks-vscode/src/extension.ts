@@ -238,8 +238,8 @@ export function activate(context: ExtensionContext): PublicApi {
     const utilCommands = new UtilsCommands();
     context.subscriptions.push(
         commands.registerCommand(
-            "databricks.utils.copyvalue",
-            utilCommands.copyValueCommand(),
+            "databricks.utils.openExternal",
+            utilCommands.openExternalCommand(),
             utilCommands
         )
     );

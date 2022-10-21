@@ -164,7 +164,7 @@ export class ConfigurationDataProvider
                         label: `URL:`,
                         description: await this.connectionManager
                             .syncDestination?.repo.url,
-                        contextValue: "copyable",
+                        contextValue: "databricks-link",
                     },
                     {
                         label: `State:`,
