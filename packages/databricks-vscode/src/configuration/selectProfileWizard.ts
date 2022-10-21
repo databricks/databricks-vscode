@@ -1,5 +1,6 @@
 import {
     ConfigFileError,
+    isConfigFileParsingError,
     loadConfigFile,
     Profiles,
     resolveConfigFilePath,
@@ -92,15 +93,18 @@ export async function selectProfile(
         }
 
         let items: Array<QuickPickItem> = Object.keys(profiles)
-            .filter((label) => profiles[label].error === undefined)
+            .filter((label) => !isConfigFileParsingError(profiles[label]))
             .map((label) => ({label}));
 
         Object.keys(profiles)
-            .filter((label) => profiles[label].error !== undefined)
+            .filter((label) => isConfigFileParsingError(profiles[label]))
             .forEach((label) => {
-                window.showWarningMessage(
-                    `Can't parse profile "${label}": ${profiles[label].error?.name}: ${profiles[label].error?.message}`
-                );
+                const details = profiles[label];
+                if (isConfigFileParsingError(details)) {
+                    window.showWarningMessage(
+                        `Can't parse profile "${label}": ${details.name}: ${details.message}`
+                    );
+                }
             });
 
         if (items.length) {

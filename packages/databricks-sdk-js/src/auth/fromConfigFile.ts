@@ -3,7 +3,7 @@ import {
     Credentials,
     CredentialsProviderError,
 } from "./types";
-import {loadConfigFile} from "./configFile";
+import {isConfigFileParsingError, loadConfigFile} from "./configFile";
 
 export const DEFAULT_PROFILE = "DEFAULT";
 
@@ -25,13 +25,13 @@ export const fromConfigFile = (
         }
 
         const details = config[profile];
-        if (details.value === undefined) {
+        if (isConfigFileParsingError(details)) {
             throw new CredentialsProviderError(
-                `Can't load profile ${profile}: ${config[profile].error?.name}: ${config[profile].error?.message}`
+                `Can't load profile ${profile}: ${details.name}: ${details.message}`
             );
         }
 
-        cachedValue = details.value;
+        cachedValue = details;
         return cachedValue;
     };
 };
