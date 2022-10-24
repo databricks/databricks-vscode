@@ -10,8 +10,8 @@ on:
 
 jobs:
     create-build-artifacts:
-        fail-fast: false
         strategy:
+            fail-fast: false
             matrix:
                 # VSIX architextures: https://github.com/microsoft/vscode-vsce/blob/main/src/package.ts
                 arch:
