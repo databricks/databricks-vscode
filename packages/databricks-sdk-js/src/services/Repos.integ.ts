@@ -2,11 +2,10 @@
 
 import {IntegrationTestSetup, sleep} from "../test/IntegrationTestSetup";
 import * as assert from "node:assert";
-import {Repos} from "./Repos";
-import {ListReposResponse, RepoInfo, ReposService} from "../apis/repos";
+import {Repo} from "./Repos";
+import {RepoInfo, ReposService} from "../apis/repos";
 import {randomUUID} from "node:crypto";
 import {WorkspaceService} from "../apis/workspace";
-import path from "node:path";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
@@ -48,30 +47,27 @@ describe(__filename, function () {
     });
 
     it("should list repos by prefix", async () => {
-        let repos = new Repos(integSetup.client);
-        let response = await repos.getRepos({
+        let response = await Repo.list(integSetup.client, {
             path_prefix: repoDir,
         });
-        assert.ok(response.repos!.length > 0);
+        assert.ok(response.length > 0);
     });
 
     // skip test as it takes too long to run
     it.skip("should list all repos", async () => {
-        let repos = new Repos(integSetup.client);
-        let response = await repos.getRepos({});
+        let response = await Repo.list(integSetup.client, {});
 
-        assert.notEqual(response.repos, undefined);
-        assert.ok(response.repos!.length > 0);
+        assert.notEqual(response, undefined);
+        assert.ok(response.length > 0);
     });
 
     it("should cancel listing repos", async () => {
-        let repos = new Repos(integSetup.client);
-
         let token = {
             isCancellationRequested: false,
         };
 
-        let response = repos.getRepos(
+        let response = Repo.list(
+            integSetup.client,
             {
                 path_prefix: repoDir,
             },
@@ -85,7 +81,7 @@ describe(__filename, function () {
         const start = Date.now();
         await response;
         assert.ok(Date.now() - start < 600);
-        assert.notEqual((await response).repos, undefined);
-        assert.ok((await response).repos!.length > 0);
+        assert.notEqual(await response, undefined);
+        assert.ok((await response).length > 0);
     });
 });
