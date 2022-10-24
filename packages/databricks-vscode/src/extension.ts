@@ -24,89 +24,10 @@ import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {PublicApi} from "@databricks/databricks-vscode-types";
-import {
-    ExposedLoggers,
-    NamedLogger,
-} from "@databricks/databricks-sdk/dist/logging";
-import {format, loggers, transports} from "winston";
-import internal, {Writable} from "stream";
-import {StringDecoder} from "string_decoder";
-
-class OutputLogStream extends Writable {
-    private readonly _decoder = new StringDecoder();
-    constructor(
-        private readonly _outputChannel: OutputChannel,
-        opts?: internal.WritableOptions
-    ) {
-        super(opts);
-    }
-
-    _write(
-        chunk: any,
-        encoding: BufferEncoding,
-        callback: (error?: Error | null | undefined) => void
-    ): void {
-        const decoded = Buffer.isBuffer(chunk)
-            ? this._decoder.write(chunk)
-            : chunk;
-        this._outputChannel.append(decoded);
-        callback();
-    }
-
-    _final(callback: (error?: Error | null | undefined) => void): void {
-        this._outputChannel.append(this._decoder.end());
-        callback();
-    }
-}
+import {initLoggers} from "./logger";
 
 export function activate(context: ExtensionContext): PublicApi {
-    const outputChannel = window.createOutputChannel("Databricks Logs", "json");
-    outputChannel.clear();
-
-    NamedLogger.getOrCreate(
-        ExposedLoggers.SDK,
-        {
-            factory: (name) => {
-                return loggers.add(name, {
-                    level: "debug",
-                    format: format.json(),
-                    transports: [
-                        new transports.Stream({
-                            stream: new OutputLogStream(outputChannel, {
-                                defaultEncoding: "utf-8",
-                            }),
-                        }),
-                    ],
-                });
-            },
-        },
-        true
-    );
-
-    /** 
-    This logger collects all the logs in the extension.
-    
-    TODO Make this logger log to a seperate (or common?) output console in vscode
-    */
-    NamedLogger.getOrCreate(
-        "Extension",
-        {
-            factory: (name) => {
-                return loggers.add(name, {
-                    level: "error",
-                    format: format.json(),
-                    transports: [
-                        new transports.Stream({
-                            stream: new OutputLogStream(outputChannel, {
-                                defaultEncoding: "utf-8",
-                            }),
-                        }),
-                    ],
-                });
-            },
-        },
-        true
-    );
+    initLoggers();
 
     let cli = new CliWrapper(context);
     // Configuration group
