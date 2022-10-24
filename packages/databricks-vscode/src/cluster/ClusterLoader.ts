@@ -44,6 +44,9 @@ export class ClusterLoader implements Disposable {
     private _onDidStop: EventEmitter<void> = new EventEmitter<void>();
     private readonly onDidStop: Event<void> = this._onDidStop.event;
 
+    private _onStopRequested: EventEmitter<void> = new EventEmitter<void>();
+    private readonly onStopRequested: Event<void> = this._onStopRequested.event;
+
     private _onDidChange: EventEmitter<void> = new EventEmitter<void>();
     readonly onDidChange: Event<void> = this._onDidChange.event;
 
@@ -51,7 +54,7 @@ export class ClusterLoader implements Disposable {
 
     constructor(
         private connectionManager: ConnectionManager,
-        refreshTime: Time = new Time(5, TimeUnits.seconds)
+        refreshTime: Time = new Time(10, TimeUnits.minutes)
     ) {
         this.refreshTime = refreshTime;
         this.disposables.push(this.onDidStop(() => (this.stopped = true)));
@@ -102,9 +105,13 @@ export class ClusterLoader implements Disposable {
             return;
         }
         let allClusters = sortClusters(
-            (await Cluster.list(apiClient)).filter((c) =>
-                ["UI", "API"].includes(c.source)
-            )
+            (await Cluster.list(apiClient))
+                .filter((c) => ["UI", "API"].includes(c.source))
+                .filter(
+                    (c) =>
+                        c.details.data_security_mode !== "SINGLE_USER" ||
+                        this.isValidSingleUser(c)
+                )
         );
 
         const permissionApi = new PermissionsService(apiClient);
@@ -123,15 +130,16 @@ export class ClusterLoader implements Disposable {
             }
 
             const task = new Promise<void>((resolve) => {
+                const hasUcPerm =
+                    c.details.data_security_mode !== "SINGLE_USER" ||
+                    this.isValidSingleUser(c);
+
                 this.hasPerm(c, permissionApi)
                     .then((hasPerm) => {
                         if (!this.running) {
                             return resolve();
                         }
-                        const keepCluster =
-                            (c.details.data_security_mode !== "SINGLE_USER" ||
-                                this.isValidSingleUser(c)) &&
-                            hasPerm;
+                        const keepCluster = hasUcPerm && hasPerm;
 
                         if (this._clusters.has(c.id) && !keepCluster) {
                             this._clusters.delete(c.id);
@@ -192,6 +200,7 @@ export class ClusterLoader implements Disposable {
                 break;
             }
             await new Promise((resolve) => {
+                this.disposables.push(this.onStopRequested(resolve));
                 setTimeout(resolve, this.refreshTime.toMillSeconds().value);
             });
         }
@@ -205,6 +214,7 @@ export class ClusterLoader implements Disposable {
         }
 
         this.running = false;
+        this._onStopRequested.fire();
         await new Promise((resolve) => {
             this.disposables.push(this.onDidStop(resolve));
         });
