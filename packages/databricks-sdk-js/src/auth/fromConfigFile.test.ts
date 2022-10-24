@@ -46,5 +46,3 @@ token = dapitest54321`
         });
     });
 });
-
-//let stub = sinon.stub(process.env, 'FOO').value('bar');
