@@ -22,6 +22,7 @@ import {ScimMeResponse} from "@databricks/databricks-sdk/dist/apis/scim";
 const extensionVersion = require("../../package.json").version;
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
+export type SyncStatus = "IN_PROGRESS" | "WATCHING_FOR_CHANGES" | "INACTIVE";
 
 /**
  * The ConnectionManager maintains the connection state to Databricks
@@ -37,6 +38,7 @@ export class ConnectionManager {
     private _me?: ScimMeResponse;
     private _profile?: string;
     private _clusterManager?: ClusterManager;
+    private _syncStatus: SyncStatus = "INACTIVE";
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -46,11 +48,16 @@ export class ConnectionManager {
     private readonly onDidChangeSyncDestinationEmitter: EventEmitter<
         SyncDestination | undefined
     > = new EventEmitter();
+    public readonly onDidSyncCompleteEmitter: EventEmitter<void> =
+        new EventEmitter<void>();
 
     public readonly onDidChangeState = this.onDidChangeStateEmitter.event;
     public readonly onDidChangeCluster = this.onDidChangeClusterEmitter.event;
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
+    // TODO: add some documentation about this
+    // TODO: move this to code synchronizer and implement a linear event chain
+    public readonly onDidSyncComplete = this.onDidSyncCompleteEmitter.event;
 
     constructor(private cli: CliWrapper) {}
 
@@ -89,6 +96,14 @@ export class ConnectionManager {
      */
     get apiClient(): ApiClient | undefined {
         return this._apiClient;
+    }
+
+    set syncStatus(status: SyncStatus) {
+        this._syncStatus = status;
+    }
+
+    get syncStatus() {
+        return this._syncStatus;
     }
 
     private apiClientFrom(creds: CredentialProvider): ApiClient {
