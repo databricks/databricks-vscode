@@ -6,7 +6,13 @@
         "Workspace",
         "Dbfs",
         "Permissions",
-        "Workspace Conf"
+        "Workspace Conf",
+        "Users",
+        "Groups",
+        "CurrentUser",
+        "Service Principals",
+        "ManagedLibraries",
+        "Command Execution"
     ],
     "formatter": "yarn fix",
     "packages": {

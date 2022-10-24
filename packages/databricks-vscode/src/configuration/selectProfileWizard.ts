@@ -57,7 +57,7 @@ export async function selectProfile(
                 const option = await window.showErrorMessage(
                     `Can't parse config file`,
                     {
-                        detail: e.message,
+                        detail: (e as ConfigFileError).message,
                     },
                     "Open Config File",
                     "Backup and Overwrite Config File"

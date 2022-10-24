@@ -78,25 +78,27 @@ export class ClustersService {
      * create and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async createAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.CreateCluster;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-    }): Promise<model.ClusterInfo> {
-        const response = await this.create(request);
+    async createAndWait(
+        createCluster: model.CreateCluster,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+        }
+    ): Promise<model.ClusterInfo> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        const createClusterResponse = await this.create(createCluster);
 
         return await retry<model.ClusterInfo>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.get(
                     {
-                        cluster_id: response.cluster_id!,
+                        cluster_id: createClusterResponse.cluster_id!,
                     },
                     cancellationToken
                 );
@@ -152,25 +154,27 @@ export class ClustersService {
      * delete and wait to reach TERMINATED state
      *  or fail on reaching ERROR state
      */
-    async deleteAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.DeleteCluster;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-    }): Promise<model.ClusterInfo> {
-        const response = await this.delete(request);
+    async deleteAndWait(
+        deleteCluster: model.DeleteCluster,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+        }
+    ): Promise<model.ClusterInfo> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        await this.delete(deleteCluster);
 
         return await retry<model.ClusterInfo>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.get(
                     {
-                        cluster_id: request.cluster_id!,
+                        cluster_id: deleteCluster.cluster_id!,
                     },
                     cancellationToken
                 );
@@ -235,25 +239,27 @@ export class ClustersService {
      * edit and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async editAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.EditCluster;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-    }): Promise<model.ClusterInfo> {
-        const response = await this.edit(request);
+    async editAndWait(
+        editCluster: model.EditCluster,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+        }
+    ): Promise<model.ClusterInfo> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        await this.edit(editCluster);
 
         return await retry<model.ClusterInfo>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.get(
                     {
-                        cluster_id: request.cluster_id!,
+                        cluster_id: editCluster.cluster_id!,
                     },
                     cancellationToken
                 );
@@ -328,25 +334,27 @@ export class ClustersService {
      * get and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async getAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.GetRequest;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-    }): Promise<model.ClusterInfo> {
-        const response = await this.get(request);
+    async getAndWait(
+        getRequest: model.GetRequest,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+        }
+    ): Promise<model.ClusterInfo> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        const clusterInfo = await this.get(getRequest);
 
         return await retry<model.ClusterInfo>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.get(
                     {
-                        cluster_id: response.cluster_id!,
+                        cluster_id: clusterInfo.cluster_id!,
                     },
                     cancellationToken
                 );
@@ -506,25 +514,27 @@ export class ClustersService {
      * resize and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async resizeAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.ResizeCluster;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-    }): Promise<model.ClusterInfo> {
-        const response = await this.resize(request);
+    async resizeAndWait(
+        resizeCluster: model.ResizeCluster,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+        }
+    ): Promise<model.ClusterInfo> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        await this.resize(resizeCluster);
 
         return await retry<model.ClusterInfo>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.get(
                     {
-                        cluster_id: request.cluster_id!,
+                        cluster_id: resizeCluster.cluster_id!,
                     },
                     cancellationToken
                 );
@@ -578,25 +588,27 @@ export class ClustersService {
      * restart and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async restartAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.RestartCluster;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-    }): Promise<model.ClusterInfo> {
-        const response = await this.restart(request);
+    async restartAndWait(
+        restartCluster: model.RestartCluster,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+        }
+    ): Promise<model.ClusterInfo> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        await this.restart(restartCluster);
 
         return await retry<model.ClusterInfo>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.get(
                     {
-                        cluster_id: request.cluster_id!,
+                        cluster_id: restartCluster.cluster_id!,
                     },
                     cancellationToken
                 );
@@ -674,25 +686,27 @@ export class ClustersService {
      * start and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
-    async startAndWait({
-        request,
-        timeout,
-        cancellationToken,
-        onProgress = async (newPollResponse) => {},
-    }: {
-        request: model.StartCluster;
-        timeout?: Time;
-        cancellationToken?: CancellationToken;
-        onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-    }): Promise<model.ClusterInfo> {
-        const response = await this.start(request);
+    async startAndWait(
+        startCluster: model.StartCluster,
+        options?: {
+            timeout?: Time;
+            cancellationToken?: CancellationToken;
+            onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
+        }
+    ): Promise<model.ClusterInfo> {
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+        let {cancellationToken, timeout, onProgress} = options;
+
+        await this.start(startCluster);
 
         return await retry<model.ClusterInfo>({
-            timeout: timeout,
+            timeout,
             fn: async () => {
                 const pollResponse = await this.get(
                     {
-                        cluster_id: request.cluster_id!,
+                        cluster_id: startCluster.cluster_id!,
                     },
                     cancellationToken
                 );
