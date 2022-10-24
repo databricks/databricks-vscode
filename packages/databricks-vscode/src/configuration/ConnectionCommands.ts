@@ -110,6 +110,7 @@ export class ConnectionCommands implements Disposable {
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
 
+            this.clusterModel.refresh();
             const refreshQuickPickItems = () => {
                 let clusters = this.clusterModel.roots ?? [];
                 quickPick.items = clusters.map((c) => {

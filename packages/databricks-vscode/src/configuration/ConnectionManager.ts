@@ -2,10 +2,13 @@ import {
     ApiClient,
     Cluster,
     fromConfigFile,
-    ScimService,
+    CurrentUserService,
     CredentialProvider,
+    WorkspaceConf,
+    scim,
 } from "@databricks/databricks-sdk";
 import {
+    env,
     commands,
     EventEmitter,
     Uri,
@@ -17,7 +20,6 @@ import {SyncDestination} from "./SyncDestination";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
-import {ScimMeResponse} from "@databricks/databricks-sdk/dist/apis/scim";
 
 const extensionVersion = require("../../package.json").version;
 
@@ -34,7 +36,7 @@ export class ConnectionManager {
     private _apiClient?: ApiClient;
     private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
-    private _me?: ScimMeResponse;
+    private _me?: scim.User;
     private _profile?: string;
     private _clusterManager?: ClusterManager;
 
@@ -58,7 +60,7 @@ export class ConnectionManager {
         return this._me?.userName;
     }
 
-    get meDetails(): ScimMeResponse | undefined {
+    get meDetails(): scim.User | undefined {
         return this._me;
     }
 
@@ -165,10 +167,11 @@ export class ConnectionManager {
             await this.waitForConnect();
         }
 
+        this._projectConfigFile = undefined;
         this._apiClient = undefined;
         this._me = undefined;
-        this._projectConfigFile = undefined;
         this.updateCluster(undefined);
+        this.updateSyncDestination(undefined);
         this.updateState("DISCONNECTED");
     }
 
@@ -300,14 +303,17 @@ export class ConnectionManager {
         this.updateSyncDestination(undefined);
     }
 
-    private async getMe(apiClient: ApiClient): Promise<ScimMeResponse> {
-        let scimApi = new ScimService(apiClient);
-        let response = await scimApi.me({});
+    private async getMe(apiClient: ApiClient): Promise<scim.User> {
+        let scimApi = new CurrentUserService(apiClient);
+        let response = await scimApi.me();
 
         return response;
     }
 
     private updateState(newState: ConnectionState) {
+        if (newState === "DISCONNECTED") {
+            this._profile = undefined;
+        }
         if (this._state !== newState) {
             this._state = newState;
             this.onDidChangeStateEmitter.fire(this._state);

@@ -48,19 +48,26 @@ export class {{$s.PascalName}}Service {
 	* {{.CamelName}} and wait to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state
 	* {{if .Wait.Failure}} or fail on reaching {{range $i, $e := .Wait.Failure}}{{if $i}} or {{end}}{{.Content}}{{end}} state{{end}}
 	*/
-	async {{.CamelName}}AndWait({request, timeout, cancellationToken, onProgress= async (newPollResponse) => {}}:{
-		{{if .Request}}request: model.{{.Request.PascalName}}{{end}}, 
-		timeout?: Time,
-		cancellationToken?: CancellationToken,
-		onProgress?: (newPollResponse: model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}) => Promise<void>
-		}): Promise<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}> {
-		const response = await this.{{.CamelName}}(request);
+	async {{.CamelName}}AndWait({{if .Request}}{{.Request.CamelName}}: model.{{.Request.PascalName}}{{end}},
+		options?: {
+			timeout?: Time,
+			cancellationToken?: CancellationToken,
+			onProgress?: (newPollResponse: model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}) => Promise<void>
+		}			
+	): Promise<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}> {
+
+        options = options || {};
+        options.onProgress =
+            options.onProgress || (async (newPollResponse) => {});
+		let {cancellationToken, timeout, onProgress} = options;
+
+		{{if .Wait.ForceBindRequest}}{{else if .Response}}const {{.Response.CamelName}} = {{end}}await this.{{.CamelName}}({{.Request.CamelName}});
 
 		return await retry<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}>({
-			timeout: timeout,
+			timeout,
 			fn: async () => {
 				const pollResponse = await this.{{.Wait.Poll.CamelName}}({ {{$e := .}}{{range .Wait.Binding}}
-					{{.Bind.SnakeName}}: {{if $e.Wait.ForceBindRequest}}request{{else if $e.Response}}response{{else}}request{{end}}.{{.Bind.SnakeName}}{{end}}!
+					{{.PollField.Name}}: {{.Bind.Of.CamelName}}.{{.Bind.Name}}!,{{end}}
 				}, cancellationToken)
 				if(cancellationToken?.isCancellationRequested) {
 					throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", "cancelled");

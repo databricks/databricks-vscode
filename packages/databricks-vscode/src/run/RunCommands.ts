@@ -1,5 +1,6 @@
 import {commands, debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {isNotebook} from "../utils";
 
 /**
  * Run related commands
@@ -14,6 +15,13 @@ export class RunCommands {
         return async (resource: Uri) => {
             let targetResource = this.getTargetResource(resource);
             if (targetResource) {
+                if (await isNotebook(targetResource)) {
+                    await window.showErrorMessage(
+                        'Use "Run File as Workflow on Databricks" for running notebooks'
+                    );
+                    return;
+                }
+
                 if (this.connection.state === "CONNECTING") {
                     await this.connection.waitForConnect();
                 }
