@@ -25,6 +25,7 @@ import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {initLoggers} from "./logger";
+import {UtilsCommands} from "./utils/UtilsCommands";
 
 export function activate(context: ExtensionContext): PublicApi {
     initLoggers();
@@ -215,6 +216,16 @@ export function activate(context: ExtensionContext): PublicApi {
             "databricks.quickstart.open",
             quickstartCommands.openQuickstartCommand(),
             quickstartCommands
+        )
+    );
+
+    //utils
+    const utilCommands = new UtilsCommands();
+    context.subscriptions.push(
+        commands.registerCommand(
+            "databricks.utils.openExternal",
+            utilCommands.openExternalCommand(),
+            utilCommands
         )
     );
 
