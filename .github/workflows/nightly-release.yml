@@ -5,6 +5,7 @@ on:
         branches: [main]
         tags:
             - "v*.*.*"
+    pull_request:
     workflow_dispatch:
 
 jobs:
@@ -77,10 +78,10 @@ jobs:
             - run: yarn run package -t ${{ matrix.arch.vsix_arch }}
               working-directory: packages/databricks-vscode
 
-            - uses: actions/upload-artifact@v2
-              with:
-                  name: databricks-${{ matrix.arch.vsix_arch }}
-                  path: "packages/databricks-vscode/*.vsix"
+            # - uses: actions/upload-artifact@v2
+            #   with:
+            #       name: databricks-${{ matrix.arch.vsix_arch }}
+            #       path: "packages/databricks-vscode/*.vsix"
 
     create-release:
         needs: "create-build-artifacts"
