@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "node:assert";
-import {loadConfigFile, resolveConfigFilePath} from "./configFile";
+import {
+    HostParsingError,
+    isConfigFileParsingError,
+    loadConfigFile,
+    resolveConfigFilePath,
+    TokenParsingError,
+} from "./configFile";
 import {writeFile} from "node:fs/promises";
 import {withFile} from "tmp-promise";
 import {homedir} from "node:os";
@@ -48,11 +54,14 @@ token = dapitest54321
             const profiles = await loadConfigFile(path);
 
             assert.equal(Object.keys(profiles).length, 2);
+            assert.ok(!isConfigFileParsingError(profiles.DEFAULT));
             assert.equal(
                 profiles.DEFAULT.host.href,
                 "https://cloud.databricks.com/"
             );
             assert.equal(profiles.DEFAULT.token, "dapitest1234");
+
+            assert.ok(!isConfigFileParsingError(profiles.STAGING));
             assert.equal(
                 profiles.STAGING.host.href,
                 "https://staging.cloud.databricks.com/"
@@ -78,16 +87,72 @@ token = dapitest54321
             const profiles = await loadConfigFile(path);
 
             assert.equal(Object.keys(profiles).length, 2);
+            assert.ok(!isConfigFileParsingError(profiles.DEFAULT));
             assert.equal(
                 profiles.DEFAULT.host.href,
                 "https://cloud.databricks.com/"
             );
             assert.equal(profiles.DEFAULT.token, "dapitest1234");
+
+            assert.ok(!isConfigFileParsingError(profiles.STAGING));
             assert.equal(
                 profiles.STAGING.host.href,
                 "https://staging.cloud.databricks.com/"
             );
             assert.equal(profiles.STAGING.token, "dapitest54321");
+        });
+    });
+
+    it("should load all valid profiles and return errors for rest", async () => {
+        await withFile(async ({path}) => {
+            await writeFile(
+                path,
+                `[correct]
+host = https://cloud.databricks.com/
+token = dapitest1234
+
+[no-host]
+token = dapitest54321
+
+[wrong-host]
+host = wrong
+token = dapitest54321
+
+[no-token]
+host = https://cloud.databricks.com/
+
+[missing-host-token]
+nothing = true
+`
+            );
+            const profiles = await loadConfigFile(path);
+            assert.equal(Object.keys(profiles).length, 5);
+            assert.ok(!isConfigFileParsingError(profiles["correct"]));
+            assert.deepEqual(profiles["correct"], {
+                host: new URL("https://cloud.databricks.com/"),
+                token: "dapitest1234",
+            });
+
+            assert.ok(isConfigFileParsingError(profiles["no-host"]));
+            assert.deepEqual(
+                profiles["no-host"],
+                new HostParsingError('"host" it not defined')
+            );
+
+            assert.ok(isConfigFileParsingError(profiles["wrong-host"]));
+            assert.ok(profiles["wrong-host"] instanceof HostParsingError);
+
+            assert.ok(isConfigFileParsingError(profiles["no-token"]));
+            assert.deepEqual(
+                profiles["no-token"],
+                new TokenParsingError('"token" it not defined')
+            );
+
+            assert.ok(isConfigFileParsingError(profiles["missing-host-token"]));
+            assert.deepEqual(
+                profiles["missing-host-token"],
+                new HostParsingError('"host" it not defined')
+            );
         });
     });
 });
