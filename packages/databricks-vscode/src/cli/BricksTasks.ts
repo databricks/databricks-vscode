@@ -155,7 +155,6 @@ class CustomSyncTerminal implements Pseudoterminal {
     }
 
     // We expect a single line of logs for all files being put/delete
-    // Maybe float these errors up to the window using window tiles
     private parseForUploadCompleted(line: string) {
         var indexOfUploaded = line.indexOf("Uploaded");
         if (indexOfUploaded === -1) {
@@ -204,13 +203,18 @@ class CustomSyncTerminal implements Pseudoterminal {
         }
     }
 
+    // This function processes the stderr logs from bricks sync and parses it
+    // to compute the sync state ie determine whether the remote files match
+    // what we have stored locally.
+    // TODO: Use structer logging to compute the sync state here
     private processBricksSyncLogs(data: any) {
-        // TODO: add comments about formatting this
         var logLines = data.toString().split("\n");
         for (let i = 0; i < logLines.length; i++) {
             this.parseForActionsInitiated(logLines[i]);
             this.parseForUploadCompleted(logLines[i]);
             this.parseForDeleteCompleted(logLines[i]);
+            // this.writeEmitter.fire writes to the pseudoterminal for the
+            // bricks sync process
             this.writeEmitter.fire(logLines[i].trim());
             this.writeEmitter.fire("\n\r");
         }
