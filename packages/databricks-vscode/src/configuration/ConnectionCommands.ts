@@ -3,6 +3,7 @@ import {homedir} from "node:os";
 import {
     Disposable,
     QuickPickItem,
+    QuickPickItemKind,
     ThemeIcon,
     Uri,
     window,
@@ -11,6 +12,7 @@ import {
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
+import {UrlUtils} from "../utils";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -36,8 +38,8 @@ export function formatQuickPickClusterDetails(cluster: Cluster) {
 }
 
 export interface WorkspaceItem extends QuickPickItem {
-    id: number;
-    path: string;
+    id?: number;
+    path?: string;
 }
 
 export interface ClusterItem extends QuickPickItem {
@@ -169,6 +171,19 @@ export class ConnectionCommands implements Disposable {
 
             quickPick.busy = true;
             quickPick.canSelectMany = false;
+            const items: WorkspaceItem[] = [
+                {
+                    label: "Create New Repo",
+                    detail: `Open databricks in browser and create a new repo under /Repo/${me}`,
+                    alwaysShow: true,
+                },
+                {
+                    label: "",
+                    kind: QuickPickItemKind.Separator,
+                },
+            ];
+            quickPick.items = items;
+
             quickPick.show();
 
             let repos = await Repo.list(apiClient, {
@@ -176,22 +191,31 @@ export class ConnectionCommands implements Disposable {
                 path_prefix: `/Repos/${me}`,
             });
 
-            quickPick.items = repos!.map((r) => ({
-                label: r.path.split("/").pop() || "",
-                detail: r.path,
-                path: r.path,
-                id: r.id,
-            }));
+            quickPick.items = items.concat(
+                ...repos!.map((r) => ({
+                    label: r.path.split("/").pop() || "",
+                    detail: r.path,
+                    path: r.path,
+                    id: r.id,
+                }))
+            );
             quickPick.busy = false;
 
             quickPick.onDidAccept(async () => {
-                const repoPath = quickPick.selectedItems[0].path;
-                await this.connectionManager.attachSyncDestination(
-                    Uri.from({
-                        scheme: "dbws",
-                        path: repoPath,
-                    })
-                );
+                if (quickPick.selectedItems[0].label === "Create New Repo") {
+                    await UrlUtils.openExternal(
+                        (await this.connectionManager.apiClient?.host)?.href ??
+                            ""
+                    );
+                } else {
+                    const repoPath = quickPick.selectedItems[0].path;
+                    await this.connectionManager.attachSyncDestination(
+                        Uri.from({
+                            scheme: "dbws",
+                            path: repoPath,
+                        })
+                    );
+                }
                 quickPick.dispose();
             });
 
