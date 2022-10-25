@@ -84,4 +84,6 @@ describe(__filename, function () {
         assert.notEqual(await response, undefined);
         assert.ok((await response).length > 0);
     });
+
+    //TODO: integ test for fromPath
 });
