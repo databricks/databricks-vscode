@@ -96,7 +96,6 @@ class CustomSyncTerminal implements Pseudoterminal {
     ) {}
 
     open(initialDimensions: TerminalDimensions | undefined): void {
-        // Catch the errors and maybe show them in a window
         this.connection.syncStatus = "WATCHING_FOR_CHANGES";
         try {
             this.startSyncProcess();
