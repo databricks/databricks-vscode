@@ -80,42 +80,21 @@ export class SyncTask extends Task {
     }
 }
 
-class CustomSyncTerminal implements Pseudoterminal {
-    private writeEmitter = new EventEmitter<string>();
-    onDidWrite: Event<string> = this.writeEmitter.event;
-
+class BricksSyncParser {
     private filesBeingUploaded = new Set<string>();
     private filesBeingDeleted = new Set<string>();
-    private syncProcess: ChildProcess | undefined;
 
     constructor(
-        private cmd: string,
-        private args: string[],
-        private options: any,
-        protected connection: ConnectionManager
+        private connection: ConnectionManager,
+        private writeEmitter: EventEmitter<string>
     ) {}
-
-    open(initialDimensions: TerminalDimensions | undefined): void {
-        this.connection.syncStatus = "WATCHING_FOR_CHANGES";
-        try {
-            this.startSyncProcess();
-        } catch (e) {
-            // TODO: clean up the sync process and state (this.connection.syncStatus)
-            window.showErrorMessage((e as Error).message);
-        }
-    }
-
-    close(): void {
-        this.syncProcess?.kill();
-        this.connection.syncStatus = "INACTIVE";
-    }
 
     // Assumes we recieve a single line of bricks logs
     // A value bricks action looks like this
     // const s1 = "Action: PUT: g, .gitignore, DELETE: f"
     // TODO: Add some unit tests for this
     // A hacky way to solve this, lets move to structed logs from bricks later
-    private parseForActionsInitiated(line: string) {
+    public parseForActionsInitiated(line: string) {
         var indexOfAction = line.indexOf("Action:");
         // The log line is not relevant for actions
         if (indexOfAction === -1) {
@@ -155,7 +134,7 @@ class CustomSyncTerminal implements Pseudoterminal {
     }
 
     // We expect a single line of logs for all files being put/delete
-    private parseForUploadCompleted(line: string) {
+    public parseForUploadCompleted(line: string) {
         var indexOfUploaded = line.indexOf("Uploaded");
         if (indexOfUploaded === -1) {
             return;
@@ -178,7 +157,7 @@ class CustomSyncTerminal implements Pseudoterminal {
         this.filesBeingUploaded.delete(filePath);
     }
 
-    private parseForDeleteCompleted(line: string) {
+    public parseForDeleteCompleted(line: string) {
         var indexOfDeleted = line.indexOf("Deleted");
         if (indexOfDeleted === -1) {
             return;
@@ -206,8 +185,8 @@ class CustomSyncTerminal implements Pseudoterminal {
     // This function processes the stderr logs from bricks sync and parses it
     // to compute the sync state ie determine whether the remote files match
     // what we have stored locally.
-    // TODO: Use structer logging to compute the sync state here
-    private processBricksSyncLogs(data: any) {
+    // TODO: Use structed logging to compute the sync state here
+    public process(data: any) {
         var logLines = data.toString().split("\n");
         for (let i = 0; i < logLines.length; i++) {
             this.parseForActionsInitiated(logLines[i]);
@@ -226,6 +205,41 @@ class CustomSyncTerminal implements Pseudoterminal {
         } else {
             this.connection.syncStatus = "IN_PROGRESS";
         }
+    }
+}
+
+class CustomSyncTerminal implements Pseudoterminal {
+    private writeEmitter = new EventEmitter<string>();
+    onDidWrite: Event<string> = this.writeEmitter.event;
+
+    private syncProcess: ChildProcess | undefined;
+    private bricksSyncParser: BricksSyncParser;
+
+    constructor(
+        private cmd: string,
+        private args: string[],
+        private options: any,
+        protected connection: ConnectionManager
+    ) {
+        this.bricksSyncParser = new BricksSyncParser(
+            connection,
+            this.writeEmitter
+        );
+    }
+
+    open(initialDimensions: TerminalDimensions | undefined): void {
+        this.connection.syncStatus = "WATCHING_FOR_CHANGES";
+        try {
+            this.startSyncProcess();
+        } catch (e) {
+            // TODO: clean up the sync process and state (this.connection.syncStatus)
+            window.showErrorMessage((e as Error).message);
+        }
+    }
+
+    close(): void {
+        this.syncProcess?.kill();
+        this.connection.syncStatus = "INACTIVE";
     }
 
     private startSyncProcess() {
@@ -272,13 +286,13 @@ class CustomSyncTerminal implements Pseudoterminal {
         }
 
         this.syncProcess.stderr.on("data", (data) => {
-            this.processBricksSyncLogs(data);
+            this.bricksSyncParser.process(data);
         });
 
         // TODO(filed: Oct 2022): Old versions of bricks print the sync logs to stdout.
         // we can remove this pipe once we move to a new version of bricks cli
         this.syncProcess.stdout.on("data", (data) => {
-            this.processBricksSyncLogs(data);
+            this.bricksSyncParser.process(data);
         });
     }
 }
