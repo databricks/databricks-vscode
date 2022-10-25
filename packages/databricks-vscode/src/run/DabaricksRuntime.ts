@@ -128,6 +128,8 @@ export class DatabricksRuntime {
                 column: 0,
             });
 
+            // We wait for sync to complete so that the local files are consistant
+            // with the remote repo files
             await this.connection.waitForSyncComplete();
             let response = await executionContext.execute(
                 this.compileCommandString(
