@@ -201,6 +201,26 @@ class CustomSyncTerminal implements Pseudoterminal {
         }
     }
 
+    private processBricksSyncLogs(data: any) {
+        // TODO: add comments about formatting this
+        var logLines = data.toString().split("\n");
+        for (let i = 0; i < logLines.length; i++) {
+            this.parseForActionsInitiated(logLines[i]);
+            this.parseForUploadCompleted(logLines[i]);
+            this.parseForDeleteCompleted(logLines[i]);
+            this.writeEmitter.fire(logLines[i].trim());
+            this.writeEmitter.fire("\n\r");
+        }
+        if (
+            this.filesBeingDeleted.size === 0 &&
+            this.filesBeingUploaded.size === 0
+        ) {
+            this.connection.syncStatus = "WATCHING_FOR_CHANGES";
+        } else {
+            this.connection.syncStatus = "IN_PROGRESS";
+        }
+    }
+
     // Test out edge cases around with buffering of logs and multiline logs due
     // to a single line being too big (IMPORTANT)
     private startSyncProcess() {
@@ -248,34 +268,11 @@ class CustomSyncTerminal implements Pseudoterminal {
         // TODO: some versions of bricks print on stdout and some (the latest one)
         // prints logs to stderr. Fix that so all logs are printed to stdout
         this.syncProcess.stderr.on("data", (data) => {
-            // TODO: add comments about formatting this
-            var logLines = data.toString().split("\n");
-            for (let i = 0; i < logLines.length; i++) {
-                // this.parseForActionsInitiated(logLines[i]);
-                // this.parseForActionsCompleted(logLines[i]);
-                this.writeEmitter.fire(logLines[i].trim());
-                this.writeEmitter.fire("\n\r");
-            }
+            this.processBricksSyncLogs(data);
         });
 
         this.syncProcess.stdout.on("data", (data) => {
-            // TODO: add comments about formatting this
-            var logLines = data.toString().split("\n");
-            for (let i = 0; i < logLines.length; i++) {
-                this.parseForActionsInitiated(logLines[i]);
-                this.parseForUploadCompleted(logLines[i]);
-                this.parseForDeleteCompleted(logLines[i]);
-                this.writeEmitter.fire(logLines[i].trim());
-                this.writeEmitter.fire("\n\r");
-            }
-            if (
-                this.filesBeingDeleted.size === 0 &&
-                this.filesBeingUploaded.size === 0
-            ) {
-                this.connection.syncStatus = "WATCHING_FOR_CHANGES";
-            } else {
-                this.connection.syncStatus = "IN_PROGRESS";
-            }
+            this.processBricksSyncLogs(data);
         });
     }
 }
