@@ -85,5 +85,11 @@ describe(__filename, function () {
         assert.ok((await response).length > 0);
     });
 
-    //TODO: integ test for fromPath
+    it("Should find the exact matching repo if multiple repos with same prefix in fromPath", async () => {
+        const actual = await Repo.fromPath(
+            integSetup.client,
+            testRepoDetails.path!
+        );
+        assert.equal(actual.path, testRepoDetails.path);
+    });
 });
