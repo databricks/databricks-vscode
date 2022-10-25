@@ -91,7 +91,6 @@ class CustomSyncTerminal implements Pseudoterminal {
     constructor(
         private cmd: string,
         private args: string[],
-        // TODO: maybe add some typign here
         private options: any,
         protected connection: ConnectionManager
     ) {}
@@ -99,7 +98,12 @@ class CustomSyncTerminal implements Pseudoterminal {
     open(initialDimensions: TerminalDimensions | undefined): void {
         // Catch the errors and maybe show them in a window
         this.connection.syncStatus = "WATCHING_FOR_CHANGES";
-        this.startSyncProcess();
+        try {
+            this.startSyncProcess();
+        } catch (e) {
+            // TODO: clean up the sync process and state (this.connection.syncStatus)
+            window.showErrorMessage((e as Error).message);
+        }
     }
 
     close(): void {
