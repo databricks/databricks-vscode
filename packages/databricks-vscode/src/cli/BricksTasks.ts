@@ -228,15 +228,14 @@ class CustomSyncTerminal implements Pseudoterminal {
         }
     }
 
-    // Test out edge cases around with buffering of logs and multiline logs due
-    // to a single line being too big (IMPORTANT)
     private startSyncProcess() {
         this.syncProcess = spawn(this.cmd, this.args, {
             env: {...process.env, ...this.options.env},
             cwd: this.options?.cwd,
         });
 
-        // Some logs to know what parameters the sync command is being run with
+        // Log the sync command being run, its args and any env overrides done by
+        // vscode
         this.writeEmitter.fire(
             "[VSCODE] bricks cli path: " + this.cmd.toString()
         );
