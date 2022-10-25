@@ -273,7 +273,6 @@ class CustomSyncTerminal implements Pseudoterminal {
                 this.filesBeingUploaded.size === 0
             ) {
                 this.connection.syncStatus = "WATCHING_FOR_CHANGES";
-                this.connection.onDidSyncCompleteEmitter.fire()
             } else {
                 this.connection.syncStatus = "IN_PROGRESS";
             }

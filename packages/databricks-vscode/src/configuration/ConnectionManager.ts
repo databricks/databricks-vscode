@@ -48,7 +48,7 @@ export class ConnectionManager {
     private readonly onDidChangeSyncDestinationEmitter: EventEmitter<
         SyncDestination | undefined
     > = new EventEmitter();
-    public readonly onDidSyncCompleteEmitter: EventEmitter<void> =
+    private readonly onDidSyncCompleteEmitter: EventEmitter<void> =
         new EventEmitter<void>();
 
     public readonly onDidChangeState = this.onDidChangeStateEmitter.event;
@@ -99,7 +99,11 @@ export class ConnectionManager {
     }
 
     set syncStatus(status: SyncStatus) {
+        var prevStatus = this._syncStatus;
         this._syncStatus = status;
+        if (status === "WATCHING_FOR_CHANGES" && prevStatus === "IN_PROGRESS") {
+            this.onDidSyncCompleteEmitter.fire();
+        }
     }
 
     get syncStatus() {
@@ -359,6 +363,19 @@ export class ConnectionManager {
         } else if (this._state === "CONNECTING") {
             return await new Promise((resolve) => {
                 const changeListener = this.onDidChangeState(() => {
+                    changeListener.dispose();
+                    resolve();
+                }, this);
+            });
+        }
+    }
+
+    async waitForSyncComplete(): Promise<void> {
+        if (this.syncStatus !== "IN_PROGRESS") {
+            return;
+        } else {
+            return await new Promise((resolve) => {
+                const changeListener = this.onDidSyncComplete(() => {
                     changeListener.dispose();
                     resolve();
                 }, this);

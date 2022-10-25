@@ -128,6 +128,7 @@ export class DatabricksRuntime {
                 column: 0,
             });
 
+            await this.connection.waitForSyncComplete();
             let response = await executionContext.execute(
                 this.compileCommandString(
                     program,
