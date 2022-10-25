@@ -37,6 +37,13 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         workspace.workspaceFolders?.length === 0
     ) {
         window.showErrorMessage("Open a folder to use Databricks extension");
+        /*
+            We force the user to open a folder from the databricks sidebar view. Returning
+            here blocks all other commands from running. 
+            Since the workspace is reloaded when a folder is opened, the activation function
+            is called again. Therefore this won't block the activation of the extension on a
+            valid workspace.
+        */
         return undefined;
     }
     NamedLogger.getOrCreate(
