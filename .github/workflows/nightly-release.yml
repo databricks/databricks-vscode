@@ -66,9 +66,10 @@ jobs:
               uses: actions/setup-node@v3
               with:
                   node-version: ${{ matrix.node-version }}
+                  cache: "yarn"
 
             - run: yarn install
-            - run: yarn cache clean && yarn run build
+            - run: yarn run build
 
             - run: yarn run package:cli:fetch
               working-directory: packages/databricks-vscode
