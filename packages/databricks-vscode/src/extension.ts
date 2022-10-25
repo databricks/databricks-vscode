@@ -30,7 +30,15 @@ import {
 import {format, loggers, transports} from "winston";
 import {UtilsCommands} from "./utils/UtilsCommands";
 
-export function activate(context: ExtensionContext): PublicApi {
+export function activate(context: ExtensionContext): PublicApi | undefined {
+    const a = workspace.workspaceFolders;
+    if (
+        workspace.workspaceFolders === undefined ||
+        workspace.workspaceFolders?.length === 0
+    ) {
+        window.showErrorMessage("Open a folder to use Databricks extension");
+        return undefined;
+    }
     NamedLogger.getOrCreate(
         ExposedLoggers.SDK,
         {
