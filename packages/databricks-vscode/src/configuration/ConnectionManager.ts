@@ -55,8 +55,10 @@ export class ConnectionManager {
     public readonly onDidChangeCluster = this.onDidChangeClusterEmitter.event;
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
-    // TODO: add some documentation about this
-    // TODO: move this to code synchronizer and implement a linear event chain
+    // This event only fires when an "IN_PROGRESS" sync process transitions into
+    // "WATCHING_FOR_CHANGES" ie all inflight uploads/deletes are complete and
+    // the remote files match with the local files.
+    // Use this.waitForSyncComplete() to wait for this event
     public readonly onDidSyncComplete = this.onDidSyncCompleteEmitter.event;
 
     constructor(private cli: CliWrapper) {}

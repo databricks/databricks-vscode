@@ -308,7 +308,6 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
                     // return ["doom_lol"];
                 },
             },
-            // Maybe define a type for the options here
             options: {
                 get(): any {
                     const workspacePath = workspace.rootPath;
