@@ -275,7 +275,7 @@ class CustomSyncTerminal implements Pseudoterminal {
             this.processBricksSyncLogs(data);
         });
 
-        // TODO(filed: Oct 2021): Old versions of bricks print the sync logs to stdout.
+        // TODO(filed: Oct 2022): Old versions of bricks print the sync logs to stdout.
         // we can remove this pipe once we move to a new version of bricks cli
         this.syncProcess.stdout.on("data", (data) => {
             this.processBricksSyncLogs(data);
