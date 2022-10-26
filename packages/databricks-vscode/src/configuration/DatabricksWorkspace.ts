@@ -15,8 +15,7 @@ export class DatabricksWorkspace {
     // get groups(): {};
 
     static async load(client: ApiClient) {
-        const credentialProvider = await client.credentialProvider();
-        const host = Uri.parse(credentialProvider.host.toString());
+        const host = Uri.parse((await client.host).toString());
 
         const scimApi = new CurrentUserService(client);
         const me = await scimApi.me();

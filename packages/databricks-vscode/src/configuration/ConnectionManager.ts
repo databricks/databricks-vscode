@@ -159,7 +159,7 @@ export class ConnectionManager {
                     "Open Databricks UI"
                 );
                 if (result === "Open Databricks UI") {
-                    let host = (await apiClient.credentialProvider()).host;
+                    let host = await apiClient.host;
                     await env.openExternal(
                         Uri.parse(
                             host.toString() +
