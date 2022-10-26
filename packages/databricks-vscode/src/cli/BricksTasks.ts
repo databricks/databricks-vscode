@@ -317,13 +317,11 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
             cmd: {
                 get: () => {
                     return this.getSyncCommand().command;
-                    // return "echo";
                 },
             },
             args: {
                 get: () => {
                     return this.getSyncCommand().args;
-                    // return ["doom_lol"];
                 },
             },
             options: {
