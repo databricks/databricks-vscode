@@ -17,6 +17,7 @@ import {
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CliWrapper, Command} from "./CliWrapper";
 import {ChildProcess, spawn} from "node:child_process";
+import {SyncState} from "../sync/CodeSynchronizer";
 
 export class BricksTaskProvider implements TaskProvider {
     constructor(
@@ -25,7 +26,14 @@ export class BricksTaskProvider implements TaskProvider {
     ) {}
 
     provideTasks(): Task[] {
-        return [new SyncTask(this.connection, this.cli, "incremental")];
+        return [
+            new SyncTask(
+                this.connection,
+                this.cli,
+                "incremental",
+                (state: SyncState) => {}
+            ),
+        ];
     }
     resolveTask(): Task | undefined {
         return undefined;
@@ -40,7 +48,8 @@ export class SyncTask extends Task {
         // use syncType to decide the sync type for bricks cli. Right now bricks cli
         // only supports full sync for multiple profiles.
         // see: https://github.com/databricks/bricks/issues/71
-        syncType: "full" | "incremental"
+        syncType: "full" | "incremental",
+        syncStateCallback: (state: SyncState) => void
     ) {
         super(
             {
@@ -51,7 +60,12 @@ export class SyncTask extends Task {
             "sync",
             "databricks",
             new CustomExecution(async (): Promise<Pseudoterminal> => {
-                return new LazyCustomSyncTerminal(connection, cli, syncType);
+                return new LazyCustomSyncTerminal(
+                    connection,
+                    cli,
+                    syncType,
+                    syncStateCallback
+                );
             })
         );
 
@@ -80,7 +94,7 @@ export class BricksSyncParser {
     private filesBeingDeleted = new Set<string>();
 
     constructor(
-        private connection: ConnectionManager,
+        private syncStateCallback: (state: SyncState) => void,
         private writeEmitter: EventEmitter<string>
     ) {}
 
@@ -197,9 +211,9 @@ export class BricksSyncParser {
             this.filesBeingDeleted.size === 0 &&
             this.filesBeingUploaded.size === 0
         ) {
-            this.connection.syncStatus = "WATCHING_FOR_CHANGES";
+            this.syncStateCallback("WATCHING_FOR_CHANGES");
         } else {
-            this.connection.syncStatus = "IN_PROGRESS";
+            this.syncStateCallback("IN_PROGRESS");
         }
     }
 }
@@ -215,16 +229,16 @@ class CustomSyncTerminal implements Pseudoterminal {
         private cmd: string,
         private args: string[],
         private options: any,
-        protected connection: ConnectionManager
+        private syncStateCallback: (state: SyncState) => void
     ) {
         this.bricksSyncParser = new BricksSyncParser(
-            connection,
+            syncStateCallback,
             this.writeEmitter
         );
     }
 
     open(initialDimensions: TerminalDimensions | undefined): void {
-        this.connection.syncStatus = "WATCHING_FOR_CHANGES";
+        this.syncStateCallback("WATCHING_FOR_CHANGES");
         try {
             this.startSyncProcess();
         } catch (e) {
@@ -234,7 +248,7 @@ class CustomSyncTerminal implements Pseudoterminal {
 
     close(): void {
         this.syncProcess?.kill();
-        this.connection.syncStatus = "INACTIVE";
+        this.syncStateCallback("STOPPED");
     }
 
     private startSyncProcess() {
@@ -306,11 +320,12 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
     private killThis: Boolean = false;
 
     constructor(
-        connection: ConnectionManager,
+        private connection: ConnectionManager,
         private cli: CliWrapper,
-        private syncType: "full" | "incremental"
+        private syncType: "full" | "incremental",
+        syncStateCallback: (state: SyncState) => void
     ) {
-        super("", [], {}, connection);
+        super("", [], {}, syncStateCallback);
 
         // hacky way to override properties with getters
         Object.defineProperties(this, {

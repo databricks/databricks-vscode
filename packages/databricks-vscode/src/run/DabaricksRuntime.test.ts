@@ -7,6 +7,7 @@ import {Cluster, Command, ExecutionContext} from "@databricks/databricks-sdk";
 import {DatabricksRuntime, FileAccessor, OutputEvent} from "./DabaricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncDestination} from "../configuration/SyncDestination";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 describe(__filename, () => {
     let disposables: Array<Disposable>;
@@ -65,7 +66,11 @@ describe(__filename, () => {
             connectionManagerMock
         );
 
-        runtime = new DatabricksRuntime(connectionManager, fileAccessor);
+        runtime = new DatabricksRuntime(
+            connectionManager,
+            fileAccessor,
+            mock(CodeSynchronizer)
+        );
     });
 
     afterEach(() => {

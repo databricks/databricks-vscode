@@ -38,7 +38,6 @@ export class ConnectionManager {
     private _me?: ScimMeResponse;
     private _profile?: string;
     private _clusterManager?: ClusterManager;
-    private _syncStatus: SyncStatus = "INACTIVE";
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -98,18 +97,6 @@ export class ConnectionManager {
      */
     get apiClient(): ApiClient | undefined {
         return this._apiClient;
-    }
-
-    set syncStatus(status: SyncStatus) {
-        var prevStatus = this._syncStatus;
-        this._syncStatus = status;
-        if (status === "WATCHING_FOR_CHANGES" && prevStatus === "IN_PROGRESS") {
-            this.onDidSyncCompleteEmitter.fire();
-        }
-    }
-
-    get syncStatus() {
-        return this._syncStatus;
     }
 
     private apiClientFrom(creds: CredentialProvider): ApiClient {
@@ -365,19 +352,6 @@ export class ConnectionManager {
         } else if (this._state === "CONNECTING") {
             return await new Promise((resolve) => {
                 const changeListener = this.onDidChangeState(() => {
-                    changeListener.dispose();
-                    resolve();
-                }, this);
-            });
-        }
-    }
-
-    async waitForSyncComplete(): Promise<void> {
-        if (this.syncStatus !== "IN_PROGRESS") {
-            return;
-        } else {
-            return await new Promise((resolve) => {
-                const changeListener = this.onDidSyncComplete(() => {
                     changeListener.dispose();
                     resolve();
                 }, this);

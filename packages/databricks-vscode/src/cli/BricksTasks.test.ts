@@ -1,11 +1,8 @@
 import * as assert from "assert";
 import {anything, instance, mock, when, verify} from "ts-mockito";
 import {ProcessExecution, Uri, EventEmitter} from "vscode";
-import {
-    ConnectionManager,
-    SyncStatus,
-} from "../configuration/ConnectionManager";
-import {SyncDestination} from "../configuration/SyncDestination";
+import {ConnectionManager} from "../configuration/ConnectionManager";
+import {SyncState} from "../sync/CodeSynchronizer";
 import {BricksTaskProvider, SyncTask, BricksSyncParser} from "./BricksTasks";
 import {CliWrapper} from "./CliWrapper";
 
@@ -28,7 +25,12 @@ describe(__filename, () => {
     });
 
     it("should create a sync task", () => {
-        let task = new SyncTask(connection, cli, "incremental");
+        let task = new SyncTask(
+            connection,
+            cli,
+            "incremental",
+            (state: SyncState) => {}
+        );
 
         assert.equal(task.definition.type, "databricks");
         assert.equal(task.definition.task, "sync");
@@ -38,68 +40,72 @@ describe(__filename, () => {
 });
 
 describe("tests for BricksSycnParser", () => {
-    let connectionManager: ConnectionManager;
+    let syncState: SyncState = "STOPPED";
     let bricksSycnParser: BricksSyncParser;
 
+    const syncStateCallback = (state: SyncState) => {
+        syncState = state;
+    };
+
     beforeEach(() => {
-        connectionManager = new ConnectionManager(mock(CliWrapper));
+        syncState = "STOPPED";
         bricksSycnParser = new BricksSyncParser(
-            connectionManager,
+            syncStateCallback,
             mock(EventEmitter<string>)
         );
     });
 
     it("processing empty logs transitions sync status from INACTIVE -> WATCHING_FOR_CHANGES", () => {
-        assert.equal(connectionManager.syncStatus, "INACTIVE");
+        assert.equal(syncState, "STOPPED");
         bricksSycnParser.process("");
-        assert.equal(connectionManager.syncStatus, "WATCHING_FOR_CHANGES");
+        assert.equal(syncState, "WATCHING_FOR_CHANGES");
     });
 
     it("processing action log transitions sync status from INACTIVE -> INPROGRESS", () => {
-        assert.equal(connectionManager.syncStatus, "INACTIVE");
+        assert.equal(syncState, "STOPPED");
         bricksSycnParser.process("Action: PUT: hello.txt");
-        assert.equal(connectionManager.syncStatus, "IN_PROGRESS");
+        assert.equal(syncState, "IN_PROGRESS");
     });
 
     it("test bricksSycnParser.process correctly keeps track of state of inflight requests", () => {
         // recieving some random logs from bricks sync
-        assert.equal(connectionManager.syncStatus, "INACTIVE");
+        assert.equal(syncState, "STOPPED");
         bricksSycnParser.process("some random logs");
-        assert.equal(connectionManager.syncStatus, "WATCHING_FOR_CHANGES");
+        assert.equal(syncState, "WATCHING_FOR_CHANGES");
 
         // upload  hello.txt
         bricksSycnParser.process("Action: PUT: hello.txt");
-        assert.equal(connectionManager.syncStatus, "IN_PROGRESS");
+        assert.equal(syncState, "IN_PROGRESS");
         bricksSycnParser.process("Uploaded hello.txt");
-        assert.equal(connectionManager.syncStatus, "WATCHING_FOR_CHANGES");
+        assert.equal(syncState, "WATCHING_FOR_CHANGES");
 
         // delete  bye.txt
         bricksSycnParser.process("Action: DELETE: bye.txt");
-        assert.equal(connectionManager.syncStatus, "IN_PROGRESS");
+        assert.equal(syncState, "IN_PROGRESS");
         bricksSycnParser.process("Deleted bye.txt");
-        assert.equal(connectionManager.syncStatus, "WATCHING_FOR_CHANGES");
+        assert.equal(syncState, "WATCHING_FOR_CHANGES");
 
         // both upload and delete some random prefix string that should be ignored
         bricksSycnParser.process(
             "[INFO] foo bar Action: PUT: a.txt DELETE: b.txt"
         );
         bricksSycnParser.process("Uploaded a.txt");
-        assert.equal(connectionManager.syncStatus, "IN_PROGRESS");
+        assert.equal(syncState, "IN_PROGRESS");
         bricksSycnParser.process("Deleted b.txt");
-        assert.equal(connectionManager.syncStatus, "WATCHING_FOR_CHANGES");
+        assert.equal(syncState, "WATCHING_FOR_CHANGES");
 
         // upload and delete multiple files
         bricksSycnParser.process(
             "Action: PUT: a.txt, c.txt DELETE: b.txt, d.txt"
         );
         bricksSycnParser.process("Uploaded a.txt");
-        assert.equal(connectionManager.syncStatus, "IN_PROGRESS");
+        assert.equal(syncState, "IN_PROGRESS");
         bricksSycnParser.process("Deleted b.txt");
-        assert.equal(connectionManager.syncStatus, "IN_PROGRESS");
+        assert.equal(syncState, "IN_PROGRESS");
         bricksSycnParser.process("Deleted d.txt");
-        assert.equal(connectionManager.syncStatus, "IN_PROGRESS");
+        assert.equal(syncState, "IN_PROGRESS");
         bricksSycnParser.process("Uploaded c.txt");
-        assert.equal(connectionManager.syncStatus, "WATCHING_FOR_CHANGES");
+        assert.equal(syncState, "WATCHING_FOR_CHANGES");
 
         // multi line logs
         bricksSycnParser.process(
@@ -109,9 +115,9 @@ describe("tests for BricksSycnParser", () => {
                 "Uploaded c.txt"
         );
         bricksSycnParser.process("Deleted b.txt");
-        assert.equal(connectionManager.syncStatus, "IN_PROGRESS");
+        assert.equal(syncState, "IN_PROGRESS");
         bricksSycnParser.process("Deleted d.txt");
-        assert.equal(connectionManager.syncStatus, "WATCHING_FOR_CHANGES");
+        assert.equal(syncState, "WATCHING_FOR_CHANGES");
     });
 
     it("uploaded logs for untracked files throw errors", () => {
