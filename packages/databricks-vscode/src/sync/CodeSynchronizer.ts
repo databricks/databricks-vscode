@@ -80,7 +80,9 @@ export class CodeSynchronizer implements Disposable {
         this.disposables.forEach((d) => d.dispose());
     }
 
-    // This function waits for an in-flight sync to reach a terminal state
+    // This function waits for sync to reach WATCHING_FOR_CHANGES which is a
+    // necessary condition to execute local code on databricks. This state denotes
+    // all local changes have been synced to remote workspace repo
     async waitForSyncComplete(): Promise<void> {
         if (this._state !== "WATCHING_FOR_CHANGES") {
             return await new Promise((resolve) => {
