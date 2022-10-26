@@ -111,9 +111,9 @@ export class BricksSyncParser {
                     break;
                 }
                 default: {
+                    // trim the trailing , if it exists
                     var filePath = tokenizedLine[i].replace(/,$/, "");
                     if (isPut) {
-                        // trim the trailing , if it exists
                         this.filesBeingUploaded.add(filePath);
                     } else if (isDelete) {
                         this.filesBeingDeleted.add(filePath);
