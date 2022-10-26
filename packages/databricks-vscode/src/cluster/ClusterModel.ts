@@ -83,7 +83,10 @@ export class ClusterModel implements Disposable {
                     return true;
 
                 case "ME":
-                    return node.creator === this.connectionManager.me;
+                    return (
+                        node.creator ===
+                        this.connectionManager.databricksWorkspace?.userName
+                    );
 
                 case "RUNNING":
                     return node.state === "RUNNING";

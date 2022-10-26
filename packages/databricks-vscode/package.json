@@ -249,7 +249,7 @@
                 },
                 {
                     "command": "databricks.connection.configureProject",
-                    "when": "view == configurationView && viewItem == profile",
+                    "when": "view == configurationView && viewItem == workspace",
                     "group": "inline@1"
                 },
                 {
