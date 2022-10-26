@@ -47,18 +47,11 @@ export class ConnectionManager {
     private readonly onDidChangeSyncDestinationEmitter: EventEmitter<
         SyncDestination | undefined
     > = new EventEmitter();
-    private readonly onDidSyncCompleteEmitter: EventEmitter<void> =
-        new EventEmitter<void>();
 
     public readonly onDidChangeState = this.onDidChangeStateEmitter.event;
     public readonly onDidChangeCluster = this.onDidChangeClusterEmitter.event;
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
-    // This event only fires when an "IN_PROGRESS" sync process transitions into
-    // "WATCHING_FOR_CHANGES" ie all inflight uploads/deletes are complete and
-    // the remote files match with the local files.
-    // Use this.waitForSyncComplete() to wait for this event
-    public readonly onDidSyncComplete = this.onDidSyncCompleteEmitter.event;
 
     constructor(private cli: CliWrapper) {}
 
