@@ -14,14 +14,9 @@ import {
     EventEmitter,
     TerminalDimensions,
 } from "vscode";
-import {
-    ConnectionManager,
-    SyncStatus,
-} from "../configuration/ConnectionManager";
+import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CliWrapper, Command} from "./CliWrapper";
 import {ChildProcess, spawn} from "node:child_process";
-import {vsCodeBadge} from "@vscode/webview-ui-toolkit";
-import {json} from "stream/consumers";
 
 export class BricksTaskProvider implements TaskProvider {
     constructor(
@@ -80,7 +75,7 @@ export class SyncTask extends Task {
     }
 }
 
-class BricksSyncParser {
+export class BricksSyncParser {
     private filesBeingUploaded = new Set<string>();
     private filesBeingDeleted = new Set<string>();
 
@@ -94,7 +89,7 @@ class BricksSyncParser {
     // const s1 = "Action: PUT: g, .gitignore, DELETE: f"
     // TODO: Add some unit tests for this
     // A hacky way to solve this, lets move to structed logs from bricks later
-    public parseForActionsInitiated(line: string) {
+    private parseForActionsInitiated(line: string) {
         var indexOfAction = line.indexOf("Action:");
         // The log line is not relevant for actions
         if (indexOfAction === -1) {
@@ -125,7 +120,7 @@ class BricksSyncParser {
                         this.filesBeingDeleted.add(filePath);
                     } else {
                         throw new Error(
-                            "parsing bricks sync logs for actions: unexpected structure encounted"
+                            "[BricksSyncParser] unexpected logs recieved"
                         );
                     }
                 }
@@ -134,7 +129,7 @@ class BricksSyncParser {
     }
 
     // We expect a single line of logs for all files being put/delete
-    public parseForUploadCompleted(line: string) {
+    private parseForUploadCompleted(line: string) {
         var indexOfUploaded = line.indexOf("Uploaded");
         if (indexOfUploaded === -1) {
             return;
@@ -142,22 +137,23 @@ class BricksSyncParser {
 
         const tokenizedLine = line.substring(indexOfUploaded).split(" ");
         if (tokenizedLine.length !== 2) {
-            throw new Error(
-                "parsing bricks sync logs for actions: unexpected structure encounted"
-            );
+            throw new Error("[BricksSyncParser] unexpected logs recieved");
         }
         const filePath = tokenizedLine[1];
         if (!this.filesBeingUploaded.has(filePath)) {
             throw new Error(
-                "parsing bricks sync logs for actions: Encounted upload completed " +
-                    "action without corresponding upload initiated action for file: " +
-                    filePath
+                "[BricksSyncParser] untracked file uploaded. All upload complete " +
+                    "logs should be preceded with a uploaded initialted log. file: " +
+                    filePath +
+                    ". log recieved: `" +
+                    line +
+                    "`"
             );
         }
         this.filesBeingUploaded.delete(filePath);
     }
 
-    public parseForDeleteCompleted(line: string) {
+    private parseForDeleteCompleted(line: string) {
         var indexOfDeleted = line.indexOf("Deleted");
         if (indexOfDeleted === -1) {
             return;
@@ -165,17 +161,18 @@ class BricksSyncParser {
 
         const tokenizedLine = line.substring(indexOfDeleted).split(" ");
         if (tokenizedLine.length !== 2) {
-            throw new Error(
-                "parsing bricks sync logs for actions: unexpected structure encounted"
-            );
+            throw new Error("[BricksSyncParser] unexpected logs recieved");
         }
         const filePath = tokenizedLine[1];
         if (!this.filesBeingUploaded.has(filePath)) {
             if (!this.filesBeingDeleted.has(filePath)) {
                 throw new Error(
-                    "parsing bricks sync logs for actions: Encounted delete completed " +
-                        "action without corresponding delete initiated action for file: " +
-                        filePath
+                    "[BricksSyncParser] untracked file deleted. All delete complete " +
+                        "logs should be preceded with a delete initialted log. file: " +
+                        filePath +
+                        ". log recieved: `" +
+                        line +
+                        "`"
                 );
             }
             this.filesBeingDeleted.delete(filePath);
@@ -232,7 +229,7 @@ class CustomSyncTerminal implements Pseudoterminal {
         try {
             this.startSyncProcess();
         } catch (e) {
-            // TODO: clean up the sync process and state (this.connection.syncStatus)
+            // TODO: if needed clean up the sync process and sync state in the connection manager (this.connection.syncStatus)
             window.showErrorMessage((e as Error).message);
         }
     }
