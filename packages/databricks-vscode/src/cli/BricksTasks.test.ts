@@ -75,7 +75,6 @@ describe(__filename, () => {
     });
 });
 
-// TODO: write unit tests for the errors
 describe.only("tests for BricksSycnParser", () => {
     let connectionManager: ConnectionManager;
     let bricksSycnParser: BricksSyncParser;

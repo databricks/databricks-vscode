@@ -87,7 +87,6 @@ export class BricksSyncParser {
     // Assumes we recieve a single line of bricks logs
     // A value bricks action looks like this
     // const s1 = "Action: PUT: g, .gitignore, DELETE: f"
-    // TODO: Add some unit tests for this
     // A hacky way to solve this, lets move to structed logs from bricks later
     private parseForActionsInitiated(line: string) {
         var indexOfAction = line.indexOf("Action:");
@@ -229,7 +228,6 @@ class CustomSyncTerminal implements Pseudoterminal {
         try {
             this.startSyncProcess();
         } catch (e) {
-            // TODO: if needed clean up the sync process and sync state in the connection manager (this.connection.syncStatus)
             window.showErrorMessage((e as Error).message);
         }
     }
@@ -294,6 +292,15 @@ class CustomSyncTerminal implements Pseudoterminal {
     }
 }
 
+/**
+ * Wrapper around the CustomSyncTerminal class that lazily evaluates the process
+ * and args properties. This is necessary because the process and args properties
+ * re not known up front can only be computed dynamically at runtime.
+ *
+ * A Custom implmentation of the terminal is needed to run bricks sync as a CustomExecution
+ * vscode task, which allows us to parse the stdout/stderr bricks sync logs and compute
+ * sync completeness state based on the output logs
+ */
 class LazyCustomSyncTerminal extends CustomSyncTerminal {
     private command?: Command;
     private killThis: Boolean = false;
@@ -385,11 +392,6 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
     }
 }
 
-/**
- * Wrapper around the ProcessExecution class that lazily evaluates the process
- * and args properties. This is necessary because the process and args properties
- * re not known up front can only be computed dynamically at runtime.
- */
 class LazySyncProcessExecution extends ProcessExecution {
     private command?: Command;
     private killThis: Boolean = false;
