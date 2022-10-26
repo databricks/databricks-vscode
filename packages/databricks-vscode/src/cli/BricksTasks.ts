@@ -16,7 +16,7 @@ import {
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CliWrapper, Command} from "./CliWrapper";
-import {ChildProcess, spawn} from "node:child_process";
+import {ChildProcess, spawn, SpawnOptions} from "node:child_process";
 import {SyncState} from "../sync/CodeSynchronizer";
 
 export class BricksTaskProvider implements TaskProvider {
@@ -196,15 +196,15 @@ export class BricksSyncParser {
     // to compute the sync state ie determine whether the remote files match
     // what we have stored locally.
     // TODO: Use structed logging to compute the sync state here
-    public process(data: any) {
-        var logLines = data.toString().split("\n");
-        for (let i = 0; i < logLines.length; i++) {
-            this.parseForActionsInitiated(logLines[i]);
-            this.parseForUploadCompleted(logLines[i]);
-            this.parseForDeleteCompleted(logLines[i]);
+    public process(data: string) {
+        var logLines = data.split("\n");
+        for (let line of logLines) {
+            this.parseForActionsInitiated(line);
+            this.parseForUploadCompleted(line);
+            this.parseForDeleteCompleted(line);
             // this.writeEmitter.fire writes to the pseudoterminal for the
             // bricks sync process
-            this.writeEmitter.fire(logLines[i].trim());
+            this.writeEmitter.fire(line.trim());
             this.writeEmitter.fire("\n\r");
         }
         if (
@@ -228,7 +228,7 @@ class CustomSyncTerminal implements Pseudoterminal {
     constructor(
         private cmd: string,
         private args: string[],
-        private options: any,
+        private options: SpawnOptions,
         private syncStateCallback: (state: SyncState) => void
     ) {
         this.bricksSyncParser = new BricksSyncParser(
@@ -295,13 +295,13 @@ class CustomSyncTerminal implements Pseudoterminal {
         }
 
         this.syncProcess.stderr.on("data", (data) => {
-            this.bricksSyncParser.process(data);
+            this.bricksSyncParser.process(data.toString());
         });
 
         // TODO(filed: Oct 2022): Old versions of bricks print the sync logs to stdout.
         // we can remove this pipe once we move to a new version of bricks cli
         this.syncProcess.stdout.on("data", (data) => {
-            this.bricksSyncParser.process(data);
+            this.bricksSyncParser.process(data.toString());
         });
     }
 }
@@ -340,7 +340,7 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 },
             },
             options: {
-                get(): any {
+                get(): SpawnOptions {
                     const workspacePath = workspace.rootPath;
                     if (!workspacePath) {
                         window.showErrorMessage(
@@ -367,7 +367,6 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
                             DATABRICKS_CONFIG_PROFILE: profile,
                             /* eslint-enable @typescript-eslint/naming-convention */
                         },
-                        stdio: "pipe",
                     };
                 },
             },
