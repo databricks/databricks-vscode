@@ -1,1 +1,1 @@
-export * from "./FileUtils";
+export * from "./fileUtils";
