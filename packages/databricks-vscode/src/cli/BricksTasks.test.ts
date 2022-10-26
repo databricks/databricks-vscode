@@ -1,3 +1,4 @@
+import {ApiClient, Repo} from "@databricks/databricks-sdk";
 import * as assert from "assert";
 import {anything, instance, mock, when, verify} from "ts-mockito";
 import {ProcessExecution, Uri, EventEmitter} from "vscode";

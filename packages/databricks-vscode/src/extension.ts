@@ -28,14 +28,49 @@ import {
     NamedLogger,
 } from "@databricks/databricks-sdk/dist/logging";
 import {format, loggers, transports} from "winston";
+import {UtilsCommands} from "./utils/UtilsCommands";
 
-export function activate(context: ExtensionContext): PublicApi {
+export function activate(context: ExtensionContext): PublicApi | undefined {
+    const a = workspace.workspaceFolders;
+    if (
+        workspace.workspaceFolders === undefined ||
+        workspace.workspaceFolders?.length === 0
+    ) {
+        window.showErrorMessage("Open a folder to use Databricks extension");
+        /*
+            We force the user to open a folder from the databricks sidebar view. Returning
+            here blocks all other commands from running. 
+            Since the workspace is reloaded when a folder is opened, the activation function
+            is called again. Therefore this won't block the activation of the extension on a
+            valid workspace.
+        */
+        return undefined;
+    }
     NamedLogger.getOrCreate(
         ExposedLoggers.SDK,
         {
             factory: (name) => {
                 return loggers.add(name, {
                     level: "debug",
+                    format: format.json(),
+                    transports: [new transports.Console()],
+                });
+            },
+        },
+        true
+    );
+
+    /** 
+    This logger collects all the logs in the extension.
+    
+    TODO Make this logger log to a seperate (or common?) output console in vscode
+    */
+    NamedLogger.getOrCreate(
+        "Extension",
+        {
+            factory: (name) => {
+                return loggers.add(name, {
+                    level: "error",
                     format: format.json(),
                     transports: [new transports.Console()],
                 });
@@ -234,6 +269,16 @@ export function activate(context: ExtensionContext): PublicApi {
             "databricks.quickstart.open",
             quickstartCommands.openQuickstartCommand(),
             quickstartCommands
+        )
+    );
+
+    //utils
+    const utilCommands = new UtilsCommands();
+    context.subscriptions.push(
+        commands.registerCommand(
+            "databricks.utils.openExternal",
+            utilCommands.openExternalCommand(),
+            utilCommands
         )
     );
 

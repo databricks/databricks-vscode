@@ -1,13 +1,29 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {mock, when, instance, anything, verify, capture} from "ts-mockito";
+import {
+    mock,
+    when,
+    instance,
+    anything,
+    verify,
+    capture,
+    match,
+    deepEqual,
+} from "ts-mockito";
 import {Disposable, Uri} from "vscode";
-import {Cluster, Command, ExecutionContext} from "@databricks/databricks-sdk";
+import {
+    ApiClient,
+    Cluster,
+    Command,
+    ExecutionContext,
+    Repo,
+} from "@databricks/databricks-sdk";
 import {DatabricksRuntime, FileAccessor, OutputEvent} from "./DabaricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncDestination} from "../configuration/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import {ListRequest} from "@databricks/databricks-sdk/dist/apis/repos";
 
 describe(__filename, () => {
     let disposables: Array<Disposable>;
@@ -15,7 +31,7 @@ describe(__filename, () => {
     let executionContextMock: ExecutionContext;
     let connectionManagerMock: ConnectionManager;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         disposables = [];
 
         connectionManagerMock = mock(ConnectionManager);
@@ -48,9 +64,10 @@ describe(__filename, () => {
         );
 
         const syncDestination = new SyncDestination(
+            instance(mock(Repo)),
             Uri.from({
                 scheme: "dbws",
-                path: "/Repos/fabian@databricks.com/test",
+                path: "/Workspace/Repos/fabian@databricks.com/test",
             }),
             Uri.file("/Desktop/workspaces")
         );

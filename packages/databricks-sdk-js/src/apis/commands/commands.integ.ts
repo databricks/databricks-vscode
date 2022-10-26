@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {ExecutionContextService, CommandsService} from "..";
+import {CommandExecutionService} from "../..";
 import assert from "assert";
 
-import {IntegrationTestSetup, sleep} from "../test/IntegrationTestSetup";
+import {IntegrationTestSetup, sleep} from "../../test/IntegrationTestSetup";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
@@ -15,38 +15,20 @@ describe(__filename, function () {
     });
 
     it("should execute python with low level API", async () => {
-        let executionContextApi = new ExecutionContextService(
-            integSetup.client
-        );
-        let commandsApi = new CommandsService(integSetup.client);
+        let commandsApi = new CommandExecutionService(integSetup.client);
 
-        let context = await executionContextApi.create({
+        let context = await commandsApi.createAndWait({
             clusterId: integSetup.cluster.id,
             language: "python",
         });
         //console.log("Execution context", context);
 
-        let command = await commandsApi.execute({
+        let status = await commandsApi.executeAndWait({
             clusterId: integSetup.cluster.id,
             contextId: context.id,
             language: "python",
             command: "print('juhu')",
         });
-
-        //console.log("Command", command);
-        let status;
-        while (true) {
-            await sleep(3000);
-            status = await commandsApi.status({
-                clusterId: integSetup.cluster.id,
-                contextId: context.id,
-                commandId: command.id,
-            });
-
-            if (status.status === "Finished") {
-                break;
-            }
-        }
 
         // console.log("Status", status);
 
@@ -54,9 +36,9 @@ describe(__filename, function () {
         assert(status.results.resultType === "text");
         assert.equal(status.results.data, "juhu");
 
-        await executionContextApi.destroy({
+        await commandsApi.destroy({
             clusterId: integSetup.cluster.id,
-            contextId: context.id,
+            contextId: context.id!,
         });
     });
 });

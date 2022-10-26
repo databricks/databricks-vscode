@@ -3,7 +3,7 @@ import {
     Credentials,
     CredentialsProviderError,
 } from "./types";
-import {loadConfigFile} from "./configFile";
+import {isConfigFileParsingError, loadConfigFile} from "./configFile";
 
 export const DEFAULT_PROFILE = "DEFAULT";
 
@@ -20,13 +20,18 @@ export const fromConfigFile = (
 
         const config = await loadConfigFile(configFile);
 
-        if (config[profile].host && config[profile].token) {
-            cachedValue = config[profile];
-            return cachedValue;
+        if (!(config as Object).hasOwnProperty(profile)) {
+            throw new CredentialsProviderError(`Can't find profile ${profile}`);
         }
 
-        throw new CredentialsProviderError(
-            "Can't load credentials from config file"
-        );
+        const details = config[profile];
+        if (isConfigFileParsingError(details)) {
+            throw new CredentialsProviderError(
+                `Can't load profile ${profile}: ${details.name}: ${details.message}`
+            );
+        }
+
+        cachedValue = details;
+        return cachedValue;
     };
 };

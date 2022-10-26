@@ -13,7 +13,7 @@
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
-                "DATABRICKS_DEBUG_HEADERS": "true"
+                "DATABRICKS_DEBUG_HEADERS": "false"
             }
         },
         {
@@ -27,7 +27,7 @@
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
-                "DATABRICKS_DEBUG_HEADERS": "true"
+                "DATABRICKS_DEBUG_HEADERS": "false"
             }
         }
     ]

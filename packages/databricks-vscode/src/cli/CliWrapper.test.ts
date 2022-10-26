@@ -5,6 +5,8 @@ import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 
 import {CliWrapper} from "./CliWrapper";
+import {instance, mock} from "ts-mockito";
+import {ApiClient, Repo} from "@databricks/databricks-sdk";
 
 const execFile = promisify(execFileCb);
 
@@ -15,13 +17,14 @@ describe(__filename, () => {
         assert.ok(result.stdout.indexOf("bricks") > 0);
     });
 
-    it("should create sync command", () => {
+    it("should create sync command", async () => {
         const cli = new CliWrapper({
             asAbsolutePath(path: string) {
                 return path;
             },
         } as any);
         const mapper = new SyncDestination(
+            instance(mock(Repo)),
             Uri.from({
                 scheme: "dbws",
                 path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",

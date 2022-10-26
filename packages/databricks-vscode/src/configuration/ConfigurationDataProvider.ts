@@ -1,4 +1,5 @@
 import {
+    commands,
     Disposable,
     Event,
     EventEmitter,
@@ -7,6 +8,7 @@ import {
     TreeDataProvider,
     TreeItem,
     TreeItemCollapsibleState,
+    Uri,
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
@@ -144,15 +146,17 @@ export class ConfigurationDataProvider
                         iconPath: clusterItem.iconPath,
                         collapsibleState: TreeItemCollapsibleState.None,
                     },
-                    ...ClusterListDataProvider.clusterNodeToTreeItems(cluster),
+                    ...(await ClusterListDataProvider.clusterNodeToTreeItems(
+                        cluster
+                    )),
                 ];
             }
 
             if (element.id === "REPO" && syncDestination) {
                 return [
                     {
-                        label: `Sync state:`,
-                        description: this.sync.state,
+                        label: `Name:`,
+                        description: syncDestination.name,
                         iconPath:
                             this.sync.state === "WATCHING_FOR_CHANGES" ||
                             this.sync.state === "IN_PROGRESS"
@@ -161,8 +165,14 @@ export class ConfigurationDataProvider
                         collapsibleState: TreeItemCollapsibleState.None,
                     },
                     {
-                        label: `Name:`,
-                        description: syncDestination.name,
+                        label: `URL:`,
+                        description: await this.connectionManager
+                            .syncDestination?.repo.url,
+                        contextValue: "databricks-link",
+                    },
+                    {
+                        label: `State:`,
+                        description: this.sync.state,
                         collapsibleState: TreeItemCollapsibleState.None,
                     },
                     {

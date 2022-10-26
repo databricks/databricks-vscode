@@ -1,7 +1,7 @@
 import {EventEmitter} from "events";
 import retry, {RetriableError} from "../retries/retries";
 import {ExecutionContext} from "./ExecutionContext";
-import {CommandsService, CommandsStatusResponse} from "../apis/commands";
+import {CommandExecutionService, commands} from "..";
 import {CancellationToken} from "../types";
 
 interface CommandErrorParams {
@@ -27,15 +27,17 @@ class CommandError extends Error {
 
 export interface CommandWithResult {
     cmd: Command;
-    result: CommandsStatusResponse;
+    result: commands.CommandStatusResponse;
 }
 
-export type StatusUpdateListener = (result: CommandsStatusResponse) => void;
+export type StatusUpdateListener = (
+    result: commands.CommandStatusResponse
+) => void;
 
 export class Command extends EventEmitter {
     readonly context: ExecutionContext;
-    readonly commandsApi: CommandsService;
-    result?: CommandsStatusResponse;
+    readonly commandsApi: CommandExecutionService;
+    result?: commands.CommandStatusResponse;
     id?: string;
 
     private static statusUpdateEvent: string = "statusUpdate";
@@ -43,7 +45,7 @@ export class Command extends EventEmitter {
     private constructor(context: ExecutionContext) {
         super();
         this.context = context;
-        this.commandsApi = new CommandsService(context.client);
+        this.commandsApi = new CommandExecutionService(context.client);
     }
 
     private get commandErrorParams(): CommandErrorParams {
@@ -55,7 +57,7 @@ export class Command extends EventEmitter {
     }
 
     async refresh() {
-        this.result = await this.commandsApi.status({
+        this.result = await this.commandsApi.commandStatus({
             clusterId: this.context.cluster.id,
             contextId: this.context.id!,
             commandId: this.id!,
@@ -77,7 +79,7 @@ export class Command extends EventEmitter {
                 // is FINISHED instead of CANCELLED.
                 if (
                     this.result!.results?.resultType === "error" &&
-                    !this.result!.results.cause.includes(
+                    !this.result!.results!.cause!.includes(
                         "CommandCancelledException"
                     )
                 ) {
@@ -87,7 +89,7 @@ export class Command extends EventEmitter {
                     });
                 }
 
-                if (["Cancelled", "Finished"].includes(this.result!.status)) {
+                if (["Cancelled", "Finished"].includes(this.result!.status!)) {
                     return;
                 }
 
@@ -110,7 +112,7 @@ export class Command extends EventEmitter {
 
     async response(
         cancellationToken?: CancellationToken
-    ): Promise<CommandsStatusResponse> {
+    ): Promise<commands.CommandStatusResponse> {
         await retry({
             fn: async () => {
                 await this.refresh();
@@ -119,7 +121,7 @@ export class Command extends EventEmitter {
 
                 if (
                     !["Cancelled", "Error", "Finished"].includes(
-                        this.result!.status
+                        this.result!.status!
                     )
                 ) {
                     if (cancellationToken?.isCancellationRequested) {
