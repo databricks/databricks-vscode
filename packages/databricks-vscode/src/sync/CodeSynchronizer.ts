@@ -16,6 +16,9 @@ export class CodeSynchronizer implements Disposable {
     readonly onDidChangeState: Event<SyncState> =
         this._onDidChangeStateEmitter.event;
 
+    // This state is updated from inside the SyncTask based on logs recieved from
+    // bricks sync stderr. Closing the SyncTask transitions the state back to
+    // stopped
     private _state: SyncState = "STOPPED";
 
     disposables: Array<Disposable> = [];
