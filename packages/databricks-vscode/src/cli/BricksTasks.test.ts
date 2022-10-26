@@ -35,47 +35,9 @@ describe(__filename, () => {
         assert.equal(task.isBackground, true);
         assert.deepEqual(task.problemMatchers, ["$bricks-sync"]);
     });
-
-    it("should lazily create a process execution", () => {
-        let connectionMock = mock(ConnectionManager);
-        when(connectionMock.profile).thenReturn("DEFAULT");
-        when(connectionMock.me).thenReturn("fabian.jakobs@databricks.com");
-        when(connectionMock.syncDestination).thenReturn(
-            new SyncDestination(
-                Uri.from({
-                    scheme: "dbws",
-                    path: "/Workspace/notebook-best-practices",
-                }),
-                Uri.file("/Desktop/notebook-best-practices")
-            )
-        );
-
-        let cliMock = mock(CliWrapper);
-        when(cliMock.getSyncCommand(anything())).thenReturn({
-            command: "bricks",
-            args: ["sync"],
-        });
-
-        let task = new SyncTask(
-            instance(connectionMock),
-            instance(cliMock),
-            "incremental"
-        );
-        assert.ok(task.execution);
-
-        let execution = task.execution as ProcessExecution;
-
-        const syncCommandMock = cliMock.getSyncCommand(anything());
-
-        verify(syncCommandMock).never();
-        assert.equal(execution.process, "bricks");
-        verify(syncCommandMock).once();
-        assert.deepEqual(execution.args, ["sync"]);
-        verify(syncCommandMock).once();
-    });
 });
 
-describe.only("tests for BricksSycnParser", () => {
+describe("tests for BricksSycnParser", () => {
     let connectionManager: ConnectionManager;
     let bricksSycnParser: BricksSyncParser;
 
