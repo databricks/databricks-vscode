@@ -2,17 +2,39 @@ import path from "node:path";
 import {readFile, stat} from "node:fs/promises";
 import {parse} from "ini";
 import {homedir} from "node:os";
-import {defaultRedactor} from "../Redactor";
-
-export type Profiles = Record<
-    string,
-    {
-        host: URL;
-        token: string;
-    }
->;
 
 export class ConfigFileError extends Error {}
+export class ConfigFileProfileParsingError extends Error {
+    constructor(name?: string, message?: string) {
+        super(message);
+        this.name = name ?? "";
+    }
+}
+
+export class HostParsingError extends ConfigFileProfileParsingError {
+    constructor(message?: string) {
+        super("HostParsingError", message);
+    }
+}
+
+export class TokenParsingError extends ConfigFileProfileParsingError {
+    constructor(message?: string) {
+        super("TokenParsingError", message);
+    }
+}
+
+export type Profile = {
+    host: URL;
+    token: string;
+};
+
+export type Profiles = Record<string, Profile | ConfigFileProfileParsingError>;
+
+export function isConfigFileParsingError(
+    profileOrError: Profile | ConfigFileProfileParsingError
+): profileOrError is ConfigFileProfileParsingError {
+    return profileOrError instanceof ConfigFileProfileParsingError;
+}
 
 export function resolveConfigFilePath(filePath?: string): string {
     if (!filePath) {
@@ -26,9 +48,30 @@ export function resolveConfigFilePath(filePath?: string): string {
     return filePath;
 }
 
-function getProfile(config: any) {
+function getProfileOrError(
+    config: any
+): Profile | ConfigFileProfileParsingError {
+    if (config.host === undefined) {
+        return new HostParsingError('"host" it not defined');
+    }
+
+    let host;
+    try {
+        host = new URL(config.host);
+    } catch (e: unknown) {
+        if (typeof e === "string") {
+            return new HostParsingError(e);
+        } else if (e instanceof Error) {
+            return new HostParsingError(`${e.name}: ${e.message}`);
+        }
+        return new HostParsingError(String(e));
+    }
+
+    if (config.token === undefined) {
+        return new TokenParsingError('"token" it not defined');
+    }
     return {
-        host: new URL(config.host),
+        host: host,
         token: config.token,
     };
 }
@@ -66,10 +109,10 @@ export async function loadConfigFile(filePath?: string): Promise<Profiles> {
                 defaultSectionFound = true;
                 continue;
             }
-            profiles[key] = getProfile(config[key]);
+            profiles[key] = getProfileOrError(config[key]);
         }
         if (defaultSectionFound) {
-            profiles["DEFAULT"] = getProfile(defaultSection);
+            profiles["DEFAULT"] = getProfileOrError(defaultSection);
         }
     } catch (e: unknown) {
         let message;

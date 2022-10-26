@@ -1,3 +1,5 @@
+import {ConfigFileProfileParsingError} from "..";
+
 /**
  * An object representing temporary or permanent AWS credentials.
  */

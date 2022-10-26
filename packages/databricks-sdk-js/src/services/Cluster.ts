@@ -11,7 +11,7 @@ import {
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-import {Language} from "../apis/executionContext";
+import {commands} from "..";
 import {
     ClusterInfo,
     ClustersService,
@@ -37,6 +37,13 @@ export class Cluster {
 
     get name(): string {
         return this.clusterDetails.cluster_name!;
+    }
+
+    get url(): Promise<string> {
+        return (async () =>
+            `${(await this.client.host).host}/#setting/clusters/${
+                this.id
+            }/configuration`)();
     }
 
     get memoryMb(): number | undefined {
@@ -136,22 +143,24 @@ export class Cluster {
         token?: CancellationToken,
         onProgress?: (newPollResponse: ClusterInfo) => Promise<void>
     ) {
-        this.details = await this.clusterApi.deleteAndWait({
-            request: {
+        this.details = await this.clusterApi.deleteAndWait(
+            {
                 cluster_id: this.id,
             },
-            cancellationToken: token,
-            onProgress: async (clusterInfo) => {
-                this.details = clusterInfo;
-                if (onProgress) {
-                    await onProgress(clusterInfo);
-                }
-            },
-        });
+            {
+                cancellationToken: token,
+                onProgress: async (clusterInfo) => {
+                    this.details = clusterInfo;
+                    if (onProgress) {
+                        await onProgress(clusterInfo);
+                    }
+                },
+            }
+        );
     }
 
     async createExecutionContext(
-        language: Language = "python"
+        language: commands.Language = "python"
     ): Promise<ExecutionContext> {
         return await ExecutionContext.create(this.client, this, language);
     }

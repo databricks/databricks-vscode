@@ -1,28 +1,27 @@
-import {CancellationToken} from "..";
+import {CancellationToken, CommandExecutionService, commands} from "..";
 import {ApiClient} from "../api-client";
-import {ExecutionContextService, Language} from "../apis/executionContext";
 import {Cluster} from "./Cluster";
 import {Command, CommandWithResult, StatusUpdateListener} from "./Command";
 
 export class ExecutionContext {
-    readonly executionContextApi: ExecutionContextService;
+    readonly executionContextApi: CommandExecutionService;
     id?: string;
 
     private constructor(
         readonly client: ApiClient,
         readonly cluster: Cluster,
-        readonly language: Language
+        readonly language: commands.Language
     ) {
-        this.executionContextApi = new ExecutionContextService(client);
+        this.executionContextApi = new CommandExecutionService(client);
     }
 
     static async create(
         client: ApiClient,
         cluster: Cluster,
-        language: Language = "python"
+        language: commands.Language = "python"
     ): Promise<ExecutionContext> {
         let context = new ExecutionContext(client, cluster, language);
-        let response = await context.executionContextApi.create({
+        let response = await context.executionContextApi.createAndWait({
             clusterId: context.cluster.id,
             language: context.language,
         });

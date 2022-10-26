@@ -4,21 +4,23 @@ export * from "./api-client";
 
 export * as cluster from "./apis/clusters";
 export {ClustersService} from "./apis/clusters";
-export * as commands from "./apis/commands";
-export {CommandsService} from "./apis/commands";
 export * as dbfs from "./apis/dbfs";
 export {DbfsService} from "./apis/dbfs";
-export * as executionContext from "./apis/executionContext";
-export {ExecutionContextService} from "./apis/executionContext";
-export * as file from "./apis/file";
+export * as commands from "./apis/commands";
+export {CommandExecutionService} from "./apis/commands";
 export * as jobs from "./apis/jobs";
 export {JobsService} from "./apis/jobs";
 export * as libraries from "./apis/libraries";
-export {ManagedLibraryService} from "./apis/libraries";
-export * as notebook from "./apis/notebook";
+export {LibrariesService} from "./apis/libraries";
 export * as repos from "./apis/repos";
 export {ReposService} from "./apis/repos";
-export {ScimService} from "./apis/scim";
+export * as scim from "./apis/scim";
+export {
+    CurrentUserService,
+    UsersService,
+    GroupsService,
+    ServicePrincipalsService,
+} from "./apis/scim";
 export * as workspace from "./apis/workspace";
 export {WorkspaceService} from "./apis/workspace";
 export * as workspaceconf from "./apis/workspaceconf";

@@ -2,10 +2,13 @@ import {
     ApiClient,
     Cluster,
     fromConfigFile,
-    ScimService,
+    CurrentUserService,
     CredentialProvider,
+    WorkspaceConf,
+    scim,
 } from "@databricks/databricks-sdk";
 import {
+    env,
     commands,
     EventEmitter,
     Uri,
@@ -17,7 +20,6 @@ import {SyncDestination} from "./SyncDestination";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
-import {ScimMeResponse} from "@databricks/databricks-sdk/dist/apis/scim";
 
 const extensionVersion = require("../../package.json").version;
 
@@ -34,7 +36,7 @@ export class ConnectionManager {
     private _apiClient?: ApiClient;
     private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
-    private _me?: ScimMeResponse;
+    private _me?: scim.User;
     private _profile?: string;
     private _clusterManager?: ClusterManager;
 
@@ -58,7 +60,7 @@ export class ConnectionManager {
         return this._me?.userName;
     }
 
-    get meDetails(): ScimMeResponse | undefined {
+    get meDetails(): scim.User | undefined {
         return this._me;
     }
 
@@ -278,7 +280,14 @@ export class ConnectionManager {
         }
 
         const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
-        this.updateSyncDestination(new SyncDestination(workspacePath, wsUri));
+        if (this.apiClient === undefined) {
+            throw new Error(
+                "Can't attach a Repo when profile is not connected"
+            );
+        }
+        this.updateSyncDestination(
+            await SyncDestination.from(this.apiClient, workspacePath, wsUri)
+        );
     }
 
     async detachSyncDestination(): Promise<void> {
@@ -294,9 +303,9 @@ export class ConnectionManager {
         this.updateSyncDestination(undefined);
     }
 
-    private async getMe(apiClient: ApiClient): Promise<ScimMeResponse> {
-        let scimApi = new ScimService(apiClient);
-        let response = await scimApi.me({});
+    private async getMe(apiClient: ApiClient): Promise<scim.User> {
+        let scimApi = new CurrentUserService(apiClient);
+        let response = await scimApi.me();
 
         return response;
     }

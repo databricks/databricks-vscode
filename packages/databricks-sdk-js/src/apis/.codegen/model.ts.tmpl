@@ -11,7 +11,7 @@
 	{{if .Comment "" 80}}/**
     {{.Comment "    * " 80}}
 	*/
-	{{end}}{{.SnakeName}}{{if not .Required}}?{{end}}: {{template "type" .Entity}};{{end}}
+	{{end}}{{.Name}}{{if not .Required}}?{{end}}: {{template "type" .Entity}};{{end}}
 }
 {{else if .MapValue}}export type {{.PascalName}} = {{template "type" .}};
 {{else if .Enum}}export type {{.PascalName}} = 

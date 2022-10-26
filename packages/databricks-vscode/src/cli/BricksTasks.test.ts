@@ -1,3 +1,4 @@
+import {ApiClient, Repo} from "@databricks/databricks-sdk";
 import * as assert from "assert";
 import {anything, instance, mock, when, verify} from "ts-mockito";
 import {ProcessExecution, Uri} from "vscode";
@@ -33,19 +34,19 @@ describe(__filename, () => {
         assert.deepEqual(task.problemMatchers, ["$bricks-sync"]);
     });
 
-    it("should lazily create a process execution", () => {
+    it("should lazily create a process execution", async () => {
         let connectionMock = mock(ConnectionManager);
+        const testSyncDestination = new SyncDestination(
+            instance(mock(Repo)),
+            Uri.from({
+                scheme: "dbws",
+                path: "/Workspace/notebook-best-practices",
+            }),
+            Uri.file("/Desktop/notebook-best-practices")
+        );
         when(connectionMock.profile).thenReturn("DEFAULT");
         when(connectionMock.me).thenReturn("fabian.jakobs@databricks.com");
-        when(connectionMock.syncDestination).thenReturn(
-            new SyncDestination(
-                Uri.from({
-                    scheme: "dbws",
-                    path: "/Workspace/notebook-best-practices",
-                }),
-                Uri.file("/Desktop/notebook-best-practices")
-            )
-        );
+        when(connectionMock.syncDestination).thenReturn(testSyncDestination);
 
         let cliMock = mock(CliWrapper);
         when(cliMock.getSyncCommand(anything())).thenReturn({

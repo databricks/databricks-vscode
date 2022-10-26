@@ -528,7 +528,7 @@ export interface InitScriptInfo {
      * be provided. For example, `{ "s3": { "destination" :
      * "s3://init_script_bucket/prefix", "region" : "us-west-2" } }`
      */
-    s3?: S3StorageInfo;
+    S3?: S3StorageInfo;
     /**
      * DBFS location of init script. Destination must be provided. For example,
      * `{ "dbfs" : { "destination" : "dbfs:/home/init_script" } }`

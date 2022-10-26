@@ -10,6 +10,7 @@ on:
 jobs:
     create-build-artifacts:
         strategy:
+            fail-fast: false
             matrix:
                 # VSIX architextures: https://github.com/microsoft/vscode-vsce/blob/main/src/package.ts
                 arch:
@@ -64,6 +65,7 @@ jobs:
               uses: actions/setup-node@v3
               with:
                   node-version: ${{ matrix.node-version }}
+                  cache: "yarn"
 
             - run: yarn install
             - run: yarn run build
