@@ -82,13 +82,11 @@ export class CodeSynchronizer implements Disposable {
 
     // This function waits for an in-flight sync to reach a terminal state
     async waitForSyncComplete(): Promise<void> {
-        if (this._state !== "IN_PROGRESS") {
-            return;
-        } else {
+        if (this._state !== "WATCHING_FOR_CHANGES") {
             return await new Promise((resolve) => {
                 const changeListener = this.onDidChangeState(
                     (state: SyncState) => {
-                        if (this._state !== "IN_PROGRESS") {
+                        if (this._state === "WATCHING_FOR_CHANGES") {
                             changeListener.dispose();
                             resolve();
                         }

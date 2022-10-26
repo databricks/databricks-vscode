@@ -238,7 +238,7 @@ class CustomSyncTerminal implements Pseudoterminal {
     }
 
     open(initialDimensions: TerminalDimensions | undefined): void {
-        this.syncStateCallback("WATCHING_FOR_CHANGES");
+        this.syncStateCallback("IN_PROGRESS");
         try {
             this.startSyncProcess();
         } catch (e) {
