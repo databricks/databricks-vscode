@@ -22,6 +22,7 @@ import {
 import {DatabricksRuntime, FileAccessor, OutputEvent} from "./DabaricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncDestination} from "../configuration/SyncDestination";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ListRequest} from "@databricks/databricks-sdk/dist/apis/repos";
 
 describe(__filename, () => {
@@ -82,7 +83,11 @@ describe(__filename, () => {
             connectionManagerMock
         );
 
-        runtime = new DatabricksRuntime(connectionManager, fileAccessor);
+        runtime = new DatabricksRuntime(
+            connectionManager,
+            fileAccessor,
+            mock(CodeSynchronizer)
+        );
     });
 
     afterEach(() => {

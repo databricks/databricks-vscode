@@ -25,6 +25,7 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
 import {runAsWorkflow} from "./WorkflowOutputPanel";
 import {promptForClusterStart} from "../ui/prompts";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -50,7 +51,8 @@ export class DatabricksWorkflowDebugAdapterFactory
 {
     constructor(
         private connection: ConnectionManager,
-        private context: ExtensionContext
+        private context: ExtensionContext,
+        private codeSynchronizer: CodeSynchronizer
     ) {}
 
     dispose() {}
@@ -59,7 +61,11 @@ export class DatabricksWorkflowDebugAdapterFactory
         _session: DebugSession
     ): ProviderResult<DebugAdapterDescriptor> {
         return new DebugAdapterInlineImplementation(
-            new DatabricksWorkflowDebugSession(this.connection, this.context)
+            new DatabricksWorkflowDebugSession(
+                this.connection,
+                this.context,
+                this.codeSynchronizer
+            )
         );
     }
 }
@@ -71,7 +77,8 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
 
     constructor(
         private connection: ConnectionManager,
-        private context: ExtensionContext
+        private context: ExtensionContext,
+        private codeSynchronizer: CodeSynchronizer
     ) {
         super();
     }
@@ -183,6 +190,10 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         if (!isClusterRunning) {
             return;
         }
+
+        // We wait for sync to complete so that the local files are consistant
+        // with the remote repo files
+        await this.codeSynchronizer.waitForSyncComplete();
 
         await runAsWorkflow({
             program: Uri.file(program),
