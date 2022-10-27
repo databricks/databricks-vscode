@@ -177,19 +177,17 @@ export class BricksSyncParser {
             throw new Error("[BricksSyncParser] unexpected logs recieved");
         }
         const filePath = tokenizedLine[1];
-        if (!this.filesBeingUploaded.has(filePath)) {
-            if (!this.filesBeingDeleted.has(filePath)) {
-                throw new Error(
-                    "[BricksSyncParser] untracked file deleted. All delete complete " +
-                        "logs should be preceded with a delete initialted log. file: " +
-                        filePath +
-                        ". log recieved: `" +
-                        line +
-                        "`"
-                );
-            }
-            this.filesBeingDeleted.delete(filePath);
+        if (!this.filesBeingDeleted.has(filePath)) {
+            throw new Error(
+                "[BricksSyncParser] untracked file deleted. All delete complete " +
+                    "logs should be preceded with a delete initialted log. file: " +
+                    filePath +
+                    ". log recieved: `" +
+                    line +
+                    "`"
+            );
         }
+        this.filesBeingDeleted.delete(filePath);
     }
 
     // This function processes the stderr logs from bricks sync and parses it
