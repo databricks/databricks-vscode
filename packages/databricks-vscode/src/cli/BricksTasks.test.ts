@@ -56,13 +56,15 @@ describe("tests for BricksSycnParser", () => {
         );
     });
 
-    it("processing empty logs transitions sync status from INACTIVE -> WATCHING_FOR_CHANGES", () => {
+    it("processing empty logs transitions sync status from STOPPED -> IN_PROGRESS and we wait for initial sync complete", () => {
         assert.equal(syncState, "STOPPED");
         bricksSycnParser.process("");
+        assert.equal(syncState, "IN_PROGRESS");
+        bricksSycnParser.process("[INFO] Initial Sync Complete");
         assert.equal(syncState, "WATCHING_FOR_CHANGES");
     });
 
-    it("processing action log transitions sync status from INACTIVE -> INPROGRESS", () => {
+    it("processing action log transitions sync status from STOPPED -> INPROGRESS", () => {
         assert.equal(syncState, "STOPPED");
         bricksSycnParser.process("Action: PUT: hello.txt");
         assert.equal(syncState, "IN_PROGRESS");
@@ -72,12 +74,14 @@ describe("tests for BricksSycnParser", () => {
         // recieving some random logs from bricks sync
         assert.equal(syncState, "STOPPED");
         bricksSycnParser.process("some random logs");
-        assert.equal(syncState, "WATCHING_FOR_CHANGES");
+        assert.equal(syncState, "IN_PROGRESS");
 
         // upload  hello.txt
         bricksSycnParser.process("Action: PUT: hello.txt");
         assert.equal(syncState, "IN_PROGRESS");
         bricksSycnParser.process("Uploaded hello.txt");
+        assert.equal(syncState, "IN_PROGRESS");
+        bricksSycnParser.process("[INFO] Initial Sync Complete");
         assert.equal(syncState, "WATCHING_FOR_CHANGES");
 
         // delete  bye.txt
