@@ -1,4 +1,4 @@
-import {Cluster, Repo} from "@databricks/databricks-sdk";
+import {Cluster, Repo, WorkspaceService} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
     Disposable,
@@ -204,8 +204,11 @@ export class ConnectionCommands implements Disposable {
             quickPick.onDidAccept(async () => {
                 if (quickPick.selectedItems[0].label === "Create New Repo") {
                     await UrlUtils.openExternal(
-                        (await this.connectionManager.apiClient?.host)?.href ??
-                            ""
+                        `${
+                            (
+                                await this.connectionManager.apiClient?.host
+                            )?.href ?? ""
+                        }#folder/${this.connectionManager.repoRootId ?? ""}`
                     );
                 } else {
                     const repoPath = quickPick.selectedItems[0].path;

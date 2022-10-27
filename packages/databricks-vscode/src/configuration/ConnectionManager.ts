@@ -6,6 +6,8 @@ import {
     CredentialProvider,
     WorkspaceConf,
     scim,
+    WorkspaceService,
+    HttpError,
 } from "@databricks/databricks-sdk";
 import {
     env,
@@ -20,6 +22,7 @@ import {SyncDestination} from "./SyncDestination";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
+import {ObjectInfo} from "@databricks/databricks-sdk/dist/apis/workspace";
 
 const extensionVersion = require("../../package.json").version;
 
@@ -39,6 +42,7 @@ export class ConnectionManager {
     private _me?: scim.User;
     private _profile?: string;
     private _clusterManager?: ClusterManager;
+    private _repoRootDetails?: ObjectInfo;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -84,6 +88,9 @@ export class ConnectionManager {
         return this._syncDestination;
     }
 
+    get repoRootId() {
+        return this._repoRootDetails?.object_id;
+    }
     /**
      * Get a pre-configured APIClient. Do not hold on to references to this class as
      * it might be invalidated as the configuration changes. If you have to store a reference
@@ -157,6 +164,18 @@ export class ConnectionManager {
             this.updateSyncDestination(undefined);
         }
 
+        try {
+            this._repoRootDetails = await new WorkspaceService(
+                apiClient
+            ).getStatus({
+                path: `/Repos/${this.me}`,
+            });
+        } catch (e) {
+            if (!(e instanceof HttpError && e.code === 404)) {
+                throw e;
+            }
+        }
+
         this.updateState("CONNECTED");
     }
 
@@ -170,6 +189,7 @@ export class ConnectionManager {
         this._projectConfigFile = undefined;
         this._apiClient = undefined;
         this._me = undefined;
+        this._repoRootDetails = undefined;
         this.updateCluster(undefined);
         this.updateSyncDestination(undefined);
         this.updateState("DISCONNECTED");
