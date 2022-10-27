@@ -24,7 +24,6 @@ import {ClusterManager} from "../cluster/ClusterManager";
 const extensionVersion = require("../../package.json").version;
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
-export type SyncStatus = "IN_PROGRESS" | "WATCHING_FOR_CHANGES" | "INACTIVE";
 
 /**
  * The ConnectionManager maintains the connection state to Databricks
