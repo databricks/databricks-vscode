@@ -196,14 +196,23 @@ export class BricksSyncParser {
     // TODO: Use structed logging to compute the sync state here
     public process(data: string) {
         var logLines = data.split("\n");
-        for (let line of logLines) {
+        for (let i = 0; i < logLines.length; i++) {
+            var line = logLines[i];
             this.parseForActionsInitiated(line);
             this.parseForUploadCompleted(line);
             this.parseForDeleteCompleted(line);
             // this.writeEmitter.fire writes to the pseudoterminal for the
             // bricks sync process
             this.writeEmitter.fire(line.trim());
-            this.writeEmitter.fire("\n\r");
+
+            // When vscode flush prints the logs from events fired here,
+            // it automatically adds a new lines. Since we can reasonably expect
+            // with a high probably that all logs in one call of this func will
+            // be flushed together, we do not add a new line at the last event
+            // to keep the new line spacing consistant
+            if (i !== logLines.length - 1) {
+                this.writeEmitter.fire("\n\r");
+            }
         }
         if (
             this.filesBeingDeleted.size === 0 &&
