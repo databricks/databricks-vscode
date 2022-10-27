@@ -10,17 +10,39 @@ export async function promptForClusterStart(
         const response = await window.showErrorMessage(
             "The attached cluster is not running.",
             "Start Cluster",
-            "Cancel Execution"
+            "Cancel"
         );
         switch (response) {
             case "Start Cluster":
                 await onAccept();
                 await commands.executeCommand("databricks.cluster.start");
                 return true;
-            case "Cancel Execution":
+            case "Cancel":
                 await onReject();
                 return false;
         }
     }
     return true;
+}
+
+export async function promptForAttachingSyncDest(
+    onReject: () => Promise<void>,
+    onAccept: () => Promise<void> = async () => {}
+) {
+    const response = await window.showErrorMessage(
+        "Please configure a Databricks Repo for syncing",
+        "Attach Repo",
+        "Cancel"
+    );
+    switch (response) {
+        case "Attach Repo":
+            await commands.executeCommand(
+                "databricks.connection.attachSyncDestination"
+            );
+            await onAccept();
+            return true;
+        case "Cancel":
+            await onReject();
+            return false;
+    }
 }

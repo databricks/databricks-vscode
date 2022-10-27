@@ -1,5 +1,6 @@
 import {Cluster, Repo} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
+import {resolve} from "node:path";
 import {
     Disposable,
     QuickPickItem,
@@ -184,18 +185,24 @@ export class ConnectionCommands implements Disposable {
             }));
             quickPick.busy = false;
 
-            quickPick.onDidAccept(async () => {
-                const repoPath = quickPick.selectedItems[0].path;
-                await this.connectionManager.attachSyncDestination(
-                    Uri.from({
-                        scheme: "dbws",
-                        path: repoPath,
-                    })
-                );
-                quickPick.dispose();
-            });
+            await new Promise<void>((resolve) => {
+                quickPick.onDidAccept(async () => {
+                    const repoPath = quickPick.selectedItems[0].path;
+                    await this.connectionManager.attachSyncDestination(
+                        Uri.from({
+                            scheme: "dbws",
+                            path: repoPath,
+                        })
+                    );
+                    quickPick.dispose();
+                    resolve();
+                });
 
-            quickPick.onDidHide(() => quickPick.dispose());
+                quickPick.onDidHide(() => {
+                    quickPick.dispose();
+                    resolve();
+                });
+            });
         };
     }
 
