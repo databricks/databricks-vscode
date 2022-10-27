@@ -319,6 +319,16 @@
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python"
                 }
+            ],
+            "explorer/context": [
+                {
+                    "command": "databricks.run.runEditorContents",
+                    "when": "resourceLangId == python"
+                },
+                {
+                    "command": "databricks.run.runEditorContentsAsWorkflow",
+                    "when": "resourceLangId == python"
+                }
             ]
         },
         "submenus": [
