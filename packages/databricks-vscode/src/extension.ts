@@ -27,7 +27,22 @@ import {PublicApi} from "@databricks/databricks-vscode-types";
 import {initLoggers} from "./logger";
 import {UtilsCommands} from "./utils/UtilsCommands";
 
-export function activate(context: ExtensionContext): PublicApi {
+export function activate(context: ExtensionContext): PublicApi | undefined {
+    const a = workspace.workspaceFolders;
+    if (
+        workspace.workspaceFolders === undefined ||
+        workspace.workspaceFolders?.length === 0
+    ) {
+        window.showErrorMessage("Open a folder to use Databricks extension");
+        /*
+            We force the user to open a folder from the databricks sidebar view. Returning
+            here blocks all other commands from running. 
+            Since the workspace is reloaded when a folder is opened, the activation function
+            is called again. Therefore this won't block the activation of the extension on a
+            valid workspace.
+        */
+        return undefined;
+    }
     initLoggers();
 
     let cli = new CliWrapper(context);
