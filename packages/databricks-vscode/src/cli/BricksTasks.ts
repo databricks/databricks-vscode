@@ -206,7 +206,7 @@ export class BricksSyncParser {
             this.writeEmitter.fire(line.trim());
 
             // When vscode flush prints the logs from events fired here,
-            // it automatically adds a new lines. Since we can reasonably expect
+            // it automatically adds a new line. Since we can reasonably expect
             // with a high probablity that all logs in one call of this func will
             // be flushed together, we do not add a new line at the last event
             // to keep the new line spacing consistant
