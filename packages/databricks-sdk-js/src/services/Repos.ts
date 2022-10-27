@@ -74,10 +74,11 @@ export class Repo {
             _token
         );
 
-        if (repos.length !== 1) {
+        const exactRepo = repos.find((repo) => repo.path === path);
+        if (repos.length !== 1 && !exactRepo) {
             throw new RepoError(`${repos.length} repos match prefix ${path}`);
         }
 
-        return repos[0];
+        return exactRepo ?? repos[0];
     }
 }
