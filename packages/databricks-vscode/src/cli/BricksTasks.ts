@@ -92,6 +92,7 @@ export class SyncTask extends Task {
 export class BricksSyncParser {
     private filesBeingUploaded = new Set<string>();
     private filesBeingDeleted = new Set<string>();
+    private firstSyncDone = false;
 
     constructor(
         private syncStateCallback: (state: SyncState) => void,
@@ -190,6 +191,15 @@ export class BricksSyncParser {
         this.filesBeingDeleted.delete(filePath);
     }
 
+    // We block on execing any commands on vscode until we get a message from
+    // bricks cli that the initial sync is done
+    private parseForFirstSync(line: string) {
+        var indexOfSyncComplete = line.indexOf("Initial Sync Complete");
+        if (indexOfSyncComplete !== -1) {
+            this.firstSyncDone = true;
+        }
+    }
+
     // This function processes the stderr logs from bricks sync and parses it
     // to compute the sync state ie determine whether the remote files match
     // what we have stored locally.
@@ -200,6 +210,11 @@ export class BricksSyncParser {
             this.parseForActionsInitiated(line);
             this.parseForUploadCompleted(line);
             this.parseForDeleteCompleted(line);
+
+            if (!this.firstSyncDone) {
+                this.parseForFirstSync(line);
+            }
+
             // this.writeEmitter.fire writes to the pseudoterminal for the
             // bricks sync process
             this.writeEmitter.fire(line.trim());
@@ -207,7 +222,8 @@ export class BricksSyncParser {
         }
         if (
             this.filesBeingDeleted.size === 0 &&
-            this.filesBeingUploaded.size === 0
+            this.filesBeingUploaded.size === 0 &&
+            this.firstSyncDone
         ) {
             this.syncStateCallback("WATCHING_FOR_CHANGES");
         } else {
