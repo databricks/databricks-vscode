@@ -147,7 +147,6 @@ export class WorkflowOutputPanel {
         });
     }
 
-    // TODO: use new webview to render errors
     showError({message, stack}: {message?: string; stack?: string}) {
         this.panel.webview.postMessage({
             fn: "setError",
