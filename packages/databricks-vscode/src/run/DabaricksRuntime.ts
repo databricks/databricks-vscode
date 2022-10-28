@@ -16,6 +16,7 @@ import {
 import {SyncDestination} from "../configuration/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForClusterStart} from "./prompts";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -50,7 +51,8 @@ export class DatabricksRuntime {
             readFile: async (path) => {
                 return "";
             },
-        }
+        },
+        private codeSynchronizer: CodeSynchronizer
     ) {}
 
     /**
@@ -128,6 +130,9 @@ export class DatabricksRuntime {
                 column: 0,
             });
 
+            // We wait for sync to complete so that the local files are consistant
+            // with the remote repo files
+            await this.codeSynchronizer.waitForSyncComplete();
             let response = await executionContext.execute(
                 this.compileCommandString(
                     program,

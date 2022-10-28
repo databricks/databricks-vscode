@@ -99,13 +99,16 @@ export class ConfigurationDataProvider
                 }
 
                 if (syncDestination) {
+                    // TODO: Add another icon over here for in_progress state
+                    // DECO-220
                     children.push({
                         label: `Repo`,
                         iconPath: new ThemeIcon("repo"),
                         id: "REPO",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
                         contextValue:
-                            this.sync.state === "RUNNING"
+                            this.sync.state === "WATCHING_FOR_CHANGES" ||
+                            this.sync.state === "IN_PROGRESS"
                                 ? "syncRunning"
                                 : "syncStopped",
                     });
@@ -155,7 +158,8 @@ export class ConfigurationDataProvider
                         label: `Name:`,
                         description: syncDestination.name,
                         iconPath:
-                            this.sync.state === "RUNNING"
+                            this.sync.state === "WATCHING_FOR_CHANGES" ||
+                            this.sync.state === "IN_PROGRESS"
                                 ? new ThemeIcon("debug-start")
                                 : new ThemeIcon("debug-stop"),
                         collapsibleState: TreeItemCollapsibleState.None,

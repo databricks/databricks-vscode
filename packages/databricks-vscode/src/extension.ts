@@ -153,10 +153,14 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
 
     // Run/debug group
     const runCommands = new RunCommands(connectionManager);
-    const debugFactory = new DatabricksDebugAdapterFactory(connectionManager);
+    const debugFactory = new DatabricksDebugAdapterFactory(
+        connectionManager,
+        synchronizer
+    );
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,
-        context
+        context,
+        synchronizer
     );
 
     context.subscriptions.push(
