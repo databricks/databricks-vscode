@@ -1,5 +1,7 @@
+import {resolve} from "path";
 import {commands, debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {promptForAttachingSyncDest} from "./prompts";
 import {isNotebook} from "../utils";
 
 /**
@@ -26,6 +28,20 @@ export class RunCommands {
                     await this.connection.waitForConnect();
                 }
 
+                if (this.connection.syncDestination === undefined) {
+                    await promptForAttachingSyncDest(async () => {
+                        window.showErrorMessage(
+                            "Execution cancelled because no Databricks Repo is attached"
+                        );
+                    });
+                    if (this.connection.syncDestination === undefined) {
+                        window.showErrorMessage(
+                            "Execution cancelled because no Databricks Repo is attached"
+                        );
+                        return;
+                    }
+                }
+
                 await commands.executeCommand("databricks.sync.start");
                 await debug.startDebugging(
                     undefined,
@@ -50,6 +66,20 @@ export class RunCommands {
             if (targetResource) {
                 if (this.connection.state === "CONNECTING") {
                     await this.connection.waitForConnect();
+                }
+
+                if (this.connection.syncDestination === undefined) {
+                    await promptForAttachingSyncDest(async () => {
+                        window.showErrorMessage(
+                            "Execution cancelled because no Databricks Repo is attached"
+                        );
+                    });
+                    if (this.connection.syncDestination === undefined) {
+                        window.showErrorMessage(
+                            "Execution cancelled because no Databricks Repo is attached"
+                        );
+                        return;
+                    }
                 }
 
                 await commands.executeCommand("databricks.sync.start");
