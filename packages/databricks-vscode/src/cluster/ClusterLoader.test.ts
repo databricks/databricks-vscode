@@ -118,8 +118,10 @@ describe(__filename, () => {
                 )
             ).thenResolve(perms);
         }
-        when(mockedConnectionManager.me).thenReturn(me.userName);
-        when(mockedConnectionManager.meDetails).thenReturn(me);
+        when(mockedConnectionManager.databricksWorkspace).thenReturn({
+            user: me,
+            userName: me.userName,
+        } as any);
     });
 
     it("should only load accessible clusters", async () => {

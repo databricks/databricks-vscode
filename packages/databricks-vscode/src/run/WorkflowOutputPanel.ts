@@ -4,8 +4,6 @@ import {
     jobs,
     ApiClientResponseError,
 } from "@databricks/databricks-sdk";
-import {RunOutput} from "@databricks/databricks-sdk/dist/apis/jobs";
-import {TextDecoder} from "node:util";
 import {basename} from "path";
 import {
     CancellationToken,
@@ -16,9 +14,9 @@ import {
     ViewColumn,
     WebviewPanel,
     window,
-    workspace,
 } from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {isNotebook} from "../utils";
 
 // TODO: add dispose, add persistence, reuse panel
@@ -29,6 +27,7 @@ export async function runAsWorkflow({
     args = [],
     cluster,
     syncDestination,
+    codeSynchronizer,
     context,
     token,
 }: {
@@ -37,6 +36,7 @@ export async function runAsWorkflow({
     args?: Array<string>;
     cluster: Cluster;
     syncDestination: SyncDestination;
+    codeSynchronizer: CodeSynchronizer;
     context: ExtensionContext;
     token?: CancellationToken;
 }) {
@@ -61,6 +61,10 @@ export async function runAsWorkflow({
             cancellation.cancel();
         });
     }
+
+    // We wait for sync to complete so that the local files are consistant
+    // with the remote repo files
+    await codeSynchronizer.waitForSyncComplete();
 
     try {
         if (await isNotebook(program)) {

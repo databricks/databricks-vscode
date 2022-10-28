@@ -74,7 +74,7 @@ export class SyncTask extends Task {
         this.problemMatchers = ["$bricks-sync"];
         this.presentationOptions.echo = true;
         this.group = TaskGroup.Build;
-        this.presentationOptions.reveal = TaskRevealKind.Silent;
+        this.presentationOptions.reveal = TaskRevealKind.Always;
     }
 
     static killAll() {
@@ -369,11 +369,13 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
                         window.showErrorMessage(
                             "Can't start sync: No workspace opened!"
                         );
-                        throw new Error("!!!!!");
+                        throw new Error(
+                            "Can't start sync: No workspace opened!"
+                        );
                     }
 
-                    const profile = this.connection.profile;
-                    if (!profile) {
+                    const dbWorkspace = this.connection.databricksWorkspace;
+                    if (!dbWorkspace) {
                         window.showErrorMessage(
                             "Can't start sync: Databricks connection not configured!"
                         );
@@ -387,7 +389,7 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
                         env: {
                             /* eslint-disable @typescript-eslint/naming-convention */
                             BRICKS_ROOT: workspacePath,
-                            DATABRICKS_CONFIG_PROFILE: profile,
+                            DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
                             /* eslint-enable @typescript-eslint/naming-convention */
                         },
                     };

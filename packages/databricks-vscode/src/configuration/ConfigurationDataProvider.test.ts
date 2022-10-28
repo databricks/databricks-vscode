@@ -106,7 +106,7 @@ describe(__filename, () => {
             cluster_name: "cluster-name-2",
             cluster_source: "UI",
             creator_user_name: "user-2",
-            spark_version: "Spark 3.2.1",
+            spark_version: "10.4.x-scala2.12",
             state: "TERMINATED",
         });
 
@@ -121,13 +121,13 @@ describe(__filename, () => {
         assert.deepEqual(children, [
             {
                 collapsibleState: 2,
-                contextValue: "profile",
+                contextValue: "workspace",
                 iconPath: {
                     color: undefined,
-                    id: "tools",
+                    id: "account",
                 },
-                id: "PROFILE",
-                label: "Profile",
+                id: "WORKSPACE",
+                label: "Workspace",
             },
             {
                 collapsibleState: 2,
