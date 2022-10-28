@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <style>
+            /* Making sure that the HTML file can also be loaded directly in the browser during development */
+            /** STRIP -> **/
+            :root {
+                --vscode-editor-foreground: black;
+                --vscode-settings-dropdownListBorder: #8c8c8c;
+                --vscode-font-family: -apple-system, BlinkMacSystemFont,
+                    Segoe UI, Roboto, Helvetica, Arial, sans-serif,
+                    Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+                --vscode-font-weight: 400;
+            }
+            /** <- STRIP **/
+
+            body {
+                color: var(--vscode-editor-foreground);
+                font-family: var(--vscode-font-family);
+                font-weight: var(--vscode-font-weight);
+                margin: 0;
+                padding: 0;
+            }
+
+            div {
+                box-sizing: border-box;
+            }
+
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            li .label {
+                margin-top: 1em;
+                display: block;
+                font-size: smaller;
+            }
+
+            li .value {
+                display: block;
+                font-size: small;
+            }
+
+            .container {
+                display: flex;
+                flex-direction: row;
+                height: 100vh;
+
+                display: flex;
+                flex-direction: row;
+            }
+
+            .output {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                overflow: auto;
+                border-right: 1px solid
+                    var(--vscode-settings-dropdownListBorder);
+            }
+
+            .output header {
+                padding: 8px;
+                border-bottom: 1px solid
+                    var(--vscode-settings-dropdownListBorder);
+            }
+
+            #spinner {
+                margin-top: 50%;
+                align-self: center;
+            }
+
+            #frame {
+                width: 100%;
+                flex: 1;
+                overflow: auto;
+                margin: 0;
+                border: none;
+            }
+
+            #stdout {
+                font-family: Menlo, Monaco, "Courier New", monospace;
+                font-weight: normal;
+                font-size: 12px;
+                font-feature-settings: "liga" 0, "calt" 0;
+                line-height: 18px;
+                padding: 8px;
+                width: auto;
+                flex: 1;
+                overflow: scroll;
+                margin: 0;
+                border: none;
+            }
+
+            .output.spinner #spinner {
+                display: block;
+            }
+            .output.spinner #frame {
+                display: none;
+            }
+            .output.spinner #stdout {
+                display: none;
+            }
+
+            .output.html #frame {
+                display: block;
+            }
+            .output.html #spinner {
+                display: none;
+            }
+            .output.html #stdout {
+                display: none;
+            }
+
+            .output.stdout #frame {
+                display: none;
+            }
+            .output.stdout #spinner {
+                display: none;
+            }
+            .output.stdout #stdout {
+                display: block;
+            }
+
+            .details {
+                padding: 10px;
+                width: 220px;
+            }
+        </style>
+
+        <script
+            type="module"
+            src="../node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js"
+        ></script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="output spinner" id="output">
+                <header>Output</header>
+                <vscode-progress-ring id="spinner"></vscode-progress-ring>
+                <iframe id="frame"></iframe>
+                <pre id="stdout"></pre>
+            </div>
+            <div class="details">
+                <header>Task Run Details</header>
+                <ul>
+                    <li>
+                        <span class="label">Task run ID:</span>
+                        <span class="value">
+                            <vscode-link id="run-id" href="#">N/A</vscode-link>
+                        </span>
+                    </li>
+                    <li>
+                        <span class="label">Cluster:</span>
+                        <span class="value">
+                            <vscode-link id="run-cluster" href="#"
+                                >N/A</vscode-link
+                            >
+                        </span>
+                    </li>
+                    <li>
+                        <span class="label">Started:</span>
+                        <span class="value" id="run-started">-</span>
+                    </li>
+                    <li>
+                        <span class="label">Ended:</span>
+                        <span class="value" id="run-ended">-</span>
+                    </li>
+                    <li>
+                        <span class="label">Duration:</span>
+                        <span class="value" id="run-duration">-</span>
+                    </li>
+                    <li>
+                        <span class="label">Status:</span>
+                        <span class="value" id="run-status">STARTING</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <script>
+            let startTime;
+            let interval;
+
+            function start() {
+                if (startTime) {
+                    return;
+                }
+                startTime = Date.now();
+                interval = setInterval(function () {
+                    var seconds = Math.floor((Date.now() - startTime) / 1000);
+                    var minutes = Math.floor(seconds / 60);
+
+                    var text = `${seconds}s`;
+                    if (minutes > 0) {
+                        text = `${minutes}m ${seconds % 60}s`;
+                    }
+                    document.getElementById("run-duration").innerText = text;
+                }, 300);
+            }
+
+            function stop() {
+                clearInterval(interval);
+            }
+
+            function updateDetails(details) {
+                document
+                    .getElementById("run-id")
+                    .setAttribute("href", details.runUrl);
+                document.getElementById("run-id").innerText = details.runId;
+
+                document
+                    .getElementById("run-cluster")
+                    .setAttribute("href", details.clusterUrl);
+                document.getElementById("run-cluster").innerText =
+                    details.clusterId;
+
+                document.getElementById("run-started").innerText =
+                    details.started;
+                document.getElementById("run-ended").innerText = details.ended;
+                document.getElementById("run-status").innerText =
+                    details.status;
+
+                start();
+            }
+
+            function setOutputHtml(html) {
+                var cl = document.getElementById("output").classList;
+                cl.remove("spinner");
+                cl.remove("stdout");
+                cl.add("html");
+
+                var frame = document.getElementById("frame");
+                var frame = frame.contentWindow || frame.contentDocument;
+                if (frame.document) frame = frame.document;
+
+                frame.open();
+                frame.write(html);
+                frame.close();
+            }
+
+            function setStdout(stdout) {
+                var cl = document.getElementById("output").classList;
+                cl.remove("spinner");
+                cl.remove("html");
+                cl.add("stdout");
+
+                document.getElementById("stdout").innerText = stdout;
+            }
+
+            window.addEventListener("message", (event) => {
+                console.log(event);
+                window[event.data.fn](...event.data.args);
+            });
+
+            /* Making sure that the HTML file can also be loaded directly in the browser during development */
+            /** STRIP -> **/
+            updateDetails({
+                runUrl: "https://e2-dogfood.staging.cloud.databricks.com/?o=6051921418418893#job/329/run/826983170981048",
+                runId: "826983170981048",
+                clusterUrl: "",
+                clusterId: "0715-145100-akshaym",
+                started: "2022-10-27 17:05:33 CEST",
+                ended: "2022-10-27 17:12:32 CEST",
+                status: "Succeeded",
+            });
+
+            setTimeout(() => {
+                setOutputHtml(
+                    `<html><body><h1>Hello World</h1><p>This is a test</p></body></html>`
+                );
+                stop();
+            }, 4500);
+
+            setTimeout(() => {
+                setStdout(
+                    `<html><body><h1>Hello World</h1><p>This is a test</p></body></html>`
+                );
+            }, 1000);
+            /** <- STRIP **/
+        </script>
+    </body>
+</html>

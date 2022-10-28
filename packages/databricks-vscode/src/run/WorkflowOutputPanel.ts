@@ -4,7 +4,8 @@ import {
     jobs,
     ApiClientResponseError,
 } from "@databricks/databricks-sdk";
-import {basename} from "path";
+import {basename} from "node:path";
+import * as fs from "node:fs/promises";
 import {
     CancellationToken,
     CancellationTokenSource,
@@ -80,12 +81,7 @@ export async function runAsWorkflow({
                 token: cancellation.token,
             });
             let htmlContent = response.views![0].content;
-            // window.parent doesn't exist in a Webview
-            htmlContent = htmlContent?.replace(
-                "<script>window.__STATIC_SETTINGS__",
-                "<script>window.parent = { postMessage: function() {}}; window.__STATIC_SETTINGS__"
-            );
-            panel.html = htmlContent || "";
+            panel.showHtmlResult(htmlContent || "");
         } else {
             let response = await cluster.runPythonAndWait({
                 path: syncDestination.localToRemoteNotebook(program) + ".py",
@@ -120,7 +116,9 @@ export async function runAsWorkflow({
 export class WorkflowOutputPanel {
     private run?: WorkflowRun;
     constructor(private panel: WebviewPanel, private extensionUri: Uri) {
-        panel.webview.html = this.getWebviewContent("Starting ...");
+        this.getWebviewContent().then((html) => {
+            panel.webview.html = html;
+        });
     }
 
     onDidDispose(listener: () => void): Disposable {
@@ -135,19 +133,21 @@ export class WorkflowOutputPanel {
         this.panel.webview.html = htmlContent;
     }
 
-    showStdoutResult(output: string) {
-        /* html */
-        this.html = `<html>
-            <head>
-                <script type="module" src="${this.getToolkitUri()}"></script>
-            <body>
-                <h1>Output</h1>
-                <hr>
-                <pre>${output}</pre>
-            </body>
-        </html>`;
+    showHtmlResult(htmlContent: string) {
+        this.panel.webview.postMessage({
+            fn: "setOutputHtml",
+            args: [htmlContent],
+        });
     }
 
+    showStdoutResult(output: string) {
+        this.panel.webview.postMessage({
+            fn: "setStdout",
+            args: [output],
+        });
+    }
+
+    // TODO: use new webview to render errors
     showError({message, stack}: {message?: string; stack?: string}) {
         /* html */
         this.html = [
@@ -185,6 +185,43 @@ export class WorkflowOutputPanel {
             state,
             pageUrl: run.runPageUrl,
         });
+
+        const task = run.tasks![0];
+        const cluster = task.cluster_instance;
+
+        let clusterUrl = "#";
+        if (cluster) {
+            clusterUrl = `https://${
+                new URL(run.runPageUrl).hostname
+            }/#setting/sparkui/${cluster.cluster_id}/driver-${
+                cluster.spark_context_id
+            }`;
+        }
+
+        this.panel.webview.postMessage({
+            fn: "updateDetails",
+            args: [
+                {
+                    runUrl: run.runPageUrl,
+                    runId: task.run_id,
+                    clusterUrl,
+                    clusterId: cluster?.cluster_id || "-",
+                    started: task.start_time
+                        ? new Date(task.start_time).toLocaleString()
+                        : "-",
+                    ended: task.end_time
+                        ? new Date(task.end_time).toLocaleString()
+                        : "-",
+                    status: state,
+                },
+            ],
+        });
+        if (task.end_time) {
+            this.panel.webview.postMessage({
+                fn: "stop",
+                args: [],
+            });
+        }
     }
 
     getToolkitUri(): Uri {
@@ -197,39 +234,21 @@ export class WorkflowOutputPanel {
         );
     }
 
-    private getWebviewContent(message: string): string {
-        /* html */
-        return `<html>
-            <head>
-                <script type="module" src="${this.getToolkitUri()}"></script>
-            </head>
-            <body>
-                <div style="margin:20px; display: flex; justify-content: center; width: 100%"><vscode-progress-ring></vscode-progress-ring></div>
-                <div style="display: flex; justify-content: center; width: 100%"><span id="message">${message}</span> <span id="duration"></span></div>
-    
-                <script>
-                    window.addEventListener('message', event => {
-                        const messageEl = document.getElementById("message")
-                        messageEl.innerHTML = "";
+    private async getWebviewContent(): Promise<string> {
+        const htmlFile = Uri.joinPath(
+            this.extensionUri,
+            "webview-ui",
+            "job.html"
+        );
+        let html = await fs.readFile(htmlFile.fsPath, "utf8");
+        html = html
+            .replace(/\/\*\* STRIP -> \*\*\/(.*?)\/\*\* <- STRIP \*\*\//gs, "")
+            .replace(
+                /src="[^"].*?\/toolkit.js"/g,
+                `src="${this.getToolkitUri()}"`
+            );
 
-                        switch(event.data.type) {
-                            case "status":
-                                const message = 'State: ' + event.data.state + ' - <vscode-link href="' + event.data.pageUrl + '">View job on Databricks</vscode-link>';
-                                messageEl.innerHTML = message;
-                                break;
-
-                            default:
-                                messageEl.innerText = event.data.message;
-                                break;
-                        }
-                    });
-    
-                    let start = Date.now();
-                    let interval = setInterval(function() {
-                        document.getElementById("duration").innerText = "(" + Math.floor((Date.now()-start) / 1000) + "s)";
-                    }, 300);
-                </script>
-            </body>
-        </html>`;
+        console.log("html", html);
+        return html;
     }
 }
