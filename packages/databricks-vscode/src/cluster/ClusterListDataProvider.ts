@@ -135,8 +135,8 @@ export class ClusterListDataProvider
         }
         children.push(
             {
-                label: "Spark version:",
-                description: element.sparkVersion,
+                label: "Databricks Runtime:",
+                description: element.dbrVersion.join("."),
             },
             {
                 label: "State:",

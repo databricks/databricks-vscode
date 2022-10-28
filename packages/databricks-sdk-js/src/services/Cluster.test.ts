@@ -250,4 +250,27 @@ describe(__filename, function () {
 
         verify(token.isCancellationRequested).thrice();
     });
+
+    it("should parse DBR from spark_version", () => {
+        const mockedClient = mock(ApiClient);
+        const clusterDetails = {
+            spark_version: "7.3.x-scala2.12",
+        };
+        const cluster = new Cluster(instance(mockedClient), clusterDetails);
+
+        const versions = [
+            ["11.x-snapshot-aarch64-scala2.12", [11, "x", "x"]],
+            ["10.4.x-scala2.12", [10, 4, "x"]],
+            ["7.3.x-scala2.12", [7, 3, "x"]],
+            [
+                "custom:custom-local__11.3.x-snapshot-cpu-ml-scala2.12__unknown__head__7335a01__cb1aa83__jenkins__641f1a5__format-2.lz4",
+                [11, 3, "x"],
+            ],
+        ];
+
+        for (const [sparkVersion, expectedDbr] of versions) {
+            clusterDetails.spark_version = sparkVersion as string;
+            assert.deepEqual(cluster.dbrVersion, expectedDbr);
+        }
+    });
 });

@@ -86,13 +86,13 @@
             },
             {
                 "command": "databricks.connection.attachCluster",
-                "title": "Attach cluster",
-                "icon": "$(plug)"
+                "title": "Configure cluster",
+                "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.attachClusterQuickPick",
-                "title": "Attach cluster",
-                "icon": "$(plug)"
+                "title": "Configure cluster",
+                "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachCluster",
@@ -137,12 +137,12 @@
             },
             {
                 "command": "databricks.connection.attachSyncDestination",
-                "title": "Attach workspace",
-                "icon": "$(plug)"
+                "title": "Configure sync destination",
+                "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachSyncDestination",
-                "title": "Detach workspace",
+                "title": "Detach sync destination",
                 "icon": "$(debug-disconnect)"
             },
             {
@@ -249,7 +249,7 @@
                 },
                 {
                     "command": "databricks.connection.configureProject",
-                    "when": "view == configurationView && viewItem == profile",
+                    "when": "view == configurationView && viewItem == workspace",
                     "group": "inline@1"
                 },
                 {
@@ -258,19 +258,19 @@
                     "group": "inline@1"
                 },
                 {
-                    "command": "databricks.connection.detachCluster",
+                    "command": "databricks.connection.attachClusterQuickPick",
                     "when": "view == configurationView && viewItem == clusterRunning || view == configurationView && viewItem == clusterStopped || view == configurationView && viewItem == clusterPending",
                     "group": "inline@1"
                 },
                 {
                     "command": "databricks.connection.attachSyncDestination",
                     "when": "view == configurationView && viewItem == syncDetached",
-                    "group": "inline@0"
+                    "group": "inline@1"
                 },
                 {
-                    "command": "databricks.connection.detachSyncDestination",
+                    "command": "databricks.connection.attachSyncDestination",
                     "when": "view == configurationView && viewItem == syncStopped || view == configurationView && viewItem == syncRunning",
-                    "group": "inline@0"
+                    "group": "inline@1"
                 },
                 {
                     "command": "databricks.sync.start",

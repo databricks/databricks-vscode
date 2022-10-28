@@ -15,7 +15,7 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             cluster_name: "cluster-name-2",
             cluster_source: "UI",
             creator_user_name: "user-2",
-            spark_version: "Spark 3.2.1",
+            spark_version: "10.4.x-scala2.12",
             state: "TERMINATED",
         },
         {
@@ -23,7 +23,7 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             cluster_name: "cluster-name-1",
             cluster_source: "UI",
             creator_user_name: "user-1",
-            spark_version: "Spark 3.2.5",
+            spark_version: "10.4.x-scala2.12",
             state: "RUNNING",
         },
     ],
@@ -124,8 +124,8 @@ describe(__filename, () => {
                 label: "URL:",
             },
             {
-                description: "Spark 3.2.1",
-                label: "Spark version:",
+                description: "10.4.x",
+                label: "Databricks Runtime:",
             },
             {
                 description: "TERMINATED",
