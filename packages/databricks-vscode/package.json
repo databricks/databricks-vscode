@@ -258,7 +258,7 @@
                     "group": "inline@1"
                 },
                 {
-                    "command": "databricks.connection.attachSyncDestination",
+                    "command": "databricks.connection.attachClusterQuickPick",
                     "when": "view == configurationView && viewItem == clusterRunning || view == configurationView && viewItem == clusterStopped || view == configurationView && viewItem == clusterPending",
                     "group": "inline@1"
                 },
