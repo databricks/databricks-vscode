@@ -32,6 +32,7 @@ describe(__filename, () => {
             const jsonValue = JSON.parse(value);
             delete jsonValue["timestamp"];
             assert.deepEqual(jsonValue, {
+                logger: "TEST",
                 level: "debug",
                 message: "test",
                 somethingElse: "value",
@@ -67,6 +68,7 @@ describe(__filename, () => {
             const jsonValue = JSON.parse(value);
             delete jsonValue["timestamp"];
             assert.deepEqual(jsonValue, {
+                logger: "TEST",
                 level: "debug",
                 message: "test",
                 headers: "header",

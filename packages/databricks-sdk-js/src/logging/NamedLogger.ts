@@ -102,6 +102,7 @@ export class NamedLogger {
             this._loggerOpts?.maxFieldLength
         );
         this._logger?.log(level, message, {
+            logger: this.name,
             operationId: this.opId,
             operationName: this.opName,
             timestamp: Date.now(),
