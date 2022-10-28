@@ -15,7 +15,7 @@ import {
 
 import {SyncDestination} from "../configuration/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {promptForClusterStart} from "../ui/prompts";
+import {promptForClusterStart} from "./prompts";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";

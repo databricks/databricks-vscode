@@ -1,7 +1,7 @@
 import {resolve} from "path";
 import {commands, debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {promptForAttachingSyncDest} from "../ui/prompts";
+import {promptForAttachingSyncDest} from "./prompts";
 import {isNotebook} from "../utils";
 
 /**
