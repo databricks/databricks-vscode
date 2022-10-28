@@ -22,6 +22,7 @@ import {
 import {DatabricksRuntime, FileAccessor, OutputEvent} from "./DabaricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncDestination} from "../configuration/SyncDestination";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ListRequest} from "@databricks/databricks-sdk/dist/apis/repos";
 
 describe(__filename, () => {
@@ -82,7 +83,11 @@ describe(__filename, () => {
             connectionManagerMock
         );
 
-        runtime = new DatabricksRuntime(connectionManager, fileAccessor);
+        runtime = new DatabricksRuntime(
+            connectionManager,
+            fileAccessor,
+            mock(CodeSynchronizer)
+        );
     });
 
     afterEach(() => {
@@ -105,13 +110,13 @@ describe(__filename, () => {
 
         verify(connectionManagerMock.waitForConnect()).called();
 
-        assert.equal(outputs.length, 4);
+        assert.equal(outputs.length, 5);
         assert(outputs[0].text.includes("Connecting to cluster"));
         assert(
             outputs[1].text.includes("Running /hello.py on Cluster cluster-1")
         );
-        assert.equal(outputs[2].text, "43");
-        assert(outputs[3].text.includes("Done"));
+        assert.equal(outputs[3].text, "43");
+        assert(outputs[4].text.includes("Done"));
     });
 
     it("should have the right code", async () => {
@@ -157,8 +162,8 @@ print('43')`
 
         await runtime.start("/Desktop/workspaces/hello.py", []);
 
-        assert.equal(outputs.length, 5);
-        assert.equal(outputs[2].text, "something went wrong");
-        assert.equal(outputs[3].text, "summary");
+        assert.equal(outputs.length, 6);
+        assert.equal(outputs[3].text, "something went wrong");
+        assert.equal(outputs[4].text, "summary");
     });
 });

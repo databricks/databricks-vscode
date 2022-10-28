@@ -100,7 +100,7 @@ export class ConnectionCommands implements Disposable {
     attachClusterQuickPickCommand() {
         return async () => {
             const apiClient = this.connectionManager.apiClient;
-            const me = this.connectionManager.me;
+            const me = this.connectionManager.databricksWorkspace?.userName;
             if (!apiClient || !me) {
                 // TODO
                 return;
@@ -159,7 +159,7 @@ export class ConnectionCommands implements Disposable {
     attachSyncDestinationCommand() {
         return async () => {
             const apiClient = this.connectionManager.apiClient;
-            const me = this.connectionManager.me;
+            const me = this.connectionManager.databricksWorkspace?.userName;
             if (!apiClient || !me) {
                 // TODO
                 return;

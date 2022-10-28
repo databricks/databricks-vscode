@@ -23,6 +23,7 @@ import {
     workspace,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {DatabricksRuntime, FileAccessor} from "./DabaricksRuntime";
 import {Subject} from "./Subject";
 
@@ -45,7 +46,10 @@ interface IAttachRequestArguments extends ILaunchRequestArguments {}
 export class DatabricksDebugAdapterFactory
     implements DebugAdapterDescriptorFactory, Disposable
 {
-    constructor(private connection: ConnectionManager) {}
+    constructor(
+        private connection: ConnectionManager,
+        private codeSynchroniser: CodeSynchronizer
+    ) {}
 
     dispose() {}
 
@@ -53,7 +57,7 @@ export class DatabricksDebugAdapterFactory
         _session: DebugSession
     ): ProviderResult<DebugAdapterDescriptor> {
         return new DebugAdapterInlineImplementation(
-            new DatabricksDebugSession(this.connection)
+            new DatabricksDebugSession(this.connection, this.codeSynchroniser)
         );
     }
 }
@@ -71,10 +75,17 @@ export class DatabricksDebugSession extends LoggingDebugSession {
     private runtime: DatabricksRuntime;
     private _configurationDone = new Subject();
 
-    constructor(connection: ConnectionManager) {
+    constructor(
+        connection: ConnectionManager,
+        codeSynchronizer: CodeSynchronizer
+    ) {
         super();
 
-        this.runtime = new DatabricksRuntime(connection, workspaceFileAccessor);
+        this.runtime = new DatabricksRuntime(
+            connection,
+            workspaceFileAccessor,
+            codeSynchronizer
+        );
 
         this.runtime.onDidSendOutput(({type, text, filePath, line, column}) => {
             let category: string;

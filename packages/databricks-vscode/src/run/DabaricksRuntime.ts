@@ -6,7 +6,6 @@
 
 import {
     CancellationTokenSource,
-    commands,
     Event,
     EventEmitter,
     Uri,
@@ -16,6 +15,7 @@ import {
 import {SyncDestination} from "../configuration/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForClusterStart} from "../ui/prompts";
+import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -50,7 +50,8 @@ export class DatabricksRuntime {
             readFile: async (path) => {
                 return "";
             },
-        }
+        },
+        private codeSynchronizer: CodeSynchronizer
     ) {}
 
     /**
@@ -110,14 +111,6 @@ export class DatabricksRuntime {
                 /\r?\n/
             );
 
-            let executionContext = await cluster.createExecutionContext(
-                "python"
-            );
-
-            this.token.onCancellationRequested(async () => {
-                await executionContext.destroy();
-            });
-
             this._onDidSendOutputEmitter.fire({
                 type: "out",
                 text: `${new Date()} Running ${syncDestination.getRelativePath(
@@ -127,6 +120,27 @@ export class DatabricksRuntime {
                 line: lines.length,
                 column: 0,
             });
+
+            let executionContext = await cluster.createExecutionContext(
+                "python"
+            );
+
+            this.token.onCancellationRequested(async () => {
+                await executionContext.destroy();
+            });
+
+            // We wait for sync to complete so that the local files are consistant
+            // with the remote repo files
+            this._onDidSendOutputEmitter.fire({
+                type: "out",
+                text: `${new Date()} Synchronizing code to ${
+                    syncDestination.relativeRepoPath
+                } ...`,
+                filePath: program,
+                line: lines.length,
+                column: 0,
+            });
+            await this.codeSynchronizer.waitForSyncComplete();
 
             let response = await executionContext.execute(
                 this.compileCommandString(

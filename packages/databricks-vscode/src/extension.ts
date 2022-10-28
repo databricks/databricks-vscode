@@ -2,6 +2,7 @@ import {
     commands,
     debug,
     ExtensionContext,
+    OutputChannel,
     tasks,
     window,
     workspace,
@@ -23,46 +24,26 @@ import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {PublicApi} from "@databricks/databricks-vscode-types";
-import {
-    ExposedLoggers,
-    NamedLogger,
-} from "@databricks/databricks-sdk/dist/logging";
-import {format, loggers, transports} from "winston";
+import {initLoggers} from "./logger";
 import {UtilsCommands} from "./utils/UtilsCommands";
 
-export function activate(context: ExtensionContext): PublicApi {
-    NamedLogger.getOrCreate(
-        ExposedLoggers.SDK,
-        {
-            factory: (name) => {
-                return loggers.add(name, {
-                    level: "debug",
-                    format: format.json(),
-                    transports: [new transports.Console()],
-                });
-            },
-        },
-        true
-    );
-
-    /** 
-    This logger collects all the logs in the extension.
-    
-    TODO Make this logger log to a seperate (or common?) output console in vscode
-    */
-    NamedLogger.getOrCreate(
-        "Extension",
-        {
-            factory: (name) => {
-                return loggers.add(name, {
-                    level: "error",
-                    format: format.json(),
-                    transports: [new transports.Console()],
-                });
-            },
-        },
-        true
-    );
+export function activate(context: ExtensionContext): PublicApi | undefined {
+    const a = workspace.workspaceFolders;
+    if (
+        workspace.workspaceFolders === undefined ||
+        workspace.workspaceFolders?.length === 0
+    ) {
+        window.showErrorMessage("Open a folder to use Databricks extension");
+        /*
+            We force the user to open a folder from the databricks sidebar view. Returning
+            here blocks all other commands from running. 
+            Since the workspace is reloaded when a folder is opened, the activation function
+            is called again. Therefore this won't block the activation of the extension on a
+            valid workspace.
+        */
+        return undefined;
+    }
+    initLoggers();
 
     let cli = new CliWrapper(context);
     // Configuration group
@@ -138,10 +119,14 @@ export function activate(context: ExtensionContext): PublicApi {
 
     // Run/debug group
     const runCommands = new RunCommands(connectionManager);
-    const debugFactory = new DatabricksDebugAdapterFactory(connectionManager);
+    const debugFactory = new DatabricksDebugAdapterFactory(
+        connectionManager,
+        synchronizer
+    );
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,
-        context
+        context,
+        synchronizer
     );
 
     context.subscriptions.push(
