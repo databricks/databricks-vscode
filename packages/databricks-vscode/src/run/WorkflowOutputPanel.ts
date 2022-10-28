@@ -217,10 +217,10 @@ export class WorkflowOutputPanel {
                             case "status":
                                 var message = 'State: ' + event.data.state
                                 if (event.data.state === "RUNNING") {
-                                    message = "Executing the notebook as a job"
+                                    message = "Executing the notebook"
                                 }
                                 if (event.data.state === "TERMINATED") {
-                                    message = "Finished executing the notebook as a job"
+                                    message = "Finished executing the notebook"
                                 }
                                 const message2 =  '<vscode-link href="' + event.data.pageUrl + '">View job on Databricks</vscode-link>';
                                 messageEl.innerHTML = message;
