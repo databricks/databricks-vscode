@@ -116,7 +116,9 @@ export async function runAsWorkflow({
 export class WorkflowOutputPanel {
     private run?: WorkflowRun;
     constructor(private panel: WebviewPanel, private extensionUri: Uri) {
-        panel.webview.html = this.getWebviewContent("Starting ...");
+        panel.webview.html = this.getWebviewContent(
+            "Starting Databricks job to execute this notebook"
+        );
     }
 
     onDidDispose(listener: () => void): Disposable {
@@ -194,6 +196,7 @@ export class WorkflowOutputPanel {
     }
 
     private getWebviewContent(message: string): string {
+        var message2 = "";
         /* html */
         return `<html>
             <head>
@@ -201,19 +204,28 @@ export class WorkflowOutputPanel {
             </head>
             <body>
                 <div style="margin:20px; display: flex; justify-content: center; width: 100%"><vscode-progress-ring></vscode-progress-ring></div>
-                <div style="display: flex; justify-content: center; width: 100%"><span id="message">${message}</span> <span id="duration"></span></div>
+                <div style="display: flex; justify-content: center; width: 100%"><span id="message">${message}</span>&nbsp<span id="duration"></span></div>
+                <div style="display: flex; justify-content: center; width: 100%"><span id="message2">${message2}</span></div>
     
                 <script>
                     window.addEventListener('message', event => {
                         const messageEl = document.getElementById("message")
+                        const message2El = document.getElementById("message2")
                         messageEl.innerHTML = "";
 
                         switch(event.data.type) {
                             case "status":
-                                const message = 'State: ' + event.data.state + ' - <vscode-link href="' + event.data.pageUrl + '">View job on Databricks</vscode-link>';
+                                var message = 'State: ' + event.data.state
+                                if (event.data.state === "RUNNING") {
+                                    message = "Executing the notebook as a job"
+                                }
+                                if (event.data.state === "TERMINATED") {
+                                    message = "Finished executing the notebook as a job"
+                                }
+                                const message2 =  '<vscode-link href="' + event.data.pageUrl + '">Click here to view the job run on Databricks web UI</vscode-link>';
                                 messageEl.innerHTML = message;
+                                message2El.innerHTML = message2
                                 break;
-
                             default:
                                 messageEl.innerText = event.data.message;
                                 break;
