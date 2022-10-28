@@ -74,6 +74,7 @@
             #spinner {
                 margin-top: 50%;
                 align-self: center;
+                display: none;
             }
 
             #frame {
@@ -82,6 +83,7 @@
                 overflow: auto;
                 margin: 0;
                 border: none;
+                display: none;
             }
 
             #stdout {
@@ -96,35 +98,37 @@
                 overflow: scroll;
                 margin: 0;
                 border: none;
+                display: none;
+            }
+
+            #error {
+                display: none;
+            }
+
+            .alert-error {
+                padding: 8px;
+                margin: 8px;
+                color: rgb(200, 45, 76);
+                border-color: rgb(251, 208, 216);
+                background-color: #fff5f7;
+                border: 1px solid #fbd0d8;
+                border-radius: 4px;
+                overflow: scroll;
             }
 
             .output.spinner #spinner {
                 display: block;
             }
-            .output.spinner #frame {
-                display: none;
-            }
-            .output.spinner #stdout {
-                display: none;
-            }
 
             .output.html #frame {
                 display: block;
             }
-            .output.html #spinner {
-                display: none;
-            }
-            .output.html #stdout {
-                display: none;
+
+            .output.stdout #stdout {
+                display: block;
             }
 
-            .output.stdout #frame {
-                display: none;
-            }
-            .output.stdout #spinner {
-                display: none;
-            }
-            .output.stdout #stdout {
+            .output.error #error {
                 display: block;
             }
 
@@ -146,6 +150,10 @@
                 <vscode-progress-ring id="spinner"></vscode-progress-ring>
                 <iframe id="frame"></iframe>
                 <pre id="stdout"></pre>
+                <div class="alert-error" id="error">
+                    <b id="error-description"></b>
+                    <pre id="error-stack"></pre>
+                </div>
             </div>
             <div class="details">
                 <header>Task Run Details</header>
@@ -233,6 +241,7 @@
                 var cl = document.getElementById("output").classList;
                 cl.remove("spinner");
                 cl.remove("stdout");
+                cl.remove("error");
                 cl.add("html");
 
                 var frame = document.getElementById("frame");
@@ -248,9 +257,22 @@
                 var cl = document.getElementById("output").classList;
                 cl.remove("spinner");
                 cl.remove("html");
+                cl.remove("error");
                 cl.add("stdout");
 
                 document.getElementById("stdout").innerText = stdout;
+            }
+
+            function setError(message, stack) {
+                var cl = document.getElementById("output").classList;
+                cl.remove("spinner");
+                cl.remove("html");
+                cl.remove("stdout");
+                cl.add("error");
+
+                document.getElementById("error-description").innerText =
+                    message || "";
+                document.getElementById("error-stack").innerText = stack || "";
             }
 
             window.addEventListener("message", (event) => {
@@ -271,17 +293,37 @@
             });
 
             setTimeout(() => {
-                setOutputHtml(
-                    `<html><body><h1>Hello World</h1><p>This is a test</p></body></html>`
-                );
-                stop();
-            }, 4500);
-
-            setTimeout(() => {
                 setStdout(
                     `<html><body><h1>Hello World</h1><p>This is a test</p></body></html>`
                 );
             }, 1000);
+
+            setTimeout(() => {
+                setError(
+                    `SyntaxError: invalid syntax (hello.py, line 10)`,
+                    `Traceback [0;36m(most recent call last)[0m:
+
+File [1;32m"/databricks/python/lib/python3.9/site-packages/IPython/core/interactiveshell.py"[0m, line [1;32m3524[0m, in [1;35mrun_code[0m
+  exec(code_obj, self.user_global_ns, self.user_ns)
+
+[0;36m  File [0;32m""[0;36m, line [0;32m8[0;36m, in [0;35m[0;36m[0m
+[0;31m    exec(compile(f.read(), filename, 'exec'))[0m
+
+[0;36m  File [0;32m"/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices/jobs/hello.py"[0;36m, line [0;32m10[0m
+[0;31m    pri nt("Hi Deco")[0m
+[0m        ^[0m
+[0;31mSyntaxError[0m[0;31m:[0m invalid syntax`
+                );
+                stop();
+            }, 3000);
+
+            setTimeout(() => {
+                setOutputHtml(
+                    `<html><body><h1>Hello World</h1><p>This is a test</p></body></html>`
+                );
+                stop();
+            }, 5000);
+
             /** <- STRIP **/
         </script>
     </body>

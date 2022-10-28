@@ -149,33 +149,10 @@ export class WorkflowOutputPanel {
 
     // TODO: use new webview to render errors
     showError({message, stack}: {message?: string; stack?: string}) {
-        /* html */
-        this.html = [
-            `<html>
-            <head>
-                <script type="module" src="${this.getToolkitUri()}"></script>
-                <style>
-                    .alert-error {
-                        padding: 8px;
-                        color: rgb(200, 45, 76);
-                        border-color: rgb(251, 208, 216);
-                        background-color: #FFF5F7;
-                        border: 1px solid #FBD0D8;
-                        border-radius: 4px;
-                        overflow: scroll;
-                    }
-                </style>
-            </head>
-            <body>
-                <h1>Error</h1><hr>`,
-            message ? `<pre class="alert-error">${message}</pre>` : "",
-            stack ? `<pre class="alert-error">${stack}</pre>` : "",
-            this.run?.runPageUrl
-                ? `<vscode-link href="${this.run?.runPageUrl}">View job on Databricks</vscode-link>`
-                : "",
-            `</body>
-        </html>`,
-        ].join("\n");
+        this.panel.webview.postMessage({
+            fn: "setError",
+            args: [message, stack],
+        });
     }
 
     updateState(state: jobs.RunLifeCycleState, run: WorkflowRun) {
@@ -248,7 +225,6 @@ export class WorkflowOutputPanel {
                 `src="${this.getToolkitUri()}"`
             );
 
-        console.log("html", html);
         return html;
     }
 }
