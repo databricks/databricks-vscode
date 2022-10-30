@@ -1,12 +1,16 @@
 import {commands, debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {CodeSynchronizer} from "../sync";
 import {isNotebook} from "../utils";
 
 /**
  * Run related commands
  */
 export class RunCommands {
-    constructor(private connection: ConnectionManager) {}
+    constructor(
+        private connection: ConnectionManager,
+        private codeSynchroniser: CodeSynchronizer
+    ) {}
 
     /**
      * Run a Python file using the command execution API
@@ -26,7 +30,9 @@ export class RunCommands {
                     await this.connection.waitForConnect();
                 }
 
-                await commands.executeCommand("databricks.sync.start");
+                if (this.codeSynchroniser.state === "STOPPED") {
+                    await commands.executeCommand("databricks.sync.start");
+                }
                 await debug.startDebugging(
                     undefined,
                     {
@@ -52,7 +58,9 @@ export class RunCommands {
                     await this.connection.waitForConnect();
                 }
 
-                await commands.executeCommand("databricks.sync.start");
+                if (this.codeSynchroniser.state === "STOPPED") {
+                    await commands.executeCommand("databricks.sync.start");
+                }
                 await debug.startDebugging(
                     undefined,
                     {

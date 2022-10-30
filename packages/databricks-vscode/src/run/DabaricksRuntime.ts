@@ -7,6 +7,7 @@
 import {
     CancellationTokenSource,
     commands,
+    Disposable,
     Event,
     EventEmitter,
     Uri,
@@ -30,7 +31,7 @@ export interface FileAccessor {
     readFile(path: string): Promise<string>;
 }
 
-export class DatabricksRuntime {
+export class DatabricksRuntime implements Disposable {
     private _onDidEndEmitter: EventEmitter<void> = new EventEmitter<void>();
     readonly onDidEnd: Event<void> = this._onDidEndEmitter.event;
 
@@ -44,6 +45,8 @@ export class DatabricksRuntime {
 
     private tokenSource = new CancellationTokenSource();
     private token = this.tokenSource.token;
+
+    private disposables: Disposable[] = [];
 
     constructor(
         private connection: ConnectionManager,
@@ -132,7 +135,17 @@ export class DatabricksRuntime {
 
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
+            this.disposables.push(
+                this.codeSynchronizer.onDidChangeState((state) => {
+                    if (state === "STOPPED") {
+                        return this._onErrorEmitter.fire(
+                            "Execution cancelled because sync was stopped"
+                        );
+                    }
+                })
+            );
             await this.codeSynchronizer.waitForSyncComplete();
+
             let response = await executionContext.execute(
                 this.compileCommandString(
                     program,
@@ -240,5 +253,9 @@ export class DatabricksRuntime {
 
     public async disconnect(): Promise<void> {
         this.tokenSource.cancel();
+    }
+
+    dispose() {
+        this.disposables.forEach((obj) => obj.dispose());
     }
 }
