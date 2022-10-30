@@ -24,7 +24,7 @@ import {DebugProtocol} from "@vscode/debugprotocol";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
 import {runAsWorkflow} from "./WorkflowOutputPanel";
-import {promptForClusterStart} from "../ui/prompts";
+import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 /**
@@ -191,10 +191,6 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             return;
         }
 
-        // We wait for sync to complete so that the local files are consistant
-        // with the remote repo files
-        await this.codeSynchronizer.waitForSyncComplete();
-
         await runAsWorkflow({
             program: Uri.file(program),
             parameters,
@@ -203,6 +199,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             syncDestination: syncDestination,
             context: this.context,
             token: this.token,
+            codeSynchronizer: this.codeSynchronizer,
         });
     }
 
