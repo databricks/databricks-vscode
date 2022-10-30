@@ -29,7 +29,8 @@ export class ApiClientResponseError extends Error {
 export class ApiClient {
     private agent: https.Agent;
     private _host?: URL;
-    get host() {
+
+    get host(): Promise<URL> {
         return (async () => {
             if (!this._host) {
                 const credentials = await this.credentialProvider();
@@ -42,7 +43,7 @@ export class ApiClient {
     constructor(
         private readonly product: string,
         private readonly productVersion: string,
-        readonly credentialProvider = fromDefaultChain
+        private credentialProvider = fromDefaultChain
     ) {
         this.agent = new https.Agent({
             keepAlive: true,

@@ -85,7 +85,9 @@ describe(__filename, () => {
     });
 
     it("should filter by me", async () => {
-        when(mockedConnectionManager.me).thenReturn(me);
+        when(mockedConnectionManager.databricksWorkspace).thenReturn({
+            userName: me,
+        } as any);
 
         let model = new ClusterModel(
             instance(mockedConnectionManager),

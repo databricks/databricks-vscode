@@ -2,7 +2,6 @@ import {
     ApiClient,
     Cluster,
     fromConfigFile,
-    CurrentUserService,
     CredentialProvider,
     WorkspaceConf,
     scim,
@@ -22,7 +21,8 @@ import {SyncDestination} from "./SyncDestination";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
-import {ObjectInfo} from "@databricks/databricks-sdk/dist/apis/workspace";
+import {workspace} from "@databricks/databricks-sdk";
+import {DatabricksWorkspace} from "./DatabricksWorkspace";
 
 const extensionVersion = require("../../package.json").version;
 
@@ -39,10 +39,9 @@ export class ConnectionManager {
     private _apiClient?: ApiClient;
     private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
-    private _me?: scim.User;
-    private _profile?: string;
     private _clusterManager?: ClusterManager;
-    private _repoRootDetails?: ObjectInfo;
+    private _repoRootDetails?: workspace.ObjectInfo;
+    private _databricksWorkspace?: DatabricksWorkspace;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -59,18 +58,6 @@ export class ConnectionManager {
         this.onDidChangeSyncDestinationEmitter.event;
 
     constructor(private cli: CliWrapper) {}
-
-    get me(): string | undefined {
-        return this._me?.userName;
-    }
-
-    get meDetails(): scim.User | undefined {
-        return this._me;
-    }
-
-    get profile(): string | undefined {
-        return this._profile;
-    }
 
     get state(): ConnectionState {
         return this._state;
@@ -91,6 +78,10 @@ export class ConnectionManager {
     get repoRootId() {
         return this._repoRootDetails?.object_id;
     }
+    get databricksWorkspace(): DatabricksWorkspace | undefined {
+        return this._databricksWorkspace;
+    }
+
     /**
      * Get a pre-configured APIClient. Do not hold on to references to this class as
      * it might be invalidated as the configuration changes. If you have to store a reference
@@ -129,7 +120,10 @@ export class ConnectionManager {
             await credentialProvider();
 
             apiClient = this.apiClientFrom(credentialProvider);
-            this._me = await this.getMe(apiClient);
+            this._databricksWorkspace = await DatabricksWorkspace.load(
+                apiClient,
+                profile
+            );
         } catch (e: any) {
             const message = `Can't login to Databricks: ${e.message}`;
             console.error(message);
@@ -142,9 +136,38 @@ export class ConnectionManager {
             return;
         }
 
+        if (
+            !this._databricksWorkspace.isReposEnabled ||
+            !this._databricksWorkspace.isFilesInReposEnabled
+        ) {
+            let message = "";
+            if (!this._databricksWorkspace.isReposEnabled) {
+                message =
+                    "Repos are not enabled for this workspace. Please enable it in the Databricks UI.";
+            } else if (!this._databricksWorkspace.isFilesInReposEnabled) {
+                message =
+                    "Files in Repos is not enabled for this workspace. Please enable it in the Databricks UI.";
+            }
+            console.error(message);
+            if (interactive) {
+                let result = await window.showWarningMessage(
+                    message,
+                    "Open Databricks UI"
+                );
+                if (result === "Open Databricks UI") {
+                    let host = await apiClient.host;
+                    await env.openExternal(
+                        Uri.parse(
+                            host.toString() +
+                                "#setting/accounts/workspace-settings"
+                        )
+                    );
+                }
+            }
+        }
+
         this._apiClient = apiClient;
         this._projectConfigFile = projectConfigFile;
-        this._profile = profile;
 
         if (projectConfigFile.config.clusterId) {
             await this.attachCluster(projectConfigFile.config.clusterId, false);
@@ -168,7 +191,7 @@ export class ConnectionManager {
             this._repoRootDetails = await new WorkspaceService(
                 apiClient
             ).getStatus({
-                path: `/Repos/${this.me}`,
+                path: `/Repos/${this.databricksWorkspace?.userName}`,
             });
         } catch (e) {
             if (!(e instanceof HttpError && e.code === 404)) {
@@ -188,8 +211,8 @@ export class ConnectionManager {
 
         this._projectConfigFile = undefined;
         this._apiClient = undefined;
-        this._me = undefined;
         this._repoRootDetails = undefined;
+        this._databricksWorkspace = undefined;
         this.updateCluster(undefined);
         this.updateSyncDestination(undefined);
         this.updateState("DISCONNECTED");
@@ -204,7 +227,10 @@ export class ConnectionManager {
             }
 
             try {
-                await this.getMe(this.apiClientFrom(fromConfigFile(profile)));
+                await DatabricksWorkspace.load(
+                    this.apiClientFrom(fromConfigFile(profile)),
+                    profile
+                );
             } catch (e: any) {
                 console.error(e);
                 const response = await window.showWarningMessage(
@@ -235,7 +261,7 @@ export class ConnectionManager {
         await this.writeConfigFile(profile);
         window.showInformationMessage(`Selected profile: ${profile}`);
 
-        await this.login(false);
+        await this.login(true);
     }
 
     private async writeConfigFile(profile: string) {
@@ -323,16 +349,9 @@ export class ConnectionManager {
         this.updateSyncDestination(undefined);
     }
 
-    private async getMe(apiClient: ApiClient): Promise<scim.User> {
-        let scimApi = new CurrentUserService(apiClient);
-        let response = await scimApi.me();
-
-        return response;
-    }
-
     private updateState(newState: ConnectionState) {
         if (newState === "DISCONNECTED") {
-            this._profile = undefined;
+            this._databricksWorkspace = undefined;
         }
         if (this._state !== newState) {
             this._state = newState;

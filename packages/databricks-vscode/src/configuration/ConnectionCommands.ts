@@ -1,5 +1,6 @@
 import {Cluster, Repo, WorkspaceService} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
+import {resolve} from "node:path";
 import {
     Disposable,
     QuickPickItem,
@@ -102,7 +103,7 @@ export class ConnectionCommands implements Disposable {
     attachClusterQuickPickCommand() {
         return async () => {
             const apiClient = this.connectionManager.apiClient;
-            const me = this.connectionManager.me;
+            const me = this.connectionManager.databricksWorkspace?.userName;
             if (!apiClient || !me) {
                 // TODO
                 return;
@@ -161,7 +162,7 @@ export class ConnectionCommands implements Disposable {
     attachSyncDestinationCommand() {
         return async () => {
             const apiClient = this.connectionManager.apiClient;
-            const me = this.connectionManager.me;
+            const me = this.connectionManager.databricksWorkspace?.userName;
             if (!apiClient || !me) {
                 // TODO
                 return;
@@ -201,28 +202,36 @@ export class ConnectionCommands implements Disposable {
             );
             quickPick.busy = false;
 
-            quickPick.onDidAccept(async () => {
-                if (quickPick.selectedItems[0].label === "Create New Repo") {
-                    await UrlUtils.openExternal(
-                        `${
-                            (
-                                await this.connectionManager.apiClient?.host
-                            )?.href ?? ""
-                        }#folder/${this.connectionManager.repoRootId ?? ""}`
-                    );
-                } else {
-                    const repoPath = quickPick.selectedItems[0].path;
-                    await this.connectionManager.attachSyncDestination(
-                        Uri.from({
-                            scheme: "dbws",
-                            path: repoPath,
-                        })
-                    );
-                }
-                quickPick.dispose();
-            });
+            await new Promise<void>((resolve) => {
+                quickPick.onDidAccept(async () => {
+                    if (
+                        quickPick.selectedItems[0].label === "Create New Repo"
+                    ) {
+                        await UrlUtils.openExternal(
+                            `${
+                                (
+                                    await this.connectionManager.apiClient?.host
+                                )?.href ?? ""
+                            }#folder/${this.connectionManager.repoRootId ?? ""}`
+                        );
+                    } else {
+                        const repoPath = quickPick.selectedItems[0].path;
+                        await this.connectionManager.attachSyncDestination(
+                            Uri.from({
+                                scheme: "dbws",
+                                path: repoPath,
+                            })
+                        );
+                        quickPick.dispose();
+                        resolve();
+                    }
+                });
 
-            quickPick.onDidHide(() => quickPick.dispose());
+                quickPick.onDidHide(() => {
+                    quickPick.dispose();
+                    resolve();
+                });
+            });
         };
     }
 

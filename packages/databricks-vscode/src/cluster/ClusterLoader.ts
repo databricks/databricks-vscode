@@ -63,7 +63,8 @@ export class ClusterLoader implements Disposable {
     private isValidSingleUser(c: Cluster) {
         return (
             c.details.data_security_mode === "SINGLE_USER" &&
-            c.details.single_user_name === this.connectionManager.me
+            c.details.single_user_name ===
+                this.connectionManager.databricksWorkspace?.userName
         );
     }
 
@@ -75,8 +76,9 @@ export class ClusterLoader implements Disposable {
         return (
             (perms.access_control_list ?? []).find((ac) => {
                 return (
-                    ac.user_name === this.connectionManager.me ||
-                    this.connectionManager.meDetails?.groups
+                    ac.user_name ===
+                        this.connectionManager.databricksWorkspace?.userName ||
+                    this.connectionManager.databricksWorkspace?.user.groups
                         ?.map((v) => v.display)
                         .includes(ac.group_name ?? "")
                 );
@@ -111,6 +113,11 @@ export class ClusterLoader implements Disposable {
                     (c) =>
                         c.details.data_security_mode !== "SINGLE_USER" ||
                         this.isValidSingleUser(c)
+                )
+                .filter((c) =>
+                    this.connectionManager.databricksWorkspace?.supportFilesInReposForCluster(
+                        c
+                    )
                 )
         );
 
@@ -168,8 +175,8 @@ export class ClusterLoader implements Disposable {
         if (this.running) {
             return;
         }
-        this.running = true;
-        this.stopped = false;
+        this._running = true;
+        this._stopped = false;
         while (this.running) {
             try {
                 await this._load();

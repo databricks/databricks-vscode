@@ -21,7 +21,10 @@ export class ProjectConfigFileWatcher implements Disposable {
             }, this),
             fileSystemWatcher.onDidChange(async (e) => {
                 const configFile = await ProjectConfigFile.load(rootPath);
-                if (configFile.profile !== connectionManager.profile) {
+                if (
+                    configFile.profile !==
+                    connectionManager.databricksWorkspace?.profile
+                ) {
                     await connectionManager.login();
                 }
                 if (connectionManager.cluster?.id !== configFile.clusterId) {

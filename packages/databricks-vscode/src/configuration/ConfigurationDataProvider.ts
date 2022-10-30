@@ -1,5 +1,4 @@
 import {
-    commands,
     Disposable,
     Event,
     EventEmitter,
@@ -8,7 +7,6 @@ import {
     TreeDataProvider,
     TreeItem,
     TreeItemCollapsibleState,
-    Uri,
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
@@ -68,11 +66,11 @@ export class ConfigurationDataProvider
             if (!element) {
                 let children: Array<TreeItem> = [];
                 children.push({
-                    label: `Profile`,
-                    iconPath: new ThemeIcon("tools"),
-                    id: "PROFILE",
+                    label: `Workspace`,
+                    iconPath: new ThemeIcon("account"),
+                    id: "WORKSPACE",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
-                    contextValue: "profile",
+                    contextValue: "workspace",
                 });
 
                 if (cluster) {
@@ -99,13 +97,16 @@ export class ConfigurationDataProvider
                 }
 
                 if (syncDestination) {
+                    // TODO: Add another icon over here for in_progress state
+                    // DECO-220
                     children.push({
                         label: `Repo`,
                         iconPath: new ThemeIcon("repo"),
                         id: "REPO",
                         collapsibleState: TreeItemCollapsibleState.Expanded,
                         contextValue:
-                            this.sync.state === "RUNNING"
+                            this.sync.state === "WATCHING_FOR_CHANGES" ||
+                            this.sync.state === "IN_PROGRESS"
                                 ? "syncRunning"
                                 : "syncStopped",
                     });
@@ -122,12 +123,24 @@ export class ConfigurationDataProvider
                 return children;
             }
 
-            if (element.id === "PROFILE" && this.connectionManager.profile) {
+            const dbWorkspace = this.connectionManager.databricksWorkspace;
+            if (element.id === "WORKSPACE" && dbWorkspace) {
                 return [
                     {
-                        label: "Name",
-                        description: this.connectionManager.profile,
+                        label: "Profile",
+                        description: dbWorkspace.profile,
                         collapsibleState: TreeItemCollapsibleState.None,
+                    },
+                    {
+                        label: "User",
+                        description: dbWorkspace.userName,
+                        collapsibleState: TreeItemCollapsibleState.None,
+                    },
+                    {
+                        label: "Host",
+                        description: dbWorkspace.host.toString(),
+                        collapsibleState: TreeItemCollapsibleState.None,
+                        contextValue: "databricks-link",
                     },
                 ];
             }
@@ -155,7 +168,8 @@ export class ConfigurationDataProvider
                         label: `Name:`,
                         description: syncDestination.name,
                         iconPath:
-                            this.sync.state === "RUNNING"
+                            this.sync.state === "WATCHING_FOR_CHANGES" ||
+                            this.sync.state === "IN_PROGRESS"
                                 ? new ThemeIcon("debug-start")
                                 : new ThemeIcon("debug-stop"),
                         collapsibleState: TreeItemCollapsibleState.None,
