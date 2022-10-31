@@ -12,7 +12,7 @@ This repository contains the source code for Databricks extensions for VSCode.
 Currently, we have the following packages:
 
 -   [databricks-vscode](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-vscode)
-    The VSCode extension for Databraicks published to the VSCode marketplace.
+    The VSCode extension for Databricks published to the VSCode marketplace.
 -   [databricks-sdk-js](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-sdk-js)
     JavaScript and TypeScript SDK for the Databricks REST API.
 
