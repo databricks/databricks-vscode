@@ -1,4 +1,5 @@
 import {Disposable, env, TreeItem, Uri, window} from "vscode";
+import {openExternal} from "./urlUtils";
 
 export class UtilsCommands implements Disposable {
     private disposables: Disposable[] = [];
@@ -6,10 +7,7 @@ export class UtilsCommands implements Disposable {
 
     openExternalCommand() {
         return async (value: TreeItem) => {
-            const url = `${value.description}`.startsWith("http")
-                ? `${value.description}`
-                : `https://${value.description}`;
-            await env.openExternal(Uri.parse(url, true));
+            await openExternal(`${value.description}`);
         };
     }
 
