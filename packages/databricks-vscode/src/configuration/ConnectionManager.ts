@@ -5,6 +5,8 @@ import {
     CredentialProvider,
     WorkspaceConf,
     scim,
+    WorkspaceService,
+    HttpError,
 } from "@databricks/databricks-sdk";
 import {
     env,
@@ -19,6 +21,7 @@ import {SyncDestination} from "./SyncDestination";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {selectProfile} from "./selectProfileWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
+import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 
 const extensionVersion = require("../../package.json").version;
@@ -37,6 +40,7 @@ export class ConnectionManager {
     private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
     private _clusterManager?: ClusterManager;
+    private _repoRootDetails?: workspace.ObjectInfo;
     private _databricksWorkspace?: DatabricksWorkspace;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
@@ -71,6 +75,9 @@ export class ConnectionManager {
         return this._syncDestination;
     }
 
+    get repoRootId() {
+        return this._repoRootDetails?.object_id;
+    }
     get databricksWorkspace(): DatabricksWorkspace | undefined {
         return this._databricksWorkspace;
     }
@@ -180,6 +187,18 @@ export class ConnectionManager {
             this.updateSyncDestination(undefined);
         }
 
+        try {
+            this._repoRootDetails = await new WorkspaceService(
+                apiClient
+            ).getStatus({
+                path: `/Repos/${this.databricksWorkspace?.userName}`,
+            });
+        } catch (e) {
+            if (!(e instanceof HttpError && e.code === 404)) {
+                throw e;
+            }
+        }
+
         this.updateState("CONNECTED");
     }
 
@@ -192,6 +211,7 @@ export class ConnectionManager {
 
         this._projectConfigFile = undefined;
         this._apiClient = undefined;
+        this._repoRootDetails = undefined;
         this._databricksWorkspace = undefined;
         this.updateCluster(undefined);
         this.updateSyncDestination(undefined);
