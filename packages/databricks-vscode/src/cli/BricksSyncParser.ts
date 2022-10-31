@@ -4,7 +4,7 @@ import {SyncState} from "../sync";
 export class BricksSyncParser {
     private filesBeingUploaded = new Set<string>();
     private filesBeingDeleted = new Set<string>();
-    private firstSyncDone = true;
+    private firstSyncDone = false;
 
     constructor(
         private syncStateCallback: (state: SyncState) => void,
