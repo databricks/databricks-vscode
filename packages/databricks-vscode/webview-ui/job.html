@@ -245,7 +245,7 @@
                 cl.add("html");
 
                 var frame = document.getElementById("frame");
-                var frame = frame.contentWindow || frame.contentDocument;
+               frame = frame.contentWindow || frame.contentDocument;
                 if (frame.document) frame = frame.document;
 
                 frame.open();
