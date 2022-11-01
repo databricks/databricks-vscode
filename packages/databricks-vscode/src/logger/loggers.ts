@@ -5,16 +5,60 @@ import {
 import {OutputChannel, window} from "vscode";
 import {loggers, format, transports} from "winston";
 import {OutputConsoleStream} from "./OutputConsoleStream";
+import {LEVEL, MESSAGE, SPLAT} from "triple-beam";
+import {workspace} from "vscode";
 
 function getOutputConsoleTransport(outputChannel: OutputChannel) {
     return new transports.Stream({
+        format: format.combine(
+            format.timestamp(),
+            format((info) => {
+                const stripped = Object.assign({}, info) as any;
+                if (stripped[LEVEL] === "error") {
+                    return info;
+                }
+                delete stripped[LEVEL];
+                delete stripped[MESSAGE];
+                delete stripped[SPLAT];
+                delete stripped["level"];
+                delete stripped["message"];
+                delete stripped["timestamp"];
+
+                for (let key in stripped) {
+                    let valueStr: string =
+                        typeof stripped[key] === "string"
+                            ? stripped[key]
+                            : JSON.stringify(stripped[key]);
+                    const maxFieldLength =
+                        workspace
+                            .getConfiguration("databricks.logs")
+                            ?.get<number>("maxFieldLength") ?? 40;
+                    if (valueStr.length >= maxFieldLength) {
+                        info[key] = `${valueStr.slice(0, maxFieldLength)} ...(${
+                            valueStr.length - maxFieldLength
+                        } more bytes)`;
+                    }
+                }
+                info["file"] = __filename;
+                return info;
+            })(),
+            format.prettyPrint({depth: 2})
+        ),
         stream: new OutputConsoleStream(outputChannel, {
             defaultEncoding: "utf-8",
         }),
     });
 }
+
+function getFileTransport(filename: string) {
+    return new transports.File({
+        format: format.combine(format.timestamp(), format.json()),
+        filename: filename,
+    });
+}
+
 export function initLoggers() {
-    const outputChannel = window.createOutputChannel("Databricks Logs", "json");
+    const outputChannel = window.createOutputChannel("Databricks Logs");
     outputChannel.clear();
 
     NamedLogger.getOrCreate(
@@ -23,8 +67,14 @@ export function initLoggers() {
             factory: (name) => {
                 return loggers.add(name, {
                     level: "debug",
-                    format: format.json(),
-                    transports: [getOutputConsoleTransport(outputChannel)],
+                    transports: [
+                        getOutputConsoleTransport(outputChannel),
+                        getFileTransport(
+                            `${
+                                (workspace.workspaceFolders ?? [])[0].uri.path
+                            }/.databricks/logs.txt`
+                        ),
+                    ],
                 });
             },
         },
@@ -42,8 +92,14 @@ export function initLoggers() {
             factory: (name) => {
                 return loggers.add(name, {
                     level: "error",
-                    format: format.json(),
-                    transports: [getOutputConsoleTransport(outputChannel)],
+                    transports: [
+                        getOutputConsoleTransport(outputChannel),
+                        getFileTransport(
+                            `${
+                                (workspace.workspaceFolders ?? [])[0].uri.path
+                            }/.databricks/logs.txt`
+                        ),
+                    ],
                 });
             },
         },
