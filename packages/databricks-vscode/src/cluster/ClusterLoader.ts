@@ -60,9 +60,19 @@ export class ClusterLoader implements Disposable {
         this.disposables.push(this.onDidStop(() => (this.stopped = true)));
     }
 
+    private isSingleUser(c: Cluster) {
+        return (
+            c.details.access_mode !== undefined &&
+            [
+                "SINGLE_USER",
+                "LEGACY_SINGLE_USER_PASSTHROUGH",
+                "LEGACY_SINGLE_USER_STANDARD",
+            ].includes(c.details.access_mode)
+        );
+    }
     private isValidSingleUser(c: Cluster) {
         return (
-            c.details.data_security_mode === "SINGLE_USER" &&
+            this.isSingleUser(c) &&
             c.details.single_user_name ===
                 this.connectionManager.databricksWorkspace?.userName
         );
@@ -110,9 +120,7 @@ export class ClusterLoader implements Disposable {
             (await Cluster.list(apiClient))
                 .filter((c) => ["UI", "API"].includes(c.source))
                 .filter(
-                    (c) =>
-                        c.details.data_security_mode !== "SINGLE_USER" ||
-                        this.isValidSingleUser(c)
+                    (c) => !this.isSingleUser(c) || this.isValidSingleUser(c)
                 )
                 .filter((c) =>
                     this.connectionManager.databricksWorkspace?.supportFilesInReposForCluster(
@@ -137,16 +145,11 @@ export class ClusterLoader implements Disposable {
             }
 
             const task = new Promise<void>((resolve) => {
-                const hasUcPerm =
-                    c.details.data_security_mode !== "SINGLE_USER" ||
-                    this.isValidSingleUser(c);
-
                 this.hasPerm(c, permissionApi)
-                    .then((hasPerm) => {
+                    .then((keepCluster) => {
                         if (!this.running) {
                             return resolve();
                         }
-                        const keepCluster = hasUcPerm && hasPerm;
 
                         if (this._clusters.has(c.id) && !keepCluster) {
                             this._clusters.delete(c.id);
