@@ -258,15 +258,10 @@ export class WorkflowOutputPanel {
     ): Promise<string> {
         const htmlFile = Uri.joinPath(extensionUri, "webview-ui", "job.html");
         let html = await fs.readFile(htmlFile.fsPath, "utf8");
-        html = html
-            .replace(/\/\*\* STRIP -> \*\*\/(.*?)\/\*\* <- STRIP \*\*\//gs, "")
-            .replace(
-                /src="[^"].*?\/toolkit.js"/g,
-                `src="${WorkflowOutputPanel.getToolkitUri(
-                    panel,
-                    extensionUri
-                )}"`
-            );
+        html = html.replace(
+            /src="[^"].*?\/toolkit.js"/g,
+            `src="${WorkflowOutputPanel.getToolkitUri(panel, extensionUri)}"`
+        );
 
         return html;
     }
