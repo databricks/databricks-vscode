@@ -512,8 +512,8 @@
         "clean": "rm -rf node_modules out .vscode-test"
     },
     "dependencies": {
-        "@databricks/databricks-sdk": "*",
-        "@databricks/databricks-vscode-types": "workspace:^",
+        "@databricks/databricks-sdk": "^0.0.1",
+        "@databricks/databricks-vscode-types": "^0.0.1",
         "@vscode/debugadapter": "^1.57.0",
         "@vscode/webview-ui-toolkit": "^1.0.1"
     },

@@ -267,7 +267,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@databricks/databricks-sdk@*, @databricks/databricks-sdk@workspace:^, @databricks/databricks-sdk@workspace:packages/databricks-sdk-js":
+"@databricks/databricks-sdk@^0.0.1, @databricks/databricks-sdk@workspace:^, @databricks/databricks-sdk@workspace:packages/databricks-sdk-js":
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-sdk@workspace:packages/databricks-sdk-js"
   dependencies:
@@ -301,7 +301,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@databricks/databricks-vscode-types@workspace:^, @databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types":
+"@databricks/databricks-vscode-types@^0.0.1, @databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types":
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
@@ -1835,8 +1835,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "databricks-vscode@workspace:packages/databricks-vscode"
   dependencies:
-    "@databricks/databricks-sdk": "*"
-    "@databricks/databricks-vscode-types": "workspace:^"
+    "@databricks/databricks-sdk": ^0.0.1
+    "@databricks/databricks-vscode-types": ^0.0.1
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@types/glob": ^8.0.0
     "@types/mocha": ^9.1.1
