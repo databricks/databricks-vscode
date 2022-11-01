@@ -70,6 +70,8 @@ export class ClusterLoader implements Disposable {
                 "SINGLE_USER",
                 "LEGACY_SINGLE_USER_PASSTHROUGH",
                 "LEGACY_SINGLE_USER_STANDARD",
+                //enums unique to data_security_mode
+                "LEGACY_SINGLE_USER",
             ].includes(modeProperty)
         );
     }
