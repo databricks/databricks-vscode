@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <style>
+            /* Making sure that the HTML file can also be loaded directly in the browser during development */
+            /** STRIP -> **/
+            :root {
+                --vscode-editor-foreground: black;
+                --vscode-settings-dropdownListBorder: #8c8c8c;
+                --vscode-font-family: -apple-system, BlinkMacSystemFont,
+                    Segoe UI, Roboto, Helvetica, Arial, sans-serif,
+                    Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+                --vscode-font-weight: 400;
+            }
+            /** <- STRIP **/
+
+            body {
+                color: var(--vscode-editor-foreground);
+                font-family: var(--vscode-font-family);
+                font-weight: var(--vscode-font-weight);
+                margin: 0;
+                padding: 0;
+            }
+
+            div {
+                box-sizing: border-box;
+            }
+
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            li .label {
+                margin-top: 1em;
+                display: block;
+                font-size: smaller;
+            }
+
+            li .value {
+                display: block;
+                font-size: small;
+            }
+
+            .container {
+                display: flex;
+                flex-direction: row;
+                height: 100vh;
+
+                display: flex;
+                flex-direction: row;
+            }
+
+            .output {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                overflow: auto;
+                border-right: 1px solid
+                    var(--vscode-settings-dropdownListBorder);
+            }
+
+            .output header {
+                padding: 8px;
+                border-bottom: 1px solid
+                    var(--vscode-settings-dropdownListBorder);
+            }
+
+            #spinner {
+                margin-top: 50%;
+                align-self: center;
+                display: none;
+            }
+
+            #frame {
+                width: 100%;
+                flex: 1;
+                overflow: auto;
+                margin: 0;
+                border: none;
+                display: none;
+            }
+
+            #stdout {
+                font-family: Menlo, Monaco, "Courier New", monospace;
+                font-weight: normal;
+                font-size: 12px;
+                font-feature-settings: "liga" 0, "calt" 0;
+                line-height: 18px;
+                padding: 8px;
+                width: auto;
+                flex: 1;
+                overflow: scroll;
+                margin: 0;
+                border: none;
+                display: none;
+            }
+
+            #error {
+                display: none;
+            }
+
+            .alert-error {
+                padding: 8px;
+                margin: 8px;
+                color: rgb(200, 45, 76);
+                border-color: rgb(251, 208, 216);
+                background-color: #fff5f7;
+                border: 1px solid #fbd0d8;
+                border-radius: 4px;
+                overflow: scroll;
+            }
+
+            .output.spinner #spinner {
+                display: block;
+            }
+
+            .output.html #frame {
+                display: block;
+            }
+
+            .output.stdout #stdout {
+                display: block;
+            }
+
+            .output.error #error {
+                display: block;
+            }
+
+            .details {
+                padding: 10px;
+                width: 220px;
+            }
+        </style>
+
+        <script
+            type="module"
+            src="../node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js"
+        ></script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="output spinner" id="output">
+                <header>Output</header>
+                <vscode-progress-ring id="spinner"></vscode-progress-ring>
+                <iframe id="frame"></iframe>
+                <pre id="stdout"></pre>
+                <div class="alert-error" id="error">
+                    <b id="error-description"></b>
+                    <pre id="error-stack"></pre>
+                </div>
+            </div>
+            <div class="details">
+                <header>Task Run Details</header>
+                <ul>
+                    <li>
+                        <span class="label">Task run ID:</span>
+                        <span class="value">
+                            <vscode-link id="run-id" href="#">N/A</vscode-link>
+                        </span>
+                    </li>
+                    <li>
+                        <span class="label">Cluster:</span>
+                        <span class="value">
+                            <vscode-link id="run-cluster" href="#"
+                                >N/A</vscode-link
+                            >
+                        </span>
+                    </li>
+                    <li>
+                        <span class="label">Started:</span>
+                        <span class="value" id="run-started">-</span>
+                    </li>
+                    <li>
+                        <span class="label">Ended:</span>
+                        <span class="value" id="run-ended">-</span>
+                    </li>
+                    <li>
+                        <span class="label">Duration:</span>
+                        <span class="value" id="run-duration">-</span>
+                    </li>
+                    <li>
+                        <span class="label">Status:</span>
+                        <span class="value" id="run-status">STARTING</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <script>
+            let startTime;
+            let interval;
+
+            function start() {
+                if (startTime) {
+                    return;
+                }
+                startTime = Date.now();
+                interval = setInterval(function () {
+                    var seconds = Math.floor((Date.now() - startTime) / 1000);
+                    var minutes = Math.floor(seconds / 60);
+
+                    var text = `${seconds}s`;
+                    if (minutes > 0) {
+                        text = `${minutes}m ${seconds % 60}s`;
+                    }
+                    document.getElementById("run-duration").innerText = text;
+                }, 300);
+            }
+
+            function stop() {
+                clearInterval(interval);
+            }
+
+            function updateDetails(details) {
+                document
+                    .getElementById("run-id")
+                    .setAttribute("href", details.runUrl);
+                document.getElementById("run-id").innerText = details.runId;
+
+                document
+                    .getElementById("run-cluster")
+                    .setAttribute("href", details.clusterUrl);
+                document.getElementById("run-cluster").innerText =
+                    details.clusterId;
+
+                document.getElementById("run-started").innerText =
+                    details.started;
+                document.getElementById("run-ended").innerText = details.ended;
+                document.getElementById("run-status").innerText =
+                    details.status;
+
+                start();
+            }
+
+            function setOutputHtml(html) {
+                var cl = document.getElementById("output").classList;
+                cl.remove("spinner");
+                cl.remove("stdout");
+                cl.remove("error");
+                cl.add("html");
+
+                var frame = document.getElementById("frame");
+               frame = frame.contentWindow || frame.contentDocument;
+                if (frame.document) frame = frame.document;
+
+                frame.open();
+                frame.write(html);
+                frame.close();
+            }
+
+            function setStdout(stdout) {
+                var cl = document.getElementById("output").classList;
+                cl.remove("spinner");
+                cl.remove("html");
+                cl.remove("error");
+                cl.add("stdout");
+
+                document.getElementById("stdout").innerText = stdout;
+            }
+
+            function setError(message, stack) {
+                var cl = document.getElementById("output").classList;
+                cl.remove("spinner");
+                cl.remove("html");
+                cl.remove("stdout");
+                cl.add("error");
+
+                document.getElementById("error-description").innerText =
+                    message || "";
+                document.getElementById("error-stack").innerText = stack || "";
+            }
+
+            window.addEventListener("message", (event) => {
+                console.log(event);
+                window[event.data.fn](...event.data.args);
+            });
+
+            /* Making sure that the HTML file can also be loaded directly in the browser during development */
+            /** STRIP -> **/
+            updateDetails({
+                runUrl: "https://e2-dogfood.staging.cloud.databricks.com/?o=6051921418418893#job/329/run/826983170981048",
+                runId: "826983170981048",
+                clusterUrl: "",
+                clusterId: "0715-145100-akshaym",
+                started: "2022-10-27 17:05:33 CEST",
+                ended: "2022-10-27 17:12:32 CEST",
+                status: "Succeeded",
+            });
+
+            setTimeout(() => {
+                setStdout(
+                    `<html><body><h1>Hello World</h1><p>This is a test</p></body></html>`
+                );
+            }, 1000);
+
+            setTimeout(() => {
+                setError(
+                    `SyntaxError: invalid syntax (hello.py, line 10)`,
+                    `Traceback [0;36m(most recent call last)[0m:
+
+File [1;32m"/databricks/python/lib/python3.9/site-packages/IPython/core/interactiveshell.py"[0m, line [1;32m3524[0m, in [1;35mrun_code[0m
+  exec(code_obj, self.user_global_ns, self.user_ns)
+
+[0;36m  File [0;32m""[0;36m, line [0;32m8[0;36m, in [0;35m[0;36m[0m
+[0;31m    exec(compile(f.read(), filename, 'exec'))[0m
+
+[0;36m  File [0;32m"/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices/jobs/hello.py"[0;36m, line [0;32m10[0m
+[0;31m    pri nt("Hi Deco")[0m
+[0m        ^[0m
+[0;31mSyntaxError[0m[0;31m:[0m invalid syntax`
+                );
+                stop();
+            }, 3000);
+
+            setTimeout(() => {
+                setOutputHtml(
+                    `<html><body><h1>Hello World</h1><p>This is a test</p></body></html>`
+                );
+                stop();
+            }, 5000);
+
+            /** <- STRIP **/
+        </script>
+    </body>
+</html>
