@@ -3,7 +3,8 @@ import * as https from "node:https";
 import {TextDecoder} from "node:util";
 import {fromDefaultChain} from "./auth/fromChain";
 import {fetch} from "./fetch";
-import {NamedLogger, loggerInstance, logOpId, withLogContext} from "./logging";
+import {ExposedLoggers, NamedLogger, withLogContext} from "./logging";
+import {context, Context} from "./context";
 import {CancellationToken} from "./types";
 
 const sdkVersion = require("../package.json").version;
@@ -63,14 +64,13 @@ export class ApiClient {
         return pairs.join(" ");
     }
 
-    @withLogContext("SDK")
+    @withLogContext(ExposedLoggers.SDK)
     async request(
         path: string,
         method: HttpMethod,
         payload?: any,
         cancellationToken?: CancellationToken,
-        @logOpId() opId?: string,
-        @loggerInstance() logger?: NamedLogger
+        @context context?: Context
     ): Promise<Object> {
         const credentials = await this.credentialProvider();
         const headers = {
@@ -100,7 +100,7 @@ export class ApiClient {
         let response;
 
         try {
-            logger?.debug(url.toString(), {request: options});
+            context?.logger?.debug(url.toString(), {request: options});
             const {abort, response: responsePromise} = await fetch(
                 url.toString(),
                 options
@@ -136,7 +136,7 @@ export class ApiClient {
 
         try {
             response = JSON.parse(responseText);
-            logger?.debug(url.toString(), {response: response});
+            context?.logger?.debug(url.toString(), {response: response});
         } catch (e) {
             throw new ApiClientResponseError(responseText, response);
         }
