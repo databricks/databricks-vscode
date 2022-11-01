@@ -99,7 +99,7 @@ export class WorkflowRunner implements Disposable {
                         state: jobs.RunLifeCycleState,
                         run: WorkflowRun
                     ) => {
-                        panel.updateState(state, run);
+                        panel.updateState(cluster, state, run);
                     },
                     token: cancellation.token,
                 });
@@ -114,7 +114,7 @@ export class WorkflowRunner implements Disposable {
                         state: jobs.RunLifeCycleState,
                         run: WorkflowRun
                     ) => {
-                        panel.updateState(state, run);
+                        panel.updateState(cluster, state, run);
                     },
                     token: cancellation.token,
                 });
@@ -200,7 +200,11 @@ export class WorkflowOutputPanel {
         });
     }
 
-    updateState(state: jobs.RunLifeCycleState, run: WorkflowRun) {
+    async updateState(
+        cluster: Cluster,
+        state: jobs.RunLifeCycleState,
+        run: WorkflowRun
+    ) {
         this.panel.webview.postMessage({
             type: "status",
             state,
@@ -208,15 +212,13 @@ export class WorkflowOutputPanel {
         });
 
         const task = run.tasks![0];
-        const cluster = task.cluster_instance;
+        const taskCluster = task.cluster_instance;
 
         let clusterUrl = "#";
-        if (cluster) {
-            clusterUrl = `https://${
-                new URL(run.runPageUrl).hostname
-            }/#setting/sparkui/${cluster.cluster_id}/driver-${
-                cluster.spark_context_id
-            }`;
+        if (taskCluster) {
+            clusterUrl = await cluster.getSparkUiUrl(
+                taskCluster.spark_context_id
+            );
         }
 
         this.panel.webview.postMessage({
@@ -226,7 +228,7 @@ export class WorkflowOutputPanel {
                     runUrl: run.runPageUrl,
                     runId: task.run_id,
                     clusterUrl,
-                    clusterId: cluster?.cluster_id || "-",
+                    clusterId: taskCluster?.cluster_id || "-",
                     started: task.start_time
                         ? new Date(task.start_time).toLocaleString()
                         : "-",
