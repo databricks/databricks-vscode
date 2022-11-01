@@ -39,7 +39,6 @@ function getOutputConsoleTransport(outputChannel: OutputChannel) {
                         } more bytes)`;
                     }
                 }
-                info["file"] = __filename;
                 return info;
             })(),
             format.prettyPrint({depth: 2})
@@ -57,7 +56,7 @@ function getFileTransport(filename: string) {
     });
 }
 
-export function initLoggers() {
+export function initLoggers(rootPath: string) {
     const outputChannel = window.createOutputChannel("Databricks Logs");
     outputChannel.clear();
 
@@ -69,11 +68,7 @@ export function initLoggers() {
                     level: "debug",
                     transports: [
                         getOutputConsoleTransport(outputChannel),
-                        getFileTransport(
-                            `${
-                                (workspace.workspaceFolders ?? [])[0].uri.path
-                            }/.databricks/logs.txt`
-                        ),
+                        getFileTransport(`${rootPath}/.databricks/logs.txt`),
                     ],
                 });
             },
@@ -94,11 +89,7 @@ export function initLoggers() {
                     level: "error",
                     transports: [
                         getOutputConsoleTransport(outputChannel),
-                        getFileTransport(
-                            `${
-                                (workspace.workspaceFolders ?? [])[0].uri.path
-                            }/.databricks/logs.txt`
-                        ),
+                        getFileTransport(`${rootPath}/.databricks/logs.txt`),
                     ],
                 });
             },

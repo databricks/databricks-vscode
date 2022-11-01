@@ -484,16 +484,19 @@
                 ]
             }
         ],
-        "configuration": {
-            "title": "Logs",
-            "properties": {
-              "databricks.logs.maxFieldLength": {
-                "type": "number",
-                "default": 40,
-                "description": "The maximum length of each field displayed in logs outputs panel"
-              }
+        "configuration": [
+            {
+                "title": "Logs",
+                "properties": {
+                    "databricks.logs.maxFieldLength": {
+                        "title": "Max Field Length",
+                        "type": "number",
+                        "default": 40,
+                        "description": "The maximum length of each field displayed in logs outputs panel"
+                    }
+                }
             }
-          }
+        ]
     },
     "vsce": {
         "dependencies": false,
