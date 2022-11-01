@@ -527,6 +527,7 @@ export interface ClusterInfo {
      */
     custom_tags?: Record<string, string>;
     data_security_mode?: DataSecurityMode;
+    access_mode?: AccessMode;
     /**
      * Tags that are added by Databricks regardless of any ``custom_tags``,
      * including:
@@ -1021,10 +1022,11 @@ export type DataPlaneEventDetailsEventType =
     | "NODE_BLACKLISTED"
     | "NODE_EXCLUDED_DECOMMISSIONED";
 
-/**
- * This describes an enum
- */
 export type DataSecurityMode =
+    /**
+     * This is mode where single user is enforced but no actual security feature enabled.
+     */
+    | "LEGACY_SINGLE_USER_STANDARD"
     /**
      * This mode is for users migrating from legacy Passthrough on high concurrency
      * clusters.
@@ -1050,12 +1052,57 @@ export type DataSecurityMode =
      */
     | "SINGLE_USER"
     /**
-     * A secure cluster that can be shared by multiple users. Cluster users are fully
-     * isolated so that they cannot see each other's data and credentials. Most data
-     * governance features are supported in this mode. But programming languages and
-     * cluster features might be limited.
+     * A secure cluster that can be shared by multiple users. Cluster users are fully isolated
+     * so that they cannot see each other's data and credentials. Most data governance features
+     * are supported in this mode. But programming languages and cluster features might be limited.
      */
-    | "USER_ISOLATION";
+    | "USER_ISOLATION"
+    /**
+     * Internal mode used by DBSQL endpoint clusters
+     */
+    | "INTERNAL_SQL";
+
+/**
+ * This describes an enum
+ */
+export type AccessMode =
+    /**
+     * No security isolation for multiple users sharing the cluster. Data governance features
+     * are not available in this mode.
+     */
+    | "NO_ISOLATION"
+    /**
+     *  A secure cluster that can only be exclusively used by a single user specified in
+     *``single_user_name``. Most programming languages, cluster features and data governance
+     * features are available in this mode.
+     */
+    | "SINGLE_USER"
+    /**
+     * A secure cluster that can be shared by multiple users. Cluster users are fully isolated
+     * so that they cannot see each other's data and credentials. Most data governance features
+     * are supported in this mode. But programming languages and cluster features might be limited.
+     */
+    | "SHARED"
+    /**
+     * This mode is for users migrating from legacy Table ACL clusters.
+     */
+    | "LEGACY_SHARED_TABLE_ACL"
+    /**
+     * This mode is for users migrating from legacy Passthrough on high concurrency clusters.
+     */
+    | "LEGACY_SHARED_PASSTHROUGH"
+    /**
+     * Internal mode used by DBSQL endpoint clusters
+     */
+    | "INTERNAL_SQL"
+    /**
+     * This mode is for users migrating from legacy Passthrough on standard clusters.
+     */
+    | "LEGACY_SINGLE_USER_PASSTHROUGH"
+    /**
+     * This is mode where single user is enforced but no actual security feature enabled.
+     */
+    | "LEGACY_SINGLE_USER_STANDARD";
 
 export interface DbfsStorageInfo {
     /**
