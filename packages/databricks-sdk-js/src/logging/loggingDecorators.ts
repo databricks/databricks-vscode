@@ -21,6 +21,7 @@ export function withLogContext(name: string) {
                 (args[contextParamIndex] as Context | undefined) ??
                 new Context();
             contextParam.setItems({logger});
+            args[contextParamIndex] = contextParam;
 
             return logger.withContext({
                 opId: contextParam.opId,

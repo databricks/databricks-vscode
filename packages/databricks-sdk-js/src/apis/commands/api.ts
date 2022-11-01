@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 export class CommandExecutionRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -28,16 +30,17 @@ export class CommandExecutionService {
     /**
      * Cancel a command
      */
+    @withLogContext(ExposedLoggers.SDK)
     async cancel(
         request: model.CancelCommand,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.CancelResponse> {
         const path = "/api/1.2/commands/cancel";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.CancelResponse;
     }
 
@@ -45,22 +48,24 @@ export class CommandExecutionService {
      * cancel and wait to reach Cancelled state
      *  or fail on reaching Error state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async cancelAndWait(
         cancelCommand: model.CancelCommand,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (
                 newPollResponse: model.CommandStatusResponse
             ) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.CommandStatusResponse> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        await this.cancel(cancelCommand);
+        await this.cancel(cancelCommand, context);
 
         return await retry<model.CommandStatusResponse>({
             timeout,
@@ -71,9 +76,12 @@ export class CommandExecutionService {
                         commandId: cancelCommand.commandId!,
                         contextId: cancelCommand.contextId!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error(
+                        "CommandExecution.cancelAndWait: cancelled"
+                    );
                     throw new CommandExecutionError(
                         "cancelAndWait",
                         "cancelled"
@@ -87,15 +95,23 @@ export class CommandExecutionService {
                         return pollResponse;
                     }
                     case "Error": {
+                        const errorMessage = `failed to reach Cancelled state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `CommandExecution.cancelAndWait: ${errorMessage}`
+                        );
                         throw new CommandExecutionError(
                             "cancelAndWait",
-                            `failed to reach Cancelled state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                     default: {
+                        const errorMessage = `failed to reach Cancelled state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `CommandExecution.cancelAndWait: retrying: ${errorMessage}`
+                        );
                         throw new CommandExecutionRetriableError(
                             "cancelAndWait",
-                            `failed to reach Cancelled state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }
@@ -106,48 +122,51 @@ export class CommandExecutionService {
     /**
      * Get information about a command
      */
+    @withLogContext(ExposedLoggers.SDK)
     async commandStatus(
         request: model.CommandStatusRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.CommandStatusResponse> {
         const path = "/api/1.2/commands/status";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.CommandStatusResponse;
     }
 
     /**
      * Get information about an execution context
      */
+    @withLogContext(ExposedLoggers.SDK)
     async contextStatus(
         request: model.ContextStatusRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ContextStatusResponse> {
         const path = "/api/1.2/contexts/status";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ContextStatusResponse;
     }
 
     /**
      * Create an execution context
      */
+    @withLogContext(ExposedLoggers.SDK)
     async create(
         request: model.CreateContext,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.Created> {
         const path = "/api/1.2/contexts/create";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.Created;
     }
 
@@ -155,22 +174,24 @@ export class CommandExecutionService {
      * create and wait to reach Running state
      *  or fail on reaching Error state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async createAndWait(
         createContext: model.CreateContext,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (
                 newPollResponse: model.ContextStatusResponse
             ) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.ContextStatusResponse> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        const created = await this.create(createContext);
+        const created = await this.create(createContext, context);
 
         return await retry<model.ContextStatusResponse>({
             timeout,
@@ -180,9 +201,12 @@ export class CommandExecutionService {
                         clusterId: createContext.clusterId!,
                         contextId: created.id!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error(
+                        "CommandExecution.createAndWait: cancelled"
+                    );
                     throw new CommandExecutionError(
                         "createAndWait",
                         "cancelled"
@@ -196,15 +220,23 @@ export class CommandExecutionService {
                         return pollResponse;
                     }
                     case "Error": {
+                        const errorMessage = `failed to reach Running state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `CommandExecution.createAndWait: ${errorMessage}`
+                        );
                         throw new CommandExecutionError(
                             "createAndWait",
-                            `failed to reach Running state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                     default: {
+                        const errorMessage = `failed to reach Running state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `CommandExecution.createAndWait: retrying: ${errorMessage}`
+                        );
                         throw new CommandExecutionRetriableError(
                             "createAndWait",
-                            `failed to reach Running state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }
@@ -215,32 +247,34 @@ export class CommandExecutionService {
     /**
      * Delete an execution context
      */
+    @withLogContext(ExposedLoggers.SDK)
     async destroy(
         request: model.DestroyContext,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.DestroyResponse> {
         const path = "/api/1.2/contexts/destroy";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.DestroyResponse;
     }
 
     /**
      * Run a command
      */
+    @withLogContext(ExposedLoggers.SDK)
     async execute(
         request: model.Command,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.Created> {
         const path = "/api/1.2/commands/execute";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.Created;
     }
 
@@ -248,22 +282,24 @@ export class CommandExecutionService {
      * execute and wait to reach Finished or Error state
      *  or fail on reaching Cancelled or Cancelling state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async executeAndWait(
         command: model.Command,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (
                 newPollResponse: model.CommandStatusResponse
             ) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.CommandStatusResponse> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        const created = await this.execute(command);
+        const created = await this.execute(command, context);
 
         return await retry<model.CommandStatusResponse>({
             timeout,
@@ -274,9 +310,12 @@ export class CommandExecutionService {
                         commandId: created.id!,
                         contextId: command.contextId!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error(
+                        "CommandExecution.executeAndWait: cancelled"
+                    );
                     throw new CommandExecutionError(
                         "executeAndWait",
                         "cancelled"
@@ -292,15 +331,23 @@ export class CommandExecutionService {
                     }
                     case "Cancelled":
                     case "Cancelling": {
+                        const errorMessage = `failed to reach Finished or Error state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `CommandExecution.executeAndWait: ${errorMessage}`
+                        );
                         throw new CommandExecutionError(
                             "executeAndWait",
-                            `failed to reach Finished or Error state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                     default: {
+                        const errorMessage = `failed to reach Finished or Error state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `CommandExecution.executeAndWait: retrying: ${errorMessage}`
+                        );
                         throw new CommandExecutionRetriableError(
                             "executeAndWait",
-                            `failed to reach Finished or Error state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }

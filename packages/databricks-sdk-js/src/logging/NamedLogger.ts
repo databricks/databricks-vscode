@@ -101,6 +101,7 @@ export class NamedLogger {
             this._loggerOpts?.fieldNameDenyList,
             this._loggerOpts?.maxFieldLength
         );
+
         this._logger?.log(level, message, {
             logger: this.name,
             operationId: this.opId,
@@ -112,6 +113,10 @@ export class NamedLogger {
 
     debug(message?: string, obj?: any) {
         this.log(LEVELS.debug, message, obj);
+    }
+
+    error(message?: string, obj?: any) {
+        this.log(LEVELS.error, message, obj);
     }
 
     withContext<T>({

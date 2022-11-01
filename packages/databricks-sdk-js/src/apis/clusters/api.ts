@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 export class ClustersRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -31,16 +33,17 @@ export class ClustersService {
      * Change the owner of the cluster. You must be an admin to perform this
      * operation.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async changeOwner(
         request: model.ChangeClusterOwner,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ChangeClusterOwnerResponse> {
         const path = "/api/2.0/clusters/change-owner";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.ChangeClusterOwnerResponse;
     }
 
@@ -61,16 +64,17 @@ export class ClustersService {
      * cluster creation will succeed. Otherwise the cluster will terminate with
      * an informative error message.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async create(
         request: model.CreateCluster,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.CreateClusterResponse> {
         const path = "/api/2.0/clusters/create";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.CreateClusterResponse;
     }
 
@@ -78,20 +82,22 @@ export class ClustersService {
      * create and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async createAndWait(
         createCluster: model.CreateCluster,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.ClusterInfo> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        const createClusterResponse = await this.create(createCluster);
+        const createClusterResponse = await this.create(createCluster, context);
 
         return await retry<model.ClusterInfo>({
             timeout,
@@ -100,9 +106,10 @@ export class ClustersService {
                     {
                         cluster_id: createClusterResponse.cluster_id!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error("Clusters.createAndWait: cancelled");
                     throw new ClustersError("createAndWait", "cancelled");
                 }
                 await onProgress(pollResponse);
@@ -113,15 +120,20 @@ export class ClustersService {
                         return pollResponse;
                     }
                     case "ERROR": {
-                        throw new ClustersError(
-                            "createAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.createAndWait: ${errorMessage}`
                         );
+                        throw new ClustersError("createAndWait", errorMessage);
                     }
                     default: {
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.createAndWait: retrying: ${errorMessage}`
+                        );
                         throw new ClustersRetriableError(
                             "createAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }
@@ -137,16 +149,17 @@ export class ClustersService {
      * a ``TERMINATED`` state. If the cluster is already in a ``TERMINATING`` or
      * ``TERMINATED`` state, nothing will happen.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async delete(
         request: model.DeleteCluster,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.DeleteClusterResponse> {
         const path = "/api/2.0/clusters/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.DeleteClusterResponse;
     }
 
@@ -154,20 +167,22 @@ export class ClustersService {
      * delete and wait to reach TERMINATED state
      *  or fail on reaching ERROR state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async deleteAndWait(
         deleteCluster: model.DeleteCluster,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.ClusterInfo> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        await this.delete(deleteCluster);
+        await this.delete(deleteCluster, context);
 
         return await retry<model.ClusterInfo>({
             timeout,
@@ -176,9 +191,10 @@ export class ClustersService {
                     {
                         cluster_id: deleteCluster.cluster_id!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error("Clusters.deleteAndWait: cancelled");
                     throw new ClustersError("deleteAndWait", "cancelled");
                 }
                 await onProgress(pollResponse);
@@ -189,15 +205,20 @@ export class ClustersService {
                         return pollResponse;
                     }
                     case "ERROR": {
-                        throw new ClustersError(
-                            "deleteAndWait",
-                            `failed to reach TERMINATED state, got ${status}: ${statusMessage}`
+                        const errorMessage = `failed to reach TERMINATED state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.deleteAndWait: ${errorMessage}`
                         );
+                        throw new ClustersError("deleteAndWait", errorMessage);
                     }
                     default: {
+                        const errorMessage = `failed to reach TERMINATED state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.deleteAndWait: retrying: ${errorMessage}`
+                        );
                         throw new ClustersRetriableError(
                             "deleteAndWait",
-                            `failed to reach TERMINATED state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }
@@ -222,16 +243,17 @@ export class ClustersService {
      *
      * Clusters created by the Databricks Jobs service cannot be edited.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async edit(
         request: model.EditCluster,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.EditClusterResponse> {
         const path = "/api/2.0/clusters/edit";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.EditClusterResponse;
     }
 
@@ -239,20 +261,22 @@ export class ClustersService {
      * edit and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async editAndWait(
         editCluster: model.EditCluster,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.ClusterInfo> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        await this.edit(editCluster);
+        await this.edit(editCluster, context);
 
         return await retry<model.ClusterInfo>({
             timeout,
@@ -261,9 +285,10 @@ export class ClustersService {
                     {
                         cluster_id: editCluster.cluster_id!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error("Clusters.editAndWait: cancelled");
                     throw new ClustersError("editAndWait", "cancelled");
                 }
                 await onProgress(pollResponse);
@@ -274,15 +299,20 @@ export class ClustersService {
                         return pollResponse;
                     }
                     case "ERROR": {
-                        throw new ClustersError(
-                            "editAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.editAndWait: ${errorMessage}`
                         );
+                        throw new ClustersError("editAndWait", errorMessage);
                     }
                     default: {
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.editAndWait: retrying: ${errorMessage}`
+                        );
                         throw new ClustersRetriableError(
                             "editAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }
@@ -297,16 +327,17 @@ export class ClustersService {
      * paginated. If there are more events to read, the response includes all the
      * nparameters necessary to request the next page of events.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async events(
         request: model.GetEvents,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.GetEventsResponse> {
         const path = "/api/2.0/clusters/events";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.GetEventsResponse;
     }
 
@@ -317,16 +348,17 @@ export class ClustersService {
      * can be described while they are running, or up to 60 days after they are
      * terminated.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async get(
         request: model.GetRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ClusterInfo> {
         const path = "/api/2.0/clusters/get";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ClusterInfo;
     }
 
@@ -334,20 +366,22 @@ export class ClustersService {
      * get and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async getAndWait(
         getRequest: model.GetRequest,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.ClusterInfo> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        const clusterInfo = await this.get(getRequest);
+        const clusterInfo = await this.get(getRequest, context);
 
         return await retry<model.ClusterInfo>({
             timeout,
@@ -356,9 +390,10 @@ export class ClustersService {
                     {
                         cluster_id: clusterInfo.cluster_id!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error("Clusters.getAndWait: cancelled");
                     throw new ClustersError("getAndWait", "cancelled");
                 }
                 await onProgress(pollResponse);
@@ -369,15 +404,20 @@ export class ClustersService {
                         return pollResponse;
                     }
                     case "ERROR": {
-                        throw new ClustersError(
-                            "getAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.getAndWait: ${errorMessage}`
                         );
+                        throw new ClustersError("getAndWait", errorMessage);
                     }
                     default: {
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.getAndWait: retrying: ${errorMessage}`
+                        );
                         throw new ClustersRetriableError(
                             "getAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }
@@ -399,16 +439,17 @@ export class ClustersService {
      * 4 active clusters, all 45 terminated interactive clusters, and the 30 most
      * recently terminated job clusters.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async list(
         request: model.ListRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListClustersResponse> {
         const path = "/api/2.0/clusters/list";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ListClustersResponse;
     }
 
@@ -418,15 +459,16 @@ export class ClustersService {
      * Returns a list of supported Spark node types. These node types can be used
      * to launch a cluster.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async listNodeTypes(
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListNodeTypesResponse> {
         const path = "/api/2.0/clusters/list-node-types";
         return (await this.client.request(
             path,
             "GET",
             undefined,
-            cancellationToken
+            context
         )) as model.ListNodeTypesResponse;
     }
 
@@ -436,15 +478,16 @@ export class ClustersService {
      * Returns a list of availability zones where clusters can be created in (For
      * example, us-west-2a). These zones can be used to launch a cluster.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async listZones(
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListAvailableZonesResponse> {
         const path = "/api/2.0/clusters/list-zones";
         return (await this.client.request(
             path,
             "GET",
             undefined,
-            cancellationToken
+            context
         )) as model.ListAvailableZonesResponse;
     }
 
@@ -458,16 +501,17 @@ export class ClustersService {
      * cluster list, and API users can no longer perform any action on
      * permanently deleted clusters.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async permanentDelete(
         request: model.PermanentDeleteCluster,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.PermanentDeleteClusterResponse> {
         const path = "/api/2.0/clusters/permanent-delete";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.PermanentDeleteClusterResponse;
     }
 
@@ -478,16 +522,17 @@ export class ClustersService {
      * ListClusters API. Pinning a cluster that is already pinned will have no
      * effect. This API can only be called by workspace admins.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async pin(
         request: model.PinCluster,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.PinClusterResponse> {
         const path = "/api/2.0/clusters/pin";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.PinClusterResponse;
     }
 
@@ -497,16 +542,17 @@ export class ClustersService {
      * Resizes a cluster to have a desired number of workers. This will fail
      * unless the cluster is in a `RUNNING` state.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async resize(
         request: model.ResizeCluster,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ResizeClusterResponse> {
         const path = "/api/2.0/clusters/resize";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.ResizeClusterResponse;
     }
 
@@ -514,20 +560,22 @@ export class ClustersService {
      * resize and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async resizeAndWait(
         resizeCluster: model.ResizeCluster,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.ClusterInfo> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        await this.resize(resizeCluster);
+        await this.resize(resizeCluster, context);
 
         return await retry<model.ClusterInfo>({
             timeout,
@@ -536,9 +584,10 @@ export class ClustersService {
                     {
                         cluster_id: resizeCluster.cluster_id!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error("Clusters.resizeAndWait: cancelled");
                     throw new ClustersError("resizeAndWait", "cancelled");
                 }
                 await onProgress(pollResponse);
@@ -549,15 +598,20 @@ export class ClustersService {
                         return pollResponse;
                     }
                     case "ERROR": {
-                        throw new ClustersError(
-                            "resizeAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.resizeAndWait: ${errorMessage}`
                         );
+                        throw new ClustersError("resizeAndWait", errorMessage);
                     }
                     default: {
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.resizeAndWait: retrying: ${errorMessage}`
+                        );
                         throw new ClustersRetriableError(
                             "resizeAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }
@@ -571,16 +625,17 @@ export class ClustersService {
      * Restarts a Spark cluster with the supplied ID. If the cluster is not
      * currently in a `RUNNING` state, nothing will happen.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async restart(
         request: model.RestartCluster,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.RestartClusterResponse> {
         const path = "/api/2.0/clusters/restart";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.RestartClusterResponse;
     }
 
@@ -588,20 +643,22 @@ export class ClustersService {
      * restart and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async restartAndWait(
         restartCluster: model.RestartCluster,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.ClusterInfo> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        await this.restart(restartCluster);
+        await this.restart(restartCluster, context);
 
         return await retry<model.ClusterInfo>({
             timeout,
@@ -610,9 +667,12 @@ export class ClustersService {
                     {
                         cluster_id: restartCluster.cluster_id!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error(
+                        "Clusters.restartAndWait: cancelled"
+                    );
                     throw new ClustersError("restartAndWait", "cancelled");
                 }
                 await onProgress(pollResponse);
@@ -623,15 +683,20 @@ export class ClustersService {
                         return pollResponse;
                     }
                     case "ERROR": {
-                        throw new ClustersError(
-                            "restartAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.restartAndWait: ${errorMessage}`
                         );
+                        throw new ClustersError("restartAndWait", errorMessage);
                     }
                     default: {
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.restartAndWait: retrying: ${errorMessage}`
+                        );
                         throw new ClustersRetriableError(
                             "restartAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }
@@ -645,15 +710,16 @@ export class ClustersService {
      * Returns the list of available Spark versions. These versions can be used
      * to launch a cluster.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async sparkVersions(
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.GetSparkVersionsResponse> {
         const path = "/api/2.0/clusters/spark-versions";
         return (await this.client.request(
             path,
             "GET",
             undefined,
-            cancellationToken
+            context
         )) as model.GetSparkVersionsResponse;
     }
 
@@ -669,16 +735,17 @@ export class ClustersService {
      * of nodes. * If the cluster is not currently in a ``TERMINATED`` state,
      * nothing will happen. * Clusters launched to run a job cannot be started.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async start(
         request: model.StartCluster,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.StartClusterResponse> {
         const path = "/api/2.0/clusters/start";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.StartClusterResponse;
     }
 
@@ -686,20 +753,22 @@ export class ClustersService {
      * start and wait to reach RUNNING state
      *  or fail on reaching ERROR state
      */
+    @withLogContext(ExposedLoggers.SDK)
     async startAndWait(
         startCluster: model.StartCluster,
         options?: {
             timeout?: Time;
-            cancellationToken?: CancellationToken;
             onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
-        }
+        },
+        @context context?: Context
     ): Promise<model.ClusterInfo> {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {cancellationToken, timeout, onProgress} = options;
+        let {timeout, onProgress} = options;
+        let cancellationToken = context?.cancellationToken;
 
-        await this.start(startCluster);
+        await this.start(startCluster, context);
 
         return await retry<model.ClusterInfo>({
             timeout,
@@ -708,9 +777,10 @@ export class ClustersService {
                     {
                         cluster_id: startCluster.cluster_id!,
                     },
-                    cancellationToken
+                    context
                 );
                 if (cancellationToken?.isCancellationRequested) {
+                    context?.logger?.error("Clusters.startAndWait: cancelled");
                     throw new ClustersError("startAndWait", "cancelled");
                 }
                 await onProgress(pollResponse);
@@ -721,15 +791,20 @@ export class ClustersService {
                         return pollResponse;
                     }
                     case "ERROR": {
-                        throw new ClustersError(
-                            "startAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.startAndWait: ${errorMessage}`
                         );
+                        throw new ClustersError("startAndWait", errorMessage);
                     }
                     default: {
+                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                        context?.logger?.error(
+                            `Clusters.startAndWait: retrying: ${errorMessage}`
+                        );
                         throw new ClustersRetriableError(
                             "startAndWait",
-                            `failed to reach RUNNING state, got ${status}: ${statusMessage}`
+                            errorMessage
                         );
                     }
                 }
@@ -744,16 +819,17 @@ export class ClustersService {
      * the ListClusters API. Unpinning a cluster that is not pinned will have no
      * effect. This API can only be called by workspace admins.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async unpin(
         request: model.UnpinCluster,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.UnpinClusterResponse> {
         const path = "/api/2.0/clusters/unpin";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.UnpinClusterResponse;
     }
 }

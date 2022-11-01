@@ -25,7 +25,7 @@ export function getContextParamIndex(_target: any, _propertyKey: string) {
     );
     if (contextParams.length !== 1) {
         throw Error(
-            `Use @context to specify exactly 1 parameter of ${_propertyKey} as log id`
+            `Use @context to specify exactly 1 parameter of ${_propertyKey} as context`
         );
     }
     return contextParams[0];
