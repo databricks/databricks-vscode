@@ -2,7 +2,6 @@ import {
     commands,
     debug,
     ExtensionContext,
-    OutputChannel,
     tasks,
     window,
     workspace,
