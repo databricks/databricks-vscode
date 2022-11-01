@@ -61,13 +61,16 @@ export class ClusterLoader implements Disposable {
     }
 
     private isSingleUser(c: Cluster) {
+        const modeProperty =
+            //TODO: deprecate data_security_mode once access_mode is available everywhere
+            c.details.access_mode ?? c.details.data_security_mode;
         return (
-            c.details.access_mode !== undefined &&
+            modeProperty !== undefined &&
             [
                 "SINGLE_USER",
                 "LEGACY_SINGLE_USER_PASSTHROUGH",
                 "LEGACY_SINGLE_USER_STANDARD",
-            ].includes(c.details.access_mode)
+            ].includes(modeProperty)
         );
     }
     private isValidSingleUser(c: Cluster) {
