@@ -499,6 +499,12 @@
                         "type": "number",
                         "default": 2,
                         "description": "The max depth of logs to show without truncation"
+                    },
+                    "databricks.logs.maxArrayLength": {
+                        "title": "Max Array Length",
+                        "type": "number",
+                        "default": 2,
+                        "description": "The maximum number of items to show for array fields"
                     }
                 }
             }
