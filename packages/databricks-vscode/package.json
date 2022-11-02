@@ -486,13 +486,19 @@
         ],
         "configuration": [
             {
-                "title": "Logs",
+                "title": "Databricks",
                 "properties": {
                     "databricks.logs.maxFieldLength": {
                         "title": "Max Field Length",
                         "type": "number",
                         "default": 40,
                         "description": "The maximum length of each field displayed in logs outputs panel"
+                    },
+                    "databricks.logs.truncationDepth": {
+                        "title": "Truncation Depth",
+                        "type": "number",
+                        "default": 2,
+                        "description": "The max depth of logs to show without truncation"
                     }
                 }
             }
