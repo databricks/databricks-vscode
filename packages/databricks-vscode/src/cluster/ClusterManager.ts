@@ -30,6 +30,7 @@ export class ClusterManager implements Disposable {
     dispose() {
         this.cancellationTokenSource?.cancel();
         this.cancellationTokenSource?.dispose();
+        this.clearInterval();
     }
 
     async start(
