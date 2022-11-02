@@ -171,16 +171,21 @@ describe("Configure Databricks Extension", async function () {
         await input.setText(clusterId);
         await input.confirm();
 
+        // wait for tree to update
+        let clusterPropsItems;
+        do {
+            await driver.sleep(200);
+            clusterPropsItems = await clusterConfigItem.getChildren();
+        } while (clusterPropsItems.length <= 1);
+
         // get cluster ID
-        const clusterPropsItems = await clusterConfigItem.getChildren();
         const clusterProps: Record<string, string> = {};
         for (const i of clusterPropsItems) {
             clusterProps[await i.getLabel()] = (await i.getDescription()) || "";
         }
 
-        // store cluster ID in test suite scope
-        clusterId = clusterProps["Cluster ID:"];
-        assert(clusterId);
+        const testClusterId = clusterProps["Cluster ID:"];
+        assert.equal(testClusterId, clusterId);
     });
 
     it("should write the project config file", async function () {
