@@ -74,6 +74,7 @@ export const workspaceFileAccessor: FileAccessor = {
 export class DatabricksDebugSession extends LoggingDebugSession {
     private runtime: DatabricksRuntime;
     private _configurationDone = new Subject();
+    private disposables: Disposable[] = [];
 
     constructor(
         connection: ConnectionManager,
@@ -87,50 +88,58 @@ export class DatabricksDebugSession extends LoggingDebugSession {
             codeSynchronizer
         );
 
-        this.runtime.onDidSendOutput(({type, text, filePath, line, column}) => {
-            let category: string;
-            switch (type) {
-                case "prio":
-                    category = "important";
-                    break;
-                case "out":
-                    category = "stdout";
-                    break;
-                case "err":
-                    category = "stderr";
-                    break;
-                default:
-                    category = "console";
-                    break;
-            }
-            const e: OutputEvent = new OutputEvent(`${text}\n`, category);
-            const body = e.body as any;
+        this.disposables.push(
+            this.runtime,
+            this.runtime.onDidSendOutput(
+                ({type, text, filePath, line, column}) => {
+                    let category: string;
+                    switch (type) {
+                        case "prio":
+                            category = "important";
+                            break;
+                        case "out":
+                            category = "stdout";
+                            break;
+                        case "err":
+                            category = "stderr";
+                            break;
+                        default:
+                            category = "console";
+                            break;
+                    }
+                    const e: OutputEvent = new OutputEvent(
+                        `${text}\n`,
+                        category
+                    );
+                    const body = e.body as any;
 
-            if (
-                text === "start" ||
-                text === "startCollapsed" ||
-                text === "end"
-            ) {
-                body.group = text;
-                e.body.output = `group-${text}\n`;
-            }
+                    if (
+                        text === "start" ||
+                        text === "startCollapsed" ||
+                        text === "end"
+                    ) {
+                        body.group = text;
+                        e.body.output = `group-${text}\n`;
+                    }
 
-            body.source = this.createSource(filePath);
-            body.line = this.convertDebuggerLineToClient(line);
-            body.column = this.convertDebuggerColumnToClient(column);
+                    body.source = this.createSource(filePath);
+                    body.line = this.convertDebuggerLineToClient(line);
+                    body.column = this.convertDebuggerColumnToClient(column);
 
-            this.sendEvent(e);
-        });
+                    this.sendEvent(e);
+                }
+            ),
 
-        this.runtime.onDidEnd(() => {
-            this.sendEvent(new TerminatedEvent());
-        });
+            this.runtime.onDidEnd(() => {
+                this.sendEvent(new TerminatedEvent());
+            }),
 
-        this.runtime.onError((errorMessage) => {
-            window.showErrorMessage(errorMessage);
-            this.sendEvent(new ExitedEvent(1));
-            this.sendEvent(new TerminatedEvent());
-        });
+            this.runtime.onError((errorMessage) => {
+                window.showErrorMessage(errorMessage);
+                this.sendEvent(new ExitedEvent(1));
+                this.sendEvent(new TerminatedEvent());
+            })
+        );
     }
 
     /**
@@ -255,5 +264,9 @@ export class DatabricksDebugSession extends LoggingDebugSession {
             basename(filePath),
             this.convertDebuggerPathToClient(filePath)
         );
+    }
+
+    dispose() {
+        this.disposables.forEach((obj) => obj.dispose());
     }
 }
