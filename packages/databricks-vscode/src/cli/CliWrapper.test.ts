@@ -36,7 +36,7 @@ describe(__filename, () => {
 
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/bricks sync --remote-path /Repos/fabian.jakobs@databricks.com/notebook-best-practices --persist-snapshot=false"
+            "./bin/bricks sync --remote-path /Repos/fabian.jakobs@databricks.com/notebook-best-practices"
         );
     });
 
