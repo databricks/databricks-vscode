@@ -178,9 +178,12 @@ describe("Configure Databricks Extension", async function () {
             clusterProps[await i.getLabel()] = (await i.getDescription()) || "";
         }
 
+        console.log("Cluster props", clusterProps);
+        console.log("Cluster ID", clusterId);
+
         // store cluster ID in test suite scope
-        clusterId = clusterProps["Cluster ID:"];
-        assert(clusterId);
+        const testClusterId = clusterProps["Cluster ID:"];
+        assert(testClusterId);
     });
 
     it("should write the project config file", async function () {
