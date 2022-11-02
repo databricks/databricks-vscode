@@ -363,7 +363,9 @@ export class ConnectionManager {
         if (this.cluster !== newCluster) {
             this._clusterManager?.dispose();
             this._clusterManager = newCluster
-                ? new ClusterManager(newCluster)
+                ? new ClusterManager(newCluster, (state) => {
+                      this.onDidChangeClusterEmitter.fire(this.cluster);
+                  })
                 : undefined;
             this.onDidChangeClusterEmitter.fire(this.cluster);
         }

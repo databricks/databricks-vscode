@@ -148,10 +148,7 @@ export class ClusterListDataProvider
             }
         );
 
-        if (
-            element.stateMessage &&
-            !["RUNNING", "TERMINATED"].includes(element.state)
-        ) {
+        if (element.stateMessage && element.state !== "RUNNING") {
             children.push({
                 label: "State message:",
                 description: element.stateMessage,
