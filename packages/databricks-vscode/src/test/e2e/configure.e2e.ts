@@ -185,7 +185,7 @@ describe("Configure Databricks Extension", async function () {
         }
 
         const testClusterId = clusterProps["Cluster ID:"];
-        assert(testClusterId);
+        assert.equal(testClusterId, clusterId);
     });
 
     it("should write the project config file", async function () {
