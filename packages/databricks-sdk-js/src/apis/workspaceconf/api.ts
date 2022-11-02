@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 export class WorkspaceConfRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -30,16 +32,17 @@ export class WorkspaceConfService {
      *
      * Gets the configuration status for a workspace.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async getStatus(
         request: model.GetStatusRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.WorkspaceConf> {
         const path = "/api/2.0/workspace-conf";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.WorkspaceConf;
     }
 
@@ -49,16 +52,17 @@ export class WorkspaceConfService {
      * Sets the configuration status for a workspace, including enabling or
      * disabling it.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async setStatus(
         request: model.WorkspaceConf,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.SetStatusResponse> {
         const path = "/api/2.0/workspace-conf";
         return (await this.client.request(
             path,
             "PATCH",
             request,
-            cancellationToken
+            context
         )) as model.SetStatusResponse;
     }
 }

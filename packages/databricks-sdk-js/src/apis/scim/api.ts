@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 export class CurrentUserRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -30,13 +32,14 @@ export class CurrentUserService {
      *
      * Get details about caller identity
      */
-    async me(cancellationToken?: CancellationToken): Promise<model.User> {
+    @withLogContext(ExposedLoggers.SDK)
+    async me(@context context?: Context): Promise<model.User> {
         const path = "/api/2.0/preview/scim/v2/Me";
         return (await this.client.request(
             path,
             "GET",
             undefined,
-            cancellationToken
+            context
         )) as model.User;
     }
 }
@@ -62,16 +65,17 @@ export class GroupsService {
      *
      * Remove a group in the <Workspace>.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async deleteGroup(
         request: model.DeleteGroupRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.DeleteGroupResponse> {
         const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
-            cancellationToken
+            context
         )) as model.DeleteGroupResponse;
     }
 
@@ -80,16 +84,17 @@ export class GroupsService {
      *
      * Fetch information of one group in the <Workspace>
      */
+    @withLogContext(ExposedLoggers.SDK)
     async fetchGroup(
         request: model.FetchGroupRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.Group> {
         const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.Group;
     }
 
@@ -98,16 +103,17 @@ export class GroupsService {
      *
      * Get all details of the groups associated with the <Workspace>.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async listGroups(
         request: model.ListGroupsRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListGroupsResponse> {
         const path = "/api/2.0/preview/scim/v2/Groups";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ListGroupsResponse;
     }
 
@@ -116,16 +122,17 @@ export class GroupsService {
      *
      * Create one group in the <Workspace> with a unique name
      */
+    @withLogContext(ExposedLoggers.SDK)
     async newGroup(
         request: model.Group,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.Group> {
         const path = "/api/2.0/preview/scim/v2/Groups";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.Group;
     }
 
@@ -134,16 +141,17 @@ export class GroupsService {
      *
      * Partially update details of a group
      */
+    @withLogContext(ExposedLoggers.SDK)
     async patchGroup(
         request: model.PartialUpdate,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.PatchGroupResponse> {
         const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
-            cancellationToken
+            context
         )) as model.PatchGroupResponse;
     }
 
@@ -152,16 +160,17 @@ export class GroupsService {
      *
      * Update details of a group by replacing the entire entity
      */
+    @withLogContext(ExposedLoggers.SDK)
     async replaceGroup(
         request: model.Group,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ReplaceGroupResponse> {
         const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "PUT",
             request,
-            cancellationToken
+            context
         )) as model.ReplaceGroupResponse;
     }
 }
@@ -187,16 +196,17 @@ export class ServicePrincipalsService {
      *
      * Delete one service principal
      */
+    @withLogContext(ExposedLoggers.SDK)
     async deleteServicePrincipal(
         request: model.DeleteServicePrincipalRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.DeleteServicePrincipalResponse> {
         const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
-            cancellationToken
+            context
         )) as model.DeleteServicePrincipalResponse;
     }
 
@@ -205,16 +215,17 @@ export class ServicePrincipalsService {
      *
      * Fetch information of one service principal
      */
+    @withLogContext(ExposedLoggers.SDK)
     async fetchServicePrincipal(
         request: model.FetchServicePrincipalRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ServicePrincipal> {
         const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ServicePrincipal;
     }
 
@@ -223,16 +234,17 @@ export class ServicePrincipalsService {
      *
      * Get multiple service principals associated with a <Workspace>.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async listServicePrincipals(
         request: model.ListServicePrincipalsRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListServicePrincipalResponse> {
         const path = "/api/2.0/preview/scim/v2/ServicePrincipals";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ListServicePrincipalResponse;
     }
 
@@ -241,16 +253,17 @@ export class ServicePrincipalsService {
      *
      * Create one service principal in the <Workspace>.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async newServicePrincipal(
         request: model.ServicePrincipal,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ServicePrincipal> {
         const path = "/api/2.0/preview/scim/v2/ServicePrincipals";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.ServicePrincipal;
     }
 
@@ -259,16 +272,17 @@ export class ServicePrincipalsService {
      *
      * Partially update details of one service principal.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async patchServicePrincipal(
         request: model.PartialUpdate,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.PatchServicePrincipalResponse> {
         const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
-            cancellationToken
+            context
         )) as model.PatchServicePrincipalResponse;
     }
 
@@ -277,16 +291,17 @@ export class ServicePrincipalsService {
      *
      * Update details of one service principal.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async replaceServicePrincipal(
         request: model.ServicePrincipal,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ReplaceServicePrincipalResponse> {
         const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "PUT",
             request,
-            cancellationToken
+            context
         )) as model.ReplaceServicePrincipalResponse;
     }
 }
@@ -313,16 +328,17 @@ export class UsersService {
      * Delete one user. Deleting a user from a workspace also removes objects
      * associated with the user.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async deleteUser(
         request: model.DeleteUserRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.DeleteUserResponse> {
         const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
-            cancellationToken
+            context
         )) as model.DeleteUserResponse;
     }
 
@@ -331,16 +347,17 @@ export class UsersService {
      *
      * Fetch information of one user in <Workspace>
      */
+    @withLogContext(ExposedLoggers.SDK)
     async fetchUser(
         request: model.FetchUserRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.User> {
         const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.User;
     }
 
@@ -349,16 +366,17 @@ export class UsersService {
      *
      * Get all the users associated with a <Workspace>.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async listUsers(
         request: model.ListUsersRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListUsersResponse> {
         const path = "/api/2.0/preview/scim/v2/Users";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ListUsersResponse;
     }
 
@@ -368,16 +386,17 @@ export class UsersService {
      * Create a user in the <Workspace> who will automatically added to the
      * account.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async newUser(
         request: model.User,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.User> {
         const path = "/api/2.0/preview/scim/v2/Users";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.User;
     }
 
@@ -386,16 +405,17 @@ export class UsersService {
      *
      * Partially update a user resource with operations on specific attributes
      */
+    @withLogContext(ExposedLoggers.SDK)
     async patchUser(
         request: model.PartialUpdate,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.PatchUserResponse> {
         const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
-            cancellationToken
+            context
         )) as model.PatchUserResponse;
     }
 
@@ -404,16 +424,17 @@ export class UsersService {
      *
      * Replaces user with the data supplied in request
      */
+    @withLogContext(ExposedLoggers.SDK)
     async replaceUser(
         request: model.User,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ReplaceUserResponse> {
         const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "PUT",
             request,
-            cancellationToken
+            context
         )) as model.ReplaceUserResponse;
     }
 }

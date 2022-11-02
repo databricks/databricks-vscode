@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 export class LibrariesRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -33,15 +35,16 @@ export class LibrariesService {
      * libraries UI as well as libraries set to be installed on all clusters via
      * the libraries UI.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async allClusterStatuses(
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListAllClusterLibraryStatusesResponse> {
         const path = "/api/2.0/libraries/all-cluster-statuses";
         return (await this.client.request(
             path,
             "GET",
             undefined,
-            cancellationToken
+            context
         )) as model.ListAllClusterLibraryStatusesResponse;
     }
 
@@ -64,16 +67,17 @@ export class LibrariesService {
      * clusters, but now marked for removal. Within this group there is no order
      * guarantee.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async clusterStatus(
         request: model.ClusterStatusRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ClusterLibraryStatuses> {
         const path = "/api/2.0/libraries/cluster-status";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ClusterLibraryStatuses;
     }
 
@@ -88,16 +92,17 @@ export class LibrariesService {
      * union of the libraries specified via this method and the libraries set to
      * be installed on all clusters via the libraries UI.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async install(
         request: model.InstallLibraries,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.InstallLibrariesResponse> {
         const path = "/api/2.0/libraries/install";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.InstallLibrariesResponse;
     }
 
@@ -108,16 +113,17 @@ export class LibrariesService {
      * uninstalled until the cluster is restarted. Uninstalling libraries that
      * are not installed on the cluster will have no impact but is not an error.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async uninstall(
         request: model.UninstallLibraries,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.UninstallLibrariesResponse> {
         const path = "/api/2.0/libraries/uninstall";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.UninstallLibrariesResponse;
     }
 }

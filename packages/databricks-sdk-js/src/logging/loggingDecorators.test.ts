@@ -1,25 +1,17 @@
 import "..";
-import {
-    loggerInstance,
-    logOpId,
-    withLogContext,
-    NamedLogger,
-    DefaultLogger,
-} from ".";
+import {withLogContext, NamedLogger, DefaultLogger} from ".";
+import {context, Context} from "../context";
 import {PassThrough} from "stream";
 import assert from "assert";
 
 class B {
     @withLogContext("Test")
-    async run(
-        @logOpId() opId?: string,
-        @loggerInstance() logger?: NamedLogger
-    ) {
-        logger?.debug("B: start");
+    async run(@context context?: Context) {
+        context?.logger?.debug("B: start");
         await new Promise((resolve) => {
             setTimeout(resolve, 1000);
         });
-        logger?.debug("B: end");
+        context?.logger?.debug("B: end");
     }
 }
 
@@ -27,13 +19,10 @@ class A {
     private b = new B();
 
     @withLogContext("Test")
-    async run(
-        @logOpId() opId?: string,
-        @loggerInstance() logger?: NamedLogger
-    ) {
-        logger?.debug("A: start");
-        await this.b.run(logger?.opId);
-        logger?.debug("A: end");
+    async run(@context context?: Context) {
+        context?.logger?.debug("A: start");
+        await this.b.run(context);
+        context?.logger?.debug("A: end");
     }
 }
 
@@ -50,8 +39,8 @@ describe(__filename, () => {
             },
         });
 
-        const firstExec = new A().run("testId");
-        const secondExec = new A().run("testId2");
+        const firstExec = new A().run(new Context({opId: "testId"}));
+        const secondExec = new A().run(new Context({opId: "testId2"}));
 
         await firstExec;
         await secondExec;

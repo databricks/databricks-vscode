@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 export class WorkspaceRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -41,16 +43,17 @@ export class WorkspaceService {
      *
      * ```json { "path": "/Users/user-name/project", "recursive": true } ```
      */
+    @withLogContext(ExposedLoggers.SDK)
     async delete(
         request: model.Delete,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.DeleteResponse> {
         const path = "/api/2.0/workspace/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.DeleteResponse;
     }
 
@@ -83,16 +86,17 @@ export class WorkspaceService {
      * curl -n -o example.scala \
      * 'https://XX.cloud.databricks.com/api/2.0/workspace/export?path=/Users/user@example.com/ScalaExampleNotebook&direct_download=true'
      */
+    @withLogContext(ExposedLoggers.SDK)
     async export(
         request: model.ExportRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ExportResponse> {
         const path = "/api/2.0/workspace/export";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ExportResponse;
     }
 
@@ -114,16 +118,17 @@ export class WorkspaceService {
      * { "path": "/Users/user@example.com/project/ScalaExampleNotebook",
      * "language": "SCALA", "object_type": "NOTEBOOK", "object_id": 789 }
      */
+    @withLogContext(ExposedLoggers.SDK)
     async getStatus(
         request: model.GetStatusRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ObjectInfo> {
         const path = "/api/2.0/workspace/get-status";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ObjectInfo;
     }
 
@@ -150,16 +155,17 @@ export class WorkspaceService {
      * language=SCALA \ -F content=@example.scala \
      * https://XX.cloud.databricks.com/api/2.0/workspace/import
      */
+    @withLogContext(ExposedLoggers.SDK)
     async import(
         request: model.Import,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ImportResponse> {
         const path = "/api/2.0/workspace/import";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.ImportResponse;
     }
 
@@ -183,16 +189,17 @@ export class WorkspaceService {
      * "/Users/user@example.com/PythonExampleNotebook", "language": "PYTHON",
      * "object_type": "NOTEBOOK", "object_id": 456 } ] }
      */
+    @withLogContext(ExposedLoggers.SDK)
     async list(
         request: model.ListRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListResponse> {
         const path = "/api/2.0/workspace/list";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ListResponse;
     }
 
@@ -209,16 +216,17 @@ export class WorkspaceService {
      *
      * { "path": "/Users/user@example.com/project" }
      */
+    @withLogContext(ExposedLoggers.SDK)
     async mkdirs(
         request: model.Mkdirs,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.MkdirsResponse> {
         const path = "/api/2.0/workspace/mkdirs";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.MkdirsResponse;
     }
 }
