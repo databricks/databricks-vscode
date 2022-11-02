@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 export class PermissionsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -32,16 +34,17 @@ export class PermissionsService {
      * Get the permission of an object. Objects can inherit permissions from
      * their parent objects or root objects.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async getObjectPermissions(
         request: model.GetObjectPermissionsRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ObjectPermissions> {
         const path = `/api/2.0/permissions/${request.object_type}/${request.object_id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ObjectPermissions;
     }
 
@@ -50,16 +53,17 @@ export class PermissionsService {
      *
      * Get permission levels that a user can have.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async getPermissionLevels(
         request: model.GetPermissionLevelsRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.GetPermissionLevelsResponse> {
         const path = `/api/2.0/permissions/${request.request_object_type}/${request.request_object_id}/permissionLevels`;
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.GetPermissionLevelsResponse;
     }
 
@@ -69,16 +73,17 @@ export class PermissionsService {
      * Set permissions on object. Objects can inherit permissiond from their
      * parent objects and root objects.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async setObjectPermissions(
         request: model.SetObjectPermissions,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.SetObjectPermissionsResponse> {
         const path = `/api/2.0/permissions/${request.object_type}/${request.object_id}`;
         return (await this.client.request(
             path,
             "PUT",
             request,
-            cancellationToken
+            context
         )) as model.SetObjectPermissionsResponse;
     }
 
@@ -87,16 +92,17 @@ export class PermissionsService {
      *
      * Update permission on objects
      */
+    @withLogContext(ExposedLoggers.SDK)
     async updateObjectPermissions(
         request: model.UpdateObjectPermissions,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.UpdateObjectPermissionsResponse> {
         const path = `/api/2.0/permissions/${request.object_type}/${request.object_id}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
-            cancellationToken
+            context
         )) as model.UpdateObjectPermissionsResponse;
     }
 }

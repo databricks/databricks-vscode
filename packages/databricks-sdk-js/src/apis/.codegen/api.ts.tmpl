@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types"
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context"
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 {{range $i, $s := .Services }}
 export class {{$s.PascalName}}RetriableError extends ApiRetriableError {
@@ -31,15 +33,16 @@ export class {{$s.PascalName}}Service {
 	/**
     {{.Comment "    * " 80}}
 	*/
+	@withLogContext(ExposedLoggers.SDK)
     async {{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}},{{end}}
-        cancellationToken?: CancellationToken
+        @context context?: Context
 	): Promise<model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}> {
 			const path = {{if .PathParts}}`{{range .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.SnakeName}}}{{end}}{{end}}`{{else}}"{{.Path}}"{{end}}
 			return (await this.client.request(
 				path,
 				"{{.Verb}}",
 				{{if .Request -}}request{{else}}undefined{{end}}, 
-				cancellationToken
+				context
 			) as model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}})
 		}
 
@@ -48,28 +51,31 @@ export class {{$s.PascalName}}Service {
 	* {{.CamelName}} and wait to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state
 	* {{if .Wait.Failure}} or fail on reaching {{range $i, $e := .Wait.Failure}}{{if $i}} or {{end}}{{.Content}}{{end}} state{{end}}
 	*/
+	@withLogContext(ExposedLoggers.SDK)
 	async {{.CamelName}}AndWait({{if .Request}}{{.Request.CamelName}}: model.{{.Request.PascalName}}{{end}},
 		options?: {
 			timeout?: Time,
-			cancellationToken?: CancellationToken,
 			onProgress?: (newPollResponse: model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}) => Promise<void>
-		}			
+		},
+		@context context?: Context	
 	): Promise<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}> {
 
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-		let {cancellationToken, timeout, onProgress} = options;
+		let {timeout, onProgress} = options;
+		let cancellationToken = context?.cancellationToken;
 
-		{{if .Wait.ForceBindRequest}}{{else if .Response}}const {{.Response.CamelName}} = {{end}}await this.{{.CamelName}}({{.Request.CamelName}});
+		{{if .Wait.ForceBindRequest}}{{else if .Response}}const {{.Response.CamelName}} = {{end}}await this.{{.CamelName}}({{if .Request}}{{.Request.CamelName}},{{end}} context);
 
 		return await retry<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}>({
 			timeout,
 			fn: async () => {
 				const pollResponse = await this.{{.Wait.Poll.CamelName}}({ {{$e := .}}{{range .Wait.Binding}}
 					{{.PollField.Name}}: {{.Bind.Of.CamelName}}.{{.Bind.Name}}!,{{end}}
-				}, cancellationToken)
+				}, context)
 				if(cancellationToken?.isCancellationRequested) {
+					context?.logger?.error("{{$s.PascalName}}.{{.CamelName}}AndWait: cancelled");
 					throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", "cancelled");
 				}
 				await onProgress(pollResponse);
@@ -80,10 +86,14 @@ export class {{$s.PascalName}}Service {
 						return pollResponse
 					}
 					{{if .Wait.Failure}}{{range $i, $e := .Wait.Failure}}{{if $i}} {{end}}case '{{$e.Content}}':{{end}}{
-						throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`)
+						const errorMessage = `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`;
+						context?.logger?.error(`{{$s.PascalName}}.{{.CamelName}}AndWait: ${errorMessage}`);
+						throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", errorMessage);
 					}
 					{{end}}default:{
-						throw new {{$s.PascalName}}RetriableError("{{.CamelName}}AndWait", `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`)
+						const errorMessage = `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`;
+						context?.logger?.error(`{{$s.PascalName}}.{{.CamelName}}AndWait: retrying: ${errorMessage}`);
+						throw new {{$s.PascalName}}RetriableError("{{.CamelName}}AndWait", errorMessage);
 					}
 				}
 			}

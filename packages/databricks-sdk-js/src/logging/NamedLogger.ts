@@ -1,4 +1,5 @@
 import {randomUUID} from "crypto";
+import {Context} from "../context";
 import {defaultRedactor} from "../Redactor";
 import {DefaultLogger} from "./DefaultLogger";
 import {Logger} from "./types";
@@ -41,20 +42,18 @@ interface LoggerDetails {
 
 export class NamedLogger {
     private constructor(readonly name: string) {}
-    private _opId?: string;
-    private set opId(id: string | undefined) {
-        this._opId = id;
-    }
-    get opId() {
-        return this._opId;
-    }
+    private _context?: Context;
+    private _loggingFnName?: string;
 
-    private _opName?: string;
-    private set opName(opName: string | undefined) {
-        this._opName = opName;
+    get opId() {
+        return this._context?.opId;
     }
     get opName() {
-        return this._opName;
+        return this._context?.opName;
+    }
+
+    get loggingFnName() {
+        return this._loggingFnName;
     }
 
     private get _logger() {
@@ -88,10 +87,12 @@ export class NamedLogger {
             meta,
             this._loggerOpts?.fieldNameDenyList
         );
+
         this._logger?.log(level, message, {
             logger: this.name,
             operationId: this.opId,
             operationName: this.opName,
+            loggingFunction: this.loggingFnName,
             timestamp: Date.now(),
             ...meta,
         });
@@ -101,23 +102,21 @@ export class NamedLogger {
         this.log(LEVELS.debug, message, obj);
     }
 
+    error(message?: string, obj?: any) {
+        this.log(LEVELS.error, message, obj);
+    }
+
     withContext<T>({
-        opId,
-        opName,
+        context,
+        loggingFnName,
         fn,
     }: {
-        opId?: string;
-        opName?: string;
+        context: Context;
+        loggingFnName: string;
         fn: () => T;
     }) {
-        if (opId) {
-            this.opId = opId;
-        } else {
-            this.opId = randomUUID();
-        }
-
-        this.opName = opName;
-
+        this._context = context;
+        this._loggingFnName = loggingFnName;
         return fn();
     }
 }

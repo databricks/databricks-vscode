@@ -3,19 +3,15 @@ import * as https from "node:https";
 import {TextDecoder} from "node:util";
 import {fromDefaultChain} from "./auth/fromChain";
 import {fetch} from "./fetch";
-import {NamedLogger, loggerInstance, logOpId, withLogContext} from "./logging";
-import {CancellationToken} from "./types";
+import {ExposedLoggers, Utils, withLogContext} from "./logging";
+import {context, Context} from "./context";
 
 const sdkVersion = require("../package.json").version;
 
 type HttpMethod = "POST" | "GET" | "DELETE" | "PATCH" | "PUT";
 
 export class HttpError extends Error {
-    constructor(
-        readonly message: string,
-        readonly code: number,
-        readonly json?: any
-    ) {
+    constructor(readonly message: string, readonly code: number) {
         super(message);
     }
 }
@@ -24,6 +20,21 @@ export class ApiClientResponseError extends Error {
     constructor(readonly message: string, readonly response: any) {
         super(message);
     }
+}
+
+function logAndReturnError(
+    url: URL,
+    request: any,
+    response: any,
+    error: unknown,
+    context?: Context
+) {
+    context?.logger?.error(url.toString(), {
+        request,
+        response,
+        error: Utils.liftAllErrorProps(error),
+    });
+    return error;
 }
 
 export class ApiClient {
@@ -63,14 +74,12 @@ export class ApiClient {
         return pairs.join(" ");
     }
 
-    @withLogContext("SDK")
+    @withLogContext(ExposedLoggers.SDK)
     async request(
         path: string,
         method: HttpMethod,
         payload?: any,
-        cancellationToken?: CancellationToken,
-        @logOpId() opId?: string,
-        @loggerInstance() logger?: NamedLogger
+        @context context?: Context
     ): Promise<Object> {
         const credentials = await this.credentialProvider();
         const headers = {
@@ -100,26 +109,31 @@ export class ApiClient {
         let response;
 
         try {
-            logger?.debug(url.toString(), {request: options});
             const {abort, response: responsePromise} = await fetch(
                 url.toString(),
                 options
             );
-            if (cancellationToken?.onCancellationRequested) {
-                cancellationToken?.onCancellationRequested(abort);
+            if (context?.cancellationToken?.onCancellationRequested) {
+                context?.cancellationToken?.onCancellationRequested(abort);
             }
             response = await responsePromise;
         } catch (e: any) {
-            if (e.code && e.code === "ENOTFOUND") {
-                throw new HttpError(`Can't connect to ${url.toString()}`, 500);
-            } else {
-                throw e;
-            }
+            const err =
+                e.code && e.code === "ENOTFOUND"
+                    ? new HttpError(`Can't connect to ${url.toString()}`, 500)
+                    : e;
+            throw logAndReturnError(url, options, response, err, context);
         }
 
         // throw error if the URL is incorrect and we get back an HTML page
         if (response.headers.get("content-type")?.match("text/html")) {
-            throw new HttpError(`Can't connect to ${url.toString()}`, 404);
+            throw logAndReturnError(
+                url,
+                options,
+                response,
+                new HttpError(`Can't connect to ${url.toString()}`, 404),
+                context
+            );
         }
 
         let responseBody = await response.arrayBuffer();
@@ -127,30 +141,39 @@ export class ApiClient {
 
         // TODO proper error handling
         if (!response.ok) {
-            if (responseText.match(/invalid access token/i)) {
-                throw new HttpError("Invalid access token", response.status);
-            } else {
-                throw new HttpError(responseText, response.status);
-            }
+            const err = responseText.match(/invalid access token/i)
+                ? new HttpError("Invalid access token", response.status)
+                : new HttpError(responseText, response.status);
+            throw logAndReturnError(url, options, responseText, err, context);
         }
 
         try {
             response = JSON.parse(responseText);
-            logger?.debug(url.toString(), {response: response});
         } catch (e) {
-            throw new ApiClientResponseError(responseText, response);
+            logAndReturnError(url, options, responseText, e, context);
+            new ApiClientResponseError(responseText, response);
         }
 
         if ("error" in response) {
+            logAndReturnError(url, options, response, response.error, context);
             throw new ApiClientResponseError(response.error, response);
         }
 
         if ("error_code" in response) {
             let message =
                 response.message || `HTTP error ${response.error_code}`;
-            throw new HttpError(message, response.error_code, response);
+            throw logAndReturnError(
+                url,
+                options,
+                response,
+                new HttpError(message, response.error_code),
+                context
+            );
         }
-
+        context?.logger?.debug(url.toString(), {
+            request: options,
+            response: response,
+        });
         return response as any;
     }
 }

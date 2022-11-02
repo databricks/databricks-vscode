@@ -95,6 +95,8 @@ export class CodeSynchronizer implements Disposable {
                     },
                     this
                 );
+
+                this.disposables.push(changeListener);
             });
         }
     }

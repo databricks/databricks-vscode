@@ -118,7 +118,7 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
     );
 
     // Run/debug group
-    const runCommands = new RunCommands(connectionManager);
+    const runCommands = new RunCommands(connectionManager, synchronizer);
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
         synchronizer

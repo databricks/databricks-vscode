@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 export class ReposRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -33,16 +35,17 @@ export class ReposService {
      * specified. Note that repos created programmatically must be linked to a
      * remote Git repo, unlike repos created in the browser.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async create(
         request: model.CreateRepo,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.RepoInfo> {
         const path = "/api/2.0/repos";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.RepoInfo;
     }
 
@@ -51,16 +54,17 @@ export class ReposService {
      *
      * Deletes the specified repo.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async delete(
         request: model.DeleteRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.DeleteResponse> {
         const path = `/api/2.0/repos/${request.repo_id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
-            cancellationToken
+            context
         )) as model.DeleteResponse;
     }
 
@@ -69,16 +73,17 @@ export class ReposService {
      *
      * Returns the repo with the given repo ID.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async get(
         request: model.GetRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.RepoInfo> {
         const path = `/api/2.0/repos/${request.repo_id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.RepoInfo;
     }
 
@@ -88,16 +93,17 @@ export class ReposService {
      * Returns repos that the calling user has Manage permissions on. Results are
      * paginated with each page containing twenty repos.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async list(
         request: model.ListRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListReposResponse> {
         const path = "/api/2.0/repos";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ListReposResponse;
     }
 
@@ -107,16 +113,17 @@ export class ReposService {
      * Updates the repo to a different branch or tag, or updates the repo to the
      * latest commit on the same branch.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async update(
         request: model.UpdateRepo,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.UpdateResponse> {
         const path = `/api/2.0/repos/${request.repo_id}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
-            cancellationToken
+            context
         )) as model.UpdateResponse;
     }
 }

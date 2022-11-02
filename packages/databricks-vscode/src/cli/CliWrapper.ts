@@ -32,7 +32,6 @@ export class CliWrapper {
             "sync",
             "--remote-path",
             syncDestination.relativeRepoPath,
-            "--persist-snapshot=false",
         ];
         return {command, args};
     }

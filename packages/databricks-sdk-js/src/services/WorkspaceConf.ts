@@ -1,4 +1,5 @@
 import {ApiClient, CancellationToken, WorkspaceConfService} from "..";
+import {Context} from "../context";
 
 type StringBool = "true" | "false" | "";
 
@@ -48,7 +49,7 @@ export class WorkspaceConf {
             {
                 keys: keys.join(","),
             },
-            cancellationToken
+            new Context({cancellationToken})
         );
     }
 
@@ -57,6 +58,9 @@ export class WorkspaceConf {
         cancellationToken?: CancellationToken
     ): Promise<Partial<WorkspaceConfProps>> {
         let wsConfApi = new WorkspaceConfService(this.client);
-        return await wsConfApi.setStatus(request, cancellationToken);
+        return await wsConfApi.setStatus(
+            request,
+            new Context({cancellationToken})
+        );
     }
 }

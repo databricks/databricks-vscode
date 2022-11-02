@@ -15,7 +15,11 @@ export class Redactor {
         this.fieldNames.push(fieldName);
     }
 
-    sanitize(obj: any, dropFields: string[] = []): any {
+    sanitize(obj?: any, dropFields: string[] = []): any {
+        if (obj === undefined) {
+            return undefined;
+        }
+
         if (isPrimitveType(obj)) {
             return obj;
         }

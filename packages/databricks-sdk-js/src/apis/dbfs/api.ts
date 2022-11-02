@@ -8,6 +8,8 @@ import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 
 export class DbfsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -39,16 +41,17 @@ export class DbfsService {
      * Example of request: ``` { "data": "ZGF0YWJyaWNrcwo=", "handle": 7904256 }
      * ```
      */
+    @withLogContext(ExposedLoggers.SDK)
     async addBlock(
         request: model.AddBlock,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.AddBlockResponse> {
         const path = "/api/2.0/dbfs/add-block";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.AddBlockResponse;
     }
 
@@ -58,16 +61,17 @@ export class DbfsService {
      * Closes the stream specified by the input handle. If the handle does not
      * exist, this call throws an exception with ``RESOURCE_DOES_NOT_EXIST``.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async close(
         request: model.Close,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.CloseResponse> {
         const path = "/api/2.0/dbfs/close";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.CloseResponse;
     }
 
@@ -85,16 +89,17 @@ export class DbfsService {
      * `add-block` calls with the handle you have. 3. Issue a `close` call with
      * the handle you have.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async create(
         request: model.Create,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.CreateResponse> {
         const path = "/api/2.0/dbfs/create";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.CreateResponse;
     }
 
@@ -107,16 +112,17 @@ export class DbfsService {
      * This all throws an exception with ``IO_ERROR`` if the path is a non-empty
      * directory and recursive is set to `false` or other similar errors.",
      */
+    @withLogContext(ExposedLoggers.SDK)
     async delete(
         request: model.Delete,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.DeleteResponse> {
         const path = "/api/2.0/dbfs/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.DeleteResponse;
     }
 
@@ -127,16 +133,17 @@ export class DbfsService {
      * directory does not exist, this call throws an exception with
      * ``RESOURCE_DOES_NOT_EXIST``.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async getStatus(
         request: model.GetStatusRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.FileInfo> {
         const path = "/api/2.0/dbfs/get-status";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.FileInfo;
     }
 
@@ -152,16 +159,17 @@ export class DbfsService {
      * ``` { "files": [ { "path": "/a.cpp", "is_dir": false, "file_size\": 261 },
      * { "path": "/databricks-results", "is_dir": true, "file_size\": 0 } ] } ```
      */
+    @withLogContext(ExposedLoggers.SDK)
     async list(
         request: model.ListRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ListStatusResponse> {
         const path = "/api/2.0/dbfs/list";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ListStatusResponse;
     }
 
@@ -174,16 +182,17 @@ export class DbfsService {
      * **Note**: If this operation fails, it might have succeeded in creating
      * some of the necessary parent directories.",
      */
+    @withLogContext(ExposedLoggers.SDK)
     async mkdirs(
         request: model.MkDirs,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.MkDirsResponse> {
         const path = "/api/2.0/dbfs/mkdirs";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.MkDirsResponse;
     }
 
@@ -197,16 +206,17 @@ export class DbfsService {
      * the given source path is a directory, this call always recursively moves
      * all files.",
      */
+    @withLogContext(ExposedLoggers.SDK)
     async move(
         request: model.Move,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.MoveResponse> {
         const path = "/api/2.0/dbfs/move";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.MoveResponse;
     }
 
@@ -236,16 +246,17 @@ export class DbfsService {
      * see :ref:`dbfsDbfsServicecreate`, :ref:`dbfsDbfsServiceaddBlock` and
      * :ref:`dbfsDbfsServiceclose`.
      */
+    @withLogContext(ExposedLoggers.SDK)
     async put(
         request: model.Put,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.PutResponse> {
         const path = "/api/2.0/dbfs/put";
         return (await this.client.request(
             path,
             "POST",
             request,
-            cancellationToken
+            context
         )) as model.PutResponse;
     }
 
@@ -262,16 +273,17 @@ export class DbfsService {
      * If ``offset + length`` exceeds the number of bytes in a file, it reads the
      * contents until the end of file.",
      */
+    @withLogContext(ExposedLoggers.SDK)
     async read(
         request: model.ReadRequest,
-        cancellationToken?: CancellationToken
+        @context context?: Context
     ): Promise<model.ReadResponse> {
         const path = "/api/2.0/dbfs/read";
         return (await this.client.request(
             path,
             "GET",
             request,
-            cancellationToken
+            context
         )) as model.ReadResponse;
     }
 }
