@@ -1,6 +1,6 @@
 import "..";
 import {NamedLogger} from "./NamedLogger";
-import {getContextParamIndex, Context} from "../context";
+import {getContextParamIndex, Context, ContextItems} from "../context";
 
 export function withLogContext(name: string) {
     return function (
@@ -20,12 +20,18 @@ export function withLogContext(name: string) {
             const contextParam =
                 (args[contextParamIndex] as Context | undefined) ??
                 new Context();
-            contextParam.setItems({logger});
+
+            const items: ContextItems = {logger};
+            if (contextParam.opName === undefined) {
+                items.opName = `${this.constructor.name}.${_propertyKey}`;
+            }
+            contextParam.setItems(items);
+
             args[contextParamIndex] = contextParam;
 
             return logger.withContext({
-                opId: contextParam.opId,
-                opName: `${this.constructor.name}.${_propertyKey}`,
+                context: contextParam,
+                loggingFnName: `${this.constructor.name}.${_propertyKey}`,
                 fn: () => method.apply(this, args),
             });
         };
