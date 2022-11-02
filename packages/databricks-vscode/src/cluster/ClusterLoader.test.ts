@@ -58,7 +58,7 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             creator_user_name: "user-2",
             state: "RUNNING",
             single_user_name: me.userName,
-            data_security_mode: "SINGLE_USER",
+            access_mode: "SINGLE_USER",
         },
     ],
 };
