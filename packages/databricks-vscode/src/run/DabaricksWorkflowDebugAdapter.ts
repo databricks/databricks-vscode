@@ -23,7 +23,7 @@ import {
 import {DebugProtocol} from "@vscode/debugprotocol";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
-import {WorkflowRunner} from "./WorkflowOutputPanel";
+import {WorkflowRunner} from "./WorkflowRunner";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
