@@ -18,6 +18,7 @@ import {
     ClusterInfoState,
     ClusterInfoClusterSource,
 } from "../apis/clusters";
+import {Context} from "../context";
 
 export class ClusterRetriableError extends RetriableError {}
 export class ClusterError extends Error {}
@@ -186,14 +187,14 @@ export class Cluster {
                 cluster_id: this.id,
             },
             {
-                cancellationToken: token,
                 onProgress: async (clusterInfo) => {
                     this.details = clusterInfo;
                     if (onProgress) {
                         await onProgress(clusterInfo);
                     }
                 },
-            }
+            },
+            new Context({cancellationToken: token})
         );
     }
 

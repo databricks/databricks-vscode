@@ -16,10 +16,14 @@ export class Redactor {
     }
 
     sanitize(
-        obj: any,
+        obj?: any,
         dropFields: string[] = [],
         maxFieldLength: number = 96
     ): any {
+        if (obj === undefined) {
+            return undefined;
+        }
+
         if (isPrimitveType(obj)) {
             if (typeof obj === "string") {
                 return onlyNBytes(obj, maxFieldLength);
