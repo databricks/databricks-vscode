@@ -214,9 +214,17 @@ export class ClusterLoader implements Disposable {
             if (!this.running) {
                 break;
             }
-            await new Promise((resolve) => {
-                this.disposables.push(this.onStopRequested(resolve));
-                setTimeout(resolve, this.refreshTime.toMillSeconds().value);
+            await new Promise<void>((resolve) => {
+                const timer = setTimeout(
+                    resolve,
+                    this.refreshTime.toMillSeconds().value
+                );
+                this.disposables.push(
+                    this.onStopRequested(() => {
+                        clearInterval(timer);
+                        resolve();
+                    })
+                );
             });
         }
 
