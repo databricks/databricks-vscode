@@ -1873,7 +1873,7 @@ __metadata:
     ts-node: ^10.9.1
     typescript: ^4.8.4
     vsce: ^2.13.0
-    vscode-extension-tester: ^5.1.0
+    vscode-extension-tester: 5.1.x
     winston: ^3.8.2
   languageName: unknown
   linkType: soft
@@ -5859,7 +5859,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vscode-extension-tester@npm:^5.1.0":
+"vscode-extension-tester@npm:5.1.x":
   version: 5.1.0
   resolution: "vscode-extension-tester@npm:5.1.0"
   dependencies:
