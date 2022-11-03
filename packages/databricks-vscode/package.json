@@ -366,8 +366,8 @@
                 },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "Syncing from",
-                    "endsPattern": "Done(\\. Watching for changes\\.\\.\\.)$"
+                    "beginsPattern": "Remote file sync location:",
+                    "endsPattern": "Initial Sync Complete$"
                 }
             }
         ],
