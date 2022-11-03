@@ -1,7 +1,3 @@
-on:
-    push:
-        branches: [release-please-init]
-
 name: Run Release Please
 jobs:
     release-please:
