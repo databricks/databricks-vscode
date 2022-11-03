@@ -169,6 +169,7 @@ describe("Configure Databricks Extension", async function () {
         }
 
         await input.setText(clusterId);
+        await driver.sleep(200);
         await input.confirm();
 
         // wait for tree to update
