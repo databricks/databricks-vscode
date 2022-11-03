@@ -51,13 +51,7 @@ jobs:
               run: yarn test:cov
 
             - name: Integration Tests
-              uses: nick-fields/retry@v2
-              with:
-                  max_attempts: 3
-                  retry_wait_seconds: 2
-                  timeout_minutes: 10
-                  retry_on: any
-                  command: yarn run test:integ:cov
+              run: yarn run test:integ:cov
 
             - run: |
                   cd coverage
@@ -122,18 +116,12 @@ jobs:
               working-directory: packages/databricks-vscode
 
             - name: Integration Tests
-              uses: nick-fields/retry@v2
-              with:
-                  max_attempts: 3
-                  retry_wait_seconds: 2
-                  timeout_minutes: 10
-                  retry_on: any
-                  command: |
-                      yarn workspace databricks-vscode run test:integ:clean
-                      yarn install --immutable
-                      yarn build
-                      cd packages/databricks-vscode
-                      yarn run test:integ
+              run: |
+                  yarn workspace databricks-vscode run test:integ:clean
+                  yarn install --immutable
+                  yarn build
+                  cd packages/databricks-vscode
+                  yarn run test:integ
 
             - name: Upload test logs
               if: always()
