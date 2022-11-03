@@ -1,0 +1,16 @@
+{
+    "plugins": ["node-workspace"],
+    "packages": {
+        "packages/databricks-sdk-js": {
+            "release-type": "node"
+        },
+
+        "packages/databricks-vscode": {
+            "release-type": "node"
+        },
+
+        "packages/databricks-vscode-types": {
+            "release-type": "node"
+        }
+    }
+}
