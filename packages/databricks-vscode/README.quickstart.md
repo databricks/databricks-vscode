@@ -12,12 +12,6 @@ The Databricks extension for VSCode allows you to develop for the Databricks Lak
 
 # <a id="setup-steps"></a>Getting Started
 
-## Install extension
-
-1. Download and install dbx: `pip install dbx`
-2. Download the nightly release matching your platform from https://github.com/databricks/databricks-vscode/releases
-3. Install the downloaded extension using the "Extensions: Install from VSIX..." command (Cmd-Shift-P)
-
 ## Configure Extension
 
 1. Open the Databricks panel by clicking on the Databricks icon on the left
