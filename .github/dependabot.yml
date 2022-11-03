@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/packages/databricks-sdk-js"
+    schedule:
+      interval: "daily" # or weekly
+  - package-ecosystem: "npm"
+    directory: "/packages/databricks-vscode"
+    schedule:
+      interval: "daily" # or weekly
