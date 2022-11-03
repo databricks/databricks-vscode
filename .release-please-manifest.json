@@ -1,0 +1,5 @@
+{
+    "packages/databricks-sdk-js": "0.0.1",
+    "packages/databricks-vscode": "0.0.1",
+    "packages/databricks-vscode-types": "0.0.1"
+}
