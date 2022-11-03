@@ -1,4 +1,6 @@
 {
+    "bootstrap-sha": "db34a5b9d7d6a67fdd0694eae0b36d74fc32c361",
+    "last-release-sha": "db34a5b9d7d6a67fdd0694eae0b36d74fc32c361",
     "plugins": ["node-workspace"],
     "packages": {
         "packages/databricks-sdk-js": {
