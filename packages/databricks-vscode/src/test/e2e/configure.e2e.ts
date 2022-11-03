@@ -27,7 +27,7 @@ describe("Configure Databricks Extension", async function () {
     let clusterId: string;
     let periodicRunners = new Map<string, PeriodicRunner>();
 
-    this.timeout(10 * 60 * 1000);
+    this.timeout(3 * 60 * 1000);
 
     before(async function () {
         browser = VSBrowser.instance;
