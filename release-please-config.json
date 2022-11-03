@@ -12,10 +12,6 @@
 
         "packages/databricks-vscode-types": {
             "release-type": "node"
-        },
-
-        ".": {
-            "release-type": "node"
         }
     }
 }
