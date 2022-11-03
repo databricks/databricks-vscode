@@ -535,6 +535,7 @@
         "mock-require": "^3.0.3",
         "nyc": "^15.1.0",
         "prettier": "^2.7.1",
+        "release-please": "^14.16.0",
         "tmp-promise": "^3.0.3",
         "ts-mockito": "^2.6.1",
         "ts-node": "^10.9.1",
