@@ -161,7 +161,7 @@
             },
             {
                 "command": "databricks.quickstart.open",
-                "title": "Databricks: Open Quickstart"
+                "title": "Databricks: Show Quickstart"
             },
             {
                 "command": "databricks.cluster.start",
