@@ -23,7 +23,7 @@ import {
 import {DebugProtocol} from "@vscode/debugprotocol";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
-import {runAsWorkflow} from "./WorkflowOutputPanel";
+import {WorkflowRunner} from "./WorkflowRunner";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
@@ -49,13 +49,19 @@ interface IAttachRequestArguments extends ILaunchRequestArguments {}
 export class DatabricksWorkflowDebugAdapterFactory
     implements DebugAdapterDescriptorFactory, Disposable
 {
+    private workflowRunner: WorkflowRunner;
+
     constructor(
         private connection: ConnectionManager,
-        private context: ExtensionContext,
-        private codeSynchronizer: CodeSynchronizer
-    ) {}
+        context: ExtensionContext,
+        codeSynchronizer: CodeSynchronizer
+    ) {
+        this.workflowRunner = new WorkflowRunner(context, codeSynchronizer);
+    }
 
-    dispose() {}
+    dispose() {
+        this.workflowRunner.dispose();
+    }
 
     createDebugAdapterDescriptor(
         _session: DebugSession
@@ -63,8 +69,7 @@ export class DatabricksWorkflowDebugAdapterFactory
         return new DebugAdapterInlineImplementation(
             new DatabricksWorkflowDebugSession(
                 this.connection,
-                this.context,
-                this.codeSynchronizer
+                this.workflowRunner
             )
         );
     }
@@ -77,8 +82,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
 
     constructor(
         private connection: ConnectionManager,
-        private context: ExtensionContext,
-        private codeSynchronizer: CodeSynchronizer
+        private workflowRunner: WorkflowRunner
     ) {
         super();
     }
@@ -191,15 +195,13 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             return;
         }
 
-        await runAsWorkflow({
+        await this.workflowRunner.run({
             program: Uri.file(program),
             parameters,
             args,
             cluster,
             syncDestination: syncDestination,
-            context: this.context,
             token: this.token,
-            codeSynchronizer: this.codeSynchronizer,
         });
     }
 

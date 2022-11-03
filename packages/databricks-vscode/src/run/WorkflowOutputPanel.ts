@@ -1,124 +1,34 @@
-import {
-    Cluster,
-    WorkflowRun,
-    jobs,
-    ApiClientResponseError,
-} from "@databricks/databricks-sdk";
-import {basename} from "node:path";
+import {Cluster, WorkflowRun, jobs} from "@databricks/databricks-sdk";
 import * as fs from "node:fs/promises";
-import {
-    CancellationToken,
-    CancellationTokenSource,
-    Disposable,
-    ExtensionContext,
-    Uri,
-    ViewColumn,
-    WebviewPanel,
-    window,
-} from "vscode";
-import {SyncDestination} from "../configuration/SyncDestination";
-import {CodeSynchronizer} from "../sync/CodeSynchronizer";
-import {isNotebook} from "../utils";
-
-// TODO: add dispose, add persistence, reuse panel
-
-export async function runAsWorkflow({
-    program,
-    parameters = {},
-    args = [],
-    cluster,
-    syncDestination,
-    codeSynchronizer,
-    context,
-    token,
-}: {
-    program: Uri;
-    parameters?: Record<string, string>;
-    args?: Array<string>;
-    cluster: Cluster;
-    syncDestination: SyncDestination;
-    codeSynchronizer: CodeSynchronizer;
-    context: ExtensionContext;
-    token?: CancellationToken;
-}) {
-    const panel = new WorkflowOutputPanel(
-        window.createWebviewPanel(
-            "databricks-notebook-job-run",
-            `${basename(program.path)} - Databricks Job Run`,
-            ViewColumn.Two,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true,
-            }
-        ),
-        context.extensionUri
-    );
-
-    const cancellation = new CancellationTokenSource();
-    panel.onDidDispose(() => cancellation.cancel());
-
-    if (token) {
-        token.onCancellationRequested(() => {
-            cancellation.cancel();
-        });
-    }
-
-    // We wait for sync to complete so that the local files are consistant
-    // with the remote repo files
-    await codeSynchronizer.waitForSyncComplete();
-
-    try {
-        if (await isNotebook(program)) {
-            let response = await cluster.runNotebookAndWait({
-                path: syncDestination.localToRemoteNotebook(program),
-                parameters,
-                onProgress: (
-                    state: jobs.RunLifeCycleState,
-                    run: WorkflowRun
-                ) => {
-                    panel.updateState(state, run);
-                },
-                token: cancellation.token,
-            });
-            let htmlContent = response.views![0].content;
-            panel.showHtmlResult(htmlContent || "");
-        } else {
-            let response = await cluster.runPythonAndWait({
-                path: syncDestination.localToRemoteNotebook(program) + ".py",
-                args,
-                onProgress: (
-                    state: jobs.RunLifeCycleState,
-                    run: WorkflowRun
-                ) => {
-                    panel.updateState(state, run);
-                },
-                token: cancellation.token,
-            });
-            panel.showStdoutResult(response.logs || "");
-        }
-    } catch (e: unknown) {
-        if (e instanceof ApiClientResponseError) {
-            panel.showError({
-                message: e.message,
-                stack:
-                    "error_trace" in e.response
-                        ? e.response.error_trace
-                        : undefined,
-            });
-        } else {
-            panel.showError({
-                message: (e as any).message,
-            });
-        }
-    }
-}
+import {Disposable, Uri, WebviewPanel} from "vscode";
 
 export class WorkflowOutputPanel {
-    private run?: WorkflowRun;
-    constructor(private panel: WebviewPanel, private extensionUri: Uri) {
-        this.getWebviewContent().then((html) => {
-            panel.webview.html = html;
-        });
+    constructor(
+        private panel: WebviewPanel,
+        private readonly webviewContent: string
+    ) {
+        this.reset();
+    }
+
+    static async create(
+        panel: WebviewPanel,
+        extensionUri: Uri
+    ): Promise<WorkflowOutputPanel> {
+        let webviewContent = await WorkflowOutputPanel.getWebviewContent(
+            panel,
+            extensionUri
+        );
+
+        return new WorkflowOutputPanel(panel, webviewContent);
+    }
+
+    reset() {
+        this.panel.webview.html =
+            this.webviewContent + `<!-- ${Date.now()} -->`;
+    }
+
+    focus() {
+        this.panel.reveal();
     }
 
     onDidDispose(listener: () => void): Disposable {
@@ -147,7 +57,6 @@ export class WorkflowOutputPanel {
         });
     }
 
-    // TODO: use new webview to render errors
     showError({message, stack}: {message?: string; stack?: string}) {
         this.panel.webview.postMessage({
             fn: "setError",
@@ -155,8 +64,11 @@ export class WorkflowOutputPanel {
         });
     }
 
-    updateState(state: jobs.RunLifeCycleState, run: WorkflowRun) {
-        this.run = run;
+    async updateState(
+        cluster: Cluster,
+        state: jobs.RunLifeCycleState,
+        run: WorkflowRun
+    ) {
         this.panel.webview.postMessage({
             type: "status",
             state,
@@ -164,15 +76,13 @@ export class WorkflowOutputPanel {
         });
 
         const task = run.tasks![0];
-        const cluster = task.cluster_instance;
+        const taskCluster = task.cluster_instance;
 
         let clusterUrl = "#";
-        if (cluster) {
-            clusterUrl = `https://${
-                new URL(run.runPageUrl).hostname
-            }/#setting/sparkui/${cluster.cluster_id}/driver-${
-                cluster.spark_context_id
-            }`;
+        if (taskCluster) {
+            clusterUrl = await cluster.getSparkUiUrl(
+                taskCluster.spark_context_id
+            );
         }
 
         this.panel.webview.postMessage({
@@ -182,48 +92,42 @@ export class WorkflowOutputPanel {
                     runUrl: run.runPageUrl,
                     runId: task.run_id,
                     clusterUrl,
-                    clusterId: cluster?.cluster_id || "-",
+                    clusterId: taskCluster?.cluster_id || "-",
                     started: task.start_time
                         ? new Date(task.start_time).toLocaleString()
                         : "-",
                     ended: task.end_time
                         ? new Date(task.end_time).toLocaleString()
                         : "-",
+                    duration: task.start_time
+                        ? Date.now() - task.start_time
+                        : -1,
                     status: state,
                 },
             ],
         });
-        if (task.end_time) {
-            this.panel.webview.postMessage({
-                fn: "stop",
-                args: [],
-            });
-        }
     }
 
-    getToolkitUri(): Uri {
-        return this.panel.webview.asWebviewUri(
+    private static getToolkitUri(panel: WebviewPanel, extensionUri: Uri): Uri {
+        return panel.webview.asWebviewUri(
             Uri.joinPath(
-                this.extensionUri,
+                extensionUri,
                 "out",
                 "toolkit.js" // A toolkit.min.js file is also available
             )
         );
     }
 
-    private async getWebviewContent(): Promise<string> {
-        const htmlFile = Uri.joinPath(
-            this.extensionUri,
-            "webview-ui",
-            "job.html"
-        );
+    private static async getWebviewContent(
+        panel: WebviewPanel,
+        extensionUri: Uri
+    ): Promise<string> {
+        const htmlFile = Uri.joinPath(extensionUri, "webview-ui", "job.html");
         let html = await fs.readFile(htmlFile.fsPath, "utf8");
-        html = html
-            .replace(/\/\*\* STRIP -> \*\*\/(.*?)\/\*\* <- STRIP \*\*\//gs, "")
-            .replace(
-                /src="[^"].*?\/toolkit.js"/g,
-                `src="${this.getToolkitUri()}"`
-            );
+        html = html.replace(
+            /src="[^"].*?\/toolkit.js"/g,
+            `src="${WorkflowOutputPanel.getToolkitUri(panel, extensionUri)}"`
+        );
 
         return html;
     }

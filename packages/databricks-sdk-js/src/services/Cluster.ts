@@ -42,9 +42,33 @@ export class Cluster {
 
     get url(): Promise<string> {
         return (async () =>
-            `${(await this.client.host).host}/#setting/clusters/${
+            `https://${(await this.client.host).host}/#setting/clusters/${
                 this.id
             }/configuration`)();
+    }
+
+    get driverLogsUrl(): Promise<string> {
+        return (async () =>
+            `https://${(await this.client.host).host}/#setting/clusters/${
+                this.id
+            }/driverLogs`)();
+    }
+
+    get metricsUrl(): Promise<string> {
+        return (async () =>
+            `https://${(await this.client.host).host}/#setting/clusters/${
+                this.id
+            }/metrics`)();
+    }
+
+    async getSparkUiUrl(sparkContextId?: string): Promise<string> {
+        let host = (await this.client.host).host;
+
+        if (sparkContextId) {
+            return `https://${host}/#setting/sparkui/${this.id}/driver-${sparkContextId}`;
+        } else {
+            return `https://${host}/#setting/clusters/${this.id}/sparkUi`;
+        }
     }
 
     get memoryMb(): number | undefined {

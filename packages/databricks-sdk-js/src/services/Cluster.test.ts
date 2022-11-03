@@ -273,4 +273,40 @@ describe(__filename, function () {
             assert.deepEqual(cluster.dbrVersion, expectedDbr);
         }
     });
+
+    it("should return correct URLs", async () => {
+        const mockedClient = mock(ApiClient);
+        when(mockedClient.host).thenResolve(
+            new URL("https://test.cloud.databricks.com")
+        );
+        const clusterDetails = {
+            cluster_id: "1118-013127-82wynr8t",
+        };
+        const cluster = new Cluster(instance(mockedClient), clusterDetails);
+
+        assert.equal(
+            await cluster.url,
+            "https://test.cloud.databricks.com/#setting/clusters/1118-013127-82wynr8t/configuration"
+        );
+
+        assert.equal(
+            await cluster.driverLogsUrl,
+            "https://test.cloud.databricks.com/#setting/clusters/1118-013127-82wynr8t/driverLogs"
+        );
+
+        assert.equal(
+            await cluster.metricsUrl,
+            "https://test.cloud.databricks.com/#setting/clusters/1118-013127-82wynr8t/metrics"
+        );
+
+        assert.equal(
+            await cluster.getSparkUiUrl(),
+            "https://test.cloud.databricks.com/#setting/clusters/1118-013127-82wynr8t/sparkUi"
+        );
+
+        assert.equal(
+            await cluster.getSparkUiUrl("7189805239423176682"),
+            "https://test.cloud.databricks.com/#setting/sparkui/1118-013127-82wynr8t/driver-7189805239423176682"
+        );
+    });
 });
