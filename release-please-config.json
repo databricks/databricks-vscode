@@ -1,18 +1,27 @@
 {
     "bootstrap-sha": "db34a5b9d7d6a67fdd0694eae0b36d74fc32c361",
     "last-release-sha": "db34a5b9d7d6a67fdd0694eae0b36d74fc32c361q",
-    "plugins": ["node-workspace"],
+    "plugins": [
+        "node-workspace"
+    ],
     "packages": {
         "packages/databricks-sdk-js": {
             "release-type": "node"
         },
-
         "packages/databricks-vscode": {
             "release-type": "node"
         },
-
         "packages/databricks-vscode-types": {
             "release-type": "node"
+        },
+        ".": {
+            "changelog-path": "CHANGELOG.md",
+            "release-type": "node",
+            "bump-minor-pre-major": false,
+            "bump-patch-for-minor-pre-major": false,
+            "draft": false,
+            "prerelease": false
         }
-    }
+    },
+    "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
 }
