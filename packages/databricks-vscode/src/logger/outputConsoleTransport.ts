@@ -2,31 +2,7 @@ import {OutputChannel, workspace} from "vscode";
 import {transports, format} from "winston";
 import {OutputConsoleStream} from "./OutputConsoleStream";
 import {LEVEL, MESSAGE, SPLAT} from "triple-beam";
-import {info} from "console";
-
-const workspaceConfigs = {
-    get maxFieldLength() {
-        return (
-            workspace
-                .getConfiguration("databricks")
-                ?.get<number>("logs.maxFieldLength") ?? 40
-        );
-    },
-    get truncationDepth() {
-        return (
-            workspace
-                .getConfiguration("databricks")
-                ?.get<number>("logs.truncationDepth") ?? 2
-        );
-    },
-    get maxArrayLength() {
-        return (
-            workspace
-                .getConfiguration("databricks")
-                ?.get<number>("logs.maxArrayLength") ?? 2
-        );
-    },
-};
+import {workspaceConfigs} from "./WorkspaceConfigs";
 
 function processPrimitiveOrString(obj: any) {
     let valueStr: string;

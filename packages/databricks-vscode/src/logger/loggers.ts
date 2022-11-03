@@ -5,6 +5,8 @@ import {
 import {window} from "vscode";
 import {loggers, format, transports} from "winston";
 import {getOutputConsoleTransport} from "./outputConsoleTransport";
+import {unlink, access} from "fs/promises";
+import {workspaceConfigs} from "./WorkspaceConfigs";
 
 function getFileTransport(filename: string) {
     return new transports.File({
@@ -13,8 +15,18 @@ function getFileTransport(filename: string) {
     });
 }
 
-export function initLoggers(rootPath: string) {
+export async function initLoggers(rootPath: string) {
+    if (!workspaceConfigs.loggingEnabled) {
+        return;
+    }
+
     const outputChannel = window.createOutputChannel("Databricks Logs");
+    const logFile = `${rootPath}/.databricks/logs.json`;
+    try {
+        await access(logFile);
+        await unlink(logFile);
+    } catch (e) {}
+
     outputChannel.clear();
 
     NamedLogger.getOrCreate(
@@ -25,7 +37,7 @@ export function initLoggers(rootPath: string) {
                     level: "debug",
                     transports: [
                         getOutputConsoleTransport(outputChannel),
-                        getFileTransport(`${rootPath}/.databricks/logs.txt`),
+                        getFileTransport(logFile),
                     ],
                 });
             },
@@ -46,7 +58,7 @@ export function initLoggers(rootPath: string) {
                     level: "error",
                     transports: [
                         getOutputConsoleTransport(outputChannel),
-                        getFileTransport(`${rootPath}/.databricks/logs.txt`),
+                        getFileTransport(logFile),
                     ],
                 });
             },

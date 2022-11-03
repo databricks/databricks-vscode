@@ -492,19 +492,25 @@
                         "title": "Max Field Length",
                         "type": "number",
                         "default": 40,
-                        "description": "The maximum length of each field displayed in logs outputs panel"
+                        "description": "The maximum length of each field displayed in logs outputs panel."
                     },
                     "databricks.logs.truncationDepth": {
                         "title": "Truncation Depth",
                         "type": "number",
                         "default": 2,
-                        "description": "The max depth of logs to show without truncation"
+                        "description": "The max depth of logs to show without truncation."
                     },
                     "databricks.logs.maxArrayLength": {
                         "title": "Max Array Length",
                         "type": "number",
                         "default": 2,
-                        "description": "The maximum number of items to show for array fields"
+                        "description": "The maximum number of items to show for array fields."
+                    },
+                    "databricks.logs.enabled": {
+                        "title": "Enabled",
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable logging. Reload window for changes to take effect."
                     }
                 }
             }
