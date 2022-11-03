@@ -30,6 +30,7 @@ function isGotResponseOk(response: Response) {
 
 const options: OptionsOfTextResponseBody & {isStream?: undefined} = {
     headers: {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         "user-agent": "nodejs",
     },
     agent: {
