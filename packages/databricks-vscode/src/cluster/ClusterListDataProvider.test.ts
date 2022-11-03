@@ -120,7 +120,7 @@ describe(__filename, () => {
             {
                 contextValue: "databricks-link",
                 description:
-                    "www.example.com/#setting/clusters/cluster-id-2/configuration",
+                    "https://www.example.com/#setting/clusters/cluster-id-2/configuration",
                 label: "URL:",
             },
             {

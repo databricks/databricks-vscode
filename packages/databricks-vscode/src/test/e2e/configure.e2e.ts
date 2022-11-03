@@ -27,7 +27,7 @@ describe("Configure Databricks Extension", async function () {
     let clusterId: string;
     let periodicRunners = new Map<string, PeriodicRunner>();
 
-    this.timeout(10 * 60 * 1000);
+    this.timeout(3 * 60 * 1000);
 
     before(async function () {
         browser = VSBrowser.instance;
@@ -169,6 +169,7 @@ describe("Configure Databricks Extension", async function () {
         }
 
         await input.setText(clusterId);
+        await driver.sleep(200);
         await input.confirm();
 
         // wait for tree to update
