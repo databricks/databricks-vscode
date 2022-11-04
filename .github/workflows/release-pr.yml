@@ -9,8 +9,6 @@ on:
                 default: 0.0.0
                 type: string
 
-    pull_request:
-        branch: [main]
     push:
         branch: [main]
 
