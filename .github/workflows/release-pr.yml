@@ -1,0 +1,60 @@
+name: VSCode Extensions CI
+
+on:
+    workflow_dispatch:
+
+jobs:
+    generate-changelog:
+      strategy:
+          matrix:
+              package:
+                  [
+                      packages/databricks-vscode,
+                      packages/databricks-sdk,
+                      packages/databricks-vscode-types,
+                      ".",
+                  ]
+              node-version: [16.x]
+      steps:
+        - uses: actions/checkout@v3
+          with: 
+              fetch-depth: 0
+
+        - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v3
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: "yarn"
+
+        - run: yarn install --immutable
+        
+        - name: Changelog for ${{ matrix.package }}
+          run: |
+              TAG=`git describe --abbrev=0 --match "release-v"`
+              
+              echo "## ${{ matrix.package }}" >> $GITHUB_STEP_SUMMARY
+              if [ $? -ne 0 ]; then
+                echo "No release tag matching pattern 'release-v*' found. Generating changelog from beggining"
+                yarn conventional-changelog -k ${{ matrix.package }} --commit-path ${{ matrix.package }} >> $GITHUB_STEP_SUMMARY
+              else
+                echo "Release tag found. Generating changelog from $TAG"
+                yarn conventional-changelog --tag-prefix="release-v" -k ${{ matrix.package }} --commit-path ${{ matrix.package }} >> $GITHUB_STEP_SUMMARY
+              fi
+
+
+    version-check:
+        name: Version Check
+        runs-on: "macos-latest"
+        steps:
+            - uses: actions/checkout@v3
+              with: 
+                fetch-depth: 0
+
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v3
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: "yarn"
+
+            - run: yarn install --immutable
+            - run: yarn version --check
