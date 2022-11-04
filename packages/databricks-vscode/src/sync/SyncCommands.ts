@@ -1,3 +1,4 @@
+import {SyncType} from "../cli/CliWrapper";
 import {CodeSynchronizer} from "./CodeSynchronizer";
 
 export class SyncCommands {
@@ -9,7 +10,7 @@ export class SyncCommands {
         };
     }
 
-    startCommand(syncType: "full" | "incremental") {
+    startCommand(syncType: SyncType) {
         return async () => {
             await this.sync.start(syncType);
         };
