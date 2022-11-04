@@ -18,6 +18,10 @@ jobs:
               with:
                   fetch-depth: 0
 
+            - run: |
+                  git config --global user.name "github"
+                  git config --global user.email "noreply@github.com"
+
             - name: Use Node.js ${{ matrix.node-version }}
               uses: actions/setup-node@v3
               with:
@@ -40,7 +44,7 @@ jobs:
                   COMMIT_SHA=$(git rev-parse --short HEAD)
                   git checkout -b releases/draft-$COMMIT_SHA
                   git add CHANGELOG.md
-                  git commit -S -m "Changelog"
+                  git commit -m "Changelog"
                   git push origin HEAD
                   echo "branch_name=releases/draft-$COMMIT_SHA" >> $GITHUB_OUTPUT
 
