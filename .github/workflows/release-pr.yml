@@ -37,7 +37,7 @@ jobs:
                   bash scripts/generate_changelog.sh tmpfile
                   cat tmpfile >> $GITHUB_STEP_SUMMARY
                   cat tmpfile >> CHANGELOG.md
-                  echo "changelog_file=tempfile" >> $GITHUB_OUTPUT
+                  echo "changelog_file=tmpfile" >> $GITHUB_OUTPUT
 
             - name: Create Branch
               id: create-branch
