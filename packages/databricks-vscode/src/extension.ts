@@ -22,6 +22,7 @@ import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
+import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {initLoggers} from "./logger";
 import {UtilsCommands} from "./utils/UtilsCommands";
@@ -236,6 +237,8 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
             quickstartCommands
         )
     );
+
+    showQuickStartOnFirstUse(context);
 
     //utils
     const utilCommands = new UtilsCommands();
