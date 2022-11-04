@@ -9,7 +9,6 @@ on:
 jobs:
     test-release-pr:
         name: Test Release PR
-        runs-on: macos-latest
         uses: ./.github/workflows/release-pr.yml
         with:
             version: 0.0.1
