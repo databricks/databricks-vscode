@@ -4,19 +4,14 @@ on:
     workflow_dispatch:
     pull_request:
         branch: [main]
+    push:
+        branch: [main]
 
 jobs:
     generate-changelog:
         runs-on: "macos-latest"
         strategy:
             matrix:
-                package:
-                    [
-                        packages/databricks-vscode,
-                        packages/databricks-sdk,
-                        packages/databricks-vscode-types,
-                        ".",
-                    ]
                 node-version: [16.x]
         steps:
             - uses: actions/checkout@v3
@@ -31,22 +26,27 @@ jobs:
 
             - run: yarn install --immutable
 
-            - name: Changelog for ${{ matrix.package }}
-              run: bash scripts/generate_changelog.sh ${{ matrix.package }} $GITHUB_STEP_SUMMARY
+            - name: Changelog
+              id: create-changelog
+              run: |
+                  bash scripts/generate_changelog.sh $PACKAGE tmpfile
+                  cat tmpfile >> $GITHUB_STEP_SUMMARY
+                  cat tmpfile >> CHANGELOG.md
+                  echo "changelog_file=tempfile" >> $GITHUB_OUTPUT
 
-    version-check:
-        name: Version Check
-        runs-on: "macos-latest"
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                  fetch-depth: 0
+            - name: Create Branch
+              id: create-branch
+              run: |
+                  COMMIT_SHA=$(git rev-parse --short HEAD)
+                  git checkout -b releases/draft-$COMMIT_SHA
+                  git add CHANGELOG.md
+                  git commit -S -m "Changelog"
+                  git push origin HEAD
+                  echo "branch_name=releases/draft-$COMMIT_SHA" >> $GITHUB_OUTPUT
 
-            - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ matrix.node-version }}
-                  cache: "yarn"
-
-            - run: yarn install --immutable
-            - run: yarn version check
+            - name: Create PR
+              run: |
+                  gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} \
+                  --title "Release:ENTER_RELEASE_VERSION" \
+                  --body-file ${{ steps.create-changelog.outputs.changelog_file }}
+                  rm ${{ steps.create-changelog.outputs.changelog_file }}

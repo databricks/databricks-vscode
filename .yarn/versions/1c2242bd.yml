@@ -1,7 +1,5 @@
-releases:
-  "@databricks/databricks-sdk": patch
-  "@databricks/databricks-vscode": patch
-
 declined:
+  - "@databricks/databricks-vscode"
+  - "@databricks/databricks-sdk"
   - databricks-vscode
   - "@databricks/databricks-vscode-types"
