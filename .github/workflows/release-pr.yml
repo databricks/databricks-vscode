@@ -43,11 +43,12 @@ jobs:
               id: create-branch
               run: |
                   COMMIT_SHA=$(git rev-parse --short HEAD)
-                  git checkout -b releases/draft-$COMMIT_SHA
+                  BRANCH=releases/draft-$COMMIT_SHA-$(date +%s)
+                  git checkout -b $BRANCH
                   git add CHANGELOG.md
                   git commit -m "Changelog"
                   git push origin HEAD
-                  echo "branch_name=releases/draft-$COMMIT_SHA" >> $GITHUB_OUTPUT
+                  echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
 
             - name: Create PR
               run: |
