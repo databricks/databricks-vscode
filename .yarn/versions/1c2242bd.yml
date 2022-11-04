@@ -1,5 +1,4 @@
-declined:
+undecided:
   - "@databricks/databricks-vscode"
   - "@databricks/databricks-sdk"
   - databricks-vscode
-  - "@databricks/databricks-vscode-types"
