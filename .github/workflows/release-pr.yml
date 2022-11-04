@@ -33,9 +33,8 @@ jobs:
 
             - name: Changelog for ${{ matrix.package }}
               run: |
-                  TAG=`git describe --abbrev=0 --match "release-v"`
-
                   echo "## ${{ matrix.package }}" >> $GITHUB_STEP_SUMMARY
+                  TAG=$(git describe --abbrev=0 --match "release-v*")
                   if [ $? -ne 0 ]; then
                     echo "No release tag matching pattern 'release-v*' found. Generating changelog from beggining"
                     yarn conventional-changelog -k ${{ matrix.package }} --commit-path ${{ matrix.package }} >> $GITHUB_STEP_SUMMARY
