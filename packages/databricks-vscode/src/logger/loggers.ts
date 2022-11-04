@@ -2,19 +2,31 @@ import {
     NamedLogger,
     ExposedLoggers,
 } from "@databricks/databricks-sdk/dist/logging";
-import {OutputChannel, window} from "vscode";
+import {window} from "vscode";
 import {loggers, format, transports} from "winston";
-import {OutputConsoleStream} from "./OutputConsoleStream";
+import {getOutputConsoleTransport} from "./outputConsoleTransport";
+import {unlink, access} from "fs/promises";
+import {workspaceConfigs} from "./WorkspaceConfigs";
 
-function getOutputConsoleTransport(outputChannel: OutputChannel) {
-    return new transports.Stream({
-        stream: new OutputConsoleStream(outputChannel, {
-            defaultEncoding: "utf-8",
-        }),
+function getFileTransport(filename: string) {
+    return new transports.File({
+        format: format.combine(format.timestamp(), format.json()),
+        filename: filename,
     });
 }
-export function initLoggers() {
-    const outputChannel = window.createOutputChannel("Databricks Logs", "json");
+
+export async function initLoggers(rootPath: string) {
+    if (!workspaceConfigs.loggingEnabled) {
+        return;
+    }
+
+    const outputChannel = window.createOutputChannel("Databricks Logs");
+    const logFile = `${rootPath}/.databricks/logs.json`;
+    try {
+        await access(logFile);
+        await unlink(logFile);
+    } catch (e) {}
+
     outputChannel.clear();
 
     NamedLogger.getOrCreate(
@@ -23,8 +35,10 @@ export function initLoggers() {
             factory: (name) => {
                 return loggers.add(name, {
                     level: "debug",
-                    format: format.json(),
-                    transports: [getOutputConsoleTransport(outputChannel)],
+                    transports: [
+                        getOutputConsoleTransport(outputChannel),
+                        getFileTransport(logFile),
+                    ],
                 });
             },
         },
@@ -42,8 +56,10 @@ export function initLoggers() {
             factory: (name) => {
                 return loggers.add(name, {
                     level: "error",
-                    format: format.json(),
-                    transports: [getOutputConsoleTransport(outputChannel)],
+                    transports: [
+                        getOutputConsoleTransport(outputChannel),
+                        getFileTransport(logFile),
+                    ],
                 });
             },
         },

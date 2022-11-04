@@ -42,7 +42,7 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         */
         return undefined;
     }
-    initLoggers();
+    initLoggers(workspace.workspaceFolders[0].uri.path);
 
     let cli = new CliWrapper(context);
     // Configuration group
