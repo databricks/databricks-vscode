@@ -53,16 +53,6 @@ export class ConnectionCommands implements Disposable {
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel
     ) {}
-    /**
-     * Try logging in with previously selected profile. If login fails or no profile
-     * exists then ask user to configure or select a profile. The selected profile
-     * is stored in project settings.
-     */
-    loginCommand() {
-        return () => {
-            this.connectionManager.login(true);
-        };
-    }
 
     /**
      * disconnect fomr Databricks and remove profile from project settings.
@@ -74,9 +64,9 @@ export class ConnectionCommands implements Disposable {
         };
     }
 
-    configureProjectCommand() {
+    configureWorkspaceCommand() {
         return () => {
-            this.connectionManager.configureProject();
+            this.connectionManager.configureWorkspace();
         };
     }
 

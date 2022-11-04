@@ -14,7 +14,6 @@ import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
-import {CliCommands} from "./cli/CliCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
 import {SyncCommands} from "./sync/SyncCommands";
@@ -71,18 +70,13 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
             configurationDataProvider
         ),
         commands.registerCommand(
-            "databricks.connection.login",
-            connectionCommands.loginCommand(),
-            connectionCommands
-        ),
-        commands.registerCommand(
             "databricks.connection.logout",
             connectionCommands.logoutCommand(),
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.connection.configureProject",
-            connectionCommands.configureProjectCommand(),
+            "databricks.connection.configureWorkspace",
+            connectionCommands.configureWorkspaceCommand(),
             connectionCommands
         ),
         commands.registerCommand(
@@ -210,17 +204,11 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         )
     );
 
-    // CLI commands
-    const cliCommands = new CliCommands(cli);
+    // Bricks tasks
     context.subscriptions.push(
         tasks.registerTaskProvider(
             "databricks",
             new BricksTaskProvider(connectionManager, cli)
-        ),
-        commands.registerCommand(
-            "databricks.cli.testBricksCli",
-            cliCommands.testBricksCommand(),
-            cliCommands
         )
     );
 

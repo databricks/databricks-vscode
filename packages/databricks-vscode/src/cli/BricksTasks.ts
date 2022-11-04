@@ -13,7 +13,7 @@ import {
     TerminalDimensions,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {CliWrapper, Command} from "./CliWrapper";
+import {CliWrapper, Command, SyncType} from "./CliWrapper";
 import {ChildProcess, spawn, SpawnOptions} from "node:child_process";
 import {SyncState} from "../sync/CodeSynchronizer";
 import {BricksSyncParser} from "./BricksSyncParser";
@@ -47,7 +47,7 @@ export class SyncTask extends Task {
         // use syncType to decide the sync type for bricks cli. Right now bricks cli
         // only supports full sync for multiple profiles.
         // see: https://github.com/databricks/bricks/issues/71
-        syncType: "full" | "incremental",
+        syncType: SyncType,
         syncStateCallback: (state: SyncState) => void
     ) {
         super(
@@ -192,7 +192,7 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
     constructor(
         private connection: ConnectionManager,
         private cli: CliWrapper,
-        private syncType: "full" | "incremental",
+        private syncType: SyncType,
         syncStateCallback: (state: SyncState) => void
     ) {
         super("", [], {}, syncStateCallback);
@@ -270,7 +270,7 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
             );
         }
 
-        this.command = this.cli.getSyncCommand(syncDestination);
+        this.command = this.cli.getSyncCommand(syncDestination, this.syncType);
 
         return this.command;
     }
