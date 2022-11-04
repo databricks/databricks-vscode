@@ -67,10 +67,6 @@ Fixed issue #.
 
 Added features X, Y, and Z.
 
-## License
-
-The **Databricks extension for Visual Studio Code** is distributed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
-
 ---
 
 ## Following extension guidelines
