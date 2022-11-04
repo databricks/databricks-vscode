@@ -1,4 +1,4 @@
-name: VSCode Extensions CI
+name: Release PR
 
 on:
     workflow_dispatch:
