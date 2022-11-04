@@ -1,27 +1,27 @@
 {
-  "name": "@databricks/databricks-vscode-types",
-  "version": "1.0.0",
-  "description": "Package with types and interfaces to develop extensions to the Databricks VSCode plugin",
-  "main": "index.js",
-  "types": "index.d.ts",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/databricks/databricks-vscode.git"
-  },
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/databricks/databricks-vscode/issues"
-  },
-  "homepage": "https://github.com/databricks/databricks-vscode#readme",
-  "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w"
-  },
-  "devDependencies": {
-    "@types/vscode": "^1.73.0",
-    "typescript": "^4.8.4"
-  },
-  "dependencies": {
-    "@databricks/databricks-sdk": "workspace:^"
-  }
+    "name": "@databricks/databricks-vscode-types",
+    "version": "1.0.0",
+    "description": "Package with types and interfaces to develop extensions to the Databricks VSCode plugin",
+    "main": "index.js",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/databricks/databricks-vscode.git"
+    },
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/databricks/databricks-vscode/issues"
+    },
+    "homepage": "https://github.com/databricks/databricks-vscode#readme",
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc -w"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.73.0",
+        "typescript": "^4.8.4"
+    },
+    "dependencies": {
+        "@databricks/databricks-sdk": "workspace:^"
+    }
 }

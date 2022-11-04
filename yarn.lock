@@ -319,6 +319,7 @@ __metadata:
     "@typescript-eslint/parser": ^5.42.0
     eslint: ^8.26.0
     eslint-config-prettier: ^8.5.0
+    prettier: ^2.7.1
     ts-mockito: ^2.6.1
     typescript: ^4.8.4
   languageName: unknown
