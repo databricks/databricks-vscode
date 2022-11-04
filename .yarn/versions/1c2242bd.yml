@@ -1,2 +1,2 @@
-releases:
-  "@databricks/databricks-vscode": patch
+declined:
+  - "@databricks/databricks-vscode"
