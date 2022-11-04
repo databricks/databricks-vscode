@@ -14,8 +14,6 @@ on:
             version:
                 default: 0.0.0
                 type: string
-    push:
-        branch: [main]
 
 jobs:
     release-pr:

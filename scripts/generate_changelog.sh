@@ -3,7 +3,7 @@ for PACKAGE in "packages/databricks-vscode" "packages/databricks-sdk" "packages/
 
     TAG=$(git describe --abbrev=0 --match "release-v*")
     if [ $? -ne 0 ]; then
-        echo "No release tag matching pattern 'release-v*' found. Generating changelog from beggining"
+        echo "No release tag matching pattern 'release-v*' found. Generating changelog from begining"
         yarn conventional-changelog -k $PACKAGE --commit-path $PACKAGE >> $1
     else
         echo "Release tag found. Generating changelog from $TAG"
