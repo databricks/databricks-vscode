@@ -1,0 +1,14 @@
+name: TestRelease PR
+
+on:
+    pull_request:
+        branch: [main]
+    push:
+        branch: [main]
+
+jobs:
+    test-release-pr:
+        name: Test Release PR
+        uses: ./.github/workflows/release-pr.yml
+        with:
+            version: 0.0.1
