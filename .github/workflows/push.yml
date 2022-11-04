@@ -27,21 +27,6 @@ jobs:
             bricks_arch: ${{ matrix.arch.bricks_arch }}
         secrets: inherit
 
-    version-check:
-        name: Version Check
-        runs-on: "macos-latest"
-        steps:
-            - uses: actions/checkout@v3
-
-            - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ matrix.node-version }}
-                  cache: "yarn"
-
-            - run: yarn install --immutable
-            - run: yarn version --check
-
     package:
         name: Package VSIX
         needs: "run-tests"
