@@ -3,8 +3,6 @@ import {
     Cluster,
     fromConfigFile,
     CredentialProvider,
-    WorkspaceConf,
-    scim,
     WorkspaceService,
     HttpError,
 } from "@databricks/databricks-sdk";
@@ -218,7 +216,7 @@ export class ConnectionManager {
         this.updateState("DISCONNECTED");
     }
 
-    async configureProject() {
+    async configureWorkspace() {
         let profile: string | undefined;
         while (true) {
             profile = await selectProfile(this.cli);
