@@ -18,7 +18,7 @@ on:
         branch: [main]
 
 jobs:
-    generate-changelog:
+    release-pr:
         runs-on: "macos-latest"
         strategy:
             matrix:
@@ -29,7 +29,7 @@ jobs:
                   fetch-depth: 0
 
             - name: Check Version
-              run: $([[ "${{ inputs.version }}" =~ ^([0-9]+\\.){2}[0-9]+ ]])
+              run: bash -c '$([[ "${{ inputs.version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
 
             - run: |
                   git config --global user.name "github"
