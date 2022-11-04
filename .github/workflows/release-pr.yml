@@ -52,9 +52,7 @@ jobs:
 
             - name: Create PR
               run: |
-                  gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} \
-                  --title "Release:ENTER_RELEASE_VERSION" \
-                  --body-file ${{ steps.create-changelog.outputs.changelog_file }}
+                  gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release:ENTER_RELEASE_VERSION" --body $(cat ${{ steps.create-changelog.outputs.changelog_file }})
                   rm ${{ steps.create-changelog.outputs.changelog_file }}
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
