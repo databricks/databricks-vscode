@@ -487,6 +487,37 @@
                     }
                 ]
             }
+        ],
+        "configuration": [
+            {
+                "title": "Databricks",
+                "properties": {
+                    "databricks.logs.maxFieldLength": {
+                        "title": "Max Field Length",
+                        "type": "number",
+                        "default": 40,
+                        "description": "The maximum length of each field displayed in logs outputs panel."
+                    },
+                    "databricks.logs.truncationDepth": {
+                        "title": "Truncation Depth",
+                        "type": "number",
+                        "default": 2,
+                        "description": "The max depth of logs to show without truncation."
+                    },
+                    "databricks.logs.maxArrayLength": {
+                        "title": "Max Array Length",
+                        "type": "number",
+                        "default": 2,
+                        "description": "The maximum number of items to show for array fields."
+                    },
+                    "databricks.logs.enabled": {
+                        "title": "Enabled",
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable logging. Reload window for changes to take effect."
+                    }
+                }
+            }
         ]
     },
     "vsce": {
@@ -517,8 +548,10 @@
     "dependencies": {
         "@databricks/databricks-sdk": "*",
         "@databricks/databricks-vscode-types": "workspace:^",
+        "@types/triple-beam": "^1.3.2",
         "@vscode/debugadapter": "^1.58.0",
-        "@vscode/webview-ui-toolkit": "^1.1.0"
+        "@vscode/webview-ui-toolkit": "^1.1.0",
+        "triple-beam": "^1.3.0"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
