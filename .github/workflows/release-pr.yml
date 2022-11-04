@@ -49,4 +49,4 @@ jobs:
                   cache: "yarn"
 
             - run: yarn install --immutable
-            - run: yarn version --check
+            - run: yarn version check

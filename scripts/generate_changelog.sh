@@ -1,4 +1,4 @@
-PACKAGE= $1
+PACKAGE=$1
 echo "## $PACKAGE" >> $2
 
 TAG=$(git describe --abbrev=0 --match "release-v*")
