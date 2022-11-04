@@ -29,7 +29,7 @@ jobs:
             - name: Changelog
               id: create-changelog
               run: |
-                  bash scripts/generate_changelog.sh $PACKAGE tmpfile
+                  bash scripts/generate_changelog.sh tmpfile
                   cat tmpfile >> $GITHUB_STEP_SUMMARY
                   cat tmpfile >> CHANGELOG.md
                   echo "changelog_file=tempfile" >> $GITHUB_OUTPUT
