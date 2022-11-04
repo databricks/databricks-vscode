@@ -2,6 +2,8 @@ name: Release PR
 
 on:
     workflow_dispatch:
+    pull_request:
+        branch: [main]
 
 jobs:
     generate-changelog:
