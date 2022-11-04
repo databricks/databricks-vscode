@@ -17,7 +17,8 @@
         "test:integ": "yarn workspaces foreach run test:integ",
         "build": "yarn workspaces foreach run build",
         "clean": "yarn workspaces foreach run clean",
-        "fix": "yarn workspaces foreach run fix"
+        "fix": "yarn workspaces foreach run fix",
+        "conventional-changelog": "conventional-changelog"
     },
     "repository": {
         "type": "git",
