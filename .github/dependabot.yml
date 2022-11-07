@@ -4,11 +4,17 @@ updates:
     directory: "/packages/databricks-sdk-js"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "@databricks/*"          
   - package-ecosystem: "npm"
     directory: "/packages/databricks-vscode"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "@databricks/*"    
   - package-ecosystem: "npm"
     directory: "/packages/databricks-vscode-types"
+    ignore:
+      - dependency-name: "@databricks/*"    
     schedule:
       interval: "daily"
