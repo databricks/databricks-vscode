@@ -1,8 +1,9 @@
-import {OutputChannel, workspace} from "vscode";
+import {OutputChannel} from "vscode";
 import {transports, format} from "winston";
 import {OutputConsoleStream} from "./OutputConsoleStream";
 import {LEVEL, MESSAGE, SPLAT} from "triple-beam";
 import {workspaceConfigs} from "./WorkspaceConfigs";
+import {inspect} from "util";
 
 function processPrimitiveOrString(obj: any) {
     let valueStr: string;
@@ -55,29 +56,30 @@ function recursiveTruncate(obj: any, depth: number) {
 
 export function getOutputConsoleTransport(outputChannel: OutputChannel) {
     return new transports.Stream({
-        format: format.combine(
-            format((info) => {
-                const stripped = Object.assign({}, info) as any;
-                if (stripped[LEVEL] === "error") {
-                    return info;
-                }
-                delete stripped[LEVEL];
-                delete stripped[MESSAGE];
-                delete stripped[SPLAT];
-                delete stripped["level"];
-                delete stripped["message"];
+        format: format((info: any) => {
+            const stripped = Object.assign({}, info) as any;
+            if (stripped[LEVEL] === "error") {
+                return info;
+            }
+            delete stripped[LEVEL];
+            delete stripped[MESSAGE];
+            delete stripped[SPLAT];
+            delete stripped["level"];
+            delete stripped["message"];
 
-                return {
-                    ...info,
+            info[MESSAGE] = inspect(
+                {
                     ...recursiveTruncate(
                         stripped,
                         workspaceConfigs.truncationDepth
                     ),
                     timestamp: new Date().toLocaleString(),
-                };
-            })(),
-            format.prettyPrint({depth: workspaceConfigs.truncationDepth})
-        ),
+                },
+                false,
+                workspaceConfigs.truncationDepth
+            );
+            return info;
+        })(),
         stream: new OutputConsoleStream(outputChannel, {
             defaultEncoding: "utf-8",
         }),
