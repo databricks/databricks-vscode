@@ -24,7 +24,7 @@ import {
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
-import {DatabricksRuntime, FileAccessor} from "./DabaricksRuntime";
+import {DatabricksRuntime, FileAccessor} from "./DatabricksRuntime";
 import {Subject} from "./Subject";
 
 /**
