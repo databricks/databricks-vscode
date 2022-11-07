@@ -19,7 +19,11 @@ import {
     ExecutionContext,
     Repo,
 } from "@databricks/databricks-sdk";
-import {DatabricksRuntime, FileAccessor, OutputEvent} from "./DatabricksRuntime";
+import {
+    DatabricksRuntime,
+    FileAccessor,
+    OutputEvent,
+} from "./DatabricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncDestination} from "../configuration/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
