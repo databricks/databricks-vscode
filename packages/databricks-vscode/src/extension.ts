@@ -14,7 +14,6 @@ import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
-import {CliCommands} from "./cli/CliCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
 import {SyncCommands} from "./sync/SyncCommands";
@@ -22,6 +21,7 @@ import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
+import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {initLoggers} from "./logger";
 import {UtilsCommands} from "./utils/UtilsCommands";
@@ -42,7 +42,7 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         */
         return undefined;
     }
-    initLoggers();
+    initLoggers(workspace.workspaceFolders[0].uri.path);
 
     let cli = new CliWrapper(context);
     // Configuration group
@@ -70,18 +70,13 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
             configurationDataProvider
         ),
         commands.registerCommand(
-            "databricks.connection.login",
-            connectionCommands.loginCommand(),
-            connectionCommands
-        ),
-        commands.registerCommand(
             "databricks.connection.logout",
             connectionCommands.logoutCommand(),
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.connection.configureProject",
-            connectionCommands.configureProjectCommand(),
+            "databricks.connection.configureWorkspace",
+            connectionCommands.configureWorkspaceCommand(),
             connectionCommands
         ),
         commands.registerCommand(
@@ -209,17 +204,11 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         )
     );
 
-    // CLI commands
-    const cliCommands = new CliCommands(cli);
+    // Bricks tasks
     context.subscriptions.push(
         tasks.registerTaskProvider(
             "databricks",
             new BricksTaskProvider(connectionManager, cli)
-        ),
-        commands.registerCommand(
-            "databricks.cli.testBricksCli",
-            cliCommands.testBricksCommand(),
-            cliCommands
         )
     );
 
@@ -236,6 +225,8 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
             quickstartCommands
         )
     );
+
+    showQuickStartOnFirstUse(context);
 
     //utils
     const utilCommands = new UtilsCommands();

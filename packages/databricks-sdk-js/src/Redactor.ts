@@ -15,31 +15,19 @@ export class Redactor {
         this.fieldNames.push(fieldName);
     }
 
-    sanitize(
-        obj?: any,
-        dropFields: string[] = [],
-        maxFieldLength: number = 96
-    ): any {
+    sanitize(obj?: any, dropFields: string[] = []): any {
         if (obj === undefined) {
             return undefined;
         }
 
         if (isPrimitveType(obj)) {
-            if (typeof obj === "string") {
-                return onlyNBytes(obj, maxFieldLength);
-            }
-            if (obj instanceof String) {
-                return onlyNBytes(obj.toString(), maxFieldLength);
-            }
             return obj;
         }
-
         if (Array.isArray(obj)) {
-            return obj.map((e) => this.sanitize(e, dropFields, maxFieldLength));
+            return obj.map((e) => this.sanitize(e, dropFields));
         }
-
         //make a copy of the object
-        obj = JSON.parse(JSON.stringify(obj));
+        obj = Object.assign({}, obj);
         for (let key in obj) {
             if (dropFields.includes(key)) {
                 delete obj[key];
@@ -49,7 +37,7 @@ export class Redactor {
             ) {
                 obj[key] = "***REDACTED***";
             } else {
-                obj[key] = this.sanitize(obj[key], dropFields, maxFieldLength);
+                obj[key] = this.sanitize(obj[key], dropFields);
             }
         }
 
