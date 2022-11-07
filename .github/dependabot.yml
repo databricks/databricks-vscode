@@ -9,6 +9,6 @@ updates:
     schedule:
       interval: "daily"
   - package-ecosystem: "npm"
-    directory: "databricks-vscode-types"
+    directory: "/packages/databricks-vscode-types"
     schedule:
       interval: "daily"
