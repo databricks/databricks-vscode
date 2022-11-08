@@ -54,6 +54,9 @@ export class DatabricksWorkspace {
 
             case "false":
                 return false;
+
+            case "true":
+                return true;
         }
     }
 
