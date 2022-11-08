@@ -1,8 +1,10 @@
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {
     Disposable,
     Event,
     EventEmitter,
     ProviderResult,
+    ThemeColor,
     ThemeIcon,
     TreeDataProvider,
     TreeItem,
@@ -43,6 +45,8 @@ export class ConfigurationDataProvider
                 this._onDidChangeTreeData.fire();
             })
         );
+
+        this.connectionManager;
     }
 
     dispose() {
@@ -146,8 +150,32 @@ export class ConfigurationDataProvider
             }
 
             if (element.id?.startsWith("CLUSTER") && cluster) {
-                let clusterItem =
+                const clusterItem =
                     ClusterListDataProvider.clusterNodeToTreeItem(cluster);
+
+                const children = [];
+
+                try {
+                    if (
+                        !(await cluster.hasExecutePerms(
+                            this.connectionManager.databricksWorkspace?.user
+                        ))
+                    ) {
+                        children.push({
+                            description:
+                                "You might not have permission to run code on this cluster",
+                            iconPath: new ThemeIcon(
+                                "warning",
+                                new ThemeColor("problemsWarningIcon.foreground")
+                            ),
+                        });
+                    }
+                } catch (e) {
+                    NamedLogger.getOrCreate("Extension").error(
+                        `Error in fetching permissions for ${cluster.name}`,
+                        e
+                    );
+                }
 
                 return [
                     {
@@ -156,6 +184,7 @@ export class ConfigurationDataProvider
                         iconPath: clusterItem.iconPath,
                         collapsibleState: TreeItemCollapsibleState.None,
                     },
+                    ...children,
                     ...(await ClusterListDataProvider.clusterNodeToTreeItems(
                         cluster
                     )),

@@ -11,7 +11,7 @@ import {
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-import {commands} from "..";
+import {commands, PermissionsService} from "..";
 import {
     ClusterInfo,
     ClustersService,
@@ -19,6 +19,7 @@ import {
     ClusterInfoClusterSource,
 } from "../apis/clusters";
 import {Context} from "../context";
+import {User} from "../apis/scim";
 
 export class ClusterRetriableError extends RetriableError {}
 export class ClusterError extends Error {}
@@ -118,6 +119,55 @@ export class Cluster {
     }
     set details(details: ClusterInfo) {
         this.clusterDetails = details;
+    }
+
+    isSingleUser() {
+        const modeProperty =
+            //TODO: deprecate data_security_mode once access_mode is available everywhere
+            this.details.access_mode ?? this.details.data_security_mode;
+        return (
+            modeProperty !== undefined &&
+            [
+                "SINGLE_USER",
+                "LEGACY_SINGLE_USER_PASSTHROUGH",
+                "LEGACY_SINGLE_USER_STANDARD",
+                //enums unique to data_security_mode
+                "LEGACY_SINGLE_USER",
+            ].includes(modeProperty)
+        );
+    }
+
+    isValidSingleUser(userName?: string) {
+        return (
+            this.isSingleUser() && this.details.single_user_name === userName
+        );
+    }
+
+    async hasExecutePerms(userDetails?: User) {
+        if (userDetails === undefined) {
+            return false;
+        }
+
+        if (this.isSingleUser()) {
+            return this.isValidSingleUser(userDetails.userName);
+        }
+
+        const permissionApi = new PermissionsService(this.client);
+        const perms = await permissionApi.getObjectPermissions({
+            object_id: this.id,
+            object_type: "clusters",
+        });
+
+        return (
+            (perms.access_control_list ?? []).find((ac) => {
+                return (
+                    ac.user_name === userDetails.userName ||
+                    userDetails.groups
+                        ?.map((v) => v.display)
+                        .includes(ac.group_name ?? "")
+                );
+            }) !== undefined
+        );
     }
 
     async refresh() {

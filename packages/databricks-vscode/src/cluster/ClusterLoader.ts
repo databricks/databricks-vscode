@@ -8,6 +8,7 @@ import {
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {workspaceConfigs} from "../WorkspaceConfigs";
 import {sortClusters} from "./ClusterModel";
 
 export class ClusterLoader implements Disposable {
@@ -60,51 +61,10 @@ export class ClusterLoader implements Disposable {
         this.disposables.push(this.onDidStop(() => (this.stopped = true)));
     }
 
-    private isSingleUser(c: Cluster) {
-        const modeProperty =
-            //TODO: deprecate data_security_mode once access_mode is available everywhere
-            c.details.access_mode ?? c.details.data_security_mode;
-        return (
-            modeProperty !== undefined &&
-            [
-                "SINGLE_USER",
-                "LEGACY_SINGLE_USER_PASSTHROUGH",
-                "LEGACY_SINGLE_USER_STANDARD",
-                //enums unique to data_security_mode
-                "LEGACY_SINGLE_USER",
-            ].includes(modeProperty)
-        );
-    }
-    private isValidSingleUser(c: Cluster) {
-        return (
-            this.isSingleUser(c) &&
-            c.details.single_user_name ===
-                this.connectionManager.databricksWorkspace?.userName
-        );
-    }
-
-    private async hasPerm(c: Cluster, permissionApi: PermissionsService) {
-        const perms = await permissionApi.getObjectPermissions({
-            object_id: c.id,
-            object_type: "clusters",
-        });
-        return (
-            (perms.access_control_list ?? []).find((ac) => {
-                return (
-                    ac.user_name ===
-                        this.connectionManager.databricksWorkspace?.userName ||
-                    this.connectionManager.databricksWorkspace?.user.groups
-                        ?.map((v) => v.display)
-                        .includes(ac.group_name ?? "")
-                );
-            }) !== undefined
-        );
-    }
-
     private cleanupClustersMap(clusters: Cluster[]) {
         const clusterIds = clusters.map((c) => c.id);
         const toDelete = [];
-        for (let key in this._clusters) {
+        for (let key of this._clusters.keys()) {
             if (!clusterIds.includes(key)) {
                 toDelete.push(key);
             }
@@ -125,57 +85,76 @@ export class ClusterLoader implements Disposable {
             (await Cluster.list(apiClient))
                 .filter((c) => ["UI", "API"].includes(c.source))
                 .filter(
-                    (c) => !this.isSingleUser(c) || this.isValidSingleUser(c)
+                    (c) =>
+                        !workspaceConfigs.clusterFilteringEnabled ||
+                        !c.isSingleUser() ||
+                        c.isValidSingleUser(
+                            this.connectionManager.databricksWorkspace?.userName
+                        )
                 )
-                .filter((c) =>
-                    this.connectionManager.databricksWorkspace?.supportFilesInReposForCluster(
-                        c
-                    )
+                .filter(
+                    (c) =>
+                        !workspaceConfigs.clusterFilteringEnabled ||
+                        this.connectionManager.databricksWorkspace?.supportFilesInReposForCluster(
+                            c
+                        )
                 )
         );
 
-        const permissionApi = new PermissionsService(apiClient);
+        if (workspaceConfigs.clusterFilteringEnabled) {
+            // TODO: Find exact rate limit and update this.
+            //       Rate limit is 100 on dogfood.
+            const maxConcurrent = 50;
+            const wip: Promise<void>[] = [];
 
-        // TODO: Find exact rate limit and update this.
-        //       Rate limit is 100 on dogfood.
-        const maxConcurrent = 50;
-        const wip: Promise<void>[] = [];
+            for (let c of allClusters) {
+                if (!this.running) {
+                    break;
+                }
+                while (wip.length === maxConcurrent) {
+                    await Promise.race(wip);
+                }
 
-        for (let c of allClusters) {
-            if (!this.running) {
-                break;
+                const task = new Promise<void>((resolve) => {
+                    c.hasExecutePerms(
+                        this.connectionManager.databricksWorkspace?.user
+                    )
+                        .then((keepCluster) => {
+                            if (!this.running) {
+                                return resolve();
+                            }
+
+                            if (this._clusters.has(c.id) && !keepCluster) {
+                                this._clusters.delete(c.id);
+                                this._onDidChange.fire();
+                            }
+                            if (keepCluster) {
+                                this._clusters.set(c.id, c);
+                                this._onDidChange.fire();
+                            }
+                            resolve();
+                        })
+                        .catch((e) => {
+                            NamedLogger.getOrCreate("Extension").error(
+                                `Error fetching permission for cluster ${c.name}`,
+                                e
+                            );
+                            resolve();
+                        });
+                });
+
+                wip.push(task);
+                task.then(() => {
+                    wip.splice(wip.indexOf(task), 1);
+                });
             }
-            while (wip.length === maxConcurrent) {
-                await Promise.race(wip);
-            }
 
-            const task = new Promise<void>((resolve) => {
-                this.hasPerm(c, permissionApi)
-                    .then((keepCluster) => {
-                        if (!this.running) {
-                            return resolve();
-                        }
-
-                        if (this._clusters.has(c.id) && !keepCluster) {
-                            this._clusters.delete(c.id);
-                            this._onDidChange.fire();
-                        }
-                        if (keepCluster) {
-                            this._clusters.set(c.id, c);
-                            this._onDidChange.fire();
-                        }
-                        resolve();
-                    })
-                    .catch(resolve);
-            });
-
-            wip.push(task);
-            task.then(() => {
-                wip.splice(wip.indexOf(task), 1);
-            });
+            await Promise.allSettled(wip);
+        } else {
+            this._clusters = new Map(allClusters.map((c) => [c.id, c]));
+            this._onDidChange.fire();
         }
 
-        await Promise.allSettled(wip);
         this.cleanupClustersMap(allClusters);
     }
 
@@ -189,26 +168,9 @@ export class ClusterLoader implements Disposable {
             try {
                 await this._load();
             } catch (e) {
-                let err = e;
-
-                /*
-                Standard Error class has message and stack fields set as non enumerable.
-                To correctly account for all such fields, we iterate over all own-properties of
-                the error object and accumulate them as enumerable fields in the final err object.
-                */
-                if (Object(err) === err) {
-                    err = {
-                        ...Object.getOwnPropertyNames(err).reduce((acc, i) => {
-                            acc[i] = (err as any)[i];
-                            return acc;
-                        }, {} as any),
-                        ...(err as any),
-                    };
-                }
-                NamedLogger.getOrCreate("Extension").log(
-                    "error",
-                    "Error loading clusters:",
-                    err
+                NamedLogger.getOrCreate("Extension").error(
+                    "Error loading clusters",
+                    e
                 );
             }
             if (!this.running) {
