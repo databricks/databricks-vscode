@@ -267,7 +267,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@databricks/databricks-sdk@*, @databricks/databricks-sdk@workspace:^, @databricks/databricks-sdk@workspace:packages/databricks-sdk-js":
+"@databricks/databricks-sdk@workspace:^, @databricks/databricks-sdk@workspace:packages/databricks-sdk-js":
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-sdk@workspace:packages/databricks-sdk-js"
   dependencies:
@@ -2122,7 +2122,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "databricks-vscode@workspace:packages/databricks-vscode"
   dependencies:
-    "@databricks/databricks-sdk": "*"
+    "@databricks/databricks-sdk": "workspace:^"
     "@databricks/databricks-vscode-types": "workspace:^"
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@types/fs-extra": ^9.0.13
