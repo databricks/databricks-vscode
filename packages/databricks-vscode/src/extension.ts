@@ -15,7 +15,7 @@ import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
-import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
+import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {BricksTaskProvider} from "./cli/BricksTasks";
