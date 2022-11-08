@@ -58,26 +58,26 @@ export function getOutputConsoleTransport(outputChannel: OutputChannel) {
     return new transports.Stream({
         format: format((info: any) => {
             const stripped = Object.assign({}, info) as any;
-            if (stripped[LEVEL] === "error") {
-                return info;
-            }
             delete stripped[LEVEL];
             delete stripped[MESSAGE];
             delete stripped[SPLAT];
             delete stripped["level"];
             delete stripped["message"];
 
-            info[MESSAGE] = inspect(
-                {
-                    ...recursiveTruncate(
-                        stripped,
-                        workspaceConfigs.truncationDepth
-                    ),
-                    timestamp: new Date().toLocaleString(),
-                },
-                false,
-                workspaceConfigs.truncationDepth
-            );
+            info[MESSAGE] =
+                info.level === "error"
+                    ? inspect(stripped, false, 1000)
+                    : inspect(
+                          {
+                              ...recursiveTruncate(
+                                  stripped,
+                                  workspaceConfigs.truncationDepth
+                              ),
+                              timestamp: new Date().toLocaleString(),
+                          },
+                          false,
+                          workspaceConfigs.truncationDepth
+                      );
             return info;
         })(),
         stream: new OutputConsoleStream(outputChannel, {
