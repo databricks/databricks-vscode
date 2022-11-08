@@ -29,6 +29,12 @@ export class BricksTaskProvider implements TaskProvider {
             new SyncTask(
                 this.connection,
                 this.cli,
+                "full",
+                (state: SyncState) => {}
+            ),
+            new SyncTask(
+                this.connection,
+                this.cli,
                 "incremental",
                 (state: SyncState) => {}
             ),
@@ -71,7 +77,7 @@ export class SyncTask extends Task {
         );
 
         this.isBackground = true;
-        this.detail = "$(rocket) Databricks sync";
+        //this.detail = "$(rocket) Databricks sync";
         this.problemMatchers = ["$bricks-sync"];
         this.presentationOptions.echo = true;
         this.group = TaskGroup.Build;
