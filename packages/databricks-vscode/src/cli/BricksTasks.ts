@@ -29,6 +29,12 @@ export class BricksTaskProvider implements TaskProvider {
             new SyncTask(
                 this.connection,
                 this.cli,
+                "full",
+                (state: SyncState) => {}
+            ),
+            new SyncTask(
+                this.connection,
+                this.cli,
                 "incremental",
                 (state: SyncState) => {}
             ),
@@ -43,20 +49,16 @@ export class SyncTask extends Task {
     constructor(
         connection: ConnectionManager,
         cli: CliWrapper,
-        // TODO: https://github.com/databricks/databricks-vscode/issues/111
-        // use syncType to decide the sync type for bricks cli. Right now bricks cli
-        // only supports full sync for multiple profiles.
-        // see: https://github.com/databricks/bricks/issues/71
         syncType: SyncType,
         syncStateCallback: (state: SyncState) => void
     ) {
         super(
             {
                 type: "databricks",
-                task: "sync",
+                task: syncType === "full" ? "sync-full" : "sync",
             },
             TaskScope.Workspace,
-            "sync",
+            syncType === "full" ? "sync-full" : "sync",
             "databricks",
             new CustomExecution(async (): Promise<Pseudoterminal> => {
                 return new LazyCustomSyncTerminal(
@@ -69,7 +71,7 @@ export class SyncTask extends Task {
         );
 
         this.isBackground = true;
-        this.detail = "$(rocket) Databricks sync";
+        //this.detail = "$(rocket) Databricks sync";
         this.problemMatchers = ["$bricks-sync"];
         this.presentationOptions.echo = true;
         this.group = TaskGroup.Build;

@@ -189,7 +189,7 @@ export class ConnectionManager {
         if (projectConfigFile.config.workspacePath) {
             await this.attachSyncDestination(
                 Uri.from({
-                    scheme: "dbws",
+                    scheme: "wsfs",
                     path: projectConfigFile.config.workspacePath,
                 }),
                 false

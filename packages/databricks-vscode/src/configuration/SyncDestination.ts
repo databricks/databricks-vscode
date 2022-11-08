@@ -23,12 +23,12 @@ export class SyncDestination {
         repoUri: Uri,
         vscodeWorkspacePath: Uri
     ) {
-        assert.equal(repoUri.scheme, "dbws");
+        assert.equal(repoUri.scheme, "wsfs");
 
         // Repo paths always start with "/Workspace" but the repos API strips this off.
         if (!repoUri.path.startsWith("/Workspace/")) {
             repoUri = Uri.from({
-                scheme: "dbws",
+                scheme: "wsfs",
                 path: `/Workspace${repoUri.path}`,
             });
         }
@@ -65,7 +65,7 @@ export class SyncDestination {
                 throw new Error("local path is not within the workspace");
             }
             return path.path.replace(this.vscodeWorkspacePath.path, "");
-        } else if (path.scheme === "dbws") {
+        } else if (path.scheme === "wsfs") {
             return path.path.replace(this.repoPath.path, "");
         } else {
             throw new Error(`Invalid path scheme: ${path.scheme}`);
