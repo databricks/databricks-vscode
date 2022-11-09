@@ -290,6 +290,11 @@ export class ConnectionManager {
             await this._projectConfigFile!.write();
         }
 
+        if (cluster.state === "RUNNING") {
+            cluster.canExecute(false).then(() => {
+                this.onDidChangeClusterEmitter.fire(this.cluster);
+            });
+        }
         this.updateCluster(cluster);
     }
 

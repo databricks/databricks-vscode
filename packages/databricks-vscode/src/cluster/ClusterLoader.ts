@@ -8,6 +8,7 @@ import {
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {Loggers} from "../logger";
 import {workspaceConfigs} from "../WorkspaceConfigs";
 import {sortClusters} from "./ClusterModel";
 
@@ -135,7 +136,7 @@ export class ClusterLoader implements Disposable {
                             resolve();
                         })
                         .catch((e) => {
-                            NamedLogger.getOrCreate("Extension").error(
+                            NamedLogger.getOrCreate(Loggers.Extension).error(
                                 `Error fetching permission for cluster ${c.name}`,
                                 e
                             );
@@ -168,7 +169,7 @@ export class ClusterLoader implements Disposable {
             try {
                 await this._load();
             } catch (e) {
-                NamedLogger.getOrCreate("Extension").error(
+                NamedLogger.getOrCreate(Loggers.Extension).error(
                     "Error loading clusters",
                     e
                 );

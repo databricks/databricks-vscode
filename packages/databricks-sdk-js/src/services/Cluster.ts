@@ -18,13 +18,15 @@ import {
     ClusterInfoState,
     ClusterInfoClusterSource,
 } from "../apis/clusters";
-import {Context} from "../context";
+import {Context, context} from "../context";
 import {User} from "../apis/scim";
+import {ExposedLoggers, withLogContext} from "../logging";
 
 export class ClusterRetriableError extends RetriableError {}
 export class ClusterError extends Error {}
 export class Cluster {
     private clusterApi: ClustersService;
+    private _canExecute?: boolean;
 
     constructor(
         private client: ApiClient,
@@ -195,6 +197,7 @@ export class Cluster {
             });
         }
 
+        this._canExecute = undefined;
         await retry({
             fn: async () => {
                 if (token?.isCancellationRequested) {
@@ -254,21 +257,29 @@ export class Cluster {
         return await ExecutionContext.create(this.client, this, language);
     }
 
-    async canExecute(): Promise<boolean> {
-        let context: ExecutionContext | undefined;
+    @withLogContext(ExposedLoggers.SDK)
+    async canExecute(
+        useCache = false,
+        @context ctx?: Context
+    ): Promise<boolean | undefined> {
+        if (useCache) {
+            return this._canExecute;
+        }
+
+        let executionContext: ExecutionContext | undefined;
         try {
-            context = await this.createExecutionContext();
-            let result = await context.execute("print('hello')");
-            if (result.result?.results?.resultType === "error") {
-                return false;
-            }
-            return true;
+            executionContext = await this.createExecutionContext();
+            let result = await executionContext.execute("1==1");
+            this._canExecute =
+                result.result?.results?.resultType === "error" ? false : true;
         } catch (e) {
-            return false;
+            ctx?.logger?.error(`Can't execute code on cluster ${this.id}`, e);
+            this._canExecute = false;
         } finally {
-            if (context) {
-                await context.destroy();
+            if (executionContext) {
+                await executionContext.destroy();
             }
+            return this._canExecute ?? false;
         }
     }
 

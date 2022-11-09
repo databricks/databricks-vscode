@@ -11,6 +11,7 @@ import {
     TreeItemCollapsibleState,
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
+import {Loggers, loggingUtils} from "../logger";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
 
@@ -155,26 +156,32 @@ export class ConfigurationDataProvider
 
                 const children = [];
 
-                try {
-                    if (
-                        !(await cluster.hasExecutePerms(
-                            this.connectionManager.databricksWorkspace?.user
-                        ))
-                    ) {
-                        children.push({
-                            description:
-                                "You might not have permission to run code on this cluster",
-                            iconPath: new ThemeIcon(
-                                "warning",
-                                new ThemeColor("problemsWarningIcon.foreground")
-                            ),
-                        });
-                    }
-                } catch (e) {
-                    NamedLogger.getOrCreate("Extension").error(
-                        `Error in fetching permissions for ${cluster.name}`,
-                        e
-                    );
+                const runPerms =
+                    cluster.state === "RUNNING" &&
+                    (await cluster?.canExecute(true)) !== undefined
+                        ? await cluster?.canExecute(true)
+                        : await loggingUtils.tryAndLogErrorAsync(
+                              async () => {
+                                  return await cluster?.hasExecutePerms(
+                                      this.connectionManager.databricksWorkspace
+                                          ?.user
+                                  );
+                              },
+                              {
+                                  message: `Error in fetching permissions for ${cluster.name}`,
+                                  shouldThrow: false,
+                              }
+                          );
+
+                if (runPerms === false) {
+                    children.push({
+                        description:
+                            "You do not have permission to run code on this cluster",
+                        iconPath: new ThemeIcon(
+                            "warning",
+                            new ThemeColor("problemsWarningIcon.foreground")
+                        ),
+                    });
                 }
 
                 return [

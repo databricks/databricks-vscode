@@ -66,3 +66,8 @@ export async function initLoggers(rootPath: string) {
         true
     );
 }
+
+export enum Loggers {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    Extension = "Extension",
+}
