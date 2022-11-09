@@ -156,32 +156,64 @@ export class ConfigurationDataProvider
 
                 const children = [];
 
-                const runPerms =
+                let runPerms:
+                    | "CAN_RUN"
+                    | "MIGHT_RUN"
+                    | "UNABLE_TO_RUN"
+                    | "MIGHT_NOT_RUN" = "MIGHT_RUN";
+                if (
                     cluster.state === "RUNNING" &&
                     (await cluster?.canExecute(true)) !== undefined
-                        ? await cluster?.canExecute(true)
-                        : await loggingUtils.tryAndLogErrorAsync(
-                              async () => {
-                                  return await cluster?.hasExecutePerms(
-                                      this.connectionManager.databricksWorkspace
-                                          ?.user
-                                  );
-                              },
-                              {
-                                  message: `Error in fetching permissions for ${cluster.name}`,
-                                  shouldThrow: false,
-                              }
-                          );
+                ) {
+                    runPerms = (await cluster?.canExecute(true))
+                        ? "CAN_RUN"
+                        : "UNABLE_TO_RUN";
+                } else {
+                    runPerms = (await loggingUtils.tryAndLogErrorAsync(
+                        async () => {
+                            return await cluster?.hasExecutePerms(
+                                this.connectionManager.databricksWorkspace?.user
+                            );
+                        },
+                        {
+                            message: `Error in fetching permissions for ${cluster.name}`,
+                            shouldThrow: false,
+                        }
+                    ))
+                        ? "MIGHT_RUN"
+                        : "MIGHT_NOT_RUN";
+                }
 
-                if (runPerms === false) {
-                    children.push({
-                        description:
-                            "You do not have permission to run code on this cluster",
-                        iconPath: new ThemeIcon(
-                            "warning",
-                            new ThemeColor("problemsWarningIcon.foreground")
-                        ),
-                    });
+                switch (runPerms) {
+                    case "CAN_RUN":
+                        children.push({
+                            label: "You can run code on this cluster",
+                            iconPath: new ThemeIcon(
+                                "testing-passed-icon",
+                                new ThemeColor("testing.iconPassed")
+                            ),
+                        });
+                        break;
+
+                    case "MIGHT_NOT_RUN":
+                        children.push({
+                            label: "You might not have permissions to run code on this cluster",
+                            iconPath: new ThemeIcon(
+                                "warning",
+                                new ThemeColor("problemsWarningIcon.foreground")
+                            ),
+                        });
+                        break;
+
+                    case "UNABLE_TO_RUN":
+                        children.push({
+                            label: "You do not have permissions to run code on this cluster",
+                            iconPath: new ThemeIcon(
+                                "alert",
+                                new ThemeColor("testing.iconFailed")
+                            ),
+                        });
+                        break;
                 }
 
                 return [
