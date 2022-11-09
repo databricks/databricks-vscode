@@ -1,14 +1,17 @@
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {
     Disposable,
     Event,
     EventEmitter,
     ProviderResult,
+    ThemeColor,
     ThemeIcon,
     TreeDataProvider,
     TreeItem,
     TreeItemCollapsibleState,
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
+import {Loggers, loggingUtils} from "../logger";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
 
@@ -43,6 +46,8 @@ export class ConfigurationDataProvider
                 this._onDidChangeTreeData.fire();
             })
         );
+
+        this.connectionManager;
     }
 
     dispose() {
@@ -152,8 +157,61 @@ export class ConfigurationDataProvider
         }
 
         if (element.id?.startsWith("CLUSTER") && cluster) {
-            let clusterItem =
+            const clusterItem =
                 ClusterListDataProvider.clusterNodeToTreeItem(cluster);
+
+            const children = [];
+
+            let runPerms:
+                | "CAN_RUN"
+                | "MIGHT_RUN"
+                | "UNABLE_TO_RUN"
+                | "MIGHT_NOT_RUN" = "MIGHT_RUN";
+            if (
+                cluster.state === "RUNNING" &&
+                cluster?.canExecuteCached !== undefined
+            ) {
+                runPerms = cluster.canExecuteCached
+                    ? "CAN_RUN"
+                    : "UNABLE_TO_RUN";
+            } else {
+                runPerms =
+                    cluster.hasExecutePermsCached ?? true
+                        ? "MIGHT_RUN"
+                        : "MIGHT_NOT_RUN";
+            }
+
+            switch (runPerms) {
+                case "CAN_RUN":
+                    children.push({
+                        label: "You can run code on this cluster",
+                        iconPath: new ThemeIcon(
+                            "testing-passed-icon",
+                            new ThemeColor("testing.iconPassed")
+                        ),
+                    });
+                    break;
+
+                case "MIGHT_NOT_RUN":
+                    children.push({
+                        label: "You might not have permissions to run code on this cluster",
+                        iconPath: new ThemeIcon(
+                            "warning",
+                            new ThemeColor("problemsWarningIcon.foreground")
+                        ),
+                    });
+                    break;
+
+                case "UNABLE_TO_RUN":
+                    children.push({
+                        label: "You do not have permissions to run code on this cluster",
+                        iconPath: new ThemeIcon(
+                            "alert",
+                            new ThemeColor("testing.iconFailed")
+                        ),
+                    });
+                    break;
+            }
 
             return [
                 {
@@ -162,6 +220,7 @@ export class ConfigurationDataProvider
                     iconPath: clusterItem.iconPath,
                     collapsibleState: TreeItemCollapsibleState.None,
                 },
+                ...children,
                 ...(await ClusterListDataProvider.clusterNodeToTreeItems(
                     cluster
                 )),
