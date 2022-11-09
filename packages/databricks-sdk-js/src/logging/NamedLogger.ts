@@ -103,7 +103,16 @@ export class NamedLogger {
     }
 
     error(message?: string, obj?: any) {
-        this.log(LEVELS.error, message, obj);
+        if (Object(obj) === obj) {
+            obj = {
+                ...Object.getOwnPropertyNames(obj).reduce((acc, i) => {
+                    acc[i] = (obj as any)[i];
+                    return acc;
+                }, {} as any),
+                ...(obj as any),
+            };
+        }
+        this.log(LEVELS.error, message, {error: obj});
     }
 
     withContext<T>({
