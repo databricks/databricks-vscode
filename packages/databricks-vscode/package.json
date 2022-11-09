@@ -516,7 +516,7 @@
                     "databricks.clusters.onlyShowAccessibleClusters": {
                         "type": "boolean",
                         "default": true,
-                        "description": "Enabled/disable filtering for only accessible clusters (clusters on which the current user can run code)"
+                        "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
                     }
                 }
             }
