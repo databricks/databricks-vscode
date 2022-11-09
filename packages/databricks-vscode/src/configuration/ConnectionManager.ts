@@ -190,7 +190,7 @@ export class ConnectionManager {
         if (projectConfigFile.config.workspacePath) {
             await this.attachSyncDestination(
                 Uri.from({
-                    scheme: "dbws",
+                    scheme: "wsfs",
                     path: projectConfigFile.config.workspacePath,
                 }),
                 false
@@ -349,7 +349,7 @@ export class ConnectionManager {
                 e
             );
             window.showErrorMessage(
-                `Error in attaching cluster destination ${
+                `Error in attaching cluster ${
                     typeof cluster === "string" ? cluster : cluster.id
                 }`
             );

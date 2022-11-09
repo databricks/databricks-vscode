@@ -26,7 +26,7 @@ describe(__filename, () => {
         const mapper = new SyncDestination(
             instance(mock(Repo)),
             Uri.from({
-                scheme: "dbws",
+                scheme: "wsfs",
                 path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
             }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")

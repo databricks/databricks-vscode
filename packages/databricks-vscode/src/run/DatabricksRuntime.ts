@@ -66,7 +66,7 @@ export class DatabricksRuntime implements Disposable {
             if (this.connection.state === "CONNECTING") {
                 this._onDidSendOutputEmitter.fire({
                     type: "out",
-                    text: `${new Date()} Connecting to cluster ...`,
+                    text: `${new Date().toLocaleString()} Connecting to cluster ...`,
                     filePath: program,
                     line: 0,
                     column: 0,
@@ -115,7 +115,7 @@ export class DatabricksRuntime implements Disposable {
 
             this._onDidSendOutputEmitter.fire({
                 type: "out",
-                text: `${new Date()} Running ${syncDestination.getRelativePath(
+                text: `${new Date().toLocaleString()} Running ${syncDestination.getRelativePath(
                     Uri.file(program)
                 )} on Cluster ${cluster.id} ...`,
                 filePath: program,
@@ -135,7 +135,7 @@ export class DatabricksRuntime implements Disposable {
             // with the remote repo files
             this._onDidSendOutputEmitter.fire({
                 type: "out",
-                text: `${new Date()} Synchronizing code to ${
+                text: `${new Date().toLocaleString()} Synchronizing code to ${
                     syncDestination.relativeRepoPath
                 } ...`,
                 filePath: program,
@@ -204,7 +204,9 @@ export class DatabricksRuntime implements Disposable {
 
             this._onDidSendOutputEmitter.fire({
                 type: "out",
-                text: `${new Date()} Done (took ${Date.now() - start}ms)`,
+                text: `${new Date().toLocaleString()} Done (took ${
+                    Date.now() - start
+                }ms)`,
                 filePath: program,
                 line: lines.length,
                 column: 0,
