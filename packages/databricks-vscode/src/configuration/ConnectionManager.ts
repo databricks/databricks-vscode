@@ -21,6 +21,8 @@ import {selectProfile} from "./selectProfileWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {Loggers} from "../logger";
 
 const extensionVersion = require("../../package.json").version;
 
@@ -291,10 +293,35 @@ export class ConnectionManager {
         }
 
         if (cluster.state === "RUNNING") {
-            cluster.canExecute(false).then(() => {
-                this.onDidChangeClusterEmitter.fire(this.cluster);
-            });
+            cluster
+                .canExecute()
+                .then(() => {
+                    this.onDidChangeClusterEmitter.fire(this.cluster);
+                })
+                .catch((e) => {
+                    NamedLogger.getOrCreate(Loggers.Extension).error(
+                        `Error while running code on cluster ${
+                            (cluster as Cluster).id
+                        }`,
+                        e
+                    );
+                });
         }
+
+        cluster
+            .hasExecutePerms(this.databricksWorkspace?.user)
+            .then(() => {
+                this.onDidChangeClusterEmitter.fire(this.cluster);
+            })
+            .catch((e) => {
+                NamedLogger.getOrCreate(Loggers.Extension).error(
+                    `Error while fetching permission for cluster ${
+                        (cluster as Cluster).id
+                    }`,
+                    e
+                );
+            });
+
         this.updateCluster(cluster);
     }
 

@@ -163,25 +163,16 @@ export class ConfigurationDataProvider
                     | "MIGHT_NOT_RUN" = "MIGHT_RUN";
                 if (
                     cluster.state === "RUNNING" &&
-                    (await cluster?.canExecute(true)) !== undefined
+                    cluster?.canExecuteCached !== undefined
                 ) {
-                    runPerms = (await cluster?.canExecute(true))
+                    runPerms = cluster.canExecuteCached
                         ? "CAN_RUN"
                         : "UNABLE_TO_RUN";
                 } else {
-                    runPerms = (await loggingUtils.tryAndLogErrorAsync(
-                        async () => {
-                            return await cluster?.hasExecutePerms(
-                                this.connectionManager.databricksWorkspace?.user
-                            );
-                        },
-                        {
-                            message: `Error in fetching permissions for ${cluster.name}`,
-                            shouldThrow: false,
-                        }
-                    ))
-                        ? "MIGHT_RUN"
-                        : "MIGHT_NOT_RUN";
+                    runPerms =
+                        cluster.hasExecutePermsCached ?? true
+                            ? "MIGHT_RUN"
+                            : "MIGHT_NOT_RUN";
                 }
 
                 switch (runPerms) {

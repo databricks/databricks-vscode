@@ -27,6 +27,7 @@ export class ClusterError extends Error {}
 export class Cluster {
     private clusterApi: ClustersService;
     private _canExecute?: boolean;
+    private _hasExecutePerms?: boolean;
 
     constructor(
         private client: ApiClient,
@@ -145,13 +146,19 @@ export class Cluster {
         );
     }
 
+    get hasExecutePermsCached() {
+        return this._hasExecutePerms;
+    }
+
     async hasExecutePerms(userDetails?: User) {
         if (userDetails === undefined) {
-            return false;
+            return (this._hasExecutePerms = false);
         }
 
         if (this.isSingleUser()) {
-            return this.isValidSingleUser(userDetails.userName);
+            return (this._hasExecutePerms = this.isValidSingleUser(
+                userDetails.userName
+            ));
         }
 
         const permissionApi = new PermissionsService(this.client);
@@ -160,7 +167,7 @@ export class Cluster {
             object_type: "clusters",
         });
 
-        return (
+        return (this._hasExecutePerms =
             (perms.access_control_list ?? []).find((ac) => {
                 return (
                     ac.user_name === userDetails.userName ||
@@ -168,8 +175,7 @@ export class Cluster {
                         ?.map((v) => v.display)
                         .includes(ac.group_name ?? "")
                 );
-            }) !== undefined
-        );
+            }) !== undefined);
     }
 
     async refresh() {
@@ -257,15 +263,12 @@ export class Cluster {
         return await ExecutionContext.create(this.client, this, language);
     }
 
-    @withLogContext(ExposedLoggers.SDK)
-    async canExecute(
-        useCache = false,
-        @context ctx?: Context
-    ): Promise<boolean | undefined> {
-        if (useCache) {
-            return this._canExecute;
-        }
+    get canExecuteCached() {
+        return this._canExecute;
+    }
 
+    @withLogContext(ExposedLoggers.SDK)
+    async canExecute(@context ctx?: Context): Promise<boolean> {
         let executionContext: ExecutionContext | undefined;
         try {
             executionContext = await this.createExecutionContext();
