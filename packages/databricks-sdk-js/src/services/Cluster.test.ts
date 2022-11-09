@@ -1,16 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {ApiClient, Cluster} from "..";
-import chai, {assert} from "chai";
+import * as assert from "node:assert";
 import {mock, when, instance, deepEqual, verify, anything} from "ts-mockito";
-import chaiAsPromised from "chai-as-promised";
 import Time, {TimeUnits} from "../retries/Time";
 import {getMockTestCluster} from "../test/fixtures/ClusterFixtures";
 import {ClusterInfo} from "../apis/clusters";
 import {TokenFixture} from "../test/fixtures/TokenFixtures";
 import {RetryConfigs} from "../retries/retries";
-
-chai.use(chaiAsPromised);
 
 describe(__filename, function () {
     this.timeout(new Time(10, TimeUnits.minutes).toMillSeconds().value);

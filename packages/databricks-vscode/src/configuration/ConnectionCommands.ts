@@ -111,7 +111,7 @@ export class ConnectionCommands implements Disposable {
                 {
                     label: "Create New Cluster",
                     detail: `Open Databricks in the browser and create a new cluster`,
-                    alwaysShow: true,
+                    alwaysShow: false,
                 },
                 {
                     label: "",
@@ -196,7 +196,7 @@ export class ConnectionCommands implements Disposable {
                 {
                     label: "Create New Repo",
                     detail: `Open Databricks in the browser and create a new repo under /Repo/${me}`,
-                    alwaysShow: true,
+                    alwaysShow: false,
                 },
                 {
                     label: "",
