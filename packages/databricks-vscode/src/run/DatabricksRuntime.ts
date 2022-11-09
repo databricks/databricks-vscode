@@ -119,7 +119,7 @@ export class DatabricksRuntime implements Disposable {
             );
 
             log(
-                `Creating execution context on Cluster ${cluster.id} ...`,
+                `Creating execution context on cluster ${cluster.id} ...`,
                 lines.length
             );
 

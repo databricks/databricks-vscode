@@ -114,13 +114,15 @@ describe(__filename, () => {
 
         verify(connectionManagerMock.waitForConnect()).called();
 
-        assert.equal(outputs.length, 5);
+        assert.equal(outputs.length, 6);
         assert(outputs[0].text.includes("Connecting to cluster"));
         assert(
-            outputs[1].text.includes("Running /hello.py on Cluster cluster-1")
+            outputs[1].text.includes("Creating execution context on cluster")
         );
-        assert.equal(outputs[3].text, "43");
-        assert(outputs[4].text.includes("Done"));
+        assert(outputs[2].text.includes("Synchronizing code to"));
+        assert(outputs[3].text.includes("Running /hello.py"));
+        assert.equal(outputs[4].text, "43");
+        assert(outputs[5].text.includes("Done"));
     });
 
     it("should have the right code", async () => {
@@ -137,7 +139,7 @@ print('43')`
         );
     });
 
-    it("should return handle failed executions", async () => {
+    it("should handle failed executions", async () => {
         when(
             executionContextMock.execute(anything(), anything(), anything())
         ).thenResolve({
@@ -166,8 +168,8 @@ print('43')`
 
         await runtime.start("/Desktop/workspaces/hello.py", []);
 
-        assert.equal(outputs.length, 6);
-        assert.equal(outputs[3].text, "something went wrong");
-        assert.equal(outputs[4].text, "summary");
+        assert.equal(outputs.length, 7);
+        assert.equal(outputs[4].text, "something went wrong");
+        assert.equal(outputs[5].text, "summary");
     });
 });
