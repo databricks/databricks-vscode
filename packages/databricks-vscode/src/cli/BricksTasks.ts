@@ -29,13 +29,13 @@ export class BricksTaskProvider implements TaskProvider {
             new SyncTask(
                 this.connection,
                 this.cli,
-                "full",
+                "incremental",
                 (state: SyncState) => {}
             ),
             new SyncTask(
                 this.connection,
                 this.cli,
-                "incremental",
+                "full",
                 (state: SyncState) => {}
             ),
             new SyncTask(
