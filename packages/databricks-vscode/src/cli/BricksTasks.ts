@@ -71,7 +71,7 @@ export class SyncTask extends Task {
         );
 
         this.isBackground = true;
-        his.detail = "$(rocket) Databricks sync";
+        this.detail = "$(rocket) Databricks sync";
         this.problemMatchers = ["$bricks-sync"];
         this.presentationOptions.echo = true;
         this.group = TaskGroup.Build;
