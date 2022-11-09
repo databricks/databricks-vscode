@@ -87,7 +87,7 @@ export class ClusterLoader implements Disposable {
                 .filter((c) => ["UI", "API"].includes(c.source))
                 .filter(
                     (c) =>
-                        !workspaceConfigs.clusterFilteringEnabled ||
+                        !workspaceConfigs.onlyShowAccessibleClusters ||
                         !c.isSingleUser() ||
                         c.isValidSingleUser(
                             this.connectionManager.databricksWorkspace?.userName
@@ -95,14 +95,14 @@ export class ClusterLoader implements Disposable {
                 )
                 .filter(
                     (c) =>
-                        !workspaceConfigs.clusterFilteringEnabled ||
+                        !workspaceConfigs.onlyShowAccessibleClusters ||
                         this.connectionManager.databricksWorkspace?.supportFilesInReposForCluster(
                             c
                         )
                 )
         );
 
-        if (workspaceConfigs.clusterFilteringEnabled) {
+        if (workspaceConfigs.onlyShowAccessibleClusters) {
             // TODO: Find exact rate limit and update this.
             //       Rate limit is 100 on dogfood.
             const maxConcurrent = 50;

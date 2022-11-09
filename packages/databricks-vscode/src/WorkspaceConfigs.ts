@@ -29,11 +29,11 @@ export const workspaceConfigs = {
                 ?.get<boolean>("logs.enabled") ?? true
         );
     },
-    get clusterFilteringEnabled() {
+    get onlyShowAccessibleClusters() {
         return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<boolean>("clusters.filteringEnabled") ?? true
+                ?.get<boolean>("clusters.onlyShowAccessibleClusters") ?? true
         );
     },
 };
