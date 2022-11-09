@@ -18,7 +18,7 @@ describe(__filename, () => {
         let provider = new BricksTaskProvider(connection, cli);
         let tasks = provider.provideTasks();
 
-        assert.equal(tasks.length, 1);
+        assert.equal(tasks.length, 2);
         assert.equal(tasks[0].definition.type, "databricks");
         assert.equal(tasks[0].definition.task, "sync");
     });

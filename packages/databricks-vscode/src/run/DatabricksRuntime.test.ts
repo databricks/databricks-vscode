@@ -70,7 +70,7 @@ describe(__filename, () => {
         const syncDestination = new SyncDestination(
             instance(mock(Repo)),
             Uri.from({
-                scheme: "dbws",
+                scheme: "wsfs",
                 path: "/Workspace/Repos/fabian@databricks.com/test",
             }),
             Uri.file("/Desktop/workspaces")

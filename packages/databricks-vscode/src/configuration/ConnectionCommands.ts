@@ -238,7 +238,7 @@ export class ConnectionCommands implements Disposable {
                         const repoPath = quickPick.selectedItems[0].path;
                         await this.connectionManager.attachSyncDestination(
                             Uri.from({
-                                scheme: "dbws",
+                                scheme: "wsfs",
                                 path: repoPath,
                             })
                         );

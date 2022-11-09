@@ -1,4 +1,3 @@
-import {stat} from "fs";
 import {Disposable, Event, EventEmitter, TaskExecution, tasks} from "vscode";
 import {SyncTask} from "../cli/BricksTasks";
 import {CliWrapper} from "../cli/CliWrapper";
