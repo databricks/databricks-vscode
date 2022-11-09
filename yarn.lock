@@ -272,9 +272,6 @@ __metadata:
   resolution: "@databricks/databricks-sdk@workspace:packages/databricks-sdk-js"
   dependencies:
     "@istanbuljs/nyc-config-typescript": ^1.0.2
-    "@types/chai": ^4.3.3
-    "@types/chai-as-promised": ^7.1.5
-    "@types/chai-spies": ^1.0.3
     "@types/ini": ^1.3.31
     "@types/mocha": ^10.0.0
     "@types/node": ^18.11.9
@@ -687,31 +684,6 @@ __metadata:
     "@types/node": "*"
     "@types/responselike": "*"
   checksum: 667d25808dbf46fe104d6f029e0281ff56058d50c7c1b9182774b3e38bb9c1124f56e4c367ba54f92dbde2d1cc573f26eb0e9748710b2822bc0fd1e5498859c6
-  languageName: node
-  linkType: hard
-
-"@types/chai-as-promised@npm:^7.1.5":
-  version: 7.1.5
-  resolution: "@types/chai-as-promised@npm:7.1.5"
-  dependencies:
-    "@types/chai": "*"
-  checksum: 7c1345c6e32513d52d8e562ec173c23161648d6b792046525f18803a9932d7b3ad3dca8f0181e3c529ec42b106099f174e34edeb184d61dc93e32c98b5132fd4
-  languageName: node
-  linkType: hard
-
-"@types/chai-spies@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "@types/chai-spies@npm:1.0.3"
-  dependencies:
-    "@types/chai": "*"
-  checksum: f88b1a021c1f6c37259adf4268b00401431633027995725a49c44658b0fedf7ec09aa4e26e59fdf6564df0767a0b105b26a4a9c8a7c6acaf9ba417b06a4c9c70
-  languageName: node
-  linkType: hard
-
-"@types/chai@npm:*, @types/chai@npm:^4.3.3":
-  version: 4.3.3
-  resolution: "@types/chai@npm:4.3.3"
-  checksum: 20cd094753e137cfc35939cae7f0ed78ecda7861e5c94704efab6979b9121a63807e9b631bdcf3a2792d6c6dba44050b13387262f9e63ebb040741c01c345f0a
   languageName: node
   linkType: hard
 

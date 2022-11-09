@@ -38,12 +38,6 @@ export class BricksTaskProvider implements TaskProvider {
                 "full",
                 (state: SyncState) => {}
             ),
-            new SyncTask(
-                this.connection,
-                this.cli,
-                "full",
-                (state: SyncState) => {}
-            ),
         ];
     }
     resolveTask(): Task | undefined {
