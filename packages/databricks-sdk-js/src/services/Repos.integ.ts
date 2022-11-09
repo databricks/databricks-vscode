@@ -6,6 +6,7 @@ import {Repo} from "./Repos";
 import {RepoInfo, ReposService} from "../apis/repos";
 import {randomUUID} from "node:crypto";
 import {WorkspaceService} from "../apis/workspace";
+import {Context} from "../context";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
@@ -31,7 +32,7 @@ describe(__filename, function () {
 
     before(async () => {
         integSetup = await IntegrationTestSetup.getInstance();
-        let workspaceService = new WorkspaceService(integSetup.client);
+        const workspaceService = new WorkspaceService(integSetup.client);
         await workspaceService.mkdirs({
             path: repoDir,
         });
@@ -47,7 +48,7 @@ describe(__filename, function () {
     });
 
     it("should list repos by prefix", async () => {
-        let response = await Repo.list(integSetup.client, {
+        const response = await Repo.list(integSetup.client, {
             path_prefix: repoDir,
         });
         assert.ok(response.length > 0);
@@ -55,23 +56,23 @@ describe(__filename, function () {
 
     // skip test as it takes too long to run
     it.skip("should list all repos", async () => {
-        let response = await Repo.list(integSetup.client, {});
+        const response = await Repo.list(integSetup.client, {});
 
         assert.notEqual(response, undefined);
         assert.ok(response.length > 0);
     });
 
     it("should cancel listing repos", async () => {
-        let token = {
+        const token = {
             isCancellationRequested: false,
         };
 
-        let response = Repo.list(
+        const response = Repo.list(
             integSetup.client,
             {
                 path_prefix: repoDir,
             },
-            token
+            new Context({cancellationToken: token})
         );
 
         await sleep(2000);

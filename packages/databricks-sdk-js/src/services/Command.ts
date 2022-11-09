@@ -40,7 +40,7 @@ export class Command extends EventEmitter {
     result?: commands.CommandStatusResponse;
     id?: string;
 
-    private static statusUpdateEvent: string = "statusUpdate";
+    private static statusUpdateEvent = "statusUpdate";
 
     private constructor(context: ExecutionContext) {
         super();
@@ -147,7 +147,7 @@ export class Command extends EventEmitter {
         onStatusUpdate: StatusUpdateListener = () => {},
         cancellationToken?: CancellationToken
     ): Promise<CommandWithResult> {
-        let cmd = new Command(context);
+        const cmd = new Command(context);
 
         cmd.on(Command.statusUpdateEvent, onStatusUpdate);
 

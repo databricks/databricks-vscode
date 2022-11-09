@@ -24,6 +24,7 @@ import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../package.json").version;
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
@@ -95,7 +96,7 @@ export class ConnectionManager {
         return new ApiClient("vscode-extension", extensionVersion, creds);
     }
 
-    async login(interactive: boolean = false): Promise<void> {
+    async login(interactive = false): Promise<void> {
         try {
             await this._login(interactive);
         } catch (e) {
@@ -107,7 +108,7 @@ export class ConnectionManager {
             await this.logout();
         }
     }
-    private async _login(interactive: boolean = false): Promise<void> {
+    private async _login(interactive = false): Promise<void> {
         await this.logout();
         this.updateState("CONNECTING");
 
@@ -127,7 +128,7 @@ export class ConnectionManager {
                 );
             }
 
-            let credentialProvider = fromConfigFile(profile);
+            const credentialProvider = fromConfigFile(profile);
 
             await credentialProvider();
 
@@ -162,12 +163,12 @@ export class ConnectionManager {
             }
             NamedLogger.getOrCreate("Extension").error(message);
             if (interactive) {
-                let result = await window.showWarningMessage(
+                const result = await window.showWarningMessage(
                     message,
                     "Open Databricks UI"
                 );
                 if (result === "Open Databricks UI") {
-                    let host = await apiClient.host;
+                    const host = await apiClient.host;
                     await env.openExternal(
                         Uri.parse(
                             host.toString() +
@@ -439,7 +440,7 @@ export class ConnectionManager {
         if (this.cluster !== newCluster) {
             this._clusterManager?.dispose();
             this._clusterManager = newCluster
-                ? new ClusterManager(newCluster, (state) => {
+                ? new ClusterManager(newCluster, () => {
                       this.onDidChangeClusterEmitter.fire(this.cluster);
                   })
                 : undefined;
@@ -457,13 +458,13 @@ export class ConnectionManager {
     }
 
     async startCluster() {
-        await this._clusterManager?.start((state) => {
+        await this._clusterManager?.start(() => {
             this.onDidChangeClusterEmitter.fire(this.cluster);
         });
     }
 
     async stopCluster() {
-        await this._clusterManager?.stop((state) => {
+        await this._clusterManager?.stop(() => {
             this.onDidChangeClusterEmitter.fire(this.cluster);
         });
     }

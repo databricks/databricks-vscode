@@ -13,7 +13,7 @@ describe(__filename, function () {
     });
 
     it("should read configuration properties", async () => {
-        let wsConf = new WorkspaceConf(integSetup.client);
+        const wsConf = new WorkspaceConf(integSetup.client);
 
         const state = await wsConf.getStatus([
             "enableProjectTypeInWorkspace",

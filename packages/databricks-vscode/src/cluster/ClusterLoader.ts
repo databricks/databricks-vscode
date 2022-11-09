@@ -1,10 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
-    Cluster,
-    PermissionsService,
-    Time,
-    TimeUnits,
-} from "@databricks/databricks-sdk";
+import {Cluster, Time, TimeUnits} from "@databricks/databricks-sdk";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -33,8 +28,8 @@ export class ClusterLoader implements Disposable {
     get stopped() {
         return this._stopped;
     }
-    private _running: Boolean = false;
-    private set running(v: Boolean) {
+    private _running = false;
+    private set running(v: boolean) {
         this._running = v;
     }
     get running() {
@@ -65,7 +60,7 @@ export class ClusterLoader implements Disposable {
     private cleanupClustersMap(clusters: Cluster[]) {
         const clusterIds = clusters.map((c) => c.id);
         const toDelete = [];
-        for (let key of this._clusters.keys()) {
+        for (const key of this._clusters.keys()) {
             if (!clusterIds.includes(key)) {
                 toDelete.push(key);
             }
@@ -77,12 +72,12 @@ export class ClusterLoader implements Disposable {
     }
 
     async _load() {
-        let apiClient = this.connectionManager.apiClient;
+        const apiClient = this.connectionManager.apiClient;
         if (!apiClient) {
             this.cleanup();
             return;
         }
-        let allClusters = sortClusters(
+        const allClusters = sortClusters(
             (await Cluster.list(apiClient))
                 .filter((c) => ["UI", "API"].includes(c.source))
                 .filter(
@@ -108,7 +103,7 @@ export class ClusterLoader implements Disposable {
             const maxConcurrent = 50;
             const wip: Promise<void>[] = [];
 
-            for (let c of allClusters) {
+            for (const c of allClusters) {
                 if (!this.running) {
                     break;
                 }

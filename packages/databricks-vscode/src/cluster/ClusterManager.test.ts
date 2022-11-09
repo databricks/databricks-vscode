@@ -49,7 +49,7 @@ describe(__filename, async () => {
 
         resetCalls(mockedClient);
 
-        RetryConfigs.waitTime = (attempt) => {
+        RetryConfigs.waitTime = () => {
             return new Time(0, TimeUnits.milliseconds);
         };
     });

@@ -1,4 +1,3 @@
-import {randomUUID} from "crypto";
 import {Context} from "../context";
 import {defaultRedactor} from "../Redactor";
 import {DefaultLogger} from "./DefaultLogger";
@@ -31,7 +30,7 @@ export const defaultOpts: LoggerOpts = {
         }
         return denyList;
     },
-    factory: (name) => new DefaultLogger(),
+    factory: () => new DefaultLogger(),
 };
 
 interface LoggerDetails {

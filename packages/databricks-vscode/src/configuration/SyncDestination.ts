@@ -100,7 +100,7 @@ export class SyncDestination {
             throw new Error("local path is not within the workspace");
         }
 
-        let relativePath = localPath.path.replace(
+        const relativePath = localPath.path.replace(
             this.vscodeWorkspacePath.path,
             ""
         );

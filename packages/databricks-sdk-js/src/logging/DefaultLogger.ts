@@ -1,4 +1,4 @@
-import {Transform, Writable} from "stream";
+import {Writable} from "stream";
 import {LogEntry, Logger} from "./types";
 
 export class DefaultLogger implements Logger {

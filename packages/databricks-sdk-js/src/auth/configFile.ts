@@ -88,14 +88,14 @@ export async function loadConfigFile(filePath?: string): Promise<Profiles> {
     }
 
     let config: any;
-    let profiles: Profiles = {};
-    let defaultSection: Record<string, any> = {};
+    const profiles: Profiles = {};
+    const defaultSection: Record<string, any> = {};
     let defaultSectionFound = false;
     try {
         config = parse(fileContents);
-        for (let key in config) {
+        for (const key in config) {
             if (key === "DEFAULT") {
-                for (let defaultSectionKey in config[key]) {
+                for (const defaultSectionKey in config[key]) {
                     defaultSection[defaultSectionKey] =
                         config[key][defaultSectionKey];
                 }

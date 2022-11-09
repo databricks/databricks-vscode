@@ -1,5 +1,3 @@
-import {Cluster} from "@databricks/databricks-sdk";
-import {TreeItem} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ClusterFilter, ClusterModel} from "./ClusterModel";
 

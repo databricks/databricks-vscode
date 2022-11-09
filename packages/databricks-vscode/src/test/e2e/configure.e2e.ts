@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import path, {resolve} from "node:path";
+import path from "node:path";
 import * as fs from "fs/promises";
 import * as tmp from "tmp-promise";
 import {
@@ -25,7 +25,7 @@ describe("Configure Databricks Extension", async function () {
 
     // this will be populated by the tests
     let clusterId: string;
-    let periodicRunners = new Map<string, PeriodicRunner>();
+    const periodicRunners = new Map<string, PeriodicRunner>();
 
     this.timeout(3 * 60 * 1000);
 
@@ -132,7 +132,7 @@ describe("Configure Databricks Extension", async function () {
 
         await action.click();
         const menu = new ContextMenu(new Workbench());
-        let item = await menu.getItem("Created by me");
+        const item = await menu.getItem("Created by me");
         await item?.click();
 
         const items = await section.getVisibleItems();
@@ -190,7 +190,7 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should write the project config file", async function () {
-        let projectConfig = JSON.parse(
+        const projectConfig = JSON.parse(
             await fs.readFile(
                 path.join(projectDir, ".databricks", "project.json"),
                 "utf-8"

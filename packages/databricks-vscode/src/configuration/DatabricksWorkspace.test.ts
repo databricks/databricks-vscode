@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {Cluster, scim} from "@databricks/databricks-sdk";
+import {scim} from "@databricks/databricks-sdk";
 import assert from "assert";
 import {Uri} from "vscode";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";

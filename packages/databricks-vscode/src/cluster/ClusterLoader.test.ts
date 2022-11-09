@@ -108,7 +108,7 @@ describe(__filename, () => {
         when(mockedConnectionManager.apiClient).thenReturn(
             instance(mockedApiClient)
         );
-        for (let [id, perms] of mockClusterPermissions.entries()) {
+        for (const [id, perms] of mockClusterPermissions.entries()) {
             when<permissions.ObjectPermissions>(
                 mockedApiClient.request(
                     `/api/2.0/permissions/clusters/${id}`,
@@ -131,7 +131,7 @@ describe(__filename, () => {
         when(loader.running).thenReturn(true);
         when(loader.stopped).thenReturn(false);
         instance(loader)._load();
-        for (let [id, _] of instance(loader).clusters.entries()) {
+        for (const [id] of instance(loader).clusters.entries()) {
             assert.ok(
                 ["cluster-id-2", "cluster-id-1", "cluster-id-4"].includes(id)
             );

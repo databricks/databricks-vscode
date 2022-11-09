@@ -14,7 +14,7 @@ export class WorkflowOutputPanel {
         panel: WebviewPanel,
         extensionUri: Uri
     ): Promise<WorkflowOutputPanel> {
-        let webviewContent = await WorkflowOutputPanel.getWebviewContent(
+        const webviewContent = await WorkflowOutputPanel.getWebviewContent(
             panel,
             extensionUri
         );

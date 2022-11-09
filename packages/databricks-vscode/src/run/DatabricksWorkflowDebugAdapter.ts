@@ -13,7 +13,6 @@ import {
     DebugAdapterDescriptor,
     DebugAdapterDescriptorFactory,
     DebugAdapterInlineImplementation,
-    DebugSession,
     Disposable,
     ExtensionContext,
     ProviderResult,
@@ -44,8 +43,6 @@ interface ILaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     args?: string[];
 }
 
-interface IAttachRequestArguments extends ILaunchRequestArguments {}
-
 export class DatabricksWorkflowDebugAdapterFactory
     implements DebugAdapterDescriptorFactory, Disposable
 {
@@ -63,9 +60,7 @@ export class DatabricksWorkflowDebugAdapterFactory
         this.workflowRunner.dispose();
     }
 
-    createDebugAdapterDescriptor(
-        _session: DebugSession
-    ): ProviderResult<DebugAdapterDescriptor> {
+    createDebugAdapterDescriptor(): ProviderResult<DebugAdapterDescriptor> {
         return new DebugAdapterInlineImplementation(
             new DatabricksWorkflowDebugSession(
                 this.connection,
@@ -123,17 +118,13 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         this._configurationDone.notify();
     }
 
-    protected async disconnectRequest(
-        _response: DebugProtocol.DisconnectResponse,
-        args: DebugProtocol.DisconnectArguments,
-        _request?: DebugProtocol.Request
-    ): Promise<void> {
+    protected async disconnectRequest(): Promise<void> {
         this.tokenSource.cancel();
     }
 
     protected async attachRequest(
         response: DebugProtocol.AttachResponse,
-        args: IAttachRequestArguments
+        args: ILaunchRequestArguments
     ) {
         return this.launchRequest(response, args);
     }
@@ -167,15 +158,15 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             await this.connection.waitForConnect();
         }
 
-        let cluster = this.connection.cluster;
-        let apiClient = this.connection.apiClient;
+        const cluster = this.connection.cluster;
+        const apiClient = this.connection.apiClient;
 
         if (!cluster || !apiClient) {
             return this.onError(
                 "You must attach to a cluster to run on Databricks"
             );
         }
-        let syncDestination = this.connection.syncDestination;
+        const syncDestination = this.connection.syncDestination;
         if (!syncDestination) {
             return this.onError(
                 "You must configure code synchronization to run on Databricks"

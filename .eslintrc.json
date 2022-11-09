@@ -5,14 +5,39 @@
         "ecmaVersion": 6,
         "sourceType": "module"
     },
-    "plugins": ["@typescript-eslint"],
+    "plugins": ["@typescript-eslint", "no-only-tests"],
+    "extends": [
+        "prettier",
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended"
+    ],
     "rules": {
         "@typescript-eslint/naming-convention": "warn",
         "curly": "warn",
         "eqeqeq": "warn",
-        "no-throw-literal": "warn",
-        "semi": "off"
+        "@typescript-eslint/no-non-null-assertion": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "no-constant-condition": ["error", {"checkLoops": false}],
+        "no-empty": "off",
+        "@typescript-eslint/no-empty-function": "off",
+        "semi": "off",
+        "no-console": "error",
+        "no-only-tests/no-only-tests": "error"
     },
-    "ignorePatterns": ["out", "dist", "**/*.d.ts"],
-    "extends": ["prettier"]
+    "overrides": [
+        {
+            "files": "**/*.test.ts",
+            "rules": {
+                "no-console": "off"
+            }
+        },
+        {
+            "files": "**/apis/*/*.ts",
+            "rules": {
+                "@typescript-eslint/no-unused-vars": "off",
+                "@typescript-eslint/no-empty-interface": "off"
+            }
+        }
+    ],
+    "ignorePatterns": ["out", "dist", "**/*.d.ts"]
 }

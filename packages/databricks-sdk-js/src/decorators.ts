@@ -1,4 +1,3 @@
-import {ApiClient} from "./api-client";
 import {CancellationToken} from "./types";
 
 /**
@@ -23,7 +22,7 @@ export function paginated<REQ, RES>(
             req: REQ,
             token?: CancellationToken
         ): Promise<RES> {
-            let results = [];
+            const results = [];
             let response: RES;
             let paginationToken: any;
             do {

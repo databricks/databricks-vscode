@@ -22,7 +22,7 @@ function processPrimitiveOrString(obj: any) {
 
 function processArray(obj: Array<any>, depth: number): Array<any> {
     const finalArr = [];
-    for (let child of obj) {
+    for (const child of obj) {
         finalArr.push(recursiveTruncate(child, depth - 1));
         if (finalArr.length === workspaceConfigs.maxArrayLength) {
             break;
@@ -48,7 +48,7 @@ function recursiveTruncate(obj: any, depth: number) {
 
     obj = Object.assign({}, obj);
 
-    for (let key in obj) {
+    for (const key in obj) {
         obj[key] = recursiveTruncate(obj[key], depth - 1);
     }
     return obj;

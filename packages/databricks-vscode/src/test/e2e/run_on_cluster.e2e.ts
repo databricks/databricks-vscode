@@ -42,5 +42,7 @@ describe("Run python on cluster", function () {
     });
 
     // TODO
-    it("should run a python file on a cluster", async () => {});
+    it("should run a python file on a cluster", async () => {
+        // TODO: create a python file
+    });
 });

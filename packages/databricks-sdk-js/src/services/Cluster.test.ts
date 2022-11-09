@@ -20,7 +20,7 @@ describe(__filename, function () {
         ({mockedCluster, mockedClient, testClusterDetails} =
             await getMockTestCluster());
 
-        RetryConfigs.waitTime = (attempt) => {
+        RetryConfigs.waitTime = () => {
             return new Time(0, TimeUnits.milliseconds);
         };
     });

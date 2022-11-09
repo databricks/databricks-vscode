@@ -24,7 +24,7 @@ describe(__filename, () => {
         onChangeClusterListener = () => {};
         onChangeSyncDestinationListener = () => {};
 
-        when(connectionManagerMock.onDidChangeState).thenReturn((_handler) => {
+        when(connectionManagerMock.onDidChangeState).thenReturn(() => {
             return {
                 dispose() {},
             };
@@ -58,8 +58,8 @@ describe(__filename, () => {
     });
 
     it("should reload tree on cluster change", async () => {
-        let connectionManager = instance(connectionManagerMock);
-        let provider = new ConfigurationDataProvider(connectionManager, sync);
+        const connectionManager = instance(connectionManagerMock);
+        const provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let called = false;
@@ -75,8 +75,8 @@ describe(__filename, () => {
     });
 
     it("should reload tree on sync destination change", async () => {
-        let connectionManager = instance(connectionManagerMock);
-        let provider = new ConfigurationDataProvider(connectionManager, sync);
+        const connectionManager = instance(connectionManagerMock);
+        const provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
         let called = false;
@@ -92,17 +92,17 @@ describe(__filename, () => {
     });
 
     it("should get empty roots", async () => {
-        let connectionManager = instance(connectionManagerMock);
-        let provider = new ConfigurationDataProvider(connectionManager, sync);
+        const connectionManager = instance(connectionManagerMock);
+        const provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
-        let children = await resolveProviderResult(provider.getChildren());
+        const children = await resolveProviderResult(provider.getChildren());
         assert(children);
         assert.equal(children.length, 0);
     });
 
     it("should return cluster children", async () => {
-        let cluster = new Cluster(instance(mock(ApiClient)), {
+        const cluster = new Cluster(instance(mock(ApiClient)), {
             cluster_id: "cluster-id-2",
             cluster_name: "cluster-name-2",
             cluster_source: "UI",
@@ -114,11 +114,11 @@ describe(__filename, () => {
         when(connectionManagerMock.state).thenReturn("CONNECTED");
         when(connectionManagerMock.cluster).thenReturn(cluster);
 
-        let connectionManager = instance(connectionManagerMock);
-        let provider = new ConfigurationDataProvider(connectionManager, sync);
+        const connectionManager = instance(connectionManagerMock);
+        const provider = new ConfigurationDataProvider(connectionManager, sync);
         disposables.push(provider);
 
-        let children = await resolveProviderResult(provider.getChildren());
+        const children = await resolveProviderResult(provider.getChildren());
         assert.deepEqual(children, [
             {
                 collapsibleState: 2,

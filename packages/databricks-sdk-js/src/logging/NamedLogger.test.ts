@@ -16,7 +16,7 @@ describe(__filename, () => {
         const logger = NamedLogger.getOrCreate(
             "TEST",
             {
-                factory: (name) => new DefaultLogger(stream),
+                factory: () => new DefaultLogger(stream),
             },
             true
         );
@@ -52,7 +52,7 @@ describe(__filename, () => {
         const logger = NamedLogger.getOrCreate(
             "TEST",
             {
-                factory: (name) => new DefaultLogger(stream),
+                factory: () => new DefaultLogger(stream),
             },
             true
         );

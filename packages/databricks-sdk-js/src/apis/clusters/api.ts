@@ -94,8 +94,8 @@ export class ClustersService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         const createClusterResponse = await this.create(createCluster, context);
 
@@ -179,8 +179,8 @@ export class ClustersService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         await this.delete(deleteCluster, context);
 
@@ -273,8 +273,8 @@ export class ClustersService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         await this.edit(editCluster, context);
 
@@ -378,8 +378,8 @@ export class ClustersService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         const clusterInfo = await this.get(getRequest, context);
 
@@ -572,8 +572,8 @@ export class ClustersService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         await this.resize(resizeCluster, context);
 
@@ -655,8 +655,8 @@ export class ClustersService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         await this.restart(restartCluster, context);
 
@@ -765,8 +765,8 @@ export class ClustersService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         await this.start(startCluster, context);
 

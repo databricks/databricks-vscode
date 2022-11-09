@@ -1,11 +1,4 @@
-import {
-    commands,
-    debug,
-    ExtensionContext,
-    tasks,
-    window,
-    workspace,
-} from "vscode";
+import {commands, debug, ExtensionContext, window, workspace} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -27,7 +20,6 @@ import {UtilsCommands} from "./utils/UtilsCommands";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 
 export function activate(context: ExtensionContext): PublicApi | undefined {
-    const a = workspace.workspaceFolders;
     if (
         workspace.workspaceFolders === undefined ||
         workspace.workspaceFolders?.length === 0
@@ -44,18 +36,18 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
     }
     initLoggers(workspace.workspaceFolders[0].uri.path);
 
-    let cli = new CliWrapper(context);
+    const cli = new CliWrapper(context);
     // Configuration group
-    let connectionManager = new ConnectionManager(cli);
+    const connectionManager = new ConnectionManager(cli);
 
     const synchronizer = new CodeSynchronizer(connectionManager, cli);
     const clusterModel = new ClusterModel(connectionManager);
 
-    let connectionCommands = new ConnectionCommands(
+    const connectionCommands = new ConnectionCommands(
         connectionManager,
         clusterModel
     );
-    let configurationDataProvider = new ConfigurationDataProvider(
+    const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         synchronizer
     );
@@ -144,7 +136,10 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
 
     // Cluster group
     const clusterTreeDataProvider = new ClusterListDataProvider(clusterModel);
-    let clusterCommands = new ClusterCommands(clusterModel, connectionManager);
+    const clusterCommands = new ClusterCommands(
+        clusterModel,
+        connectionManager
+    );
 
     context.subscriptions.push(
         clusterModel,

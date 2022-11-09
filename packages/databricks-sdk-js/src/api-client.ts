@@ -4,8 +4,11 @@ import {TextDecoder} from "node:util";
 import {fromDefaultChain} from "./auth/fromChain";
 import {fetch} from "./fetch";
 import {ExposedLoggers, Utils, withLogContext} from "./logging";
-import {context, Context} from "./context";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import {context} from "./context";
+import {Context} from "./context";
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const sdkVersion = require("../package.json").version;
 
 type HttpMethod = "POST" | "GET" | "DELETE" | "PATCH" | "PUT";
@@ -63,7 +66,7 @@ export class ApiClient {
     }
 
     userAgent(): string {
-        let pairs = [
+        const pairs = [
             `${this.product}/${this.productVersion}`,
             `databricks-sdk-js/${sdkVersion}`,
             `nodejs/${process.version.slice(1)}`,
@@ -80,7 +83,7 @@ export class ApiClient {
         method: HttpMethod,
         payload?: any,
         @context context?: Context
-    ): Promise<Object> {
+    ): Promise<Record<string, unknown>> {
         const credentials = await this.credentialProvider();
         const headers = {
             "Authorization": `Bearer ${credentials.token}`,
@@ -89,10 +92,10 @@ export class ApiClient {
         };
 
         // create a copy of the URL, so that we can modify it
-        let url = new URL(credentials.host.toString());
+        const url = new URL(credentials.host.toString());
         url.pathname = path;
 
-        let options: any = {
+        const options: any = {
             method,
             headers,
             agent: this.agent,
@@ -136,8 +139,8 @@ export class ApiClient {
             );
         }
 
-        let responseBody = await response.arrayBuffer();
-        let responseText = new TextDecoder().decode(responseBody);
+        const responseBody = await response.arrayBuffer();
+        const responseText = new TextDecoder().decode(responseBody);
 
         // TODO proper error handling
         if (!response.ok) {
@@ -160,7 +163,7 @@ export class ApiClient {
         }
 
         if ("error_code" in response) {
-            let message =
+            const message =
                 response.message || `HTTP error ${response.error_code}`;
             throw logAndReturnError(
                 url,

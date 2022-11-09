@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import * as fs from "fs-extra";
 import got, {OptionsOfTextResponseBody, Response} from "got";
 import {promisify} from "util";
