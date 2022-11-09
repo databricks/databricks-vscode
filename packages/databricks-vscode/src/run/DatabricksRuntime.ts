@@ -6,6 +6,7 @@
 
 import {
     CancellationTokenSource,
+    commands,
     Disposable,
     Event,
     EventEmitter,
@@ -146,6 +147,10 @@ export class DatabricksRuntime implements Disposable {
                     }
                 })
             );
+
+            if (this.codeSynchronizer.state === "STOPPED") {
+                await commands.executeCommand("databricks.sync.start");
+            }
 
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
