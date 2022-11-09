@@ -2,7 +2,7 @@ import * as assert from "assert";
 import {instance, mock} from "ts-mockito";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncState} from "../sync/CodeSynchronizer";
-import {BricksTaskProvider, SyncTask} from "./BricksTasks";
+import {SyncTask} from "./BricksTasks";
 import {CliWrapper} from "./CliWrapper";
 
 describe(__filename, () => {
@@ -12,15 +12,6 @@ describe(__filename, () => {
     beforeEach(() => {
         connection = instance(mock<ConnectionManager>());
         cli = instance(mock(CliWrapper));
-    });
-
-    it("should create a task provider", () => {
-        let provider = new BricksTaskProvider(connection, cli);
-        let tasks = provider.provideTasks();
-
-        assert.equal(tasks.length, 2);
-        assert.equal(tasks[0].definition.type, "databricks");
-        assert.equal(tasks[0].definition.task, "sync");
     });
 
     it("should create a sync task", () => {
