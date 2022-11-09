@@ -518,7 +518,7 @@
                         "description": "Enable/disable logging. Reload window for changes to take effect."
                     },
                     "databricks.clusters.filteringEnabled": {
-                        "title": "Filtering Enabled",
+                        "title": "Show Only Accessible Clusters",
                         "type": "boolean",
                         "default": true,
                         "description": "Enabled/disable filtering for only accessible clusters (clusters on which the current user can run code)"
