@@ -8,6 +8,7 @@ import {basename} from "node:path";
 import {
     CancellationToken,
     CancellationTokenSource,
+    commands,
     Disposable,
     ExtensionContext,
     Uri,
@@ -83,6 +84,10 @@ export class WorkflowRunner implements Disposable {
             token.onCancellationRequested(() => {
                 cancellation.cancel();
             });
+        }
+
+        if (this.codeSynchronizer.state === "STOPPED") {
+            await commands.executeCommand("databricks.sync.start");
         }
 
         // We wait for sync to complete so that the local files are consistant

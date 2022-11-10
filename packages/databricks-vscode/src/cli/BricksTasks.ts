@@ -18,33 +18,6 @@ import {ChildProcess, spawn, SpawnOptions} from "node:child_process";
 import {SyncState} from "../sync/CodeSynchronizer";
 import {BricksSyncParser} from "./BricksSyncParser";
 
-export class BricksTaskProvider implements TaskProvider {
-    constructor(
-        private connection: ConnectionManager,
-        private cli: CliWrapper
-    ) {}
-
-    provideTasks(): Task[] {
-        return [
-            new SyncTask(
-                this.connection,
-                this.cli,
-                "incremental",
-                (state: SyncState) => {}
-            ),
-            new SyncTask(
-                this.connection,
-                this.cli,
-                "full",
-                (state: SyncState) => {}
-            ),
-        ];
-    }
-    resolveTask(): Task | undefined {
-        return undefined;
-    }
-}
-
 export class SyncTask extends Task {
     constructor(
         connection: ConnectionManager,

@@ -2,8 +2,8 @@ import {OutputChannel} from "vscode";
 import {transports, format} from "winston";
 import {OutputConsoleStream} from "./OutputConsoleStream";
 import {LEVEL, MESSAGE, SPLAT} from "triple-beam";
-import {workspaceConfigs} from "./WorkspaceConfigs";
 import {inspect} from "util";
+import {workspaceConfigs} from "../WorkspaceConfigs";
 
 function processPrimitiveOrString(obj: any) {
     let valueStr: string;

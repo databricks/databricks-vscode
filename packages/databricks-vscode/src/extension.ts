@@ -18,7 +18,6 @@ import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
-import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
@@ -201,14 +200,6 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
             "databricks.sync.stop",
             syncCommands.stopCommand(),
             syncCommands
-        )
-    );
-
-    // Bricks tasks
-    context.subscriptions.push(
-        tasks.registerTaskProvider(
-            "databricks",
-            new BricksTaskProvider(connectionManager, cli)
         )
     );
 

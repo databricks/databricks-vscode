@@ -57,7 +57,6 @@
         "onCommand:databricks.quickstart.open",
         "onView:configurationView",
         "onView:clusterView",
-        "onTaskType:databricks",
         "onDebugResolve:databricks",
         "onDebugResolve:databricks-workflow"
     ],
@@ -343,23 +342,6 @@
                 "icon": "$(filter)"
             }
         ],
-        "taskDefinitions": [
-            {
-                "type": "databricks",
-                "required": [
-                    "task"
-                ],
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "enum": [
-                            "sync"
-                        ],
-                        "default": "sync"
-                    }
-                }
-            }
-        ],
         "problemMatchers": [
             {
                 "name": "bricks-sync",
@@ -409,8 +391,7 @@
                         "request": "launch",
                         "name": "Run on Databricks",
                         "program": "${file}",
-                        "args": [],
-                        "preLaunchTask": "databricks: sync"
+                        "args": []
                     }
                 ],
                 "configurationSnippets": [
@@ -422,8 +403,7 @@
                             "request": "launch",
                             "name": "Run on Databricks",
                             "program": "^\"\\${file}\"",
-                            "args": [],
-                            "preLaunchTask": "databricks: sync"
+                            "args": []
                         }
                     }
                 ]
@@ -468,8 +448,7 @@
                         "name": "Run on Databricks as Workflow",
                         "program": "${file}",
                         "parameters": {},
-                        "args": [],
-                        "preLaunchTask": "databricks: sync"
+                        "args": []
                     }
                 ],
                 "configurationSnippets": [
@@ -482,8 +461,7 @@
                             "name": "Run on Databricks as a Workflow",
                             "program": "^\"\\${file}\"",
                             "parameters": {},
-                            "args": [],
-                            "preLaunchTask": "databricks: sync"
+                            "args": []
                         }
                     }
                 ]
@@ -494,28 +472,29 @@
                 "title": "Databricks",
                 "properties": {
                     "databricks.logs.maxFieldLength": {
-                        "title": "Max Field Length",
                         "type": "number",
                         "default": 40,
                         "description": "The maximum length of each field displayed in logs outputs panel."
                     },
                     "databricks.logs.truncationDepth": {
-                        "title": "Truncation Depth",
                         "type": "number",
                         "default": 2,
                         "description": "The max depth of logs to show without truncation."
                     },
                     "databricks.logs.maxArrayLength": {
-                        "title": "Max Array Length",
                         "type": "number",
                         "default": 2,
                         "description": "The maximum number of items to show for array fields."
                     },
                     "databricks.logs.enabled": {
-                        "title": "Enabled",
                         "type": "boolean",
                         "default": true,
                         "description": "Enable/disable logging. Reload window for changes to take effect."
+                    },
+                    "databricks.clusters.onlyShowAccessibleClusters": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
                     }
                 }
             }
