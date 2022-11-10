@@ -26,7 +26,7 @@ export interface WorkspaceConfProps {
      * When Files in Repos is disabled, arbitrary files will not be included
      * in Repo operations and cannot be accessed from clusters.
      */
-    enableWorkspaceFilesystem: "dbr8.4+" | "dbr11.0+" | "false";
+    enableWorkspaceFilesystem: "dbr8.4+" | "dbr11.0+" | "false" | "true";
 }
 
 /**
