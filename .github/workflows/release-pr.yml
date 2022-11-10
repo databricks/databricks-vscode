@@ -1,4 +1,4 @@
-name: Release PR
+name: Create Release PR
 
 on:
     workflow_dispatch:
@@ -30,7 +30,7 @@ jobs:
               run: bash -c '$([[ "${{ inputs.version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
 
             - run: |
-                  git config --global user.name "github"
+                  git config --global user.name "releasebot"
                   git config --global user.email "noreply@github.com"
 
             - name: Use Node.js ${{ matrix.node-version }}
