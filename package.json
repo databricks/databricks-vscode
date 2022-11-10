@@ -32,11 +32,8 @@
     "homepage": "https://github.com/databricks/databricks-vscode#readme",
     "packageManager": "yarn@3.2.1",
     "devDependencies": {
-        "@types/conventional-changelog": "^3.1.1",
         "@typescript-eslint/eslint-plugin": "^5.42.0",
         "@typescript-eslint/parser": "^5.42.0",
-        "conventional-changelog": "^3.1.25",
-        "conventional-changelog-cli": "^2.2.2",
         "eslint": "^8.26.0",
         "eslint-config-prettier": "^8.5.0",
         "prettier": "^2.7.1",

@@ -15,23 +15,23 @@ jobs:
         steps:
             - run: echo "${{ github.event.head_commit.message }}"
 
-    # create-build-artifacts:
-    #     if: startsWith(github.event.head_commit.message, 'Release:')
-    #     uses: ./.github/workflows/create-build-artifacts.yml
-    #     secrets: inherit
+    create-build-artifacts:
+        if: startsWith(github.event.head_commit.message, 'Release:')
+        uses: ./.github/workflows/create-build-artifacts.yml
+        secrets: inherit
 
     create-release:
         if: startsWith(github.event.head_commit.message, 'Release:')
-        # needs: ["create-build-artifacts"]
+        needs: ["create-build-artifacts"]
         runs-on: macos-latest
         steps:
             - uses: actions/checkout@v3
-            # - uses: actions/download-artifact@v3
-            #   id: download
-            #   with:
-            #       path: packages/databricks-vscode
+            - uses: actions/download-artifact@v3
+              id: download
+              with:
+                  path: packages/databricks-vscode
 
-            # - run: ls -lr ${{ steps.download.outputs.download-path }}
+            - run: ls -lr ${{ steps.download.outputs.download-path }}
 
             - run: |
                   TITLE=$(echo "${{ github.event.head_commit.message }}" | head -n1)
