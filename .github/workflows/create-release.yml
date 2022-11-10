@@ -25,6 +25,7 @@ jobs:
         # needs: ["create-build-artifacts"]
         runs-on: macos-latest
         steps:
+            - uses: actions/checkout@v3
             # - uses: actions/download-artifact@v3
             #   id: download
             #   with:
