@@ -2,7 +2,7 @@ name: Create Draft Release
 
 on:
     push:
-        branches: ["yarn-changelog"]
+        branches: ["main"]
 
     workflow_dispatch:
 
