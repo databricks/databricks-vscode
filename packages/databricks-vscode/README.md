@@ -1,11 +1,6 @@
-# Databricks extension for VSCode
+# Databricks extension for Visual Studio Code
 
-| System                                                                                          | Status                                                                                                                                                                                                                                                                                          |
-| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build ([main branch](https://github.com/databricks/databricks-vscode/commits/main))             | [![GitHub CI Status](https://github.com/databricks/databricks-vscode/actions/workflows/push.yml/badge.svg?branch=main)](https://github.com/databricks/databricks-vscode/actions/workflows/push.yml)                                                                                             |
-| [Marketplace](https://marketplace.visualstudio.com/items?itemName=databricks.databricks-vscode) | [![Marketplace Version](https://img.shields.io/vscode-marketplace/v/databricks.databricks-vscode.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/d/databricks.databricks-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=databricks.databricks-vscode) |
-
-The Databricks extension for VSCode allows you to develop for the Databricks Lakehouse platform from VSCode.
+The Databricks extension for VS Code allows you to develop for the Databricks Lakehouse platform from VS Code.
 
 The extension is available from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/itemdetails?itemName=databricks.databricks-vscode).
 
@@ -17,7 +12,11 @@ This is an open source project because we want you to be involved. We love issue
 -   Run Python files on a Databricks cluster
 -   Run notebooks and Python files as Workflows
 
+<!--
+Comment out until the repo is public so the image can be loaded by the marketplace
+
 ![run](./images/run.gif)
+-->
 
 ## Requirements
 
@@ -30,6 +29,10 @@ In order to use this extension you need acceess to a Databricks workspace:
 3. Access to an interactive cluster or permissions to create a cluster
 4. Permissions to create Databricks repos
 
+<!--
+
+Comment out until the repo is public so the image can be loaded by the marketplace
+
 ## Documentation
 
 -   The [Quick Start Guide](README.quickstart.md) provides an overview
@@ -37,10 +40,12 @@ In order to use this extension you need acceess to a Databricks workspace:
 -   <mark>The [User Guide](https://docs.databricks.com/)
     contains comprehesive documentation about the Databricks extension. (TODO: Link not available yet)</mark>
 
+-->
+
 ## Release Notes
 
 ### 0.0.1
 
-Preview version of the VSCode extension for Databricks
+Preview version of the VS Code extension for Databricks
 
 **Happy Coding!**
