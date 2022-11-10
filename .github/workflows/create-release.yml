@@ -27,14 +27,11 @@ jobs:
 
             - run: |
                   tmpfile=$(mktemp /tmp/commit-message.XXXXX)
-                  cat <<EOF >$tmpfile
-                  ${{github.event.head_commit.message}}
-                  EOF
-
+                  echo '${{github.event.head_commit.message}}' > $tmpfile
                   TITLE=$(cat $tmpfile | head -n1)
                   BODY=$(cat $tmpfile | awk 'BEGIN{C=0} NR > 1 && (NF!=0 || C==1){print $0; C=1}')
                   RELEASE_VERSION=$(echo "$TITLE" | sed -nr 's/Release: v(([0-9]+\.){2}[0-9]+)/\1/p') 
                   gh release create release-v$RELEASE_VERSION ${{ steps.download.outputs.download-path }}/databricks*/*.vsix \
-                    -d --target ${{ github.ref_name }} -t "$TITLE" -n "$BODY"
+                    -d --target ${{ github.ref_name }} -t '$TITLE' -n '$BODY'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
