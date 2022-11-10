@@ -10,6 +10,11 @@ on:
         branches: ["main"]
 
 jobs:
+    echo:
+        runs-on: macos-latest
+        steps:
+            - run: echo "${{ github.event.head_commit.message }}"
+
     create-build-artifacts:
         if: startsWith(github.event.head_commit.message, 'Release:')
         uses: ./.github/workflows/create-build-artifacts.yml
