@@ -1,0 +1,76 @@
+name: Create Release PR
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Release version"
+                required: true
+                default: 0.0.0
+                type: string
+
+    workflow_call:
+        inputs:
+            version:
+                default: 0.0.0
+                type: string
+
+jobs:
+    release-pr:
+        runs-on: "macos-latest"
+        strategy:
+            matrix:
+                node-version: [16.x]
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+
+            - name: Check Version
+              run: bash -c '$([[ "${{ inputs.version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
+
+            - run: |
+                  git config --global user.name "releasebot"
+                  git config --global user.email "noreply@github.com"
+
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v3
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: "yarn"
+
+            - run: yarn install --immutable
+
+            - name: Changelog
+              id: create-changelog
+              run: |
+                  TMPFILE=/tmp/tmpfile
+                  bash scripts/generate_changelog.sh $TMPFILE
+                  cat $TMPFILE >> $GITHUB_STEP_SUMMARY
+                  cat $TMPFILE >> CHANGELOG.md
+                  echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
+
+            - name: Bump version
+              run: yarn workspaces foreach version ${{ inputs.version }}
+              if: ${{ inputs.version }} != "0.0.0"
+
+            - name: Create Branch
+              id: create-branch
+              run: |
+                  COMMIT_SHA=$(git rev-parse --short HEAD)
+                  BRANCH=releases/draft-$COMMIT_SHA-$(date +%s)
+                  git checkout -b $BRANCH
+                  git add CHANGELOG.md **/package.json
+                  git status
+                  git commit -m "Changelog & version bump to ${{ inputs.version }}"
+                  git push origin HEAD
+                  echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
+              if: ${{ inputs.version }} != "0.0.0"
+
+            - name: Create PR
+              run: |
+                  gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
+                  rm ${{ steps.create-changelog.outputs.changelog_file }}
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              if: ${{ inputs.version }} != "0.0.0"
