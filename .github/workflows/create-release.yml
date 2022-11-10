@@ -2,21 +2,21 @@ name: Create Draft Release
 
 on:
     push:
-      branches: ["yarn-changelog"]
+        branches: ["yarn-changelog"]
 
     workflow_dispatch:
 
     pull_request:
-      branches: ["main"]
+        branches: ["main"]
 
 jobs:
     create-build-artifacts:
-        if: startsWith(github.event.head_commit.message, "Release:")
+        if: startsWith(github.event.head_commit.message, 'Release:')
         uses: ./.github/workflows/create-build-artifacts.yml
         secrets: inherit
 
     create-release:
-        if: startsWith(github.event.head_commit.message, "Release:")
+        if: startsWith(github.event.head_commit.message, 'Release:')
         needs: ["create-build-artifacts"]
         runs-on: macos-latest
         steps:
