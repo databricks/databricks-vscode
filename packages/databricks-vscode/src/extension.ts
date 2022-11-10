@@ -18,13 +18,13 @@ import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
-import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {initLoggers} from "./logger";
 import {UtilsCommands} from "./utils/UtilsCommands";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 
 export function activate(context: ExtensionContext): PublicApi | undefined {
     const a = workspace.workspaceFolders;
@@ -47,7 +47,6 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
     let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
-    connectionManager.login(false);
 
     const synchronizer = new CodeSynchronizer(connectionManager, cli);
     const clusterModel = new ClusterModel(connectionManager);
@@ -204,14 +203,6 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         )
     );
 
-    // Bricks tasks
-    context.subscriptions.push(
-        tasks.registerTaskProvider(
-            "databricks",
-            new BricksTaskProvider(connectionManager, cli)
-        )
-    );
-
     context.subscriptions.push(
         new ProjectConfigFileWatcher(connectionManager, workspace.rootPath)
     );
@@ -226,7 +217,9 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         )
     );
 
-    showQuickStartOnFirstUse(context);
+    showQuickStartOnFirstUse(context).catch((e) => {
+        NamedLogger.getOrCreate("Extension").error("Quick Start error", e);
+    });
 
     //utils
     const utilCommands = new UtilsCommands();
@@ -237,6 +230,10 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
             utilCommands
         )
     );
+
+    connectionManager.login(false).catch((e) => {
+        NamedLogger.getOrCreate("Extension").error("Login error", e);
+    });
 
     return {
         connectionManager: connectionManager,

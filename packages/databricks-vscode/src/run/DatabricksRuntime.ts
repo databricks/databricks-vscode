@@ -6,6 +6,7 @@
 
 import {
     CancellationTokenSource,
+    commands,
     Disposable,
     Event,
     EventEmitter,
@@ -62,15 +63,19 @@ export class DatabricksRuntime implements Disposable {
     public async start(program: string, args: Array<string>): Promise<void> {
         const start = Date.now();
 
+        const log = (message: string, line: number) => {
+            this._onDidSendOutputEmitter.fire({
+                type: "out",
+                text: `${new Date().toLocaleString()} - ${message}`,
+                filePath: program,
+                line: line || 0,
+                column: 0,
+            });
+        };
+
         try {
             if (this.connection.state === "CONNECTING") {
-                this._onDidSendOutputEmitter.fire({
-                    type: "out",
-                    text: `${new Date()} Connecting to cluster ...`,
-                    filePath: program,
-                    line: 0,
-                    column: 0,
-                });
+                log("Connecting to cluster ...", 0);
                 await this.connection.waitForConnect();
             }
 
@@ -113,15 +118,10 @@ export class DatabricksRuntime implements Disposable {
                 /\r?\n/
             );
 
-            this._onDidSendOutputEmitter.fire({
-                type: "out",
-                text: `${new Date()} Running ${syncDestination.getRelativePath(
-                    Uri.file(program)
-                )} on Cluster ${cluster.id} ...`,
-                filePath: program,
-                line: lines.length,
-                column: 0,
-            });
+            log(
+                `Creating execution context on cluster ${cluster.id} ...`,
+                lines.length
+            );
 
             let executionContext = await cluster.createExecutionContext(
                 "python"
@@ -133,15 +133,10 @@ export class DatabricksRuntime implements Disposable {
 
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
-            this._onDidSendOutputEmitter.fire({
-                type: "out",
-                text: `${new Date()} Synchronizing code to ${
-                    syncDestination.relativeRepoPath
-                } ...`,
-                filePath: program,
-                line: lines.length,
-                column: 0,
-            });
+            log(
+                `Synchronizing code to ${syncDestination.relativeRepoPath} ...`,
+                lines.length
+            );
 
             this.disposables.push(
                 this.codeSynchronizer.onDidChangeState((state) => {
@@ -153,9 +148,20 @@ export class DatabricksRuntime implements Disposable {
                 })
             );
 
+            if (this.codeSynchronizer.state === "STOPPED") {
+                await commands.executeCommand("databricks.sync.start");
+            }
+
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
             await this.codeSynchronizer.waitForSyncComplete();
+
+            log(
+                `Running ${syncDestination.getRelativePath(
+                    Uri.file(program)
+                )} ...\n`,
+                lines.length
+            );
 
             let response = await executionContext.execute(
                 this.compileCommandString(
@@ -202,13 +208,7 @@ export class DatabricksRuntime implements Disposable {
                 });
             }
 
-            this._onDidSendOutputEmitter.fire({
-                type: "out",
-                text: `${new Date()} Done (took ${Date.now() - start}ms)`,
-                filePath: program,
-                line: lines.length,
-                column: 0,
-            });
+            log(`Done (took ${Date.now() - start}ms)`, lines.length);
 
             await executionContext.destroy();
         } catch (e) {

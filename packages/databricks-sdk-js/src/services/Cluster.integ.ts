@@ -1,12 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {Cluster} from "..";
-import assert from "assert";
-import chai from "chai";
-import chaiAsPromised from "chai-as-promised";
+import assert from "node:assert";
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
-
-chai.use(chaiAsPromised);
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;

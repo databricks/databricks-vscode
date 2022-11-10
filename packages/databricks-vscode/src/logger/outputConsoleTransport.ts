@@ -2,8 +2,8 @@ import {OutputChannel} from "vscode";
 import {transports, format} from "winston";
 import {OutputConsoleStream} from "./OutputConsoleStream";
 import {LEVEL, MESSAGE, SPLAT} from "triple-beam";
-import {workspaceConfigs} from "./WorkspaceConfigs";
 import {inspect} from "util";
+import {workspaceConfigs} from "../WorkspaceConfigs";
 
 function processPrimitiveOrString(obj: any) {
     let valueStr: string;
@@ -58,26 +58,26 @@ export function getOutputConsoleTransport(outputChannel: OutputChannel) {
     return new transports.Stream({
         format: format((info: any) => {
             const stripped = Object.assign({}, info) as any;
-            if (stripped[LEVEL] === "error") {
-                return info;
-            }
             delete stripped[LEVEL];
             delete stripped[MESSAGE];
             delete stripped[SPLAT];
             delete stripped["level"];
             delete stripped["message"];
 
-            info[MESSAGE] = inspect(
-                {
-                    ...recursiveTruncate(
-                        stripped,
-                        workspaceConfigs.truncationDepth
-                    ),
-                    timestamp: new Date().toLocaleString(),
-                },
-                false,
-                workspaceConfigs.truncationDepth
-            );
+            info[MESSAGE] =
+                info.level === "error"
+                    ? inspect(stripped, false, 1000)
+                    : inspect(
+                          {
+                              ...recursiveTruncate(
+                                  stripped,
+                                  workspaceConfigs.truncationDepth
+                              ),
+                              timestamp: new Date().toLocaleString(),
+                          },
+                          false,
+                          workspaceConfigs.truncationDepth
+                      );
             return info;
         })(),
         stream: new OutputConsoleStream(outputChannel, {

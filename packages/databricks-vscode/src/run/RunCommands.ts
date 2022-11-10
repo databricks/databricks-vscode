@@ -11,7 +11,7 @@ import {isNotebook} from "../utils";
 export class RunCommands {
     constructor(
         private connection: ConnectionManager,
-        private codeSynchroniser: CodeSynchronizer
+        private codeSynchronizer: CodeSynchronizer
     ) {}
 
     /**
@@ -44,10 +44,6 @@ export class RunCommands {
                         );
                         return;
                     }
-                }
-
-                if (this.codeSynchroniser.state === "STOPPED") {
-                    await commands.executeCommand("databricks.sync.start");
                 }
 
                 await debug.startDebugging(
@@ -89,9 +85,6 @@ export class RunCommands {
                     }
                 }
 
-                if (this.codeSynchroniser.state === "STOPPED") {
-                    await commands.executeCommand("databricks.sync.start");
-                }
                 await debug.startDebugging(
                     undefined,
                     {

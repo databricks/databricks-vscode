@@ -6,7 +6,7 @@ import {window} from "vscode";
 import {loggers, format, transports} from "winston";
 import {getOutputConsoleTransport} from "./outputConsoleTransport";
 import {unlink, access} from "fs/promises";
-import {workspaceConfigs} from "./WorkspaceConfigs";
+import {workspaceConfigs} from "../WorkspaceConfigs";
 
 function getFileTransport(filename: string) {
     return new transports.File({
@@ -65,4 +65,9 @@ export async function initLoggers(rootPath: string) {
         },
         true
     );
+}
+
+export enum Loggers {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    Extension = "Extension",
 }
