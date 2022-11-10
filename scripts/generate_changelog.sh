@@ -11,6 +11,7 @@ for PACKAGE in "packages/databricks-vscode" "packages/databricks-sdk-js" "packag
         yarn conventional-changelog --tag-prefix="release-v" -k $PACKAGE --commit-path $PACKAGE >> $tmpfile
     fi
 
+    cat $tmpfile | grep -Ev "Release: v.+" > $tmpfile
     cat $tmpfile >> $1
     cat $tmpfile >> $PACKAGE/CHANGELOG.md
 done
