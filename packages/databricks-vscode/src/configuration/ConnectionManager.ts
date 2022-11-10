@@ -3,8 +3,6 @@ import {
     Cluster,
     fromConfigFile,
     CredentialProvider,
-    WorkspaceConf,
-    scim,
     WorkspaceService,
     HttpError,
 } from "@databricks/databricks-sdk";
@@ -23,6 +21,8 @@ import {selectProfile} from "./selectProfileWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {Loggers} from "../logger";
 
 const extensionVersion = require("../../package.json").version;
 
@@ -96,6 +96,18 @@ export class ConnectionManager {
     }
 
     async login(interactive: boolean = false): Promise<void> {
+        try {
+            await this._login(interactive);
+        } catch (e) {
+            NamedLogger.getOrCreate("Extension").error("Login Error", e);
+            if (interactive) {
+                window.showErrorMessage(`Login error ${JSON.stringify(e)}`);
+            }
+            this.updateState("DISCONNECTED");
+            await this.logout();
+        }
+    }
+    private async _login(interactive: boolean = false): Promise<void> {
         await this.logout();
         this.updateState("CONNECTING");
 
@@ -126,7 +138,7 @@ export class ConnectionManager {
             );
         } catch (e: any) {
             const message = `Can't login to Databricks: ${e.message}`;
-            console.error(message);
+            NamedLogger.getOrCreate("Extension").error(message, e);
             if (interactive) {
                 window.showErrorMessage(message);
             }
@@ -148,7 +160,7 @@ export class ConnectionManager {
                 message =
                     "Files in Repos is not enabled for this workspace. Please enable it in the Databricks UI.";
             }
-            console.error(message);
+            NamedLogger.getOrCreate("Extension").error(message);
             if (interactive) {
                 let result = await window.showWarningMessage(
                     message,
@@ -178,7 +190,7 @@ export class ConnectionManager {
         if (projectConfigFile.config.workspacePath) {
             await this.attachSyncDestination(
                 Uri.from({
-                    scheme: "dbws",
+                    scheme: "wsfs",
                     path: projectConfigFile.config.workspacePath,
                 }),
                 false
@@ -218,7 +230,7 @@ export class ConnectionManager {
         this.updateState("DISCONNECTED");
     }
 
-    async configureProject() {
+    async configureWorkspace() {
         let profile: string | undefined;
         while (true) {
             profile = await selectProfile(this.cli);
@@ -232,7 +244,11 @@ export class ConnectionManager {
                     profile
                 );
             } catch (e: any) {
-                console.error(e);
+                NamedLogger.getOrCreate("Extension").error(
+                    `Connection with profile "${profile}" failed`,
+                    e
+                );
+
                 const response = await window.showWarningMessage(
                     `Connection with profile "${profile}" failed with error: "${e.message}"."`,
                     "Retry",
@@ -279,24 +295,70 @@ export class ConnectionManager {
         cluster: Cluster | string,
         skipWrite = false
     ): Promise<void> {
-        if (this.cluster === cluster) {
-            return;
-        }
+        try {
+            if (this.cluster === cluster) {
+                return;
+            }
 
-        if (typeof cluster === "string") {
-            cluster = await Cluster.fromClusterId(this._apiClient!, cluster);
-        }
+            if (typeof cluster === "string") {
+                cluster = await Cluster.fromClusterId(
+                    this._apiClient!,
+                    cluster
+                );
+            }
 
-        if (!skipWrite) {
-            this._projectConfigFile!.clusterId = cluster.id;
-            await this._projectConfigFile!.write();
-        }
+            if (!skipWrite) {
+                this._projectConfigFile!.clusterId = cluster.id;
+                await this._projectConfigFile!.write();
+            }
 
-        this.updateCluster(cluster);
+            if (cluster.state === "RUNNING") {
+                cluster
+                    .canExecute()
+                    .then(() => {
+                        this.onDidChangeClusterEmitter.fire(this.cluster);
+                    })
+                    .catch((e) => {
+                        NamedLogger.getOrCreate(Loggers.Extension).error(
+                            `Error while running code on cluster ${
+                                (cluster as Cluster).id
+                            }`,
+                            e
+                        );
+                    });
+            }
+
+            cluster
+                .hasExecutePerms(this.databricksWorkspace?.user)
+                .then(() => {
+                    this.onDidChangeClusterEmitter.fire(this.cluster);
+                })
+                .catch((e) => {
+                    NamedLogger.getOrCreate(Loggers.Extension).error(
+                        `Error while fetching permission for cluster ${
+                            (cluster as Cluster).id
+                        }`,
+                        e
+                    );
+                });
+
+            this.updateCluster(cluster);
+        } catch (e) {
+            NamedLogger.getOrCreate("Extension").error(
+                "Attach Cluster error",
+                e
+            );
+            window.showErrorMessage(
+                `Error in attaching cluster ${
+                    typeof cluster === "string" ? cluster : cluster.id
+                }`
+            );
+            await this.detachCluster();
+        }
     }
 
     async detachCluster(): Promise<void> {
-        if (!this.cluster) {
+        if (!this.cluster && this._projectConfigFile?.clusterId === undefined) {
             return;
         }
 
@@ -312,32 +374,46 @@ export class ConnectionManager {
         workspacePath: Uri,
         skipWrite = false
     ): Promise<void> {
-        if (
-            !vscodeWorkspace.workspaceFolders ||
-            !vscodeWorkspace.workspaceFolders.length
-        ) {
-            // TODO how do we handle this?
-            return;
-        }
+        try {
+            if (
+                !vscodeWorkspace.workspaceFolders ||
+                !vscodeWorkspace.workspaceFolders.length
+            ) {
+                // TODO how do we handle this?
+                return;
+            }
 
-        if (!skipWrite) {
-            this._projectConfigFile!.workspacePath = workspacePath.path;
-            await this._projectConfigFile!.write();
-        }
+            if (!skipWrite) {
+                this._projectConfigFile!.workspacePath = workspacePath.path;
+                await this._projectConfigFile!.write();
+            }
 
-        const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
-        if (this.apiClient === undefined) {
-            throw new Error(
-                "Can't attach a Repo when profile is not connected"
+            const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
+            if (this.apiClient === undefined) {
+                throw new Error(
+                    "Can't attach a Repo when profile is not connected"
+                );
+            }
+            this.updateSyncDestination(
+                await SyncDestination.from(this.apiClient, workspacePath, wsUri)
             );
+        } catch (e) {
+            NamedLogger.getOrCreate("Extension").error(
+                "Attach Sync Destination error",
+                e
+            );
+            window.showErrorMessage(
+                `Error in attaching sync destination ${workspacePath.fsPath}`
+            );
+            await this.detachSyncDestination();
         }
-        this.updateSyncDestination(
-            await SyncDestination.from(this.apiClient, workspacePath, wsUri)
-        );
     }
 
     async detachSyncDestination(): Promise<void> {
-        if (!this._syncDestination) {
+        if (
+            !this._syncDestination &&
+            this._projectConfigFile?.workspacePath === undefined
+        ) {
             return;
         }
 

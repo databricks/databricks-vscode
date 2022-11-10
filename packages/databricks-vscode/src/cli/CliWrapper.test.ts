@@ -17,7 +17,7 @@ describe(__filename, () => {
         assert.ok(result.stdout.indexOf("bricks") > 0);
     });
 
-    it("should create sync command", async () => {
+    it("should create sync commands", async () => {
         const cli = new CliWrapper({
             asAbsolutePath(path: string) {
                 return path;
@@ -26,17 +26,22 @@ describe(__filename, () => {
         const mapper = new SyncDestination(
             instance(mock(Repo)),
             Uri.from({
-                scheme: "dbws",
+                scheme: "wsfs",
                 path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
             }),
             Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
         );
 
-        const {command, args} = cli.getSyncCommand(mapper);
-
+        let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
             "./bin/bricks sync --remote-path /Repos/fabian.jakobs@databricks.com/notebook-best-practices"
+        );
+
+        ({command, args} = cli.getSyncCommand(mapper, "full"));
+        assert.equal(
+            [command, ...args].join(" "),
+            "./bin/bricks sync --remote-path /Repos/fabian.jakobs@databricks.com/notebook-best-practices --persist-snapshot=false"
         );
     });
 

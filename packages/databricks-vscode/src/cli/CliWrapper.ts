@@ -7,6 +7,7 @@ export interface Command {
     args: string[];
 }
 
+export type SyncType = "full" | "incremental";
 /**
  * Entrypoint for all wrapped CLI commands
  *
@@ -26,13 +27,19 @@ export class CliWrapper {
     /**
      * Constructs the bricks sync command
      */
-    getSyncCommand(syncDestination: SyncDestination): Command {
+    getSyncCommand(
+        syncDestination: SyncDestination,
+        syncType: SyncType
+    ): Command {
         const command = this.context.asAbsolutePath("./bin/bricks");
         const args = [
             "sync",
             "--remote-path",
             syncDestination.relativeRepoPath,
         ];
+        if (syncType === "full") {
+            args.push("--persist-snapshot=false");
+        }
         return {command, args};
     }
 

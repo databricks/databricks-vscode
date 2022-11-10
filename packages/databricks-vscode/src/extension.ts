@@ -14,17 +14,17 @@ import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
-import {CliCommands} from "./cli/CliCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
-import {DatabricksWorkflowDebugAdapterFactory} from "./run/DabaricksWorkflowDebugAdapter";
+import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
-import {BricksTaskProvider} from "./cli/BricksTasks";
 import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
+import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {initLoggers} from "./logger";
 import {UtilsCommands} from "./utils/UtilsCommands";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 
 export function activate(context: ExtensionContext): PublicApi | undefined {
     const a = workspace.workspaceFolders;
@@ -42,12 +42,11 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         */
         return undefined;
     }
-    initLoggers();
+    initLoggers(workspace.workspaceFolders[0].uri.path);
 
     let cli = new CliWrapper(context);
     // Configuration group
     let connectionManager = new ConnectionManager(cli);
-    connectionManager.login(false);
 
     const synchronizer = new CodeSynchronizer(connectionManager, cli);
     const clusterModel = new ClusterModel(connectionManager);
@@ -70,18 +69,13 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
             configurationDataProvider
         ),
         commands.registerCommand(
-            "databricks.connection.login",
-            connectionCommands.loginCommand(),
-            connectionCommands
-        ),
-        commands.registerCommand(
             "databricks.connection.logout",
             connectionCommands.logoutCommand(),
             connectionCommands
         ),
         commands.registerCommand(
-            "databricks.connection.configureProject",
-            connectionCommands.configureProjectCommand(),
+            "databricks.connection.configureWorkspace",
+            connectionCommands.configureWorkspaceCommand(),
             connectionCommands
         ),
         commands.registerCommand(
@@ -209,20 +203,6 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         )
     );
 
-    // CLI commands
-    const cliCommands = new CliCommands(cli);
-    context.subscriptions.push(
-        tasks.registerTaskProvider(
-            "databricks",
-            new BricksTaskProvider(connectionManager, cli)
-        ),
-        commands.registerCommand(
-            "databricks.cli.testBricksCli",
-            cliCommands.testBricksCommand(),
-            cliCommands
-        )
-    );
-
     context.subscriptions.push(
         new ProjectConfigFileWatcher(connectionManager, workspace.rootPath)
     );
@@ -237,6 +217,10 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         )
     );
 
+    showQuickStartOnFirstUse(context).catch((e) => {
+        NamedLogger.getOrCreate("Extension").error("Quick Start error", e);
+    });
+
     //utils
     const utilCommands = new UtilsCommands();
     context.subscriptions.push(
@@ -246,6 +230,10 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
             utilCommands
         )
     );
+
+    connectionManager.login(false).catch((e) => {
+        NamedLogger.getOrCreate("Extension").error("Login error", e);
+    });
 
     return {
         connectionManager: connectionManager,

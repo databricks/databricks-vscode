@@ -11,19 +11,23 @@ import {
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-import {commands} from "..";
+import {commands, PermissionsService} from "..";
 import {
     ClusterInfo,
     ClustersService,
     ClusterInfoState,
     ClusterInfoClusterSource,
 } from "../apis/clusters";
-import {Context} from "../context";
+import {Context, context} from "../context";
+import {User} from "../apis/scim";
+import {ExposedLoggers, withLogContext} from "../logging";
 
 export class ClusterRetriableError extends RetriableError {}
 export class ClusterError extends Error {}
 export class Cluster {
     private clusterApi: ClustersService;
+    private _canExecute?: boolean;
+    private _hasExecutePerms?: boolean;
 
     constructor(
         private client: ApiClient,
@@ -120,6 +124,60 @@ export class Cluster {
         this.clusterDetails = details;
     }
 
+    isSingleUser() {
+        const modeProperty =
+            //TODO: deprecate data_security_mode once access_mode is available everywhere
+            this.details.access_mode ?? this.details.data_security_mode;
+        return (
+            modeProperty !== undefined &&
+            [
+                "SINGLE_USER",
+                "LEGACY_SINGLE_USER_PASSTHROUGH",
+                "LEGACY_SINGLE_USER_STANDARD",
+                //enums unique to data_security_mode
+                "LEGACY_SINGLE_USER",
+            ].includes(modeProperty)
+        );
+    }
+
+    isValidSingleUser(userName?: string) {
+        return (
+            this.isSingleUser() && this.details.single_user_name === userName
+        );
+    }
+
+    get hasExecutePermsCached() {
+        return this._hasExecutePerms;
+    }
+
+    async hasExecutePerms(userDetails?: User) {
+        if (userDetails === undefined) {
+            return (this._hasExecutePerms = false);
+        }
+
+        if (this.isSingleUser()) {
+            return (this._hasExecutePerms = this.isValidSingleUser(
+                userDetails.userName
+            ));
+        }
+
+        const permissionApi = new PermissionsService(this.client);
+        const perms = await permissionApi.getObjectPermissions({
+            object_id: this.id,
+            object_type: "clusters",
+        });
+
+        return (this._hasExecutePerms =
+            (perms.access_control_list ?? []).find((ac) => {
+                return (
+                    ac.user_name === userDetails.userName ||
+                    userDetails.groups
+                        ?.map((v) => v.display)
+                        .includes(ac.group_name ?? "")
+                );
+            }) !== undefined);
+    }
+
     async refresh() {
         this.details = await this.clusterApi.get({
             cluster_id: this.clusterDetails.cluster_id!,
@@ -145,6 +203,7 @@ export class Cluster {
             });
         }
 
+        this._canExecute = undefined;
         await retry({
             fn: async () => {
                 if (token?.isCancellationRequested) {
@@ -204,21 +263,26 @@ export class Cluster {
         return await ExecutionContext.create(this.client, this, language);
     }
 
-    async canExecute(): Promise<boolean> {
-        let context: ExecutionContext | undefined;
+    get canExecuteCached() {
+        return this._canExecute;
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    async canExecute(@context ctx?: Context): Promise<boolean> {
+        let executionContext: ExecutionContext | undefined;
         try {
-            context = await this.createExecutionContext();
-            let result = await context.execute("print('hello')");
-            if (result.result?.results?.resultType === "error") {
-                return false;
-            }
-            return true;
+            executionContext = await this.createExecutionContext();
+            let result = await executionContext.execute("1==1");
+            this._canExecute =
+                result.result?.results?.resultType === "error" ? false : true;
         } catch (e) {
-            return false;
+            ctx?.logger?.error(`Can't execute code on cluster ${this.id}`, e);
+            this._canExecute = false;
         } finally {
-            if (context) {
-                await context.destroy();
+            if (executionContext) {
+                await executionContext.destroy();
             }
+            return this._canExecute ?? false;
         }
     }
 

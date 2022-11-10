@@ -53,16 +53,6 @@ export class ConnectionCommands implements Disposable {
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel
     ) {}
-    /**
-     * Try logging in with previously selected profile. If login fails or no profile
-     * exists then ask user to configure or select a profile. The selected profile
-     * is stored in project settings.
-     */
-    loginCommand() {
-        return () => {
-            this.connectionManager.login(true);
-        };
-    }
 
     /**
      * disconnect fomr Databricks and remove profile from project settings.
@@ -74,9 +64,9 @@ export class ConnectionCommands implements Disposable {
         };
     }
 
-    configureProjectCommand() {
+    configureWorkspaceCommand() {
         return () => {
-            this.connectionManager.configureProject();
+            this.connectionManager.configureWorkspace();
         };
     }
 
@@ -109,24 +99,43 @@ export class ConnectionCommands implements Disposable {
                 return;
             }
 
-            const quickPick = window.createQuickPick<ClusterItem>();
+            const quickPick = window.createQuickPick<
+                ClusterItem | QuickPickItem
+            >();
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
+
+            quickPick.busy = true;
+            quickPick.canSelectMany = false;
+            const items: QuickPickItem[] = [
+                {
+                    label: "Create New Cluster",
+                    detail: `Open Databricks in the browser and create a new cluster`,
+                    alwaysShow: false,
+                },
+                {
+                    label: "",
+                    kind: QuickPickItemKind.Separator,
+                },
+            ];
+            quickPick.items = items;
 
             this.clusterModel.refresh();
             const refreshQuickPickItems = () => {
                 let clusters = this.clusterModel.roots ?? [];
-                quickPick.items = clusters.map((c) => {
-                    let treeItem =
-                        ClusterListDataProvider.clusterNodeToTreeItem(c);
-                    return {
-                        label: `$(${
-                            (treeItem.iconPath as ThemeIcon).id
-                        }) ${c.name!} (${c.id})`,
-                        detail: formatQuickPickClusterDetails(c),
-                        cluster: c,
-                    };
-                });
+                quickPick.items = items.concat(
+                    clusters.map((c) => {
+                        let treeItem =
+                            ClusterListDataProvider.clusterNodeToTreeItem(c);
+                        return {
+                            label: `$(${
+                                (treeItem.iconPath as ThemeIcon).id
+                            }) ${c.name!} (${c.id})`,
+                            detail: formatQuickPickClusterDetails(c),
+                            cluster: c,
+                        };
+                    })
+                );
             };
 
             let disposables = [
@@ -138,8 +147,19 @@ export class ConnectionCommands implements Disposable {
             quickPick.show();
 
             quickPick.onDidAccept(async () => {
-                const cluster = quickPick.selectedItems[0].cluster;
-                await this.connectionManager.attachCluster(cluster);
+                const selectedItem = quickPick.selectedItems[0];
+                if ("cluster" in selectedItem) {
+                    const cluster = selectedItem.cluster;
+                    await this.connectionManager.attachCluster(cluster);
+                } else {
+                    await UrlUtils.openExternal(
+                        `${
+                            (
+                                await this.connectionManager.apiClient?.host
+                            )?.href ?? ""
+                        }#create/cluster`
+                    );
+                }
                 disposables.forEach((d) => d.dispose());
             });
 
@@ -175,8 +195,8 @@ export class ConnectionCommands implements Disposable {
             const items: WorkspaceItem[] = [
                 {
                     label: "Create New Repo",
-                    detail: `Open databricks in browser and create a new repo under /Repo/${me}`,
-                    alwaysShow: true,
+                    detail: `Open Databricks in the browser and create a new repo under /Repo/${me}`,
+                    alwaysShow: false,
                 },
                 {
                     label: "",
@@ -218,7 +238,7 @@ export class ConnectionCommands implements Disposable {
                         const repoPath = quickPick.selectedItems[0].path;
                         await this.connectionManager.attachSyncDestination(
                             Uri.from({
-                                scheme: "dbws",
+                                scheme: "wsfs",
                                 path: repoPath,
                             })
                         );

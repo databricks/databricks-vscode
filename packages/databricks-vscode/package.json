@@ -3,7 +3,7 @@
     "displayName": "Databricks for Visual Studio Code",
     "description": "IDE support for Databricks",
     "publisher": "databricks",
-    "license": "Apache-2.0",
+    "license": "UNLICENSED",
     "version": "0.0.1",
     "engines": {
         "vscode": "^1.69.1"
@@ -36,9 +36,8 @@
         "url": "https://github.com/databricks/databricks-vscode.git"
     },
     "activationEvents": [
-        "onCommand:databricks.connection.login",
         "onCommand:databricks.connection.logout",
-        "onCommand:databricks.connection.configureProject",
+        "onCommand:databricks.connection.configureWorkspace",
         "onCommand:databricks.connection.openDatabricksConfigFile",
         "onCommand:databricks.connection.attachCluster",
         "onCommand:databricks.connection.attachClusterQuickPick",
@@ -48,7 +47,6 @@
         "onCommand:databricks.sync.start",
         "onCommand:databricks.sync.startFull",
         "onCommand:databricks.sync.stop",
-        "onCommand:databricks.cli.testBricksCli",
         "onCommand:databricks.cluster.refresh",
         "onCommand:databricks.cluster.filterByAll",
         "onCommand:databricks.cluster.filterByMe",
@@ -59,7 +57,6 @@
         "onCommand:databricks.quickstart.open",
         "onView:configurationView",
         "onView:clusterView",
-        "onTaskType:databricks",
         "onDebugResolve:databricks",
         "onDebugResolve:databricks-workflow"
     ],
@@ -68,55 +65,55 @@
     "contributes": {
         "commands": [
             {
-                "command": "databricks.connection.login",
-                "title": "Databricks: Login"
-            },
-            {
                 "command": "databricks.connection.logout",
-                "title": "Databricks: Logout"
+                "title": "Logout",
+                "category": "Databricks"
             },
             {
-                "command": "databricks.connection.configureProject",
+                "command": "databricks.connection.configureWorkspace",
                 "icon": "$(gear)",
-                "title": "Databricks: Configure project"
+                "title": "Configure workspace",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.connection.openDatabricksConfigFile",
-                "title": "Databricks: Open Databricks configuration file"
+                "title": "Open Databricks configuration file",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.connection.attachCluster",
-                "title": "Configure cluster",
-                "icon": "$(gear)"
+                "title": "Attach cluster",
+                "icon": "$(plug)"
             },
             {
                 "command": "databricks.connection.attachClusterQuickPick",
                 "title": "Configure cluster",
+                "category": "Databricks",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachCluster",
                 "title": "Detach cluster",
+                "category": "Databricks",
                 "icon": "$(debug-disconnect)"
             },
             {
                 "command": "databricks.sync.start",
-                "title": "Databricks: Start synchronization",
+                "title": "Start synchronization",
+                "category": "Databricks",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.startFull",
-                "title": "Databricks: Start synchronization (full sync)",
+                "title": "Start synchronization (full sync)",
+                "category": "Databricks",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.stop",
-                "title": "Databricks: Stop synchronization",
+                "title": "Stop synchronization",
+                "category": "Databricks",
                 "icon": "$(sync-ignored)"
-            },
-            {
-                "command": "databricks.cli.testBricksCli",
-                "title": "Databricks: test bricks cli"
             },
             {
                 "command": "databricks.cluster.filterByAll",
@@ -138,11 +135,13 @@
             {
                 "command": "databricks.connection.attachSyncDestination",
                 "title": "Configure sync destination",
+                "category": "Databricks",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachSyncDestination",
                 "title": "Detach sync destination",
+                "category": "Databricks",
                 "icon": "$(debug-disconnect)"
             },
             {
@@ -161,7 +160,8 @@
             },
             {
                 "command": "databricks.quickstart.open",
-                "title": "Databricks: Open Quickstart"
+                "title": "Show Quickstart",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.cluster.start",
@@ -203,7 +203,7 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.connection.configureProject)\nTo learn more about how to use Databricks with VS Code [read our docs](https://github.com/databricks/databricks-vscode).",
+                "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.connection.configureWorkspace)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://github.com/databricks/databricks-vscode).",
                 "when": "workspaceFolderCount > 0"
             },
             {
@@ -215,9 +215,13 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "databricks.connection.configureProject",
+                    "command": "databricks.connection.configureWorkspace",
                     "when": "view == configurationView",
                     "group": "navigation@3"
+                },
+                {
+                    "command": "databricks.quickstart.open",
+                    "when": "view == configurationView"
                 },
                 {
                     "when": "view == clusterView",
@@ -248,7 +252,7 @@
                     "group": "inline@1"
                 },
                 {
-                    "command": "databricks.connection.configureProject",
+                    "command": "databricks.connection.configureWorkspace",
                     "when": "view == configurationView && viewItem == workspace",
                     "group": "inline@1"
                 },
@@ -338,23 +342,6 @@
                 "icon": "$(filter)"
             }
         ],
-        "taskDefinitions": [
-            {
-                "type": "databricks",
-                "required": [
-                    "task"
-                ],
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "enum": [
-                            "sync"
-                        ],
-                        "default": "sync"
-                    }
-                }
-            }
-        ],
         "problemMatchers": [
             {
                 "name": "bricks-sync",
@@ -366,8 +353,8 @@
                 },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "Syncing from",
-                    "endsPattern": "Done(\\. Watching for changes\\.\\.\\.)$"
+                    "beginsPattern": "Remote file sync location:",
+                    "endsPattern": "Initial Sync Complete$"
                 }
             }
         ],
@@ -404,8 +391,7 @@
                         "request": "launch",
                         "name": "Run on Databricks",
                         "program": "${file}",
-                        "args": [],
-                        "preLaunchTask": "databricks: sync"
+                        "args": []
                     }
                 ],
                 "configurationSnippets": [
@@ -417,8 +403,7 @@
                             "request": "launch",
                             "name": "Run on Databricks",
                             "program": "^\"\\${file}\"",
-                            "args": [],
-                            "preLaunchTask": "databricks: sync"
+                            "args": []
                         }
                     }
                 ]
@@ -463,8 +448,7 @@
                         "name": "Run on Databricks as Workflow",
                         "program": "${file}",
                         "parameters": {},
-                        "args": [],
-                        "preLaunchTask": "databricks: sync"
+                        "args": []
                     }
                 ],
                 "configurationSnippets": [
@@ -477,11 +461,42 @@
                             "name": "Run on Databricks as a Workflow",
                             "program": "^\"\\${file}\"",
                             "parameters": {},
-                            "args": [],
-                            "preLaunchTask": "databricks: sync"
+                            "args": []
                         }
                     }
                 ]
+            }
+        ],
+        "configuration": [
+            {
+                "title": "Databricks",
+                "properties": {
+                    "databricks.logs.maxFieldLength": {
+                        "type": "number",
+                        "default": 40,
+                        "description": "The maximum length of each field displayed in logs outputs panel."
+                    },
+                    "databricks.logs.truncationDepth": {
+                        "type": "number",
+                        "default": 2,
+                        "description": "The max depth of logs to show without truncation."
+                    },
+                    "databricks.logs.maxArrayLength": {
+                        "type": "number",
+                        "default": 2,
+                        "description": "The maximum number of items to show for array fields."
+                    },
+                    "databricks.logs.enabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable logging. Reload window for changes to take effect."
+                    },
+                    "databricks.clusters.onlyShowAccessibleClusters": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
+                    }
+                }
             }
         ]
     },
@@ -492,11 +507,11 @@
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
         "package": "vsce package",
-        "package:cli:fetch": "BRICKS_VERSION=v0.0.6 && bash ./scripts/fetch-bricks-cli.sh ${BRICKS_VERSION} ${BRICKS_ARCH:-}",
+        "package:cli:fetch": "BRICKS_VERSION=v0.0.7 && bash ./scripts/fetch-bricks-cli.sh ${BRICKS_VERSION} ${BRICKS_ARCH:-}",
         "package:cli:link": "rm -f ./bin/bricks && ln -s ../../../../bricks/bricks bin",
         "package:compile": "yarn run esbuild:base --minify",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
-        "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+        "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "tsc",
         "watch": "yarn run package:copy-webview-toolkit && tsc -w",
         "fix": "prettier . --write",
@@ -511,10 +526,12 @@
         "clean": "rm -rf node_modules out .vscode-test"
     },
     "dependencies": {
-        "@databricks/databricks-sdk": "*",
+        "@databricks/databricks-sdk": "workspace:^",
         "@databricks/databricks-vscode-types": "workspace:^",
+        "@types/triple-beam": "^1.3.2",
         "@vscode/debugadapter": "^1.58.0",
-        "@vscode/webview-ui-toolkit": "^1.1.0"
+        "@vscode/webview-ui-toolkit": "^1.1.0",
+        "triple-beam": "^1.3.0"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",

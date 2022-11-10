@@ -13,50 +13,25 @@ import {
     TerminalDimensions,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {CliWrapper, Command} from "./CliWrapper";
+import {CliWrapper, Command, SyncType} from "./CliWrapper";
 import {ChildProcess, spawn, SpawnOptions} from "node:child_process";
 import {SyncState} from "../sync/CodeSynchronizer";
 import {BricksSyncParser} from "./BricksSyncParser";
-
-export class BricksTaskProvider implements TaskProvider {
-    constructor(
-        private connection: ConnectionManager,
-        private cli: CliWrapper
-    ) {}
-
-    provideTasks(): Task[] {
-        return [
-            new SyncTask(
-                this.connection,
-                this.cli,
-                "incremental",
-                (state: SyncState) => {}
-            ),
-        ];
-    }
-    resolveTask(): Task | undefined {
-        return undefined;
-    }
-}
 
 export class SyncTask extends Task {
     constructor(
         connection: ConnectionManager,
         cli: CliWrapper,
-        // TODO: https://github.com/databricks/databricks-vscode/issues/111
-        // use syncType to decide the sync type for bricks cli. Right now bricks cli
-        // only supports full sync for multiple profiles.
-        // see: https://github.com/databricks/bricks/issues/71
-        syncType: "full" | "incremental",
+        syncType: SyncType,
         syncStateCallback: (state: SyncState) => void
     ) {
         super(
             {
                 type: "databricks",
-                task: "sync",
+                task: syncType === "full" ? "sync-full" : "sync",
             },
             TaskScope.Workspace,
-            "sync",
+            syncType === "full" ? "sync-full" : "sync",
             "databricks",
             new CustomExecution(async (): Promise<Pseudoterminal> => {
                 return new LazyCustomSyncTerminal(
@@ -192,7 +167,7 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
     constructor(
         private connection: ConnectionManager,
         private cli: CliWrapper,
-        private syncType: "full" | "incremental",
+        private syncType: SyncType,
         syncStateCallback: (state: SyncState) => void
     ) {
         super("", [], {}, syncStateCallback);
@@ -270,7 +245,7 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
             );
         }
 
-        this.command = this.cli.getSyncCommand(syncDestination);
+        this.command = this.cli.getSyncCommand(syncDestination, this.syncType);
 
         return this.command;
     }

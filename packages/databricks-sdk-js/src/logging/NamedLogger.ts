@@ -15,7 +15,6 @@ const loggers = new Map<string, LoggerDetails>();
 
 export interface LoggerOpts {
     fieldNameDenyList: string[];
-    maxFieldLength: number;
     factory: (name: string) => Logger;
 }
 
@@ -31,17 +30,6 @@ export const defaultOpts: LoggerOpts = {
             denyList.push(...["headers", "agent"]);
         }
         return denyList;
-    },
-    get maxFieldLength(): number {
-        const defaultLength = 96;
-        if (process.env["DATABRICKS_DEBUG_TRUNCATE_BYTES"]) {
-            try {
-                return parseInt(process.env["DATABRICKS_DEBUG_TRUNCATE_BYTES"]);
-            } catch (e) {
-                return defaultLength;
-            }
-        }
-        return defaultLength;
     },
     factory: (name) => new DefaultLogger(),
 };
@@ -97,8 +85,7 @@ export class NamedLogger {
     log(level: string, message?: string, meta?: any) {
         meta = defaultRedactor.sanitize(
             meta,
-            this._loggerOpts?.fieldNameDenyList,
-            this._loggerOpts?.maxFieldLength
+            this._loggerOpts?.fieldNameDenyList
         );
 
         this._logger?.log(level, message, {
@@ -116,7 +103,16 @@ export class NamedLogger {
     }
 
     error(message?: string, obj?: any) {
-        this.log(LEVELS.error, message, obj);
+        if (Object(obj) === obj) {
+            obj = {
+                ...Object.getOwnPropertyNames(obj).reduce((acc, i) => {
+                    acc[i] = (obj as any)[i];
+                    return acc;
+                }, {} as any),
+                ...(obj as any),
+            };
+        }
+        this.log(LEVELS.error, message, {error: obj});
     }
 
     withContext<T>({

@@ -43,7 +43,7 @@ export class ProjectConfigFileWatcher implements Disposable {
                     if (configFile.workspacePath) {
                         await connectionManager.attachSyncDestination(
                             Uri.from({
-                                scheme: "dbws",
+                                scheme: "wsfs",
                                 path: configFile.workspacePath,
                             })
                         );

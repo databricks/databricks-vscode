@@ -1,20 +1,26 @@
 import retry, {RetriableError, TimeoutError} from "./retries";
 import Time, {TimeUnits} from "./Time";
-import chai, {assert, expect} from "chai";
-import spies from "chai-spies";
-import chaiAsPromised from "chai-as-promised";
+import * as sinon from "sinon";
+import * as assert from "node:assert";
 
-chai.use(chaiAsPromised);
-chai.use(spies);
 class NonRetriableError extends Error {}
 
 describe(__filename, function () {
-    this.timeout(new Time(10, TimeUnits.minutes).toMillSeconds().value);
+    let fakeTimer: sinon.SinonFakeTimers;
 
+    beforeEach(() => {
+        fakeTimer = sinon.useFakeTimers();
+    });
+
+    afterEach(() => {
+        fakeTimer.restore();
+    });
+
+    this.timeout(1000 * 3);
     it("should return result if timeout doesn't expire", async function () {
         const startTime = Date.now();
 
-        const retryResult = await retry({
+        const retryResult = retry({
             timeout: new Time(5, TimeUnits.seconds),
             fn: () => {
                 if (Date.now() - startTime < 1000) {
@@ -26,39 +32,57 @@ describe(__filename, function () {
             },
         });
 
-        assert.equal(retryResult, "returned_string");
+        fakeTimer.tick(800);
+        fakeTimer.tick(800);
+        fakeTimer.tick(800);
+
+        assert.equal(await retryResult, "returned_string");
     });
 
     it("should return retriable error if timeout expires", async function () {
         const startTime = Date.now();
-        await expect(
-            retry({
-                timeout: new Time(5, TimeUnits.seconds),
-                fn: () => {
-                    if (Date.now() - startTime < 10000) {
-                        throw new RetriableError();
-                    }
-                    return new Promise<string>((resolve) =>
-                        resolve("returned_string")
-                    );
-                },
-            })
-        ).to.be.rejectedWith(TimeoutError);
+
+        const retryResult = retry({
+            timeout: new Time(5, TimeUnits.seconds),
+            fn: () => {
+                if (Date.now() - startTime < 10000) {
+                    throw new RetriableError();
+                }
+                return new Promise<string>((resolve) =>
+                    resolve("returned_string")
+                );
+            },
+        });
+
+        fakeTimer.tick(800);
+        fakeTimer.tick(800);
+        fakeTimer.tick(2000);
+        fakeTimer.tick(5000);
+
+        try {
+            await retryResult;
+            assert.fail("should throw TimeoutError");
+        } catch (err) {
+            assert.ok(err instanceof TimeoutError);
+        }
     });
 
     it("should throw non retriable error immediately", async function () {
-        const mockFunction = chai.spy();
+        let callCount = 0;
 
-        await expect(
-            retry({
+        try {
+            await retry({
                 timeout: new Time(5, TimeUnits.seconds),
                 fn: () => {
-                    mockFunction();
+                    callCount += 1;
                     throw new NonRetriableError();
                 },
-            })
-        ).to.be.rejectedWith(NonRetriableError);
+            });
+            assert.fail("should throw NonRetriableError");
+        } catch (err) {
+            assert.ok(err instanceof NonRetriableError);
+        }
 
-        expect(mockFunction).to.be.called.once;
+        assert.equal(callCount, 1);
     });
 });

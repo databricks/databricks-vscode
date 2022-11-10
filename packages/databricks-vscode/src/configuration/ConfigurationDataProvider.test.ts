@@ -20,6 +20,7 @@ describe(__filename, () => {
     beforeEach(() => {
         disposables = [];
         connectionManagerMock = mock(ConnectionManager);
+        when(connectionManagerMock.state).thenReturn("DISCONNECTED");
         onChangeClusterListener = () => {};
         onChangeSyncDestinationListener = () => {};
 
