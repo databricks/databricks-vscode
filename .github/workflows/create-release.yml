@@ -15,7 +15,7 @@ jobs:
     create-release:
         if: startsWith(github.event.head_commit.message, 'Release:')
         needs: ["create-build-artifacts"]
-        runs-on: macos-latest
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
             - uses: actions/download-artifact@v3
