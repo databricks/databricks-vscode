@@ -29,7 +29,7 @@ jobs:
             - uses: actions/download-artifact@v3
               id: download
               with:
-                  path: packages/databricks-vscode
+                  path: build
 
             - run: ls -lr ${{ steps.download.outputs.download-path }}
 
@@ -37,6 +37,7 @@ jobs:
                   TITLE=$(echo "${{ github.event.head_commit.message }}" | head -n1)
                   BODY=$(echo "${{ github.event.head_commit.message }}" | awk 'BEGIN{C=0} NR > 1 && (NF!=0 || C==1){print $0; C=1}')
                   RELEASE_VERSION=$(echo "$TITLE" | sed -nr 's/Release: v(([0-9]+\.){2}[0-9]+)/\1/p') 
-                  gh release create release-v$RELEASE_VERSION -d --target ${{ github.ref_name }} -t "$TITLE" -n "$BODY" release-v$RELEASE_VERSION
+                  gh release create release-v$RELEASE_VERSION ${{ steps.download.outputs.download-path }}/databricks*/*.vsix \
+                    -d --target ${{ github.ref_name }} -t "$TITLE" -n "$BODY"
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
