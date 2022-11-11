@@ -41,21 +41,24 @@ jobs:
 
             - run: yarn install --immutable
 
-            - name: Changelog
-              id: create-changelog
-              run: |
-                  TMPFILE=/tmp/tmpfile
-                  bash scripts/generate_changelog.sh $TMPFILE
-                  cat $TMPFILE >> $GITHUB_STEP_SUMMARY
-                  cat $TMPFILE >> CHANGELOG.md
-                  echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
+            - name: lint fix
+              run: yarn run fix
 
             - name: Bump version
               run: |
                   yarn workspaces foreach version ${{ inputs.version }}
                   yarn version ${{ inputs.version }}
-
               if: ${{ inputs.version }} != "0.0.0"
+
+            - name: Changelog
+              id: create-changelog
+              run: |
+                  TMPFILE=$(mktemp /tmp/tmpfile.XXXX)
+                  bash scripts/generate_changelog.sh ${{ inputs.version }} $TMPFILE
+
+                  cat $TMPFILE >> $GITHUB_STEP_SUMMARY
+
+                  echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
 
             - name: Create Branch
               id: create-branch
@@ -63,7 +66,7 @@ jobs:
                   COMMIT_SHA=$(git rev-parse --short HEAD)
                   BRANCH=releases/draft-$COMMIT_SHA-$(date +%s)
                   git checkout -b $BRANCH
-                  git add CHANGELOG.md **/package.json
+                  git add  **/CHANGELOG.md **/package.json package.json
                   git status
                   git commit -m "Changelog & version bump to ${{ inputs.version }}"
                   git push origin HEAD
