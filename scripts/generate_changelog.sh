@@ -1,6 +1,5 @@
 for PACKAGE in "packages/databricks-vscode" "packages/databricks-sdk-js" "packages/databricks-vscode-types"; do
     tmpfile=$(mktemp /tmp/generate_changelog.XXXXXX)
-    echo "# Release: v$1" >> $tmpfile
     echo "## $PACKAGE" >> $tmpfile
 
     TAG=$(git describe --abbrev=0 --match "release-v*")
@@ -13,5 +12,6 @@ for PACKAGE in "packages/databricks-vscode" "packages/databricks-sdk-js" "packag
     fi
 
     cat $tmpfile | grep -Ev "Release: v.+" >> $2
+    echo "# Release: v$1" >> $PACKAGE/CHANGELOG.md
     cat $tmpfile | grep -Ev "Release: v.+" >> $PACKAGE/CHANGELOG.md
 done
