@@ -15,7 +15,7 @@ jobs:
     create-release:
         if: startsWith(github.event.head_commit.message, 'Release:')
         needs: ["create-build-artifacts"]
-        runs-on: ubuntu-latest
+        runs-on: macos-latest
         steps:
             - uses: actions/checkout@v3
             - uses: actions/download-artifact@v3
@@ -26,10 +26,14 @@ jobs:
             - run: ls -lr ${{ steps.download.outputs.download-path }}
 
             - run: |
-                  TITLE=$(echo "${{ github.event.head_commit.message }}" | head -n1)
-                  BODY=$(echo "${{ github.event.head_commit.message }}" | awk 'BEGIN{C=0} NR > 1 && (NF!=0 || C==1){print $0; C=1}')
-                  RELEASE_VERSION=$(echo "$TITLE" | sed -nr 's/Release: v(([0-9]+\.){2}[0-9]+)/\1/p') 
+                  TITLE=$(git show -s --format=%B HEAD | head -n1)
+                  RELEASE_VERSION=$(echo "$TITLE" | sed -nr 's/Release: v(([0-9]+\.){2}[0-9]+).*/\1/p')
+
+                  tmpfile=$(mktemp /tmp/commit-message.XXXXX)
+                  cat packages/databricks-vscode/CHANGELOG.md | awk -v version="# Release: v$RELEASE_VERSION" 'BEGIN{C=0} $0 == version{C=1} C!=0 {print $0}' > $tmpfile
+                  cat $tmpfile >> $GITHUB_STEP_SUMMARY
                   gh release create release-v$RELEASE_VERSION ${{ steps.download.outputs.download-path }}/databricks*/*.vsix \
-                    -d --target ${{ github.ref_name }} -t "$TITLE" -n "$BODY"
+                      -d --target main -t "$TITLE" -F $tmpfile
+
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
