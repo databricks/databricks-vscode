@@ -41,9 +41,6 @@ jobs:
 
             - run: yarn install --immutable
 
-            - name: lint fix
-              run: yarn run fix
-
             - name: Bump version
               run: |
                   yarn workspaces foreach version ${{ inputs.version }}
@@ -59,6 +56,9 @@ jobs:
                   cat $TMPFILE >> $GITHUB_STEP_SUMMARY
 
                   echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
+
+            - name: lint fix
+              run: yarn run fix
 
             - name: Create Branch
               id: create-branch
