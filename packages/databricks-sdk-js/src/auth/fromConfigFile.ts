@@ -20,7 +20,7 @@ export const fromConfigFile = (
 
         const config = await loadConfigFile(configFile);
 
-        if (!(config as Object).hasOwnProperty(profile)) {
+        if (!Object.prototype.hasOwnProperty.call(config, profile)) {
             throw new CredentialsProviderError(`Can't find profile ${profile}`);
         }
 

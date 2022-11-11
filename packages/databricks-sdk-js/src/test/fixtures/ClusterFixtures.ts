@@ -2,14 +2,7 @@
 
 import {ApiClient, Cluster} from "../..";
 import {ClusterInfo} from "../../apis/clusters";
-import {
-    mock,
-    when,
-    deepEqual,
-    resetCalls,
-    instance,
-    anything,
-} from "ts-mockito";
+import {mock, when, resetCalls, instance, anything} from "ts-mockito";
 
 const testClusterDetails: ClusterInfo = {
     cluster_id: "testClusterId",

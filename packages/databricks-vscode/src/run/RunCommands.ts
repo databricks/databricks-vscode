@@ -1,5 +1,4 @@
-import {resolve} from "path";
-import {commands, debug, Uri, window} from "vscode";
+import {debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CodeSynchronizer} from "../sync";
 import {promptForAttachingSyncDest} from "./prompts";
@@ -19,7 +18,7 @@ export class RunCommands {
      */
     runEditorContentsCommand() {
         return async (resource: Uri) => {
-            let targetResource = this.getTargetResource(resource);
+            const targetResource = this.getTargetResource(resource);
             if (targetResource) {
                 if (await isNotebook(targetResource)) {
                     await window.showErrorMessage(
@@ -65,7 +64,7 @@ export class RunCommands {
      */
     runEditorContentsAsWorkflowCommand() {
         return async (resource: Uri) => {
-            let targetResource = this.getTargetResource(resource);
+            const targetResource = this.getTargetResource(resource);
             if (targetResource) {
                 if (this.connection.state === "CONNECTING") {
                     await this.connection.waitForConnect();

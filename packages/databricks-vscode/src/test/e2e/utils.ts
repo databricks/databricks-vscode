@@ -64,11 +64,11 @@ export async function getViewSection(
 
 export async function waitForTreeItems(
     section: ViewSection,
-    timeoutMs: number = 5000
+    timeoutMs = 5000
 ): Promise<boolean> {
-    let start = Date.now();
+    const start = Date.now();
     while (true) {
-        let items = await section.getVisibleItems();
+        const items = await section.getVisibleItems();
         if (items.length > 0) {
             return true;
         }

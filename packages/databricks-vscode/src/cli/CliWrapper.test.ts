@@ -6,14 +6,14 @@ import {execFile as execFileCb} from "node:child_process";
 
 import {CliWrapper} from "./CliWrapper";
 import {instance, mock} from "ts-mockito";
-import {ApiClient, Repo} from "@databricks/databricks-sdk";
+import {Repo} from "@databricks/databricks-sdk";
 
 const execFile = promisify(execFileCb);
 
 describe(__filename, () => {
     it("should embed a working bricks CLI", async () => {
-        let bricksPath = __dirname + "/../../bin/bricks";
-        let result = await execFile(bricksPath, ["--help"]);
+        const bricksPath = __dirname + "/../../bin/bricks";
+        const result = await execFile(bricksPath, ["--help"]);
         assert.ok(result.stdout.indexOf("bricks") > 0);
     });
 

@@ -11,7 +11,12 @@ describe(__filename, () => {
             public count = 0;
 
             @paginated("next_page_token", "repos")
-            async getRepos(req: ListRequest): Promise<ListReposResponse> {
+            async getRepos(
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                _req: ListRequest,
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                _token?: CancellationToken
+            ): Promise<ListReposResponse> {
                 this.count += 1;
                 if (this.count === 3) {
                     return {
@@ -52,7 +57,9 @@ describe(__filename, () => {
 
             @paginated("next_page_token", "repos")
             async getRepos(
-                req: ListRequest,
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                _req: ListRequest,
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 _token: CancellationToken
             ): Promise<ListReposResponse> {
                 this.count += 1;
@@ -72,7 +79,7 @@ describe(__filename, () => {
         }
 
         const t = new Test();
-        const response = await t.getRepos({}, token);
+        await t.getRepos({}, token);
         assert.equal(t.count, 3);
     });
 });

@@ -14,12 +14,12 @@ export class ProjectConfigFileWatcher implements Disposable {
 
         this.disposables.push(
             fileSystemWatcher,
-            fileSystemWatcher.onDidCreate(async (e) => {
+            fileSystemWatcher.onDidCreate(async () => {
                 if (connectionManager.state !== "CONNECTED") {
                     await connectionManager.login();
                 }
             }, this),
-            fileSystemWatcher.onDidChange(async (e) => {
+            fileSystemWatcher.onDidChange(async () => {
                 const configFile = await ProjectConfigFile.load(rootPath);
                 if (
                     configFile.profile !==
@@ -52,7 +52,7 @@ export class ProjectConfigFileWatcher implements Disposable {
                     }
                 }
             }, this),
-            fileSystemWatcher.onDidDelete(async (e) => {
+            fileSystemWatcher.onDidDelete(async () => {
                 await connectionManager.logout();
             }, this)
         );

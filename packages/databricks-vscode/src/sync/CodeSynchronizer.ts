@@ -56,7 +56,7 @@ export class CodeSynchronizer implements Disposable {
     }
 
     async start(syncType: "full" | "incremental") {
-        let task = new SyncTask(
+        const task = new SyncTask(
             this.connection,
             this.cli,
             syncType,
@@ -85,15 +85,12 @@ export class CodeSynchronizer implements Disposable {
     async waitForSyncComplete(): Promise<void> {
         if (this._state !== "WATCHING_FOR_CHANGES") {
             return await new Promise((resolve) => {
-                const changeListener = this.onDidChangeState(
-                    (state: SyncState) => {
-                        if (this._state === "WATCHING_FOR_CHANGES") {
-                            changeListener.dispose();
-                            resolve();
-                        }
-                    },
-                    this
-                );
+                const changeListener = this.onDidChangeState(() => {
+                    if (this._state === "WATCHING_FOR_CHANGES") {
+                        changeListener.dispose();
+                        resolve();
+                    }
+                }, this);
 
                 this.disposables.push(changeListener);
             });

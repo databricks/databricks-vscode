@@ -83,8 +83,8 @@ export class JobsService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         await this.cancelRun(cancelRun, context);
 
@@ -261,8 +261,8 @@ export class JobsService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         const run = await this.getRun(getRunRequest, context);
 
@@ -412,8 +412,8 @@ export class JobsService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         await this.repairRun(repairRun, context);
 
@@ -515,8 +515,8 @@ export class JobsService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         const runNowResponse = await this.runNow(runNow, context);
 
@@ -601,8 +601,8 @@ export class JobsService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         const submitRunResponse = await this.submit(submitRun, context);
 

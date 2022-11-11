@@ -14,7 +14,7 @@ export const fromChain = (
 
         for (const provider of chain) {
             try {
-                let credentials = await provider();
+                const credentials = await provider();
                 cachedProvider = provider;
                 return credentials;
             } catch (e) {}

@@ -1,19 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {
-    mock,
-    when,
-    instance,
-    anything,
-    verify,
-    capture,
-    match,
-    deepEqual,
-} from "ts-mockito";
+import {mock, when, instance, anything, verify, capture} from "ts-mockito";
 import {Disposable, Uri} from "vscode";
 import {
-    ApiClient,
     Cluster,
     Command,
     ExecutionContext,
@@ -27,7 +17,6 @@ import {
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncDestination} from "../configuration/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
-import {ListRequest} from "@databricks/databricks-sdk/dist/apis/repos";
 
 describe(__filename, () => {
     let disposables: Array<Disposable>;
@@ -78,7 +67,7 @@ describe(__filename, () => {
         when(connectionManagerMock.syncDestination).thenReturn(syncDestination);
 
         const fileAccessor: FileAccessor = {
-            async readFile(name: string): Promise<string> {
+            async readFile(): Promise<string> {
                 return "print('43')";
             },
         };

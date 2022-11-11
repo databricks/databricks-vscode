@@ -44,7 +44,7 @@ export class WorkspaceConf {
         keys: Array<keyof WorkspaceConfProps>,
         cancellationToken?: CancellationToken
     ): Promise<Partial<WorkspaceConfProps>> {
-        let wsConfApi = new WorkspaceConfService(this.client);
+        const wsConfApi = new WorkspaceConfService(this.client);
         return await wsConfApi.getStatus(
             {
                 keys: keys.join(","),
@@ -57,7 +57,7 @@ export class WorkspaceConf {
         request: Partial<WorkspaceConfProps>,
         cancellationToken?: CancellationToken
     ): Promise<Partial<WorkspaceConfProps>> {
-        let wsConfApi = new WorkspaceConfService(this.client);
+        const wsConfApi = new WorkspaceConfService(this.client);
         return await wsConfApi.setStatus(
             request,
             new Context({cancellationToken})

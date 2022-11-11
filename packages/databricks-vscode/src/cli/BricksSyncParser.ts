@@ -16,15 +16,15 @@ export class BricksSyncParser {
     // const s1 = "Action: PUT: g, .gitignore, DELETE: f"
     // A hacky way to solve this, lets move to structed logs from bricks later
     private parseForActionsInitiated(line: string) {
-        var indexOfAction = line.indexOf("Action:");
+        const indexOfAction = line.indexOf("Action:");
         // The log line is not relevant for actions
         if (indexOfAction === -1) {
             return;
         }
 
         const tokenizedLine = line.substring(indexOfAction).split(" ");
-        var isPut = false;
-        var isDelete = false;
+        let isPut = false;
+        let isDelete = false;
         for (let i = 1; i < tokenizedLine.length; i++) {
             switch (tokenizedLine[i]) {
                 case "PUT:": {
@@ -39,7 +39,7 @@ export class BricksSyncParser {
                 }
                 default: {
                     // trim the trailing , if it exists
-                    var filePath = tokenizedLine[i].replace(/,$/, "");
+                    const filePath = tokenizedLine[i].replace(/,$/, "");
                     if (isPut) {
                         this.filesBeingUploaded.add(filePath);
                     } else if (isDelete) {
@@ -56,7 +56,7 @@ export class BricksSyncParser {
 
     // We expect a single line of logs for all files being put/delete
     private parseForUploadCompleted(line: string) {
-        var indexOfUploaded = line.indexOf("Uploaded");
+        const indexOfUploaded = line.indexOf("Uploaded");
         if (indexOfUploaded === -1) {
             return;
         }
@@ -80,7 +80,7 @@ export class BricksSyncParser {
     }
 
     private parseForDeleteCompleted(line: string) {
-        var indexOfDeleted = line.indexOf("Deleted");
+        const indexOfDeleted = line.indexOf("Deleted");
         if (indexOfDeleted === -1) {
             return;
         }
@@ -106,7 +106,7 @@ export class BricksSyncParser {
     // We block on execing any commands on vscode until we get a message from
     // bricks cli that the initial sync is done
     private parseForFirstSync(line: string) {
-        var indexOfSyncComplete = line.indexOf("Initial Sync Complete");
+        const indexOfSyncComplete = line.indexOf("Initial Sync Complete");
         if (indexOfSyncComplete !== -1) {
             this.firstSyncDone = true;
         }
@@ -117,9 +117,9 @@ export class BricksSyncParser {
     // what we have stored locally.
     // TODO: Use structed logging to compute the sync state here
     public process(data: string) {
-        var logLines = data.split("\n");
+        const logLines = data.split("\n");
         for (let i = 0; i < logLines.length; i++) {
-            var line = logLines[i];
+            const line = logLines[i];
             this.parseForActionsInitiated(line);
             this.parseForUploadCompleted(line);
             this.parseForDeleteCompleted(line);

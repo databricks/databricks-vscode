@@ -42,7 +42,9 @@ jobs:
             - run: yarn install --immutable
 
             - name: Bump version
-              run: yarn workspaces foreach version ${{ inputs.version }}
+              run: |
+                  yarn workspaces foreach version ${{ inputs.version }}
+                  yarn version ${{ inputs.version }}
               if: ${{ inputs.version }} != "0.0.0"
 
             - name: Changelog

@@ -1,5 +1,5 @@
 import {cluster, Cluster, Time, TimeUnits} from "@databricks/databricks-sdk";
-import {CancellationToken, CancellationTokenSource, Disposable} from "vscode";
+import {CancellationTokenSource, Disposable} from "vscode";
 
 export class ClusterManager implements Disposable {
     private cancellationTokenSource?: CancellationTokenSource;
@@ -7,9 +7,7 @@ export class ClusterManager implements Disposable {
 
     constructor(
         readonly cluster: Cluster,
-        readonly onChange: (state: cluster.ClusterInfoState) => void = (
-            state
-        ) => {},
+        readonly onChange: (state: cluster.ClusterInfoState) => void = () => {},
         readonly refreshTimeout: Time = new Time(10, TimeUnits.seconds)
     ) {
         this.setInterval();
@@ -34,7 +32,7 @@ export class ClusterManager implements Disposable {
     }
 
     async start(
-        onProgress: (state: cluster.ClusterInfoState) => void = (state) => {}
+        onProgress: (state: cluster.ClusterInfoState) => void = () => {}
     ) {
         this.clearInterval();
         this.cancellationTokenSource?.cancel();
@@ -50,7 +48,7 @@ export class ClusterManager implements Disposable {
     }
 
     async stop(
-        onProgress: (state?: cluster.ClusterInfoState) => void = (state) => {}
+        onProgress: (state?: cluster.ClusterInfoState) => void = () => {}
     ) {
         this.clearInterval();
         this.cancellationTokenSource?.cancel();

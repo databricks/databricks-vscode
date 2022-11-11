@@ -17,16 +17,17 @@ describe(__filename, function () {
     });
 
     it("should run python with high level API", async () => {
-        let context = await ExecutionContext.create(
+        const context = await ExecutionContext.create(
             integSetup.client,
             integSetup.cluster
         );
 
         let statusUpdateCalled = false;
-        var {cmd, result} = await context.execute(
+        let {cmd, result} = await context.execute(
             "print('juhu')",
-            (e) => (statusUpdateCalled = true)
+            () => (statusUpdateCalled = true)
         );
+        assert(cmd);
         assert(statusUpdateCalled);
         assert(result.results);
         assert(result.results.resultType === "text");
@@ -34,6 +35,7 @@ describe(__filename, function () {
 
         statusUpdateCalled = false;
         ({cmd, result} = await context.execute("print('kinners')"));
+        assert(cmd);
         assert(!statusUpdateCalled);
         assert(result.results);
         assert(result.results.resultType === "text");
@@ -43,7 +45,7 @@ describe(__filename, function () {
     });
 
     it("should cancel running command", async () => {
-        let context = await ExecutionContext.create(
+        const context = await ExecutionContext.create(
             integSetup.client,
             integSetup.cluster
         );
@@ -59,6 +61,7 @@ describe(__filename, function () {
         // The API surfaces an exception when a command is cancelled
         // The cancellation itself proceeds as expected, but the status
         // is FINISHED instead of CANCELLED
+        assert(cmd);
         assert.equal(result.status, "Finished");
         assert(result.results?.resultType === "error");
         assert(result.results!.cause!.includes("CommandCancelledException"));

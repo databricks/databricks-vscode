@@ -110,7 +110,7 @@ export class ClusterListDataProvider
     public static async clusterNodeToTreeItems(
         element: Cluster
     ): Promise<Array<TreeItem>> {
-        let children: TreeItem[] = [
+        const children: TreeItem[] = [
             {
                 label: "Cluster ID:",
                 description: element.id,

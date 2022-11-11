@@ -47,7 +47,7 @@ export class ProjectConfigFile {
             }
         } catch (e) {}
 
-        let fileName = ProjectConfigFile.getProjectConfigFilePath(
+        const fileName = ProjectConfigFile.getProjectConfigFilePath(
             this.rootPath
         );
         await fs.mkdir(path.dirname(fileName), {recursive: true});
@@ -89,7 +89,7 @@ export class ProjectConfigFile {
         if (!rootPath) {
             throw new Error("Not in a VSCode workspace");
         }
-        let cwd = path.normalize(rootPath);
+        const cwd = path.normalize(rootPath);
         return path.join(cwd, ".databricks", "project.json");
     }
 }

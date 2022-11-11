@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiClient} from "../api-client";
 import {ListRequest, ReposService, RepoInfo} from "../apis/repos";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import {context} from "../context";
+import {Context} from "../context";
 import {paginated} from "../decorators";
-import {CancellationToken} from "../types";
+import {ExposedLoggers, withLogContext} from "../logging";
 
 export interface RepoList {
     repos: Repo[];
@@ -14,14 +17,15 @@ export class RepoError extends Error {}
 export class Repos {
     constructor(private readonly client: ApiClient) {}
     @paginated<ListRequest, RepoList>("next_page_token", "repos")
+    @withLogContext(ExposedLoggers.SDK)
     async paginatedList(
         req: ListRequest,
-        _token?: CancellationToken
+        @context context?: Context
     ): Promise<RepoList> {
         const reposApi = new ReposService(this.client);
         return {
             repos:
-                (await reposApi.list(req)).repos?.map(
+                (await reposApi.list(req, context)).repos?.map(
                     (details) => new Repo(this.client, details)
                 ) ?? [],
             next_page_token: req["next_page_token"],
@@ -53,25 +57,27 @@ export class Repo {
             `${(await this.client.host).host}#folder/${this.id}`)();
     }
 
+    @withLogContext(ExposedLoggers.SDK)
     static async list(
         client: ApiClient,
         req: ListRequest,
-        _token?: CancellationToken
+        @context context?: Context
     ) {
-        return (await new Repos(client).paginatedList(req, _token)).repos;
+        return (await new Repos(client).paginatedList(req, context)).repos;
     }
 
+    @withLogContext(ExposedLoggers.SDK)
     static async fromPath(
         client: ApiClient,
         path: string,
-        _token?: CancellationToken
+        @context context?: Context
     ) {
         const repos = await this.list(
             client,
             {
                 path_prefix: path,
             },
-            _token
+            context
         );
 
         const exactRepo = repos.find((repo) => repo.path === path);

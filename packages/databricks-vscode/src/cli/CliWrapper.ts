@@ -65,7 +65,7 @@ export class CliWrapper {
     ): Promise<{stdout: string; stderr: string}> {
         return new Promise((resolve, reject) => {
             const {command, args} = this.getAddProfileCommand(name, host);
-            let child = spawn(command, args, {
+            const child = spawn(command, args, {
                 stdio: ["pipe", 0, 0],
             });
 

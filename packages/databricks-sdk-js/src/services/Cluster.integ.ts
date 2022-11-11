@@ -16,8 +16,8 @@ describe(__filename, function () {
     it("should create an execution context", async () => {
         assert(await integSetup.cluster.canExecute());
 
-        let ctx = await integSetup.cluster.createExecutionContext();
-        let {result} = await ctx.execute("print('hello')");
+        const ctx = await integSetup.cluster.createExecutionContext();
+        const {result} = await ctx.execute("print('hello')");
 
         assert(result.results);
         assert(result.results.resultType === "text");
@@ -25,9 +25,9 @@ describe(__filename, function () {
     });
 
     it("should load a cluster by name", async () => {
-        let clusterA = integSetup.cluster;
+        const clusterA = integSetup.cluster;
 
-        let clusterB = await Cluster.fromClusterName(
+        const clusterB = await Cluster.fromClusterName(
             integSetup.client,
             clusterA.details.cluster_name!
         );

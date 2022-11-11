@@ -62,8 +62,8 @@ export class CommandExecutionService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         await this.cancel(cancelCommand, context);
 
@@ -188,8 +188,8 @@ export class CommandExecutionService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         const created = await this.create(createContext, context);
 
@@ -296,8 +296,8 @@ export class CommandExecutionService {
         options = options || {};
         options.onProgress =
             options.onProgress || (async (newPollResponse) => {});
-        let {timeout, onProgress} = options;
-        let cancellationToken = context?.cancellationToken;
+        const {timeout, onProgress} = options;
+        const cancellationToken = context?.cancellationToken;
 
         const created = await this.execute(command, context);
 

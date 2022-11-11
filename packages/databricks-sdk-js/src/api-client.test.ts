@@ -3,6 +3,7 @@ import ".";
 import assert from "node:assert";
 import {ApiClient} from "./api-client";
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const sdkVersion = require("../package.json").version;
 
 describe(__filename, () => {
@@ -11,7 +12,7 @@ describe(__filename, () => {
     });
 
     it("should create proper user agent", () => {
-        let ua = new ApiClient("unit", "3.4.5").userAgent();
+        const ua = new ApiClient("unit", "3.4.5").userAgent();
         assert.equal(
             ua,
             `unit/3.4.5 databricks-sdk-js/${sdkVersion} nodejs/${process.version.slice(

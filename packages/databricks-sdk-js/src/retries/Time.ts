@@ -5,8 +5,6 @@ export enum TimeUnits {
     hours,
 }
 
-class InvalidTimeValueError extends Error {}
-
 export default class Time {
     value: number;
     units: TimeUnits;

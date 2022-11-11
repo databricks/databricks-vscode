@@ -2,7 +2,7 @@
 import {ApiClient, Repo} from "@databricks/databricks-sdk";
 import {ListRequest} from "@databricks/databricks-sdk/dist/apis/repos";
 import assert from "assert";
-import {anything, instance, mock, when} from "ts-mockito";
+import {instance, mock, when} from "ts-mockito";
 import {Uri} from "vscode";
 import {SyncDestination} from "./SyncDestination";
 
@@ -25,7 +25,7 @@ describe(__filename, () => {
         });
     });
     it("should map a file", async () => {
-        let mapper = new SyncDestination(
+        const mapper = new SyncDestination(
             instance(mock(Repo)),
             Uri.from({
                 scheme: "wsfs",
@@ -45,7 +45,7 @@ describe(__filename, () => {
     });
 
     it("should prepend '/Workspace' if missing", async () => {
-        let mapper = new SyncDestination(
+        const mapper = new SyncDestination(
             instance(mock(Repo)),
             Uri.from({
                 scheme: "wsfs",
@@ -65,7 +65,7 @@ describe(__filename, () => {
     });
 
     it("should map a directory", async () => {
-        let mapper = new SyncDestination(
+        const mapper = new SyncDestination(
             instance(mock(Repo)),
             Uri.from({
                 scheme: "wsfs",
@@ -85,7 +85,7 @@ describe(__filename, () => {
     });
 
     it("should get repo name", async () => {
-        let mapper = new SyncDestination(
+        const mapper = new SyncDestination(
             instance(mock(Repo)),
             Uri.from({
                 scheme: "wsfs",
@@ -98,7 +98,7 @@ describe(__filename, () => {
     });
 
     it("should map notebooks", async () => {
-        let mapper = new SyncDestination(
+        const mapper = new SyncDestination(
             instance(mock(Repo)),
             Uri.from({
                 scheme: "wsfs",

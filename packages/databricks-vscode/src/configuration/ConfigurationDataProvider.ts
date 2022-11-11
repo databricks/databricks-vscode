@@ -1,9 +1,7 @@
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {
     Disposable,
     Event,
     EventEmitter,
-    ProviderResult,
     ThemeColor,
     ThemeIcon,
     TreeDataProvider,
@@ -11,7 +9,6 @@ import {
     TreeItemCollapsibleState,
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
-import {Loggers, loggingUtils} from "../logger";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
 
@@ -71,11 +68,11 @@ export class ConfigurationDataProvider
                 return [];
         }
 
-        let cluster = this.connectionManager.cluster;
-        let syncDestination = this.connectionManager.syncDestination;
+        const cluster = this.connectionManager.cluster;
+        const syncDestination = this.connectionManager.syncDestination;
 
         if (!element) {
-            let children: Array<TreeItem> = [];
+            const children: Array<TreeItem> = [];
             children.push({
                 label: `Workspace`,
                 iconPath: new ThemeIcon("account"),
