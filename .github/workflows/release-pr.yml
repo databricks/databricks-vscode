@@ -41,6 +41,9 @@ jobs:
 
             - run: yarn install --immutable
 
+            - name: lint fix
+              run: yarn run fix
+
             - name: Bump version
               run: |
                   yarn workspaces foreach version ${{ inputs.version }}

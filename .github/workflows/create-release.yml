@@ -2,7 +2,7 @@ name: Create Draft Release
 
 on:
     push:
-        branches: ["main", "fix-release-actions"]
+        branches: ["main"]
 
     workflow_dispatch:
 
@@ -33,7 +33,7 @@ jobs:
                   cat packages/databricks-vscode/CHANGELOG.md | awk -v version="# Release: v$RELEASE_VERSION" 'BEGIN{C=0} $0 == version{C=1} C!=0 {print $0}' > $tmpfile
                   cat $tmpfile >> $GITHUB_STEP_SUMMARY
                   gh release create release-v$RELEASE_VERSION ${{ steps.download.outputs.download-path }}/databricks*/*.vsix \
-                      -d --target fix-release-actions -t "$TITLE" -F $tmpfile
+                      -d --target main -t "$TITLE" -F $tmpfile
 
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
