@@ -49,9 +49,13 @@ jobs:
               id: create-changelog
               run: |
                   TMPFILE=$(mktemp /tmp/tmpfile.XXXX)
-                  bash scripts/generate_changelog.sh $TMPFILE
+                  bash scripts/generate_changelog.sh ${{ inputs.version }} $TMPFILE
+
                   cat $TMPFILE >> $GITHUB_STEP_SUMMARY
+
+                  echo "#Release: v${{ inputs.version }}" >> CHANGELOG.md
                   cat $TMPFILE >> CHANGELOG.md
+
                   echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
 
             - name: Create Branch
