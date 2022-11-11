@@ -25,6 +25,7 @@ async function main() {
             launchArgs: ["--user-data-dir", `${os.tmpdir()}`],
         });
     } catch (err) {
+        // eslint-disable-next-line no-console
         console.error("Failed to run tests");
         process.exit(1);
     }

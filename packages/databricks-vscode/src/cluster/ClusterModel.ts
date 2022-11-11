@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {
-    Cluster,
-    cluster,
-    PermissionsService,
-    Time,
-    TimeUnits,
-} from "@databricks/databricks-sdk";
+import {Cluster, cluster} from "@databricks/databricks-sdk";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ClusterLoader} from "./ClusterLoader";
@@ -50,7 +44,7 @@ export class ClusterModel implements Disposable {
                 }
             }),
             this.clusterLoader,
-            this.clusterLoader.onDidChange((e) => this._onDidChange.fire())
+            this.clusterLoader.onDidChange(() => this._onDidChange.fire())
         );
         this.clusterLoader.start();
     }

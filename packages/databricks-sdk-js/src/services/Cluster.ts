@@ -66,7 +66,7 @@ export class Cluster {
     }
 
     async getSparkUiUrl(sparkContextId?: string): Promise<string> {
-        let host = (await this.client.host).host;
+        const host = (await this.client.host).host;
 
         if (sparkContextId) {
             return `https://${host}/#setting/sparkui/${this.id}/driver-${sparkContextId}`;
@@ -186,7 +186,7 @@ export class Cluster {
 
     async start(
         token?: CancellationToken,
-        onProgress: (state: ClusterInfoState) => void = (state) => {}
+        onProgress: (state: ClusterInfoState) => void = () => {}
     ) {
         await this.refresh();
         if (this.state === "RUNNING") {
@@ -272,7 +272,7 @@ export class Cluster {
         let executionContext: ExecutionContext | undefined;
         try {
             executionContext = await this.createExecutionContext();
-            let result = await executionContext.execute("1==1");
+            const result = await executionContext.execute("1==1");
             this._canExecute =
                 result.result?.results?.resultType === "error" ? false : true;
         } catch (e) {
@@ -282,24 +282,26 @@ export class Cluster {
             if (executionContext) {
                 await executionContext.destroy();
             }
-            return this._canExecute ?? false;
         }
+        return this._canExecute ?? false;
     }
 
     static async fromClusterName(
         client: ApiClient,
         clusterName: string
     ): Promise<Cluster | undefined> {
-        let clusterApi = new ClustersService(client);
-        let clusterList = await clusterApi.list({can_use_client: ""});
-        let cluster = clusterList.clusters?.find((cluster) => {
+        const clusterApi = new ClustersService(client);
+        const clusterList = await clusterApi.list({can_use_client: ""});
+        const cluster = clusterList.clusters?.find((cluster) => {
             return cluster.cluster_name === clusterName;
         });
         if (!cluster) {
             return;
         }
 
-        let response = await clusterApi.get({cluster_id: cluster.cluster_id!});
+        const response = await clusterApi.get({
+            cluster_id: cluster.cluster_id!,
+        });
         return new Cluster(client, response);
     }
 
@@ -307,14 +309,14 @@ export class Cluster {
         client: ApiClient,
         clusterId: string
     ): Promise<Cluster> {
-        let clusterApi = new ClustersService(client);
-        let response = await clusterApi.get({cluster_id: clusterId});
+        const clusterApi = new ClustersService(client);
+        const response = await clusterApi.get({cluster_id: clusterId});
         return new Cluster(client, response);
     }
 
     static async list(client: ApiClient): Promise<Array<Cluster>> {
-        let clusterApi = new ClustersService(client);
-        let response = await clusterApi.list({can_use_client: ""});
+        const clusterApi = new ClustersService(client);
+        const response = await clusterApi.list({can_use_client: ""});
 
         if (!response.clusters) {
             return [];
@@ -325,7 +327,7 @@ export class Cluster {
 
     async submitRun(submitRunRequest: SubmitRun): Promise<WorkflowRun> {
         const jobsService = new JobsService(this.client);
-        let res = await jobsService.submit(submitRunRequest);
+        const res = await jobsService.submit(submitRunRequest);
         return await WorkflowRun.fromId(this.client, res.run_id!);
     }
 

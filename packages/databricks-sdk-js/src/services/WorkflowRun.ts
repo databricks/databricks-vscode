@@ -71,7 +71,7 @@ export class WorkflowRun {
 
         const jobsService = new JobsService(this.client);
         return await jobsService.exportRun({
-            run_id: this.tasks![0].run_id!,
+            run_id: task.run_id!,
         });
     }
 }

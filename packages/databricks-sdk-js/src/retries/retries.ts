@@ -1,7 +1,7 @@
 import Time, {TimeUnits} from "./Time";
 
 export class RetriableError extends Error {
-    name: string = "RetriableError";
+    name = "RetriableError";
 }
 
 export class TimeoutError extends Error {
@@ -44,7 +44,7 @@ export default async function retry<T>({
     let result: T | undefined = undefined;
 
     let timedOut = false;
-    let timer: NodeJS.Timeout = setTimeout(() => {
+    const timer: NodeJS.Timeout = setTimeout(() => {
         timedOut = true;
     }, timeout.toMillSeconds().value);
 

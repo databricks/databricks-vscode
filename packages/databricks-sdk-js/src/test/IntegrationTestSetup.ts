@@ -14,7 +14,7 @@ export class IntegrationTestSetup {
     private static _instance: IntegrationTestSetup;
     static async getInstance(): Promise<IntegrationTestSetup> {
         if (!this._instance) {
-            let client = new ApiClient("integration-tests", "0.0.1");
+            const client = new ApiClient("integration-tests", "0.0.1");
 
             if (!process.env["TEST_DEFAULT_CLUSTER_ID"]) {
                 throw new Error(

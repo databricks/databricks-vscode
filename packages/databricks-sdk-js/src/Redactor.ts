@@ -28,7 +28,7 @@ export class Redactor {
         }
         //make a copy of the object
         obj = Object.assign({}, obj);
-        for (let key in obj) {
+        for (const key in obj) {
             if (dropFields.includes(key)) {
                 delete obj[key];
             } else if (

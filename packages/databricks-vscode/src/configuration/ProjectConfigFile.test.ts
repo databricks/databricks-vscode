@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {Disposable, Uri, workspace} from "vscode";
-import {CliWrapper} from "../cli/CliWrapper";
 import {mkdtemp, readFile} from "fs/promises";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import * as assert from "assert";

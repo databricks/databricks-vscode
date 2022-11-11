@@ -15,15 +15,15 @@ describe(__filename, function () {
     });
 
     it("should execute python with low level API", async () => {
-        let commandsApi = new CommandExecutionService(integSetup.client);
+        const commandsApi = new CommandExecutionService(integSetup.client);
 
-        let context = await commandsApi.createAndWait({
+        const context = await commandsApi.createAndWait({
             clusterId: integSetup.cluster.id,
             language: "python",
         });
         //console.log("Execution context", context);
 
-        let status = await commandsApi.executeAndWait({
+        const status = await commandsApi.executeAndWait({
             clusterId: integSetup.cluster.id,
             contextId: context.id,
             language: "python",

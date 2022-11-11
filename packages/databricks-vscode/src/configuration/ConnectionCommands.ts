@@ -1,6 +1,5 @@
-import {Cluster, Repo, WorkspaceService} from "@databricks/databricks-sdk";
+import {Cluster, Repo} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
-import {resolve} from "node:path";
 import {
     Disposable,
     QuickPickItem,
@@ -23,7 +22,7 @@ function formatQuickPickClusterSize(sizeInMB: number): string {
     }
 }
 export function formatQuickPickClusterDetails(cluster: Cluster) {
-    let details = [];
+    const details = [];
     if (cluster.memoryMb) {
         details.push(formatQuickPickClusterSize(cluster.memoryMb));
     }
@@ -122,10 +121,10 @@ export class ConnectionCommands implements Disposable {
 
             this.clusterModel.refresh();
             const refreshQuickPickItems = () => {
-                let clusters = this.clusterModel.roots ?? [];
+                const clusters = this.clusterModel.roots ?? [];
                 quickPick.items = items.concat(
                     clusters.map((c) => {
-                        let treeItem =
+                        const treeItem =
                             ClusterListDataProvider.clusterNodeToTreeItem(c);
                         return {
                             label: `$(${
@@ -138,7 +137,7 @@ export class ConnectionCommands implements Disposable {
                 );
             };
 
-            let disposables = [
+            const disposables = [
                 this.clusterModel.onDidChange(refreshQuickPickItems),
                 quickPick,
             ];
@@ -207,7 +206,7 @@ export class ConnectionCommands implements Disposable {
 
             quickPick.show();
 
-            let repos = await Repo.list(apiClient, {
+            const repos = await Repo.list(apiClient, {
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 path_prefix: `/Repos/${me}`,
             });

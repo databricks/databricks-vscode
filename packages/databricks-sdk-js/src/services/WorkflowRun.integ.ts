@@ -13,13 +13,13 @@ describe(__filename, function () {
     });
 
     it("should run a python job", async () => {
-        let cluster = await Cluster.fromClusterId(
+        const cluster = await Cluster.fromClusterId(
             integSetup.client,
             integSetup.cluster.id
         );
 
-        let dbfsApi = new DbfsService(integSetup.client);
-        let jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
+        const dbfsApi = new DbfsService(integSetup.client);
+        const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
 
         await dbfsApi.put({
             path: jobPath,
@@ -31,7 +31,7 @@ describe(__filename, function () {
 
         try {
             const progress: Array<WorkflowRun> = [];
-            let output = await cluster.runPythonAndWait({
+            const output = await cluster.runPythonAndWait({
                 path: `dbfs:${jobPath}`,
                 onProgress: (
                     _state: jobs.RunLifeCycleState,
@@ -53,13 +53,13 @@ describe(__filename, function () {
     });
 
     it("should run a notebook job", async () => {
-        let cluster = await Cluster.fromClusterId(
+        const cluster = await Cluster.fromClusterId(
             integSetup.client,
             integSetup.cluster.id
         );
 
-        let jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
-        let workspaceService = new WorkspaceService(integSetup.client);
+        const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
+        const workspaceService = new WorkspaceService(integSetup.client);
 
         await workspaceService.mkdirs({path: "/tmp"});
 
@@ -75,7 +75,7 @@ describe(__filename, function () {
 
         try {
             const progress: Array<WorkflowRun> = [];
-            let output = await cluster.runNotebookAndWait({
+            const output = await cluster.runNotebookAndWait({
                 path: `${jobPath}`,
                 onProgress: (
                     _state: jobs.RunLifeCycleState,

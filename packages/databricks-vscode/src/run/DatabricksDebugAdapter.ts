@@ -14,7 +14,6 @@ import {
     DebugAdapterDescriptor,
     DebugAdapterDescriptorFactory,
     DebugAdapterInlineImplementation,
-    DebugSession,
     Disposable,
     ProviderResult,
     Uri,
@@ -41,8 +40,6 @@ interface ILaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     args?: string[];
 }
 
-interface IAttachRequestArguments extends ILaunchRequestArguments {}
-
 export class DatabricksDebugAdapterFactory
     implements DebugAdapterDescriptorFactory, Disposable
 {
@@ -53,9 +50,7 @@ export class DatabricksDebugAdapterFactory
 
     dispose() {}
 
-    createDebugAdapterDescriptor(
-        _session: DebugSession
-    ): ProviderResult<DebugAdapterDescriptor> {
+    createDebugAdapterDescriptor(): ProviderResult<DebugAdapterDescriptor> {
         return new DebugAdapterInlineImplementation(
             new DatabricksDebugSession(this.connection, this.codeSynchroniser)
         );
@@ -64,7 +59,7 @@ export class DatabricksDebugAdapterFactory
 
 export const workspaceFileAccessor: FileAccessor = {
     async readFile(path: string): Promise<string> {
-        let uri = Uri.file(path);
+        const uri = Uri.file(path);
 
         const bytes = await workspace.fs.readFile(uri);
         return new TextDecoder().decode(bytes);
@@ -229,17 +224,13 @@ export class DatabricksDebugSession extends LoggingDebugSession {
         this._configurationDone.notify();
     }
 
-    protected async disconnectRequest(
-        _response: DebugProtocol.DisconnectResponse,
-        args: DebugProtocol.DisconnectArguments,
-        _request?: DebugProtocol.Request
-    ): Promise<void> {
+    protected async disconnectRequest(): Promise<void> {
         await this.runtime.disconnect();
     }
 
     protected async attachRequest(
         response: DebugProtocol.AttachResponse,
-        args: IAttachRequestArguments
+        args: ILaunchRequestArguments
     ) {
         return this.launchRequest(response, args);
     }

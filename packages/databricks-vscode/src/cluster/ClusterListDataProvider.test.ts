@@ -3,7 +3,7 @@
 import assert from "assert";
 import {mock, when, instance} from "ts-mockito";
 import {ClusterModel} from "./ClusterModel";
-import {Disposable, TreeItem} from "vscode";
+import {Disposable} from "vscode";
 import {ClusterListDataProvider} from "./ClusterListDataProvider";
 import {ApiClient, Cluster, cluster} from "@databricks/databricks-sdk";
 import {resolveProviderResult} from "../test/utils";
@@ -61,8 +61,8 @@ describe(__filename, () => {
     });
 
     it("should reload tree on model change", async () => {
-        let model = instance(mockedClusterModel);
-        let provider = new ClusterListDataProvider(model);
+        const model = instance(mockedClusterModel);
+        const provider = new ClusterListDataProvider(model);
         disposables.push(provider);
 
         let called = false;
@@ -78,25 +78,25 @@ describe(__filename, () => {
     });
 
     it("should get roots", async () => {
-        let model = instance(mockedClusterModel);
-        let provider = new ClusterListDataProvider(model);
+        const model = instance(mockedClusterModel);
+        const provider = new ClusterListDataProvider(model);
         disposables.push(provider);
 
-        let children = await resolveProviderResult(provider.getChildren());
+        const children = await resolveProviderResult(provider.getChildren());
         assert(children);
         assert.equal(children.length, 2);
     });
 
     it("should return cluster children", async () => {
-        let model = instance(mockedClusterModel);
-        let provider = new ClusterListDataProvider(model);
+        const model = instance(mockedClusterModel);
+        const provider = new ClusterListDataProvider(model);
         disposables.push(provider);
 
-        let cluster = new Cluster(
+        const cluster = new Cluster(
             instance(mockApiClient),
             mockListClustersResponse.clusters![0]
         );
-        let children = await resolveProviderResult(
+        const children = await resolveProviderResult(
             provider.getChildren(cluster)
         );
         assert(children);
@@ -104,12 +104,12 @@ describe(__filename, () => {
     });
 
     it("should get cluster tree node items", async () => {
-        let cluster = new Cluster(
+        const cluster = new Cluster(
             instance(mockApiClient),
             mockListClustersResponse.clusters![0]
         );
 
-        let items = await ClusterListDataProvider.clusterNodeToTreeItems(
+        const items = await ClusterListDataProvider.clusterNodeToTreeItems(
             cluster
         );
         assert.deepEqual(items, [

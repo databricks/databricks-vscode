@@ -1,4 +1,4 @@
-import Time, {TimeUnits} from "@databricks/databricks-sdk/dist/retries/Time";
+import Time from "@databricks/databricks-sdk/dist/retries/Time";
 
 export interface RunFunctionDetails {
     fn: () => Promise<void>;

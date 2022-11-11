@@ -35,7 +35,7 @@ export class WorkflowRunner implements Disposable {
     }
 
     private async getPanelForUri(uri: Uri) {
-        let key = uri.toString();
+        const key = uri.toString();
         let panel = this.panels.get(key);
 
         if (panel) {
@@ -96,7 +96,7 @@ export class WorkflowRunner implements Disposable {
 
         try {
             if (await isNotebook(program)) {
-                let response = await cluster.runNotebookAndWait({
+                const response = await cluster.runNotebookAndWait({
                     path: syncDestination.localToRemoteNotebook(program),
                     parameters,
                     onProgress: (
@@ -107,10 +107,10 @@ export class WorkflowRunner implements Disposable {
                     },
                     token: cancellation.token,
                 });
-                let htmlContent = response.views![0].content;
+                const htmlContent = response.views![0].content;
                 panel.showHtmlResult(htmlContent || "");
             } else {
-                let response = await cluster.runPythonAndWait({
+                const response = await cluster.runPythonAndWait({
                     path:
                         syncDestination.localToRemoteNotebook(program) + ".py",
                     args,

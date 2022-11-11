@@ -50,7 +50,7 @@ export class DatabricksRuntime implements Disposable {
     constructor(
         private connection: ConnectionManager,
         private fileAccessor: FileAccessor = {
-            readFile: async (path) => {
+            readFile: async () => {
                 return "";
             },
         },
@@ -79,7 +79,7 @@ export class DatabricksRuntime implements Disposable {
                 await this.connection.waitForConnect();
             }
 
-            let cluster = this.connection.cluster;
+            const cluster = this.connection.cluster;
             if (!cluster) {
                 return this._onErrorEmitter.fire(
                     "You must attach to a cluster to run on Databricks"
@@ -107,7 +107,7 @@ export class DatabricksRuntime implements Disposable {
                 return;
             }
 
-            let syncDestination = this.connection.syncDestination;
+            const syncDestination = this.connection.syncDestination;
             if (!syncDestination) {
                 return this._onErrorEmitter.fire(
                     "You must configure code synchronization to run on Databricks"
@@ -123,7 +123,7 @@ export class DatabricksRuntime implements Disposable {
                 lines.length
             );
 
-            let executionContext = await cluster.createExecutionContext(
+            const executionContext = await cluster.createExecutionContext(
                 "python"
             );
 
@@ -163,7 +163,7 @@ export class DatabricksRuntime implements Disposable {
                 lines.length
             );
 
-            let response = await executionContext.execute(
+            const response = await executionContext.execute(
                 this.compileCommandString(
                     program,
                     lines,
@@ -173,7 +173,7 @@ export class DatabricksRuntime implements Disposable {
                 undefined,
                 this.token
             );
-            let result = response.result;
+            const result = response.result;
 
             if (result.results!.resultType === "text") {
                 this._onDidSendOutputEmitter.fire({

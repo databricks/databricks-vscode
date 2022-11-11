@@ -1,6 +1,8 @@
 import "..";
 import {withLogContext, NamedLogger, DefaultLogger} from ".";
-import {context, Context} from "../context";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import {context} from "../context";
+import {Context} from "../context";
 import {PassThrough} from "stream";
 import assert from "assert";
 
@@ -34,10 +36,11 @@ describe(__filename, () => {
             logs.push((data as Buffer).toString());
         });
         const logger = NamedLogger.getOrCreate("Test", {
-            factory: (name) => {
+            factory: () => {
                 return new DefaultLogger(stream);
             },
         });
+        assert(logger);
 
         const firstExec = new A().run(new Context({opId: "testId"}));
         const secondExec = new A().run(new Context({opId: "testId2"}));

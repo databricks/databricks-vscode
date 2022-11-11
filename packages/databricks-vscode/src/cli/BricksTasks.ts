@@ -3,14 +3,12 @@ import {
     Pseudoterminal,
     Task,
     TaskGroup,
-    TaskProvider,
     TaskRevealKind,
     TaskScope,
     window,
     workspace,
     Event,
     EventEmitter,
-    TerminalDimensions,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CliWrapper, Command, SyncType} from "./CliWrapper";
@@ -52,7 +50,7 @@ export class SyncTask extends Task {
     }
 
     static killAll() {
-        let found: boolean = false;
+        let found = false;
         window.terminals.forEach((terminal) => {
             if (terminal.name === "sync") {
                 found = true;
@@ -82,7 +80,7 @@ class CustomSyncTerminal implements Pseudoterminal {
         );
     }
 
-    open(initialDimensions: TerminalDimensions | undefined): void {
+    open(): void {
         this.syncStateCallback("IN_PROGRESS");
         try {
             this.startSyncProcess();
@@ -162,7 +160,7 @@ class CustomSyncTerminal implements Pseudoterminal {
  */
 class LazyCustomSyncTerminal extends CustomSyncTerminal {
     private command?: Command;
-    private killThis: Boolean = false;
+    private killThis = false;
 
     constructor(
         private connection: ConnectionManager,

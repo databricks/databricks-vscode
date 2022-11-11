@@ -1,15 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {
-    mock,
-    when,
-    anything,
-    anyString,
-    instance,
-    verify,
-    spy,
-} from "ts-mockito";
+import {mock, when, anything, anyString, instance, spy} from "ts-mockito";
 import {ApiClient, Cluster, cluster} from "@databricks/databricks-sdk";
 import {ClusterModel} from "./ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -72,11 +64,11 @@ describe(__filename, () => {
     });
 
     it("should sort by state", async () => {
-        let model = new ClusterModel(
+        const model = new ClusterModel(
             instance(mockedConnectionManager),
             instance(mockedClusterLoader)
         );
-        let roots = model.roots;
+        const roots = model.roots;
 
         assert(roots);
         assert.equal(roots.length, 2);
@@ -89,7 +81,7 @@ describe(__filename, () => {
             userName: me,
         } as any);
 
-        let model = new ClusterModel(
+        const model = new ClusterModel(
             instance(mockedConnectionManager),
             instance(mockedClusterLoader)
         );

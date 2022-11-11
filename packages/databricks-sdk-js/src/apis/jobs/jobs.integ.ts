@@ -15,10 +15,10 @@ describe(__filename, function () {
     });
 
     it("should run a notebook job", async () => {
-        let jobsService = new JobsService(integSetup.client);
+        const jobsService = new JobsService(integSetup.client);
 
-        let dbfsApi = new DbfsService(integSetup.client);
-        let jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
+        const dbfsApi = new DbfsService(integSetup.client);
+        const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
 
         await dbfsApi.put({
             path: jobPath,
@@ -28,7 +28,7 @@ describe(__filename, function () {
             overwrite: true,
         });
 
-        let res = await jobsService.submit({
+        const res = await jobsService.submit({
             tasks: [
                 {
                     task_key: "hello_world",
@@ -41,17 +41,17 @@ describe(__filename, function () {
         });
 
         // console.log(res);
-        let runId = res.run_id!;
+        const runId = res.run_id!;
 
         while (true) {
             await sleep(3000);
-            let run = await jobsService.getRun({run_id: runId});
-            let state = run.state!.life_cycle_state!;
+            const run = await jobsService.getRun({run_id: runId});
+            const state = run.state!.life_cycle_state!;
 
             // console.log(`State: ${state} - URL: ${run.run_page_url}`);
 
             if (state === "INTERNAL_ERROR" || state === "TERMINATED") {
-                let output = await jobsService.getRunOutput({
+                const output = await jobsService.getRunOutput({
                     run_id: run.tasks![0].run_id!,
                 });
                 // console.log(output);

@@ -69,7 +69,7 @@ export class ImageLogger {
 
     /** flushes all collected images to disk */
     async flush() {
-        for (let image of this.images) {
+        for (const image of this.images) {
             await writeFile(
                 path.join(
                     this.dirname,
