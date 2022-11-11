@@ -55,7 +55,8 @@ jobs:
 
                   cat $TMPFILE >> $GITHUB_STEP_SUMMARY
 
-                  echo "#Release: v${{ inputs.version }}" >> CHANGELOG.md
+                  echo "# Release: v${{ inputs.version }}" >> CHANGELOG.md
+                  echo "# Release: v${{ inputs.version }}"
                   cat $TMPFILE >> CHANGELOG.md
 
                   echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
