@@ -93,6 +93,12 @@
                 display: none;
             }
 
+            #error-stack {
+                margin-top: 10px;
+                white-space: pre;
+                font-family: monospace;
+            }
+
             .alert-error .error-icon {
                 display: inline-block;
                 padding: 0 8px;
@@ -166,7 +172,7 @@
                     </span>
                     <div>
                         <b id="error-description"></b>
-                        <pre id="error-stack"></pre>
+                        <div id="error-stack"></div>
                     </div>
                 </div>
             </div>
@@ -279,7 +285,7 @@
 
                     document.getElementById("error-description").innerText =
                         message || "";
-                    document.getElementById("error-stack").innerText =
+                    document.getElementById("error-stack").innerHTML =
                         stack || "";
                 }
             }
@@ -330,18 +336,19 @@
                 setTimeout(() => {
                     page.setError(
                         `SyntaxError: invalid syntax (hello.py, line 10)`,
-                        `Traceback [0;36m(most recent call last)[0m:
+                        `SyntaxError: invalid syntax (hello.py, line 9)
+Traceback <span style="color:#0AA">(most recent call last)</span>:
 
-            File [1;32m"/databricks/python/lib/python3.9/site-packages/IPython/core/interactiveshell.py"[0m, line [1;32m3524[0m, in [1;35mrun_code[0m
-              exec(code_obj, self.user_global_ns, self.user_ns)
+  File <b><span style="color:#0A0">"/databricks/python/lib/python3.9/site-packages/IPython/core/interactiveshell.py"</span></b>, line <b><span style="color:#0A0">3524</span></b>, in <b><span style="color:#A0A">run_code</span></b>
+    exec(code_obj, self.user_global_ns, self.user_ns)
 
-            [0;36m  File [0;32m""[0;36m, line [0;32m8[0;36m, in [0;35m[0;36m[0m
-            [0;31m    exec(compile(f.read(), filename, 'exec'))[0m
+<span style="color:#0AA">  File </span><span style="color:#0A0">"<command--1>"</span><span style="color:#0AA">, line </span><span style="color:#0A0">8</span><span style="color:#0AA">, in </span><span style="color:#A0A"><cell line: 7></span><span style="color:#0AA"></span>
+<span style="color:#A00">    exec(compile(f.read(), filename, 'exec'))</span>
 
-            [0;36m  File [0;32m"/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices/jobs/hello.py"[0;36m, line [0;32m10[0m
-            [0;31m    pri nt("Hi Deco")[0m
-            [0m        ^[0m
-            [0;31mSyntaxError[0m[0;31m:[0m invalid syntax`
+<span style="color:#0AA">  File </span><span style="color:#0A0">"/Workspace/Repos/fabian.jakobs@databricks.com/ide-best-practices/jobs/hello.py"</span><span style="color:#0AA">, line </span><span style="color:#0A0">9</span>
+<span style="color:#A00">    pr int("Hi Deco")</span>
+       ^
+<span style="color:#A00">SyntaxError</span><span style="color:#A00">:</span> invalid syntax`
                     );
                     stop();
                 }, 3000);
