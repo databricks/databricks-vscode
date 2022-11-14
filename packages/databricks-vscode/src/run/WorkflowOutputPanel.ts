@@ -64,11 +64,30 @@ export class WorkflowOutputPanel {
         });
     }
 
+    private getStateString(runState: jobs.RunLifeCycleState): string {
+        switch (runState) {
+            case "PENDING":
+                return "Pending";
+            case "RUNNING":
+                return "Running";
+            case "TERMINATED":
+                return "Terminated";
+            case "SKIPPED":
+                return "Skipped";
+            case "INTERNAL_ERROR":
+                return "Failed";
+            default:
+                return "Unknown";
+        }
+    }
+
     async updateState(
         cluster: Cluster,
-        state: jobs.RunLifeCycleState,
+        runState: jobs.RunLifeCycleState,
         run: WorkflowRun
     ) {
+        const state = this.getStateString(runState);
+
         this.panel.webview.postMessage({
             type: "status",
             state,
