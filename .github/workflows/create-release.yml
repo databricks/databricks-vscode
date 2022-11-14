@@ -8,12 +8,12 @@ on:
 
 jobs:
     create-build-artifacts:
-        if: startsWith(github.event.head_commit.message, 'Release:')
+        if: startsWith(github.event.head_commit.message, 'Release:') || github.event_name == 'workflow_dispatch'
         uses: ./.github/workflows/create-build-artifacts.yml
         secrets: inherit
 
     create-release:
-        if: startsWith(github.event.head_commit.message, 'Release:')
+        if: startsWith(github.event.head_commit.message, 'Release:') || github.event_name == 'workflow_dispatch'
         needs: ["create-build-artifacts"]
         runs-on: macos-latest
         steps:
@@ -27,10 +27,11 @@ jobs:
 
             - run: |
                   TITLE=$(git show -s --format=%B HEAD | head -n1)
-                  RELEASE_VERSION=$(echo "$TITLE" | sed -nr 's/Release: v(([0-9]+\.){2}[0-9]+).*/\1/p')
+                  CHANGELOG_FILE=packages/databricks-vscode/CHANGELOG.md
+                  RELEASE_VERSION=$(cat $CHANGELOG_FILE | grep -E "Release: v(([0-9]+\.){2}[0-9]+).*" | sed -nr 's/.*Release: v(([0-9]+\.){2}[0-9]+).*/\1/p')
 
                   tmpfile=$(mktemp /tmp/commit-message.XXXXX)
-                  cat packages/databricks-vscode/CHANGELOG.md | awk -v version="# Release: v$RELEASE_VERSION" 'BEGIN{C=0} $0 == version{C=1} C!=0 {print $0}' > $tmpfile
+                  cat $CHANGELOG_FILE | awk -v version="# Release: v$RELEASE_VERSION" 'BEGIN{C=0} $0 == version{C=1} C!=0 {print $0}' > $tmpfile
                   cat $tmpfile >> $GITHUB_STEP_SUMMARY
                   gh release create release-v$RELEASE_VERSION ${{ steps.download.outputs.download-path }}/databricks*/*.vsix \
                       -d --target main -t "$TITLE" -F $tmpfile
