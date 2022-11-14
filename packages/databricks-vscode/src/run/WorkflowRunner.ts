@@ -19,6 +19,7 @@ import {SyncDestination} from "../configuration/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {isNotebook} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
+import Convert from "ansi-to-html";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();
@@ -135,7 +136,7 @@ export class WorkflowRunner implements Disposable {
                     message: e.message,
                     stack:
                         "error_trace" in e.response
-                            ? e.response.error_trace
+                            ? new Convert().toHtml(e.response.error_trace)
                             : undefined,
                 });
             } else {
