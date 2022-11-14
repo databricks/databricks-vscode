@@ -62,7 +62,10 @@ export class WorkflowRun {
 
     async export(task?: RunTask): Promise<ExportRunOutput> {
         task = task || this.tasks![0];
-        if (this.lifeCycleState !== "TERMINATED") {
+        if (
+            this.lifeCycleState !== "TERMINATED" &&
+            this.lifeCycleState !== "INTERNAL_ERROR"
+        ) {
             throw new Error("Run is not terminated");
         }
         if (!this.tasks || !this.tasks.length) {

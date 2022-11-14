@@ -101,4 +101,61 @@ describe(__filename, function () {
             await workspaceService.delete({path: jobPath});
         }
     });
+
+    it("should run a broken notebook job", async () => {
+        const cluster = await Cluster.fromClusterId(
+            integSetup.client,
+            integSetup.cluster.id
+        );
+
+        const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
+        const workspaceService = new WorkspaceService(integSetup.client);
+
+        await workspaceService.mkdirs({path: "/tmp"});
+
+        await workspaceService.import({
+            path: jobPath,
+            format: "SOURCE",
+            language: "PYTHON",
+            content: Buffer.from(
+                `# Databricks notebook source
+# COMMAND ----------
+            
+pr int("Cell 1")
+            
+# COMMAND ----------
+
+print("Cell 2")`
+            ).toString("base64"),
+            overwrite: true,
+        });
+
+        try {
+            const progress: Array<WorkflowRun> = [];
+            const output = await cluster.runNotebookAndWait({
+                path: `${jobPath}`,
+                onProgress: (
+                    _state: jobs.RunLifeCycleState,
+                    run: WorkflowRun
+                ) => {
+                    progress.push(run);
+                },
+            });
+
+            assert(progress.length > 1);
+            assert.equal(
+                progress[progress.length - 1].lifeCycleState,
+                "INTERNAL_ERROR"
+            );
+
+            assert(
+                output.views &&
+                    output.views.length > 0 &&
+                    output.views[0].content
+            );
+            assert(output.views[0].content.startsWith("<!DOCTYPE html>"));
+        } finally {
+            await workspaceService.delete({path: jobPath});
+        }
+    });
 });

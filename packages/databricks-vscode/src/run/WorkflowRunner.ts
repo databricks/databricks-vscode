@@ -22,6 +22,7 @@ import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();
+    private disposables = new Array<Disposable>();
 
     constructor(
         private context: ExtensionContext,
@@ -32,6 +33,7 @@ export class WorkflowRunner implements Disposable {
         for (const panel of this.panels.values()) {
             panel.dispose();
         }
+        this.disposables.forEach((d) => d.dispose());
     }
 
     private async getPanelForUri(uri: Uri) {
@@ -53,6 +55,9 @@ export class WorkflowRunner implements Disposable {
                     }
                 ),
                 this.context.extensionUri
+            );
+            this.disposables.push(
+                panel.onDidDispose(() => this.panels.delete(key))
             );
             this.panels.set(key, panel);
         }
