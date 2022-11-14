@@ -1,4 +1,4 @@
-# Release: v0.0.2
+# Release: v0.0.2 - First Release
 
 ## packages/databricks-sdk-js
 
