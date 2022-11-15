@@ -29,18 +29,17 @@ In order to use this extension you need acceess to a Databricks workspace:
 3. Access to an interactive cluster or permissions to create a cluster
 4. Permissions to create Databricks repos
 
-<!--
-
-Comment out until the repo is public so the image can be loaded by the marketplace
-
 ## Documentation
+
+<!--
+Comment out until the repo is public so the image can be loaded by the marketplace
 
 -   The [Quick Start Guide](README.quickstart.md) provides an overview
     of common features.
--   <mark>The [User Guide](https://docs.databricks.com/)
-    contains comprehesive documentation about the Databricks extension. (TODO: Link not available yet)</mark>
-
 -->
+
+-   The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html)
+    contains comprehesive documentation about the Databricks extension.
 
 ## Release Notes
 

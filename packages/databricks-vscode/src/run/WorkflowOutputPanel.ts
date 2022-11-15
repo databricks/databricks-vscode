@@ -71,7 +71,7 @@ export class WorkflowOutputPanel {
             case "RUNNING":
                 return "Running";
             case "TERMINATED":
-                return "Terminated";
+                return "Succeeded";
             case "SKIPPED":
                 return "Skipped";
             case "INTERNAL_ERROR":
