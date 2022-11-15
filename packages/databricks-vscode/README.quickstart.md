@@ -2,6 +2,8 @@
 
 The Databricks extension for VS Code allows you to develop for the Databricks Lakehouse platform from VS Code.
 
+> 📘 **Note**: The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html) contains comprehesive documentation about the Databricks extension.
+
 # Features
 
 -   Synchronize code to a Databricks workspace
