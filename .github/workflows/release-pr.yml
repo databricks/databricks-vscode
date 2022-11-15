@@ -44,10 +44,10 @@ jobs:
             - run: yarn install --immutable
 
             - name: Bump version
+              if: ${{ inputs.version != '0.0.0' }}
               run: |
                   yarn workspaces foreach version ${{ inputs.version }}
                   yarn version ${{ inputs.version }}
-              if: inputs.version != "0.0.0"
 
             - name: Changelog
               id: create-changelog
@@ -60,11 +60,11 @@ jobs:
                   echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
 
             - name: lint fix
-              if: inputs.version != "0.0.0"
+              if: ${{ inputs.version != '0.0.0' }}
               run: yarn run fix
 
             - name: Create Branch
-              if: inputs.version != "0.0.0"
+              if: ${{ inputs.version != '0.0.0' }}
               id: create-branch
               run: |
                   COMMIT_SHA=$(git rev-parse --short HEAD)
@@ -77,7 +77,7 @@ jobs:
                   echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
 
             - name: Create PR
-              if: inputs.version != "0.0.0"
+              if: ${{ inputs.version != '0.0.0' }}
               run: |
                   gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
                   rm ${{ steps.create-changelog.outputs.changelog_file }}
