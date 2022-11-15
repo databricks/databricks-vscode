@@ -2,8 +2,8 @@ for PACKAGE in "packages/databricks-vscode" "packages/databricks-sdk-js" "packag
     tmpfile=$(mktemp /tmp/generate_changelog.XXXXXX)
     echo "## $PACKAGE" >> $tmpfile
 
-    TAG=$(git describe --abbrev=0 --match "release-v*")
-    if [ $? -ne 0 ]; then
+    TAG=$(git tag -l --sort=-committerdate | grep -E "release-v(([0-9]+\.){2}[0-9]+)." | head -n1)
+    if [[ $TAG ]]; then
         echo "No release tag matching pattern 'release-v*' found. Generating changelog from begining"
         yarn conventional-changelog -k $PACKAGE --commit-path $PACKAGE >> $tmpfile
     else
