@@ -1,9 +1,10 @@
+git tag -l --sort=-committerdate
+TAG=$(git tag -l --sort=-committerdate | grep -E "release-v(([0-9]+\.){2}[0-9]+)" | head -n1)
+
 for PACKAGE in "packages/databricks-vscode" "packages/databricks-sdk-js" "packages/databricks-vscode-types"; do
     tmpfile=$(mktemp /tmp/generate_changelog.XXXXXX)
     echo "## $PACKAGE" >> $tmpfile
 
-    git tag -l --sort=-committerdate
-    TAG=$(git tag -l --sort=-committerdate | grep -E "release-v(([0-9]+\.){2}[0-9]+)." | head -n1)
     if [[ $TAG ]]; then
         echo "Release tag found. Generating changelog from $TAG"
         yarn conventional-changelog --tag-prefix="release-v" -k $PACKAGE --commit-path $PACKAGE >> $tmpfile
