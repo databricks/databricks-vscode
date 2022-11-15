@@ -55,6 +55,7 @@
         "onCommand:databricks.run.runEditorContentsAsWorkflow",
         "onCommand:databricks.run.runEditorContents",
         "onCommand:databricks.quickstart.open",
+        "onCommand:databricks.logs.openFolder",
         "onView:configurationView",
         "onView:clusterView",
         "onDebugResolve:databricks",
@@ -161,6 +162,11 @@
             {
                 "command": "databricks.quickstart.open",
                 "title": "Show Quickstart",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.logs.openFolder",
+                "title": "Open full logs",
                 "category": "Databricks"
             },
             {

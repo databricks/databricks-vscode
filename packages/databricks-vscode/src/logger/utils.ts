@@ -1,5 +1,5 @@
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
-import {Loggers} from "./loggers";
+import {Loggers} from "./LoggerManager";
 
 export interface TryAndLogErrorOpts {
     shouldThrow: boolean;
