@@ -26,6 +26,8 @@ jobs:
               with:
                   fetch-depth: 0
 
+            - run: git fetch --all --tags
+
             - name: Check Version
               run: bash -c '$([[ "${{ inputs.version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
 
@@ -42,10 +44,10 @@ jobs:
             - run: yarn install --immutable
 
             - name: Bump version
+              if: ${{ inputs.version != '0.0.0' }}
               run: |
                   yarn workspaces foreach version ${{ inputs.version }}
                   yarn version ${{ inputs.version }}
-              if: ${{ inputs.version }} != "0.0.0"
 
             - name: Changelog
               id: create-changelog
@@ -58,9 +60,11 @@ jobs:
                   echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
 
             - name: lint fix
+              if: ${{ inputs.version != '0.0.0' }}
               run: yarn run fix
 
             - name: Create Branch
+              if: ${{ inputs.version != '0.0.0' }}
               id: create-branch
               run: |
                   COMMIT_SHA=$(git rev-parse --short HEAD)
@@ -71,12 +75,11 @@ jobs:
                   git commit -m "Changelog & version bump to ${{ inputs.version }}"
                   git push origin HEAD
                   echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
-              if: ${{ inputs.version }} != "0.0.0"
 
             - name: Create PR
+              if: ${{ inputs.version != '0.0.0' }}
               run: |
                   gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
                   rm ${{ steps.create-changelog.outputs.changelog_file }}
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              if: ${{ inputs.version }} != "0.0.0"
