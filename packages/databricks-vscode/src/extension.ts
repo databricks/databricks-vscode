@@ -15,9 +15,10 @@ import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
-import {initLoggers} from "./logger";
+import {LoggerManager} from "./logger";
 import {UtilsCommands} from "./utils/UtilsCommands";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {workspaceConfigs} from "./WorkspaceConfigs";
 
 export function activate(context: ExtensionContext): PublicApi | undefined {
     if (
@@ -34,7 +35,19 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
         */
         return undefined;
     }
-    initLoggers(workspace.workspaceFolders[0].uri.path);
+
+    const loggerManager = new LoggerManager(context);
+    if (!workspaceConfigs.loggingEnabled) {
+        loggerManager.initLoggers();
+    }
+
+    context.subscriptions.push(
+        commands.registerCommand(
+            "databricks.logs.openFolder",
+            loggerManager.openLogFolder,
+            loggerManager
+        )
+    );
 
     const cli = new CliWrapper(context);
     // Configuration group

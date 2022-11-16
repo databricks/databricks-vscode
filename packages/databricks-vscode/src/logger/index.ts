@@ -1,2 +1,2 @@
-export * from "./loggers";
+export * from "./LoggerManager";
 export * as loggingUtils from "./utils";
