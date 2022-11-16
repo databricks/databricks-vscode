@@ -1,5 +1,4 @@
 import {Context} from "./context";
-import {CancellationToken} from "./types";
 
 /**
  * Wraps an API client function that uses pagination and calles it iteratively to
