@@ -4,6 +4,7 @@ import assert from "node:assert";
 import {ListRequest, ListReposResponse} from "./apis/repos";
 import {paginated} from "./decorators";
 import {CancellationToken} from "./types";
+import {Context} from "./context";
 
 describe(__filename, () => {
     it("should paginate", async () => {
@@ -60,7 +61,7 @@ describe(__filename, () => {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 _req: ListRequest,
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                _token: CancellationToken
+                _context: Context
             ): Promise<ListReposResponse> {
                 this.count += 1;
                 if (this.count === 3) {
@@ -79,7 +80,7 @@ describe(__filename, () => {
         }
 
         const t = new Test();
-        await t.getRepos({}, token);
+        await t.getRepos({}, new Context({cancellationToken: token}));
         assert.equal(t.count, 3);
     });
 });
