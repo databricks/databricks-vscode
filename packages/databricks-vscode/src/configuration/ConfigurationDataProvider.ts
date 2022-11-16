@@ -225,7 +225,7 @@ export class ConfigurationDataProvider
         }
 
         if (element.id === "REPO" && syncDestination) {
-            return [
+            const children: Array<TreeItem> = [
                 {
                     label: `Name:`,
                     description: syncDestination.name,
@@ -236,10 +236,25 @@ export class ConfigurationDataProvider
                             : new ThemeIcon("debug-stop"),
                     collapsibleState: TreeItemCollapsibleState.None,
                 },
+            ];
+
+            if (
+                syncDestination.name !== syncDestination.vscodeWorkspacePathName
+            ) {
+                children.push({
+                    label: "The remote repo name does not match the current vscode workspace name",
+                    tooltip:
+                        "If syncing to repo with a different name is the intended behaviour, this warning can be ignored",
+                    iconPath: new ThemeIcon(
+                        "warning",
+                        new ThemeColor("problemsWarningIcon.foreground")
+                    ),
+                });
+            }
+            children.push(
                 {
                     label: `URL:`,
-                    description: await this.connectionManager.syncDestination
-                        ?.repo.url,
+                    description: await syncDestination.repo.url,
                     contextValue: "databricks-link",
                 },
                 {
@@ -251,8 +266,9 @@ export class ConfigurationDataProvider
                     label: `Path:`,
                     description: syncDestination.path.path,
                     collapsibleState: TreeItemCollapsibleState.None,
-                },
-            ];
+                }
+            );
+            return children;
         }
 
         return [];

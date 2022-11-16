@@ -48,6 +48,10 @@ export class SyncDestination {
         return path.basename(this.repoPath.path);
     }
 
+    get vscodeWorkspacePathName(): string {
+        return path.basename(this.vscodeWorkspacePath.path);
+    }
+
     get path(): Uri {
         return this.repoPath;
     }
