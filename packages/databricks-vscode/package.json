@@ -316,7 +316,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "resourceLangId == python",
+                    "when": "resourceLangId == python || resourceExtname == .ipynb",
                     "group": "navigation@1"
                 }
             ],

@@ -15,6 +15,10 @@ describe(__filename, async () => {
         });
     });
 
+    it("should detect ipynb files", async () => {
+        assert.ok(await isNotebook(Uri.parse("/home/fabian/hello.ipynb")));
+    });
+
     it("should detect if not notebook", async () => {
         withFile(async (file) => {
             await fs.writeFile(file.path, Buffer.from("content"));
