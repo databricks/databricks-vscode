@@ -66,7 +66,15 @@ export function getOutputConsoleTransport(outputChannel: OutputChannel) {
 
             info[MESSAGE] =
                 info.level === "error"
-                    ? inspect(stripped, false, 1000)
+                    ? inspect(
+                          {
+                              ...stripped,
+                              level: info.level,
+                              message: info.message,
+                          },
+                          false,
+                          1000
+                      )
                     : inspect(
                           {
                               ...recursiveTruncate(
@@ -74,6 +82,8 @@ export function getOutputConsoleTransport(outputChannel: OutputChannel) {
                                   workspaceConfigs.truncationDepth
                               ),
                               timestamp: new Date().toLocaleString(),
+                              level: info.level,
+                              message: info.message,
                           },
                           false,
                           workspaceConfigs.truncationDepth

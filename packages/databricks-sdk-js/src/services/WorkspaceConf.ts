@@ -1,5 +1,6 @@
 import {ApiClient, CancellationToken, WorkspaceConfService} from "..";
-import {Context} from "../context";
+import {context, Context} from "../context";
+import {ExposedLoggers, withLogContext} from "../logging";
 
 type StringBool = "true" | "false" | "";
 
@@ -40,27 +41,26 @@ export interface WorkspaceConfProps {
 export class WorkspaceConf {
     constructor(private readonly client: ApiClient) {}
 
+    @withLogContext(ExposedLoggers.SDK)
     async getStatus(
         keys: Array<keyof WorkspaceConfProps>,
-        cancellationToken?: CancellationToken
+        @context ctx?: Context
     ): Promise<Partial<WorkspaceConfProps>> {
         const wsConfApi = new WorkspaceConfService(this.client);
         return await wsConfApi.getStatus(
             {
                 keys: keys.join(","),
             },
-            new Context({cancellationToken})
+            ctx
         );
     }
 
+    @withLogContext(ExposedLoggers.SDK)
     async setStatus(
         request: Partial<WorkspaceConfProps>,
-        cancellationToken?: CancellationToken
+        @context ctx?: Context
     ): Promise<Partial<WorkspaceConfProps>> {
         const wsConfApi = new WorkspaceConfService(this.client);
-        return await wsConfApi.setStatus(
-            request,
-            new Context({cancellationToken})
-        );
+        return await wsConfApi.setStatus(request, ctx);
     }
 }

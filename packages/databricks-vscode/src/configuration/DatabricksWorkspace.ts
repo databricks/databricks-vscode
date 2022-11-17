@@ -6,7 +6,10 @@ import {
     WorkspaceConf,
     WorkspaceConfProps,
 } from "@databricks/databricks-sdk";
-import {Uri} from "vscode";
+import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
+import {Uri, window} from "vscode";
+import {Loggers} from "../logger";
 
 export class DatabricksWorkspace {
     constructor(
@@ -63,18 +66,40 @@ export class DatabricksWorkspace {
         }
     }
 
-    static async load(client: ApiClient, profile: string) {
+    @withLogContext(Loggers.Extension, "DatabricksWorkspace.load")
+    static async load(
+        client: ApiClient,
+        profile: string,
+        @context ctx?: Context
+    ) {
         const host = Uri.parse((await client.host).toString());
 
         const scimApi = new CurrentUserService(client);
-        const me = await scimApi.me();
+        const me = await scimApi.me(ctx);
 
         const wsConfApi = new WorkspaceConf(client);
-        const state = await wsConfApi.getStatus([
-            "enableProjectTypeInWorkspace",
-            "enableWorkspaceFilesystem",
-        ]);
+        let state: WorkspaceConfProps = {
+            enableProjectTypeInWorkspace: "true",
+            enableWorkspaceFilesystem: "true",
+        };
+        try {
+            state = {
+                ...state,
+                ...(await wsConfApi.getStatus(
+                    [
+                        "enableProjectTypeInWorkspace",
+                        "enableWorkspaceFilesystem",
+                    ],
+                    ctx
+                )),
+            };
+        } catch (e) {
+            ctx?.logger?.error("Can't fetch workspace confs", e);
+            window.showWarningMessage(
+                "Can't fetch workspace permissions. The extension will now assume you have all the necessary permissions"
+            );
+        }
 
-        return new DatabricksWorkspace(host, me, state as any, profile);
+        return new DatabricksWorkspace(host, me, state, profile);
     }
 }

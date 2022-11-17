@@ -2,7 +2,7 @@ import "..";
 import {NamedLogger} from "./NamedLogger";
 import {getContextParamIndex, Context, ContextItems} from "../context";
 
-export function withLogContext(name: string) {
+export function withLogContext(name: string, opName?: string) {
     return function (
         _target: any,
         _propertyKey: string,
@@ -17,23 +17,28 @@ export function withLogContext(name: string) {
             while (args.length <= contextParamIndex) {
                 args.push(undefined);
             }
-            const contextParam =
+            const contextParam = (
                 (args[contextParamIndex] as Context | undefined) ??
-                new Context();
+                new Context()
+            ).copy();
 
-            const items: ContextItems = {logger};
-            if (contextParam.opName === undefined) {
-                items.opName = `${this.constructor.name}.${_propertyKey}`;
-            }
+            const items: ContextItems = {
+                logger,
+                opName: contextParam.opName ?? opName,
+                rootClassName:
+                    contextParam.rootClassName ?? this.constructor.name,
+                rootFnName: contextParam.rootFnName ?? _propertyKey,
+            };
             contextParam.setItems(items);
 
             args[contextParamIndex] = contextParam;
 
-            return logger.withContext({
+            logger.withContext({
                 context: contextParam,
                 loggingFnName: `${this.constructor.name}.${_propertyKey}`,
-                fn: () => method.apply(this, args),
             });
+
+            return method.apply(this, args);
         };
     };
 }

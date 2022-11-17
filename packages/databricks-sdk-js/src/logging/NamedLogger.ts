@@ -48,7 +48,10 @@ export class NamedLogger {
         return this._context?.opId;
     }
     get opName() {
-        return this._context?.opName;
+        return (
+            this._context?.opName ??
+            `${this._context?.rootClassName}.${this._context?.rootFnName}`
+        );
     }
 
     get loggingFnName() {
@@ -114,17 +117,15 @@ export class NamedLogger {
         this.log(LEVELS.error, message, {error: obj});
     }
 
-    withContext<T>({
+    withContext({
         context,
         loggingFnName,
-        fn,
     }: {
         context: Context;
         loggingFnName: string;
-        fn: () => T;
     }) {
         this._context = context;
         this._loggingFnName = loggingFnName;
-        return fn();
+        return this;
     }
 }
