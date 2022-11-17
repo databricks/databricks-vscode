@@ -48,10 +48,14 @@ export class NamedLogger {
         return this._context?.opId;
     }
     get opName() {
-        return (
-            this._context?.opName ??
-            `${this._context?.rootClassName}.${this._context?.rootFnName}`
-        );
+        const rootNames = [
+            this._context?.rootClassName,
+            this._context?.rootFnName,
+        ].filter((e) => e !== undefined);
+
+        return this._context?.opName ?? rootNames.length !== 0
+            ? rootNames.join(".")
+            : undefined;
     }
 
     get loggingFnName() {

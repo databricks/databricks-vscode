@@ -1,4 +1,4 @@
-import {ApiClient, CancellationToken, WorkspaceConfService} from "..";
+import {ApiClient, WorkspaceConfService} from "..";
 import {context, Context} from "../context";
 import {ExposedLoggers, withLogContext} from "../logging";
 
