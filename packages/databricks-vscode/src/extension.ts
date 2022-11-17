@@ -37,7 +37,7 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
     }
 
     const loggerManager = new LoggerManager(context);
-    if (!workspaceConfigs.loggingEnabled) {
+    if (workspaceConfigs.loggingEnabled) {
         loggerManager.initLoggers();
     }
 
