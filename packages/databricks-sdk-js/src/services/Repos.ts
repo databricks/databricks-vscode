@@ -23,12 +23,13 @@ export class Repos {
         @context context?: Context
     ): Promise<RepoList> {
         const reposApi = new ReposService(this.client);
+        const response = await reposApi.list(req, context);
         return {
             repos:
-                (await reposApi.list(req, context)).repos?.map(
+                response.repos?.map(
                     (details) => new Repo(this.client, details)
                 ) ?? [],
-            next_page_token: req["next_page_token"],
+            next_page_token: response["next_page_token"],
         };
     }
 }

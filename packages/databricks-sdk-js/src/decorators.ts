@@ -1,4 +1,4 @@
-import {CancellationToken} from "./types";
+import {Context} from "./context";
 
 /**
  * Wraps an API client function that uses pagination and calles it iteratively to
@@ -15,12 +15,12 @@ export function paginated<REQ, RES>(
     ): PropertyDescriptor {
         const childFunction = descriptor.value as (
             req: REQ,
-            token?: CancellationToken
+            context?: Context
         ) => Promise<RES>;
 
         descriptor.value = async function (
             req: REQ,
-            token?: CancellationToken
+            context?: Context
         ): Promise<RES> {
             const results = [];
             let response: RES;
@@ -31,9 +31,12 @@ export function paginated<REQ, RES>(
                 } else {
                     delete req[paginationKey];
                 }
-                response = await childFunction.call(this, req, token);
+                response = await childFunction.call(this, req, context);
 
-                if (token && token.isCancellationRequested) {
+                if (
+                    context?.cancellationToken &&
+                    context?.cancellationToken.isCancellationRequested
+                ) {
                     return response;
                 }
 
@@ -43,8 +46,9 @@ export function paginated<REQ, RES>(
                 paginationToken = response[paginationKey];
             } while (paginationToken);
 
-            (response[itemsKey] as any) = results;
-            return response;
+            const anyResponse = response as any;
+            anyResponse[itemsKey] = results;
+            return anyResponse;
         };
         return descriptor;
     };
