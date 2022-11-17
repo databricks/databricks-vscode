@@ -21,6 +21,7 @@
         "ds",
         "lakehouse"
     ],
+    "pricing": "Free",
     "preview": true,
     "badges": [],
     "icon": "images/databricks-logo.png",
