@@ -1,6 +1,7 @@
 import {spawn} from "child_process";
 import {ExtensionContext} from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
+import {workspaceConfigs} from "../WorkspaceConfigs";
 
 export interface Command {
     command: string;
@@ -39,6 +40,9 @@ export class CliWrapper {
         ];
         if (syncType === "full") {
             args.push("--persist-snapshot=false");
+        }
+        if (workspaceConfigs.bricksVerboseMode) {
+            args.push("-v");
         }
         return {command, args};
     }
