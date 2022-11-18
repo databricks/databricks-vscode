@@ -502,6 +502,11 @@
                         "type": "boolean",
                         "default": true,
                         "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
+                    },
+                    "databricks.bricks.verboseMode": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Enable verbose logging for bricks CLI (sync mode)."
                     }
                 }
             }
