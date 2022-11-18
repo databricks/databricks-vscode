@@ -36,4 +36,11 @@ export const workspaceConfigs = {
                 ?.get<boolean>("clusters.onlyShowAccessibleClusters") ?? false
         );
     },
+    get bricksVerboseMode() {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                ?.get<boolean>("bricks.verboseMode") ?? false
+        );
+    },
 };
