@@ -15,10 +15,7 @@ import {CliWrapper, Command, SyncType} from "./CliWrapper";
 import {ChildProcess, spawn, SpawnOptions} from "node:child_process";
 import {SyncState} from "../sync/CodeSynchronizer";
 import {BricksSyncParser} from "./BricksSyncParser";
-import {
-    NamedLogger,
-    withLogContext,
-} from "@databricks/databricks-sdk/dist/logging";
+import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 
