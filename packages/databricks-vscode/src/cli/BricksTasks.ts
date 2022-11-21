@@ -96,7 +96,7 @@ class CustomSyncTerminal implements Pseudoterminal {
 
     private startSyncProcess() {
         this.syncProcess = spawn(this.cmd, this.args, {
-            env: {...process.env, ...this.options.env},
+            env: this.options?.env,
             cwd: this.options?.cwd,
         });
 
@@ -212,7 +212,7 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
                             DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
                             /* eslint-enable @typescript-eslint/naming-convention */
                         },
-                    };
+                    } as SpawnOptions;
                 },
             },
         });
