@@ -97,6 +97,22 @@ describe(__filename, () => {
         assert.equal(mapper.name, "notebook-best-practices");
     });
 
+    it("should compute relative repo path", () => {
+        const mapper = new SyncDestination(
+            instance(mock(Repo)),
+            Uri.from({
+                scheme: "wsfs",
+                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+            }),
+            Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
+        );
+
+        assert.equal(
+            mapper.relativeRepoPath,
+            "/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
+        );
+    });
+
     it("should map notebooks", async () => {
         const mapper = new SyncDestination(
             instance(mock(Repo)),
