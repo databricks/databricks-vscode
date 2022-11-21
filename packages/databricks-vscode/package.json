@@ -59,6 +59,7 @@
         "onCommand:databricks.logs.openFolder",
         "onView:configurationView",
         "onView:clusterView",
+        "onTaskType:databricks",
         "onDebugResolve:databricks",
         "onDebugResolve:databricks-workflow"
     ],
@@ -347,6 +348,11 @@
                 "id": "databricks.cluster.filter",
                 "label": "Filter clusters ...",
                 "icon": "$(filter)"
+            }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "databricks"
             }
         ],
         "problemMatchers": [
