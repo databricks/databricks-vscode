@@ -6,40 +6,51 @@ export interface ContextItems {
     logger?: NamedLogger;
     opId?: string;
     opName?: string;
+    rootClassName?: string;
+    rootFnName?: string;
     cancellationToken?: CancellationToken;
 }
 
 export class Context {
-    private _logger?: NamedLogger;
+    private _items: ContextItems = {};
+
     get logger() {
-        return this._logger;
+        return this._items.logger;
     }
 
-    private _opId: string;
     get opId() {
-        return this._opId;
+        return this._items.opId;
     }
 
-    private _opName?: string;
     get opName() {
-        return this._opName;
+        return this._items.opName;
     }
 
-    private _cancelationToken?: CancellationToken;
+    get rootClassName() {
+        return this._items.rootClassName;
+    }
+
+    get rootFnName() {
+        return this._items.rootFnName;
+    }
+
     get cancellationToken() {
-        return this._cancelationToken;
+        return this._items?.cancellationToken;
     }
 
     constructor(items: ContextItems = {}) {
-        this._opId = randomUUID();
         this.setItems(items);
+        this._items.opId = this._items.opId ?? randomUUID();
     }
 
     setItems(items: ContextItems = {}) {
-        this._cancelationToken =
-            items.cancellationToken ?? this._cancelationToken;
-        this._opId = items.opId ?? this._opId;
-        this._opName = items.opName ?? this._opName;
-        this._logger = items.logger ?? this._logger;
+        this._items = {
+            ...this._items,
+            ...items,
+        };
+    }
+
+    copy() {
+        return new Context(this._items);
     }
 }
