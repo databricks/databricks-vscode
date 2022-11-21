@@ -95,9 +95,6 @@ export class DatabricksWorkspace {
             };
         } catch (e) {
             ctx?.logger?.error("Can't fetch workspace confs", e);
-            window.showWarningMessage(
-                "Can't fetch workspace permissions. The extension will now assume you have all the necessary permissions"
-            );
         }
 
         return new DatabricksWorkspace(host, me, state, profile);
