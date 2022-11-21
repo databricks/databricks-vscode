@@ -1,3 +1,4 @@
+import "@databricks/databricks-sdk/dist";
 import * as assert from "assert";
 import {instance, mock} from "ts-mockito";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
