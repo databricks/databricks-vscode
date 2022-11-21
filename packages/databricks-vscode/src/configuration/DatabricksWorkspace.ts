@@ -8,7 +8,7 @@ import {
 } from "@databricks/databricks-sdk";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
-import {Uri, window} from "vscode";
+import {Uri} from "vscode";
 import {Loggers} from "../logger";
 
 export class DatabricksWorkspace {
