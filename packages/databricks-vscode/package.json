@@ -510,6 +510,11 @@
                     }
                 }
             }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "databricks"
+            }
         ]
     },
     "vsce": {

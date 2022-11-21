@@ -125,11 +125,11 @@ export class NamedLogger {
         context,
         loggingFnName,
     }: {
-        context: Context;
-        loggingFnName: string;
+        context?: Context;
+        loggingFnName?: string;
     }) {
-        this._context = context;
-        this._loggingFnName = loggingFnName;
+        this._context = context ?? this._context;
+        this._loggingFnName = loggingFnName ?? this._loggingFnName;
         return this;
     }
 }
