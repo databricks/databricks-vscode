@@ -75,6 +75,8 @@ This extension contributes the following settings:
 -   `databricks.logs.truncationDepth`: The max depth of logs to show without truncation
 -   `databricks.logs.maxArrayLength`: The maximum number of items to show for array fields
 -   `databricks.logs.enabled`: Enable/disable logging. Reload window for changes to take effect
+-   `databricks.clusters.onlyShowAccessibleClusters`: Only show clusters that the user has access to
+-   `databricks.bricks.verboseMode`: Show debug logs for the sync command
 
 ## <a id="commands"></a>`Databricks:` Commands
 
@@ -97,3 +99,4 @@ palette_, available by selecting _View > Command Palette_ or by typing
 | `Databricks: Run File as Workflow on Databricks` | Runs the selected Python file as a Workflow in the configured Databricks cluster                                                     |
 | `Databricks: Show Quickstart`                    | Show the Quickstart panel                                                                                                            |
 | `Databricks: Open Databricks configuration file` | Opens the Databricks configuration file for the current project                                                                      |
+| `Databricks: Open full log`                      | Opens the log output folder for the current project                                                                                  |
