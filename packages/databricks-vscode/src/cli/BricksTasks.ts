@@ -6,7 +6,6 @@ import {
     TaskRevealKind,
     TaskScope,
     window,
-    workspace,
     Event,
     EventEmitter,
 } from "vscode";
@@ -159,7 +158,7 @@ class CustomSyncTerminal implements Pseudoterminal {
  * vscode task, which allows us to parse the stdout/stderr bricks sync logs and compute
  * sync completeness state based on the output logs
  */
-class LazyCustomSyncTerminal extends CustomSyncTerminal {
+export class LazyCustomSyncTerminal extends CustomSyncTerminal {
     private command?: Command;
     private killThis = false;
 
@@ -184,41 +183,42 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 },
             },
             options: {
-                get(): SpawnOptions {
-                    const workspacePath = workspace.rootPath;
-                    if (!workspacePath) {
-                        window.showErrorMessage(
-                            "Can't start sync: No workspace opened!"
-                        );
-                        throw new Error(
-                            "Can't start sync: No workspace opened!"
-                        );
-                    }
-
-                    const dbWorkspace = this.connection.databricksWorkspace;
-                    if (!dbWorkspace) {
-                        window.showErrorMessage(
-                            "Can't start sync: Databricks connection not configured!"
-                        );
-                        throw new Error(
-                            "Can't start sync: Databricks connection not configured!"
-                        );
-                    }
-
-                    return {
-                        cwd: workspacePath,
-                        env: {
-                            /* eslint-disable @typescript-eslint/naming-convention */
-                            BRICKS_ROOT: workspacePath,
-                            DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
-                            HOME: process.env.HOME,
-                            PATH: process.env.PATH,
-                            /* eslint-enable @typescript-eslint/naming-convention */
-                        },
-                    } as SpawnOptions;
+                get: () => {
+                    return this.getProcessOptions();
                 },
             },
         });
+    }
+
+    getProcessOptions(): SpawnOptions {
+        const workspacePath =
+            this.connection.syncDestination?.vscodeWorkspacePath.fsPath;
+        if (!workspacePath) {
+            window.showErrorMessage("Can't start sync: No workspace opened!");
+            throw new Error("Can't start sync: No workspace opened!");
+        }
+
+        const dbWorkspace = this.connection.databricksWorkspace;
+        if (!dbWorkspace) {
+            window.showErrorMessage(
+                "Can't start sync: Databricks connection not configured!"
+            );
+            throw new Error(
+                "Can't start sync: Databricks connection not configured!"
+            );
+        }
+
+        return {
+            cwd: workspacePath,
+            env: {
+                /* eslint-disable @typescript-eslint/naming-convention */
+                BRICKS_ROOT: workspacePath,
+                DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
+                HOME: process.env.HOME,
+                PATH: process.env.PATH,
+                /* eslint-enable @typescript-eslint/naming-convention */
+            },
+        } as SpawnOptions;
     }
 
     getSyncCommand(): Command {
