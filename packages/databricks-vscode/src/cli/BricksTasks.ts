@@ -98,6 +98,7 @@ class CustomSyncTerminal implements Pseudoterminal {
         this.syncProcess = spawn(this.cmd, this.args, {
             env: this.options?.env,
             cwd: this.options?.cwd,
+            shell: true,
         });
 
         // Log the sync command being run, its args and any env overrides done by
@@ -210,6 +211,8 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
                             /* eslint-disable @typescript-eslint/naming-convention */
                             BRICKS_ROOT: workspacePath,
                             DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
+                            HOME: process.env.HOME,
+                            PATH: process.env.PATH,
                             /* eslint-enable @typescript-eslint/naming-convention */
                         },
                     } as SpawnOptions;
