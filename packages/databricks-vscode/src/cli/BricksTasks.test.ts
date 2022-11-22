@@ -54,10 +54,10 @@ describe(__filename, () => {
         );
 
         assert.deepEqual(terminal.getProcessOptions(), {
-            cwd: "/path/to/local/workspace",
+            cwd: Uri.file("/path/to/local/workspace").fsPath,
             env: {
                 /* eslint-disable @typescript-eslint/naming-convention */
-                BRICKS_ROOT: "/path/to/local/workspace",
+                BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                 DATABRICKS_CONFIG_PROFILE: "profile",
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
