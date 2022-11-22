@@ -97,7 +97,6 @@ class CustomSyncTerminal implements Pseudoterminal {
         this.syncProcess = spawn(this.cmd, this.args, {
             env: this.options?.env,
             cwd: this.options?.cwd,
-            shell: true,
         });
 
         // Log the sync command being run, its args and any env overrides done by
