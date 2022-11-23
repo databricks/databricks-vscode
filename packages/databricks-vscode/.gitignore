@@ -1,2 +1,4 @@
 **/logs/**
 bin/**
+.wdio-vscode-service
+src/test/e2e/workspace/

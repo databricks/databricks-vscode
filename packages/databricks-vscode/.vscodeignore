@@ -11,3 +11,4 @@ src/**
 **/*.map
 **/*.ts
 scripts/**
+.wdio-vscode-service/

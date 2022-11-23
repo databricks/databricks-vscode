@@ -1,146 +1,71 @@
 import assert from "node:assert";
 import path from "node:path";
 import * as fs from "fs/promises";
-import * as tmp from "tmp-promise";
+import {getViewSection, waitForTreeItems} from "./utils";
 import {
-    VSBrowser,
-    WebDriver,
-    InputBox,
-    Workbench,
-    TreeItem,
-    ContextMenu,
     CustomTreeSection,
-} from "vscode-extension-tester";
-import {getViewSection, openFolder, waitForTreeItems} from "./utils";
-import Time, {TimeUnits} from "@databricks/databricks-sdk/dist/retries/Time";
-import {PeriodicRunner} from "../PeriodicRunner";
-import {ImageLogger, Logger} from "../loggingUtils";
+    InputBox,
+    sleep,
+    TreeItem,
+} from "wdio-vscode-service";
 
-describe("Configure Databricks Extension", async function () {
-    // these will be populated by the before() function
-    let browser: VSBrowser;
-    let driver: WebDriver;
-    let projectDir: string;
-    let cleanup: () => void;
-
+describe("Configure Databricks Extension", () => {
     // this will be populated by the tests
     let clusterId: string;
-    const periodicRunners = new Map<string, PeriodicRunner>();
-
-    this.timeout(3 * 60 * 1000);
+    let projectDir: string;
 
     before(async function () {
-        browser = VSBrowser.instance;
-        driver = browser.driver;
-
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
+        assert(process.env.WORKSPACE_PATH);
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
-
-        ({path: projectDir, cleanup} = await tmp.dir());
-        await openFolder(browser, projectDir);
-    });
-
-    beforeEach(async function () {
-        const testName = this.currentTest?.title ?? "Default";
-        const suiteName = this.currentTest?.parent?.title ?? "Default";
-
-        const logger = await Logger.getLogger(suiteName, testName);
-        const imageLogger = ImageLogger.getLogger(suiteName, testName);
-
-        const periodicRunner = new PeriodicRunner()
-            .runFunction({
-                fn: async () => {
-                    (await driver.manage().logs().get("browser")).map(
-                        (entry) => {
-                            logger.info(entry.message);
-                        }
-                    );
-                },
-                every: new Time(1, TimeUnits.seconds),
-            })
-            .runFunction({
-                fn: async () => {
-                    await imageLogger.log(await driver.takeScreenshot());
-                },
-                cleanup: async () => {
-                    await imageLogger.flush();
-                },
-                every: new Time(1, TimeUnits.seconds),
-            });
-
-        periodicRunner.start();
-        periodicRunners.set(testName, periodicRunner);
-    });
-
-    afterEach(async function () {
-        const testName = this.currentTest?.title ?? "Default";
-        await periodicRunners.get(testName)?.stop();
-        periodicRunners.delete(testName);
-    });
-
-    after(function () {
-        cleanup();
+        projectDir = process.env.WORKSPACE_PATH;
     });
 
     it("should open VSCode", async function () {
-        const title = await driver.getTitle();
-        assert(title.indexOf("Get Started") >= 0);
+        const workbench = await browser.getWorkbench();
+        const title = await workbench.getTitleBar().getTitle();
+        assert(title.indexOf("[Extension Development Host]") >= 0);
     });
 
     it("should open databricks panel and login", async function () {
-        const section = await getViewSection("Configuration");
+        const section = await getViewSection("CONFIGURATION");
         assert(section);
         const welcome = await section.findWelcomeContent();
         assert(welcome);
         const buttons = await welcome.getButtons();
         assert(buttons);
         assert(buttons.length > 0);
-        await buttons[0].click();
+        await (await buttons[0].elem).click();
 
-        const input = await InputBox.create();
+        const workbench = await browser.getWorkbench();
+        const input = await new InputBox(workbench.locatorMap).wait();
         await input.selectQuickPick(1);
-
-        assert(await waitForTreeItems(section));
+        assert(await waitForTreeItems(section, 10_000));
     });
 
     it("should dismiss notifications", async function () {
-        const notifications = await new Workbench().getNotifications();
+        const notifications = await (
+            await driver.getWorkbench()
+        ).getNotifications();
         for (const n of notifications) {
             await n.dismiss();
         }
     });
 
     it("shoult list clusters", async function () {
-        const section = await getViewSection("Clusters");
+        const section = await getViewSection("CLUSTERS");
         assert(section);
         const tree = section as CustomTreeSection;
 
         assert(await waitForTreeItems(tree));
 
         const items = await tree.getVisibleItems();
-        const labels = await Promise.all(items.map((item) => item.getLabel()));
-        assert(labels.length > 0);
-    });
-
-    // test is skipped because context menus currently don't work in vscode-extension-tester
-    // https://github.com/redhat-developer/vscode-extension-tester/issues/444
-    it.skip("should filter clusters", async function () {
-        const section = await getViewSection("Clusters");
-        assert(section);
-        const action = await section!.getAction("Filter clusters ...");
-        assert(action);
-
-        await action.click();
-        const menu = new ContextMenu(new Workbench());
-        const item = await menu.getItem("Created by me");
-        await item?.click();
-
-        const items = await section.getVisibleItems();
         assert(items.length > 0);
     });
 
     it("should attach cluster", async function () {
-        const config = await getViewSection("Configuration");
+        const workbench = await browser.getWorkbench();
+        const config = await getViewSection("CONFIGURATION");
         assert(config);
         const configTree = config as CustomTreeSection;
 
@@ -161,21 +86,22 @@ describe("Configure Databricks Extension", async function () {
         const buttons = await (
             clusterConfigItem as TreeItem
         ).getActionButtons();
-        await buttons[0].click();
+        await buttons[0].elem.click();
 
-        const input = await InputBox.create();
+        const input = await new InputBox(workbench.locatorMap).wait();
+
         while (await input.hasProgress()) {
-            await driver.sleep(200);
+            await sleep(200);
         }
 
         await input.setText(clusterId);
-        await driver.sleep(200);
+        await sleep(200);
         await input.confirm();
 
         // wait for tree to update
         let clusterPropsItems;
         do {
-            await driver.sleep(200);
+            await sleep(200);
             clusterPropsItems = await clusterConfigItem.getChildren();
         } while (clusterPropsItems.length <= 1);
 
