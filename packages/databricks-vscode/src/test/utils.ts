@@ -10,7 +10,7 @@ export async function resolveProviderResult<T>(
         return result;
     }
 
-    if ("then" in result) {
+    if (Object.prototype.hasOwnProperty.call(result, "then")) {
         return await result;
     } else {
         return result;

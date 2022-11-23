@@ -1,8 +1,57 @@
+import {Time, TimeUnits} from "@databricks/databricks-sdk";
 import {mkdirSync} from "fs";
 import {mkdir, writeFile} from "fs/promises";
 import path from "path";
+import {WebDriver} from "vscode-extension-tester";
 import winston, {format, transports} from "winston";
+import {PeriodicRunner} from "./PeriodicRunner";
 import {findGitRoot} from "./utils";
+
+export class IntegrationTestLogger {
+    private constructor(
+        private testName: string,
+        private periodicRunners: Map<string, PeriodicRunner>
+    ) {}
+
+    async stop() {
+        await this.periodicRunners.get(this.testName)?.stop();
+        this.periodicRunners.delete(this.testName);
+    }
+
+    static async create(
+        suiteName: string,
+        testName: string,
+        driver: WebDriver
+    ): Promise<IntegrationTestLogger> {
+        const logger = await Logger.getLogger(suiteName, testName);
+        const imageLogger = ImageLogger.getLogger(suiteName, testName);
+
+        const periodicRunner = new PeriodicRunner()
+            .runFunction({
+                fn: async () => {
+                    (await driver.manage().logs().get("browser")).map(
+                        (entry) => {
+                            logger.info(entry.message);
+                        }
+                    );
+                },
+                every: new Time(1, TimeUnits.seconds),
+            })
+            .runFunction({
+                fn: async () => {
+                    await imageLogger.log(await driver.takeScreenshot());
+                },
+                cleanup: async () => {
+                    await imageLogger.flush();
+                },
+                every: new Time(1, TimeUnits.seconds),
+            });
+
+        periodicRunner.start();
+        const periodicRunners = new Map<string, PeriodicRunner>();
+        return new IntegrationTestLogger(testName, periodicRunners);
+    }
+}
 
 export const defaultLogsPath = path.join(
     findGitRoot()!,

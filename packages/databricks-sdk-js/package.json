@@ -31,7 +31,7 @@
     "dependencies": {
         "ini": "^3.0.1",
         "inversify": "^6.0.1",
-        "node-fetch": "^3.2.10",
+        "node-fetch": "^3.3.0",
         "reflect-metadata": "^0.1.13"
     },
     "devDependencies": {
@@ -42,7 +42,7 @@
         "@types/sinon": "^10.0.13",
         "@types/tmp": "^0.2.3",
         "@types/uuid": "^8.3.4",
-        "eslint": "^8.26.0",
+        "eslint": "^8.28.0",
         "mocha": "^10.1.0",
         "nyc": "^15.1.0",
         "prettier": "^2.7.1",

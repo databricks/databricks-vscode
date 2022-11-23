@@ -109,10 +109,6 @@ class CustomSyncTerminal implements Pseudoterminal {
         );
         this.writeEmitter.fire("\n\r");
         this.writeEmitter.fire(
-            "[VSCODE] env vars: " + JSON.stringify(this.options.env)
-        );
-        this.writeEmitter.fire("\n\r");
-        this.writeEmitter.fire(
             "--------------------------------------------------------"
         );
         this.writeEmitter.fire("\n\r");
@@ -209,11 +205,10 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         return {
             cwd: workspacePath,
             env: {
+                ...process.env,
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: workspacePath,
                 DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
-                HOME: process.env.HOME,
-                PATH: process.env.PATH,
                 /* eslint-enable @typescript-eslint/naming-convention */
             },
         } as SpawnOptions;

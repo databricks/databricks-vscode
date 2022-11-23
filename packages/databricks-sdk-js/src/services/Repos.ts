@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiClient} from "../api-client";
-import {ListRequest, ReposService, RepoInfo} from "../apis/repos";
+import {ListRequest, ReposService, RepoInfo, CreateRepo} from "../apis/repos";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "../context";
 import {Context} from "../context";
@@ -56,6 +56,16 @@ export class Repo {
     get url(): Promise<string> {
         return (async () =>
             `${(await this.client.host).host}#folder/${this.id}`)();
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    static async create(
+        client: ApiClient,
+        req: CreateRepo,
+        @context context?: Context
+    ) {
+        const repoService = new ReposService(client);
+        return new Repo(client, await repoService.create(req, context));
     }
 
     @withLogContext(ExposedLoggers.SDK)

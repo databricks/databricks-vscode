@@ -6,6 +6,8 @@ import {
     ActivityBar,
     ViewSection,
     VSBrowser,
+    CustomTreeSection,
+    TreeItem,
 } from "vscode-extension-tester";
 
 // work around for https://github.com/redhat-developer/vscode-extension-tester/issues/470
@@ -19,7 +21,6 @@ export async function openCommandPrompt(
         const tab = await new EditorView().getActiveTab();
         if (tab) {
             await tab.sendKeys(Key.F1);
-            ``;
             return InputBox.create();
         }
     }
@@ -60,6 +61,32 @@ export async function getViewSection(
     await section?.expand();
     await section?.click();
     return section;
+}
+
+export async function getViewSubSection(
+    section: string,
+    subSection: string
+): Promise<TreeItem | undefined> {
+    const sectionView = await getViewSection(section);
+
+    if (!sectionView) {
+        return;
+    }
+
+    const configTree = sectionView as CustomTreeSection;
+
+    await waitForTreeItems(configTree);
+    const configItems = await configTree.getVisibleItems();
+
+    let subConfigItem: TreeItem | undefined;
+    for (const i of configItems) {
+        const label = await i.getLabel();
+        if (label.startsWith(subSection)) {
+            subConfigItem = i;
+            break;
+        }
+    }
+    return subConfigItem;
 }
 
 export async function waitForTreeItems(

@@ -11,10 +11,13 @@ import {
     ContextMenu,
     CustomTreeSection,
 } from "vscode-extension-tester";
-import {getViewSection, openFolder, waitForTreeItems} from "./utils";
-import Time, {TimeUnits} from "@databricks/databricks-sdk/dist/retries/Time";
-import {PeriodicRunner} from "../PeriodicRunner";
-import {ImageLogger, Logger} from "../loggingUtils";
+import {
+    getViewSection,
+    getViewSubSection,
+    openFolder,
+    waitForTreeItems,
+} from "./utils";
+import {IntegrationTestLogger} from "../loggingUtils";
 
 describe("Configure Databricks Extension", async function () {
     // these will be populated by the before() function
@@ -23,9 +26,9 @@ describe("Configure Databricks Extension", async function () {
     let projectDir: string;
     let cleanup: () => void;
 
-    // this will be populated by the tests
+    // this will be populated by the setup function
     let clusterId: string;
-    const periodicRunners = new Map<string, PeriodicRunner>();
+    let logger: IntegrationTestLogger;
 
     this.timeout(3 * 60 * 1000);
 
@@ -44,38 +47,15 @@ describe("Configure Databricks Extension", async function () {
         const testName = this.currentTest?.title ?? "Default";
         const suiteName = this.currentTest?.parent?.title ?? "Default";
 
-        const logger = await Logger.getLogger(suiteName, testName);
-        const imageLogger = ImageLogger.getLogger(suiteName, testName);
-
-        const periodicRunner = new PeriodicRunner()
-            .runFunction({
-                fn: async () => {
-                    (await driver.manage().logs().get("browser")).map(
-                        (entry) => {
-                            logger.info(entry.message);
-                        }
-                    );
-                },
-                every: new Time(1, TimeUnits.seconds),
-            })
-            .runFunction({
-                fn: async () => {
-                    await imageLogger.log(await driver.takeScreenshot());
-                },
-                cleanup: async () => {
-                    await imageLogger.flush();
-                },
-                every: new Time(1, TimeUnits.seconds),
-            });
-
-        periodicRunner.start();
-        periodicRunners.set(testName, periodicRunner);
+        logger = await IntegrationTestLogger.create(
+            suiteName,
+            testName,
+            driver
+        );
     });
 
     afterEach(async function () {
-        const testName = this.currentTest?.title ?? "Default";
-        await periodicRunners.get(testName)?.stop();
-        periodicRunners.delete(testName);
+        await logger.stop();
     });
 
     after(function () {
@@ -140,22 +120,10 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should attach cluster", async function () {
-        const config = await getViewSection("Configuration");
-        assert(config);
-        const configTree = config as CustomTreeSection;
-
-        assert(await waitForTreeItems(configTree));
-
-        const configItems = await configTree.getVisibleItems();
-
-        let clusterConfigItem: TreeItem | undefined;
-        for (const i of configItems) {
-            const label = await i.getLabel();
-            if (label.startsWith("Cluster")) {
-                clusterConfigItem = i;
-                break;
-            }
-        }
+        const clusterConfigItem = await getViewSubSection(
+            "Configuration",
+            "Clusters"
+        );
         assert(clusterConfigItem);
 
         const buttons = await (
