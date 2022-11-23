@@ -59,6 +59,7 @@ describe(__filename, () => {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                 DATABRICKS_CONFIG_PROFILE: "profile",
+                DATABRICKS_CONFIG_FILE: undefined,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
                 /* eslint-enable @typescript-eslint/naming-convention */
