@@ -5,13 +5,10 @@
         "outDir": "out",
         "esModuleInterop": true,
         "isolatedModules": true,
-        "lib": [
-            "ES2020",
-            "ES2021.String"
-        ],
+        "lib": ["ES2020", "ES2021.String"],
         "sourceMap": true,
         "strict": true /* enable all strict type-checking options */,
         "forceConsistentCasingInFileNames": true,
         "experimentalDecorators": true
-    },
+    }
 }
