@@ -7,14 +7,10 @@ async function main() {
     });
 
     const jsonData = JSON.parse(rawData);
-    // eslint-disable-next-line no-console
-    console.log(argv);
     jsonData["arch"] = {
         bricksArch: argv[3],
         vsixArch: argv[4],
     };
-    // eslint-disable-next-line no-console
-    console.log(jsonData["arch"]);
 
     await fs.writeFile(argv[2], JSON.stringify(jsonData), {
         encoding: "utf-8",
