@@ -1,4 +1,3 @@
-import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import fs from "node:fs/promises";
 import {ExtensionContext, window} from "vscode";
 
