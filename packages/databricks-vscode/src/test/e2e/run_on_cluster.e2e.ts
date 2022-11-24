@@ -36,6 +36,9 @@ describe("Run python on cluster", () => {
     });
 
     it("should start syncing", async () => {
+        const section = await getViewSection("CLUSTERS");
+        await section?.collapse();
+
         const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
         assert(repoConfigItem);
         const buttons = await repoConfigItem.getActionButtons();
@@ -60,23 +63,21 @@ describe("Run python on cluster", () => {
         await editorView.closeAllEditors();
 
         // open file
-        let input = await workbench.openCommandPrompt();
+        const input = await workbench.openCommandPrompt();
+        await sleep(200);
         await input.setText("hello.py");
         await input.confirm();
         await sleep(500);
 
         // run file
-        input = await workbench.openCommandPrompt();
-        await input.setText(">Databricks: Run File");
-        await input.selectQuickPick(1);
-        await sleep(500);
+        await workbench.executeQuickPick("Databricks: Run File on Databricks");
 
         const debugOutput = await workbench
             .getBottomBar()
             .openDebugConsoleView();
 
         while (true) {
-            await sleep(1000);
+            await sleep(2000);
             const text = await (await debugOutput.elem).getHTML();
             if (text && text.includes("hello world")) {
                 break;

@@ -64,7 +64,6 @@ jobs:
     test-extension:
         name: Test VSCode Extension
         runs-on: ${{ inputs.os }}
-        needs: [test-sdk]
 
         env:
             VSCODE_TEST_VERSION: ${{ inputs.vscode-version }}
@@ -72,6 +71,10 @@ jobs:
             DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
             TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
             BRICKS_ARCH: ${{ inputs.bricks_arch }}
+
+        defaults:
+            run:
+                shell: bash
 
         steps:
             - uses: actions/checkout@v3
@@ -81,6 +84,18 @@ jobs:
               with:
                   node-version: ${{ inputs.node-version }}
                   cache: "yarn"
+
+            - name: Cache wdio
+              uses: actions/cache@v3
+              with:
+                  path: /tmp/wdio-vscode-service
+                  key: ${{ inputs.bricks_arch }}-${{ inputs.vscode-version }}-wdio
+
+            - name: Cache VSCode unit test runner
+              uses: actions/cache@v3
+              with:
+                  path: /tmp/vscode-test-databricks
+                  key: ${{ inputs.bricks_arch }}-${{ inputs.vscode-version }}-vscode-test
 
             - run: yarn install --immutable
 
@@ -116,15 +131,8 @@ jobs:
               working-directory: packages/databricks-vscode
 
             - name: Integration Tests
-              uses: nick-fields/retry@v2
-              with:
-                  max_attempts: 3
-                  retry_wait_seconds: 2
-                  timeout_minutes: 10
-                  retry_on: any
-                  command: |
-                      cd packages/databricks-vscode
-                      yarn run test:integ
+              run: yarn run test:integ
+              working-directory: packages/databricks-vscode
 
             - name: Upload test logs
               if: always()
@@ -132,4 +140,4 @@ jobs:
               uses: actions/upload-artifact@v3
               with:
                   name: test-logs ${{ join(inputs.*, ' - ') }} - ${{ github.event_name }}
-                  path: packages/databricks-vscode/src/test/logs
+                  path: packages/databricks-vscode/logs

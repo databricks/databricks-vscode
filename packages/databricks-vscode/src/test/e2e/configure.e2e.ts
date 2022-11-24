@@ -7,24 +7,34 @@ import {
     InputBox,
     sleep,
     TreeItem,
+    Workbench,
 } from "wdio-vscode-service";
 
 describe("Configure Databricks Extension", () => {
     // this will be populated by the tests
     let clusterId: string;
     let projectDir: string;
+    let workbench: Workbench;
 
     before(async function () {
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
         assert(process.env.WORKSPACE_PATH);
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
         projectDir = process.env.WORKSPACE_PATH;
+
+        workbench = await browser.getWorkbench();
     });
 
     it("should open VSCode", async function () {
-        const workbench = await browser.getWorkbench();
         const title = await workbench.getTitleBar().getTitle();
         assert(title.indexOf("[Extension Development Host]") >= 0);
+    });
+
+    it("should dismiss notifications", async function () {
+        const notifications = await workbench.getNotifications();
+        for (const n of notifications) {
+            await n.dismiss();
+        }
     });
 
     it("should open databricks panel and login", async function () {
@@ -37,19 +47,11 @@ describe("Configure Databricks Extension", () => {
         assert(buttons.length > 0);
         await (await buttons[0].elem).click();
 
-        const workbench = await browser.getWorkbench();
         const input = await new InputBox(workbench.locatorMap).wait();
+        await sleep(200);
+
         await input.selectQuickPick(1);
         assert(await waitForTreeItems(section, 10_000));
-    });
-
-    it("should dismiss notifications", async function () {
-        const notifications = await (
-            await driver.getWorkbench()
-        ).getNotifications();
-        for (const n of notifications) {
-            await n.dismiss();
-        }
     });
 
     it("shoult list clusters", async function () {
@@ -64,7 +66,6 @@ describe("Configure Databricks Extension", () => {
     });
 
     it("should attach cluster", async function () {
-        const workbench = await browser.getWorkbench();
         const config = await getViewSection("CONFIGURATION");
         assert(config);
         const configTree = config as CustomTreeSection;
@@ -89,13 +90,10 @@ describe("Configure Databricks Extension", () => {
         await buttons[0].elem.click();
 
         const input = await new InputBox(workbench.locatorMap).wait();
-
-        while (await input.hasProgress()) {
-            await sleep(200);
-        }
+        await sleep(200);
 
         await input.setText(clusterId);
-        await sleep(200);
+        await sleep(500);
         await input.confirm();
 
         // wait for tree to update
