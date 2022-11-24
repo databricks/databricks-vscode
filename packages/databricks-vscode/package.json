@@ -599,7 +599,5 @@
         ],
         "report-dir": "coverage"
     },
-    "arch": {
-        "bricksArch": "linux_amd64"
-    }
+    "arch": {}
 }
