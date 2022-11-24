@@ -77,7 +77,7 @@ jobs:
             - name: Update arch in package.json
               working-directory: packages/databricks-vscode
               run: |
-                  yarn ts-node scripts/set_arch_in_package.ts package.json ${BRICKS_ARCH} ${{ matrix.arch.vsix_arch }}
+                  yarn ts-node scripts/set_arch_in_package.ts package.json ${{ matrix.arch.bricks_arch }} ${{ matrix.arch.vsix_arch }}
                   yarn run fix
 
             - run: yarn run package -t ${{ matrix.arch.vsix_arch }}
