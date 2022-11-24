@@ -8,7 +8,7 @@ async function main() {
 
     const jsonData = JSON.parse(rawData);
     // eslint-disable-next-line no-console
-    console.log(jsonData["arch"]);
+    console.log(argv);
     jsonData["arch"] = {
         bricksArch: argv[3],
         vsixArch: argv[4],
