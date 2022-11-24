@@ -19,8 +19,11 @@ import {LoggerManager} from "./logger";
 import {UtilsCommands} from "./utils/UtilsCommands";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {workspaceConfigs} from "./WorkspaceConfigs";
+import {checkArchDetails} from "./utils/compatibilityUtils";
 
 export function activate(context: ExtensionContext): PublicApi | undefined {
+    checkArchDetails(context);
+
     if (
         workspace.workspaceFolders === undefined ||
         workspace.workspaceFolders?.length === 0
