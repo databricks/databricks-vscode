@@ -6,7 +6,6 @@ import {
     TaskRevealKind,
     TaskScope,
     window,
-    workspace,
     Event,
     EventEmitter,
 } from "vscode";
@@ -109,8 +108,7 @@ class CustomSyncTerminal implements Pseudoterminal {
 
     private startSyncProcess() {
         this.syncProcess = spawn(this.cmd, this.args, {
-            env: {...process.env, ...this.options.env},
-            cwd: this.options?.cwd,
+            ...this.options,
         });
 
         // Log the sync command being run, its args and any env overrides done by
@@ -171,7 +169,7 @@ class CustomSyncTerminal implements Pseudoterminal {
  * vscode task, which allows us to parse the stdout/stderr bricks sync logs and compute
  * sync completeness state based on the output logs
  */
-class LazyCustomSyncTerminal extends CustomSyncTerminal {
+export class LazyCustomSyncTerminal extends CustomSyncTerminal {
     private command?: Command;
     private killThis = false;
 
@@ -192,41 +190,17 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
         Object.defineProperties(this, {
             cmd: {
                 get: () => {
-                    return this.getSyncCommand().command;
+                    return this.getSyncCommand(ctx).command;
                 },
             },
             args: {
                 get: () => {
-                    return this.getSyncCommand().args;
+                    return this.getSyncCommand(ctx).args;
                 },
             },
             options: {
-                get: (): SpawnOptions => {
-                    const workspacePath = workspace.rootPath;
-                    if (!workspacePath) {
-                        throw this.showErrorAndKillThis(
-                            "Can't start sync: No workspace opened!",
-                            ctx
-                        );
-                    }
-
-                    const dbWorkspace = this.connection.databricksWorkspace;
-                    if (!dbWorkspace) {
-                        throw this.showErrorAndKillThis(
-                            "Can't start sync: Databricks connection not configured!",
-                            ctx
-                        );
-                    }
-
-                    return {
-                        cwd: workspacePath,
-                        env: {
-                            /* eslint-disable @typescript-eslint/naming-convention */
-                            BRICKS_ROOT: workspacePath,
-                            DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
-                            /* eslint-enable @typescript-eslint/naming-convention */
-                        },
-                    };
+                get: () => {
+                    return this.getProcessOptions(ctx);
                 },
             },
         });
@@ -238,6 +212,39 @@ class LazyCustomSyncTerminal extends CustomSyncTerminal {
         window.showErrorMessage(msg);
         SyncTask.killAll();
         return new Error(msg);
+    }
+
+    @withLogContext(Loggers.Extension)
+    getProcessOptions(@context ctx?: Context): SpawnOptions {
+        const workspacePath =
+            this.connection.syncDestination?.vscodeWorkspacePath.fsPath;
+        if (!workspacePath) {
+            throw this.showErrorAndKillThis(
+                "Can't start sync: No workspace opened!",
+                ctx
+            );
+        }
+
+        const dbWorkspace = this.connection.databricksWorkspace;
+        if (!dbWorkspace) {
+            throw this.showErrorAndKillThis(
+                "Can't start sync: Databricks connection not configured!",
+                ctx
+            );
+        }
+
+        return {
+            cwd: workspacePath,
+            env: {
+                /* eslint-disable @typescript-eslint/naming-convention */
+                BRICKS_ROOT: workspacePath,
+                DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
+                DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
+                HOME: process.env.HOME,
+                PATH: process.env.PATH,
+                /* eslint-enable @typescript-eslint/naming-convention */
+            },
+        } as SpawnOptions;
     }
 
     @withLogContext(Loggers.Extension)
