@@ -41,10 +41,4 @@ Comment out until the repo is public so the image can be loaded by the marketpla
 -   The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html)
     contains comprehesive documentation about the Databricks extension.
 
-## Release Notes
-
-### 0.0.1
-
-Preview version of the VS Code extension for Databricks
-
 **Happy Coding!**
