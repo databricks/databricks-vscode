@@ -189,6 +189,8 @@ export class Cluster {
         onProgress: (state: ClusterInfoState) => void = () => {}
     ) {
         await this.refresh();
+        onProgress(this.state);
+
         if (this.state === "RUNNING") {
             return;
         }
@@ -201,6 +203,25 @@ export class Cluster {
             await this.clusterApi.start({
                 cluster_id: this.id,
             });
+        }
+
+        // wait for cluster to be stopped before re-starting
+        if (this.state === "TERMINATING") {
+            while (true) {
+                if (token?.isCancellationRequested) {
+                    return;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                await this.refresh();
+                onProgress(this.state);
+
+                if (this.state !== "TERMINATING") {
+                    await this.clusterApi.start({
+                        cluster_id: this.id,
+                    });
+                    break;
+                }
+            }
         }
 
         this._canExecute = undefined;
