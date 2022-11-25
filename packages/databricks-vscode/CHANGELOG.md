@@ -1,11 +1,3 @@
-# Release: v0.0.2
-
-## packages/databricks-vscode
-
-## <small>0.0.2 (2022-11-15)</small>
-
--   First private preview release
-
 # Release: v0.0.3
 
 ## packages/databricks-vscode
@@ -18,3 +10,11 @@
 -   Improve handling cases where the user doesn't hve administrator permissions in the Databricks workspace
 -   Show warning when the name of the selected Databricks Repo doesn't match the local workspace name
 -   Add setting `databricks.bricks.verboseMode` to show debug logs for the sync command
+
+# Release: v0.0.2
+
+## packages/databricks-vscode
+
+## <small>0.0.2 (2022-11-15)</small>
+
+-   First private preview release
