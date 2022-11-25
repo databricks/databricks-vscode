@@ -148,7 +148,11 @@
             <div class="output spinner" id="output">
                 <header>Output</header>
                 <vscode-progress-ring id="spinner"></vscode-progress-ring>
-                <iframe id="frame"></iframe>
+                <iframe
+                    id="frame"
+                    sandbox="allow-same-origin allow-pointer-lock allow-scripts allow-downloads allow-forms"
+                    allow="cross-origin-isolated; clipboard-read; clipboard-write;"
+                ></iframe>
                 <pre id="stdout"></pre>
                 <div class="alert-error" id="error">
                     <span class="error-icon">
@@ -213,6 +217,8 @@
             </div>
         </div>
         <script>
+            const isMac = navigator.platform.indexOf("Mac") >= 0;
+
             class PageHandler {
                 formatDuration(duration) {
                     if (duration < 0 || duration === undefined) {
@@ -257,13 +263,69 @@
                     cl.remove("error");
                     cl.add("html");
 
-                    var frame = document.getElementById("frame");
-                    var frame = frame.contentWindow || frame.contentDocument;
+                    const frameEl = document.getElementById("frame");
+                    var frame =
+                        frameEl.contentWindow || frameEl.contentDocument;
                     if (frame.document) frame = frame.document;
 
                     frame.open();
                     frame.write(html);
                     frame.close();
+
+                    if (isMac) {
+                        // The clipboard doesn't work in iframes embedded in webviews
+                        // See https://github.com/microsoft/vscode/issues/65452
+
+                        // forward keydown events to the webview and handle CTRL-A
+                        frame.addEventListener("keydown", (e) => {
+                            window.dispatchEvent(
+                                new KeyboardEvent("keydown", e)
+                            );
+                        });
+
+                        // forward copy commands to the iFrame
+                        document.addEventListener("copy", (e) => {
+                            frame.execCommand("copy");
+                        });
+
+                        // forward context menu events to the webview and make
+                        // clientX and clientY relative to the webview
+                        frame.addEventListener("contextmenu", (e) => {
+                            const rect = frameEl.getBoundingClientRect();
+                            window.document.documentElement.dispatchEvent(
+                                new MouseEvent("contextmenu", {
+                                    altKey: e.altKey,
+                                    bubbles: e.bubbles,
+                                    button: e.button,
+                                    buttons: e.buttons,
+                                    cancelable: e.cancelable,
+                                    clientX: e.clientX + rect.left,
+                                    clientY: e.clientY + rect.top,
+                                    composed: e.composed,
+                                    ctrlKey: e.ctrlKey,
+                                    detail: e.detail,
+                                    metaKey: e.metaKey,
+                                    modifierAltGraph: e.modifierAltGraph,
+                                    modifierCapsLock: e.modifierCapsLock,
+                                    modifierFn: e.modifierFn,
+                                    modifierFnLock: e.modifierFnLock,
+                                    modifierHyper: e.modifierHyper,
+                                    modifierNumLock: e.modifierNumLock,
+                                    modifierScrollLock: e.modifierScrollLock,
+                                    modifierSuper: e.modifierSuper,
+                                    modifierSymbol: e.modifierSymbol,
+                                    modifierSymbolLock: e.modifierSymbolLock,
+                                    movementX: e.movementX,
+                                    movementY: e.movementY,
+                                    relatedTarget: e.relatedTarget,
+                                    screenX: e.screenX,
+                                    screenY: e.screenY,
+                                    shiftKey: e.shiftKey,
+                                    view: e.view,
+                                })
+                            );
+                        });
+                    }
                 }
 
                 setStdout(stdout) {
@@ -299,7 +361,8 @@
 
             if (vscode) {
                 window.addEventListener("message", (event) => {
-                    page[event.data.fn](...event.data.args);
+                    page[event.data.fn] &&
+                        page[event.data.fn](...event.data.args);
                 });
             } else {
                 // test code for iterating on the page in a web browser
