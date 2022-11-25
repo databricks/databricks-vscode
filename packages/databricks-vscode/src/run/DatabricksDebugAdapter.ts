@@ -38,6 +38,9 @@ interface ILaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 
     /** Command line arguments */
     args?: string[];
+
+    /** Env variables */
+    env?: Record<string, string>;
 }
 
 export class DatabricksDebugAdapterFactory
@@ -246,7 +249,7 @@ export class DatabricksDebugSession extends LoggingDebugSession {
         await commands.executeCommand("workbench.panel.repl.view.focus");
 
         // start the program in the runtime
-        await this.runtime.start(args.program, args.args || []);
+        await this.runtime.start(args.program, args.args || [], args.env || {});
         this.sendResponse(response);
     }
 

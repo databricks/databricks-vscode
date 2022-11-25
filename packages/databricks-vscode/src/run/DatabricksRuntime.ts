@@ -30,6 +30,8 @@ export interface FileAccessor {
     readFile(path: string): Promise<string>;
 }
 
+type EnvVars = Record<string, string>;
+
 export class DatabricksRuntime implements Disposable {
     private _onDidEndEmitter: EventEmitter<void> = new EventEmitter<void>();
     readonly onDidEnd: Event<void> = this._onDidEndEmitter.event;
@@ -60,7 +62,11 @@ export class DatabricksRuntime implements Disposable {
     /**
      * Start executing the given program.
      */
-    public async start(program: string, args: Array<string>): Promise<void> {
+    public async start(
+        program: string,
+        args: Array<string>,
+        envVars: EnvVars
+    ): Promise<void> {
         const start = Date.now();
 
         const log = (message: string, line: number) => {
@@ -168,7 +174,8 @@ export class DatabricksRuntime implements Disposable {
                     program,
                     lines,
                     args,
-                    syncDestination
+                    syncDestination,
+                    envVars
                 ),
                 undefined,
                 this.token
@@ -231,12 +238,19 @@ export class DatabricksRuntime implements Disposable {
         program: string,
         programLines: Array<string>,
         args: Array<string>,
-        syncDestination: SyncDestination
+        syncDestination: SyncDestination,
+        envVars: EnvVars
     ): string {
         const argv = [
             syncDestination.localToRemote(Uri.file(program)),
             ...args,
         ];
+
+        const envVarSetCmds = [];
+        for (const key in envVars) {
+            const cmd = `os.environ["${key}"]='${envVars[key]}'`;
+            envVarSetCmds.push(cmd);
+        }
 
         return [
             // set working directory
@@ -251,6 +265,8 @@ export class DatabricksRuntime implements Disposable {
             `import sys; sys.argv = ['${argv
                 .map((arg) => this.escapePythonString(arg))
                 .join("', '")}'];`,
+
+            `import os; ${envVarSetCmds.join("; ")};`,
 
             // Set log level to "ERROR". See https://kb.databricks.com/notebooks/cmd-c-on-object-id-p0.html
             `import logging; logger = spark._jvm.org.apache.log4j; logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)`,
