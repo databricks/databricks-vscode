@@ -2,7 +2,8 @@ name: Create Build Artefacts
 
 on:
     workflow_call:
-
+    pull_request:
+        branches: [main]
 jobs:
     create-build-artifacts:
         strategy:
