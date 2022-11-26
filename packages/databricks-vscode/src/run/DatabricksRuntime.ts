@@ -248,7 +248,15 @@ export class DatabricksRuntime implements Disposable {
 
         const envVarSetCmds = [];
         for (const key in envVars) {
-            const cmd = `os.environ["${key}"]='${envVars[key]}'`;
+            if (!/^[a-zA-Z_]{1,}[a-zA-Z0-9_]*$/.test(key)) {
+                this._onErrorEmitter.fire(
+                    `Invalid environment variable ${key}: Only lower and upper case letters, digits and '_'(underscore) are allowed.`
+                );
+                return "";
+            }
+            const cmd = `os.environ["${key}"]='${this.escapePythonString(
+                envVars[key]
+            )}'`;
             envVarSetCmds.push(cmd);
         }
 
@@ -275,7 +283,7 @@ export class DatabricksRuntime implements Disposable {
     }
 
     private escapePythonString(str: string): string {
-        return str.replace(/'/g, "\\'").replace(/\\/g, "\\\\");
+        return str.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     }
 
     public async disconnect(): Promise<void> {
