@@ -551,7 +551,8 @@
         "@vscode/debugadapter": "^1.58.0",
         "@vscode/webview-ui-toolkit": "^1.1.0",
         "ansi-to-html": "^0.7.2",
-        "triple-beam": "^1.3.0"
+        "triple-beam": "^1.3.0",
+        "winston": "^3.8.2"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
@@ -562,6 +563,7 @@
         "@types/node": "^18.11.9",
         "@types/tmp": "^0.2.3",
         "@types/vscode": "^1.69.1",
+        "@types/yargs": "^17.0.14",
         "@typescript-eslint/eslint-plugin": "^5.42.0",
         "@typescript-eslint/parser": "^5.42.0",
         "@vscode/test-electron": "^2.2.0",
@@ -579,7 +581,7 @@
         "typescript": "^4.8.4",
         "vsce": "^2.13.0",
         "vscode-extension-tester": "5.1.x",
-        "winston": "^3.8.2"
+        "yargs": "^17.6.2"
     },
     "nyc": {
         "extends": "@istanbuljs/nyc-config-typescript",
@@ -599,5 +601,7 @@
         ],
         "report-dir": "coverage"
     },
-    "arch": {}
+    "arch": {
+        "bricksArch": "linux_amd64"
+    }
 }
