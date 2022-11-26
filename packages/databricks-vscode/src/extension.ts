@@ -47,11 +47,9 @@ export async function activate(
         loggerManager.initLoggers();
     }
 
-    NamedLogger.getOrCreate(Loggers.Extension)
-        .withContext({loggingFnName: "Extension.Activate"})
-        .debug("Metadata", {
-            metadata: await PackageJsonUtils.getMetadata(context),
-        });
+    NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
+        metadata: await PackageJsonUtils.getMetadata(context),
+    });
 
     context.subscriptions.push(
         commands.registerCommand(
