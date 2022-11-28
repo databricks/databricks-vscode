@@ -15,12 +15,18 @@ import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
-import {LoggerManager} from "./logger";
-import {UtilsCommands} from "./utils/UtilsCommands";
+import {LoggerManager, Loggers} from "./logger";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {workspaceConfigs} from "./WorkspaceConfigs";
+import {PackageJsonUtils, UtilsCommands} from "./utils";
 
-export function activate(context: ExtensionContext): PublicApi | undefined {
+export async function activate(
+    context: ExtensionContext
+): Promise<PublicApi | undefined> {
+    if (!(await PackageJsonUtils.checkArchCompat(context))) {
+        return undefined;
+    }
+
     if (
         workspace.workspaceFolders === undefined ||
         workspace.workspaceFolders?.length === 0
@@ -40,6 +46,10 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
     if (workspaceConfigs.loggingEnabled) {
         loggerManager.initLoggers();
     }
+
+    NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
+        metadata: await PackageJsonUtils.getMetadata(context),
+    });
 
     context.subscriptions.push(
         commands.registerCommand(
@@ -230,7 +240,7 @@ export function activate(context: ExtensionContext): PublicApi | undefined {
     });
 
     //utils
-    const utilCommands = new UtilsCommands();
+    const utilCommands = new UtilsCommands.UtilsCommands();
     context.subscriptions.push(
         commands.registerCommand(
             "databricks.utils.openExternal",

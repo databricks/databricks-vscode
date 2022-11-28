@@ -10,32 +10,63 @@ export class TimeoutError extends Error {
     }
 }
 
-export class RetryConfigs {
-    static maxJitter = new Time(750, TimeUnits.milliseconds);
-    static minJitter = new Time(50, TimeUnits.milliseconds);
-    static maxWaitTime = new Time(10, TimeUnits.seconds);
-    static defaultTimeout = new Time(10, TimeUnits.minutes);
+export interface RetryPolicy {
+    waitTime(attempt: number): Time;
+}
 
-    static waitTime(attempt: number) {
-        const jitter = RetryConfigs.maxJitter
-            .sub(RetryConfigs.minJitter)
-            .multiply(Math.random())
-            .add(RetryConfigs.minJitter);
-        const timeout = new Time(attempt, TimeUnits.seconds).add(jitter);
+export class LinearRetryPolicy {
+    constructor(readonly _waitTime: Time) {}
 
-        return timeout.gt(RetryConfigs.maxWaitTime)
-            ? RetryConfigs.maxWaitTime
-            : timeout;
+    waitTime(): Time {
+        return this._waitTime;
     }
 }
 
+export class ExponetionalBackoffWithJitterRetryPolicy implements RetryPolicy {
+    maxJitter: Time;
+    minJitter: Time;
+    maxWaitTime: Time;
+
+    constructor(
+        options: {
+            maxJitter?: Time;
+            minJitter?: Time;
+            maxWaitTime?: Time;
+        } = {}
+    ) {
+        this.maxJitter =
+            options.maxJitter || new Time(750, TimeUnits.milliseconds);
+        this.minJitter =
+            options.minJitter || new Time(50, TimeUnits.milliseconds);
+        this.maxWaitTime =
+            options.maxWaitTime || new Time(10, TimeUnits.seconds);
+    }
+
+    waitTime(attempt: number): Time {
+        const jitter = this.maxJitter
+            .sub(this.minJitter)
+            .multiply(Math.random())
+            .add(this.minJitter);
+        const timeout = new Time(attempt, TimeUnits.seconds).add(jitter);
+
+        return timeout.gt(this.maxWaitTime) ? this.maxWaitTime : timeout;
+    }
+}
+
+export const DEFAULT_RETRY_CONFIG =
+    new ExponetionalBackoffWithJitterRetryPolicy();
+
+export const DEFAULT_MAX_TIMEOUT = new Time(10, TimeUnits.minutes);
+
 interface RetryArgs<T> {
     timeout?: Time;
+    retryPolicy?: RetryPolicy;
     fn: () => Promise<T>;
 }
 
 export default async function retry<T>({
-    timeout = RetryConfigs.defaultTimeout,
+    timeout = DEFAULT_MAX_TIMEOUT,
+    retryPolicy: retryConfig = DEFAULT_RETRY_CONFIG,
     fn,
 }: RetryArgs<T>): Promise<T> {
     let attempt = 1;
@@ -67,7 +98,7 @@ export default async function retry<T>({
         await new Promise((resolve) =>
             setTimeout(
                 resolve,
-                RetryConfigs.waitTime(attempt).toMillSeconds().value
+                retryConfig.waitTime(attempt).toMillSeconds().value
             )
         );
 

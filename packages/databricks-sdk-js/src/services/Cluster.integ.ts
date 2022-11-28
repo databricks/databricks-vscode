@@ -35,4 +35,33 @@ describe(__filename, function () {
         assert(clusterA.id);
         assert.equal(clusterA.id, clusterB?.id);
     });
+
+    // skipping because running the test takes too long
+    it.skip("should start a stopping cluster", async () => {
+        const token = {
+            isCancellationRequested: false,
+        };
+
+        const cluster = integSetup.cluster;
+        // stop cluster
+        await Promise.race([
+            cluster.stop(token, async (info) =>
+                // eslint-disable-next-line no-console
+                console.log(`Stopping - ${info.state}`)
+            ),
+            new Promise<void>((resolve) => {
+                // cancel stop
+                setTimeout(() => {
+                    token.isCancellationRequested = true;
+                    resolve();
+                }, 500);
+            }),
+        ]);
+
+        // start cluster
+        await cluster.start(undefined, (state) =>
+            // eslint-disable-next-line no-console
+            console.log(`Starting ${state}`)
+        );
+    });
 });

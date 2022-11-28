@@ -7,7 +7,7 @@ import Time, {TimeUnits} from "../retries/Time";
 import {getMockTestCluster} from "../test/fixtures/ClusterFixtures";
 import {ClusterInfo} from "../apis/clusters";
 import {TokenFixture} from "../test/fixtures/TokenFixtures";
-import {RetryConfigs} from "../retries/retries";
+import FakeTimers from "@sinonjs/fake-timers";
 
 describe(__filename, function () {
     this.timeout(new Time(10, TimeUnits.minutes).toMillSeconds().value);
@@ -15,14 +15,17 @@ describe(__filename, function () {
     let mockedClient: ApiClient;
     let mockedCluster: Cluster;
     let testClusterDetails: ClusterInfo;
+    let fakeTimer: FakeTimers.InstalledClock;
 
     beforeEach(async () => {
         ({mockedCluster, mockedClient, testClusterDetails} =
             await getMockTestCluster());
 
-        RetryConfigs.waitTime = () => {
-            return new Time(0, TimeUnits.milliseconds);
-        };
+        fakeTimer = FakeTimers.install();
+    });
+
+    afterEach(() => {
+        fakeTimer.uninstall();
     });
 
     it("calling start on a non terminated state should not throw an error", async () => {
@@ -65,7 +68,9 @@ describe(__filename, function () {
         await mockedCluster.refresh();
         assert.notEqual(mockedCluster.state, "RUNNING");
 
-        await mockedCluster.start();
+        const startPromise = mockedCluster.start();
+        await fakeTimer.runToLastAsync();
+        await startPromise;
         assert.equal(mockedCluster.state, "RUNNING");
 
         verify(
@@ -125,7 +130,10 @@ describe(__filename, function () {
 
         assert.equal(mockedCluster.state, "RUNNING");
 
-        await mockedCluster.stop();
+        const stopPromise = mockedCluster.stop();
+        await fakeTimer.runToLastAsync();
+        await stopPromise;
+
         assert.equal(mockedCluster.state, "TERMINATED");
 
         verify(
@@ -175,7 +183,10 @@ describe(__filename, function () {
         await mockedCluster.refresh();
         assert.notEqual(mockedCluster.state, "RUNNING");
 
-        await mockedCluster.stop();
+        const stopPromise = mockedCluster.stop();
+        await fakeTimer.runToLastAsync();
+        await stopPromise;
+
         assert.equal(mockedCluster.state, "TERMINATED");
 
         verify(
@@ -243,7 +254,9 @@ describe(__filename, function () {
         await mockedCluster.refresh();
 
         assert.equal(mockedCluster.state, "PENDING");
-        await mockedCluster.start(instance(token));
+        const startPromise = mockedCluster.start(instance(token));
+        await fakeTimer.runToLastAsync();
+        await startPromise;
 
         verify(token.isCancellationRequested).thrice();
     });

@@ -1,3 +1,4 @@
 export * from "./fileUtils";
 export * as UrlUtils from "./urlUtils";
-export * from "./UtilsCommands";
+export * as UtilsCommands from "./UtilsCommands";
+export * as PackageJsonUtils from "./packageJsonUtils";

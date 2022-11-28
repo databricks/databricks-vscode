@@ -1,22 +1,21 @@
 import retry, {RetriableError, TimeoutError} from "./retries";
 import Time, {TimeUnits} from "./Time";
-import * as sinon from "sinon";
+import FakeTimers from "@sinonjs/fake-timers";
 import * as assert from "node:assert";
 
 class NonRetriableError extends Error {}
 
-describe(__filename, function () {
-    let fakeTimer: sinon.SinonFakeTimers;
+describe(__filename, () => {
+    let fakeTimer: FakeTimers.InstalledClock;
 
     beforeEach(() => {
-        fakeTimer = sinon.useFakeTimers();
+        fakeTimer = FakeTimers.install();
     });
 
     afterEach(() => {
-        fakeTimer.restore();
+        fakeTimer.uninstall();
     });
 
-    this.timeout(1000 * 3);
     it("should return result if timeout doesn't expire", async function () {
         const startTime = Date.now();
 

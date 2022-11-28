@@ -1,4 +1,4 @@
-name: Publish nightly release
+name: Create Build Artefacts
 
 on:
     workflow_call:
@@ -71,6 +71,12 @@ jobs:
               env:
                   # TODO: Remove this once the bricks repo is public
                   GH_TOKEN: ${{ secrets.DECO_GITHUB_TOKEN }}
+
+            - name: Update arch in package.json
+              working-directory: packages/databricks-vscode
+              run: |
+                  yarn ts-node scripts/set_arch_in_package.ts -f package.json -b ${{ matrix.arch.bricks_arch }} -V ${{ matrix.arch.vsix_arch }} -c $(git rev-parse --short HEAD)
+                  yarn run fix
 
             - run: yarn run package -t ${{ matrix.arch.vsix_arch }}
               working-directory: packages/databricks-vscode
