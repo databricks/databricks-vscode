@@ -5,9 +5,9 @@ import {
     cluster,
     Cluster,
     ClusterFixture,
-    RetryConfigs,
     Time,
     TimeUnits,
+    retries,
 } from "@databricks/databricks-sdk";
 import {
     anything,
@@ -49,7 +49,7 @@ describe(__filename, async () => {
 
         resetCalls(mockedClient);
 
-        RetryConfigs.waitTime = () => {
+        retries.DEFAULT_RETRY_CONFIG.waitTime = () => {
             return new Time(0, TimeUnits.milliseconds);
         };
     });

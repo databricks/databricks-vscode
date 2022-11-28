@@ -45,7 +45,9 @@ export * from "./types";
 
 export {ClusterFixture, TokenFixture} from "./test/fixtures";
 
-export {RetryConfigs, default as retry} from "./retries/retries";
+export {default as retry} from "./retries/retries";
+export * as retries from "./retries/retries";
+export type {RetryPolicy} from "./retries/retries";
 export {TimeUnits, default as Time} from "./retries/Time";
 
 export * as logging from "./logging";

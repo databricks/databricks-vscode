@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {ApiClient} from "../api-client";
-import retry, {RetriableError} from "../retries/retries";
+import retry, {LinearRetryPolicy, RetriableError} from "../retries/retries";
 import {
     JobsService,
     RunLifeCycleState,
@@ -11,7 +11,7 @@ import {
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-import {commands, PermissionsService} from "..";
+import {commands, PermissionsService, Time, TimeUnits} from "..";
 import {
     ClusterInfo,
     ClustersService,
@@ -189,6 +189,8 @@ export class Cluster {
         onProgress: (state: ClusterInfoState) => void = () => {}
     ) {
         await this.refresh();
+        onProgress(this.state);
+
         if (this.state === "RUNNING") {
             return;
         }
@@ -198,6 +200,30 @@ export class Cluster {
             this.state === "ERROR" ||
             this.state === "UNKNOWN"
         ) {
+            await this.clusterApi.start({
+                cluster_id: this.id,
+            });
+        }
+
+        // wait for cluster to be stopped before re-starting
+        if (this.state === "TERMINATING") {
+            await retry<void>({
+                timeout: new Time(1, TimeUnits.minutes),
+                retryPolicy: new LinearRetryPolicy(
+                    new Time(1, TimeUnits.seconds)
+                ),
+                fn: async () => {
+                    if (token?.isCancellationRequested) {
+                        return;
+                    }
+                    await this.refresh();
+                    onProgress(this.state);
+
+                    if (this.state === "TERMINATING") {
+                        throw new RetriableError();
+                    }
+                },
+            });
             await this.clusterApi.start({
                 cluster_id: this.id,
             });

@@ -564,11 +564,13 @@
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
+        "@sinonjs/fake-timers": "^10.0.0",
         "@types/fs-extra": "^9.0.13",
         "@types/glob": "^8.0.0",
         "@types/mocha": "^10.0.0",
         "@types/mock-require": "^2.0.1",
         "@types/node": "^18.11.9",
+        "@types/sinonjs__fake-timers": "^8.1.2",
         "@types/tmp": "^0.2.3",
         "@types/vscode": "^1.69.1",
         "@types/yargs": "^17.0.14",
