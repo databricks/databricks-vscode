@@ -10,10 +10,17 @@ import {unlink, access} from "fs/promises";
 export class LoggerManager {
     constructor(readonly context: ExtensionContext) {}
 
-    private getFileTransport(filename: string) {
+    private getFileTransport(
+        filename: string,
+        extraOptions?: Omit<
+            transports.FileTransportOptions,
+            "filename" | "format"
+        >
+    ) {
         return new transports.File({
             format: format.combine(format.timestamp(), format.json()),
             filename: filename,
+            ...extraOptions,
         });
     }
 
@@ -34,8 +41,10 @@ export class LoggerManager {
                     return loggers.add(name, {
                         level: "debug",
                         transports: [
-                            getOutputConsoleTransport(outputChannel),
-                            this.getFileTransport(logFile),
+                            getOutputConsoleTransport(outputChannel, {
+                                level: "debug",
+                            }),
+                            this.getFileTransport(logFile, {level: "all"}),
                         ],
                     });
                 },
@@ -45,8 +54,6 @@ export class LoggerManager {
 
         /** 
         This logger collects all the logs in the extension.
-        
-        TODO Make this logger log to a seperate (or common?) output console in vscode
         */
         NamedLogger.getOrCreate(
             "Extension",
@@ -55,8 +62,10 @@ export class LoggerManager {
                     return loggers.add(name, {
                         level: "error",
                         transports: [
-                            getOutputConsoleTransport(outputChannel),
-                            this.getFileTransport(logFile),
+                            getOutputConsoleTransport(outputChannel, {
+                                level: "error",
+                            }),
+                            this.getFileTransport(logFile, {level: "all"}),
                         ],
                     });
                 },
