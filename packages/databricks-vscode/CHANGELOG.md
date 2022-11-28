@@ -1,3 +1,15 @@
+# Release: v0.0.4
+
+## packages/databricks-vscode
+
+## <small>0.0.4 (2022-11-28)</small>
+
+-   Feature: Support environment variables in 'Run on Databricks' custom debug config
+-   Fix: Make copy to clipboard on OSX from the workflow run webview
+-   Fix: Fix file synching on Windows
+-   Fix: Properly handle starting a stopping cluster
+-   Fix: Register `Databricks task` and kill task terminal on error
+
 # Release: v0.0.3
 
 ## packages/databricks-vscode
