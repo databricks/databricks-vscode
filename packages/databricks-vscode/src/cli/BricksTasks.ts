@@ -14,6 +14,18 @@ import {CliWrapper, Command, SyncType} from "./CliWrapper";
 import {ChildProcess, spawn, SpawnOptions} from "node:child_process";
 import {SyncState} from "../sync/CodeSynchronizer";
 import {BricksSyncParser} from "./BricksSyncParser";
+import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
+import {Loggers} from "../logger";
+import {Context, context} from "@databricks/databricks-sdk/dist/context";
+
+enum TaskSyncType {
+    syncFull = "sync-full",
+    sync = "sync",
+}
+const cliToTaskSyncType = new Map<SyncType, TaskSyncType>([
+    ["full", TaskSyncType.syncFull],
+    ["incremental", TaskSyncType.sync],
+]);
 
 export class SyncTask extends Task {
     constructor(
@@ -25,10 +37,10 @@ export class SyncTask extends Task {
         super(
             {
                 type: "databricks",
-                task: syncType === "full" ? "sync-full" : "sync",
+                task: cliToTaskSyncType.get(syncType) ?? "sync",
             },
             TaskScope.Workspace,
-            syncType === "full" ? "sync-full" : "sync",
+            cliToTaskSyncType.get(syncType) ?? "sync",
             "databricks",
             new CustomExecution(async (): Promise<Pseudoterminal> => {
                 return new LazyCustomSyncTerminal(
@@ -49,14 +61,15 @@ export class SyncTask extends Task {
     }
 
     static killAll() {
-        let found = false;
         window.terminals.forEach((terminal) => {
-            if (terminal.name === "sync") {
-                found = true;
+            if (
+                Object.values(TaskSyncType)
+                    .map((e) => e as string)
+                    .includes(terminal.name)
+            ) {
                 terminal.dispose();
             }
         });
-        return found;
     }
 }
 
@@ -168,41 +181,55 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
     ) {
         super("", [], {}, syncStateCallback);
 
+        const ctx: Context = new Context({
+            rootClassName: "LazyCustomSyncTerminal",
+            rootFnName: "constructor",
+        });
+
         // hacky way to override properties with getters
         Object.defineProperties(this, {
             cmd: {
                 get: () => {
-                    return this.getSyncCommand().command;
+                    return this.getSyncCommand(ctx).command;
                 },
             },
             args: {
                 get: () => {
-                    return this.getSyncCommand().args;
+                    return this.getSyncCommand(ctx).args;
                 },
             },
             options: {
                 get: () => {
-                    return this.getProcessOptions();
+                    return this.getProcessOptions(ctx);
                 },
             },
         });
     }
 
-    getProcessOptions(): SpawnOptions {
+    @withLogContext(Loggers.Extension)
+    showErrorAndKillThis(msg: string, @context ctx?: Context) {
+        ctx?.logger?.error(msg);
+        window.showErrorMessage(msg);
+        SyncTask.killAll();
+        return new Error(msg);
+    }
+
+    @withLogContext(Loggers.Extension)
+    getProcessOptions(@context ctx?: Context): SpawnOptions {
         const workspacePath =
             this.connection.syncDestination?.vscodeWorkspacePath.fsPath;
         if (!workspacePath) {
-            window.showErrorMessage("Can't start sync: No workspace opened!");
-            throw new Error("Can't start sync: No workspace opened!");
+            throw this.showErrorAndKillThis(
+                "Can't start sync: No workspace opened!",
+                ctx
+            );
         }
 
         const dbWorkspace = this.connection.databricksWorkspace;
         if (!dbWorkspace) {
-            window.showErrorMessage(
-                "Can't start sync: Databricks connection not configured!"
-            );
-            throw new Error(
-                "Can't start sync: Databricks connection not configured!"
+            throw this.showErrorAndKillThis(
+                "Can't start sync: Databricks connection not configured!",
+                ctx
             );
         }
 
@@ -212,6 +239,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: workspacePath,
                 DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
+                DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
                 /* eslint-enable @typescript-eslint/naming-convention */
@@ -219,28 +247,17 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         } as SpawnOptions;
     }
 
-    getSyncCommand(): Command {
-        if (
-            this.connection.state !== "CONNECTED" &&
-            (SyncTask.killAll() || this.killThis)
-        ) {
-            this.killThis = true;
-            return {
-                args: [],
-                command: "",
-            };
-        }
+    @withLogContext(Loggers.Extension)
+    getSyncCommand(@context ctx?: Context): Command {
         if (this.command) {
             return this.command;
         }
         const syncDestination = this.connection.syncDestination;
 
         if (!syncDestination) {
-            window.showErrorMessage(
-                "Can't start sync: Databricks synchronization destination not configured!"
-            );
-            throw new Error(
-                "Can't start sync: Databricks synchronization destination not configured!"
+            throw this.showErrorAndKillThis(
+                "Can't start sync: Databricks synchronization destination not configured!",
+                ctx
             );
         }
 
