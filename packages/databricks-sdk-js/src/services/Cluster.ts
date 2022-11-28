@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {ApiClient} from "../api-client";
-import retry, {RetriableError} from "../retries/retries";
+import retry, {LinearRetryPolicy, RetriableError} from "../retries/retries";
 import {
     JobsService,
     RunLifeCycleState,
@@ -11,7 +11,7 @@ import {
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-import {commands, PermissionsService} from "..";
+import {commands, PermissionsService, Time, TimeUnits} from "..";
 import {
     ClusterInfo,
     ClustersService,
@@ -207,21 +207,26 @@ export class Cluster {
 
         // wait for cluster to be stopped before re-starting
         if (this.state === "TERMINATING") {
-            while (true) {
-                if (token?.isCancellationRequested) {
-                    return;
-                }
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-                await this.refresh();
-                onProgress(this.state);
+            await retry<void>({
+                timeout: new Time(1, TimeUnits.minutes),
+                retryPolicy: new LinearRetryPolicy(
+                    new Time(1, TimeUnits.seconds)
+                ),
+                fn: async () => {
+                    if (token?.isCancellationRequested) {
+                        return;
+                    }
+                    await this.refresh();
+                    onProgress(this.state);
 
-                if (this.state !== "TERMINATING") {
-                    await this.clusterApi.start({
-                        cluster_id: this.id,
-                    });
-                    break;
-                }
-            }
+                    if (this.state === "TERMINATING") {
+                        throw new RetriableError();
+                    }
+                },
+            });
+            await this.clusterApi.start({
+                cluster_id: this.id,
+            });
         }
 
         this._canExecute = undefined;
