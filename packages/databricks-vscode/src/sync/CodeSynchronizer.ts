@@ -56,6 +56,7 @@ export class CodeSynchronizer implements Disposable {
     }
 
     async start(syncType: "full" | "incremental") {
+        this._state = "IN_PROGRESS";
         const task = new SyncTask(
             this.connection,
             this.cli,
