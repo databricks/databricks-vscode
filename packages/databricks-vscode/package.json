@@ -394,6 +394,13 @@
                                     "type": "string"
                                 },
                                 "description": "Command line arguments."
+                            },
+                            "env": {
+                                "type": "object",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Environment variables."
                             }
                         }
                     }
@@ -404,7 +411,8 @@
                         "request": "launch",
                         "name": "Run on Databricks",
                         "program": "${file}",
-                        "args": []
+                        "args": [],
+                        "env": {}
                     }
                 ],
                 "configurationSnippets": [
