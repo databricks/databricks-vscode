@@ -99,7 +99,7 @@ describe(__filename, () => {
             })
         );
 
-        await runtime.start("/Desktop/workspaces/hello.py", []);
+        await runtime.start("/Desktop/workspaces/hello.py", [], {});
 
         verify(connectionManagerMock.waitForConnect()).called();
 
@@ -115,7 +115,7 @@ describe(__filename, () => {
     });
 
     it("should have the right code", async () => {
-        await runtime.start("/Desktop/workspaces/hello.py", []);
+        await runtime.start("/Desktop/workspaces/hello.py", [], {TEST: "TEST"});
 
         const code = capture(executionContextMock.execute).first()[0];
         assert.equal(
@@ -123,6 +123,7 @@ describe(__filename, () => {
             `import os; os.chdir("/Workspace/Repos/fabian@databricks.com/test");
 import sys; sys.path.append("/Workspace/Repos/fabian@databricks.com/test")
 import sys; sys.argv = ['/Workspace/Repos/fabian@databricks.com/test/hello.py'];
+import os; os.environ["TEST"]='TEST';
 import logging; logger = spark._jvm.org.apache.log4j; logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
 print('43')`
         );
@@ -155,7 +156,7 @@ print('43')`
             })
         );
 
-        await runtime.start("/Desktop/workspaces/hello.py", []);
+        await runtime.start("/Desktop/workspaces/hello.py", [], {});
 
         assert.equal(outputs.length, 7);
         assert.equal(outputs[4].text, "something went wrong");
