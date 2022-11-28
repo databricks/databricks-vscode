@@ -274,7 +274,9 @@ export class DatabricksRuntime implements Disposable {
                 .map((arg) => this.escapePythonString(arg))
                 .join("', '")}'];`,
 
-            `import os; ${envVarSetCmds.join("; ")};`,
+            envVarSetCmds.length !== 0
+                ? `import os; ${envVarSetCmds.join("; ")};`
+                : "",
 
             // Set log level to "ERROR". See https://kb.databricks.com/notebooks/cmd-c-on-object-id-p0.html
             `import logging; logger = spark._jvm.org.apache.log4j; logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)`,

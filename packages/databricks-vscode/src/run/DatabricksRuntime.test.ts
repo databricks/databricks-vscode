@@ -114,7 +114,7 @@ describe(__filename, () => {
         assert(outputs[5].text.includes("Done"));
     });
 
-    it("should have the right code", async () => {
+    it("should have the right code with env vars", async () => {
         await runtime.start("/Desktop/workspaces/hello.py", [], {TEST: "TEST"});
 
         const code = capture(executionContextMock.execute).first()[0];
@@ -124,6 +124,21 @@ describe(__filename, () => {
 import sys; sys.path.append("/Workspace/Repos/fabian@databricks.com/test")
 import sys; sys.argv = ['/Workspace/Repos/fabian@databricks.com/test/hello.py'];
 import os; os.environ["TEST"]='TEST';
+import logging; logger = spark._jvm.org.apache.log4j; logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
+print('43')`
+        );
+    });
+
+    it("should have the right code without env vars", async () => {
+        await runtime.start("/Desktop/workspaces/hello.py", [], {});
+
+        const code = capture(executionContextMock.execute).first()[0];
+        assert.equal(
+            code,
+            `import os; os.chdir("/Workspace/Repos/fabian@databricks.com/test");
+import sys; sys.path.append("/Workspace/Repos/fabian@databricks.com/test")
+import sys; sys.argv = ['/Workspace/Repos/fabian@databricks.com/test/hello.py'];
+
 import logging; logger = spark._jvm.org.apache.log4j; logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
 print('43')`
         );
