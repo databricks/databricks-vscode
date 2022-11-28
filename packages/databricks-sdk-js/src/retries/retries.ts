@@ -26,14 +26,12 @@ export class ExponetionalBackoffWithJitterRetryPolicy implements RetryPolicy {
     maxJitter: Time;
     minJitter: Time;
     maxWaitTime: Time;
-    defaultTimeout: Time;
 
     constructor(
         options: {
             maxJitter?: Time;
             minJitter?: Time;
             maxWaitTime?: Time;
-            defaultTimeout?: Time;
         } = {}
     ) {
         this.maxJitter =
@@ -42,8 +40,6 @@ export class ExponetionalBackoffWithJitterRetryPolicy implements RetryPolicy {
             options.minJitter || new Time(50, TimeUnits.milliseconds);
         this.maxWaitTime =
             options.maxWaitTime || new Time(10, TimeUnits.seconds);
-        this.defaultTimeout =
-            options.defaultTimeout || new Time(10, TimeUnits.minutes);
     }
 
     waitTime(attempt: number): Time {
@@ -60,6 +56,8 @@ export class ExponetionalBackoffWithJitterRetryPolicy implements RetryPolicy {
 export const DEFAULT_RETRY_CONFIG =
     new ExponetionalBackoffWithJitterRetryPolicy();
 
+export const DEFAULT_MAX_TIMEOUT = new Time(10, TimeUnits.minutes);
+
 interface RetryArgs<T> {
     timeout?: Time;
     retryPolicy?: RetryPolicy;
@@ -67,7 +65,7 @@ interface RetryArgs<T> {
 }
 
 export default async function retry<T>({
-    timeout = DEFAULT_RETRY_CONFIG.defaultTimeout,
+    timeout = DEFAULT_MAX_TIMEOUT,
     retryPolicy: retryConfig = DEFAULT_RETRY_CONFIG,
     fn,
 }: RetryArgs<T>): Promise<T> {

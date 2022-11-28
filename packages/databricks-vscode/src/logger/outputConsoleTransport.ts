@@ -54,7 +54,10 @@ function recursiveTruncate(obj: any, depth: number) {
     return obj;
 }
 
-export function getOutputConsoleTransport(outputChannel: OutputChannel) {
+export function getOutputConsoleTransport(
+    outputChannel: OutputChannel,
+    extraOptions?: Omit<transports.StreamTransportOptions, "stream" | "format">
+) {
     return new transports.Stream({
         format: format((info: any) => {
             const stripped = Object.assign({}, info) as any;
@@ -93,5 +96,6 @@ export function getOutputConsoleTransport(outputChannel: OutputChannel) {
         stream: new OutputConsoleStream(outputChannel, {
             defaultEncoding: "utf-8",
         }),
+        ...extraOptions,
     });
 }

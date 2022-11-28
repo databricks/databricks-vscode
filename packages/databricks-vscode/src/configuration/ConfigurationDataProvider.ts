@@ -90,7 +90,9 @@ export class ConfigurationDataProvider
                     contextValue:
                         cluster.state === "RUNNING"
                             ? "clusterRunning"
-                            : cluster.state === "PENDING"
+                            : ["PENDING", "RESIZING", "RESTARTING"].includes(
+                                  cluster.state
+                              )
                             ? "clusterPending"
                             : "clusterStopped",
                 });
