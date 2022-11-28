@@ -1,3 +1,11 @@
+# Release: v0.0.4
+
+## packages/databricks-sdk-js
+
+## <small>0.0.4 (2022-11-28)</small>
+
+-   Fix: Properly handle starting a stopping cluster
+
 # Release: v0.0.3
 
 ## packages/databricks-sdk-js
