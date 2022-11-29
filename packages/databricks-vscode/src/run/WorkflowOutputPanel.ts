@@ -141,7 +141,12 @@ export class WorkflowOutputPanel {
         panel: WebviewPanel,
         extensionUri: Uri
     ): Promise<string> {
-        const htmlFile = Uri.joinPath(extensionUri, "webview-ui", "job.html");
+        const htmlFile = Uri.joinPath(
+            extensionUri,
+            "resources",
+            "webview-ui",
+            "job.html"
+        );
         let html = await fs.readFile(htmlFile.fsPath, "utf8");
         html = html.replace(
             /src="[^"].*?\/toolkit.js"/g,

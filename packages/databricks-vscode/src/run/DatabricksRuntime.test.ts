@@ -2,21 +2,18 @@
 
 import assert from "assert";
 import {mock, when, instance, anything, verify, capture} from "ts-mockito";
-import {Disposable, Uri} from "vscode";
+import {Disposable, ExtensionContext, Uri} from "vscode";
 import {
     Cluster,
     Command,
     ExecutionContext,
     Repo,
 } from "@databricks/databricks-sdk";
-import {
-    DatabricksRuntime,
-    FileAccessor,
-    OutputEvent,
-} from "./DatabricksRuntime";
+import {DatabricksRuntime, OutputEvent} from "./DatabricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {SyncDestination} from "../configuration/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import path from "node:path";
 
 describe(__filename, () => {
     let disposables: Array<Disposable>;
@@ -66,20 +63,19 @@ describe(__filename, () => {
         );
         when(connectionManagerMock.syncDestination).thenReturn(syncDestination);
 
-        const fileAccessor: FileAccessor = {
-            async readFile(): Promise<string> {
-                return "print('43')";
-            },
-        };
-
         const connectionManager = instance<ConnectionManager>(
             connectionManagerMock
         );
 
+        const extensionContextMock = mock<ExtensionContext>();
+        when(extensionContextMock.extensionUri).thenReturn(
+            Uri.file(path.join(__dirname, "..", ".."))
+        );
+
         runtime = new DatabricksRuntime(
             connectionManager,
-            fileAccessor,
-            mock(CodeSynchronizer)
+            mock(CodeSynchronizer),
+            instance(extensionContextMock)
         );
     });
 
@@ -102,7 +98,6 @@ describe(__filename, () => {
         await runtime.start("/Desktop/workspaces/hello.py", [], {});
 
         verify(connectionManagerMock.waitForConnect()).called();
-
         assert.equal(outputs.length, 6);
         assert(outputs[0].text.includes("Connecting to cluster"));
         assert(
@@ -114,34 +109,18 @@ describe(__filename, () => {
         assert(outputs[5].text.includes("Done"));
     });
 
-    it("should have the right code with env vars", async () => {
+    it("should inject environment variables", async () => {
         await runtime.start("/Desktop/workspaces/hello.py", [], {TEST: "TEST"});
 
         const code = capture(executionContextMock.execute).first()[0];
-        assert.equal(
-            code,
-            `import os; os.chdir("/Workspace/Repos/fabian@databricks.com/test");
-import sys; sys.path.append("/Workspace/Repos/fabian@databricks.com/test")
-import sys; sys.argv = ['/Workspace/Repos/fabian@databricks.com/test/hello.py'];
-import os; os.environ["TEST"]='TEST';
-import logging; logger = spark._jvm.org.apache.log4j; logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
-print('43')`
-        );
+        assert(code.includes(`env = {"TEST":"TEST"}`));
     });
 
     it("should have the right code without env vars", async () => {
         await runtime.start("/Desktop/workspaces/hello.py", [], {});
 
         const code = capture(executionContextMock.execute).first()[0];
-        assert.equal(
-            code,
-            `import os; os.chdir("/Workspace/Repos/fabian@databricks.com/test");
-import sys; sys.path.append("/Workspace/Repos/fabian@databricks.com/test")
-import sys; sys.argv = ['/Workspace/Repos/fabian@databricks.com/test/hello.py'];
-
-import logging; logger = spark._jvm.org.apache.log4j; logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
-print('43')`
-        );
+        assert(code.includes(`env = {}`));
     });
 
     it("should handle failed executions", async () => {
