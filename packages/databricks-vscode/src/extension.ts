@@ -129,7 +129,8 @@ export async function activate(
     const runCommands = new RunCommands(connectionManager, synchronizer);
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
-        synchronizer
+        synchronizer,
+        context
     );
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,

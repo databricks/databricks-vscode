@@ -8,7 +8,6 @@ import {
 } from "@vscode/debugadapter";
 import {DebugProtocol} from "@vscode/debugprotocol";
 import {basename} from "node:path";
-import {TextDecoder} from "node:util";
 
 import {
     DebugAdapterDescriptor,
@@ -16,14 +15,13 @@ import {
     DebugAdapterInlineImplementation,
     Disposable,
     ProviderResult,
-    Uri,
     commands,
     window,
-    workspace,
+    ExtensionContext,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
-import {DatabricksRuntime, FileAccessor} from "./DatabricksRuntime";
+import {DatabricksRuntime} from "./DatabricksRuntime";
 import {Subject} from "./Subject";
 
 /**
@@ -48,26 +46,22 @@ export class DatabricksDebugAdapterFactory
 {
     constructor(
         private connection: ConnectionManager,
-        private codeSynchroniser: CodeSynchronizer
+        private codeSynchroniser: CodeSynchronizer,
+        private context: ExtensionContext
     ) {}
 
     dispose() {}
 
     createDebugAdapterDescriptor(): ProviderResult<DebugAdapterDescriptor> {
         return new DebugAdapterInlineImplementation(
-            new DatabricksDebugSession(this.connection, this.codeSynchroniser)
+            new DatabricksDebugSession(
+                this.connection,
+                this.codeSynchroniser,
+                this.context
+            )
         );
     }
 }
-
-export const workspaceFileAccessor: FileAccessor = {
-    async readFile(path: string): Promise<string> {
-        const uri = Uri.file(path);
-
-        const bytes = await workspace.fs.readFile(uri);
-        return new TextDecoder().decode(bytes);
-    },
-};
 
 export class DatabricksDebugSession extends LoggingDebugSession {
     private runtime: DatabricksRuntime;
@@ -76,14 +70,15 @@ export class DatabricksDebugSession extends LoggingDebugSession {
 
     constructor(
         connection: ConnectionManager,
-        codeSynchronizer: CodeSynchronizer
+        codeSynchronizer: CodeSynchronizer,
+        context: ExtensionContext
     ) {
         super();
 
         this.runtime = new DatabricksRuntime(
             connection,
-            workspaceFileAccessor,
-            codeSynchronizer
+            codeSynchronizer,
+            context
         );
 
         this.disposables.push(

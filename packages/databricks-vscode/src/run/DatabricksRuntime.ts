@@ -10,6 +10,7 @@ import {
     Disposable,
     Event,
     EventEmitter,
+    ExtensionContext,
     Uri,
 } from "vscode";
 
@@ -17,6 +18,7 @@ import {SyncDestination} from "../configuration/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import * as fs from "node:fs/promises";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -24,10 +26,6 @@ export interface OutputEvent {
     filePath: string;
     line: number;
     column: number;
-}
-
-export interface FileAccessor {
-    readFile(path: string): Promise<string>;
 }
 
 type EnvVars = Record<string, string>;
@@ -51,12 +49,8 @@ export class DatabricksRuntime implements Disposable {
 
     constructor(
         private connection: ConnectionManager,
-        private fileAccessor: FileAccessor = {
-            readFile: async () => {
-                return "";
-            },
-        },
-        private codeSynchronizer: CodeSynchronizer
+        private codeSynchronizer: CodeSynchronizer,
+        private context: ExtensionContext
     ) {}
 
     /**
@@ -69,19 +63,19 @@ export class DatabricksRuntime implements Disposable {
     ): Promise<void> {
         const start = Date.now();
 
-        const log = (message: string, line: number) => {
+        const log = (message: string) => {
             this._onDidSendOutputEmitter.fire({
                 type: "out",
                 text: `${new Date().toLocaleString()} - ${message}`,
                 filePath: program,
-                line: line || 0,
+                line: 0,
                 column: 0,
             });
         };
 
         try {
             if (this.connection.state === "CONNECTING") {
-                log("Connecting to cluster ...", 0);
+                log("Connecting to cluster ...");
                 await this.connection.waitForConnect();
             }
 
@@ -120,14 +114,7 @@ export class DatabricksRuntime implements Disposable {
                 );
             }
 
-            const lines = (await this.fileAccessor.readFile(program)).split(
-                /\r?\n/
-            );
-
-            log(
-                `Creating execution context on cluster ${cluster.id} ...`,
-                lines.length
-            );
+            log(`Creating execution context on cluster ${cluster.id} ...`);
 
             const executionContext = await cluster.createExecutionContext(
                 "python"
@@ -140,8 +127,7 @@ export class DatabricksRuntime implements Disposable {
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
             log(
-                `Synchronizing code to ${syncDestination.relativeRepoPath} ...`,
-                lines.length
+                `Synchronizing code to ${syncDestination.relativeRepoPath} ...`
             );
 
             this.disposables.push(
@@ -165,14 +151,12 @@ export class DatabricksRuntime implements Disposable {
             log(
                 `Running ${syncDestination.getRelativePath(
                     Uri.file(program)
-                )} ...\n`,
-                lines.length
+                )} ...\n`
             );
 
             const response = await executionContext.execute(
-                this.compileCommandString(
+                await this.compileCommandString(
                     program,
-                    lines,
                     args,
                     syncDestination,
                     envVars
@@ -187,7 +171,7 @@ export class DatabricksRuntime implements Disposable {
                     type: "out",
                     text: (result.results as any).data,
                     filePath: program,
-                    line: lines.length,
+                    line: 0,
                     column: 0,
                 });
             } else if (result.results!.resultType === "error") {
@@ -195,14 +179,14 @@ export class DatabricksRuntime implements Disposable {
                     type: "out",
                     text: (result.results! as any).cause,
                     filePath: program,
-                    line: lines.length,
+                    line: 0,
                     column: 0,
                 });
                 this._onDidSendOutputEmitter.fire({
                     type: "out",
                     text: (result.results! as any).summary,
                     filePath: program,
-                    line: lines.length,
+                    line: 0,
                     column: 0,
                 });
             } else {
@@ -210,12 +194,12 @@ export class DatabricksRuntime implements Disposable {
                     type: "out",
                     text: JSON.stringify(result.results as any, null, 2),
                     filePath: program,
-                    line: lines.length,
+                    line: 0,
                     column: 0,
                 });
             }
 
-            log(`Done (took ${Date.now() - start}ms)`, lines.length);
+            log(`Done (took ${Date.now() - start}ms)`);
 
             await executionContext.destroy();
         } catch (e) {
@@ -234,19 +218,24 @@ export class DatabricksRuntime implements Disposable {
         }
     }
 
-    private compileCommandString(
+    private async compileCommandString(
         program: string,
-        programLines: Array<string>,
         args: Array<string>,
         syncDestination: SyncDestination,
         envVars: EnvVars
-    ): string {
+    ): Promise<string> {
+        const bootstrapPath = Uri.joinPath(
+            this.context.extensionUri,
+            "resources",
+            "python",
+            "bootstrap.py"
+        );
+
         const argv = [
             syncDestination.localToRemote(Uri.file(program)),
             ...args,
         ];
 
-        const envVarSetCmds = [];
         for (const key in envVars) {
             if (!/^[a-zA-Z_]{1,}[a-zA-Z0-9_]*$/.test(key)) {
                 this._onErrorEmitter.fire(
@@ -254,34 +243,30 @@ export class DatabricksRuntime implements Disposable {
                 );
                 return "";
             }
-            const cmd = `os.environ["${key}"]='${this.escapePythonString(
-                envVars[key]
-            )}'`;
-            envVarSetCmds.push(cmd);
         }
 
-        return [
-            // set working directory
-            `import os; os.chdir("${syncDestination.localToRemoteDir(
-                Uri.file(program)
-            )}");`,
+        let bootstrap = await fs.readFile(bootstrapPath.fsPath, "utf8");
 
-            // update python path
-            `import sys; sys.path.append("${syncDestination.path.path}")`,
-
-            // inject command line arguments
-            `import sys; sys.argv = ['${argv
+        bootstrap = bootstrap.replace(
+            '"PYTHON_FILE"',
+            `"${syncDestination.localToRemote(Uri.file(program))}"`
+        );
+        bootstrap = bootstrap.replace(
+            '"REPO_PATH"',
+            `"${syncDestination.path.path}"`
+        );
+        bootstrap = bootstrap.replace(
+            "args = []",
+            `args = ['${argv
                 .map((arg) => this.escapePythonString(arg))
-                .join("', '")}'];`,
+                .join("', '")}'];`
+        );
+        bootstrap = bootstrap.replace(
+            "env = {}",
+            `env = ${JSON.stringify(envVars)}`
+        );
 
-            envVarSetCmds.length !== 0
-                ? `import os; ${envVarSetCmds.join("; ")};`
-                : "",
-
-            // Set log level to "ERROR". See https://kb.databricks.com/notebooks/cmd-c-on-object-id-p0.html
-            `import logging; logger = spark._jvm.org.apache.log4j; logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)`,
-            ...programLines,
-        ].join("\n");
+        return bootstrap;
     }
 
     private escapePythonString(str: string): string {
