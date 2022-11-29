@@ -3,6 +3,7 @@ import {Time, TimeUnits} from "@databricks/databricks-sdk/dist";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import assert from "assert";
 import {mkdtemp, readFile, rm} from "fs/promises";
+import {remove} from "fs-extra";
 import {tmpdir} from "os";
 import path from "path";
 import {instance, mock, when} from "ts-mockito";
@@ -43,6 +44,6 @@ describe(__filename, function () {
     });
 
     afterEach(async () => {
-        await rm(tempDir, {recursive: true, force: true});
+        await new Promise((resolve) => remove(tempDir, resolve));
     });
 });
