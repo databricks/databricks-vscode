@@ -5,7 +5,8 @@ import {
 import {env, ExtensionContext, window} from "vscode";
 import {loggers, format, transports} from "winston";
 import {getOutputConsoleTransport} from "./outputConsoleTransport";
-import {unlink, access} from "fs/promises";
+import {unlink, access, mkdir} from "fs/promises";
+import path from "path";
 
 export class LoggerManager {
     constructor(readonly context: ExtensionContext) {}
@@ -26,7 +27,8 @@ export class LoggerManager {
 
     async initLoggers() {
         const outputChannel = window.createOutputChannel("Databricks Logs");
-        const logFile = `${this.context.logUri.path}/logs.json`;
+        await mkdir(this.context.logUri.fsPath, {recursive: true});
+        const logFile = path.join(this.context.logUri.fsPath, "logs.json");
         try {
             await access(logFile);
             await unlink(logFile);
@@ -39,12 +41,11 @@ export class LoggerManager {
             {
                 factory: (name) => {
                     return loggers.add(name, {
-                        level: "debug",
                         transports: [
                             getOutputConsoleTransport(outputChannel, {
                                 level: "debug",
                             }),
-                            this.getFileTransport(logFile, {level: "all"}),
+                            this.getFileTransport(logFile, {level: "debug"}),
                         ],
                     });
                 },
@@ -60,12 +61,11 @@ export class LoggerManager {
             {
                 factory: (name) => {
                     return loggers.add(name, {
-                        level: "error",
                         transports: [
                             getOutputConsoleTransport(outputChannel, {
                                 level: "error",
                             }),
-                            this.getFileTransport(logFile, {level: "all"}),
+                            this.getFileTransport(logFile, {level: "debug"}),
                         ],
                     });
                 },
