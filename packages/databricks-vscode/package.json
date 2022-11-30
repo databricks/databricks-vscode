@@ -579,7 +579,7 @@
         "@vscode/test-electron": "^2.2.0",
         "esbuild": "^0.15.13",
         "eslint": "^8.26.0",
-        "fs-extra": "^10.1.0",
+        "fs-extra": "^11.1.0",
         "glob": "^8.0.3",
         "mocha": "^10.1.0",
         "mock-require": "^3.0.3",
