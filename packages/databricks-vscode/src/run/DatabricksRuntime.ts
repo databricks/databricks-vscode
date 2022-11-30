@@ -19,6 +19,8 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import * as fs from "node:fs/promises";
+import {parseErrorResult} from "./ErrorParser";
+import path from "node:path";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -175,20 +177,33 @@ export class DatabricksRuntime implements Disposable {
                     column: 0,
                 });
             } else if (result.results!.resultType === "error") {
-                this._onDidSendOutputEmitter.fire({
-                    type: "out",
-                    text: (result.results! as any).cause,
-                    filePath: program,
-                    line: 0,
-                    column: 0,
-                });
-                this._onDidSendOutputEmitter.fire({
-                    type: "out",
-                    text: (result.results! as any).summary,
-                    filePath: program,
-                    line: 0,
-                    column: 0,
-                });
+                const frames = parseErrorResult(result.results!);
+                for (const frame of frames) {
+                    let localFile = "";
+                    try {
+                        if (frame.file) {
+                            localFile = syncDestination.remoteToLocal(
+                                Uri.from({
+                                    scheme: "wsfs",
+                                    path: path.normalize(frame.file),
+                                })
+                            ).fsPath;
+
+                            frame.text = frame.text.replace(
+                                frame.file,
+                                localFile
+                            );
+                        }
+                    } catch (e) {}
+
+                    this._onDidSendOutputEmitter.fire({
+                        type: "out",
+                        text: frame.text,
+                        filePath: localFile,
+                        line: frame.line || 0,
+                        column: 0,
+                    });
+                }
             } else {
                 this._onDidSendOutputEmitter.fire({
                     type: "out",

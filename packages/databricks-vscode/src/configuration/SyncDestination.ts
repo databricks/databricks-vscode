@@ -110,4 +110,14 @@ export class SyncDestination {
         );
         return Uri.joinPath(this.repoPath, relativePath).path;
     }
+
+    remoteToLocal(remotePath: Uri): Uri {
+        assert.equal(remotePath.scheme, "wsfs");
+        if (!remotePath.path.startsWith(this.repoPath.path)) {
+            throw new Error("remote path is not within the target repo");
+        }
+
+        const relativePath = remotePath.path.replace(this.repoPath.path, "");
+        return Uri.joinPath(this.vscodeWorkspacePath, relativePath);
+    }
 }
