@@ -152,8 +152,7 @@ describe(__filename, () => {
 
         await runtime.start("/Desktop/workspaces/hello.py", [], {});
 
-        assert.equal(outputs.length, 7);
+        assert.equal(outputs.length, 6);
         assert.equal(outputs[4].text, "something went wrong");
-        assert.equal(outputs[5].text, "summary");
     });
 });

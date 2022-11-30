@@ -116,8 +116,8 @@ export class DatabricksDebugSession extends LoggingDebugSession {
                     }
 
                     body.source = this.createSource(filePath);
-                    body.line = this.convertDebuggerLineToClient(line);
-                    body.column = this.convertDebuggerColumnToClient(column);
+                    body.line = line;
+                    body.column = column;
 
                     this.sendEvent(e);
                 }
