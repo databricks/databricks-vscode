@@ -1,3 +1,13 @@
+# Release: v0.0.5
+
+## packages/databricks-vscode
+
+## <small>0.0.5 (2022-11-30)</small>
+
+-   critical fix: Fix edge case where the sync command could have deleted the Databricks Repo
+-   fix: Make sure line numbers in python stack traces are correct.
+-   fix: Correctly generate logfile on Windows
+
 # Release: v0.0.4
 
 ## packages/databricks-vscode
