@@ -1,5 +1,6 @@
 import path from "path";
 import os from "os";
+import fs from "fs/promises";
 
 import {downloadAndUnzipVSCode, runTests} from "@vscode/test-electron";
 
@@ -13,9 +14,13 @@ async function main() {
         // Passed to --extensionTestsPath
         const extensionTestsPath = path.resolve(__dirname, "./suite");
 
-        const vscodeExecutablePath = await downloadAndUnzipVSCode(
-            process.env.VSCODE_TEST_VERSION || "stable"
-        );
+        const cachePath = "/tmp/vscode-test-databricks";
+        await fs.mkdir(cachePath, {recursive: true});
+
+        const vscodeExecutablePath = await downloadAndUnzipVSCode({
+            version: process.env.VSCODE_TEST_VERSION || "stable",
+            cachePath,
+        });
 
         // Download VS Code, unzip it and run the integration test
         await runTests({

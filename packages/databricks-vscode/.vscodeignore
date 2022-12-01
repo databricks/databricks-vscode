@@ -11,3 +11,8 @@ src/**
 **/*.map
 **/*.ts
 scripts/**
+.wdio-vscode-service/
+coverage/
+.nyc_output/
+logs/
+extension/

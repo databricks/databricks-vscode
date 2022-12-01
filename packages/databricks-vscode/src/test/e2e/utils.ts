@@ -1,65 +1,68 @@
-import {Key} from "selenium-webdriver";
+import * as assert from "node:assert";
 import {
-    InputBox,
-    EditorView,
-    Workbench,
-    ActivityBar,
+    CustomTreeSection,
+    sleep,
+    TreeItem,
     ViewSection,
-    VSBrowser,
-} from "vscode-extension-tester";
+} from "wdio-vscode-service";
 
-// work around for https://github.com/redhat-developer/vscode-extension-tester/issues/470
-export async function openCommandPrompt(
-    workbench: Workbench
-): Promise<InputBox> {
-    const webview = await new EditorView().findElements(
-        (EditorView as any).locators.EditorView.webView
-    );
-    if (webview.length > 0) {
-        const tab = await new EditorView().getActiveTab();
-        if (tab) {
-            await tab.sendKeys(Key.F1);
-            ``;
-            return InputBox.create();
+export type ViewSectionType = "CLUSTERS" | "CONFIGURATION";
+export async function getViewSection(
+    name: ViewSectionType
+): Promise<ViewSection | undefined> {
+    const workbench = await browser.getWorkbench();
+
+    let control;
+    for (let i = 0; i <= 10; i++) {
+        if (i === 10) {
+            assert.fail(`Can't find view control "${name}"`);
+        }
+        control = await workbench.getActivityBar().getViewControl("Databricks");
+        if (control) {
+            break;
+        }
+        await sleep(500);
+    }
+    assert.ok(control);
+
+    const view = await control.openView();
+    assert.ok(view);
+
+    const content = await view.getContent();
+    assert.ok(content);
+
+    const section = await content.getSection(name);
+    assert.ok(section);
+
+    await section.expand();
+    await (await section.elem).click();
+    return section;
+}
+
+export async function getViewSubSection(
+    section: ViewSectionType,
+    subSection: string
+): Promise<TreeItem | undefined> {
+    const sectionView = await getViewSection(section);
+
+    if (!sectionView) {
+        return;
+    }
+
+    const configTree = sectionView as CustomTreeSection;
+
+    await waitForTreeItems(configTree);
+    const configItems = await configTree.getVisibleItems();
+
+    let subConfigItem: TreeItem | undefined;
+    for (const i of configItems) {
+        const label = await i.getLabel();
+        if (label.startsWith(subSection)) {
+            subConfigItem = i;
+            break;
         }
     }
-    if (process.platform === "darwin") {
-        await workbench.getDriver().actions().sendKeys(Key.F1).perform();
-    } else {
-        await workbench
-            .getDriver()
-            .actions()
-            .keyDown(Key.CONTROL)
-            .keyDown(Key.SHIFT)
-            .sendKeys("p")
-            .perform();
-    }
-
-    return InputBox.create();
-}
-
-export async function openFolder(
-    browser: VSBrowser,
-    projectDir: string
-): Promise<void> {
-    try {
-        await browser.openResources(projectDir);
-    } catch (e) {}
-
-    await browser.driver.sleep(1000);
-    await browser.waitForWorkbench();
-}
-
-export async function getViewSection(
-    name: string
-): Promise<ViewSection | undefined> {
-    const control = await new ActivityBar().getViewControl("Databricks");
-    const view = await control?.openView();
-    const content = await view?.getContent();
-    const section = await content?.getSection(name);
-    await section?.expand();
-    await section?.click();
-    return section;
+    return subConfigItem;
 }
 
 export async function waitForTreeItems(
