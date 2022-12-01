@@ -211,7 +211,7 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.connection.configureWorkspace)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://github.com/databricks/databricks-vscode).",
+                "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.connection.configureWorkspace)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
                 "when": "workspaceFolderCount > 0"
             },
             {
