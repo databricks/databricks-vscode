@@ -139,6 +139,7 @@ export class WorkflowRunner implements Disposable {
                             ? new Convert().toHtml(e.response.error_trace)
                             : undefined,
                 });
+                panel.showStdoutResult(e.response.logs || "");
             } else {
                 panel.showError({
                     message: (e as any).message,
