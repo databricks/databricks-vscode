@@ -39,17 +39,6 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: "yarn"
 
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            **/node_modules
-            **/.eslintcache
-
-          key: ${{ inputs.os }}-${{ inputs.vscode-version }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ inputs.os }}-${{ inputs.vscode-version }}-yarn-
-
       - run: yarn install --immutable
 
       - name: Building packages
@@ -95,17 +84,6 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: "yarn"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            **/node_modules
-            **/.eslintcache
-
-          key: ${{ inputs.os }}-${{ inputs.vscode-version }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ inputs.os }}-${{ inputs.vscode-version }}-yarn-
 
       - name: Cache wdio
         uses: actions/cache@v3
