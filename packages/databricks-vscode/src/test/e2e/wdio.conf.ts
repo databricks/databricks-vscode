@@ -218,10 +218,6 @@ export const config: Options.Testrunner = {
     onPrepare: async function () {
         try {
             assert(
-                process.env["DATABRICKS_HOST"],
-                "Environment variable DATABRICKS_HOST must be set"
-            );
-            assert(
                 process.env["DATABRICKS_TOKEN"],
                 "Environment variable DATABRICKS_TOKEN must be set"
             );
@@ -234,7 +230,7 @@ export const config: Options.Testrunner = {
             await fs.mkdir(WORKSPACE_PATH);
 
             const apiClient = getApiClient(
-                process.env["DATABRICKS_HOST"],
+                getHost(),
                 process.env["DATABRICKS_TOKEN"]
             );
             const repoPath = await createRepo(apiClient);
@@ -244,14 +240,12 @@ export const config: Options.Testrunner = {
                 process.env["TEST_DEFAULT_CLUSTER_ID"]
             );
 
-            console.error(JSON.stringify(process.env));
             process.env.DATABRICKS_CONFIG_FILE = configFile;
             process.env.WORKSPACE_PATH = WORKSPACE_PATH;
             process.env.TEST_REPO_PATH = repoPath;
-            console.error(JSON.stringify(process.env));
         } catch (e) {
             console.error(e);
-            throw e;
+            process.exit(1);
         }
     },
 
@@ -395,9 +389,8 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      * @param {<Object>} results object containing test results
      */
-    onComplete: function (exitCode, config, capabilities, results) {
-        console.log("COMPLETE", exitCode);
-    },
+    // onComplete: function (exitCode, config, capabilities, results) {
+    // },
 
     /**
      * Gets executed when a refresh happens.
@@ -410,10 +403,6 @@ export const config: Options.Testrunner = {
 
 async function writeDatabricksConfig() {
     assert(
-        process.env["DATABRICKS_HOST"],
-        "Environment variable DATABRICKS_HOST must be set"
-    );
-    assert(
         process.env["DATABRICKS_TOKEN"],
         "Environment variable DATABRICKS_TOKEN must be set"
     );
@@ -423,14 +412,10 @@ async function writeDatabricksConfig() {
     );
 
     const configFile = path.join(WORKSPACE_PATH, ".databrickscfg");
-    let host = process.env["DATABRICKS_HOST"];
-    if (!host.startsWith("http")) {
-        host = `https://${host}`;
-    }
     await fs.writeFile(
         configFile,
         `[DEFAULT]
-host = ${host}
+host = ${getHost()}
 token = ${process.env["DATABRICKS_TOKEN"]}`
     );
 
@@ -479,4 +464,18 @@ async function startCluster(apiClient: ApiClient, clusterId: string) {
         console.log(`Cluster state: ${state}`)
     );
     console.log(`Cluster started`);
+}
+
+function getHost() {
+    assert(
+        process.env["DATABRICKS_HOST"],
+        "Environment variable DATABRICKS_HOST must be set"
+    );
+
+    let host = process.env["DATABRICKS_HOST"];
+    if (!host.startsWith("http")) {
+        host = `https://${host}`;
+    }
+
+    return host;
 }
