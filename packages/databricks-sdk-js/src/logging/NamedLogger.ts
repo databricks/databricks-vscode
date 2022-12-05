@@ -89,6 +89,20 @@ export class NamedLogger {
     }
 
     log(level: string, message?: string, meta?: any) {
+        if (level === "error") {
+            if (Object(meta) === meta) {
+                meta = {
+                    ...Object.getOwnPropertyNames(meta).reduce((acc, i) => {
+                        acc[i] = (meta as any)[i];
+                        return acc;
+                    }, {} as any),
+                    ...(meta as any),
+                };
+            }
+
+            meta = {error: meta};
+        }
+
         meta = defaultRedactor.sanitize(
             meta,
             this._loggerOpts?.fieldNameDenyList
@@ -109,16 +123,7 @@ export class NamedLogger {
     }
 
     error(message?: string, obj?: any) {
-        if (Object(obj) === obj) {
-            obj = {
-                ...Object.getOwnPropertyNames(obj).reduce((acc, i) => {
-                    acc[i] = (obj as any)[i];
-                    return acc;
-                }, {} as any),
-                ...(obj as any),
-            };
-        }
-        this.log(LEVELS.error, message, {error: obj});
+        this.log(LEVELS.error, message, obj);
     }
 
     withContext({
