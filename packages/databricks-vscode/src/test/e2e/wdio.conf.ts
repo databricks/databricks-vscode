@@ -15,7 +15,6 @@ import {
 } from "@databricks/databricks-sdk";
 
 const WORKSPACE_PATH = path.resolve(__dirname, "workspace");
-console.error(WORKSPACE_PATH);
 const REPO_NAME = "vscode-integ-test";
 
 export const config: Options.Testrunner = {
@@ -241,9 +240,11 @@ export const config: Options.Testrunner = {
         const configFile = await writeDatabricksConfig();
         await startCluster(apiClient, process.env["TEST_DEFAULT_CLUSTER_ID"]);
 
+        console.error(JSON.stringify(process.env));
         process.env.DATABRICKS_CONFIG_FILE = configFile;
         process.env.WORKSPACE_PATH = WORKSPACE_PATH;
         process.env.TEST_REPO_PATH = repoPath;
+        console.error(JSON.stringify(process.env));
     },
 
     /**

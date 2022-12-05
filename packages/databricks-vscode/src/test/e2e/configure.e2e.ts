@@ -17,6 +17,8 @@ describe("Configure Databricks Extension", () => {
     let workbench: Workbench;
 
     before(async function () {
+        // eslint-disable-next-line no-console
+        console.error(JSON.stringify(process.env));
         assert(
             process.env.TEST_DEFAULT_CLUSTER_ID,
             "TEST_DEFAULT_CLUSTER_ID env var doesn't exist"
