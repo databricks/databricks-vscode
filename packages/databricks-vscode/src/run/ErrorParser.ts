@@ -57,7 +57,9 @@ export function processException(cause: string): Frame[] {
         }
         const cleanChunk = chunk.replace(/\u001b\[\d+(?:;\d+)*m/g, "");
 
-        const match = cleanChunk.match(/^(\/.*?\.py) in\s/u);
+        const match =
+            cleanChunk.match(/^(\/.*?\.py) in\s/u) ||
+            cleanChunk.match(/File (\/.*?\.py)/u);
         if (match) {
             const lineMatch = cleanChunk.match(/^-+>\s(\d+)/mu);
 
@@ -82,7 +84,9 @@ function processSyntaxError(cause: string): Frame[] {
 
     for (const chunk of chunks) {
         const cleanChunk = chunk.replace(/\u001b\[\d+(?:;\d+)*m/g, "");
-        const match = cleanChunk.match(/^\s*File\s*"(.*?)", line (\d+)/u);
+        const match =
+            cleanChunk.match(/^\s*File\s*"(.*?)", line (\d+)/u) ||
+            cleanChunk.match(/File (\/.*?\.py):(\d+)/u);
         if (match) {
             frames.push({
                 file: match[1],
