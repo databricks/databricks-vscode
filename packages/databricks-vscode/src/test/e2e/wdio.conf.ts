@@ -216,35 +216,43 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      */
     onPrepare: async function () {
-        assert(
-            process.env["DATABRICKS_HOST"],
-            "Environment variable DATABRICKS_HOST must be set"
-        );
-        assert(
-            process.env["DATABRICKS_TOKEN"],
-            "Environment variable DATABRICKS_TOKEN must be set"
-        );
-        assert(
-            process.env["TEST_DEFAULT_CLUSTER_ID"],
-            "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
-        );
+        try {
+            assert(
+                process.env["DATABRICKS_HOST"],
+                "Environment variable DATABRICKS_HOST must be set"
+            );
+            assert(
+                process.env["DATABRICKS_TOKEN"],
+                "Environment variable DATABRICKS_TOKEN must be set"
+            );
+            assert(
+                process.env["TEST_DEFAULT_CLUSTER_ID"],
+                "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
+            );
 
-        await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
-        await fs.mkdir(WORKSPACE_PATH);
+            await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
+            await fs.mkdir(WORKSPACE_PATH);
 
-        const apiClient = getApiClient(
-            process.env["DATABRICKS_HOST"],
-            process.env["DATABRICKS_TOKEN"]
-        );
-        const repoPath = await createRepo(apiClient);
-        const configFile = await writeDatabricksConfig();
-        await startCluster(apiClient, process.env["TEST_DEFAULT_CLUSTER_ID"]);
+            const apiClient = getApiClient(
+                process.env["DATABRICKS_HOST"],
+                process.env["DATABRICKS_TOKEN"]
+            );
+            const repoPath = await createRepo(apiClient);
+            const configFile = await writeDatabricksConfig();
+            await startCluster(
+                apiClient,
+                process.env["TEST_DEFAULT_CLUSTER_ID"]
+            );
 
-        console.error(JSON.stringify(process.env));
-        process.env.DATABRICKS_CONFIG_FILE = configFile;
-        process.env.WORKSPACE_PATH = WORKSPACE_PATH;
-        process.env.TEST_REPO_PATH = repoPath;
-        console.error(JSON.stringify(process.env));
+            console.error(JSON.stringify(process.env));
+            process.env.DATABRICKS_CONFIG_FILE = configFile;
+            process.env.WORKSPACE_PATH = WORKSPACE_PATH;
+            process.env.TEST_REPO_PATH = repoPath;
+            console.error(JSON.stringify(process.env));
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
     },
 
     /**
@@ -387,8 +395,9 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      * @param {<Object>} results object containing test results
      */
-    // onComplete: function(exitCode, config, capabilities, results) {
-    // },
+    onComplete: function (exitCode, config, capabilities, results) {
+        console.log("COMPLETE", exitCode);
+    },
 
     /**
      * Gets executed when a refresh happens.
