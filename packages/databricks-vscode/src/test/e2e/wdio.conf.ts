@@ -4,7 +4,6 @@ import type {Options} from "@wdio/types";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const video = require("wdio-video-reporter");
-
 import path from "node:path";
 import assert from "assert";
 import fs from "fs/promises";
@@ -16,6 +15,7 @@ import {
 } from "@databricks/databricks-sdk";
 
 const WORKSPACE_PATH = path.resolve(__dirname, "workspace");
+console.error(WORKSPACE_PATH);
 const REPO_NAME = "vscode-integ-test";
 
 export const config: Options.Testrunner = {
