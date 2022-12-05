@@ -1,3 +1,12 @@
+# Release: v0.0.6
+
+## packages/databricks-vscode
+
+## <small>0.0.6 (2022-12-05)</small>
+
+-   Feature: Click to file from Python error stacktraces when using "Run on Databricks".
+-   Feature: Show stdout when job fails with exception.
+
 # Release: v0.0.5
 
 ## packages/databricks-vscode
