@@ -39,19 +39,12 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: "yarn"
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: |
-          echo "::set-output name=dir::$(yarn cache dir)"
-          echo "::set-output name=version::$(yarn -v)"
-
       - name: Cache node modules
         uses: actions/cache@v3
         with:
           path: |
             **/node_modules
             **/.eslintcache
-            ${{ steps.yarn-cache-dir-path.outputs.dir }}
 
           key: ${{ matrix.arch.os }}-${{ matrix.vscode-version }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
@@ -103,19 +96,12 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: "yarn"
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: |
-          echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
-          echo "version=$(yarn -v)" >> $GITHUB_OUTPUT
-
       - name: Cache node modules
         uses: actions/cache@v3
         with:
           path: |
             **/node_modules
             **/.eslintcache
-            ${{ steps.yarn-cache-dir-path.outputs.dir }}
 
           key: ${{ matrix.arch.os }}-${{ matrix.vscode-version }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
