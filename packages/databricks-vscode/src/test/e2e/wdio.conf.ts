@@ -4,7 +4,6 @@ import type {Options} from "@wdio/types";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const video = require("wdio-video-reporter");
-
 import path from "node:path";
 import assert from "assert";
 import fs from "fs/promises";
@@ -120,7 +119,7 @@ export const config: Options.Testrunner = {
     // Define all options that are relevant for the WebdriverIO instance here
     //
     // Level of logging verbosity: trace | debug | info | warn | error | silent
-    logLevel: "info",
+    logLevel: "debug",
 
     outputDir: "logs",
 
@@ -217,33 +216,37 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      */
     onPrepare: async function () {
-        assert(
-            process.env["DATABRICKS_HOST"],
-            "Environment variable DATABRICKS_HOST must be set"
-        );
-        assert(
-            process.env["DATABRICKS_TOKEN"],
-            "Environment variable DATABRICKS_TOKEN must be set"
-        );
-        assert(
-            process.env["TEST_DEFAULT_CLUSTER_ID"],
-            "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
-        );
+        try {
+            assert(
+                process.env["DATABRICKS_TOKEN"],
+                "Environment variable DATABRICKS_TOKEN must be set"
+            );
+            assert(
+                process.env["TEST_DEFAULT_CLUSTER_ID"],
+                "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
+            );
 
-        await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
-        await fs.mkdir(WORKSPACE_PATH);
+            await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
+            await fs.mkdir(WORKSPACE_PATH);
 
-        const apiClient = getApiClient(
-            process.env["DATABRICKS_HOST"],
-            process.env["DATABRICKS_TOKEN"]
-        );
-        const repoPath = await createRepo(apiClient);
-        const configFile = await writeDatabricksConfig();
-        await startCluster(apiClient, process.env["TEST_DEFAULT_CLUSTER_ID"]);
+            const apiClient = getApiClient(
+                getHost(),
+                process.env["DATABRICKS_TOKEN"]
+            );
+            const repoPath = await createRepo(apiClient);
+            const configFile = await writeDatabricksConfig();
+            await startCluster(
+                apiClient,
+                process.env["TEST_DEFAULT_CLUSTER_ID"]
+            );
 
-        process.env.DATABRICKS_CONFIG_FILE = configFile;
-        process.env.WORKSPACE_PATH = WORKSPACE_PATH;
-        process.env.TEST_REPO_PATH = repoPath;
+            process.env.DATABRICKS_CONFIG_FILE = configFile;
+            process.env.WORKSPACE_PATH = WORKSPACE_PATH;
+            process.env.TEST_REPO_PATH = repoPath;
+        } catch (e) {
+            console.error(e);
+            process.exit(1);
+        }
     },
 
     /**
@@ -386,7 +389,7 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      * @param {<Object>} results object containing test results
      */
-    // onComplete: function(exitCode, config, capabilities, results) {
+    // onComplete: function (exitCode, config, capabilities, results) {
     // },
 
     /**
@@ -400,10 +403,6 @@ export const config: Options.Testrunner = {
 
 async function writeDatabricksConfig() {
     assert(
-        process.env["DATABRICKS_HOST"],
-        "Environment variable DATABRICKS_HOST must be set"
-    );
-    assert(
         process.env["DATABRICKS_TOKEN"],
         "Environment variable DATABRICKS_TOKEN must be set"
     );
@@ -413,14 +412,10 @@ async function writeDatabricksConfig() {
     );
 
     const configFile = path.join(WORKSPACE_PATH, ".databrickscfg");
-    let host = process.env["DATABRICKS_HOST"];
-    if (!host.startsWith("http")) {
-        host = `https://${host}`;
-    }
     await fs.writeFile(
         configFile,
         `[DEFAULT]
-host = ${host}
+host = ${getHost()}
 token = ${process.env["DATABRICKS_TOKEN"]}`
     );
 
@@ -469,4 +464,18 @@ async function startCluster(apiClient: ApiClient, clusterId: string) {
         console.log(`Cluster state: ${state}`)
     );
     console.log(`Cluster started`);
+}
+
+function getHost() {
+    assert(
+        process.env["DATABRICKS_HOST"],
+        "Environment variable DATABRICKS_HOST must be set"
+    );
+
+    let host = process.env["DATABRICKS_HOST"];
+    if (!host.startsWith("http")) {
+        host = `https://${host}`;
+    }
+
+    return host;
 }
