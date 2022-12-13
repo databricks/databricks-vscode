@@ -6,6 +6,8 @@ import {SyncState} from "../sync";
 const bricksLogLevelToSdk = new Map<string, LEVELS>([
     ["DEBUG", LEVELS.debug],
     ["INFO", LEVELS.info],
+    ["WARN", LEVELS.warn],
+    ["ERROR", LEVELS.error],
 ]);
 
 export class BricksSyncParser {
