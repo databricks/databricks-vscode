@@ -17,8 +17,14 @@ describe("Configure Databricks Extension", () => {
     let workbench: Workbench;
 
     before(async function () {
-        assert(process.env.TEST_DEFAULT_CLUSTER_ID);
-        assert(process.env.WORKSPACE_PATH);
+        assert(
+            process.env.TEST_DEFAULT_CLUSTER_ID,
+            "TEST_DEFAULT_CLUSTER_ID env var doesn't exist"
+        );
+        assert(
+            process.env.WORKSPACE_PATH,
+            "WORKSPACE_PATH env var doesn't exist"
+        );
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
         projectDir = process.env.WORKSPACE_PATH;
 
