@@ -526,6 +526,9 @@
             }
         ]
     },
+    "extensionDependencies": [
+        "ms-python.python"
+    ],
     "vsce": {
         "dependencies": false,
         "useYarn": false

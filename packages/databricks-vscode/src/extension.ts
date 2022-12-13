@@ -19,6 +19,7 @@ import {LoggerManager, Loggers} from "./logger";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {workspaceConfigs} from "./WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
+import {ConfigureAutocomplete} from "./ConfigureAutocomplete";
 
 export async function activate(
     context: ExtensionContext
@@ -41,6 +42,10 @@ export async function activate(
         */
         return undefined;
     }
+
+    const configureAutocomplete = new ConfigureAutocomplete(context);
+    context.subscriptions.push(configureAutocomplete);
+    await configureAutocomplete.initPythonExtension();
 
     const loggerManager = new LoggerManager(context);
     if (workspaceConfigs.loggingEnabled) {
