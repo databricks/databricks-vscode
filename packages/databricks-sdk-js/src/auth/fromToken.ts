@@ -10,15 +10,23 @@ function strip(strToStrip: string, str: string) {
     return str.split(strToStrip).join("");
 }
 
-export const fromEnv = (): CredentialProvider => {
+export const fromToken = (host?: URL, token?: string): CredentialProvider => {
     return async () => {
-        const host = process.env["DATABRICKS_HOST"];
-        const token = process.env["DATABRICKS_TOKEN"];
+        token = token || process.env["DATABRICKS_TOKEN"];
+        if (!host) {
+            const hostEnv = process.env["DATABRICKS_HOST"];
+            if (!hostEnv) {
+                throw new CredentialsProviderError(
+                    "Can't find DATABRICKS_HOST environment variable"
+                );
+            }
+            host = new URL(getValidHost(strip("'", hostEnv)));
+        }
 
         if (host && token) {
             return {
                 token: strip("'", token),
-                host: new URL(getValidHost(strip("'", host))),
+                host,
             };
         }
 

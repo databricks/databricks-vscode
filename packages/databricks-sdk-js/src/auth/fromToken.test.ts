@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import {CredentialsProviderError} from "./types";
-import {fromEnv} from "./fromEnv";
+import {fromToken} from "./fromToken";
 
 describe(__filename, () => {
     let origEnv: any;
@@ -17,7 +17,18 @@ describe(__filename, () => {
         process.env["DATABRICKS_HOST"] = "https://cloud.databricks.com/";
         process.env["DATABRICKS_TOKEN"] = "dapitest1234";
 
-        const provider = fromEnv();
+        const provider = fromToken();
+        const credentials = await provider();
+
+        assert.equal(credentials.host.href, "https://cloud.databricks.com/");
+        assert.equal(credentials.token, "dapitest1234");
+    });
+
+    it("should alow for passing in values", async () => {
+        const provider = fromToken(
+            new URL("https://cloud.databricks.com/"),
+            "dapitest1234"
+        );
         const credentials = await provider();
 
         assert.equal(credentials.host.href, "https://cloud.databricks.com/");
@@ -25,7 +36,7 @@ describe(__filename, () => {
     });
 
     it("should throw if environment variables are not set", async () => {
-        const provider = fromEnv();
+        const provider = fromToken();
 
         assert.rejects(async () => {
             await provider();
