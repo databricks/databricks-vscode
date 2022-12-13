@@ -1,3 +1,5 @@
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {appendFile, mkdir, readdir, readFile} from "fs/promises";
 import path from "path";
 import {
     ExtensionContext,
@@ -7,11 +9,11 @@ import {
     Event,
     Disposable,
     workspace,
-    ProgressLocation,
     ConfigurationTarget,
 } from "vscode";
+import {Loggers} from "./logger";
 
-export type Resource = Uri | undefined;
+type Resource = Uri | undefined;
 
 // Refer https://github.com/microsoft/vscode-python/blob/main/src/client/apiTypes.ts
 interface IPythonExtension {
@@ -48,14 +50,69 @@ interface IPythonExtension {
     };
 }
 
+const importString = "from databricks.sdk.runtime import *";
+
+type StepResult = "Skip" | "Cancel" | "Error" | undefined;
+
+interface Step {
+    fn: (dryRun: boolean) => Promise<StepResult>;
+    required?: boolean;
+}
+
 export class ConfigureAutocomplete implements Disposable {
     private disposables: Disposable[] = [];
-    constructor(readonly context: ExtensionContext) {}
+    private _onPythonChangeEventListenerAdded = false;
+
+    constructor(
+        private readonly context: ExtensionContext,
+        private readonly workspaceFolder: string
+    ) {
+        this.configure();
+    }
 
     dispose() {
         this.disposables.forEach((i) => i.dispose());
     }
-    async configureAutocomplete() {
+
+    private async tryStep(fn: () => Promise<StepResult>) {
+        try {
+            return await fn();
+        } catch (e) {
+            NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Error configuring autocomplete",
+                e
+            );
+
+            if (e instanceof Error) {
+                window.showErrorMessage(
+                    `Error configuring autocomplete: ${e.message}`
+                );
+            }
+            return "Error";
+        }
+    }
+
+    /*
+        Skip run if all the required steps return "Skip". 
+    */
+    private async shouldSkipRun(steps: Step[]) {
+        for (const {fn, required} of steps) {
+            const result = await this.tryStep(() => fn(true));
+            if (result === "Error") {
+                return true;
+            }
+            if (result !== "Skip" && required) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    async configureCommand() {
+        return this.configure(true);
+    }
+
+    private async configure(force = false) {
         const pythonExtension = extensions.getExtension("ms-python.python");
         if (pythonExtension === undefined) {
             window.showWarningMessage(
@@ -65,22 +122,47 @@ export class ConfigureAutocomplete implements Disposable {
         }
         if (!pythonExtension.isActive) {
             await pythonExtension.activate();
+        }
+        /* 
+            We hook into the python extension, so that whenever user changes python interpreter (or environment),
+            we prompt them to go through the configuration steps again. For now this only involves installing pyspark. 
+            In future, we would want them to install databricks sdk in the new environment. 
+        */
+        if (!this._onPythonChangeEventListenerAdded) {
             this.disposables.push(
                 pythonExtension.exports.settings.onDidChangeExecutionDetails(
-                    this.configureAutocomplete
+                    () => this.configure(true),
+                    this
                 )
             );
+            this._onPythonChangeEventListenerAdded = true;
         }
 
-        const pythonExtensionExports =
-            pythonExtension.exports as IPythonExtension;
+        const steps = [
+            {
+                fn: async (dryRun = false) =>
+                    await this.installPyspark(
+                        pythonExtension.exports as IPythonExtension,
+                        dryRun
+                    ),
+            },
+            {
+                fn: async (dryRun = false) => this.updateExtraPaths(dryRun),
+                required: true,
+            },
+            {
+                fn: async (dryRun = false) => this.addBuiltinsFile(dryRun),
+                required: true,
+            },
+        ];
+
+        // Force is only set when running from command pallet and we do a fresh configure if it is set.
+        if (!force && (await this.shouldSkipRun(steps))) {
+            return;
+        }
 
         const choice = await window.showInformationMessage(
-            [
-                "To allow autocompletion for Databricks specific globals (like dbutils), we need to",
-                "1. install pyspark",
-                "2. add (or modify) __builtins__.pyi file to your project",
-            ].join("\n"),
+            "To allow autocompletion for Databricks specific globals (like dbutils), we need to install pyspark and add (or modify) __builtins__.pyi file to your project",
             "Continue",
             "Cancel"
         );
@@ -89,30 +171,29 @@ export class ConfigureAutocomplete implements Disposable {
             return;
         }
 
-        const steps = [
-            async () =>
-                await this.installPyspark(
-                    pythonExtension.exports as IPythonExtension
-                ),
-            this.updateExtraPaths,
-        ];
-
-        for (const step of steps) {
-            if ((await step()) === "Cancel") {
+        for (const {fn} of steps) {
+            const result = await this.tryStep(() => fn(false));
+            if (result === "Error" || result === "Cancel") {
                 return;
             }
         }
     }
 
-    async installPyspark(pythonExtension: IPythonExtension) {
+    private async installPyspark(
+        pythonExtension: IPythonExtension,
+        dryRun = false
+    ): Promise<StepResult> {
         const execCommandParts = pythonExtension.settings.getExecutionDetails(
             workspace.workspaceFolders?.[0].uri
         ).execCommand;
 
         if (execCommandParts === undefined) {
-            return;
+            return "Skip";
         }
 
+        if (dryRun) {
+            return;
+        }
         const choice = await window.showInformationMessage(
             ["Install pyspark in local env?"].join("\n"),
             "Install PySpark",
@@ -138,14 +219,20 @@ export class ConfigureAutocomplete implements Disposable {
         terminal.show();
     }
 
-    async updateExtraPaths() {
+    private async updateExtraPaths(dryRun = false): Promise<StepResult> {
         const extraPaths =
             workspace
                 .getConfiguration("python")
                 .get<Array<string>>("analysis.extraPaths") ?? [];
         const stubPath = this.context.asAbsolutePath(
-            path.join("python", "stubs")
+            path.join("resources", "python", "stubs")
         );
+        if (extraPaths.includes(stubPath)) {
+            return "Skip";
+        }
+        if (dryRun) {
+            return;
+        }
         extraPaths.push(stubPath);
         workspace
             .getConfiguration("python")
@@ -156,19 +243,49 @@ export class ConfigureAutocomplete implements Disposable {
             );
     }
 
-    async addBuiltinsFile() {
+    private async addBuiltinsFile(dryRun = false): Promise<StepResult> {
+        const stubPath = workspace
+            .getConfiguration("python")
+            .get<string>("analysis.stubPath");
+
+        const builtinsDir = stubPath
+            ? path.join(this.workspaceFolder, stubPath)
+            : this.workspaceFolder;
+
+        let builtinsFileExists = false;
+        try {
+            builtinsFileExists = (await readdir(builtinsDir)).includes(
+                "__builtins__.pyi"
+            );
+        } catch (e) {}
+
+        const builtinsPath = path.join(builtinsDir, "__builtins__.pyi");
+
+        if (
+            builtinsFileExists &&
+            (await readFile(builtinsPath, "utf-8")).includes(importString)
+        ) {
+            return "Skip";
+        }
+
+        if (dryRun) {
+            return;
+        }
+
+        const messageString = `${
+            builtinsFileExists ? "Update" : "Create"
+        } ${builtinsPath} ?`;
         const choice = await window.showInformationMessage(
-            `Install pyspark in local env?`,
-            "Install PySpark",
-            "Continue without PySpark",
+            messageString,
+            "Continue",
             "Cancel"
         );
 
         if (choice === "Cancel" || choice === undefined) {
             return "Cancel";
         }
-        if (choice === "Continue without PySpark") {
-            return "Skip";
-        }
+
+        await mkdir(path.dirname(builtinsPath), {recursive: true});
+        await appendFile(builtinsPath, `\n${importString}\n`);
     }
 }

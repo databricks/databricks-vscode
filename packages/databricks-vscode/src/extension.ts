@@ -43,10 +43,6 @@ export async function activate(
         return undefined;
     }
 
-    const configureAutocomplete = new ConfigureAutocomplete(context);
-    context.subscriptions.push(configureAutocomplete);
-    await configureAutocomplete.initPythonExtension();
-
     const loggerManager = new LoggerManager(context);
     if (workspaceConfigs.loggingEnabled) {
         loggerManager.initLoggers();
@@ -55,6 +51,19 @@ export async function activate(
     NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: await PackageJsonUtils.getMetadata(context),
     });
+
+    const configureAutocomplete = new ConfigureAutocomplete(
+        context,
+        workspace.workspaceFolders[0].uri.fsPath
+    );
+    context.subscriptions.push(
+        configureAutocomplete,
+        commands.registerCommand(
+            "databricks.autocomplete.configure",
+            configureAutocomplete.configureCommand,
+            configureAutocomplete
+        )
+    );
 
     context.subscriptions.push(
         commands.registerCommand(

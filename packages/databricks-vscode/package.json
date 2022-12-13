@@ -57,6 +57,7 @@
         "onCommand:databricks.run.runEditorContents",
         "onCommand:databricks.quickstart.open",
         "onCommand:databricks.logs.openFolder",
+        "onCommand:databricks.autocomplete.configure",
         "onView:configurationView",
         "onView:clusterView",
         "onTaskType:databricks",
@@ -169,6 +170,11 @@
             {
                 "command": "databricks.logs.openFolder",
                 "title": "Open full logs",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.autocomplete.configure",
+                "title": "Configure autocomplete for Databricks globals",
                 "category": "Databricks"
             },
             {
