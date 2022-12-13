@@ -5,6 +5,7 @@ import {
     HostParsingError,
     isConfigFileParsingError,
     loadConfigFile,
+    Profile,
     resolveConfigFilePath,
     TokenParsingError,
 } from "./configFile";
@@ -100,6 +101,30 @@ token = dapitest54321
                 "https://staging.cloud.databricks.com/"
             );
             assert.equal(profiles.STAGING.token, "dapitest54321");
+        });
+    });
+
+    it("should support profiles with username/password where user name is 'token'", async () => {
+        await withFile(async ({path}) => {
+            await writeFile(
+                path,
+                `[WITH_USERNAME]
+host = https://cloud.databricks.com/
+username = token
+password = dapitest54321
+
+[WITH_TOKEN]
+host = https://staging.cloud.databricks.com/
+token = dapitest54321
+`
+            );
+
+            const profiles = await loadConfigFile(path);
+            assert.equal(Object.keys(profiles).length, 2);
+            for (const profile of Object.values(profiles)) {
+                assert(!(profile instanceof TokenParsingError));
+                assert.equal((profile as Profile).token, "dapitest54321");
+            }
         });
     });
 
