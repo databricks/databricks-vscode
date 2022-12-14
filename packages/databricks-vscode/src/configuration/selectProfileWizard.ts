@@ -42,17 +42,7 @@ export async function configureWorkspaceWizard(
             totalSteps: 2,
             value: typeof state.host === "string" ? state.host : "",
             prompt: "Databricks Host (should begin with https://)",
-            validate: async (s) => {
-                let url;
-                try {
-                    url = new URL(s);
-                } catch (e) {
-                    return "invalid host name";
-                }
-                if (url.protocol !== "https:") {
-                    return "Invalid host name";
-                }
-            },
+            validate: validateDatabricksHost,
             shouldResume: async () => {
                 return false;
             },
@@ -205,9 +195,32 @@ export async function configureWorkspaceWizard(
         return;
     }
 
+    state.host = `https://${new URL(state.host).hostname}`;
+
     return {
         authProvider: AuthProvider.fromJSON(state),
     };
+}
+
+async function validateDatabricksHost(
+    host: string
+): Promise<string | undefined> {
+    let url;
+    try {
+        url = new URL(host);
+    } catch (e) {
+        return "Invalid host name";
+    }
+    if (url.protocol !== "https:") {
+        return "Invalid protocol";
+    }
+    if (
+        !url.hostname.match(
+            /(\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com)$/
+        )
+    ) {
+        return "Not a Databricks host";
+    }
 }
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
