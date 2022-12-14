@@ -1,7 +1,11 @@
 import assert from "node:assert";
 import path from "node:path";
 import * as fs from "fs/promises";
-import {getViewSection, waitForTreeItems} from "./utils";
+import {
+    getViewSection,
+    waitForPythonExtension,
+    waitForTreeItems,
+} from "./utils";
 import {
     CustomTreeSection,
     InputBox,
@@ -29,6 +33,7 @@ describe("Configure Databricks Extension", () => {
         projectDir = process.env.WORKSPACE_PATH;
 
         workbench = await browser.getWorkbench();
+        await waitForPythonExtension();
     });
 
     it("should open VSCode", async function () {

@@ -1,4 +1,4 @@
-import * as assert from "node:assert";
+import assert from "node:assert";
 import {
     CustomTreeSection,
     sleep,
@@ -80,4 +80,37 @@ export async function waitForTreeItems(
         }
         await new Promise((resolve) => setTimeout(resolve, 200));
     }
+}
+
+export async function waitForPythonExtension() {
+    const section = await getViewSection("CONFIGURATION");
+    assert(section);
+    const welcome = await section.findWelcomeContent();
+    assert(welcome);
+    sleep(1000);
+    const workbench = await browser.getWorkbench();
+    const notifs = await workbench.getNotifications();
+    for (const n of notifs) {
+        if (
+            (await n.getActions()).find(
+                (btn) => btn.getTitle() === "Install and Reload"
+            ) !== undefined
+        ) {
+            await n.takeAction("Install and Reload");
+        }
+    }
+
+    await browser.waitUntil(
+        async () =>
+            (
+                await (
+                    await workbench.getEditorView().getActiveTab()
+                )?.getTitle()
+            )?.includes("README.quickstart.md") === true,
+        {
+            timeout: 120000,
+            timeoutMsg:
+                "Timeout when installing python extension and reloading",
+        }
+    );
 }
