@@ -1,7 +1,12 @@
 import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
-import {getViewSection, getViewSubSection, waitForTreeItems} from "./utils";
+import {
+    getViewSection,
+    getViewSubSection,
+    waitForPythonExtension,
+    waitForTreeItems,
+} from "./utils";
 import {sleep} from "wdio-vscode-service";
 
 describe("Run python on cluster", () => {
@@ -27,6 +32,7 @@ describe("Run python on cluster", () => {
             path.join(projectDir, "hello.py"),
             `spark.sql('SELECT "hello world"').show()`
         );
+        await waitForPythonExtension();
     });
 
     it("should connect to Databricks", async () => {
