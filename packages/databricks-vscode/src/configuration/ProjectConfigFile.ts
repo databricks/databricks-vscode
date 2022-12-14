@@ -2,11 +2,12 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import {AuthProvider, ProfileAuthProvider} from "./AuthProvider";
 import {fromConfigFile} from "@databricks/databricks-sdk";
+import {Uri} from "vscode";
 
 export interface ProjectConfig {
     authProvider: AuthProvider;
     clusterId?: string;
-    workspacePath?: string;
+    workspacePath?: Uri;
 }
 
 export class ConfigFileError extends Error {}
@@ -30,11 +31,11 @@ export class ProjectConfigFile {
         this.config.clusterId = clusterId;
     }
 
-    get workspacePath() {
+    get workspacePath(): Uri | undefined {
         return this.config.workspacePath;
     }
 
-    set workspacePath(workspacePath: string | undefined) {
+    set workspacePath(workspacePath: Uri | undefined) {
         this.config.workspacePath = workspacePath;
     }
 
@@ -42,7 +43,7 @@ export class ProjectConfigFile {
         return {
             ...this.config.authProvider.toJSON(),
             clusterId: this.clusterId,
-            workspacePath: this.workspacePath,
+            workspacePath: this.workspacePath?.path,
         };
     }
 

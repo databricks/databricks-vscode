@@ -174,18 +174,17 @@ export class ConnectionManager {
         this._projectConfigFile = projectConfigFile;
 
         if (projectConfigFile.clusterId) {
-            await this.attachCluster(projectConfigFile.clusterId, false);
+            await this.attachCluster(projectConfigFile.clusterId, true);
         } else {
             this.updateCluster(undefined);
         }
 
         if (projectConfigFile.workspacePath) {
             await this.attachSyncDestination(
-                Uri.from({
-                    scheme: "wsfs",
-                    path: projectConfigFile.workspacePath,
-                }),
-                false
+                SyncDestination.normalizeWorkspacePath(
+                    projectConfigFile.workspacePath
+                ),
+                true
             );
         } else {
             this.updateSyncDestination(undefined);
@@ -377,7 +376,7 @@ export class ConnectionManager {
             }
 
             if (!skipWrite) {
-                this._projectConfigFile!.workspacePath = workspacePath.path;
+                this._projectConfigFile!.workspacePath = workspacePath;
                 await this._projectConfigFile!.write();
             }
 

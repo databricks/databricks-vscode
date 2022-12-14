@@ -6,6 +6,7 @@ import * as assert from "assert";
 import path from "path";
 import * as os from "os";
 import {ProfileAuthProvider} from "./AuthProvider";
+import {Uri} from "vscode";
 
 describe(__filename, () => {
     let tempDir: string;
@@ -21,7 +22,7 @@ describe(__filename, () => {
         const expected: ProjectConfig = {
             authProvider: authProvider,
             clusterId: "testClusterId",
-            workspacePath: "workspacePath",
+            workspacePath: Uri.from({scheme: "wsfs", path: "workspacePath"}),
         };
         await new ProjectConfigFile(expected, tempDir).write();
 
