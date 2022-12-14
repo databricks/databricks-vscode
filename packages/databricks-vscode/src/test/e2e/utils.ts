@@ -115,7 +115,9 @@ export async function waitForPythonExtension() {
     );
 
     sleep(500);
-    for (const n of notifs) {
-        await n.dismiss();
-    }
+    try {
+        for (const n of notifs) {
+            await n.dismiss();
+        }
+    } catch {}
 }
