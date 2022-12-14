@@ -9,6 +9,8 @@ import {
 export type AuthType = "azure-cli" | "gcloud-cli" | "oauth" | "profile" | "pat";
 
 export abstract class AuthProvider {
+    _credentialProvider?: CredentialProvider;
+
     constructor(
         private readonly _host: URL,
         private readonly _authType: AuthType
@@ -28,7 +30,15 @@ export abstract class AuthProvider {
     abstract describe(): string;
     abstract toJSON(): Record<string, unknown>;
     abstract getEnvVars(): {[key: string]: string};
-    abstract getCredentialProvider(): CredentialProvider;
+
+    getCredentialProvider(): CredentialProvider {
+        if (!this._credentialProvider) {
+            this._credentialProvider = this.createCredentialProvider();
+        }
+        return this._credentialProvider;
+    }
+
+    protected abstract createCredentialProvider(): CredentialProvider;
 
     static fromJSON(json: Record<string, any>): AuthProvider {
         const url = json.url instanceof URL ? json.url : new URL(json.host);
@@ -40,19 +50,22 @@ export abstract class AuthProvider {
             throw new Error("Missing authType");
         }
 
-        switch (json.authType) {
-            case "azure":
+        switch (json.authType as AuthType) {
+            case "azure-cli":
                 return new AzureCliAuthProvider(url);
+
             case "profile":
                 if (!json.profile) {
                     throw new Error("Missing profile");
                 }
                 return new ProfileAuthProvider(url, json.profile);
+
             case "pat":
                 if (!json.token) {
                     throw new Error("Missing token");
                 }
                 return new TokenAuthProvider(url, json.token);
+
             default:
                 throw new Error(`Unknown auth type: ${json.authType}`);
         }
@@ -84,7 +97,7 @@ export class TokenAuthProvider extends AuthProvider {
         };
     }
 
-    getCredentialProvider(): CredentialProvider {
+    createCredentialProvider(): CredentialProvider {
         return fromToken(this.host, this.token);
     }
 }
@@ -113,7 +126,7 @@ export class ProfileAuthProvider extends AuthProvider {
         };
     }
 
-    getCredentialProvider(): CredentialProvider {
+    createCredentialProvider(): CredentialProvider {
         return fromConfigFile(this.profile);
     }
 }
@@ -141,7 +154,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         };
     }
 
-    getCredentialProvider(): CredentialProvider {
+    createCredentialProvider(): CredentialProvider {
         return fromAzureCli(this.host);
     }
 }

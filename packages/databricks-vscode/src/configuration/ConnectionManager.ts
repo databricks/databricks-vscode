@@ -247,7 +247,7 @@ export class ConnectionManager {
                 );
 
                 const response = await window.showWarningMessage(
-                    `Connection with using "${config.authProvider.describe()}" failed with error: "${
+                    `Connection using "${config.authProvider.describe()}" failed with error: "${
                         e.message
                     }"."`,
                     "Retry",
