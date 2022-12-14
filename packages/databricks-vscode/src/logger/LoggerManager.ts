@@ -11,6 +11,20 @@ import path from "path";
 export class LoggerManager {
     constructor(readonly context: ExtensionContext) {}
 
+    private async getLogFile(prefix: string) {
+        await mkdir(this.context.logUri.fsPath, {recursive: true});
+        const logFile = path.join(
+            this.context.logUri.fsPath,
+            `${prefix}-logs.json`
+        );
+        try {
+            await access(logFile);
+            await unlink(logFile);
+        } catch (e) {}
+
+        return logFile;
+    }
+
     private getFileTransport(
         filename: string,
         extraOptions?: Omit<
@@ -27,14 +41,11 @@ export class LoggerManager {
 
     async initLoggers() {
         const outputChannel = window.createOutputChannel("Databricks Logs");
-        await mkdir(this.context.logUri.fsPath, {recursive: true});
-        const logFile = path.join(this.context.logUri.fsPath, "logs.json");
-        try {
-            await access(logFile);
-            await unlink(logFile);
-        } catch (e) {}
-
         outputChannel.clear();
+
+        const sdkAndExtensionLogfile = await this.getLogFile(
+            "sdk-and-extension"
+        );
 
         NamedLogger.getOrCreate(
             ExposedLoggers.SDK,
@@ -45,7 +56,9 @@ export class LoggerManager {
                             getOutputConsoleTransport(outputChannel, {
                                 level: "debug",
                             }),
-                            this.getFileTransport(logFile, {level: "debug"}),
+                            this.getFileTransport(sdkAndExtensionLogfile, {
+                                level: "debug",
+                            }),
                         ],
                     });
                 },
@@ -65,7 +78,32 @@ export class LoggerManager {
                             getOutputConsoleTransport(outputChannel, {
                                 level: "error",
                             }),
-                            this.getFileTransport(logFile, {level: "debug"}),
+                            this.getFileTransport(sdkAndExtensionLogfile, {
+                                level: "debug",
+                            }),
+                        ],
+                    });
+                },
+            },
+            true
+        );
+
+        const bricksLogFile = await this.getLogFile("bricks");
+        /** 
+        This logger collects all the output from bricks.
+        */
+        NamedLogger.getOrCreate(
+            "Bricks",
+            {
+                factory: (name) => {
+                    return loggers.add(name, {
+                        transports: [
+                            getOutputConsoleTransport(outputChannel, {
+                                level: "error",
+                            }),
+                            this.getFileTransport(bricksLogFile, {
+                                level: "debug",
+                            }),
                         ],
                     });
                 },
@@ -79,7 +117,9 @@ export class LoggerManager {
     }
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
 export enum Loggers {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     Extension = "Extension",
+    Bricks = "Bricks",
 }
+/* eslint-enable @typescript-eslint/naming-convention */
