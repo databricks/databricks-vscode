@@ -14,11 +14,13 @@ import {
     Workbench,
 } from "wdio-vscode-service";
 
-describe("Configure Databricks Extension", () => {
+describe("Configure Databricks Extension", async function () {
     // this will be populated by the tests
     let clusterId: string;
     let projectDir: string;
     let workbench: Workbench;
+
+    this.timeout(3 * 60 * 1000);
 
     before(async function () {
         assert(

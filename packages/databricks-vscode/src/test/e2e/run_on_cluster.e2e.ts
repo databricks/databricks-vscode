@@ -9,8 +9,9 @@ import {
 } from "./utils";
 import {sleep} from "wdio-vscode-service";
 
-describe("Run python on cluster", () => {
+describe("Run python on cluster", async function () {
     let projectDir: string;
+    this.timeout(3 * 60 * 1000);
 
     before(async () => {
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
