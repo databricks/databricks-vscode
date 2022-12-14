@@ -113,4 +113,9 @@ export async function waitForPythonExtension() {
                 "Timeout when installing python extension and reloading",
         }
     );
+
+    sleep(500);
+    for (const n of notifs) {
+        await n.dismiss();
+    }
 }
