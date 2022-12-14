@@ -2,164 +2,51 @@ import {
     ConfigFileError,
     isConfigFileParsingError,
     loadConfigFile,
+    Profile,
     Profiles,
-    resolveConfigFilePath,
 } from "@databricks/databricks-sdk";
-import {copyFile, stat, unlink} from "fs/promises";
-import path from "path";
-import {
-    commands,
-    QuickPickItem,
-    QuickPickItemKind,
-    Uri,
-    window,
-    workspace,
-} from "vscode";
-import {CliWrapper} from "../cli/CliWrapper";
+import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
 import {MultiStepInput} from "../ui/wizard";
+import {AuthProvider, AuthType} from "./AuthProvider";
+import {ProjectConfig} from "./ProjectConfigFile";
 
-export async function selectProfile(
-    cli: CliWrapper
-): Promise<string | undefined> {
-    interface State {
-        title: string;
-        step: number;
-        totalSteps: number;
-        profile: string;
-        host?: string;
-        token?: string;
-    }
+interface AuthTypeQuickPickItem extends QuickPickItem {
+    authType:
+        | "azure"
+        | "gcloud"
+        | "oauth"
+        | "profile"
+        | "pat"
+        | "new-profile"
+        | "none";
+    profile?: string;
+}
 
-    async function collectInputs() {
-        const state = {} as Partial<State>;
-        await MultiStepInput.run((input) => pickProfile(input, state));
+interface State {
+    host: string;
+    authType: AuthType;
+    profile?: string;
+    token?: string;
+}
+
+export async function configureWorkspaceWizard(
+    host?: string
+): Promise<ProjectConfig | undefined> {
+    const title = "Configure Databricks Workspace";
+
+    async function collectInputs(): Promise<State> {
+        const state = {
+            host,
+        } as Partial<State>;
+        await MultiStepInput.run((input) => inputHost(input, state));
         return state as State;
     }
 
-    const title = "Select Databricks Profile";
-
-    async function pickProfile(input: MultiStepInput, state: Partial<State>) {
-        let profiles: Profiles = {};
-        try {
-            profiles = await loadConfigFile();
-        } catch (e) {
-            if (!(e instanceof ConfigFileError)) {
-                throw e;
-            }
-            const confPath = resolveConfigFilePath();
-            let stats;
-            try {
-                stats = await stat(confPath);
-            } catch (e) {
-                /*file doesn't exist*/
-            }
-            if (stats?.isFile()) {
-                const option = await window.showErrorMessage(
-                    `Can't parse config file`,
-                    {
-                        detail: (e as ConfigFileError).message,
-                    },
-                    "Open Config File",
-                    "Backup and Overwrite Config File"
-                );
-                if (option === undefined) {
-                    return;
-                }
-                if (option === "Open Config File") {
-                    await commands.executeCommand(
-                        "databricks.connection.openDatabricksConfigFile"
-                    );
-                    return;
-                }
-                const backupPath = path.join(
-                    path.dirname(confPath),
-                    `${path.basename(confPath)}.${Date.now()}.bak`
-                );
-                await copyFile(confPath, backupPath);
-
-                const openBackup = await window.showErrorMessage(
-                    `Config file backed up at "${backupPath}"`,
-                    "Open Backup File",
-                    "Continue Without Opening"
-                );
-                if (openBackup === "Open Backup File") {
-                    const doc = await workspace.openTextDocument(
-                        Uri.file(backupPath)
-                    );
-                    await window.showTextDocument(doc);
-                }
-                await unlink(confPath);
-            }
-        }
-
-        let items: Array<QuickPickItem> = Object.keys(profiles)
-            .filter((label) => !isConfigFileParsingError(profiles[label]))
-            .map((label) => ({label}));
-
-        Object.keys(profiles)
-            .filter((label) => isConfigFileParsingError(profiles[label]))
-            .forEach((label) => {
-                const details = profiles[label];
-                if (isConfigFileParsingError(details)) {
-                    window.showWarningMessage(
-                        `Can't parse profile "${label}": ${details.name}: ${details.message}`
-                    );
-                }
-            });
-
-        if (items.length) {
-            items = [
-                {label: "Create new profile"},
-                {label: "", kind: QuickPickItemKind.Separator},
-                ...items,
-            ];
-        } else {
-            items = [{label: "Create new profile"}];
-        }
-
-        const pick = await input.showQuickPick({
+    async function inputHost(input: MultiStepInput, state: Partial<State>) {
+        const host = await input.showInputBox({
             title,
             step: 1,
-            totalSteps: 1,
-            placeholder: "Pick a profile",
-            items,
-            activeItem:
-                typeof state.profile !== "string" ? state.profile : undefined,
-            shouldResume: async () => {
-                return false;
-            },
-        });
-        if (pick.label === "Create new profile") {
-            return (input: MultiStepInput) => inputProfileName(input, state);
-        }
-        state.profile = pick.label;
-    }
-
-    async function inputProfileName(
-        input: MultiStepInput,
-        state: Partial<State>
-    ) {
-        state.profile = await input.showInputBox({
-            title,
-            step: 2,
-            totalSteps: 4,
-            value: typeof state.profile === "string" ? state.profile : "",
-            prompt: "Choose a unique name for the profile",
-            validate: async (s) => {
-                if (!s.length) {
-                    return "Invalid profile name";
-                }
-            },
-            shouldResume: shouldResume,
-        });
-        return (input: MultiStepInput) => inputHost(input, state);
-    }
-
-    async function inputHost(input: MultiStepInput, state: Partial<State>) {
-        state.host = await input.showInputBox({
-            title,
-            step: 3,
-            totalSteps: 4,
+            totalSteps: 2,
             value: typeof state.host === "string" ? state.host : "",
             prompt: "Databricks Host (should begin with https://)",
             validate: async (s) => {
@@ -173,9 +60,130 @@ export async function selectProfile(
                     return "Invalid host name";
                 }
             },
-            shouldResume: shouldResume,
+            shouldResume: async () => {
+                return false;
+            },
         });
-        return (input: MultiStepInput) => inputToken(input, state);
+
+        state.host = host;
+        return (input: MultiStepInput) => selectAuthMethod(input, state);
+    }
+
+    async function selectAuthMethod(
+        input: MultiStepInput,
+        state: Partial<State>
+    ) {
+        const items: Array<AuthTypeQuickPickItem> = [];
+        let profiles: Profiles = {};
+
+        for (const authMethod of authMethodsForHostname(new URL(state.host!))) {
+            switch (authMethod) {
+                case "azure":
+                    items.push({
+                        label: "Azure CLI",
+                        detail: "Authenticate using the 'az' command line tool",
+                        authType: "azure",
+                    });
+                    break;
+
+                case "pat":
+                    items.push({
+                        label: "PAT",
+                        kind: QuickPickItemKind.Separator,
+                        authType: "none",
+                    });
+
+                    items.push({
+                        label: "Personal Access Token",
+                        detail: "Authenticate using a personal access token",
+                        authType: "pat",
+                    });
+                    break;
+
+                case "profile":
+                    items.push({
+                        label: "Databricks CLI Profiles",
+                        kind: QuickPickItemKind.Separator,
+                        authType: "none",
+                    });
+
+                    try {
+                        profiles = await loadConfigFile();
+                    } catch (e) {
+                        if (!(e instanceof ConfigFileError)) {
+                            throw e;
+                        }
+                    }
+
+                    items.push(
+                        ...Object.keys(profiles)
+                            .filter(
+                                (label) =>
+                                    !isConfigFileParsingError(profiles[label])
+                            )
+                            .filter(
+                                (label) =>
+                                    (
+                                        profiles[label] as Profile
+                                    ).host.toString() === state.host!.toString()
+                            )
+                            .map((label) => ({
+                                label,
+                                detail: `Authenticate using the ${label} profile`,
+                                authType: "profile" as const,
+                                profile: label,
+                            }))
+                    );
+
+                    items.push({
+                        label: "",
+                        kind: QuickPickItemKind.Separator,
+                        authType: "none",
+                    });
+
+                    items.push({
+                        label: "Edit Databricks profiles",
+                        detail: "Open ~/.databrickscfg to create a new profile",
+                        authType: "new-profile",
+                    });
+
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        const pick: AuthTypeQuickPickItem = await input.showQuickPick({
+            title,
+            step: 2,
+            totalSteps: 2,
+            placeholder: "Select authentication method",
+            items,
+            shouldResume: async () => {
+                return false;
+            },
+        });
+
+        switch (pick.authType) {
+            case "azure":
+                state.authType = pick.authType;
+                break;
+
+            case "pat":
+                state.authType = pick.authType;
+                return (input: MultiStepInput) => inputToken(input, state);
+
+            case "profile":
+                state.authType = pick.authType;
+                state.profile = pick.profile;
+                break;
+
+            case "new-profile":
+                await commands.executeCommand(
+                    "databricks.connection.openDatabricksConfigFile"
+                );
+        }
     }
 
     async function inputToken(input: MultiStepInput, state: Partial<State>) {
@@ -193,17 +201,33 @@ export async function selectProfile(
             shouldResume: shouldResume,
         });
     }
-
     async function shouldResume(): Promise<boolean> {
         // Could show a notification with the option to resume.
         return true;
     }
 
     const state = await collectInputs();
-
-    if (state.host && state.profile && state.token) {
-        await cli.addProfile(state.profile, new URL(state.host), state.token);
+    if (!state.host || !state.authType) {
+        return;
     }
 
-    return state.profile;
+    return {
+        authProvider: AuthProvider.fromJSON(state),
+    };
+}
+
+function authMethodsForHostname(host: URL): Array<AuthType> {
+    if (host.hostname.endsWith(".azuredatabricks.net")) {
+        return ["azure", "pat", "profile"];
+    }
+
+    if (host.hostname.endsWith(".gcp.databricks.com")) {
+        return ["gcloud", "pat", "profile"];
+    }
+
+    if (host.hostname.endsWith(".cloud.databricks.com")) {
+        return ["oauth", "pat", "profile"];
+    }
+
+    return ["pat", "profile"];
 }

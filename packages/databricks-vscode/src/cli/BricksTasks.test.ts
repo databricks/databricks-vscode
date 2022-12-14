@@ -2,6 +2,7 @@ import "@databricks/databricks-sdk";
 import * as assert from "assert";
 import {instance, mock, when} from "ts-mockito";
 import {Uri} from "vscode";
+import {ProfileAuthProvider} from "../configuration/AuthProvider";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {SyncDestination} from "../configuration/SyncDestination";
@@ -33,7 +34,12 @@ describe(__filename, () => {
 
     it("should create pseudo terminal with correct environment variables", () => {
         const mockDbWorkspace = mock(DatabricksWorkspace);
-        when(mockDbWorkspace.profile).thenReturn("profile");
+        when(mockDbWorkspace.authProvider).thenReturn(
+            new ProfileAuthProvider(
+                new URL("https://adb-309687753508875.15.azuredatabricks.net/"),
+                "profile"
+            )
+        );
 
         const mockSyncDestination = mock(SyncDestination);
         when(mockSyncDestination.vscodeWorkspacePath).thenReturn(
@@ -60,6 +66,8 @@ describe(__filename, () => {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                 DATABRICKS_CONFIG_PROFILE: "profile",
+                DATABRICKS_HOST:
+                    "https://adb-309687753508875.15.azuredatabricks.net/",
                 DATABRICKS_CONFIG_FILE: undefined,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,

@@ -1,14 +1,12 @@
 import {
     ApiClient,
     Cluster,
-    fromConfigFile,
     CredentialProvider,
     WorkspaceService,
     HttpError,
 } from "@databricks/databricks-sdk";
 import {
     env,
-    commands,
     EventEmitter,
     Uri,
     window,
@@ -16,8 +14,8 @@ import {
 } from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {SyncDestination} from "./SyncDestination";
-import {ProjectConfigFile} from "./ProjectConfigFile";
-import {selectProfile} from "./selectProfileWizard";
+import {ProjectConfig, ProjectConfigFile} from "./ProjectConfigFile";
+import {configureWorkspaceWizard} from "./selectProfileWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
@@ -114,28 +112,21 @@ export class ConnectionManager {
 
         let projectConfigFile;
         let apiClient;
-        let profile;
 
         try {
             projectConfigFile = await ProjectConfigFile.load(
                 vscodeWorkspace.rootPath
             );
 
-            profile = projectConfigFile.config.profile;
-            if (!profile) {
-                throw new Error(
-                    "Can't login to Databricks: Can't find project configuration file"
-                );
-            }
-
-            const credentialProvider = fromConfigFile(profile);
+            const credentialProvider =
+                projectConfigFile.authProvider.getCredentialProvider();
 
             await credentialProvider();
 
             apiClient = this.apiClientFrom(credentialProvider);
             this._databricksWorkspace = await DatabricksWorkspace.load(
                 apiClient,
-                profile
+                projectConfigFile.authProvider
             );
         } catch (e: any) {
             const message = `Can't login to Databricks: ${e.message}`;
@@ -182,17 +173,17 @@ export class ConnectionManager {
         this._apiClient = apiClient;
         this._projectConfigFile = projectConfigFile;
 
-        if (projectConfigFile.config.clusterId) {
-            await this.attachCluster(projectConfigFile.config.clusterId, false);
+        if (projectConfigFile.clusterId) {
+            await this.attachCluster(projectConfigFile.clusterId, false);
         } else {
             this.updateCluster(undefined);
         }
 
-        if (projectConfigFile.config.workspacePath) {
+        if (projectConfigFile.workspacePath) {
             await this.attachSyncDestination(
                 Uri.from({
                     scheme: "wsfs",
-                    path: projectConfigFile.config.workspacePath,
+                    path: projectConfigFile.workspacePath,
                 }),
                 false
             );
@@ -232,28 +223,35 @@ export class ConnectionManager {
     }
 
     async configureWorkspace() {
-        let profile: string | undefined;
+        let config: ProjectConfig | undefined;
         while (true) {
-            profile = await selectProfile(this.cli);
-            if (!profile) {
+            config = await configureWorkspaceWizard(
+                config?.authProvider?.host.toString()
+            );
+
+            if (!config) {
                 return;
             }
 
+            const credentialProvider =
+                config.authProvider.getCredentialProvider();
+
             try {
                 await DatabricksWorkspace.load(
-                    this.apiClientFrom(fromConfigFile(profile)),
-                    profile
+                    this.apiClientFrom(credentialProvider),
+                    config.authProvider
                 );
             } catch (e: any) {
                 NamedLogger.getOrCreate("Extension").error(
-                    `Connection with profile "${profile}" failed`,
+                    `Connection using "${config.authProvider.describe()}" failed`,
                     e
                 );
 
                 const response = await window.showWarningMessage(
-                    `Connection with profile "${profile}" failed with error: "${e.message}"."`,
+                    `Connection with using "${config.authProvider.describe()}" failed with error: "${
+                        e.message
+                    }"."`,
                     "Retry",
-                    "Open configuration file",
                     "Cancel"
                 );
 
@@ -263,31 +261,25 @@ export class ConnectionManager {
 
                     case "Cancel":
                         return;
-
-                    case "Open configuration file":
-                        await commands.executeCommand(
-                            "databricks.connection.openDatabricksConfigFile"
-                        );
-                        return;
                 }
             }
 
             break;
         }
 
-        await this.writeConfigFile(profile);
-        window.showInformationMessage(`Selected profile: ${profile}`);
+        await this.writeConfigFile(config);
+        window.showInformationMessage(
+            `connected to: ${config.authProvider.host}`
+        );
 
         await this.login(true);
     }
 
-    private async writeConfigFile(profile: string) {
+    private async writeConfigFile(config: ProjectConfig) {
         const projectConfigFile = new ProjectConfigFile(
-            {},
+            config,
             vscodeWorkspace.rootPath
         );
-
-        projectConfigFile.profile = profile;
 
         await projectConfigFile.write();
     }

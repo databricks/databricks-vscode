@@ -238,10 +238,10 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
             env: {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: workspacePath,
-                DATABRICKS_CONFIG_PROFILE: dbWorkspace.profile,
                 DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
+                ...dbWorkspace.authProvider.getEnvVars(),
                 /* eslint-enable @typescript-eslint/naming-convention */
             },
         } as SpawnOptions;

@@ -1,8 +1,10 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import {AuthProvider, ProfileAuthProvider} from "./AuthProvider";
+import {fromConfigFile} from "@databricks/databricks-sdk";
 
 export interface ProjectConfig {
-    profile?: string;
+    authProvider: AuthProvider;
     clusterId?: string;
     workspacePath?: string;
 }
@@ -10,14 +12,14 @@ export interface ProjectConfig {
 export class ConfigFileError extends Error {}
 
 export class ProjectConfigFile {
-    constructor(public config: ProjectConfig, readonly rootPath?: string) {}
+    constructor(private config: ProjectConfig, readonly rootPath?: string) {}
 
-    get profile() {
-        return this.config.profile;
+    get host() {
+        return this.config.authProvider.host;
     }
 
-    set profile(profile: string | undefined) {
-        this.config.profile = profile;
+    get authProvider() {
+        return this.config.authProvider;
     }
 
     get clusterId() {
@@ -36,12 +38,20 @@ export class ProjectConfigFile {
         this.config.workspacePath = workspacePath;
     }
 
+    toJSON(): Record<string, unknown> {
+        return {
+            ...this.config.authProvider.toJSON(),
+            clusterId: this.clusterId,
+            workspacePath: this.workspacePath,
+        };
+    }
+
     async write() {
         try {
             const originalConfig = await ProjectConfigFile.load(this.rootPath);
             if (
                 JSON.stringify(originalConfig.config, null, 2) ===
-                JSON.stringify(this.config, null, 2)
+                JSON.stringify(this, null, 2)
             ) {
                 return;
             }
@@ -52,9 +62,16 @@ export class ProjectConfigFile {
         );
         await fs.mkdir(path.dirname(fileName), {recursive: true});
 
-        await fs.writeFile(fileName, JSON.stringify(this.config, null, 2), {
+        await fs.writeFile(fileName, JSON.stringify(this, null, 2), {
             encoding: "utf-8",
         });
+    }
+
+    static async importOldConfig(config: any): Promise<ProfileAuthProvider> {
+        const credentialProvider = fromConfigFile(config.profile);
+        const creds = await credentialProvider();
+
+        return new ProfileAuthProvider(creds.host, config.profile);
     }
 
     static async load(rootPath?: string): Promise<ProjectConfigFile> {
@@ -75,14 +92,26 @@ export class ProjectConfigFile {
             }
         }
 
-        let config;
+        let authProvider: AuthProvider;
+        let config: any;
         try {
             config = JSON.parse(rawConfig);
+            if (!config.authType && config.profile) {
+                authProvider = await this.importOldConfig(config);
+            } else {
+                authProvider = AuthProvider.fromJSON(config);
+            }
         } catch (e) {
             throw new ConfigFileError("Error parsing project config file");
         }
-
-        return new ProjectConfigFile(config, rootPath);
+        return new ProjectConfigFile(
+            {
+                authProvider: authProvider!,
+                clusterId: config.clusterId,
+                workspacePath: config.workspacePath,
+            },
+            rootPath
+        );
     }
 
     static getProjectConfigFilePath(rootPath?: string): string {
