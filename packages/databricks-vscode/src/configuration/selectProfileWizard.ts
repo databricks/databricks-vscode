@@ -79,19 +79,20 @@ export async function configureWorkspaceWizard(
                     });
                     break;
 
-                case "pat":
-                    items.push({
-                        label: "PAT",
-                        kind: QuickPickItemKind.Separator,
-                        authType: "none",
-                    });
+                // Disabled PAT until we can figure out how we want to deal with the secret on disk
+                // case "pat":
+                //     items.push({
+                //         label: "PAT",
+                //         kind: QuickPickItemKind.Separator,
+                //         authType: "none",
+                //     });
 
-                    items.push({
-                        label: "Personal Access Token",
-                        detail: "Authenticate using a personal access token",
-                        authType: "pat",
-                    });
-                    break;
+                //     items.push({
+                //         label: "Personal Access Token",
+                //         detail: "Authenticate using a personal access token",
+                //         authType: "pat",
+                //     });
+                //     break;
 
                 case "profile":
                     items.push({
