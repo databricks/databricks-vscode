@@ -122,10 +122,6 @@ class CustomSyncTerminal implements Pseudoterminal {
         );
         this.writeEmitter.fire("\n\r");
         this.writeEmitter.fire(
-            "[VSCODE] env vars: " + JSON.stringify(this.options.env)
-        );
-        this.writeEmitter.fire("\n\r");
-        this.writeEmitter.fire(
             "--------------------------------------------------------"
         );
         this.writeEmitter.fire("\n\r");

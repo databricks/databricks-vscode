@@ -11,14 +11,7 @@ import {AuthProvider, AuthType} from "./AuthProvider";
 import {ProjectConfig} from "./ProjectConfigFile";
 
 interface AuthTypeQuickPickItem extends QuickPickItem {
-    authType:
-        | "azure"
-        | "gcloud"
-        | "oauth"
-        | "profile"
-        | "pat"
-        | "new-profile"
-        | "none";
+    authType: AuthType | "new-profile" | "none";
     profile?: string;
 }
 
@@ -78,11 +71,11 @@ export async function configureWorkspaceWizard(
 
         for (const authMethod of authMethodsForHostname(new URL(state.host!))) {
             switch (authMethod) {
-                case "azure":
+                case "azure-cli":
                     items.push({
                         label: "Azure CLI",
                         detail: "Authenticate using the 'az' command line tool",
-                        authType: "azure",
+                        authType: "azure-cli",
                     });
                     break;
 
@@ -166,7 +159,7 @@ export async function configureWorkspaceWizard(
         });
 
         switch (pick.authType) {
-            case "azure":
+            case "azure-cli":
                 state.authType = pick.authType;
                 break;
 
@@ -218,11 +211,11 @@ export async function configureWorkspaceWizard(
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
     if (host.hostname.endsWith(".azuredatabricks.net")) {
-        return ["azure", "pat", "profile"];
+        return ["azure-cli", "oauth", "pat", "profile"];
     }
 
     if (host.hostname.endsWith(".gcp.databricks.com")) {
-        return ["gcloud", "pat", "profile"];
+        return ["gcloud-cli", "oauth", "pat", "profile"];
     }
 
     if (host.hostname.endsWith(".cloud.databricks.com")) {

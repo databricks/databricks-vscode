@@ -6,7 +6,7 @@ import {
     fromToken,
 } from "@databricks/databricks-sdk";
 
-export type AuthType = "azure" | "gcloud" | "oauth" | "profile" | "pat";
+export type AuthType = "azure-cli" | "gcloud-cli" | "oauth" | "profile" | "pat";
 
 export abstract class AuthProvider {
     constructor(
@@ -119,7 +119,7 @@ export class ProfileAuthProvider extends AuthProvider {
 
 export class AzureCliAuthProvider extends AuthProvider {
     constructor(host: URL) {
-        super(host, "azure");
+        super(host, "azure-cli");
     }
 
     describe(): string {
