@@ -79,6 +79,7 @@ export class TokenAuthProvider extends AuthProvider {
     getEnvVars(): {[key: string]: string} {
         return {
             DATABRICKS_HOST: this.host.toString(),
+            DATABRICKS_AUTH_TYPE: this.authType,
             DATABRICKS_TOKEN: this.token,
         };
     }
@@ -136,7 +137,7 @@ export class AzureCliAuthProvider extends AuthProvider {
     getEnvVars(): {[key: string]: string} {
         return {
             DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AZURE_CLI: "true",
+            DATABRICKS_AUTH_TYPE: this.authType,
         };
     }
 
