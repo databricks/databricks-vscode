@@ -127,20 +127,24 @@ export class ApiClient {
                     : e;
             throw logAndReturnError(url, options, response, err, context);
         }
+        const responseBody = await response.arrayBuffer();
+        const responseText = new TextDecoder().decode(responseBody);
 
         // throw error if the URL is incorrect and we get back an HTML page
         if (response.headers.get("content-type")?.match("text/html")) {
-            throw logAndReturnError(
-                url,
-                options,
-                response,
-                new HttpError(`Can't connect to ${url.toString()}`, 404),
-                context
-            );
-        }
+            const m = responseText.match(/<title>(Error \d+.*?)<\/title>/);
+            let error: HttpError;
+            if (m) {
+                error = new HttpError(m[1], response.status);
+            } else {
+                error = new HttpError(
+                    `Can't connect to ${url.toString()}`,
+                    response.status
+                );
+            }
 
-        const responseBody = await response.arrayBuffer();
-        const responseText = new TextDecoder().decode(responseBody);
+            throw logAndReturnError(url, options, response, error, context);
+        }
 
         // TODO proper error handling
         if (!response.ok) {
