@@ -70,7 +70,7 @@ describe("Configure Databricks Extension", () => {
         input = await new InputBox(workbench.locatorMap).wait();
         await sleep(200);
 
-        await input.selectQuickPick(2);
+        await input.selectQuickPick("DEFAULT");
 
         assert(await waitForTreeItems(section, 10_000));
     });
