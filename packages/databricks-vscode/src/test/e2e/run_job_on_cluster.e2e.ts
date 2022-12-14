@@ -2,7 +2,7 @@ import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
 import {getViewSection, getViewSubSection, waitForTreeItems} from "./utils";
-import {sleep, WebView} from "wdio-vscode-service";
+import {sleep} from "wdio-vscode-service";
 
 describe("Run python on cluster", () => {
     let projectDir: string;
@@ -87,12 +87,12 @@ describe("Run python on cluster", () => {
 
         /* eslint-disable @typescript-eslint/naming-convention */
         const labelToDefaults = {
-            taskRunId: {label: "Task run ID:", default: /N\\A/},
-            clusterId: {label: "Cluster:", default: /N\\A/},
-            startTime: {label: "Started:", default: /-/},
-            endTime: {label: "Ended:", default: /-/},
-            duration: {label: "Duration:", default: /-/},
-            status: {label: "Status:", default: /Synchronizing/},
+            taskRunId: {label: "task-run-id", default: /N\\A/},
+            clusterId: {label: "cluster", default: /N\\A/},
+            startTime: {label: "run-start-time", default: /-/},
+            endTime: {label: "run-end-time", default: /-/},
+            duration: {label: "run-duration", default: /-/},
+            status: {label: "run-status", default: /Synchronizing/},
         };
         /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -125,10 +125,9 @@ describe("Run python on cluster", () => {
                     await browser.getTextByLabel(labelToDefaults.status.label)
                 ).match(/Succeeded/) !== null,
             {
-                timeout: 10000,
+                timeout: 20000,
                 interval: 50,
-                timeoutMsg:
-                    "Job did not reach succeeded status after 1 minute.",
+                timeoutMsg: "Job did not reach succeeded status after 20s.",
             }
         );
 

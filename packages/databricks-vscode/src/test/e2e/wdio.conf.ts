@@ -294,6 +294,7 @@ export const config: Options.Testrunner = {
      * @param {Array.<String>} specs        List of spec file paths that are to be run
      * @param {Object}         browser      instance of created browser/device session
      */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     before: async function (capabilities, specs, browser) {
         initialiseCustomCommands();
     },

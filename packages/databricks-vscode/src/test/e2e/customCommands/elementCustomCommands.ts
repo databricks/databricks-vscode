@@ -8,9 +8,5 @@ async function getTextByLabel(
     label: string
 ) {
     const elem = await this.$(`aria/${label}`);
-    // eslint-disable-next-line no-console
-    console.error(label);
-    // eslint-disable-next-line no-console
-    console.error(await elem.getText());
     return elem.getText();
 }
