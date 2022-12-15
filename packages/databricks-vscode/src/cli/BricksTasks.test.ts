@@ -36,7 +36,7 @@ describe(__filename, () => {
         const mockDbWorkspace = mock(DatabricksWorkspace);
         when(mockDbWorkspace.authProvider).thenReturn(
             new ProfileAuthProvider(
-                new URL("https://adb-309687753508875.15.azuredatabricks.net/"),
+                new URL("https://adb-000000000000.00.azuredatabricks.net/"),
                 "profile"
             )
         );
