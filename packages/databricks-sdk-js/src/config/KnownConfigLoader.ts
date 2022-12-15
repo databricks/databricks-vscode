@@ -1,4 +1,5 @@
 import path from "node:path";
+import os from "node:os";
 import fs from "node:fs/promises";
 import {Config, ConfigOptions, CONFIG_FILE_VALUES, Loader} from "./Config";
 import {parse} from "ini";
@@ -9,14 +10,15 @@ export class KnownConfigLoader implements Loader {
     async configure(cfg: Config): Promise<void> {
         const configFile = cfg.configFile || "~/.databrickscfg";
 
-        const configPath = path.resolve(configFile);
+        const configPath = path.resolve(configFile.replace(/~/, os.homedir()));
+
         if (!(await fs.stat(configPath))) {
             cfg.logger.debug(`${configPath} does not exist`);
             return;
         }
 
         const iniFile = parse(
-            await fs.readFile(configFile, {encoding: "utf-8"})
+            await fs.readFile(configPath, {encoding: "utf-8"})
         );
 
         const profile = cfg.profile || "DEFAULT";

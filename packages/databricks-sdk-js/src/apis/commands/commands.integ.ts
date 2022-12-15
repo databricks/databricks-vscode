@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {CommandExecutionService} from "../..";
 import assert from "assert";
 
 import {IntegrationTestSetup, sleep} from "../../test/IntegrationTestSetup";
@@ -15,7 +14,7 @@ describe(__filename, function () {
     });
 
     it("should execute python with low level API", async () => {
-        const commandsApi = new CommandExecutionService(integSetup.client);
+        const commandsApi = integSetup.client.commands;
 
         const context = await commandsApi.createAndWait({
             clusterId: integSetup.cluster.id,

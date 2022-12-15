@@ -1,15 +1,17 @@
-import {AuthVisitor, Config, CredentialProvider} from "./Config";
+import {AzureCliCredentials} from "./AzureCliCredentials";
+import {BasicCredentials} from "./BasicCredentials";
+import {RequestVisitor, Config, CredentialProvider} from "./Config";
 import {PatCredentials} from "./PatCredentials";
 
 export class DefaultCredentials implements CredentialProvider {
     public name = "default";
 
-    async configure(config: Config): Promise<AuthVisitor> {
+    async configure(config: Config): Promise<RequestVisitor> {
         const defaultChain: Array<CredentialProvider> = [
             new PatCredentials(),
-            // new BasicCredentials(),
+            new BasicCredentials(),
             // new AzureClientSecretCredentials(),
-            // new AzureCliCredentials(),
+            new AzureCliCredentials(),
             // new GoogleDefaultCredentials(),
             // new GoogleCredentials(),
         ];

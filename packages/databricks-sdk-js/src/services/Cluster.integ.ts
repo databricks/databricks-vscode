@@ -28,7 +28,7 @@ describe(__filename, function () {
         const clusterA = integSetup.cluster;
 
         const clusterB = await Cluster.fromClusterName(
-            integSetup.client,
+            integSetup.client.apiClient,
             clusterA.details.cluster_name!
         );
 

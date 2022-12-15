@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as https from "node:https";
 import {TextDecoder} from "node:util";
-import {fromDefaultChain} from "./auth/fromChain";
 import {fetch} from "./fetch";
 import {ExposedLoggers, Utils, withLogContext} from "./logging";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -45,40 +44,22 @@ function logAndReturnError(
 
 export class ApiClient {
     private agent: https.Agent;
-    private _host?: URL;
 
-    private credentialProvider: CredentialProvider;
-    private readonly extraUserAgent: Record<string, string>;
-
-    get host(): Promise<URL> {
-        return (async () => {
-            if (!this._host) {
-                const credentials = await this.credentialProvider();
-                this._host = credentials.host;
-            }
-            return this._host;
-        })();
-    }
-
-    constructor({
-        credentialProvider = fromDefaultChain,
-        extraUserAgent = {},
-    }: {
-        credentialProvider?: CredentialProvider;
-        extraUserAgent?: Record<string, string>;
-    }) {
-        this.credentialProvider = credentialProvider;
-        this.extraUserAgent = extraUserAgent;
-
+    constructor(readonly config: Config) {
         this.agent = new https.Agent({
             keepAlive: true,
             keepAliveMsecs: 15_000,
         });
     }
 
+    get host(): Promise<URL> {
+        return this.config.getHost();
+    }
+
     userAgent(): string {
-        const pairs: Array<string> = [];
-        for (const [key, value] of Object.entries(this.extraUserAgent)) {
+        const pairs = [];
+
+        for (const [key, value] of Object.entries(this.config.userAgentExtra)) {
             pairs.push(`${key}/${value}`);
         }
 
@@ -87,9 +68,6 @@ export class ApiClient {
             `nodejs/${process.version.slice(1)}`,
             `os/${process.platform}`
         );
-
-        // TODO: add ability of per-request extra-information,
-        // so that we can track sub-functionality, like in Terraform
         return pairs.join(" ");
     }
 
@@ -100,15 +78,15 @@ export class ApiClient {
         payload?: any,
         @context context?: Context
     ): Promise<Record<string, unknown>> {
-        const credentials = await this.credentialProvider();
-        const headers = {
-            "Authorization": `Bearer ${credentials.token}`,
+        const headers = new Headers({
             "User-Agent": this.userAgent(),
             "Content-Type": "text/json",
-        };
+        });
+
+        await this.config.authenticate(headers);
 
         // create a copy of the URL, so that we can modify it
-        const url = new URL(credentials.host.toString());
+        const url = new URL(this.config.host!);
         url.pathname = path;
 
         const options: any = {

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {assert} from "console";
-import {ClientRequest} from "http";
 import {ConfigAttributes} from "./ConfigAttributes";
 import {DefaultCredentials} from "./DefaultCredentials";
 import {KnownConfigLoader} from "./KnownConfigLoader";
@@ -17,7 +16,7 @@ export interface CredentialProvider {
      * Configure creates HTTP Request Visitor or returns undefined if a given credetials
      * are not configured. It throws an error if credentials are misconfigured.
      */
-    configure(config: Config): Promise<AuthVisitor | undefined>;
+    configure(config: Config): Promise<RequestVisitor | undefined>;
 }
 
 export interface Loader {
@@ -31,7 +30,7 @@ export interface Logger {
     info(message: string): void;
 }
 
-export type AuthVisitor = (req: ClientRequest) => Promise<void>;
+export type RequestVisitor = (headers: Headers) => Promise<void>;
 
 export interface ConfigOptions {
     /**
@@ -102,6 +101,8 @@ export interface ConfigOptions {
     // RetryTimeoutSeconds int `name:"retry_timeout_seconds" auth:"-"`
 
     loaders: Array<Loader>;
+
+    userAgentExtra: Record<string, string>;
 }
 
 export const CONFIG_FILE_VALUES: Record<string, keyof ConfigOptions> = {
@@ -120,14 +121,35 @@ export const CONFIG_FILE_VALUES: Record<string, keyof ConfigOptions> = {
     azure_environment: "azureEnvironment",
     azure_login_app_id: "azureLoginAppId",
     auth_type: "authType",
-} as const;
+};
+
+export const ENV_TO_CONFIG: Record<string, keyof ConfigOptions> = {
+    DATABRICKS_CONFIG_FILE: "configFile",
+    DATABRICKS_PROFILE: "profile",
+    DATABRICKS_HOST: "host",
+    DATABRICKS_ACCOUNT_ID: "accountId",
+    DATABRICKS_TOKEN: "token",
+    DATABRICKS_USERNAME: "username",
+    DATABRICKS_PASSWORD: "password",
+    DATABRICKS_GOOGLE_SERVICE_ACCOUNT: "googleServiceAccount",
+    DATABRICKS_GOOGLE_CREDENTIALS: "googleCredentials",
+    DATABRICKS_AZURE_RESOURCE_ID: "azureResourceId",
+    DATABRICKS_AZURE_USE_MSI: "azureUseMSI",
+    ARM_USE_MSI: "azureUseMSI",
+    DATABRICKS_AZURE_CLIENT_SECRET: "azureClientSecret",
+    DATABRICKS_AZURE_CLIENT_ID: "azureClientId",
+    DATABRICKS_AZURE_TENANT_ID: "azureTenantId",
+    ARM_ENVIRONMENT: "azureEnvironment",
+    DATABRICKS_AZURE_LOGIN_APP_ID: "azureLoginAppId",
+};
 
 export class Config {
     private resolved = false;
     private loaders: Array<Loader>;
-    private auth?: AuthVisitor;
+    private auth?: RequestVisitor;
 
     readonly logger: Logger;
+    readonly userAgentExtra: Record<string, string> = {};
     public credentials?: CredentialProvider;
 
     public configFile?: string;
@@ -154,10 +176,15 @@ export class Config {
             new KnownConfigLoader(),
         ];
 
-        this.logger = config.logger || console;
         for (const [key, value] of Object.entries(config)) {
             (this as any)[key] = value;
         }
+        this.logger = config.logger || console;
+    }
+
+    async getHost(): Promise<URL> {
+        this.ensureResolved();
+        return new URL(this.host!);
     }
 
     public setAttribute(name: keyof ConfigOptions, value: string) {
@@ -167,10 +194,10 @@ export class Config {
     /**
      * Authenticate adds special headers to HTTP request to authorize it to work with Databricks REST API
      */
-    async authenticate(req: ClientRequest): Promise<void> {
-        await this.resolve();
+    async authenticate(headers: Headers): Promise<void> {
+        await this.ensureResolved();
         await this.configureCredentialProvider();
-        return this.auth!(req);
+        return this.auth!(headers);
     }
 
     /**
@@ -199,7 +226,7 @@ export class Config {
         return !this.isAzure() && !this.isGcp();
     }
 
-    private async resolve() {
+    public async ensureResolved() {
         if (this.resolved) {
             return;
         }
