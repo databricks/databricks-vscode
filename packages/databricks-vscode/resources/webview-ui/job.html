@@ -141,6 +141,8 @@
             type="module"
             src="../node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js"
         ></script>
+
+        <title>Databricks Job Run</title>
     </head>
     <body>
         <div class="container">
@@ -182,17 +184,19 @@
                 </div>
             </div>
             <div class="details">
-                <header>Task Run Details</header>
+                <header role="header" name="task-run-details">
+                    Task Run Details
+                </header>
                 <ul>
                     <li>
                         <span class="label">Task run ID:</span>
-                        <span class="value">
+                        <span class="value" aria-label="task-run-id">
                             <vscode-link id="run-id" href="#">N/A</vscode-link>
                         </span>
                     </li>
                     <li>
                         <span class="label">Cluster:</span>
-                        <span class="value">
+                        <span class="value" aria-label="cluster">
                             <vscode-link id="run-cluster" href="#"
                                 >N/A</vscode-link
                             >
@@ -200,19 +204,39 @@
                     </li>
                     <li>
                         <span class="label">Started:</span>
-                        <span class="value" id="run-started">-</span>
+                        <span
+                            class="value"
+                            id="run-started"
+                            aria-label="run-start-time"
+                            >-</span
+                        >
                     </li>
                     <li>
-                        <span class="label">Ended:</span>
-                        <span class="value" id="run-ended">-</span>
+                        <label class="label">Ended:</label>
+                        <span
+                            class="value"
+                            id="run-ended"
+                            aria-label="run-end-time"
+                            >-</span
+                        >
                     </li>
                     <li>
                         <span class="label">Duration:</span>
-                        <span class="value" id="run-duration">-</span>
+                        <span
+                            class="value"
+                            id="run-duration"
+                            aria-label="run-duration"
+                            >-</span
+                        >
                     </li>
                     <li>
                         <span class="label">Status:</span>
-                        <span class="value" id="run-status">Synchronizing</span>
+                        <span
+                            class="value"
+                            id="run-status"
+                            aria-label="run-status"
+                            >Synchronizing</span
+                        >
                     </li>
                 </ul>
             </div>
