@@ -229,7 +229,7 @@ function authMethodsForHostname(host: URL): Array<AuthType> {
     }
 
     if (host.hostname.endsWith(".gcp.databricks.com")) {
-        return ["gcloud-cli", "oauth", "pat", "profile"];
+        return ["google-id", profile"];
     }
 
     if (host.hostname.endsWith(".cloud.databricks.com")) {
