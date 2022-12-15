@@ -15,7 +15,7 @@ import {
 import {CliWrapper} from "../cli/CliWrapper";
 import {SyncDestination} from "./SyncDestination";
 import {ProjectConfig, ProjectConfigFile} from "./ProjectConfigFile";
-import {configureWorkspaceWizard} from "./selectProfileWizard";
+import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
@@ -235,6 +235,10 @@ export class ConnectionManager {
             );
 
             if (!config) {
+                return;
+            }
+
+            if (!(await config.authProvider.check(false))) {
                 return;
             }
 
