@@ -177,6 +177,6 @@ export class AzureCliAuthProvider extends AuthProvider {
     }
 
     async check(silent: boolean): Promise<boolean> {
-        return await new AzureCliCheck().check(silent);
+        return await new AzureCliCheck(this).check(silent);
     }
 }

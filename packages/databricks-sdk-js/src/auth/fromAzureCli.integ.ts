@@ -8,7 +8,9 @@ describe.skip(__filename, function () {
     this.timeout(15_000);
 
     it("should login with Azure CLI", async () => {
-        const client = new ApiClient("test", "0.1", fromAzureCli());
+        const client = new ApiClient({
+            credentialProvider: fromAzureCli(),
+        });
 
         const scimApi = new CurrentUserService(client);
         await scimApi.me();

@@ -1,8 +1,9 @@
 import * as child_process from "node:child_process";
 import {promisify} from "node:util";
-import {CurrentUserService, fromAzureCli} from "@databricks/databricks-sdk";
+import {CurrentUserService} from "@databricks/databricks-sdk";
 import {commands, Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "./ConnectionManager";
+import {AuthProvider} from "./AuthProvider";
 
 const execFile = promisify(child_process.execFile);
 
@@ -59,24 +60,22 @@ type AzureStepName =
 export class AzureCliCheck implements Disposable {
     private disposables: Disposable[] = [];
 
-    constructor(private azBinPath: string = "az") {}
+    constructor(
+        private authProvider: AuthProvider,
+        private azBinPath: string = "az"
+    ) {}
 
     dispose() {
         this.disposables.forEach((i) => i.dispose());
         this.disposables = [];
     }
 
-    public async check(
-        silent = false,
-        host: URL = new URL(
-            "https://adb-309687753508875.15.azuredatabricks.net"
-        )
-    ): Promise<boolean> {
+    public async check(silent = false): Promise<boolean> {
         let tenant: string;
 
         const steps: Record<AzureStepName, Step<boolean, AzureStepName>> = {
             tryLogin: async () => {
-                const result = await this.tryLogin(host);
+                const result = await this.tryLogin();
                 if (typeof result === "string") {
                     tenant = result;
                     return {
@@ -162,8 +161,8 @@ export class AzureCliCheck implements Disposable {
         return result;
     }
 
-    private async tryLogin(host: URL): Promise<boolean | string> {
-        const apiClient = ConnectionManager.apiClientFrom(fromAzureCli(host));
+    private async tryLogin(): Promise<boolean | string> {
+        const apiClient = ConnectionManager.apiClientFrom(this.authProvider);
         try {
             await new CurrentUserService(apiClient).me();
         } catch (e: any) {

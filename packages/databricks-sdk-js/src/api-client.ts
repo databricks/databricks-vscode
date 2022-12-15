@@ -9,6 +9,7 @@ import {context} from "./context";
 import {Context} from "./context";
 import retry, {RetriableError} from "./retries/retries";
 import Time, {TimeUnits} from "./retries/Time";
+import {CredentialProvider} from "./auth/types";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sdkVersion = require("../package.json").version;
@@ -46,6 +47,9 @@ export class ApiClient {
     private agent: https.Agent;
     private _host?: URL;
 
+    private credentialProvider: CredentialProvider;
+    private readonly extraUserAgent: Record<string, string>;
+
     get host(): Promise<URL> {
         return (async () => {
             if (!this._host) {
@@ -56,11 +60,16 @@ export class ApiClient {
         })();
     }
 
-    constructor(
-        private readonly product: string,
-        private readonly productVersion: string,
-        private credentialProvider = fromDefaultChain
-    ) {
+    constructor({
+        credentialProvider = fromDefaultChain,
+        extraUserAgent = {},
+    }: {
+        credentialProvider?: CredentialProvider;
+        extraUserAgent?: Record<string, string>;
+    }) {
+        this.credentialProvider = credentialProvider;
+        this.extraUserAgent = extraUserAgent;
+
         this.agent = new https.Agent({
             keepAlive: true,
             keepAliveMsecs: 15_000,
@@ -68,12 +77,17 @@ export class ApiClient {
     }
 
     userAgent(): string {
-        const pairs = [
-            `${this.product}/${this.productVersion}`,
+        const pairs: Array<string> = [];
+        for (const [key, value] of Object.entries(this.extraUserAgent)) {
+            pairs.push(`${key}/${value}`);
+        }
+
+        pairs.push(
             `databricks-sdk-js/${sdkVersion}`,
             `nodejs/${process.version.slice(1)}`,
-            `os/${process.platform}`,
-        ];
+            `os/${process.platform}`
+        );
+
         // TODO: add ability of per-request extra-information,
         // so that we can track sub-functionality, like in Terraform
         return pairs.join(" ");
