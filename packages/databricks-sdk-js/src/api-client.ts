@@ -7,6 +7,8 @@ import {ExposedLoggers, Utils, withLogContext} from "./logging";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "./context";
 import {Context} from "./context";
+import retry, {RetriableError} from "./retries/retries";
+import Time, {TimeUnits} from "./retries/Time";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sdkVersion = require("../package.json").version;
@@ -109,24 +111,46 @@ export class ApiClient {
             }
         }
 
-        let response;
+        const response = await retry<
+            Awaited<Awaited<ReturnType<typeof fetch>>["response"]>
+        >({
+            timeout: new Time(10, TimeUnits.seconds),
+            fn: async () => {
+                let response;
+                try {
+                    const {abort, response: responsePromise} = await fetch(
+                        url.toString(),
+                        options
+                    );
+                    if (context?.cancellationToken?.onCancellationRequested) {
+                        context?.cancellationToken?.onCancellationRequested(
+                            abort
+                        );
+                    }
+                    response = await responsePromise;
+                } catch (e: any) {
+                    const err =
+                        e.code && e.code === "ENOTFOUND"
+                            ? new HttpError(
+                                  `Can't connect to ${url.toString()}`,
+                                  500
+                              )
+                            : e;
+                    throw logAndReturnError(url, options, "", err, context);
+                }
 
-        try {
-            const {abort, response: responsePromise} = await fetch(
-                url.toString(),
-                options
-            );
-            if (context?.cancellationToken?.onCancellationRequested) {
-                context?.cancellationToken?.onCancellationRequested(abort);
-            }
-            response = await responsePromise;
-        } catch (e: any) {
-            const err =
-                e.code && e.code === "ENOTFOUND"
-                    ? new HttpError(`Can't connect to ${url.toString()}`, 500)
-                    : e;
-            throw logAndReturnError(url, options, response, err, context);
-        }
+                switch (response.status) {
+                    case 500:
+                    case 429:
+                        throw new RetriableError();
+
+                    default:
+                        break;
+                }
+                return response;
+            },
+        });
+
         const responseBody = await response.arrayBuffer();
         const responseText = new TextDecoder().decode(responseBody);
 
@@ -156,33 +180,40 @@ export class ApiClient {
             throw logAndReturnError(url, options, responseText, err, context);
         }
 
+        let responseJson: any;
         try {
-            response = JSON.parse(responseText);
+            responseJson = JSON.parse(responseText);
         } catch (e) {
             logAndReturnError(url, options, responseText, e, context);
-            new ApiClientResponseError(responseText, response);
+            new ApiClientResponseError(responseText, responseJson);
         }
 
-        if ("error" in response) {
-            logAndReturnError(url, options, response, response.error, context);
-            throw new ApiClientResponseError(response.error, response);
+        if ("error" in responseJson) {
+            logAndReturnError(
+                url,
+                options,
+                responseJson,
+                responseJson.error,
+                context
+            );
+            throw new ApiClientResponseError(responseJson.error, responseJson);
         }
 
-        if ("error_code" in response) {
+        if ("error_code" in responseJson) {
             const message =
-                response.message || `HTTP error ${response.error_code}`;
+                responseJson.message || `HTTP error ${responseJson.error_code}`;
             throw logAndReturnError(
                 url,
                 options,
-                response,
-                new HttpError(message, response.error_code),
+                responseJson,
+                new HttpError(message, responseJson.error_code),
                 context
             );
         }
         context?.logger?.debug(url.toString(), {
             request: options,
-            response: response,
+            response: responseJson,
         });
-        return response as any;
+        return responseJson;
     }
 }

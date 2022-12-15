@@ -30,8 +30,9 @@ export class SyncDestination {
 
         const repo = await Repo.fromPath(
             client,
-            repoUri.path.replace("/Workspace", "")
+            repoUri.path.replace(/^\/Workspace\//, "/")
         );
+
         return new SyncDestination(repo, repoUri, vscodeWorkspacePath);
     }
 
