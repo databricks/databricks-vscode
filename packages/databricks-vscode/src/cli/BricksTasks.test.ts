@@ -36,7 +36,7 @@ describe(__filename, () => {
         const mockDbWorkspace = mock(DatabricksWorkspace);
         when(mockDbWorkspace.authProvider).thenReturn(
             new ProfileAuthProvider(
-                new URL("https://adb-000000000000.00.azuredatabricks.net/"),
+                new URL("https://000000000000.00.azuredatabricks.net/"),
                 "profile"
             )
         );
@@ -66,8 +66,7 @@ describe(__filename, () => {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                 DATABRICKS_CONFIG_PROFILE: "profile",
-                DATABRICKS_HOST:
-                    "https://adb-309687753508875.15.azuredatabricks.net/",
+                DATABRICKS_HOST: "https://000000000000.00.azuredatabricks.net/",
                 DATABRICKS_CONFIG_FILE: undefined,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,

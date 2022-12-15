@@ -16,7 +16,7 @@ describe(__filename, () => {
 
     it("should write config file", async () => {
         const authProvider = new ProfileAuthProvider(
-            new URL("https://adb-309687753508875.15.azuredatabricks.net/"),
+            new URL("https://000000000000.00.azuredatabricks.net/"),
             "testProfile"
         );
         const expected: ProjectConfig = {
@@ -32,7 +32,7 @@ describe(__filename, () => {
         );
         const actual = JSON.parse(rawData);
         assert.deepEqual(actual, {
-            host: "https://adb-309687753508875.15.azuredatabricks.net/",
+            host: "https://000000000000.00.azuredatabricks.net/",
             authType: "profile",
             profile: "testProfile",
             workspacePath: "workspacePath",
@@ -45,7 +45,7 @@ describe(__filename, () => {
         await mkdir(path.dirname(configFile), {recursive: true});
 
         const config = {
-            host: "https://adb-309687753508875.15.azuredatabricks.net/",
+            host: "https://000000000000.00.azuredatabricks.net/",
             authType: "profile",
             profile: "testProfile",
             workspacePath: "workspacePath",
@@ -85,7 +85,7 @@ describe(__filename, () => {
         await writeFile(
             path.join(tempDir, ".databrickscfg"),
             `[testProfile]
-host = https://adb-309687753508875.15.azuredatabricks.net/
+host = https://000000000000.00.azuredatabricks.net/
 token = testToken`,
             {
                 encoding: "utf-8",
@@ -99,11 +99,11 @@ token = testToken`,
         const actual = await ProjectConfigFile.load(tempDir);
         assert.equal(
             actual.host.toString(),
-            "https://adb-309687753508875.15.azuredatabricks.net/"
+            "https://000000000000.00.azuredatabricks.net/"
         );
         assert.ok(actual.authProvider instanceof ProfileAuthProvider);
         assert.deepStrictEqual(actual.authProvider.toJSON(), {
-            host: "https://adb-309687753508875.15.azuredatabricks.net/",
+            host: "https://000000000000.00.azuredatabricks.net/",
             authType: "profile",
             profile: config.profile,
         });

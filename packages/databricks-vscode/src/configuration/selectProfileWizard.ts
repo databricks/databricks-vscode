@@ -225,15 +225,15 @@ async function validateDatabricksHost(
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
     if (host.hostname.endsWith(".azuredatabricks.net")) {
-        return ["azure-cli", "profile"];
+        return ["azure-cli", "pat", "profile"];
     }
 
     if (host.hostname.endsWith(".gcp.databricks.com")) {
-        return ["google-id", profile"];
+        return ["google-id", "pat", "profile"];
     }
 
     if (host.hostname.endsWith(".cloud.databricks.com")) {
-        return ["oauth", "pat", "profile"];
+        return ["oauth-u2m", "pat", "profile"];
     }
 
     return ["pat", "profile"];

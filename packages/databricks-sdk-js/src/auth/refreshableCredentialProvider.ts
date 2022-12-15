@@ -7,13 +7,10 @@ export function refreshableCredentialProvider(
     let token: Token | undefined;
 
     return async () => {
-        if (!token || token.isExpired) {
+        if (!token || !token.isValid()) {
             token = await source();
         }
 
-        return {
-            token: token.accessToken,
-            host: token.host,
-        };
+        return token;
     };
 }
