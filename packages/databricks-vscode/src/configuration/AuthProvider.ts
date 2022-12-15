@@ -6,7 +6,7 @@ import {
     fromToken,
 } from "@databricks/databricks-sdk";
 
-export type AuthType = "azure-cli" | "gcloud-cli" | "oauth" | "profile" | "pat";
+export type AuthType = "azure-cli" | "google-id" | "oauth-u2m" | "profile" | "pat";
 
 export abstract class AuthProvider {
     _credentialProvider?: CredentialProvider;
