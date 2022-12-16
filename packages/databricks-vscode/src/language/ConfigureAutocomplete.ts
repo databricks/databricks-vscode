@@ -11,7 +11,7 @@ import {
     workspace,
     ConfigurationTarget,
 } from "vscode";
-import {Loggers} from "./logger";
+import {Loggers} from "../logger";
 
 type Resource = Uri | undefined;
 

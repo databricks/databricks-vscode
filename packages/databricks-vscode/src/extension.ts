@@ -19,7 +19,7 @@ import {LoggerManager, Loggers} from "./logger";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {workspaceConfigs} from "./WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
-import {ConfigureAutocomplete} from "./ConfigureAutocomplete";
+import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 
 export async function activate(
     context: ExtensionContext
