@@ -5,6 +5,7 @@ import {
     getViewSection,
     getViewSubSection,
     waitForPythonExtension,
+    waitForSyncComplete,
     waitForTreeItems,
 } from "./utils";
 import {sleep, TreeItem} from "wdio-vscode-service";
@@ -44,7 +45,6 @@ describe("Run as workflow on cluster", async function () {
 
         const section = await getViewSection("CONFIGURATION");
         assert(section);
-        await waitForTreeItems(section);
         await waitForPythonExtension(3 * 60 * 1000);
 
         await (await getViewSection("CLUSTERS"))?.collapse();
@@ -86,38 +86,7 @@ describe("Run as workflow on cluster", async function () {
             }
         );
 
-        await browser.waitUntil(
-            async () => {
-                const repoConfigItem = await getViewSubSection(
-                    "CONFIGURATION",
-                    "Repo"
-                );
-                if (repoConfigItem === undefined) {
-                    return false;
-                }
-
-                let status: TreeItem | undefined = undefined;
-                for (const i of await repoConfigItem.getChildren()) {
-                    if ((await i.getLabel()).includes("State:")) {
-                        status = i;
-                        break;
-                    }
-                }
-                if (status === undefined) {
-                    return false;
-                }
-
-                const description = await status?.getDescription();
-                return (
-                    description !== undefined &&
-                    description.includes("WATCHING_FOR_CHANGES")
-                );
-            },
-            {
-                timeout: 20000,
-                timeoutMsg: "Couldn't finish sync in 20s",
-            }
-        );
+        await waitForSyncComplete();
     });
 
     it("should run a python notebook as a job on a cluster", async () => {
@@ -193,7 +162,7 @@ describe("Run as workflow on cluster", async function () {
         await sleep(200);
         await input.setText("file.py");
         await input.confirm();
-        await sleep(500);
+        await sleep(2000);
 
         // run file
         await workbench.executeQuickPick(

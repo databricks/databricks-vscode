@@ -133,3 +133,38 @@ export async function waitForPythonExtension(timeoutMs: number) {
         }
     } catch {}
 }
+
+export async function waitForSyncComplete() {
+    await browser.waitUntil(
+        async () => {
+            const repoConfigItem = await getViewSubSection(
+                "CONFIGURATION",
+                "Repo"
+            );
+            if (repoConfigItem === undefined) {
+                return false;
+            }
+
+            let status: TreeItem | undefined = undefined;
+            for (const i of await repoConfigItem.getChildren()) {
+                if ((await i.getLabel()).includes("State:")) {
+                    status = i;
+                    break;
+                }
+            }
+            if (status === undefined) {
+                return false;
+            }
+
+            const description = await status?.getDescription();
+            return (
+                description !== undefined &&
+                description.includes("WATCHING_FOR_CHANGES")
+            );
+        },
+        {
+            timeout: 20000,
+            timeoutMsg: "Couldn't finish sync in 20s",
+        }
+    );
+}

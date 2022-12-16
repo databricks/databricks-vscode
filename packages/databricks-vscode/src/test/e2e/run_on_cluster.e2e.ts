@@ -5,9 +5,10 @@ import {
     getViewSection,
     getViewSubSection,
     waitForPythonExtension,
+    waitForSyncComplete,
     waitForTreeItems,
 } from "./utils";
-import {sleep} from "wdio-vscode-service";
+import {sleep, TreeItem} from "wdio-vscode-service";
 
 describe("Run python on cluster", async function () {
     let projectDir: string;
@@ -52,16 +53,7 @@ describe("Run python on cluster", async function () {
         await buttons[0].elem.click();
 
         // wait for sync to finish
-        const workbench = await driver.getWorkbench();
-        const terminalView = await workbench.getBottomBar().openTerminalView();
-
-        while (true) {
-            await sleep(500);
-            const text = await terminalView.getText();
-            if (text.includes("Sync Complete")) {
-                break;
-            }
-        }
+        await waitForSyncComplete();
     });
 
     it("should run a python file on a cluster", async () => {
