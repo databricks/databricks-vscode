@@ -31,6 +31,6 @@ export class DefaultCredentials implements CredentialProvider {
             }
         }
 
-        throw new Error("cannot configure default credentials");
+        throw new Error("default auth: cannot configure default credentials");
     }
 }

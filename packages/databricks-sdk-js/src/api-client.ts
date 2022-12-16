@@ -6,7 +6,8 @@ import {ExposedLoggers, Utils, withLogContext} from "./logging";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "./context";
 import {Context} from "./context";
-import retry, {RetriableError, Headers} from "./retries/retries";
+import {Headers, Config} from "./config/Config";
+import retry, {RetriableError} from "./retries/retries";
 import Time, {TimeUnits} from "./retries/Time";
 import {CredentialProvider} from "./auth/types";
 
@@ -57,18 +58,17 @@ export class ApiClient {
     }
 
     userAgent(): string {
-        const pairs = [];
+        const pairs = [
+            `${this.config.product}/${this.config.productVersion}`,
+            `databricks-sdk-js/${sdkVersion}`,
+            `auth/${this.config.authType}`,
+            `nodejs/${process.version.slice(1)}`,
+            `os/${process.platform}`,
+        ];
 
         for (const [key, value] of Object.entries(this.config.userAgentExtra)) {
             pairs.push(`${key}/${value}`);
         }
-
-        pairs.push(
-            `databricks-sdk-js/${sdkVersion}`,
-            `auth-type/${this.config.authType}`,
-            `nodejs/${process.version.slice(1)}`,
-            `os/${process.platform}`
-        );
         return pairs.join(" ");
     }
 

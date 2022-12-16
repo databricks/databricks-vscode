@@ -1,7 +1,6 @@
 import {
     WorkspaceClient,
     Cluster,
-    WorkspaceService,
     HttpError,
     Config,
 } from "@databricks/databricks-sdk";
@@ -21,10 +20,6 @@ import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
-import {AuthProvider} from "./AuthProvider";
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const extensionVersion = require("../../package.json").version;
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
@@ -91,11 +86,6 @@ export class ConnectionManager {
         return this._workspaceClient;
     }
 
-    public static workspaceClientFrom(config: Config): WorkspaceClient {
-        config.userAgentExtra["vscode-extension"] = extensionVersion;
-        return new WorkspaceClient(config);
-    }
-
     async login(interactive = false): Promise<void> {
         try {
             await this._login(interactive);
@@ -126,16 +116,14 @@ export class ConnectionManager {
                 );
             }
 
-            const config = new Config({
-                profile,
-            });
+            workspaceClient =
+                projectConfigFile.authProvider.getWorkspaceClient();
 
-            await config.ensureResolved();
+            await workspaceClient.config.authenticate({});
 
-            workspaceClient = this.workspaceClientFrom(config);
             this._databricksWorkspace = await DatabricksWorkspace.load(
                 workspaceClient,
-                profile
+                projectConfigFile.authProvider
             );
         } catch (e: any) {
             const message = `Can't login to Databricks: ${e.message}`;
@@ -246,12 +234,14 @@ export class ConnectionManager {
             }
 
             try {
-                const config = new Config({profile});
-                await config.ensureResolved();
+                const workspaceClient =
+                    config.authProvider.getWorkspaceClient();
+
+                await workspaceClient.config.authenticate({});
 
                 await DatabricksWorkspace.load(
-                    this.workspaceClientFrom(config),
-                    profile
+                    workspaceClient,
+                    config.authProvider
                 );
             } catch (e: any) {
                 NamedLogger.getOrCreate("Extension").error(

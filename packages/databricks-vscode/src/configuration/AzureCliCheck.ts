@@ -1,6 +1,5 @@
-import {CurrentUserService} from "@databricks/databricks-sdk";
+import {WorkspaceClient} from "@databricks/databricks-sdk";
 import {commands, Disposable, Uri, window} from "vscode";
-import {ConnectionManager} from "./ConnectionManager";
 import {AuthProvider} from "./AuthProvider";
 import {execFileWithShell} from "@databricks/databricks-sdk/dist/config/execUtils";
 
@@ -72,7 +71,7 @@ export class AzureCliCheck implements Disposable {
 
         const steps: Record<AzureStepName, Step<boolean, AzureStepName>> = {
             tryLogin: async () => {
-                const result = await this.tryLogin();
+                const result = await this.tryLogin(this.authProvider.host);
                 if (typeof result === "string") {
                     tenant = result;
                     return {
@@ -158,10 +157,13 @@ export class AzureCliCheck implements Disposable {
         return result;
     }
 
-    private async tryLogin(): Promise<boolean | string> {
-        const apiClient = ConnectionManager.apiClientFrom(this.authProvider);
+    private async tryLogin(host: URL): Promise<boolean | string> {
+        const workspaceClient = new WorkspaceClient({
+            host: host.toString(),
+            authType: "azure-cli",
+        });
         try {
-            await new CurrentUserService(apiClient).me();
+            await workspaceClient.currentUser.me();
         } catch (e: any) {
             // parse error message
             const m = e.message.match(

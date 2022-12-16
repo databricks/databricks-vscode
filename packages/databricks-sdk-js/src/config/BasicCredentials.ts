@@ -4,8 +4,8 @@ export class BasicCredentials implements CredentialProvider {
     public name = "basic";
 
     async configure(config: Config): Promise<RequestVisitor | undefined> {
-        if (!config.username || !config.password) {
-            return undefined;
+        if (!config.username || !config.password || !config.host) {
+            return;
         }
 
         const tokenUnB64 = `${config.username}:${config.password}`;

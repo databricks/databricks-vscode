@@ -13,8 +13,6 @@ export class AzureCliCredentials implements CredentialProvider {
     public name = "azure-cli";
 
     async configure(config: Config): Promise<RequestVisitor | undefined> {
-        await config.ensureResolved();
-
         if (!config.isAzure()) {
             return;
         }

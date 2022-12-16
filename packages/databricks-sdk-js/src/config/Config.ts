@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {assert} from "console";
-import {ConfigAttributes} from "./ConfigAttributes";
+import {ConfigAttributes, EnvironmentLoader} from "./ConfigAttributes";
 import {DefaultCredentials} from "./DefaultCredentials";
 import {KnownConfigLoader} from "./KnownConfigLoader";
 
@@ -82,6 +81,8 @@ export interface ConfigOptions {
     authType: string;
 
     logger: Logger;
+
+    env: Record<string, string>;
     // // Skip SSL certificate verification for HTTP calls.
     // // Use at your own risk or for unit testing purposes.
     // insecureSkipVerify bool `name:"skip_verify" auth:"-"`
@@ -103,54 +104,106 @@ export interface ConfigOptions {
 
     loaders: Array<Loader>;
 
+    product: string;
+    productVersion: ProductVersion;
     userAgentExtra: Record<string, string>;
 }
 
-export const CONFIG_FILE_VALUES: Record<string, keyof ConfigOptions> = {
+export type AuthType = "pat" | "basic" | "azure-cli" | "google-id";
+export type AttributeName = keyof Omit<
+    ConfigOptions,
+    | "credentials"
+    | "logger"
+    | "env"
+    | "loaders"
+    | "userAgentExtra"
+    | "product"
+    | "productVersion"
+>;
+
+export const SENSISTIVE_FIELDS = new Set<AttributeName>([
+    "token",
+    "password",
+    "googleCredentials",
+    "azureClientSecret",
+]);
+
+export const AUTH_TYPE_FOR_CONFIG: Record<AttributeName, AuthType | undefined> =
+    {
+        host: undefined,
+        accountId: undefined,
+        token: "pat",
+        username: "basic",
+        password: "basic",
+        profile: undefined,
+        configFile: undefined,
+        googleServiceAccount: "google-id",
+        googleCredentials: "google-id",
+        azureResourceId: "azure-cli",
+        azureEnvironment: undefined,
+        azureUseMSI: "azure-cli",
+        azureClientSecret: "azure-cli",
+        azureClientId: "azure-cli",
+        azureTenantId: "azure-cli",
+        azureLoginAppId: "azure-cli",
+        authType: undefined,
+    };
+
+export const CONFIG_FILE_FIELD_NAMES: Record<
+    AttributeName,
+    string | undefined
+> = {
     host: "host",
-    account_id: "accountId",
+    accountId: "account_id",
     token: "token",
     username: "username",
     password: "password",
-    google_service_account: "googleServiceAccount",
-    google_credentials: "googleCredentials",
-    azure_resource_id: "azureResourceId",
-    azure_use_msi: "azureUseMSI",
-    azure_client_secret: "azureClientSecret",
-    azure_client_id: "azureClientId",
-    azure_tenant_id: "azureTenantId",
-    azure_environment: "azureEnvironment",
-    azure_login_app_id: "azureLoginAppId",
-    auth_type: "authType",
+    googleServiceAccount: "google_service_account",
+    googleCredentials: "google_credentials",
+    azureResourceId: "azure_resource_id",
+    azureUseMSI: "azure_use_msi",
+    azureClientSecret: "azure_client_secret",
+    azureClientId: "azure_client_id",
+    azureTenantId: "azure_tenant_id",
+    azureEnvironment: "azure_environment",
+    azureLoginAppId: "azure_login_app_id",
+    authType: "auth_type",
+    profile: undefined,
+    configFile: undefined,
 };
 
-export const ENV_TO_CONFIG: Record<string, keyof ConfigOptions> = {
-    DATABRICKS_CONFIG_FILE: "configFile",
-    DATABRICKS_PROFILE: "profile",
-    DATABRICKS_HOST: "host",
-    DATABRICKS_ACCOUNT_ID: "accountId",
-    DATABRICKS_TOKEN: "token",
-    DATABRICKS_USERNAME: "username",
-    DATABRICKS_PASSWORD: "password",
-    DATABRICKS_GOOGLE_SERVICE_ACCOUNT: "googleServiceAccount",
-    DATABRICKS_GOOGLE_CREDENTIALS: "googleCredentials",
-    DATABRICKS_AZURE_RESOURCE_ID: "azureResourceId",
-    DATABRICKS_AZURE_USE_MSI: "azureUseMSI",
-    ARM_USE_MSI: "azureUseMSI",
-    DATABRICKS_AZURE_CLIENT_SECRET: "azureClientSecret",
-    DATABRICKS_AZURE_CLIENT_ID: "azureClientId",
-    DATABRICKS_AZURE_TENANT_ID: "azureTenantId",
-    ARM_ENVIRONMENT: "azureEnvironment",
-    DATABRICKS_AZURE_LOGIN_APP_ID: "azureLoginAppId",
+export const ENV_VAR_NAMES: Record<AttributeName, string> = {
+    configFile: "DATABRICKS_CONFIG_FILE",
+    profile: "DATABRICKS_PROFILE",
+    host: "DATABRICKS_HOST",
+    accountId: "DATABRICKS_ACCOUNT_ID",
+    token: "DATABRICKS_TOKEN",
+    username: "DATABRICKS_USERNAME",
+    password: "DATABRICKS_PASSWORD",
+    googleServiceAccount: "DATABRICKS_GOOGLE_SERVICE_ACCOUNT",
+    googleCredentials: "DATABRICKS_GOOGLE_CREDENTIALS",
+    azureResourceId: "DATABRICKS_AZURE_RESOURCE_ID",
+    azureUseMSI: "ARM_USE_MSI",
+    azureClientSecret: "DATABRICKS_AZURE_CLIENT_SECRET",
+    azureClientId: "DATABRICKS_AZURE_CLIENT_ID",
+    azureTenantId: "DATABRICKS_AZURE_TENANT_ID",
+    azureEnvironment: "ARM_ENVIRONMENT",
+    azureLoginAppId: "DATABRICKS_AZURE_LOGIN_APP_ID",
+    authType: "DATABRICKS_AUTH_TYPE",
 };
+
+export type ProductVersion = `${number}.${number}.${number}`;
 
 export class Config {
     private resolved = false;
-    private loaders: Array<Loader>;
+    private loaders?: Array<Loader>;
     private auth?: RequestVisitor;
 
     readonly logger: Logger;
+    readonly env: typeof process.env;
     readonly userAgentExtra: Record<string, string> = {};
+    public product = "unknown";
+    public productVersion: ProductVersion = "0.0.0";
     public credentials?: CredentialProvider;
 
     public configFile?: string;
@@ -172,15 +225,11 @@ export class Config {
     public authType?: string;
 
     constructor(private config: Partial<ConfigOptions>) {
-        this.loaders = config.loaders || [
-            new ConfigAttributes(),
-            new KnownConfigLoader(),
-        ];
-
         for (const [key, value] of Object.entries(config)) {
             (this as any)[key] = value;
         }
         this.logger = config.logger || console;
+        this.env = config.env || process.env;
     }
 
     async getHost(): Promise<URL> {
@@ -188,7 +237,7 @@ export class Config {
         return new URL(this.host!);
     }
 
-    public setAttribute(name: keyof ConfigOptions, value: string) {
+    public setAttribute(name: AttributeName, value: string) {
         (this as any)[name] = value;
     }
 
@@ -205,9 +254,8 @@ export class Config {
      * isAzure returns true if client is configured for Azure Databricks
      */
     public isAzure(): boolean {
-        assert(this.host);
         return (
-            this.host!.endsWith(".azuredatabricks.net") ||
+            (!!this.host && this.host.endsWith(".azuredatabricks.net")) ||
             !!this.azureResourceId
         );
     }
@@ -216,15 +264,14 @@ export class Config {
      * isGcp returns true if client is configured for GCP
      */
     public isGcp(): boolean {
-        assert(this.host);
-        return this.host!.endsWith(".gcp.databricks.com");
+        return !!this.host && this.host.endsWith(".gcp.databricks.com");
     }
 
     /**
      * isAws returns true if client is configured for AWS
      */
     public isAws(): boolean {
-        return !this.isAzure() && !this.isGcp();
+        return !!this.host && !this.isAzure() && !this.isGcp();
     }
 
     public async ensureResolved() {
@@ -232,22 +279,35 @@ export class Config {
             return;
         }
 
-        for (const loader of this.loaders) {
+        const attributes = new ConfigAttributes(this);
+
+        const loaders = this.loaders || [
+            new EnvironmentLoader(attributes),
+            new KnownConfigLoader(),
+        ];
+
+        for (const loader of loaders) {
             this.logger.info(`Loading config via ${loader.name}`);
             await loader.configure(this);
         }
 
-        if (!this.host) {
-            throw new Error("Host is not specified");
-        }
+        await attributes.validate();
 
         this.fixHost();
         this.resolved = true;
     }
 
     private fixHost() {
-        const host = new URL(this.host!);
-        this.host = `https://${host.hostname}`;
+        if (!this.host) {
+            return;
+        }
+        let host = this.host;
+
+        if (!host.startsWith("http")) {
+            host = `https://${host}`;
+        }
+
+        this.host = `https://${new URL(host).hostname}`;
     }
 
     private async configureCredentialProvider() {

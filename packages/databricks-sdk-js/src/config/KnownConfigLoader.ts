@@ -1,7 +1,7 @@
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs/promises";
-import {Config, ConfigOptions, CONFIG_FILE_VALUES, Loader} from "./Config";
+import {AttributeName, Config, CONFIG_FILE_FIELD_NAMES, Loader} from "./Config";
 import {parse} from "ini";
 
 export class KnownConfigLoader implements Loader {
@@ -12,7 +12,9 @@ export class KnownConfigLoader implements Loader {
 
         const configPath = path.resolve(configFile.replace(/~/, os.homedir()));
 
-        if (!(await fs.stat(configPath))) {
+        try {
+            await fs.stat(configPath);
+        } catch (e) {
             cfg.logger.debug(`${configPath} does not exist`);
             return;
         }
@@ -30,12 +32,9 @@ export class KnownConfigLoader implements Loader {
         }
         cfg.logger.info(`loading ${profile} profile from ${configPath}`);
 
-        for (const key of Object.keys(CONFIG_FILE_VALUES)) {
+        for (const key of Object.keys(CONFIG_FILE_FIELD_NAMES)) {
             if (iniFile[profile][key]) {
-                cfg.setAttribute(
-                    key as keyof ConfigOptions,
-                    iniFile[profile][key]
-                );
+                cfg.setAttribute(key as AttributeName, iniFile[profile][key]);
             }
         }
 
