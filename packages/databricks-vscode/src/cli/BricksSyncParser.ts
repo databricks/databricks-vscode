@@ -1,5 +1,14 @@
+import {LEVELS, NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {EventEmitter} from "vscode";
+import {Loggers} from "../logger";
 import {SyncState} from "../sync";
+
+const bricksLogLevelToSdk = new Map<string, LEVELS>([
+    ["DEBUG", LEVELS.debug],
+    ["INFO", LEVELS.info],
+    ["WARN", LEVELS.warn],
+    ["ERROR", LEVELS.error],
+]);
 
 export class BricksSyncParser {
     private filesBeingUploaded = new Set<string>();
@@ -118,8 +127,19 @@ export class BricksSyncParser {
     // TODO: Use structed logging to compute the sync state here
     public process(data: string) {
         const logLines = data.split("\n");
+        let currentLogLevel: LEVELS = LEVELS.info;
         for (let i = 0; i < logLines.length; i++) {
             const line = logLines[i];
+            const typeMatch = line.match(
+                /[0-9]+(?:\/[0-9]+)+ [0-9]+(?::[0-9]+)+ \[(.+)\]/
+            );
+            if (typeMatch) {
+                currentLogLevel =
+                    bricksLogLevelToSdk.get(typeMatch[1]) ?? currentLogLevel;
+            }
+
+            NamedLogger.getOrCreate(Loggers.Bricks).log(currentLogLevel, line);
+
             this.parseForActionsInitiated(line);
             this.parseForUploadCompleted(line);
             this.parseForDeleteCompleted(line);
