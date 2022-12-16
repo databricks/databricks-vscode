@@ -43,9 +43,21 @@ describe("Run as workflow on cluster", async function () {
             ].join("\n")
         );
 
-        const section = await getViewSection("CONFIGURATION");
-        assert(section);
-        await waitForPythonExtension(3 * 60 * 1000);
+        for (let i = 0; i < 2; i++) {
+            try {
+                const section = await getViewSection("CONFIGURATION");
+                assert(section);
+                await waitForPythonExtension(1.5 * 60 * 1000);
+            } catch (e) {
+                // eslint-disable-next-line no-console
+                console.error(e);
+                const wb = await browser.getWorkbench();
+                await wb.executeCommand("Developer: Reload Window");
+                continue;
+            }
+
+            break;
+        }
 
         await (await getViewSection("CLUSTERS"))?.collapse();
     });

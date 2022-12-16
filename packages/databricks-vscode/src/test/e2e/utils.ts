@@ -105,7 +105,7 @@ export async function waitForPythonExtension(timeoutMs: number) {
         },
         {
             timeout: 5 * 1000,
-            interval: 100,
+            interval: 500,
             timeoutMsg:
                 "Can't find notification to install ms-python extension",
         }
@@ -163,8 +163,8 @@ export async function waitForSyncComplete() {
             );
         },
         {
-            timeout: 20000,
-            timeoutMsg: "Couldn't finish sync in 20s",
+            timeout: 60000,
+            timeoutMsg: "Couldn't finish sync in 1m",
         }
     );
 }
