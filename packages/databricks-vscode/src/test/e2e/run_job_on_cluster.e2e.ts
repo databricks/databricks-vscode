@@ -4,6 +4,7 @@ import assert from "node:assert";
 import {
     getViewSection,
     getViewSubSection,
+    startSyncIfStopped,
     waitForPythonExtension,
     waitForSyncComplete,
 } from "./utils";
@@ -50,40 +51,7 @@ describe("Run as workflow on cluster", async function () {
     });
 
     beforeEach(async () => {
-        browser.waitUntil(
-            async () => {
-                const repoConfigItem = await getViewSubSection(
-                    "CONFIGURATION",
-                    "Repo"
-                );
-                if (repoConfigItem === undefined) {
-                    return false;
-                }
-
-                let status: TreeItem | undefined = undefined;
-                for (const i of await repoConfigItem.getChildren()) {
-                    if ((await i.getLabel()).includes("State:")) {
-                        status = i;
-                        break;
-                    }
-                }
-                if (status === undefined) {
-                    return false;
-                }
-
-                if ((await status.getDescription())?.includes("STOPPED")) {
-                    const buttons = await repoConfigItem.getActionButtons();
-                    if (buttons.length === 0) {
-                        return false;
-                    }
-                    await buttons[0].elem.click();
-                }
-                return true;
-            },
-            {
-                timeout: 20000,
-            }
-        );
+        await startSyncIfStopped();
 
         await waitForSyncComplete();
     });
