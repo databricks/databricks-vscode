@@ -189,6 +189,7 @@ class dbutils:
             """
             Provides utilities for leveraging job task values
             """
+
             @staticmethod
             def get(
                 taskKey: str, key: str, default: any = None, debugValue: any = None
@@ -197,7 +198,6 @@ class dbutils:
                 Returns the latest task value that belongs to the current job run
                 """
                 ...
-
             @staticmethod
             def set(key: str, value: any) -> None:
                 """
@@ -209,6 +209,7 @@ class dbutils:
         """
         Utilities for session isolated libraries
         """
+
         @staticmethod
         def restartPython() -> None:
             """
@@ -220,15 +221,14 @@ class dbutils:
         """
         Utilities for the control flow of a notebook (EXPERIMENTAL)
         """
-        @staticmethod
 
+        @staticmethod
         def exit(value: str) -> None:
             """
             This method lets you exit a notebook with a value
             """
             ...
         @staticmethod
-    
         def run(path: str, timeoutSeconds: int, arguments: typing.Map[str, str]) -> str:
             """
             This method runs a notebook and returns its exit value
