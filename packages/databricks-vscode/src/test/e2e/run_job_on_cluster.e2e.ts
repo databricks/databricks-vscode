@@ -46,12 +46,11 @@ describe("Run as workflow on cluster", async function () {
         assert(section);
         await waitForTreeItems(section);
         await waitForPythonExtension(3 * 60 * 1000);
+
+        await (await getViewSection("CLUSTERS"))?.collapse();
     });
 
     beforeEach(async () => {
-        const section = await getViewSection("CLUSTERS");
-        await section?.collapse();
-
         const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
         assert(repoConfigItem);
 

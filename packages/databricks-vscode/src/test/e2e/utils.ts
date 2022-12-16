@@ -85,8 +85,6 @@ export async function waitForTreeItems(
 export async function waitForPythonExtension(timeoutMs: number) {
     const section = await getViewSection("CONFIGURATION");
     assert(section);
-    const welcome = await section.findWelcomeContent();
-    assert(welcome);
     const workbench = await browser.getWorkbench();
 
     await browser.waitUntil(
