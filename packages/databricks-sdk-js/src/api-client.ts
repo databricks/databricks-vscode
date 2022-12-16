@@ -151,8 +151,17 @@ export class ApiClient {
             },
         });
 
-        const responseBody = await response.arrayBuffer();
-        const responseText = new TextDecoder().decode(responseBody);
+        let responseText!: string;
+        try {
+            const responseBody = await response.arrayBuffer();
+            responseText = new TextDecoder().decode(responseBody);
+        } catch (e: any) {
+            logAndReturnError(url, options, "", e, context);
+            throw new ApiClientResponseError(
+                `Can't parse response from ${url.toString()}`,
+                ""
+            );
+        }
 
         // throw error if the URL is incorrect and we get back an HTML page
         if (response.headers.get("content-type")?.match("text/html")) {
@@ -185,7 +194,7 @@ export class ApiClient {
             responseJson = JSON.parse(responseText);
         } catch (e) {
             logAndReturnError(url, options, responseText, e, context);
-            new ApiClientResponseError(responseText, responseJson);
+            throw new ApiClientResponseError(responseText, responseJson);
         }
 
         if ("error" in responseJson) {
