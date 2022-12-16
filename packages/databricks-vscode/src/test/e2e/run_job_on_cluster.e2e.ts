@@ -51,21 +51,40 @@ describe("Run as workflow on cluster", async function () {
     });
 
     beforeEach(async () => {
-        const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
-        assert(repoConfigItem);
+        browser.waitUntil(
+            async () => {
+                const repoConfigItem = await getViewSubSection(
+                    "CONFIGURATION",
+                    "Repo"
+                );
+                if (repoConfigItem === undefined) {
+                    return false;
+                }
 
-        let status: TreeItem | undefined = undefined;
-        for (const i of await repoConfigItem.getChildren()) {
-            if ((await i.getLabel()).includes("State:")) {
-                status = i;
-                break;
+                let status: TreeItem | undefined = undefined;
+                for (const i of await repoConfigItem.getChildren()) {
+                    if ((await i.getLabel()).includes("State:")) {
+                        status = i;
+                        break;
+                    }
+                }
+                if (status === undefined) {
+                    return false;
+                }
+
+                if ((await status.getDescription())?.includes("STOPPED")) {
+                    const buttons = await repoConfigItem.getActionButtons();
+                    if (buttons.length === 0) {
+                        return false;
+                    }
+                    await buttons[0].elem.click();
+                }
+                return true;
+            },
+            {
+                timeout: 20000,
             }
-        }
-        assert(status);
-        if ((await status.getDescription())?.includes("STOPPED")) {
-            const buttons = await repoConfigItem.getActionButtons();
-            await buttons[0].elem.click();
-        }
+        );
 
         await browser.waitUntil(
             async () => {
@@ -73,16 +92,21 @@ describe("Run as workflow on cluster", async function () {
                     "CONFIGURATION",
                     "Repo"
                 );
-                assert(repoConfigItem);
+                if (repoConfigItem === undefined) {
+                    return false;
+                }
 
-                status = undefined;
+                let status: TreeItem | undefined = undefined;
                 for (const i of await repoConfigItem.getChildren()) {
                     if ((await i.getLabel()).includes("State:")) {
                         status = i;
                         break;
                     }
                 }
-                assert(status);
+                if (status === undefined) {
+                    return false;
+                }
+
                 const description = await status?.getDescription();
                 return (
                     description !== undefined &&
