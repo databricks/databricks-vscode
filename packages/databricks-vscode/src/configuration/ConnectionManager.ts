@@ -90,7 +90,7 @@ export class ConnectionManager {
         return this._apiClient;
     }
 
-    private apiClientFrom(creds: CredentialProvider): ApiClient {
+    public static apiClientFrom(creds: CredentialProvider): ApiClient {
         return new ApiClient("vscode-extension", extensionVersion, creds);
     }
 
@@ -121,9 +121,15 @@ export class ConnectionManager {
             const credentialProvider =
                 projectConfigFile.authProvider.getCredentialProvider();
 
+            if (!(await projectConfigFile.authProvider.check(true))) {
+                throw new Error(
+                    `Can't login with ${projectConfigFile.authProvider.describe()}.`
+                );
+            }
+
             await credentialProvider();
 
-            apiClient = this.apiClientFrom(credentialProvider);
+            apiClient = ConnectionManager.apiClientFrom(credentialProvider);
             this._databricksWorkspace = await DatabricksWorkspace.load(
                 apiClient,
                 projectConfigFile.authProvider
@@ -237,7 +243,7 @@ export class ConnectionManager {
 
             try {
                 await DatabricksWorkspace.load(
-                    this.apiClientFrom(credentialProvider),
+                    ConnectionManager.apiClientFrom(credentialProvider),
                     config.authProvider
                 );
             } catch (e: any) {

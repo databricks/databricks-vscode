@@ -6,6 +6,8 @@ import {
     fromToken,
 } from "@databricks/databricks-sdk";
 
+import {AzureCliCheck} from "./AzureCliCheck";
+
 export type AuthType =
     | "azure-cli"
     | "google-id"
@@ -41,6 +43,11 @@ export abstract class AuthProvider {
             this._credentialProvider = this.createCredentialProvider();
         }
         return this._credentialProvider;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async check(silent: boolean): Promise<boolean> {
+        return true;
     }
 
     protected abstract createCredentialProvider(): CredentialProvider;
@@ -161,5 +168,9 @@ export class AzureCliAuthProvider extends AuthProvider {
 
     createCredentialProvider(): CredentialProvider {
         return fromAzureCli(this.host);
+    }
+
+    async check(silent: boolean): Promise<boolean> {
+        return await new AzureCliCheck().check(silent);
     }
 }
