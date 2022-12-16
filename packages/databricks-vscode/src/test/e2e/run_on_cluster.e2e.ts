@@ -4,7 +4,6 @@ import assert from "node:assert";
 import {
     getViewSection,
     startSyncIfStopped,
-    waitForPythonExtension,
     waitForPythonExtensionWithRetry,
     waitForSyncComplete,
     waitForTreeItems,

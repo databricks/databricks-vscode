@@ -3,7 +3,6 @@ import path from "node:path";
 import * as fs from "fs/promises";
 import {
     getViewSection,
-    waitForPythonExtension,
     waitForPythonExtensionWithRetry,
     waitForTreeItems,
 } from "./utils";

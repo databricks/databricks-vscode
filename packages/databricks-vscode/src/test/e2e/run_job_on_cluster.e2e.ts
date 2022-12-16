@@ -3,13 +3,11 @@ import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
     getViewSection,
-    getViewSubSection,
     startSyncIfStopped,
-    waitForPythonExtension,
     waitForPythonExtensionWithRetry,
     waitForSyncComplete,
 } from "./utils";
-import {sleep, TreeItem} from "wdio-vscode-service";
+import {sleep} from "wdio-vscode-service";
 
 describe("Run as workflow on cluster", async function () {
     let projectDir: string;
