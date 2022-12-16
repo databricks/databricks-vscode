@@ -179,7 +179,7 @@ export class ApiClient {
 
         // throw error if the URL is incorrect and we get back an HTML page
         if (response.headers.get("content-type")?.match("text/html")) {
-            // When the AAD tenent is not configured correctly, the response is a HTML page with a title like this:
+            // When the AAD tenant is not configured correctly, the response is a HTML page with a title like this:
             // "Error 400 io.jsonwebtoken.IncorrectClaimException: Expected iss claim to be: https://sts.windows.net/aaaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa/, but was: https://sts.windows.net/bbbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb/."
             const m = responseText.match(/<title>(Error \d+.*?)<\/title>/);
             let error: HttpError;

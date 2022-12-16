@@ -5,7 +5,6 @@ import {
     fromConfigFile,
     fromToken,
 } from "@databricks/databricks-sdk";
-import {AzureCliCheck} from "./AzureCliCheck";
 
 import {AzureCliCheck} from "./AzureCliCheck";
 
@@ -38,11 +37,6 @@ export abstract class AuthProvider {
     abstract describe(): string;
     abstract toJSON(): Record<string, unknown>;
     abstract getEnvVars(): {[key: string]: string};
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async check(silent: boolean): Promise<boolean> {
-        return true;
-    }
 
     getCredentialProvider(): CredentialProvider {
         if (!this._credentialProvider) {
