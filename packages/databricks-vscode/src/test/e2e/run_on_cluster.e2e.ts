@@ -4,6 +4,7 @@ import assert from "node:assert";
 import {
     getViewSection,
     getViewSubSection,
+    startSyncIfStopped,
     waitForPythonExtension,
     waitForSyncComplete,
     waitForTreeItems,
@@ -47,10 +48,7 @@ describe("Run python on cluster", async function () {
         const section = await getViewSection("CLUSTERS");
         await section?.collapse();
 
-        const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
-        assert(repoConfigItem);
-        const buttons = await repoConfigItem.getActionButtons();
-        await buttons[0].elem.click();
+        await startSyncIfStopped();
 
         // wait for sync to finish
         await waitForSyncComplete();

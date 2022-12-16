@@ -6,7 +6,6 @@ import {
     getViewSubSection,
     waitForPythonExtension,
     waitForSyncComplete,
-    waitForTreeItems,
 } from "./utils";
 import {sleep, TreeItem} from "wdio-vscode-service";
 
