@@ -59,16 +59,19 @@ class dbutils:
         Utilities for interacting with credentials within notebooks
         """
 
+        @staticmethod
         def assumeRole(role: str) -> bool:
             """
             Sets the role ARN to assume when looking for credentials to authenticate with S3
             """
             ...
+        @staticmethod
         def showCurrentRole() -> typing.List[str]:
             """
             Shows the currently set role
             """
             ...
+        @staticmethod
         def showRoles() -> typing.List[str]:
             """
             Shows the set of possibly assumed roles
@@ -80,6 +83,7 @@ class dbutils:
         Utilities for understanding and interacting with datasets (EXPERIMENTAL)
         """
 
+        @staticmethod
         def summarize(df: any, precise: bool) -> None:
             """
             Summarize a Spark DataFrame and visualize the statistics to get quick insights
@@ -91,41 +95,49 @@ class dbutils:
         Manipulates the Databricks filesystem (DBFS) from the console
         """
 
+        @staticmethod
         def cp(from_: str, to: str, recurse: bool = False) -> bool:
             """
             Copies a file or directory, possibly across FileSystems
             """
             ...
+        @staticmethod
         def head(file: str, maxBytes: int = 65536) -> str:
             """
             Returns up to the first 'maxBytes' bytes of the given file as a String encoded in UTF-8
             """
             ...
+        @staticmethod
         def ls(dir: str) -> typing.List[str]:
             """
             Lists the contents of a directory
             """
             ...
+        @staticmethod
         def mkdirs(dir: str) -> bool:
             """
             Creates the given directory if it does not exist, also creating any necessary parent directories
             """
             ...
+        @staticmethod
         def mv(from_: str, to: str, recurse: bool = False) -> bool:
             """
             Moves a file or directory, possibly across FileSystems
             """
             ...
+        @staticmethod
         def put(file: str, contents: str, overwrite: bool = False) -> bool:
             """
             Writes the given String out to a file, encoded in UTF-8
             """
             ...
+        @staticmethod
         def rm(dir: str, recurse: bool = False) -> bool:
             """
             Removes a file or directory
             """
             ...
+        @staticmethod
         def mount(
             source: str,
             mountPoint: str,
@@ -137,11 +149,13 @@ class dbutils:
             Mounts the given source directory into DBFS at the given mount point
             """
             ...
+        @staticmethod
         def unmount(mountPoint: str) -> bool:
             """
             Deletes a DBFS mount point
             """
             ...
+        @staticmethod
         def updateMount(
             source: str,
             mountPoint: str,
@@ -153,11 +167,13 @@ class dbutils:
             Similar to mount(), but updates an existing mount point (if present) instead of creating a new one
             """
             ...
+        @staticmethod
         def mounts() -> typing.List[str]:
             """
             Displays information about what is mounted within DBFS
             """
             ...
+        @staticmethod
         def refreshMounts() -> bool:
             """
             Forces all machines in this cluster to refresh their mount cache, ensuring they receive the most recent information
@@ -174,6 +190,7 @@ class dbutils:
             Provides utilities for leveraging job task values
             """
 
+            @staticmethod
             def get(
                 taskKey: str, key: str, default: any = None, debugValue: any = None
             ) -> None:
@@ -181,6 +198,7 @@ class dbutils:
                 Returns the latest task value that belongs to the current job run
                 """
                 ...
+            @staticmethod
             def set(key: str, value: any) -> None:
                 """
                 Sets a task value on the current task run
@@ -192,6 +210,7 @@ class dbutils:
         Utilities for session isolated libraries
         """
 
+        @staticmethod
         def restartPython() -> None:
             """
             Restart python process for the current notebook session
@@ -203,11 +222,13 @@ class dbutils:
         Utilities for the control flow of a notebook (EXPERIMENTAL)
         """
 
+        @staticmethod
         def exit(value: str) -> None:
             """
             This method lets you exit a notebook with a value
             """
             ...
+        @staticmethod
         def run(path: str, timeoutSeconds: int, arguments: typing.Map[str, str]) -> str:
             """
             This method runs a notebook and returns its exit value
@@ -219,16 +240,19 @@ class dbutils:
         Provides utilities for leveraging secrets within notebooks
         """
 
+        @staticmethod
         def get(scope: str, key: str) -> str:
             """
             Gets the string representation of a secret value with scope and key
             """
             ...
+        @staticmethod
         def list(scope: str) -> typing.List[str]:
             """
             Lists secret metadata for secrets within a scope
             """
             ...
+        @staticmethod
         def listScopes() -> typing.List[str]:
             """
             Lists secret scopes
@@ -240,6 +264,7 @@ class dbutils:
         provides utilities for working with notebook widgets. You can create different types of widgets and get their bound value
         """
 
+        @staticmethod
         def get(name: str) -> str:
             """Returns the current value of a widget with give name.
 
@@ -247,6 +272,7 @@ class dbutils:
             :return: Current value of the widget or default value
             """
             ...
+        @staticmethod
         def getArgument(name: str, defaultValue: typing.Optional[str] = None) -> str:
             """Returns the current value of a widget with give name.
 
@@ -255,6 +281,7 @@ class dbutils:
             :return: Current value of the widget or default value
             """
             ...
+        @staticmethod
         def text(name: str, defaultValue: str, label: str = None):
             """Creates a text input widget with given name, default value and optional label for
             display
@@ -263,6 +290,7 @@ class dbutils:
             :param label: Optional label string for display in notebook and dashboard
             """
             ...
+        @staticmethod
         def dropdown(
             name: str, defaultValue: str, choices: typing.List[str], label: str = None
         ):
@@ -273,6 +301,7 @@ class dbutils:
             :param label: Optional label string for display in notebook and dashboard
             """
             ...
+        @staticmethod
         def combobox(
             name: str,
             defaultValue: str,
@@ -286,6 +315,7 @@ class dbutils:
             :param label: Optional label string for display in notebook and dashboard
             """
             ...
+        @staticmethod
         def multiselect(
             name: str,
             defaultValue: str,
@@ -299,11 +329,13 @@ class dbutils:
             :param label: Optional label string for display in notebook and dashboard
             """
             ...
+        @staticmethod
         def remove(name: str):
             """Removes given input widget. If widget does not exist it will throw an error.
             :param name: Name of argument associated with input widget to be removed
             """
             ...
+        @staticmethod
         def removeAll():
             """Removes all input widgets in the notebook."""
             ...
