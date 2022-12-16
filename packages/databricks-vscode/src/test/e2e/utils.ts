@@ -144,6 +144,7 @@ export async function waitForSyncComplete() {
             if (repoConfigItem === undefined) {
                 return false;
             }
+            await repoConfigItem.expand();
 
             let status: TreeItem | undefined = undefined;
             for (const i of await repoConfigItem.getChildren()) {
@@ -164,6 +165,7 @@ export async function waitForSyncComplete() {
         },
         {
             timeout: 60000,
+            interval: 20000,
             timeoutMsg: "Couldn't finish sync in 1m",
         }
     );
@@ -179,6 +181,7 @@ export async function startSyncIfStopped() {
             if (repoConfigItem === undefined) {
                 return false;
             }
+            await repoConfigItem.expand();
 
             let status: TreeItem | undefined = undefined;
             for (const i of await repoConfigItem.getChildren()) {
