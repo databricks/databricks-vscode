@@ -14,6 +14,7 @@ describe("Run python on cluster", async function () {
     this.timeout(3 * 60 * 1000);
 
     before(async () => {
+        assert(process.env.DATABRICKS_HOST);
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
         assert(process.env.TEST_REPO_PATH);
         assert(process.env.WORKSPACE_PATH);
@@ -24,8 +25,10 @@ describe("Run python on cluster", async function () {
         await fs.writeFile(
             path.join(projectDir, ".databricks", "project.json"),
             JSON.stringify({
-                clusterId: process.env["TEST_DEFAULT_CLUSTER_ID"],
+                host: process.env["DATABRICKS_HOST"],
+                authType: "profile",
                 profile: "DEFAULT",
+                clusterId: process.env["TEST_DEFAULT_CLUSTER_ID"],
                 workspacePath: process.env["TEST_REPO_PATH"],
             })
         );

@@ -1,5 +1,5 @@
 import {CredentialProvider, CredentialsProviderError} from "./types";
-import {fromEnv} from "./fromEnv";
+import {fromToken} from "./fromToken";
 import {fromConfigFile} from "./fromConfigFile";
 
 export const fromChain = (
@@ -26,4 +26,4 @@ export const fromChain = (
     };
 };
 
-export const fromDefaultChain = fromChain([fromEnv(), fromConfigFile()]);
+export const fromDefaultChain = fromChain([fromToken(), fromConfigFile()]);

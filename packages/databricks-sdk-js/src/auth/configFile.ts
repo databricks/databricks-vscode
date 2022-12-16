@@ -67,13 +67,21 @@ function getProfileOrError(
         return new HostParsingError(String(e));
     }
 
-    if (config.token === undefined) {
-        return new TokenParsingError('"token" it not defined');
+    if (config.token !== undefined) {
+        return {
+            host: host,
+            token: config.token,
+        };
     }
-    return {
-        host: host,
-        token: config.token,
-    };
+
+    if (config.username === "token" && config.password !== undefined) {
+        return {
+            host: host,
+            token: config.password,
+        };
+    }
+
+    return new TokenParsingError('"token" it not defined');
 }
 
 export async function loadConfigFile(filePath?: string): Promise<Profiles> {

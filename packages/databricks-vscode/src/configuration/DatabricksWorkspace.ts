@@ -10,17 +10,21 @@ import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
+import {AuthProvider} from "./AuthProvider";
 
 export class DatabricksWorkspace {
     constructor(
-        private _host: Uri,
+        private _authProvider: AuthProvider,
         private me: scim.User,
-        private wsConf: WorkspaceConfProps,
-        readonly profile: string
+        private wsConf: WorkspaceConfProps
     ) {}
 
     get host(): Uri {
-        return this._host;
+        return Uri.parse(this._authProvider.host.toString());
+    }
+
+    get authProvider(): AuthProvider {
+        return this._authProvider;
     }
 
     get userName(): string {
@@ -69,11 +73,9 @@ export class DatabricksWorkspace {
     @withLogContext(Loggers.Extension, "DatabricksWorkspace.load")
     static async load(
         client: ApiClient,
-        profile: string,
+        authProvider: AuthProvider,
         @context ctx?: Context
     ) {
-        const host = Uri.parse((await client.host).toString());
-
         const scimApi = new CurrentUserService(client);
         const me = await scimApi.me(ctx);
 
@@ -97,6 +99,6 @@ export class DatabricksWorkspace {
             ctx?.logger?.error("Can't fetch workspace confs", e);
         }
 
-        return new DatabricksWorkspace(host, me, state, profile);
+        return new DatabricksWorkspace(authProvider, me, state);
     }
 }

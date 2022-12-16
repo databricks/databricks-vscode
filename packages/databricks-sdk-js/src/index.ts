@@ -36,8 +36,9 @@ export * from "./services/WorkflowRun";
 export * from "./services/WorkspaceConf";
 
 export * from "./auth/types";
-export * from "./auth/fromEnv";
+export * from "./auth/fromToken";
 export * from "./auth/fromChain";
+export * from "./auth/fromAzureCli";
 export * from "./auth/fromConfigFile";
 export * from "./auth/configFile";
 
