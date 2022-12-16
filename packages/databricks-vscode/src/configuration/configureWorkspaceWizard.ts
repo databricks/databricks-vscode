@@ -4,8 +4,19 @@ import {
     loadConfigFile,
     Profile,
     Profiles,
-} from "@databricks/databricks-sdk";
-import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
+    resolveConfigFilePath,
+} from "@databricks/databricks-sdk/dist/auth/configFile";
+import {copyFile, stat, unlink} from "fs/promises";
+import path from "path";
+import {
+    commands,
+    QuickPickItem,
+    QuickPickItemKind,
+    Uri,
+    window,
+    workspace,
+} from "vscode";
+import {CliWrapper} from "../cli/CliWrapper";
 import {MultiStepInput} from "../ui/wizard";
 import {normalizeHost} from "../utils/urlUtils";
 import {AuthProvider, AuthType} from "./AuthProvider";

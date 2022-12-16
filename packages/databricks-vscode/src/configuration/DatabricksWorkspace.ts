@@ -1,7 +1,6 @@
 import {
-    ApiClient,
+    WorkspaceClient,
     Cluster,
-    CurrentUserService,
     scim,
     WorkspaceConf,
     WorkspaceConfProps,
@@ -72,14 +71,15 @@ export class DatabricksWorkspace {
 
     @withLogContext(Loggers.Extension, "DatabricksWorkspace.load")
     static async load(
-        client: ApiClient,
+        client: WorkspaceClient,
         authProvider: AuthProvider,
         @context ctx?: Context
     ) {
-        const scimApi = new CurrentUserService(client);
-        const me = await scimApi.me(ctx);
+        const host = Uri.parse((await client.apiClient.host).toString());
 
-        const wsConfApi = new WorkspaceConf(client);
+        const me = await client.currentUser.me(ctx);
+
+        const wsConfApi = new WorkspaceConf(client.apiClient);
         let state: WorkspaceConfProps = {
             enableProjectTypeInWorkspace: "true",
             enableWorkspaceFilesystem: "true",

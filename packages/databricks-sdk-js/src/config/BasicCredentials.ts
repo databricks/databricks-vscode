@@ -1,4 +1,4 @@
-import {RequestVisitor, Config, CredentialProvider} from "./Config";
+import {RequestVisitor, Config, CredentialProvider, Headers} from "./Config";
 
 export class BasicCredentials implements CredentialProvider {
     public name = "basic";
@@ -12,7 +12,7 @@ export class BasicCredentials implements CredentialProvider {
         const b64 = Buffer.from(tokenUnB64).toString("base64");
 
         return async (headers: Headers) => {
-            headers.set("Authorization", `Basic ${b64}`);
+            headers["Authorization"] = `Basic ${b64}`;
         };
     }
 }

@@ -1,4 +1,4 @@
-import {RequestVisitor, Config, CredentialProvider} from "./Config";
+import {RequestVisitor, Config, CredentialProvider, Headers} from "./Config";
 
 export class PatCredentials implements CredentialProvider {
     public name = "pat";
@@ -9,7 +9,7 @@ export class PatCredentials implements CredentialProvider {
         }
 
         return async function (headers: Headers): Promise<void> {
-            headers.set("Authorization", `Bearer ${config.token}`);
+            headers["Authorization"] = `Bearer ${config.token}`;
         };
     }
 }

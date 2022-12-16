@@ -30,6 +30,7 @@ export interface Logger {
     info(message: string): void;
 }
 
+export type Headers = Record<string, string>;
 export type RequestVisitor = (headers: Headers) => Promise<void>;
 
 export interface ConfigOptions {

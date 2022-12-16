@@ -6,7 +6,7 @@ import {ExposedLoggers, Utils, withLogContext} from "./logging";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "./context";
 import {Context} from "./context";
-import retry, {RetriableError} from "./retries/retries";
+import retry, {RetriableError, Headers} from "./retries/retries";
 import Time, {TimeUnits} from "./retries/Time";
 import {CredentialProvider} from "./auth/types";
 
@@ -65,6 +65,7 @@ export class ApiClient {
 
         pairs.push(
             `databricks-sdk-js/${sdkVersion}`,
+            `auth-type/${this.config.authType}`,
             `nodejs/${process.version.slice(1)}`,
             `os/${process.platform}`
         );
@@ -78,10 +79,10 @@ export class ApiClient {
         payload?: any,
         @context context?: Context
     ): Promise<Record<string, unknown>> {
-        const headers = new Headers({
+        const headers: Headers = {
             "User-Agent": this.userAgent(),
             "Content-Type": "text/json",
-        });
+        };
 
         await this.config.authenticate(headers);
 

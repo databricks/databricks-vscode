@@ -1,5 +1,5 @@
 import {Provider} from "../auth/types";
-import {RequestVisitor} from "./Config";
+import {RequestVisitor, Headers} from "./Config";
 
 export type TokenProvider = Provider<Token>;
 
@@ -33,6 +33,6 @@ export function refreshableTokenProvider(
             token = await source();
         }
 
-        headers.set("Authorization", `Bearer ${token.accessToken}`);
+        headers["Authorization"] = `Bearer ${token.accessToken}`;
     };
 }

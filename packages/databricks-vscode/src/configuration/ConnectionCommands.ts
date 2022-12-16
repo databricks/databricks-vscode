@@ -90,9 +90,9 @@ export class ConnectionCommands implements Disposable {
 
     attachClusterQuickPickCommand() {
         return async () => {
-            const apiClient = this.connectionManager.apiClient;
+            const workspaceClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
-            if (!apiClient || !me) {
+            if (!workspaceClient || !me) {
                 // TODO
                 return;
             }
@@ -153,7 +153,8 @@ export class ConnectionCommands implements Disposable {
                     await UrlUtils.openExternal(
                         `${
                             (
-                                await this.connectionManager.apiClient?.host
+                                await this.connectionManager.workspaceClient
+                                    ?.apiClient?.host
                             )?.href ?? ""
                         }#create/cluster`
                     );
@@ -179,7 +180,7 @@ export class ConnectionCommands implements Disposable {
 
     attachSyncDestinationCommand() {
         return async () => {
-            const apiClient = this.connectionManager.apiClient;
+            const apiClient = this.connectionManager.workspaceClient?.apiClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
             if (!apiClient || !me) {
                 // TODO
@@ -228,7 +229,8 @@ export class ConnectionCommands implements Disposable {
                         await UrlUtils.openExternal(
                             `${
                                 (
-                                    await this.connectionManager.apiClient?.host
+                                    await this.connectionManager.workspaceClient
+                                        ?.apiClient.host
                                 )?.href ?? ""
                             }#folder/${this.connectionManager.repoRootId ?? ""}`
                         );
