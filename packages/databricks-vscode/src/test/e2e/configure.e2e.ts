@@ -1,7 +1,11 @@
 import assert from "node:assert";
 import path from "node:path";
 import * as fs from "fs/promises";
-import {getViewSection, waitForTreeItems} from "./utils";
+import {
+    getViewSection,
+    waitForPythonExtension,
+    waitForTreeItems,
+} from "./utils";
 import {
     CustomTreeSection,
     InputBox,
@@ -10,11 +14,13 @@ import {
     Workbench,
 } from "wdio-vscode-service";
 
-describe("Configure Databricks Extension", () => {
+describe("Configure Databricks Extension", async function () {
     // this will be populated by the tests
     let clusterId: string;
     let projectDir: string;
     let workbench: Workbench;
+
+    this.timeout(3 * 60 * 1000);
 
     before(async function () {
         assert(
@@ -29,6 +35,7 @@ describe("Configure Databricks Extension", () => {
         projectDir = process.env.WORKSPACE_PATH;
 
         workbench = await browser.getWorkbench();
+        await waitForPythonExtension();
     });
 
     it("should open VSCode", async function () {

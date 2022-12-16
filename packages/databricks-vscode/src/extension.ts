@@ -19,6 +19,7 @@ import {LoggerManager, Loggers} from "./logger";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {workspaceConfigs} from "./WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
+import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 
 export async function activate(
     context: ExtensionContext
@@ -50,6 +51,19 @@ export async function activate(
     NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: await PackageJsonUtils.getMetadata(context),
     });
+
+    const configureAutocomplete = new ConfigureAutocomplete(
+        context,
+        workspace.workspaceFolders[0].uri.fsPath
+    );
+    context.subscriptions.push(
+        configureAutocomplete,
+        commands.registerCommand(
+            "databricks.autocomplete.configure",
+            configureAutocomplete.configureCommand,
+            configureAutocomplete
+        )
+    );
 
     context.subscriptions.push(
         commands.registerCommand(
