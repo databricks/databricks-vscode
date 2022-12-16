@@ -100,6 +100,9 @@ export const config: Options.Testrunner = {
                 extensionPath: process.env.CI
                     ? path.resolve(__dirname, "..", "..", "..", "extension")
                     : path.resolve(__dirname, "..", "..", ".."),
+                vscodeArgs: {
+                    disableExtensions: false,
+                },
                 workspacePath: WORKSPACE_PATH,
                 userSettings: {
                     "editor.fontSize": 14,

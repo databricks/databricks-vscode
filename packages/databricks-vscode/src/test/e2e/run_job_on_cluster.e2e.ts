@@ -1,7 +1,12 @@
 import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
-import {getViewSection, getViewSubSection, waitForTreeItems} from "./utils";
+import {
+    getViewSection,
+    getViewSubSection,
+    waitForPythonExtension,
+    waitForTreeItems,
+} from "./utils";
 import {sleep, TreeItem} from "wdio-vscode-service";
 
 describe("Run python on cluster", async function () {
@@ -40,6 +45,7 @@ describe("Run python on cluster", async function () {
         const section = await getViewSection("CONFIGURATION");
         assert(section);
         await waitForTreeItems(section);
+        await waitForPythonExtension();
     });
 
     beforeEach(async () => {
