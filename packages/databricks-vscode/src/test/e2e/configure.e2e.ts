@@ -4,6 +4,7 @@ import * as fs from "fs/promises";
 import {
     getViewSection,
     waitForPythonExtension,
+    waitForPythonExtensionWithRetry,
     waitForTreeItems,
 } from "./utils";
 import {
@@ -35,7 +36,7 @@ describe("Configure Databricks Extension", async function () {
         projectDir = process.env.WORKSPACE_PATH;
 
         workbench = await browser.getWorkbench();
-        await waitForPythonExtension(3 * 60 * 1000);
+        await waitForPythonExtensionWithRetry(1.5 * 60 * 1000, 2);
     });
 
     it("should open VSCode", async function () {

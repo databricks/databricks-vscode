@@ -5,6 +5,7 @@ import {
     getViewSection,
     startSyncIfStopped,
     waitForPythonExtension,
+    waitForPythonExtensionWithRetry,
     waitForSyncComplete,
     waitForTreeItems,
 } from "./utils";
@@ -34,7 +35,7 @@ describe("Run python on cluster", async function () {
             path.join(projectDir, "hello.py"),
             `spark.sql('SELECT "hello world"').show()`
         );
-        await waitForPythonExtension(3 * 60 * 1000);
+        await waitForPythonExtensionWithRetry(1.5 * 60 * 1000, 2);
     });
 
     it("should connect to Databricks", async () => {

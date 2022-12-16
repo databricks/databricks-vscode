@@ -6,6 +6,7 @@ import {
     getViewSubSection,
     startSyncIfStopped,
     waitForPythonExtension,
+    waitForPythonExtensionWithRetry,
     waitForSyncComplete,
 } from "./utils";
 import {sleep, TreeItem} from "wdio-vscode-service";
@@ -43,21 +44,7 @@ describe("Run as workflow on cluster", async function () {
             ].join("\n")
         );
 
-        for (let i = 0; i < 2; i++) {
-            try {
-                const section = await getViewSection("CONFIGURATION");
-                assert(section);
-                await waitForPythonExtension(1.5 * 60 * 1000);
-            } catch (e) {
-                // eslint-disable-next-line no-console
-                console.error(e);
-                const wb = await browser.getWorkbench();
-                await wb.executeCommand("Developer: Reload Window");
-                continue;
-            }
-
-            break;
-        }
+        await waitForPythonExtensionWithRetry(1.5 * 60 * 1000, 2);
 
         await (await getViewSection("CLUSTERS"))?.collapse();
     });

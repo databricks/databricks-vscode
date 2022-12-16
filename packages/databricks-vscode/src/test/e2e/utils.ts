@@ -134,6 +134,29 @@ export async function waitForPythonExtension(timeoutMs: number) {
     } catch {}
 }
 
+export async function waitForPythonExtensionWithRetry(
+    timeoutMs: number,
+    retryCount: number
+) {
+    for (let i = 0; i < retryCount; i++) {
+        try {
+            const section = await getViewSection("CONFIGURATION");
+            assert(section);
+            await waitForPythonExtension(timeoutMs);
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+            const wb = await browser.getWorkbench();
+            await wb.executeCommand("Developer: Reload Window");
+            if (i === retryCount - 1) {
+                throw e;
+            }
+            continue;
+        }
+        break;
+    }
+}
+
 export async function waitForSyncComplete() {
     await browser.waitUntil(
         async () => {
