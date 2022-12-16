@@ -82,7 +82,7 @@ export async function waitForTreeItems(
     }
 }
 
-export async function waitForPythonExtension() {
+export async function waitForPythonExtension(timeoutMs: number) {
     const section = await getViewSection("CONFIGURATION");
     assert(section);
     const welcome = await section.findWelcomeContent();
@@ -108,7 +108,7 @@ export async function waitForPythonExtension() {
                 )?.getTitle()
             )?.includes("README.quickstart.md") === true,
         {
-            timeout: 120000,
+            timeout: timeoutMs,
             timeoutMsg:
                 "Timeout when installing python extension and reloading",
         }

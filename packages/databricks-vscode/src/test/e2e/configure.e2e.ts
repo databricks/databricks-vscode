@@ -20,7 +20,7 @@ describe("Configure Databricks Extension", async function () {
     let projectDir: string;
     let workbench: Workbench;
 
-    this.timeout(3 * 60 * 1000);
+    this.timeout(5 * 60 * 1000);
 
     before(async function () {
         assert(
@@ -35,7 +35,7 @@ describe("Configure Databricks Extension", async function () {
         projectDir = process.env.WORKSPACE_PATH;
 
         workbench = await browser.getWorkbench();
-        await waitForPythonExtension();
+        await waitForPythonExtension(3 * 60 * 1000);
     });
 
     it("should open VSCode", async function () {

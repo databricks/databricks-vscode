@@ -11,7 +11,7 @@ import {sleep, TreeItem} from "wdio-vscode-service";
 
 describe("Run python on cluster", async function () {
     let projectDir: string;
-    this.timeout(2 * 60 * 1000);
+    this.timeout(5 * 60 * 1000);
 
     before(async () => {
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
@@ -45,7 +45,7 @@ describe("Run python on cluster", async function () {
         const section = await getViewSection("CONFIGURATION");
         assert(section);
         await waitForTreeItems(section);
-        await waitForPythonExtension();
+        await waitForPythonExtension(3 * 60 * 1000);
     });
 
     beforeEach(async () => {
