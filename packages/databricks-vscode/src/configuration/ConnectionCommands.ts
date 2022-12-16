@@ -54,7 +54,7 @@ export class ConnectionCommands implements Disposable {
     ) {}
 
     /**
-     * Disconnect fomr Databricks and reset project settings.
+     * Disconnect from Databricks and reset project settings.
      */
     logoutCommand() {
         return () => {
