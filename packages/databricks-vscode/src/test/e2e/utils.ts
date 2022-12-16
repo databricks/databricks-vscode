@@ -87,18 +87,31 @@ export async function waitForPythonExtension(timeoutMs: number) {
     assert(section);
     const welcome = await section.findWelcomeContent();
     assert(welcome);
-    sleep(1000);
     const workbench = await browser.getWorkbench();
-    const notifs = await workbench.getNotifications();
-    for (const n of notifs) {
-        if (
-            (await n.getActions()).find(
-                (btn) => btn.getTitle() === "Install and Reload"
-            ) !== undefined
-        ) {
-            await n.takeAction("Install and Reload");
+
+    await browser.waitUntil(
+        async () => {
+            const notifs = await workbench.getNotifications();
+            let found = false;
+            for (const n of notifs) {
+                if (
+                    (await n.getActions()).find(
+                        (btn) => btn.getTitle() === "Install and Reload"
+                    ) !== undefined
+                ) {
+                    await n.takeAction("Install and Reload");
+                    found = true;
+                }
+            }
+            return found;
+        },
+        {
+            timeout: 5 * 1000,
+            interval: 100,
+            timeoutMsg:
+                "Can't find notification to install ms-python extension",
         }
-    }
+    );
 
     await browser.waitUntil(
         async () =>
@@ -114,8 +127,9 @@ export async function waitForPythonExtension(timeoutMs: number) {
         }
     );
 
-    sleep(500);
+    await sleep(500);
     try {
+        const notifs = await workbench.getNotifications();
         for (const n of notifs) {
             await n.dismiss();
         }

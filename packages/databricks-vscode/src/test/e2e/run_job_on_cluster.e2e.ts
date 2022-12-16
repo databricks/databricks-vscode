@@ -9,7 +9,7 @@ import {
 } from "./utils";
 import {sleep, TreeItem} from "wdio-vscode-service";
 
-describe("Run python on cluster", async function () {
+describe("Run as workflow on cluster", async function () {
     let projectDir: string;
     this.timeout(5 * 60 * 1000);
 
