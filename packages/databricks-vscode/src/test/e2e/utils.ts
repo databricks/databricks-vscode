@@ -87,9 +87,11 @@ export async function waitForPythonExtension() {
     assert(section);
     const welcome = await section.findWelcomeContent();
     assert(welcome);
-    sleep(1000);
+    sleep(5000);
+
     const workbench = await browser.getWorkbench();
     const notifs = await workbench.getNotifications();
+    let found = false;
     for (const n of notifs) {
         if (
             (await n.getActions()).find(
@@ -97,7 +99,12 @@ export async function waitForPythonExtension() {
             ) !== undefined
         ) {
             await n.takeAction("Install and Reload");
+            found = true;
         }
+    }
+
+    if (!found) {
+        return;
     }
 
     await browser.waitUntil(
@@ -108,7 +115,7 @@ export async function waitForPythonExtension() {
                 )?.getTitle()
             )?.includes("README.quickstart.md") === true,
         {
-            timeout: 120000,
+            timeout: 1.5 * 60 * 1000,
             timeoutMsg:
                 "Timeout when installing python extension and reloading",
         }
