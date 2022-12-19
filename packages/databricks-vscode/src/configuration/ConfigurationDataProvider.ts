@@ -137,8 +137,8 @@ export class ConfigurationDataProvider
         if (element.id === "WORKSPACE" && dbWorkspace) {
             return [
                 {
-                    label: "Profile",
-                    description: dbWorkspace.profile,
+                    label: "Auth",
+                    description: dbWorkspace.authProvider.describe(),
                     collapsibleState: TreeItemCollapsibleState.None,
                 },
                 {

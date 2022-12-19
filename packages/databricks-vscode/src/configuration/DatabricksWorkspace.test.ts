@@ -2,6 +2,7 @@
 import {scim} from "@databricks/databricks-sdk";
 import assert from "assert";
 import {Uri} from "vscode";
+import {ProfileAuthProvider} from "./AuthProvider";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 
 describe(__filename, () => {
@@ -14,12 +15,14 @@ describe(__filename, () => {
             enableProjectTypeInWorkspace: "true",
             enableWorkspaceFilesystem: "dbr11.0+",
         } as const;
-        const profile = "DEFAULT";
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://fabian.databricks.com"),
+            "DEFAULT"
+        );
         const dbWorkspace: DatabricksWorkspace = new DatabricksWorkspace(
-            host,
+            authProvider,
             user,
-            wsConf,
-            profile
+            wsConf
         );
 
         assert(dbWorkspace.host.toString() === host.toString());

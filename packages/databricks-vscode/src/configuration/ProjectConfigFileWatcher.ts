@@ -1,6 +1,7 @@
-import {Disposable, Uri, workspace} from "vscode";
+import {Disposable, workspace} from "vscode";
 import {ConnectionManager} from "./ConnectionManager";
 import {ProjectConfigFile} from "./ProjectConfigFile";
+import {SyncDestination} from "./SyncDestination";
 
 export class ProjectConfigFileWatcher implements Disposable {
     private disposables: Array<Disposable> = [];
@@ -22,8 +23,11 @@ export class ProjectConfigFileWatcher implements Disposable {
             fileSystemWatcher.onDidChange(async () => {
                 const configFile = await ProjectConfigFile.load(rootPath);
                 if (
-                    configFile.profile !==
-                    connectionManager.databricksWorkspace?.profile
+                    configFile.host.toString() !==
+                        connectionManager.databricksWorkspace?.host.toString() ||
+                    configFile.authProvider.authType !==
+                        connectionManager.databricksWorkspace?.authProvider
+                            .authType
                 ) {
                     await connectionManager.login();
                 }
@@ -42,10 +46,9 @@ export class ProjectConfigFileWatcher implements Disposable {
                 ) {
                     if (configFile.workspacePath) {
                         await connectionManager.attachSyncDestination(
-                            Uri.from({
-                                scheme: "wsfs",
-                                path: configFile.workspacePath,
-                            })
+                            SyncDestination.normalizeWorkspacePath(
+                                configFile.workspacePath
+                            )
                         );
                     } else {
                         await connectionManager.detachSyncDestination();

@@ -26,18 +26,32 @@ export class SyncDestination {
         assert.equal(repoUri.scheme, "wsfs");
 
         // Repo paths always start with "/Workspace" but the repos API strips this off.
-        if (!repoUri.path.startsWith("/Workspace/")) {
-            repoUri = Uri.from({
-                scheme: "wsfs",
-                path: `/Workspace${repoUri.path}`,
-            });
-        }
+        repoUri = SyncDestination.normalizeWorkspacePath(repoUri);
 
         const repo = await Repo.fromPath(
             client,
-            repoUri.path.replace("/Workspace", "")
+            repoUri.path.replace(/^\/Workspace\//, "/")
         );
+
         return new SyncDestination(repo, repoUri, vscodeWorkspacePath);
+    }
+
+    static normalizeWorkspacePath(workspacePath: string | Uri): Uri {
+        if (typeof workspacePath === "string") {
+            workspacePath = Uri.from({
+                scheme: "wsfs",
+                path: workspacePath,
+            });
+        }
+
+        if (!workspacePath.path.startsWith("/Workspace/")) {
+            workspacePath = Uri.from({
+                scheme: "wsfs",
+                path: `/Workspace${workspacePath.path}`,
+            });
+        }
+
+        return workspacePath;
     }
 
     get type(): SyncDestinationType {

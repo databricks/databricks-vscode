@@ -18,6 +18,7 @@ describe("Configure Databricks Extension", async function () {
     // this will be populated by the tests
     let clusterId: string;
     let projectDir: string;
+    let host: string;
     let workbench: Workbench;
 
     this.timeout(5 * 60 * 1000);
@@ -31,8 +32,13 @@ describe("Configure Databricks Extension", async function () {
             process.env.WORKSPACE_PATH,
             "WORKSPACE_PATH env var doesn't exist"
         );
+        assert(
+            process.env.DATABRICKS_HOST,
+            "DATABRICKS_HOST env var doesn't exist"
+        );
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
         projectDir = process.env.WORKSPACE_PATH;
+        host = process.env.DATABRICKS_HOST;
 
         workbench = await browser.getWorkbench();
         await waitForPythonExtensionWithRetry(1.5 * 60 * 1000, 2);
@@ -60,10 +66,19 @@ describe("Configure Databricks Extension", async function () {
         assert(buttons.length > 0);
         await (await buttons[0].elem).click();
 
-        const input = await new InputBox(workbench.locatorMap).wait();
+        let input = await new InputBox(workbench.locatorMap).wait();
         await sleep(200);
 
-        await input.selectQuickPick(1);
+        await input.setText(host);
+        await sleep(500);
+        await input.confirm();
+        await sleep(200);
+
+        input = await new InputBox(workbench.locatorMap).wait();
+        await sleep(200);
+
+        await input.selectQuickPick("DEFAULT");
+
         assert(await waitForTreeItems(section, 10_000));
     });
 
@@ -135,8 +150,10 @@ describe("Configure Databricks Extension", async function () {
         );
 
         assert.deepEqual(projectConfig, {
-            clusterId,
+            host,
+            authType: "profile",
             profile: "DEFAULT",
+            clusterId,
         });
     });
 });
