@@ -3,15 +3,16 @@ import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
     getViewSection,
-    getViewSubSection,
-    waitForPythonExtension,
+    startSyncIfStopped,
+    waitForPythonExtensionWithRetry,
+    waitForSyncComplete,
     waitForTreeItems,
 } from "./utils";
 import {sleep} from "wdio-vscode-service";
 
 describe("Run python on cluster", async function () {
     let projectDir: string;
-    this.timeout(3 * 60 * 1000);
+    this.timeout(5 * 60 * 1000);
 
     before(async () => {
         assert(process.env.DATABRICKS_HOST);
@@ -36,7 +37,7 @@ describe("Run python on cluster", async function () {
             path.join(projectDir, "hello.py"),
             `spark.sql('SELECT "hello world"').show()`
         );
-        await waitForPythonExtension();
+        await waitForPythonExtensionWithRetry(1.5 * 60 * 1000, 2);
     });
 
     it("should connect to Databricks", async () => {
@@ -49,22 +50,10 @@ describe("Run python on cluster", async function () {
         const section = await getViewSection("CLUSTERS");
         await section?.collapse();
 
-        const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
-        assert(repoConfigItem);
-        const buttons = await repoConfigItem.getActionButtons();
-        await buttons[0].elem.click();
+        await startSyncIfStopped();
 
         // wait for sync to finish
-        const workbench = await driver.getWorkbench();
-        const terminalView = await workbench.getBottomBar().openTerminalView();
-
-        while (true) {
-            await sleep(500);
-            const text = await terminalView.getText();
-            if (text.includes("Sync Complete")) {
-                break;
-            }
-        }
+        await waitForSyncComplete();
     });
 
     it("should run a python file on a cluster", async () => {
