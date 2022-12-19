@@ -10,7 +10,7 @@ import {normalizeHost} from "../utils/urlUtils";
 const extensionVersion = require("../../package.json")
     .version as ProductVersion;
 
-import {AzureCliCheck} from "./AzureCliCheck";
+import {AzureCliCheck} from "../AzureCliCheck";
 
 export type AuthType =
     | "azure-cli"

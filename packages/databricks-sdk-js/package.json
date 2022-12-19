@@ -29,7 +29,6 @@
         "test:integ:cov": "nyc --report-dir ./coverage/integration yarn run test:integ"
     },
     "dependencies": {
-        "ini": "^3.0.1",
         "inversify": "^6.0.1",
         "node-fetch": "^3.3.0",
         "reflect-metadata": "^0.1.13"

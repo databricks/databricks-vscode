@@ -1,8 +1,12 @@
 import * as child_process from "node:child_process";
 import {promisify} from "node:util";
 import {refreshableTokenProvider, Token} from "./Token";
-import {CredentialsProviderError} from "../auth/types";
-import {RequestVisitor, Config, CredentialProvider} from "./Config";
+import {
+    RequestVisitor,
+    Config,
+    CredentialProvider,
+    CredentialsProviderError,
+} from "./Config";
 
 const execFile = promisify(child_process.execFile);
 
@@ -22,12 +26,16 @@ export class AzureCliCredentials implements CredentialProvider {
         return refreshableTokenProvider(async () => {
             let stdout = "";
             try {
-                ({stdout} = await execFile("az", [
-                    "account",
-                    "get-access-token",
-                    "--resource",
-                    azureDatabricksLoginAppID,
-                ]));
+                ({stdout} = await execFile(
+                    "az",
+                    [
+                        "account",
+                        "get-access-token",
+                        "--resource",
+                        azureDatabricksLoginAppID,
+                    ],
+                    {shell: true}
+                ));
             } catch (e: any) {
                 if (e.code === "ENOENT") {
                     throw new CredentialsProviderError(

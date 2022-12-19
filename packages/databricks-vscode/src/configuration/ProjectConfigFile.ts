@@ -1,6 +1,6 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import {AuthProvider, ProfileAuthProvider} from "./AuthProvider";
+import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Uri} from "vscode";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";

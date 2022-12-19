@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import {ExposedLoggers, NamedLogger} from "../logging";
 import {ConfigAttributes, EnvironmentLoader} from "./ConfigAttributes";
 import {DefaultCredentials} from "./DefaultCredentials";
 import {KnownConfigLoader} from "./KnownConfigLoader";
+
+export class CredentialsProviderError extends Error {}
 
 /**
  * CredentialsProvider responsible for configuring static or refreshable
@@ -80,7 +83,7 @@ export interface ConfigOptions {
     // specified by this argument. This argument also holds currently selected auth.
     authType: string;
 
-    logger: Logger;
+    logger: NamedLogger;
 
     env: Record<string, string>;
     // // Skip SSL certificate verification for HTTP calls.
@@ -199,7 +202,7 @@ export class Config {
     private loaders?: Array<Loader>;
     private auth?: RequestVisitor;
 
-    readonly logger: Logger;
+    readonly logger: NamedLogger;
     readonly env: typeof process.env;
     readonly userAgentExtra: Record<string, string> = {};
     public product = "unknown";
@@ -228,7 +231,8 @@ export class Config {
         for (const [key, value] of Object.entries(config)) {
             (this as any)[key] = value;
         }
-        this.logger = config.logger || console;
+        this.logger =
+            config.logger || NamedLogger.getOrCreate(ExposedLoggers.SDK);
         this.env = config.env || process.env;
     }
 

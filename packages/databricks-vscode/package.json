@@ -541,6 +541,7 @@
         "@vscode/debugadapter": "^1.58.0",
         "@vscode/webview-ui-toolkit": "^1.2.1",
         "ansi-to-html": "^0.7.2",
+        "ini": "^3.0.1",
         "triple-beam": "^1.3.0",
         "winston": "^3.8.2"
     },
@@ -549,6 +550,7 @@
         "@sinonjs/fake-timers": "^10.0.2",
         "@types/fs-extra": "^9.0.13",
         "@types/glob": "^8.0.0",
+        "@types/ini": "^1.3.31",
         "@types/mocha": "^10.0.1",
         "@types/mock-require": "^2.0.1",
         "@types/node": "^18.11.18",

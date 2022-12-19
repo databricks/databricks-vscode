@@ -1,4 +1,4 @@
-import {Provider} from "../auth/types";
+import {Provider} from "../types";
 import {RequestVisitor, Headers} from "./Config";
 
 export type TokenProvider = Provider<Token>;
