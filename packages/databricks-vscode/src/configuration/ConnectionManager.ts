@@ -1,7 +1,6 @@
 import {
     ApiClient,
     Cluster,
-    CredentialProvider,
     WorkspaceService,
     HttpError,
 } from "@databricks/databricks-sdk";
@@ -15,12 +14,13 @@ import {
 import {CliWrapper} from "../cli/CliWrapper";
 import {SyncDestination} from "./SyncDestination";
 import {ProjectConfig, ProjectConfigFile} from "./ProjectConfigFile";
-import {configureWorkspaceWizard} from "./selectProfileWizard";
+import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
+import {AuthProvider} from "./AuthProvider";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../package.json").version;
@@ -90,8 +90,16 @@ export class ConnectionManager {
         return this._apiClient;
     }
 
-    public static apiClientFrom(creds: CredentialProvider): ApiClient {
-        return new ApiClient("vscode-extension", extensionVersion, creds);
+    public static apiClientFrom(authProvider: AuthProvider): ApiClient {
+        return new ApiClient({
+            extraUserAgent: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                "vscode-extension": extensionVersion,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                "auth-type": authProvider.authType,
+            },
+            credentialProvider: authProvider.getCredentialProvider(),
+        });
     }
 
     async login(interactive = false): Promise<void> {
@@ -118,18 +126,17 @@ export class ConnectionManager {
                 vscodeWorkspace.rootPath
             );
 
-            const credentialProvider =
-                projectConfigFile.authProvider.getCredentialProvider();
-
             if (!(await projectConfigFile.authProvider.check(true))) {
                 throw new Error(
                     `Can't login with ${projectConfigFile.authProvider.describe()}.`
                 );
             }
 
-            await credentialProvider();
+            await projectConfigFile.authProvider.getCredentialProvider();
 
-            apiClient = ConnectionManager.apiClientFrom(credentialProvider);
+            apiClient = ConnectionManager.apiClientFrom(
+                projectConfigFile.authProvider
+            );
             this._databricksWorkspace = await DatabricksWorkspace.load(
                 apiClient,
                 projectConfigFile.authProvider
@@ -238,12 +245,13 @@ export class ConnectionManager {
                 return;
             }
 
-            const credentialProvider =
-                config.authProvider.getCredentialProvider();
+            if (!(await config.authProvider.check(false))) {
+                return;
+            }
 
             try {
                 await DatabricksWorkspace.load(
-                    ConnectionManager.apiClientFrom(credentialProvider),
+                    ConnectionManager.apiClientFrom(config.authProvider),
                     config.authProvider
                 );
             } catch (e: any) {
