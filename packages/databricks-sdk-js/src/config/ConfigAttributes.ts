@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {
     AttributeName,
-    AuthType,
     AUTH_TYPE_FOR_CONFIG,
     Config,
+    ConfigError,
     CONFIG_FILE_FIELD_NAMES,
     ENV_VAR_NAMES,
     Loader,
@@ -18,7 +18,7 @@ export class ConfigAttribute {
     name: keyof typeof AUTH_TYPE_FOR_CONFIG;
     envVar?: string;
     confName?: string;
-    auth?: AuthType | undefined;
+    auth?: string | undefined;
     sensitive: boolean;
     internal: boolean;
     num: number;
@@ -53,15 +53,8 @@ export class ConfigAttribute {
 export class EnvironmentLoader implements Loader {
     public name = "environment";
 
-    constructor(private attributes: ConfigAttributes) {}
-
     async configure(cfg: Config): Promise<void> {
-        for (const attr of this.attributes) {
-            const env = attr.readEnv();
-            if (env !== undefined) {
-                cfg[attr.name] = env;
-            }
-        }
+        return cfg.attributes.resolveFromEnv(cfg);
     }
 }
 
@@ -79,7 +72,7 @@ export class ConfigAttributes {
             return;
         }
 
-        const authsUsed = new Set<AuthType>();
+        const authsUsed = new Set<string>();
         for (const attr of this.attributes) {
             if (attr.isZero()) {
                 continue;
@@ -95,16 +88,49 @@ export class ConfigAttributes {
         }
 
         const sortedMethods = Array.from(authsUsed).sort();
-        throw new Error(
+        throw new ConfigError(
             `validate: more than one authorization method configured: ${sortedMethods.join(
                 " and "
-            )}`
+            )}`,
+            this.config
         );
+    }
+
+    public resolveFromEnv(cfg: Config) {
+        for (const attr of this.attributes) {
+            if (!attr.isZero()) {
+                // don't overwtite a value previously set
+                continue;
+            }
+
+            const env = attr.readEnv();
+            if (env !== undefined) {
+                cfg[attr.name] = env;
+            }
+        }
+    }
+
+    public resolveFromStringMap(map: Record<string, string>): void {
+        for (const attr of this.attributes) {
+            if (!attr.isZero()) {
+                // don't overwrite a value previously set
+                continue;
+            }
+
+            if (!attr.confName) {
+                continue;
+            }
+
+            const value = map[attr.confName];
+            if (value !== undefined) {
+                this.config[attr.name] = value;
+            }
+        }
     }
 
     debugString(): string {
         const attrUsed: Record<string, string> = {};
-        const envUsed: Record<string, string> = {};
+        const envUsed: Array<string> = [];
 
         let result = "";
 
@@ -113,11 +139,16 @@ export class ConfigAttributes {
                 continue;
             }
 
-            attrUsed[attr.name] = attr.sensitive
-                ? "***"
-                : this.config[attr.name]!;
+            if (attr.confName) {
+                attrUsed[attr.confName] = attr.sensitive
+                    ? "***"
+                    : this.config[attr.name]!;
+            }
+
             if (attr.envVar) {
-                envUsed[attr.envVar] = attr.sensitive ? "***" : attr.readEnv()!;
+                if (attr.readEnv() !== undefined) {
+                    envUsed.push(attr.envVar);
+                }
             }
         }
         if (Object.keys(attrUsed).length > 0) {
@@ -127,9 +158,7 @@ export class ConfigAttributes {
         }
 
         if (Object.keys(envUsed).length > 0) {
-            result += `Env: ${Object.keys(envUsed)
-                .map((key) => `${key}=${envUsed[key]}`)
-                .join(", ")}`;
+            result += `. Env: ${envUsed.join(", ")}`;
         }
 
         return result;

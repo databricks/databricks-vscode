@@ -4,7 +4,17 @@ import {ConfigAttributes, EnvironmentLoader} from "./ConfigAttributes";
 import {DefaultCredentials} from "./DefaultCredentials";
 import {KnownConfigLoader} from "./KnownConfigLoader";
 
-export class CredentialsProviderError extends Error {}
+export class ConfigError extends Error {
+    constructor(readonly baseMessage: string, readonly config: Config) {
+        let msg = baseMessage;
+        const debugString = config.attributes.debugString();
+        if (debugString) {
+            msg += `. ${debugString}`;
+        }
+
+        super(msg);
+    }
+}
 
 /**
  * CredentialsProvider responsible for configuring static or refreshable
@@ -81,11 +91,11 @@ export interface ConfigOptions {
 
     // When multiple auth attributes are available in the environment, use the auth type
     // specified by this argument. This argument also holds currently selected auth.
-    authType: string;
+    authType: AuthType;
 
     logger: NamedLogger;
 
-    env: Record<string, string>;
+    env: Record<string, string | undefined>;
     // // Skip SSL certificate verification for HTTP calls.
     // // Use at your own risk or for unit testing purposes.
     // insecureSkipVerify bool `name:"skip_verify" auth:"-"`
@@ -131,26 +141,28 @@ export const SENSISTIVE_FIELDS = new Set<AttributeName>([
     "azureClientSecret",
 ]);
 
-export const AUTH_TYPE_FOR_CONFIG: Record<AttributeName, AuthType | undefined> =
-    {
-        host: undefined,
-        accountId: undefined,
-        token: "pat",
-        username: "basic",
-        password: "basic",
-        profile: undefined,
-        configFile: undefined,
-        googleServiceAccount: "google-id",
-        googleCredentials: "google-id",
-        azureResourceId: "azure-cli",
-        azureEnvironment: undefined,
-        azureUseMSI: "azure-cli",
-        azureClientSecret: "azure-cli",
-        azureClientId: "azure-cli",
-        azureTenantId: "azure-cli",
-        azureLoginAppId: "azure-cli",
-        authType: undefined,
-    };
+export const AUTH_TYPE_FOR_CONFIG: Record<
+    AttributeName,
+    "pat" | "basic" | "azure" | "google" | undefined
+> = {
+    host: undefined,
+    accountId: undefined,
+    token: "pat",
+    username: "basic",
+    password: "basic",
+    profile: undefined,
+    configFile: undefined,
+    googleServiceAccount: "google",
+    googleCredentials: "google",
+    azureResourceId: "azure",
+    azureEnvironment: undefined,
+    azureUseMSI: "azure",
+    azureClientSecret: "azure",
+    azureClientId: "azure",
+    azureTenantId: "azure",
+    azureLoginAppId: "azure",
+    authType: undefined,
+};
 
 export const CONFIG_FILE_FIELD_NAMES: Record<
     AttributeName,
@@ -163,7 +175,7 @@ export const CONFIG_FILE_FIELD_NAMES: Record<
     password: "password",
     googleServiceAccount: "google_service_account",
     googleCredentials: "google_credentials",
-    azureResourceId: "azure_resource_id",
+    azureResourceId: "azure_workspace_resource_id",
     azureUseMSI: "azure_use_msi",
     azureClientSecret: "azure_client_secret",
     azureClientId: "azure_client_id",
@@ -171,13 +183,13 @@ export const CONFIG_FILE_FIELD_NAMES: Record<
     azureEnvironment: "azure_environment",
     azureLoginAppId: "azure_login_app_id",
     authType: "auth_type",
-    profile: undefined,
-    configFile: undefined,
+    profile: "profile",
+    configFile: "config_file",
 };
 
 export const ENV_VAR_NAMES: Record<AttributeName, string> = {
     configFile: "DATABRICKS_CONFIG_FILE",
-    profile: "DATABRICKS_PROFILE",
+    profile: "DATABRICKS_CONFIG_PROFILE",
     host: "DATABRICKS_HOST",
     accountId: "DATABRICKS_ACCOUNT_ID",
     token: "DATABRICKS_TOKEN",
@@ -201,6 +213,7 @@ export class Config {
     private resolved = false;
     private loaders?: Array<Loader>;
     private auth?: RequestVisitor;
+    readonly attributes: ConfigAttributes;
 
     readonly logger: NamedLogger;
     readonly env: typeof process.env;
@@ -234,6 +247,8 @@ export class Config {
         this.logger =
             config.logger || NamedLogger.getOrCreate(ExposedLoggers.SDK);
         this.env = config.env || process.env;
+
+        this.attributes = new ConfigAttributes(this);
     }
 
     async getHost(): Promise<URL> {
@@ -283,10 +298,8 @@ export class Config {
             return;
         }
 
-        const attributes = new ConfigAttributes(this);
-
         const loaders = this.loaders || [
-            new EnvironmentLoader(attributes),
+            new EnvironmentLoader(),
             new KnownConfigLoader(),
         ];
 
@@ -295,7 +308,7 @@ export class Config {
             await loader.configure(this);
         }
 
-        await attributes.validate();
+        await this.attributes.validate();
 
         this.fixHost();
         this.resolved = true;
@@ -323,7 +336,18 @@ export class Config {
             this.credentials = new DefaultCredentials();
         }
 
-        this.auth = await this.credentials.configure(this);
+        try {
+            this.auth = await this.credentials.configure(this);
+        } catch (e) {
+            if (e instanceof ConfigError) {
+                throw new ConfigError(
+                    `${this.credentials.name} auth: ${e.baseMessage}`,
+                    this
+                );
+            } else {
+                throw e;
+            }
+        }
         this.authType = this.credentials.name;
     }
 }

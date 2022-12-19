@@ -1,6 +1,6 @@
 import {WorkspaceClient} from "@databricks/databricks-sdk";
 import {commands, Disposable, Uri, window} from "vscode";
-import {AuthProvider} from "./AuthProvider";
+import {AuthProvider} from "./auth/AuthProvider";
 import {execFileWithShell} from "@databricks/databricks-sdk/dist/config/execUtils";
 
 export type Step<S, N> = () => Promise<

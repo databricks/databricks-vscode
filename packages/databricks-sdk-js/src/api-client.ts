@@ -9,7 +9,6 @@ import {Context} from "./context";
 import {Headers, Config} from "./config/Config";
 import retry, {RetriableError} from "./retries/retries";
 import Time, {TimeUnits} from "./retries/Time";
-import {CredentialProvider} from "./auth/types";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sdkVersion = require("../package.json").version;

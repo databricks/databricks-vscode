@@ -1,6 +1,11 @@
 import {AzureCliCredentials} from "./AzureCliCredentials";
 import {BasicCredentials} from "./BasicCredentials";
-import {RequestVisitor, Config, CredentialProvider} from "./Config";
+import {
+    RequestVisitor,
+    Config,
+    CredentialProvider,
+    ConfigError,
+} from "./Config";
 import {PatCredentials} from "./PatCredentials";
 
 export class DefaultCredentials implements CredentialProvider {
@@ -31,6 +36,6 @@ export class DefaultCredentials implements CredentialProvider {
             }
         }
 
-        throw new Error("default auth: cannot configure default credentials");
+        throw new ConfigError("cannot configure default credentials", config);
     }
 }

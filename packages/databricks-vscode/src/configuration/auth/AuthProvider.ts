@@ -7,7 +7,7 @@ import {
 import {normalizeHost} from "../utils/urlUtils";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const extensionVersion = require("../../package.json")
+const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
 import {AzureCliCheck} from "../AzureCliCheck";
@@ -38,7 +38,7 @@ export abstract class AuthProvider {
      */
     abstract describe(): string;
     abstract toJSON(): Record<string, unknown>;
-    abstract getEnvVars(): {[key: string]: string};
+    abstract getEnvVars(): Record<string, string | undefined>;
 
     getWorkspaceClient(): WorkspaceClient {
         const config = this.getSdkConfig();
@@ -107,7 +107,7 @@ export class TokenAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): {[key: string]: string} {
+    getEnvVars(): Record<string, string | undefined> {
         return {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: this.authType,
@@ -120,6 +120,7 @@ export class TokenAuthProvider extends AuthProvider {
             authType: "pat",
             token: this.token,
             host: this.host.toString(),
+            env: {},
         });
     }
 }
@@ -141,15 +142,20 @@ export class ProfileAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): {[key: string]: string} {
+    getEnvVars(): Record<string, string | undefined> {
         return {
             DATABRICKS_CONFIG_PROFILE: this.profile,
+            DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
         };
     }
 
     getSdkConfig(): Config {
         return new Config({
             profile: this.profile,
+            env: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
+            },
         });
     }
 }
@@ -170,7 +176,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): {[key: string]: string} {
+    getEnvVars(): Record<string, string | undefined> {
         return {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: this.authType,
@@ -181,6 +187,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         return new Config({
             host: this.host.toString(),
             authType: "azure-cli",
+            env: {},
         });
     }
 

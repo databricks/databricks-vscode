@@ -60,13 +60,14 @@ describe(__filename, () => {
             () => {}
         );
 
+        console.log(terminal.getProcessOptions());
+
         assert.deepEqual(terminal.getProcessOptions(), {
             cwd: Uri.file("/path/to/local/workspace").fsPath,
             env: {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                 DATABRICKS_CONFIG_PROFILE: "profile",
-                DATABRICKS_HOST: "https://000000000000.00.azuredatabricks.net/",
                 DATABRICKS_CONFIG_FILE: undefined,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,

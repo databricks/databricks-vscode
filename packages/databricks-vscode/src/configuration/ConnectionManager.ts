@@ -1,9 +1,4 @@
-import {
-    WorkspaceClient,
-    Cluster,
-    HttpError,
-    Config,
-} from "@databricks/databricks-sdk";
+import {WorkspaceClient, Cluster, HttpError} from "@databricks/databricks-sdk";
 import {
     env,
     EventEmitter,

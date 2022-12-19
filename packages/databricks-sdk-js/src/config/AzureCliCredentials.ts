@@ -5,8 +5,9 @@ import {
     RequestVisitor,
     Config,
     CredentialProvider,
-    CredentialsProviderError,
+    ConfigError,
 } from "./Config";
+import {Provider} from "../types";
 
 const execFile = promisify(child_process.execFile);
 
@@ -22,8 +23,30 @@ export class AzureCliCredentials implements CredentialProvider {
         }
 
         const appId = config.azureLoginAppId || azureDatabricksLoginAppID;
+        const ts = this.getTokenSource(config, appId);
 
-        return refreshableTokenProvider(async () => {
+        try {
+            await ts();
+        } catch (error) {
+            if (error instanceof ConfigError) {
+                if (error.message.indexOf("Can't find 'az' command") >= 0) {
+                    config.logger.debug(
+                        "Most likely Azure CLI is not installed. " +
+                            "See https://docs.microsoft.com/en-us/cli/azure/?view=azure-cli-latest for details"
+                    );
+                    return;
+                }
+                throw error;
+            } else {
+                throw error;
+            }
+        }
+
+        return refreshableTokenProvider(ts);
+    }
+
+    getTokenSource(config: Config, appId: string): Provider<Token> {
+        return async () => {
             let stdout = "";
             try {
                 ({stdout} = await execFile(
@@ -38,11 +61,15 @@ export class AzureCliCredentials implements CredentialProvider {
                 ));
             } catch (e: any) {
                 if (e.code === "ENOENT") {
-                    throw new CredentialsProviderError(
-                        "Can't find 'az' command. Please install Azure CLI: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli'"
+                    throw new ConfigError(
+                        "azure-cli: Can't find 'az' command. Please install Azure CLI: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli",
+                        config
                     );
                 } else {
-                    throw e;
+                    throw new ConfigError(
+                        `azure-cli: cannot get access token: ${e.stderr}`,
+                        config
+                    );
                 }
             }
 
@@ -55,6 +82,6 @@ export class AzureCliCredentials implements CredentialProvider {
                 `Refreshed OAuth token for ${appId} from Azure CLI, which expires on ${azureToken.expiresOn}`
             );
             return token;
-        });
+        };
     }
 }

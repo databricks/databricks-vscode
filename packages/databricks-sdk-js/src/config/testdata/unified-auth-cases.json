@@ -1,0 +1,256 @@
+{
+    "testCases": [
+        {
+            "name": "TestConfig_NoParams",
+            "assert_error": "default auth: cannot configure default credentials"
+        },
+        {
+            "name": "TestConfig_HostEnv",
+            "env": {
+                "DATABRICKS_HOST": "x"
+            },
+            "assert_error": "default auth: cannot configure default credentials. Config: host=https://x. Env: DATABRICKS_HOST"
+        },
+        {
+            "name": "TestConfig_TokenEnv",
+            "env": {
+                "DATABRICKS_TOKEN": "x"
+            },
+            "assert_error": "default auth: cannot configure default credentials. Config: token=***. Env: DATABRICKS_TOKEN"
+        },
+        {
+            "name": "TestConfig_HostTokenEnv",
+            "env": {
+                "DATABRICKS_HOST": "x",
+                "DATABRICKS_TOKEN": "x"
+            },
+            "assert_auth": "pat",
+            "assert_host": "https://x"
+        },
+        {
+            "name": "TestConfig_HostParamTokenEnv",
+            "host": "https://x",
+            "env": {
+                "DATABRICKS_TOKEN": "x"
+            },
+            "assert_auth": "pat",
+            "assert_host": "https://x"
+        },
+        {
+            "name": "TestConfig_UserPasswordEnv",
+            "env": {
+                "DATABRICKS_PASSWORD": "x",
+                "DATABRICKS_USERNAME": "x"
+            },
+            "assert_error": "default auth: cannot configure default credentials. Config: username=x, password=***. Env: DATABRICKS_USERNAME, DATABRICKS_PASSWORD",
+            "assert_host": "https://x"
+        },
+        {
+            "name": "TestConfig_BasicAuth",
+            "env": {
+                "DATABRICKS_HOST": "x",
+                "DATABRICKS_PASSWORD": "x",
+                "DATABRICKS_USERNAME": "x"
+            },
+            "assert_auth": "basic",
+            "assert_host": "https://x"
+        },
+        {
+            "name": "TestConfig_AttributePrecedence",
+            "host": "y",
+            "env": {
+                "DATABRICKS_HOST": "x",
+                "DATABRICKS_PASSWORD": "x",
+                "DATABRICKS_USERNAME": "x"
+            },
+            "assert_auth": "basic",
+            "assert_host": "https://y"
+        },
+        {
+            "name": "TestConfig_BasicAuth_Mix",
+            "host": "y",
+            "username": "x",
+            "env": {
+                "DATABRICKS_PASSWORD": "x"
+            },
+            "assert_auth": "basic",
+            "assert_host": "https://y"
+        },
+        {
+            "name": "TestConfig_BasicAuth_Attrs",
+            "host": "y",
+            "username": "x",
+            "password": "x",
+            "assert_auth": "basic",
+            "assert_host": "https://y"
+        },
+        {
+            "name": "TestConfig_ConflictingEnvs",
+            "env": {
+                "DATABRICKS_HOST": "x",
+                "DATABRICKS_PASSWORD": "x",
+                "DATABRICKS_TOKEN": "x",
+                "DATABRICKS_USERNAME": "x"
+            },
+            "assert_error": "validate: more than one authorization method configured: basic and pat. Config: host=x, token=***, username=x, password=***. Env: DATABRICKS_HOST, DATABRICKS_TOKEN, DATABRICKS_USERNAME, DATABRICKS_PASSWORD"
+        },
+        {
+            "name": "TestConfig_ConflictingEnvs_AuthType",
+            "auth_type": "basic",
+            "env": {
+                "DATABRICKS_HOST": "x",
+                "DATABRICKS_PASSWORD": "x",
+                "DATABRICKS_TOKEN": "x",
+                "DATABRICKS_USERNAME": "x"
+            },
+            "assert_auth": "basic",
+            "assert_host": "https://x"
+        },
+        {
+            "name": "TestConfig_ConfigFile",
+            "env": {
+                "DATABRICKS_CONFIG_FILE": "x"
+            },
+            "assert_error": "default auth: cannot configure default credentials. Config: config_file=x. Env: DATABRICKS_CONFIG_FILE"
+        },
+        {
+            "name": "TestConfig_PatFromDatabricksCfg",
+            "env": {
+                "HOME": "testdata"
+            },
+            "assert_auth": "pat",
+            "assert_host": "https://dbc-XXXXXXXX-YYYY.cloud.databricks.com"
+        },
+        {
+            "name": "TestConfig_PatFromDatabricksCfg_NohostProfile",
+            "env": {
+                "DATABRICKS_CONFIG_PROFILE": "nohost",
+                "HOME": "testdata"
+            },
+            "assert_error": "default auth: cannot configure default credentials. Config: token=***, profile=nohost. Env: DATABRICKS_CONFIG_PROFILE"
+        },
+        {
+            "name": "TestConfig_ConfigProfileAndToken",
+            "env": {
+                "DATABRICKS_CONFIG_PROFILE": "nohost",
+                "DATABRICKS_TOKEN": "x",
+                "HOME": "testdata"
+            },
+            "assert_error": "default auth: cannot configure default credentials. Config: token=***, profile=nohost. Env: DATABRICKS_TOKEN, DATABRICKS_CONFIG_PROFILE"
+        },
+        {
+            "name": "TestConfig_ConfigProfileAndPassword",
+            "env": {
+                "DATABRICKS_CONFIG_PROFILE": "nohost",
+                "DATABRICKS_USERNAME": "x",
+                "HOME": "testdata"
+            },
+            "assert_error": "validate: more than one authorization method configured: basic and pat. Config: token=***, username=x, profile=nohost. Env: DATABRICKS_USERNAME, DATABRICKS_CONFIG_PROFILE"
+        },
+        {
+            "name": "TestConfig_AzurePAT",
+            "host": "https://adb-xxx.y.azuredatabricks.net/",
+            "token": "y",
+            "assert_auth": "pat",
+            "assert_host": "https://adb-xxx.y.azuredatabricks.net",
+            "assert_azure": true
+        },
+        {
+            "name": "TestConfig_AzureCliHost",
+            "host": "x",
+            "azure_resource_id": "/sub/rg/ws",
+            "env": {
+                "HOME": "testdata/azure",
+                "PATH": "testdata:/bin"
+            },
+            "assert_auth": "azure-cli",
+            "assert_host": "https://x",
+            "assert_azure": true
+        },
+        {
+            "name": "TestConfig_AzureCliHost_Fail",
+            "azure_resource_id": "/sub/rg/ws",
+            "env": {
+                "FAIL": "yes",
+                "HOME": "testdata/azure",
+                "PATH": "testdata:/bin"
+            },
+            "assert_error": "default auth: azure-cli: cannot get access token: This is just a failing script.\n. Config: azure_workspace_resource_id=/sub/rg/ws"
+        },
+        {
+            "name": "TestConfig_AzureCliHost_AzNotInstalled",
+            "azure_resource_id": "/sub/rg/ws",
+            "env": {
+                "HOME": "testdata/azure",
+                "PATH": "whatever"
+            },
+            "assert_error": "default auth: cannot configure default credentials. Config: azure_workspace_resource_id=/sub/rg/ws"
+        },
+        {
+            "name": "TestConfig_AzureCliHost_PatConflict_WithConfigFilePresentWithoutDefaultProfile",
+            "token": "x",
+            "azure_resource_id": "/sub/rg/ws",
+            "env": {
+                "HOME": "testdata/azure",
+                "PATH": "testdata:/bin"
+            },
+            "assert_error": "validate: more than one authorization method configured: azure and pat. Config: token=***, azure_workspace_resource_id=/sub/rg/ws"
+        },
+        {
+            "name": "TestConfig_AzureCliHostAndResourceID",
+            "host": "x",
+            "azure_resource_id": "/sub/rg/ws",
+            "env": {
+                "HOME": "testdata/azure",
+                "PATH": "testdata:/bin"
+            },
+            "assert_auth": "azure-cli",
+            "assert_host": "https://x",
+            "assert_azure": true
+        },
+        {
+            "name": "TestConfig_AzureCliHostAndResourceID_ConfigurationPrecedence",
+            "host": "x",
+            "azure_resource_id": "/sub/rg/ws",
+            "env": {
+                "DATABRICKS_CONFIG_PROFILE": "justhost",
+                "HOME": "testdata/azure",
+                "PATH": "testdata:/bin"
+            },
+            "assert_auth": "azure-cli",
+            "assert_host": "https://x",
+            "assert_azure": true
+        },
+        {
+            "name": "TestConfig_AzureAndPasswordConflict",
+            "host": "x",
+            "azure_resource_id": "/sub/rg/ws",
+            "env": {
+                "DATABRICKS_USERNAME": "x",
+                "HOME": "testdata/azure",
+                "PATH": "testdata:/bin"
+            },
+            "assert_error": "validate: more than one authorization method configured: azure and basic. Config: host=x, username=x, azure_workspace_resource_id=/sub/rg/ws. Env: DATABRICKS_USERNAME"
+        },
+        {
+            "name": "TestConfig_CorruptConfig",
+            "env": {
+                "DATABRICKS_CONFIG_PROFILE": "DEFAULT",
+                "HOME": "testdata/corrupt"
+            },
+            "assert_error": "resolve: testdata/corrupt/.databrickscfg has no DEFAULT profile configured. Config: profile=DEFAULT. Env: DATABRICKS_CONFIG_PROFILE"
+        },
+        {
+            "name": "TestConfig_AuthTypeFromEnv",
+            "host": "x",
+            "env": {
+                "DATABRICKS_AUTH_TYPE": "basic",
+                "DATABRICKS_PASSWORD": "password",
+                "DATABRICKS_TOKEN": "token",
+                "DATABRICKS_USERNAME": "user"
+            },
+            "assert_auth": "basic",
+            "assert_host": "https://x"
+        }
+    ]
+}

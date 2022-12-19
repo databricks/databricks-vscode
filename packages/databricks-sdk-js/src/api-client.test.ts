@@ -15,12 +15,14 @@ describe(__filename, () => {
     it("should create proper user agent", () => {
         const ua = new ApiClient(
             new Config({
-                userAgentExtra: {unit: "3.4.5"},
+                product: "unit",
+                productVersion: "3.4.5",
+                authType: "pat",
             })
         ).userAgent();
         assert.equal(
             ua,
-            `unit/3.4.5 databricks-sdk-js/${sdkVersion} nodejs/${process.version.slice(
+            `unit/3.4.5 databricks-sdk-js/${sdkVersion} auth/pat nodejs/${process.version.slice(
                 1
             )} os/${process.platform}`
         );

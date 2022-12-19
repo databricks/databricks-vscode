@@ -75,8 +75,6 @@ export class DatabricksWorkspace {
         authProvider: AuthProvider,
         @context ctx?: Context
     ) {
-        const host = Uri.parse((await client.apiClient.host).toString());
-
         const me = await client.currentUser.me(ctx);
 
         const wsConfApi = new WorkspaceConf(client.apiClient);
