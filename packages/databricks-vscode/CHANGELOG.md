@@ -4,7 +4,7 @@
 
 ## <small>0.0.7 (2022-12-20)</small>
 
--   Feature: Add code completion support for Spark globals such as `spark` or `dbutils`
+-   Feature: Add code completion support for Databricks globals such as `spark` or `dbutils`
 -   Feature: Add support for logging in using the Azure CLI. This allows users to use the extension with Azure Active Directory (AAD).
 
 # Release: v0.0.6
