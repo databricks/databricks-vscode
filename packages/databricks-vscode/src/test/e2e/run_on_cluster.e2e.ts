@@ -39,7 +39,8 @@ describe("Run python on cluster", async function () {
         );
     });
 
-    it("should install vscode python extension", async () => {
+    it("should install vscode python extension", async function () {
+        this.retries(1);
         await waitForPythonExtension();
     });
 

@@ -43,7 +43,8 @@ describe("Configure Databricks Extension", async function () {
         workbench = await browser.getWorkbench();
     });
 
-    it("should install vscode python extension", async () => {
+    it("should install vscode python extension", async function () {
+        this.retries(1);
         await waitForPythonExtension();
     });
 
