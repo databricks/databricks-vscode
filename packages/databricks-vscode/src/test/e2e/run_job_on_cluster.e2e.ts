@@ -3,15 +3,15 @@ import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
     getViewSection,
-    startSyncIfStopped,
-    waitForPythonExtensionWithRetry,
-    waitForSyncComplete,
+    getViewSubSection,
+    waitForPythonExtension,
+    waitForTreeItems,
 } from "./utils";
-import {sleep} from "wdio-vscode-service";
+import {sleep, TreeItem} from "wdio-vscode-service";
 
-describe("Run as workflow on cluster", async function () {
+describe("Run python on cluster", async function () {
     let projectDir: string;
-    this.timeout(5 * 60 * 1000);
+    this.timeout(2 * 60 * 1000);
 
     before(async () => {
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
@@ -42,15 +42,59 @@ describe("Run as workflow on cluster", async function () {
             ].join("\n")
         );
 
-        await waitForPythonExtensionWithRetry(1.5 * 60 * 1000, 2);
-
-        await (await getViewSection("CLUSTERS"))?.collapse();
+        const section = await getViewSection("CONFIGURATION");
+        assert(section);
+        await waitForTreeItems(section);
+        await waitForPythonExtension();
     });
 
     beforeEach(async () => {
-        await startSyncIfStopped();
+        const section = await getViewSection("CLUSTERS");
+        await section?.collapse();
 
-        await waitForSyncComplete();
+        const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
+        assert(repoConfigItem);
+
+        let status: TreeItem | undefined = undefined;
+        for (const i of await repoConfigItem.getChildren()) {
+            if ((await i.getLabel()).includes("State:")) {
+                status = i;
+                break;
+            }
+        }
+        assert(status);
+        if ((await status.getDescription())?.includes("STOPPED")) {
+            const buttons = await repoConfigItem.getActionButtons();
+            await buttons[0].elem.click();
+        }
+
+        await browser.waitUntil(
+            async () => {
+                const repoConfigItem = await getViewSubSection(
+                    "CONFIGURATION",
+                    "Repo"
+                );
+                assert(repoConfigItem);
+
+                status = undefined;
+                for (const i of await repoConfigItem.getChildren()) {
+                    if ((await i.getLabel()).includes("State:")) {
+                        status = i;
+                        break;
+                    }
+                }
+                assert(status);
+                const description = await status?.getDescription();
+                return (
+                    description !== undefined &&
+                    description.includes("WATCHING_FOR_CHANGES")
+                );
+            },
+            {
+                timeout: 20000,
+                timeoutMsg: "Couldn't finish sync in 20s",
+            }
+        );
     });
 
     it("should run a python notebook as a job on a cluster", async () => {
@@ -126,7 +170,7 @@ describe("Run as workflow on cluster", async function () {
         await sleep(200);
         await input.setText("file.py");
         await input.confirm();
-        await sleep(2000);
+        await sleep(500);
 
         // run file
         await workbench.executeQuickPick(

@@ -3,7 +3,7 @@ import path from "node:path";
 import * as fs from "fs/promises";
 import {
     getViewSection,
-    waitForPythonExtensionWithRetry,
+    waitForPythonExtension,
     waitForTreeItems,
 } from "./utils";
 import {
@@ -21,7 +21,7 @@ describe("Configure Databricks Extension", async function () {
     let host: string;
     let workbench: Workbench;
 
-    this.timeout(5 * 60 * 1000);
+    this.timeout(3 * 60 * 1000);
 
     before(async function () {
         assert(
@@ -41,7 +41,7 @@ describe("Configure Databricks Extension", async function () {
         host = process.env.DATABRICKS_HOST;
 
         workbench = await browser.getWorkbench();
-        await waitForPythonExtensionWithRetry(1.5 * 60 * 1000, 2);
+        await waitForPythonExtension();
     });
 
     it("should open VSCode", async function () {
