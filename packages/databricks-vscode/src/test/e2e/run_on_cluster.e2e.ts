@@ -54,29 +54,10 @@ describe("Run python on cluster", async function () {
     });
 
     it("should start syncing", async () => {
-        const section = await getViewSection("CLUSTERS");
-        await section?.collapse();
-
-        const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
-        assert(repoConfigItem);
-        const buttons = await repoConfigItem.getActionButtons();
-        await buttons[0].elem.click();
-
-        // wait for sync to finish
-        const workbench = await driver.getWorkbench();
-        const terminalView = await workbench.getBottomBar().openTerminalView();
-
-        while (true) {
-            await sleep(500);
-            const text = await terminalView.getText();
-            if (text.includes("Sync Complete")) {
-                break;
-            }
-        }
+        await waitForSync();
     });
 
     it("should run a python file on a cluster", async () => {
-        await waitForSync();
         const workbench = await driver.getWorkbench();
         const editorView = workbench.getEditorView();
         await editorView.closeAllEditors();
