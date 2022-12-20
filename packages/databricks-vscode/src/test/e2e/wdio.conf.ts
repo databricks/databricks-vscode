@@ -193,7 +193,7 @@ export const config: Options.Testrunner = {
         [
             video,
             {
-                saveAllVideos: true,
+                saveAllVideos: false, //only saves videos for failed tests
                 videoSlowdownMultiplier: 2,
             },
         ],

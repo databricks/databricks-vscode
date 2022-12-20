@@ -5,6 +5,7 @@ import {
     getViewSection,
     getViewSubSection,
     waitForPythonExtension,
+    waitForSync,
     waitForTreeItems,
 } from "./utils";
 import {sleep} from "wdio-vscode-service";
@@ -40,6 +41,9 @@ describe("Run python on cluster", async function () {
             path.join(projectDir, "hello.py"),
             `spark.sql('SELECT "hello world"').show()`
         );
+    });
+
+    it("should install vscode python extension", async () => {
         await waitForPythonExtension();
     });
 
@@ -72,6 +76,7 @@ describe("Run python on cluster", async function () {
     });
 
     it("should run a python file on a cluster", async () => {
+        await waitForSync();
         const workbench = await driver.getWorkbench();
         const editorView = workbench.getEditorView();
         await editorView.closeAllEditors();

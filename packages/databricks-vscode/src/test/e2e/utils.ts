@@ -128,3 +128,52 @@ export async function waitForPythonExtension() {
         }
     } catch {}
 }
+
+export async function waitForSync() {
+    const section = await getViewSection("CLUSTERS");
+    await section?.collapse();
+
+    const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
+    assert(repoConfigItem);
+
+    let status: TreeItem | undefined = undefined;
+    for (const i of await repoConfigItem.getChildren()) {
+        if ((await i.getLabel()).includes("State:")) {
+            status = i;
+            break;
+        }
+    }
+    assert(status);
+    if ((await status.getDescription())?.includes("STOPPED")) {
+        const buttons = await repoConfigItem.getActionButtons();
+        await buttons[0].elem.click();
+    }
+
+    await browser.waitUntil(
+        async () => {
+            const repoConfigItem = await getViewSubSection(
+                "CONFIGURATION",
+                "Repo"
+            );
+            assert(repoConfigItem);
+
+            status = undefined;
+            for (const i of await repoConfigItem.getChildren()) {
+                if ((await i.getLabel()).includes("State:")) {
+                    status = i;
+                    break;
+                }
+            }
+            assert(status);
+            const description = await status?.getDescription();
+            return (
+                description !== undefined &&
+                description.includes("WATCHING_FOR_CHANGES")
+            );
+        },
+        {
+            timeout: 20000,
+            timeoutMsg: "Couldn't finish sync in 20s",
+        }
+    );
+}

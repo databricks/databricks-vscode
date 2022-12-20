@@ -45,6 +45,9 @@ describe("Configure Databricks Extension", async function () {
         host = process.env.DATABRICKS_HOST;
 
         workbench = await browser.getWorkbench();
+    });
+
+    it("should install vscode python extension", async () => {
         await waitForPythonExtension();
     });
 

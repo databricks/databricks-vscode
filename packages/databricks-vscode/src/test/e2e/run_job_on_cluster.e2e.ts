@@ -5,6 +5,7 @@ import {
     getViewSection,
     getViewSubSection,
     waitForPythonExtension,
+    waitForSync,
     waitForTreeItems,
 } from "./utils";
 import {sleep, TreeItem} from "wdio-vscode-service";
@@ -49,59 +50,15 @@ describe("Run python on cluster", async function () {
         const section = await getViewSection("CONFIGURATION");
         assert(section);
         await waitForTreeItems(section);
+    });
+
+    it("should install vscode python extension", async () => {
         await waitForPythonExtension();
     });
 
-    beforeEach(async () => {
-        const section = await getViewSection("CLUSTERS");
-        await section?.collapse();
-
-        const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
-        assert(repoConfigItem);
-
-        let status: TreeItem | undefined = undefined;
-        for (const i of await repoConfigItem.getChildren()) {
-            if ((await i.getLabel()).includes("State:")) {
-                status = i;
-                break;
-            }
-        }
-        assert(status);
-        if ((await status.getDescription())?.includes("STOPPED")) {
-            const buttons = await repoConfigItem.getActionButtons();
-            await buttons[0].elem.click();
-        }
-
-        await browser.waitUntil(
-            async () => {
-                const repoConfigItem = await getViewSubSection(
-                    "CONFIGURATION",
-                    "Repo"
-                );
-                assert(repoConfigItem);
-
-                status = undefined;
-                for (const i of await repoConfigItem.getChildren()) {
-                    if ((await i.getLabel()).includes("State:")) {
-                        status = i;
-                        break;
-                    }
-                }
-                assert(status);
-                const description = await status?.getDescription();
-                return (
-                    description !== undefined &&
-                    description.includes("WATCHING_FOR_CHANGES")
-                );
-            },
-            {
-                timeout: 20000,
-                timeoutMsg: "Couldn't finish sync in 20s",
-            }
-        );
-    });
-
     it("should run a python notebook as a job on a cluster", async () => {
+        await waitForSync();
+
         const workbench = await driver.getWorkbench();
         const editorView = workbench.getEditorView();
         await editorView.closeAllEditors();
@@ -165,6 +122,7 @@ describe("Run python on cluster", async function () {
     });
 
     it("should run a python file as a job on a cluster", async () => {
+        await waitForSync();
         const workbench = await driver.getWorkbench();
         const editorView = workbench.getEditorView();
         await editorView.closeAllEditors();
