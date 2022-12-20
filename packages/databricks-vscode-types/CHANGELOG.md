@@ -4,15 +4,11 @@
 
 ## <small>0.0.7 (2022-12-20)</small>
 
--   Bump decode-uri-component from 0.2.0 to 0.2.2 (#278) ([a542d93](https://github.com/databricks/databricks-vscode/commit/a542d93)), closes [#278](https://github.com/databricks/databricks-vscode/issues/278) [#6](https://github.com/databricks/databricks-vscode/issues/6) [#1](https://github.com/databricks/databricks-vscode/issues/1) [#6](https://github.com/databricks/databricks-vscode/issues/6) [#1](https://github.com/databricks/databricks-vscode/issues/1)
-
 # Release: v0.0.6
 
 ## packages/databricks-vscode-types
 
 ## <small>0.0.6 (2022-12-05)</small>
-
--   Bump @types/uuid from 8.3.4 to 9.0.0 in /packages/databricks-sdk-js (#263) ([5c6a4af](https://github.com/databricks/databricks-vscode/commit/5c6a4af)), closes [#263](https://github.com/databricks/databricks-vscode/issues/263)
 
 # Release: v0.0.5
 
