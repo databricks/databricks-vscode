@@ -3,9 +3,9 @@ import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
     getViewSection,
-    getViewSubSection,
+    startSyncIfStopped,
     waitForPythonExtension,
-    waitForSync,
+    waitForSyncComplete,
     waitForTreeItems,
 } from "./utils";
 import {sleep} from "wdio-vscode-service";
@@ -54,7 +54,8 @@ describe("Run python on cluster", async function () {
     });
 
     it("should start syncing", async () => {
-        await waitForSync();
+        await startSyncIfStopped();
+        await waitForSyncComplete();
     });
 
     it("should run a python file on a cluster", async () => {

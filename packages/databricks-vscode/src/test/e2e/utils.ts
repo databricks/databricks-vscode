@@ -129,42 +129,29 @@ export async function waitForPythonExtension() {
     } catch {}
 }
 
-export async function waitForSync() {
-    const section = await getViewSection("CLUSTERS");
-    await section?.collapse();
-
-    const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
-    assert(repoConfigItem);
-
-    let status: TreeItem | undefined = undefined;
-    for (const i of await repoConfigItem.getChildren()) {
-        if ((await i.getLabel()).includes("State:")) {
-            status = i;
-            break;
-        }
-    }
-    assert(status);
-    if ((await status.getDescription())?.includes("STOPPED")) {
-        const buttons = await repoConfigItem.getActionButtons();
-        await buttons[0].elem.click();
-    }
-
+export async function waitForSyncComplete() {
     await browser.waitUntil(
         async () => {
             const repoConfigItem = await getViewSubSection(
                 "CONFIGURATION",
                 "Repo"
             );
-            assert(repoConfigItem);
+            if (repoConfigItem === undefined) {
+                return false;
+            }
+            await repoConfigItem.expand();
 
-            status = undefined;
+            let status: TreeItem | undefined = undefined;
             for (const i of await repoConfigItem.getChildren()) {
                 if ((await i.getLabel()).includes("State:")) {
                     status = i;
                     break;
                 }
             }
-            assert(status);
+            if (status === undefined) {
+                return false;
+            }
+
             const description = await status?.getDescription();
             return (
                 description !== undefined &&
@@ -172,8 +159,47 @@ export async function waitForSync() {
             );
         },
         {
+            timeout: 60000,
+            interval: 20000,
+            timeoutMsg: "Couldn't finish sync in 1m",
+        }
+    );
+}
+
+export async function startSyncIfStopped() {
+    browser.waitUntil(
+        async () => {
+            const repoConfigItem = await getViewSubSection(
+                "CONFIGURATION",
+                "Repo"
+            );
+            if (repoConfigItem === undefined) {
+                return false;
+            }
+            await repoConfigItem.expand();
+
+            let status: TreeItem | undefined = undefined;
+            for (const i of await repoConfigItem.getChildren()) {
+                if ((await i.getLabel()).includes("State:")) {
+                    status = i;
+                    break;
+                }
+            }
+            if (status === undefined) {
+                return false;
+            }
+
+            if ((await status.getDescription())?.includes("STOPPED")) {
+                const buttons = await repoConfigItem.getActionButtons();
+                if (buttons.length === 0) {
+                    return false;
+                }
+                await buttons[0].elem.click();
+            }
+            return true;
+        },
+        {
             timeout: 20000,
-            timeoutMsg: "Couldn't finish sync in 20s",
         }
     );
 }

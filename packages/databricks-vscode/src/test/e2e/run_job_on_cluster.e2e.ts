@@ -3,12 +3,12 @@ import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
     getViewSection,
-    getViewSubSection,
+    startSyncIfStopped,
     waitForPythonExtension,
-    waitForSync,
+    waitForSyncComplete,
     waitForTreeItems,
 } from "./utils";
-import {sleep, TreeItem} from "wdio-vscode-service";
+import {sleep} from "wdio-vscode-service";
 
 describe("Run python on cluster", async function () {
     let projectDir: string;
@@ -57,7 +57,8 @@ describe("Run python on cluster", async function () {
     });
 
     it("should run a python notebook as a job on a cluster", async () => {
-        await waitForSync();
+        await startSyncIfStopped();
+        await waitForSyncComplete();
 
         const workbench = await driver.getWorkbench();
         const editorView = workbench.getEditorView();
@@ -122,7 +123,9 @@ describe("Run python on cluster", async function () {
     });
 
     it("should run a python file as a job on a cluster", async () => {
-        await waitForSync();
+        await startSyncIfStopped();
+        await waitForSyncComplete();
+
         const workbench = await driver.getWorkbench();
         const editorView = workbench.getEditorView();
         await editorView.closeAllEditors();
