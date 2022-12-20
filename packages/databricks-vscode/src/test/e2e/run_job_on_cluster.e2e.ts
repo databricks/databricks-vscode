@@ -15,10 +15,6 @@ describe("Run python on cluster", async function () {
     this.timeout(2 * 60 * 1000);
 
     before(async () => {
-        await (
-            await browser.getWorkbench()
-        ).executeCommand("Developer: Reload window");
-
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
         assert(process.env.TEST_REPO_PATH);
         assert(process.env.WORKSPACE_PATH);

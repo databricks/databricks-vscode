@@ -24,10 +24,6 @@ describe("Configure Databricks Extension", async function () {
     this.timeout(3 * 60 * 1000);
 
     before(async function () {
-        await (
-            await browser.getWorkbench()
-        ).executeCommand("Developer: Reload window");
-
         assert(
             process.env.TEST_DEFAULT_CLUSTER_ID,
             "TEST_DEFAULT_CLUSTER_ID env var doesn't exist"
