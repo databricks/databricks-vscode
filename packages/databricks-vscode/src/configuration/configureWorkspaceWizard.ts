@@ -16,7 +16,7 @@ interface AuthTypeQuickPickItem extends QuickPickItem {
 }
 
 interface State {
-    host: string;
+    host: URL;
     authType: AuthType;
     profile?: string;
     token?: string;
@@ -48,7 +48,7 @@ export async function configureWorkspaceWizard(
             },
         });
 
-        state.host = host;
+        state.host = normalizeHost(host);
         return (input: MultiStepInput) => selectAuthMethod(input, state);
     }
 
@@ -59,7 +59,7 @@ export async function configureWorkspaceWizard(
         const items: Array<AuthTypeQuickPickItem> = [];
         let profiles: Profiles = {};
 
-        for (const authMethod of authMethodsForHostname(new URL(state.host!))) {
+        for (const authMethod of authMethodsForHostname(state.host!)) {
             switch (authMethod) {
                 case "azure-cli":
                     items.push({
@@ -108,8 +108,7 @@ export async function configureWorkspaceWizard(
                             .filter(
                                 (label) =>
                                     (profiles[label] as Profile).host
-                                        .hostname ===
-                                    new URL(state.host!).hostname
+                                        .hostname === state.host!.hostname
                             )
                             .map((label) => ({
                                 label,
@@ -195,36 +194,43 @@ export async function configureWorkspaceWizard(
         return;
     }
 
-    state.host = `https://${new URL(state.host).hostname}`;
-
     return {
         authProvider: AuthProvider.fromJSON(state),
     };
 }
 
-async function validateDatabricksHost(
-    host: string
-): Promise<string | undefined> {
-    let url;
+function normalizeHost(host: string): URL {
+    let url: URL;
 
-    if (!host.startsWith("https://")) {
+    if (!host.startsWith("http")) {
         host = `https://${host}`;
     }
-
     try {
         url = new URL(host);
     } catch (e) {
-        return "Invalid host name";
+        throw new Error("Invalid host name");
     }
     if (url.protocol !== "https:") {
-        return "Invalid protocol";
+        throw new Error("Invalid protocol");
     }
     if (
         !url.hostname.match(
             /(\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com)$/
         )
     ) {
-        return "Not a Databricks host";
+        throw new Error("Not a Databricks host");
+    }
+
+    return new URL(`https://${url.hostname}`);
+}
+
+async function validateDatabricksHost(
+    host: string
+): Promise<string | undefined> {
+    try {
+        normalizeHost(host);
+    } catch (e: any) {
+        return e.message;
     }
 }
 
