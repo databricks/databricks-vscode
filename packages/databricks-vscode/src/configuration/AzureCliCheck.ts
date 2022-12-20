@@ -168,7 +168,7 @@ export class AzureCliCheck implements Disposable {
         } catch (e: any) {
             // parse error message
             const m = e.message.match(
-                /Expected iss claim to be: https:\/\/sts\.windows\.net\/(.+), but was: https:\/\/sts\.windows\.net\/(.+)/
+                /Expected iss claim to be: https:\/\/sts\.windows\.net\/([a-z0-9-]+?)\/?, but was: https:\/\/sts\.windows\.net\/([a-z0-9-]+)\/?/
             );
             if (m) {
                 return m[1];

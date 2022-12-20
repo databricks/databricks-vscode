@@ -38,19 +38,12 @@ export abstract class AuthProvider {
     abstract toJSON(): Record<string, unknown>;
     abstract getEnvVars(): {[key: string]: string};
 
-    getCredentialProvider(): CredentialProvider {
-        if (!this._credentialProvider) {
-            this._credentialProvider = this.createCredentialProvider();
-        }
-        return this._credentialProvider;
-    }
+    public abstract getCredentialProvider(): CredentialProvider;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async check(silent: boolean): Promise<boolean> {
         return true;
     }
-
-    protected abstract createCredentialProvider(): CredentialProvider;
 
     static fromJSON(json: Record<string, any>): AuthProvider {
         const url = json.url instanceof URL ? json.url : new URL(json.host);
@@ -109,7 +102,7 @@ export class TokenAuthProvider extends AuthProvider {
         };
     }
 
-    createCredentialProvider(): CredentialProvider {
+    getCredentialProvider(): CredentialProvider {
         return fromToken(this.host, this.token);
     }
 }
@@ -138,7 +131,7 @@ export class ProfileAuthProvider extends AuthProvider {
         };
     }
 
-    createCredentialProvider(): CredentialProvider {
+    getCredentialProvider(): CredentialProvider {
         return fromConfigFile(this.profile);
     }
 }
@@ -166,7 +159,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         };
     }
 
-    createCredentialProvider(): CredentialProvider {
+    getCredentialProvider(): CredentialProvider {
         return fromAzureCli(this.host);
     }
 

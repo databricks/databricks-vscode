@@ -107,9 +107,9 @@ export async function configureWorkspaceWizard(
                             )
                             .filter(
                                 (label) =>
-                                    (
-                                        profiles[label] as Profile
-                                    ).host.toString() === state.host!.toString()
+                                    (profiles[label] as Profile).host
+                                        .hostname ===
+                                    new URL(state.host!).hostname
                             )
                             .map((label) => ({
                                 label,
@@ -206,6 +206,11 @@ async function validateDatabricksHost(
     host: string
 ): Promise<string | undefined> {
     let url;
+
+    if (!host.startsWith("https://")) {
+        host = `https://${host}`;
+    }
+
     try {
         url = new URL(host);
     } catch (e) {
