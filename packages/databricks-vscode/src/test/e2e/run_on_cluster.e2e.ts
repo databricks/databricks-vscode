@@ -3,8 +3,9 @@ import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
     getViewSection,
-    getViewSubSection,
+    startSyncIfStopped,
     waitForPythonExtension,
+    waitForSyncComplete,
     waitForTreeItems,
 } from "./utils";
 import {sleep} from "wdio-vscode-service";
@@ -36,6 +37,10 @@ describe("Run python on cluster", async function () {
             path.join(projectDir, "hello.py"),
             `spark.sql('SELECT "hello world"').show()`
         );
+    });
+
+    it("should install vscode python extension", async function () {
+        this.retries(1);
         await waitForPythonExtension();
     });
 
@@ -46,25 +51,8 @@ describe("Run python on cluster", async function () {
     });
 
     it("should start syncing", async () => {
-        const section = await getViewSection("CLUSTERS");
-        await section?.collapse();
-
-        const repoConfigItem = await getViewSubSection("CONFIGURATION", "Repo");
-        assert(repoConfigItem);
-        const buttons = await repoConfigItem.getActionButtons();
-        await buttons[0].elem.click();
-
-        // wait for sync to finish
-        const workbench = await driver.getWorkbench();
-        const terminalView = await workbench.getBottomBar().openTerminalView();
-
-        while (true) {
-            await sleep(500);
-            const text = await terminalView.getText();
-            if (text.includes("Sync Complete")) {
-                break;
-            }
-        }
+        await startSyncIfStopped();
+        await waitForSyncComplete();
     });
 
     it("should run a python file on a cluster", async () => {
