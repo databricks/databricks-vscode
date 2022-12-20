@@ -177,13 +177,13 @@ export const config: Options.Testrunner = {
     framework: "mocha",
     //
     // The number of times to retry the entire specfile when it fails as a whole
-    specFileRetries: 1,
+    // specFileRetries: 1,
     //
     // Delay in seconds between the spec file retry attempts
-    specFileRetriesDelay: 15,
+    // specFileRetriesDelay: 0,
     //
     // Whether or not retried specfiles should be retried immediately or deferred to the end of the queue
-    specFileRetriesDeferred: true,
+    // specFileRetriesDeferred: false,
     //
     // Test reporter for stdout.
     // The only one supported by default is 'dot'
@@ -193,7 +193,7 @@ export const config: Options.Testrunner = {
         [
             video,
             {
-                saveAllVideos: false, //only saves videos for failed tests
+                saveAllVideos: true,
                 videoSlowdownMultiplier: 2,
             },
         ],
@@ -205,7 +205,6 @@ export const config: Options.Testrunner = {
     mochaOpts: {
         ui: "bdd",
         timeout: 60000,
-        bail: true,
     },
     //
     // =====
@@ -429,11 +428,14 @@ token = ${process.env["DATABRICKS_TOKEN"]}`
 }
 
 function getApiClient(host: string, token: string) {
-    const apiClient = new ApiClient("integration-tests", "0.0.1", async () => {
-        return {
-            host: new URL(host),
-            token,
-        };
+    const apiClient = new ApiClient({
+        credentialProvider: async () => {
+            return {
+                host: new URL(host),
+                token,
+            };
+        },
+        extraUserAgent: {"integration-tests": "0.0.1"},
     });
 
     return apiClient;
