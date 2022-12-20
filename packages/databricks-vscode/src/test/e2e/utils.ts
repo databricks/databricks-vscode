@@ -3,36 +3,45 @@ import {
     CustomTreeSection,
     sleep,
     TreeItem,
+    ViewControl,
     ViewSection,
 } from "wdio-vscode-service";
 
-export type ViewSectionType = "CLUSTERS" | "CONFIGURATION";
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const ViewSectionTypes = ["CLUSTERS", "CONFIGURATION"] as const;
+export type ViewSectionType = typeof ViewSectionTypes[number];
+
+export async function findViewSection(name: ViewSectionType) {
+    const workbench = await browser.getWorkbench();
+
+    let control: ViewControl | undefined;
+    await browser.waitUntil(
+        async () => {
+            control = await workbench
+                .getActivityBar()
+                .getViewControl("Databricks");
+            if (!control) {
+                return false;
+            }
+            return true;
+        },
+        {
+            timeout: 10 * 1000,
+            interval: 1 * 1000,
+            timeoutMsg: `Can't find view control "${name}"`,
+        }
+    );
+    const view = await (await control?.openView())
+        ?.getContent()
+        ?.getSection(name);
+    return view;
+}
+
 export async function getViewSection(
     name: ViewSectionType
 ): Promise<ViewSection | undefined> {
-    const workbench = await browser.getWorkbench();
-
-    let control;
-    for (let i = 0; i <= 10; i++) {
-        if (i === 10) {
-            assert.fail(`Can't find view control "${name}"`);
-        }
-        control = await workbench.getActivityBar().getViewControl("Databricks");
-        if (control) {
-            break;
-        }
-        await sleep(500);
-    }
-    assert.ok(control);
-
-    const view = await control.openView();
-    assert.ok(view);
-
-    const content = await view.getContent();
-    assert.ok(content);
-
-    const section = await content.getSection(name);
-    assert.ok(section);
+    const section = await findViewSection(name);
+    assert(section);
 
     await section.expand();
     await (await section.elem).click();
@@ -43,6 +52,11 @@ export async function getViewSubSection(
     section: ViewSectionType,
     subSection: string
 ): Promise<TreeItem | undefined> {
+    for (const s of ViewSectionTypes) {
+        if (s !== section) {
+            await (await findViewSection(s))?.collapse();
+        }
+    }
     const sectionView = await getViewSection(section);
 
     if (!sectionView) {
@@ -90,22 +104,27 @@ export async function waitForPythonExtension() {
     sleep(5000);
 
     const workbench = await browser.getWorkbench();
-    const notifs = await workbench.getNotifications();
-    let found = false;
-    for (const n of notifs) {
-        if (
-            (await n.getActions()).find(
-                (btn) => btn.getTitle() === "Install and Reload"
-            ) !== undefined
-        ) {
-            await n.takeAction("Install and Reload");
-            found = true;
-        }
-    }
+    browser.waitUntil(
+        async () => {
+            const notifs = await workbench.getNotifications();
+            let found = false;
+            for (const n of notifs) {
+                if (
+                    (await n.getActions()).find(
+                        (btn) => btn.getTitle() === "Install and Reload"
+                    ) !== undefined
+                ) {
+                    await n.takeAction("Install and Reload");
+                    found = true;
+                }
+            }
 
-    if (!found) {
-        return;
-    }
+            return found;
+        },
+        {
+            timeout: 10 * 1000,
+        }
+    );
 
     await browser.waitUntil(
         async () =>
@@ -121,7 +140,8 @@ export async function waitForPythonExtension() {
         }
     );
 
-    sleep(500);
+    sleep(1000);
+    const notifs = await workbench.getNotifications();
     try {
         for (const n of notifs) {
             await n.dismiss();
@@ -160,7 +180,7 @@ export async function waitForSyncComplete() {
         },
         {
             timeout: 60000,
-            interval: 20000,
+            interval: 2000,
             timeoutMsg: "Couldn't finish sync in 1m",
         }
     );
