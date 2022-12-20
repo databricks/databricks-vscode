@@ -1,3 +1,11 @@
+# Release: v0.0.7
+
+## packages/databricks-sdk-js
+
+## <small>0.0.7 (2022-12-20)</small>
+
+-   Feature: Add support for authenticating using the Azure CLI
+
 # Release: v0.0.6
 
 ## packages/databricks-sdk-js
