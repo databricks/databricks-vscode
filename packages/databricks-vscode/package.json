@@ -3,7 +3,7 @@
     "displayName": "Databricks for Visual Studio Code",
     "description": "IDE support for Databricks",
     "publisher": "databricks",
-    "license": "UNLICENSED",
+    "license": "LicenseRef-LICENSE",
     "version": "0.0.7",
     "engines": {
         "vscode": "^1.69.1"
