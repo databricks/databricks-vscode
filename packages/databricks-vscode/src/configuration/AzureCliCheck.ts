@@ -182,7 +182,9 @@ export class AzureCliCheck implements Disposable {
     // check if Azure CLI is installed
     public async hasAzureCli(): Promise<boolean> {
         try {
-            const {stdout} = await execFile(this.azBinPath, ["--version"]);
+            const {stdout} = await execFile(this.azBinPath, ["--version"], {
+                shell: true,
+            });
             if (stdout.indexOf("azure-cli") !== -1) {
                 return true;
             }
@@ -213,10 +215,11 @@ export class AzureCliCheck implements Disposable {
     // check if Azure CLI is logged in
     public async isAzureCliLoggedIn(): Promise<boolean> {
         try {
-            const {stdout, stderr} = await execFile(this.azBinPath, [
-                "account",
-                "list",
-            ]);
+            const {stdout, stderr} = await execFile(
+                this.azBinPath,
+                ["account", "list"],
+                {shell: true}
+            );
             if (stdout === "[]") {
                 return false;
             }

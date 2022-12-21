@@ -29,12 +29,16 @@ export const fromAzureCli = (host?: URL): CredentialProvider => {
     return refreshableCredentialProvider(async () => {
         let stdout = "";
         try {
-            ({stdout} = await execFile("az", [
-                "account",
-                "get-access-token",
-                "--resource",
-                azureDatabricksLoginAppID,
-            ]));
+            ({stdout} = await execFile(
+                "az",
+                [
+                    "account",
+                    "get-access-token",
+                    "--resource",
+                    azureDatabricksLoginAppID,
+                ],
+                {shell: true}
+            ));
         } catch (e: any) {
             if (e.code === "ENOENT") {
                 throw new CredentialsProviderError(
