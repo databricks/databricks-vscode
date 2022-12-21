@@ -73,8 +73,6 @@ describe("Configure Databricks Extension", async function () {
         let input = await new InputBox(workbench.locatorMap).wait();
         await sleep(200);
 
-        await input.setText(host);
-        await sleep(500);
         await input.confirm();
         await sleep(200);
 

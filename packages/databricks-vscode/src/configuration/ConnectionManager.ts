@@ -238,7 +238,9 @@ export class ConnectionManager {
         let config: ProjectConfig | undefined;
         while (true) {
             config = await configureWorkspaceWizard(
-                config?.authProvider?.host.toString()
+                this.databricksWorkspace?.host?.toString() ||
+                    config?.authProvider?.host.toString() ||
+                    process.env.DATABRICKS_HOST
             );
 
             if (!config) {
