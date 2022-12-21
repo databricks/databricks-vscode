@@ -163,6 +163,7 @@ export class MultiStepInput {
                 input.totalSteps = totalSteps;
                 input.value = value || "";
                 input.prompt = prompt;
+                input.ignoreFocusOut = true;
                 input.buttons = [
                     ...(this.steps.length > 1 ? [QuickInputButtons.Back] : []),
                     ...(buttons || []),
