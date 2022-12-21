@@ -2,6 +2,7 @@
 import assert from "node:assert";
 import {AuthType, Config} from "./Config";
 import {NamedLogger} from "../logging";
+import path from "node:path";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const testData = require("./testdata/unified-auth-cases.json");
@@ -70,8 +71,8 @@ describe(__dirname, () => {
         } catch (error: any) {
             if (cf.assertError !== "") {
                 assert.equal(
-                    error.message.replace(__dirname + "/", ""),
-                    cf.assertError
+                    error.message.replace(__dirname + path.sep, ""),
+                    cf.assertError.replace(/\//g, path.sep)
                 );
                 return;
             }
