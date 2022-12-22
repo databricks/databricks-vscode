@@ -584,7 +584,7 @@
         "typescript": "^4.9.4",
         "vsce": "^2.15.0",
         "wdio-video-reporter": "^3.3.0",
-        "wdio-vscode-service": "^4.2.1",
+        "wdio-vscode-service": "^5.0.0",
         "winston": "^3.8.2",
         "yargs": "^17.6.2"
     },
