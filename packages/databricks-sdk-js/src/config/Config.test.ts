@@ -71,8 +71,10 @@ describe(__dirname, () => {
         } catch (error: any) {
             if (cf.assertError !== "") {
                 assert.equal(
-                    error.message.replace(__dirname + path.sep, ""),
-                    cf.assertError.replace(/\//g, path.sep)
+                    error.message
+                        .replace(__dirname + path.sep, "")
+                        .replace(/\\/g, "/"),
+                    cf.assertError.replace()
                 );
                 return;
             }

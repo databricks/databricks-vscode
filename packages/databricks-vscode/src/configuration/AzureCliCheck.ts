@@ -187,7 +187,7 @@ export class AzureCliCheck implements Disposable {
             if (stdout.indexOf("azure-cli") !== -1) {
                 return true;
             }
-        } catch (e: any) {
+        } catch (e) {
             return false;
         }
         return false;
@@ -224,7 +224,7 @@ export class AzureCliCheck implements Disposable {
             if (stderr.indexOf("az login") !== -1) {
                 return false;
             }
-        } catch (e: any) {
+        } catch (e) {
             return false;
         }
         return true;

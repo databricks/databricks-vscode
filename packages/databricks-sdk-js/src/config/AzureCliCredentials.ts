@@ -1,5 +1,3 @@
-import * as child_process from "node:child_process";
-import {promisify} from "node:util";
 import {refreshableTokenProvider, Token} from "./Token";
 import {
     RequestVisitor,
@@ -8,8 +6,11 @@ import {
     ConfigError,
 } from "./Config";
 import {Provider} from "../types";
-
-const execFile = promisify(child_process.execFile);
+import {
+    execFileWithShell,
+    FileNotFoundException,
+    isExecFileException,
+} from "./execUtils";
 
 // Resource ID of the Azure application we need to log in.
 const azureDatabricksLoginAppID = "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d";
@@ -49,28 +50,29 @@ export class AzureCliCredentials implements CredentialProvider {
         return async () => {
             let stdout = "";
             try {
-                ({stdout} = await execFile(
-                    "az",
-                    [
-                        "account",
-                        "get-access-token",
-                        "--resource",
-                        azureDatabricksLoginAppID,
-                    ],
-                    {shell: true}
-                ));
+                ({stdout} = await execFileWithShell("az", [
+                    "account",
+                    "get-access-token",
+                    "--resource",
+                    azureDatabricksLoginAppID,
+                ]));
             } catch (e: any) {
-                if (e.code === "ENOENT") {
+                if (e instanceof FileNotFoundException) {
                     throw new ConfigError(
                         "azure-cli: Can't find 'az' command. Please install Azure CLI: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli",
                         config
                     );
-                } else {
+                }
+                if (isExecFileException(e)) {
                     throw new ConfigError(
                         `azure-cli: cannot get access token: ${e.stderr}`,
                         config
                     );
                 }
+                throw new ConfigError(
+                    `azure-cli: cannot get access token: ${e + ""}`,
+                    config
+                );
             }
 
             const azureToken = JSON.parse(stdout);
