@@ -151,8 +151,12 @@ describe("Configure Databricks Extension", async function () {
             )
         );
 
+        const expectedHost = new URL(
+            host.startsWith("https") ? host : `https://${host}`
+        ).toString();
+
         assert.deepEqual(projectConfig, {
-            host,
+            host: expectedHost,
             authType: "profile",
             profile: "DEFAULT",
             clusterId,
