@@ -3,6 +3,8 @@ import fs from "node:fs/promises";
 import {AuthProvider, ProfileAuthProvider} from "./AuthProvider";
 import {fromConfigFile} from "@databricks/databricks-sdk";
 import {Uri} from "vscode";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {Loggers} from "../logger";
 
 export interface ProjectConfig {
     authProvider: AuthProvider;
@@ -51,7 +53,7 @@ export class ProjectConfigFile {
         try {
             const originalConfig = await ProjectConfigFile.load(this.rootPath);
             if (
-                JSON.stringify(originalConfig.config, null, 2) ===
+                JSON.stringify(originalConfig, null, 2) ===
                 JSON.stringify(this, null, 2)
             ) {
                 return;
@@ -103,6 +105,10 @@ export class ProjectConfigFile {
                 authProvider = AuthProvider.fromJSON(config);
             }
         } catch (e) {
+            NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Error parsing project config file",
+                e
+            );
             throw new ConfigFileError("Error parsing project config file");
         }
         return new ProjectConfigFile(

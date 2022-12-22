@@ -5,6 +5,7 @@ import {
     fromConfigFile,
     fromToken,
 } from "@databricks/databricks-sdk";
+import {normalizeHost} from "../utils/urlUtils";
 
 import {AzureCliCheck} from "./AzureCliCheck";
 
@@ -46,8 +47,11 @@ export abstract class AuthProvider {
     }
 
     static fromJSON(json: Record<string, any>): AuthProvider {
-        const url = json.url instanceof URL ? json.url : new URL(json.host);
-        if (!url) {
+        const host =
+            json.host instanceof URL
+                ? json.host
+                : normalizeHost(json.host as string);
+        if (!host) {
             throw new Error("Missing host");
         }
 
@@ -57,19 +61,19 @@ export abstract class AuthProvider {
 
         switch (json.authType as AuthType) {
             case "azure-cli":
-                return new AzureCliAuthProvider(url);
+                return new AzureCliAuthProvider(host);
 
             case "profile":
                 if (!json.profile) {
                     throw new Error("Missing profile");
                 }
-                return new ProfileAuthProvider(url, json.profile);
+                return new ProfileAuthProvider(host, json.profile);
 
             case "pat":
                 if (!json.token) {
                     throw new Error("Missing token");
                 }
-                return new TokenAuthProvider(url, json.token);
+                return new TokenAuthProvider(host, json.token);
 
             default:
                 throw new Error(`Unknown auth type: ${json.authType}`);
