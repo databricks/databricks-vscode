@@ -1,10 +1,7 @@
-import * as child_process from "node:child_process";
-import {promisify} from "node:util";
+import {execFileWithShell, FileNotFoundException} from "../config/execUtils";
 import {refreshableCredentialProvider} from "./refreshableCredentialProvider";
 import {Token} from "./Token";
 import {CredentialProvider, CredentialsProviderError} from "./types";
-
-const execFile = promisify(child_process.execFile);
 
 // Resource ID of the Azure application we need to log in.
 const azureDatabricksLoginAppID = "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d";
@@ -29,18 +26,14 @@ export const fromAzureCli = (host?: URL): CredentialProvider => {
     return refreshableCredentialProvider(async () => {
         let stdout = "";
         try {
-            ({stdout} = await execFile(
-                "az",
-                [
-                    "account",
-                    "get-access-token",
-                    "--resource",
-                    azureDatabricksLoginAppID,
-                ],
-                {shell: true}
-            ));
+            ({stdout} = await execFileWithShell("az", [
+                "account",
+                "get-access-token",
+                "--resource",
+                azureDatabricksLoginAppID,
+            ]));
         } catch (e: any) {
-            if (e.code === "ENOENT") {
+            if (e instanceof FileNotFoundException) {
                 throw new CredentialsProviderError(
                     "Can't find 'az' command. Please install Azure CLI: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli'"
                 );

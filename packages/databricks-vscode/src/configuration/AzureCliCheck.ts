@@ -1,11 +1,8 @@
-import * as child_process from "node:child_process";
-import {promisify} from "node:util";
 import {CurrentUserService} from "@databricks/databricks-sdk";
 import {commands, Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "./ConnectionManager";
 import {AuthProvider} from "./AuthProvider";
-
-const execFile = promisify(child_process.execFile);
+import {execFileWithShell} from "@databricks/databricks-sdk/dist/config/execUtils";
 
 export type Step<S, N> = () => Promise<
     SuccessResult<S> | NextResult<N> | ErrorResult
@@ -182,9 +179,9 @@ export class AzureCliCheck implements Disposable {
     // check if Azure CLI is installed
     public async hasAzureCli(): Promise<boolean> {
         try {
-            const {stdout} = await execFile(this.azBinPath, ["--version"], {
-                shell: true,
-            });
+            const {stdout} = await execFileWithShell(this.azBinPath, [
+                "--version",
+            ]);
             if (stdout.indexOf("azure-cli") !== -1) {
                 return true;
             }
@@ -215,11 +212,10 @@ export class AzureCliCheck implements Disposable {
     // check if Azure CLI is logged in
     public async isAzureCliLoggedIn(): Promise<boolean> {
         try {
-            const {stdout, stderr} = await execFile(
-                this.azBinPath,
-                ["account", "list"],
-                {shell: true}
-            );
+            const {stdout, stderr} = await execFileWithShell(this.azBinPath, [
+                "account",
+                "list",
+            ]);
             if (stdout === "[]") {
                 return false;
             }
