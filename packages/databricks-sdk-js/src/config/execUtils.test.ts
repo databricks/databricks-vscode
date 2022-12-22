@@ -4,7 +4,7 @@ import {execFileWithShell, FileNotFoundException} from "./execUtils";
 describe(__filename, () => {
     it("should spawn a command", async () => {
         const {stdout} = await execFileWithShell("echo", ["hello"]);
-        assert.equal(stdout, "hello\n");
+        assert.match(stdout, /^hello\r?\n$/m);
     });
 
     it("should detect if the command is not found", async () => {
