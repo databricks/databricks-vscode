@@ -1,3 +1,9 @@
+# Release: v0.0.8
+
+## packages/databricks-vscode-types
+
+## <small>0.0.8 (2022-12-23)</small>
+
 # Release: v0.0.7
 
 ## packages/databricks-vscode-types

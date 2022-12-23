@@ -1,3 +1,11 @@
+# Release: v0.0.8
+
+## packages/databricks-sdk-js
+
+## <small>0.0.8 (2022-12-23)</small>
+
+-   Fix: Fix running the Azure CLI "az" on Windows
+
 # Release: v0.0.7
 
 ## packages/databricks-sdk-js
