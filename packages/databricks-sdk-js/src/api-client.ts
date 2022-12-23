@@ -60,12 +60,14 @@ export class ApiClient {
         const pairs = [
             `${this.config.product}/${this.config.productVersion}`,
             `databricks-sdk-js/${sdkVersion}`,
-            `auth/${this.config.authType}`,
             `nodejs/${process.version.slice(1)}`,
             `os/${process.platform}`,
+            `auth/${this.config.authType}`,
         ];
 
-        for (const [key, value] of Object.entries(this.config.userAgentExtra)) {
+        for (const [key, value] of Object.entries(
+            this.config.userAgentExtra || {}
+        )) {
             pairs.push(`${key}/${value}`);
         }
         return pairs.join(" ");

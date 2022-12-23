@@ -5,11 +5,12 @@ import {
     Config,
     CredentialProvider,
     ConfigError,
+    AuthType,
 } from "./Config";
 import {PatCredentials} from "./PatCredentials";
 
 export class DefaultCredentials implements CredentialProvider {
-    public name = "default";
+    public name: AuthType = "default";
 
     async configure(config: Config): Promise<RequestVisitor> {
         const defaultChain: Array<CredentialProvider> = [

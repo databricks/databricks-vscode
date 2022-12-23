@@ -280,6 +280,7 @@ __metadata:
     "@types/tmp": ^0.2.3
     "@types/uuid": ^9.0.0
     eslint: ^8.31.0
+    ini: ^3.0.1
     inversify: ^6.0.1
     mocha: ^10.2.0
     node-fetch: ^3.3.0

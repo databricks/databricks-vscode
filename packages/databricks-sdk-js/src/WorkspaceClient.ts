@@ -20,13 +20,13 @@ export class WorkspaceClient {
     readonly config: Config;
     readonly apiClient: ApiClient;
 
-    constructor(config: Partial<ConfigOptions> | Config) {
+    constructor(config: ConfigOptions | Config) {
         if (!(config instanceof Config)) {
             config = new Config(config);
         }
 
-        this.config = config;
-        this.apiClient = new ApiClient(config);
+        this.config = config as Config;
+        this.apiClient = new ApiClient(this.config);
     }
 
     get clusters() {

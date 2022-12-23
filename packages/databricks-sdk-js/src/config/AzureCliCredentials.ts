@@ -4,6 +4,7 @@ import {
     Config,
     CredentialProvider,
     ConfigError,
+    AuthType,
 } from "./Config";
 import {Provider} from "../types";
 import {
@@ -16,7 +17,7 @@ import {
 const azureDatabricksLoginAppID = "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d";
 
 export class AzureCliCredentials implements CredentialProvider {
-    public name = "azure-cli";
+    public name: AuthType = "azure-cli";
 
     async configure(config: Config): Promise<RequestVisitor | undefined> {
         if (!config.isAzure()) {

@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import "reflect-metadata";
 import {ExposedLoggers, NamedLogger} from "../logging";
-import {ConfigAttributes, EnvironmentLoader} from "./ConfigAttributes";
+import {
+    attribute,
+    ConfigAttributes,
+    EnvironmentLoader,
+    getAttributesFromDecorators,
+} from "./ConfigAttributes";
 import {DefaultCredentials} from "./DefaultCredentials";
 import {KnownConfigLoader} from "./KnownConfigLoader";
 
@@ -22,7 +28,7 @@ export class ConfigError extends Error {
  */
 export interface CredentialProvider {
     /** Name returns human-addressable name of this credentials provider name */
-    name: string;
+    name: AuthType;
 
     /**
      * Configure creates HTTP Request Visitor or returns undefined if a given credetials
@@ -45,57 +51,148 @@ export interface Logger {
 export type Headers = Record<string, string>;
 export type RequestVisitor = (headers: Headers) => Promise<void>;
 
-export interface ConfigOptions {
+type PublicInterface<T> = {[K in keyof T]: T[K]};
+export type ConfigOptions = Partial<PublicInterface<Config>>;
+
+export type AuthType = "default" | "pat" | "basic" | "azure-cli" | "google-id";
+export type AttributeName = keyof Omit<
+    ConfigOptions,
+    | "credentials"
+    | "logger"
+    | "env"
+    | "loaders"
+    | "userAgentExtra"
+    | "product"
+    | "productVersion"
+>;
+
+export type ProductVersion = `${number}.${number}.${number}`;
+
+export class Config {
     /**
      * Credentials holds an instance of Credentials Provider to authenticate with Databricks REST APIs.
      * If no credentials provider is specified, `DefaultCredentials` are implicitly used.
      */
-    credentials: CredentialProvider;
+    public credentials?: CredentialProvider;
 
     /** Databricks host (either of workspace endpoint or Accounts API endpoint) */
-    host: string;
+    @attribute({name: "host", env: "DATABRICKS_HOST"})
+    public host?: string;
 
     /** Databricks Account ID for Accounts API. This field is used in dependencies. */
-    accountId: string;
+    @attribute({name: "account_id", env: "DATABRICKS_ACCOUNT_ID"})
+    public accountId?: string;
 
-    token: string;
-    username: string;
-    password: string;
+    @attribute({
+        name: "token",
+        env: "DATABRICKS_TOKEN",
+        auth: "pat",
+        sensitive: true,
+    })
+    public token?: string;
+
+    @attribute({
+        name: "username",
+        env: "DATABRICKS_USERNAME",
+        auth: "basic",
+    })
+    public username?: string;
+
+    @attribute({
+        name: "password",
+        env: "DATABRICKS_PASSWORD",
+        auth: "basic",
+        sensitive: true,
+    })
+    public password?: string;
 
     /** Connection profile specified within ~/.databrickscfg. */
-    profile: string;
+    @attribute({name: "profile", env: "DATABRICKS_CONFIG_PROFILE"})
+    public profile?: string;
 
     /**
      * Location of the Databricks CLI credentials file, that is created
      * by `databricks configure --token` command. By default, it is located
      * in ~/.databrickscfg.
      */
-    configFile: string;
+    @attribute({name: "config_file", env: "DATABRICKS_CONFIG_FILE"})
+    public configFile?: string;
 
-    googleServiceAccount: string;
-    googleCredentials: string;
+    @attribute({
+        name: "google_service_account",
+        env: "DATABRICKS_GOOGLE_SERVICE_ACCOUNT",
+        auth: "google",
+    })
+    public googleServiceAccount?: string;
+
+    @attribute({
+        name: "google_credentials",
+        env: "DATABRICKS_GOOGLE_CREDENTIALS",
+        auth: "google",
+        sensitive: true,
+    })
+    public googleCredentials?: string;
 
     /** Azure Resource Manager ID for Azure Databricks workspace, which is exhanged for a Host */
-    azureResourceId: string;
+    @attribute({
+        name: "azure_workspace_resource_id",
+        env: "DATABRICKS_AZURE_RESOURCE_ID",
+        auth: "azure",
+    })
+    public azureResourceId?: string;
 
-    azureUseMSI: boolean;
-    azureClientSecret: string;
-    azureClientId: string;
-    azureTenantId: string;
+    @attribute({
+        name: "azure_use_msi",
+        env: "ARM_USE_MSI",
+        auth: "azure",
+    })
+    public azureUseMSI?: boolean;
+
+    @attribute({
+        name: "azure_client_secret",
+        env: "ARM_CLIENT_SECRET",
+        auth: "azure",
+        sensitive: true,
+    })
+    public azureClientSecret?: string;
+
+    @attribute({
+        name: "azure_client_id",
+        env: "ARM_CLIENT_ID",
+        auth: "azure",
+    })
+    public azureClientId?: string;
+
+    @attribute({
+        name: "azure_tenant_id",
+        env: "ARM_TENANT_ID",
+        auth: "azure",
+    })
+    public azureTenantId?: string;
 
     /** AzureEnvironment (Public, UsGov, China, Germany) has specific set of API endpoints. */
-    azureEnvironment: string;
+    @attribute({
+        name: "azure_environment",
+        env: "ARM_ENVIRONMENT",
+    })
+    public azureEnvironment?: string;
 
     // Azure Login Application ID. Must be set if authenticating for non-production workspaces.
-    azureLoginAppId: string;
+    @attribute({
+        name: "azure_login_app_id",
+        env: "DATABRICKS_AZURE_LOGIN_APP_ID",
+        auth: "azure",
+    })
+    public azureLoginAppId?: string;
 
     // When multiple auth attributes are available in the environment, use the auth type
     // specified by this argument. This argument also holds currently selected auth.
-    authType: AuthType;
+    @attribute({
+        name: "auth_type",
+        env: "DATABRICKS_AUTH_TYPE",
+    })
+    public authType?: AuthType;
 
-    logger: NamedLogger;
-
-    env: Record<string, string | undefined>;
     // // Skip SSL certificate verification for HTTP calls.
     // // Use at your own risk or for unit testing purposes.
     // insecureSkipVerify bool `name:"skip_verify" auth:"-"`
@@ -115,140 +212,28 @@ export interface ConfigOptions {
     // // Number of seconds to keep retrying HTTP requests. Default is 300 (5 minutes)
     // RetryTimeoutSeconds int `name:"retry_timeout_seconds" auth:"-"`
 
-    loaders: Array<Loader>;
+    public product?: string;
+    public productVersion?: ProductVersion;
+    public userAgentExtra?: Record<string, string>;
 
-    product: string;
-    productVersion: ProductVersion;
-    userAgentExtra: Record<string, string>;
-}
-
-export type AuthType = "pat" | "basic" | "azure-cli" | "google-id";
-export type AttributeName = keyof Omit<
-    ConfigOptions,
-    | "credentials"
-    | "logger"
-    | "env"
-    | "loaders"
-    | "userAgentExtra"
-    | "product"
-    | "productVersion"
->;
-
-export const SENSISTIVE_FIELDS = new Set<AttributeName>([
-    "token",
-    "password",
-    "googleCredentials",
-    "azureClientSecret",
-]);
-
-export const AUTH_TYPE_FOR_CONFIG: Record<
-    AttributeName,
-    "pat" | "basic" | "azure" | "google" | undefined
-> = {
-    host: undefined,
-    accountId: undefined,
-    token: "pat",
-    username: "basic",
-    password: "basic",
-    profile: undefined,
-    configFile: undefined,
-    googleServiceAccount: "google",
-    googleCredentials: "google",
-    azureResourceId: "azure",
-    azureEnvironment: undefined,
-    azureUseMSI: "azure",
-    azureClientSecret: "azure",
-    azureClientId: "azure",
-    azureTenantId: "azure",
-    azureLoginAppId: "azure",
-    authType: undefined,
-};
-
-export const CONFIG_FILE_FIELD_NAMES: Record<
-    AttributeName,
-    string | undefined
-> = {
-    host: "host",
-    accountId: "account_id",
-    token: "token",
-    username: "username",
-    password: "password",
-    googleServiceAccount: "google_service_account",
-    googleCredentials: "google_credentials",
-    azureResourceId: "azure_workspace_resource_id",
-    azureUseMSI: "azure_use_msi",
-    azureClientSecret: "azure_client_secret",
-    azureClientId: "azure_client_id",
-    azureTenantId: "azure_tenant_id",
-    azureEnvironment: "azure_environment",
-    azureLoginAppId: "azure_login_app_id",
-    authType: "auth_type",
-    profile: "profile",
-    configFile: "config_file",
-};
-
-export const ENV_VAR_NAMES: Record<AttributeName, string> = {
-    configFile: "DATABRICKS_CONFIG_FILE",
-    profile: "DATABRICKS_CONFIG_PROFILE",
-    host: "DATABRICKS_HOST",
-    accountId: "DATABRICKS_ACCOUNT_ID",
-    token: "DATABRICKS_TOKEN",
-    username: "DATABRICKS_USERNAME",
-    password: "DATABRICKS_PASSWORD",
-    googleServiceAccount: "DATABRICKS_GOOGLE_SERVICE_ACCOUNT",
-    googleCredentials: "DATABRICKS_GOOGLE_CREDENTIALS",
-    azureResourceId: "DATABRICKS_AZURE_RESOURCE_ID",
-    azureUseMSI: "ARM_USE_MSI",
-    azureClientSecret: "DATABRICKS_AZURE_CLIENT_SECRET",
-    azureClientId: "DATABRICKS_AZURE_CLIENT_ID",
-    azureTenantId: "DATABRICKS_AZURE_TENANT_ID",
-    azureEnvironment: "ARM_ENVIRONMENT",
-    azureLoginAppId: "DATABRICKS_AZURE_LOGIN_APP_ID",
-    authType: "DATABRICKS_AUTH_TYPE",
-};
-
-export type ProductVersion = `${number}.${number}.${number}`;
-
-export class Config {
     private resolved = false;
-    private loaders?: Array<Loader>;
     private auth?: RequestVisitor;
     readonly attributes: ConfigAttributes;
+    public logger: NamedLogger;
+    public env: typeof process.env;
 
-    readonly logger: NamedLogger;
-    readonly env: typeof process.env;
-    readonly userAgentExtra: Record<string, string> = {};
-    public product = "unknown";
-    public productVersion: ProductVersion = "0.0.0";
-    public credentials?: CredentialProvider;
+    constructor(private config: ConfigOptions) {
+        this.attributes = getAttributesFromDecorators(
+            Object.getPrototypeOf(this),
+            this
+        );
 
-    public configFile?: string;
-    public profile?: string;
-    public host?: string;
-    public accountId?: string;
-    public token?: string;
-    public username?: string;
-    public password?: string;
-    public googleServiceAccount?: string;
-    public googleCredentials?: string;
-    public azureResourceId?: string;
-    public azureUseMSI?: string;
-    public azureClientSecret?: string;
-    public azureClientId?: string;
-    public azureTenantId?: string;
-    public azureEnvironment?: string;
-    public azureLoginAppId?: string;
-    public authType?: string;
-
-    constructor(private config: Partial<ConfigOptions>) {
         for (const [key, value] of Object.entries(config)) {
             (this as any)[key] = value;
         }
         this.logger =
             config.logger || NamedLogger.getOrCreate(ExposedLoggers.SDK);
         this.env = config.env || process.env;
-
-        this.attributes = new ConfigAttributes(this);
     }
 
     async getHost(): Promise<URL> {
@@ -298,10 +283,7 @@ export class Config {
             return;
         }
 
-        const loaders = this.loaders || [
-            new EnvironmentLoader(),
-            new KnownConfigLoader(),
-        ];
+        const loaders = [new EnvironmentLoader(), new KnownConfigLoader()];
 
         for (const loader of loaders) {
             this.logger.info(`Loading config via ${loader.name}`);

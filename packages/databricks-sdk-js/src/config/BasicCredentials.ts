@@ -1,7 +1,13 @@
-import {RequestVisitor, Config, CredentialProvider, Headers} from "./Config";
+import {
+    RequestVisitor,
+    Config,
+    CredentialProvider,
+    Headers,
+    AuthType,
+} from "./Config";
 
 export class BasicCredentials implements CredentialProvider {
-    public name = "basic";
+    public name: AuthType = "basic";
 
     async configure(config: Config): Promise<RequestVisitor | undefined> {
         if (!config.username || !config.password || !config.host) {

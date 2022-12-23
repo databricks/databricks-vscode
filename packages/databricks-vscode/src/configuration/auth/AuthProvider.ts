@@ -4,7 +4,7 @@ import {
     ProductVersion,
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
-import {normalizeHost} from "../utils/urlUtils";
+import {normalizeHost} from "../../utils/urlUtils";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../../package.json")

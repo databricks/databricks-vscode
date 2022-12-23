@@ -9,6 +9,7 @@ const testData = require("./testdata/unified-auth-cases.json");
 
 describe(__dirname, () => {
     let envBackup: Record<string, string | undefined>;
+    const debug = false;
 
     beforeEach(() => {
         envBackup = process.env;
@@ -49,7 +50,7 @@ describe(__dirname, () => {
             azureTenantId: cf.azureTenantId,
             azureResourceId: cf.azureResourceId,
             authType: cf.authType as AuthType,
-            logger: console as unknown as NamedLogger,
+            logger: debug ? (console as unknown as NamedLogger) : undefined,
         });
 
         await config.authenticate({});
@@ -69,7 +70,7 @@ describe(__dirname, () => {
         try {
             config = await configureProviderAndReturnConfig(cf);
         } catch (error: any) {
-            if (cf.assertError !== "") {
+            if (cf.assertError) {
                 assert.equal(
                     error.message
                         .replace(__dirname + path.sep, "")

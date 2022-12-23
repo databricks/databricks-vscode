@@ -1,21 +1,55 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
-    AttributeName,
-    AUTH_TYPE_FOR_CONFIG,
-    Config,
-    ConfigError,
-    CONFIG_FILE_FIELD_NAMES,
-    ENV_VAR_NAMES,
-    Loader,
-    SENSISTIVE_FIELDS,
-} from "./Config";
+import {AttributeName, Config, ConfigError, Loader} from "./Config";
+
+const ATTRIBUTES = new WeakMap();
+
+export function getAttributesFromDecorators(
+    target: any,
+    config: Config
+): ConfigAttributes {
+    const attributes = new ConfigAttributes(config);
+
+    if (!ATTRIBUTES.get(target)) {
+        return attributes;
+    }
+    ATTRIBUTES.get(target).map((f: any) => attributes.add(f(config)));
+    return attributes;
+}
+
+/**
+ * Decorator to annotate config attributes
+ */
+export function attribute(options: {
+    name?: string;
+    env?: string;
+    auth?: "pat" | "basic" | "azure" | "google";
+    sensitive?: boolean;
+}) {
+    return (target: any, propertyKey: AttributeName) => {
+        if (!ATTRIBUTES.get(target)) {
+            ATTRIBUTES.set(target, []);
+        }
+        ATTRIBUTES.get(target).push((config: Config) => {
+            return new ConfigAttribute(
+                {
+                    name: propertyKey,
+                    envVar: options.env,
+                    confName: options.name,
+                    auth: options.auth,
+                    sensitive: !!options.sensitive,
+                },
+                config
+            );
+        });
+    };
+}
 
 /**
  * ConfigAttribute provides generic way to work with Config configuration
  * attributes and parses `name`, `env`, and `auth` field tags.
  */
 export class ConfigAttribute {
-    name: keyof typeof AUTH_TYPE_FOR_CONFIG;
+    name: AttributeName;
     envVar?: string;
     confName?: string;
     auth?: string | undefined;
@@ -23,13 +57,23 @@ export class ConfigAttribute {
     internal: boolean;
     num: number;
 
-    constructor(name: AttributeName, private config: Config) {
-        this.name = name;
-        this.envVar = ENV_VAR_NAMES[name];
-        this.confName = CONFIG_FILE_FIELD_NAMES[name];
-        this.auth = AUTH_TYPE_FOR_CONFIG[name];
-        this.sensitive = SENSISTIVE_FIELDS.has(name);
-        this.internal = false;
+    constructor(
+        options: {
+            name: AttributeName;
+            envVar?: string;
+            confName?: string;
+            auth?: string | undefined;
+            sensitive?: boolean;
+            internal?: boolean;
+        },
+        private config: Config
+    ) {
+        this.name = options.name;
+        this.envVar = options.envVar;
+        this.confName = options.confName;
+        this.auth = options.auth;
+        this.sensitive = options.sensitive || false;
+        this.internal = options.internal || false;
         this.num = 0;
     }
 
@@ -54,7 +98,7 @@ export class EnvironmentLoader implements Loader {
     public name = "environment";
 
     async configure(cfg: Config): Promise<void> {
-        return cfg.attributes.resolveFromEnv(cfg);
+        return cfg.attributes.resolveFromEnv();
     }
 }
 
@@ -62,9 +106,14 @@ export class ConfigAttributes {
     readonly attributes: ConfigAttribute[];
 
     constructor(private config: Config) {
-        this.attributes = Object.keys(AUTH_TYPE_FOR_CONFIG).map((key) => {
-            return new ConfigAttribute(key as AttributeName, config);
-        });
+        this.attributes = [];
+        // this.attributes = Object.keys(AUTH_TYPE_FOR_CONFIG).map((key) => {
+        //     return new ConfigAttribute(key as AttributeName, config);
+        // });
+    }
+
+    add(attr: ConfigAttribute): void {
+        this.attributes.push(attr);
     }
 
     validate(): void {
@@ -96,7 +145,7 @@ export class ConfigAttributes {
         );
     }
 
-    public resolveFromEnv(cfg: Config) {
+    public resolveFromEnv() {
         for (const attr of this.attributes) {
             if (!attr.isZero()) {
                 // don't overwtite a value previously set
@@ -105,7 +154,7 @@ export class ConfigAttributes {
 
             const env = attr.readEnv();
             if (env !== undefined) {
-                cfg[attr.name] = env;
+                (this.config as any)[attr.name] = env;
             }
         }
     }
@@ -123,7 +172,7 @@ export class ConfigAttributes {
 
             const value = map[attr.confName];
             if (value !== undefined) {
-                this.config[attr.name] = value;
+                (this.config as any)[attr.name] = value;
             }
         }
     }
@@ -142,7 +191,7 @@ export class ConfigAttributes {
             if (attr.confName) {
                 attrUsed[attr.confName] = attr.sensitive
                     ? "***"
-                    : this.config[attr.name]!;
+                    : (this.config[attr.name] as string);
             }
 
             if (attr.envVar) {
