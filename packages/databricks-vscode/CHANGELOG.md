@@ -1,3 +1,16 @@
+# Release: v0.0.8
+
+## packages/databricks-vscode
+
+## <small>0.0.8 (2022-12-23)</small>
+
+-   bump bricks to v0.0.14 (#322) ([161598a](https://github.com/databricks/databricks-vscode/commit/161598a)), closes [#322](https://github.com/databricks/databricks-vscode/issues/322)
+-   Cross platform file not found detection (#324) ([f1e5b6e](https://github.com/databricks/databricks-vscode/commit/f1e5b6e)), closes [#324](https://github.com/databricks/databricks-vscode/issues/324)
+-   Fix "az" on Windows (#318) ([a957b5e](https://github.com/databricks/databricks-vscode/commit/a957b5e)), closes [#318](https://github.com/databricks/databricks-vscode/issues/318)
+-   fix hostname validation (#317) ([ca96b47](https://github.com/databricks/databricks-vscode/commit/ca96b47)), closes [#317](https://github.com/databricks/databricks-vscode/issues/317)
+-   Fix project.json parsing (#323) ([1cf255c](https://github.com/databricks/databricks-vscode/commit/1cf255c)), closes [#323](https://github.com/databricks/databricks-vscode/issues/323)
+-   Re-enable spec level retries (#319) ([a2e5ebf](https://github.com/databricks/databricks-vscode/commit/a2e5ebf)), closes [#319](https://github.com/databricks/databricks-vscode/issues/319)
+
 # Release: v0.0.7
 
 ## packages/databricks-vscode
