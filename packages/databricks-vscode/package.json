@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "engines": {
         "vscode": "^1.69.1"
     },
@@ -522,7 +522,7 @@
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
         "package": "vsce package",
-        "package:cli:fetch": "BRICKS_VERSION=v0.0.12 && bash ./scripts/fetch-bricks-cli.sh ${BRICKS_VERSION} ${BRICKS_ARCH:-}",
+        "package:cli:fetch": "BRICKS_VERSION=v0.0.14 && bash ./scripts/fetch-bricks-cli.sh ${BRICKS_VERSION} ${BRICKS_ARCH:-}",
         "package:cli:link": "rm -f ./bin/bricks && ln -s ../../../../bricks/bricks bin",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",

@@ -7,6 +7,7 @@ import {
 } from "@databricks/databricks-sdk";
 import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
 import {MultiStepInput} from "../ui/wizard";
+import {normalizeHost} from "../utils/urlUtils";
 import {AuthProvider, AuthType} from "./AuthProvider";
 import {ProjectConfig} from "./ProjectConfigFile";
 
@@ -197,31 +198,6 @@ export async function configureWorkspaceWizard(
     return {
         authProvider: AuthProvider.fromJSON(state),
     };
-}
-
-function normalizeHost(host: string): URL {
-    let url: URL;
-
-    if (!host.startsWith("http")) {
-        host = `https://${host}`;
-    }
-    try {
-        url = new URL(host);
-    } catch (e) {
-        throw new Error("Invalid host name");
-    }
-    if (url.protocol !== "https:") {
-        throw new Error("Invalid protocol");
-    }
-    if (
-        !url.hostname.match(
-            /(\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com)$/
-        )
-    ) {
-        throw new Error("Not a Databricks host");
-    }
-
-    return new URL(`https://${url.hostname}`);
 }
 
 async function validateDatabricksHost(

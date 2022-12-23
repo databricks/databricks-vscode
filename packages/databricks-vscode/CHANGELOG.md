@@ -1,3 +1,14 @@
+# Release: v0.0.8
+
+## packages/databricks-vscode
+
+## <small>0.0.8 (2022-12-23)</small>
+
+-   Fix: Properly detect the Azure CLI `az` on Windows
+-   Fix: Fix synchronizing files located in folders on Windows
+-   Fix: Improve host name validation in the workspace configuration wizard
+-   Fix: Fix bug in project.json parsing
+
 # Release: v0.0.7
 
 ## packages/databricks-vscode
@@ -22,9 +33,9 @@
 
 ## <small>0.0.5 (2022-11-30)</small>
 
--   critical fix: Fix edge case where the sync command could have deleted the Databricks Repo
--   fix: Make sure line numbers in python stack traces are correct.
--   fix: Correctly generate logfile on Windows
+-   Critical fix: Fix edge case where the sync command could have deleted the Databricks Repo
+-   Fix: Make sure line numbers in python stack traces are correct.
+-   Fix: Correctly generate logfile on Windows
 
 # Release: v0.0.4
 
