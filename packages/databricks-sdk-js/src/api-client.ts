@@ -49,6 +49,8 @@ export class ApiClient {
         this.agent = new https.Agent({
             keepAlive: true,
             keepAliveMsecs: 15_000,
+            rejectUnauthorized: config.insecureSkipVerify === false,
+            timeout: (config.httpTimeoutSeconds || 5) * 1000,
         });
     }
 

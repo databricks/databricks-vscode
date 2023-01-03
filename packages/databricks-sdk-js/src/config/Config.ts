@@ -193,12 +193,20 @@ export class Config {
     })
     public authType?: AuthType;
 
-    // // Skip SSL certificate verification for HTTP calls.
-    // // Use at your own risk or for unit testing purposes.
-    // insecureSkipVerify bool `name:"skip_verify" auth:"-"`
+    /**
+     * Skip SSL certificate verification for HTTP calls.
+     * Use at your own risk or for unit testing purposes.
+     */
+    @attribute({
+        name: "skip_verify",
+    })
+    public insecureSkipVerify?: boolean;
 
-    // // Number of seconds for HTTP timeout
-    // HTTPTimeoutSeconds int `name:"http_timeout_seconds" auth:"-"`
+    /** Number of seconds for HTTP timeout */
+    @attribute({
+        name: "http_timeout_seconds",
+    })
+    public httpTimeoutSeconds?: number;
 
     // // Truncate JSON fields in JSON above this limit. Default is 96.
     // DebugTruncateBytes int `name:"debug_truncate_bytes" env:"DATABRICKS_DEBUG_TRUNCATE_BYTES" auth:"-"`
