@@ -217,8 +217,11 @@ export class Config {
     // // Maximum number of requests per second made to Databricks REST API.
     // RateLimitPerSecond int `name:"rate_limit" env:"DATABRICKS_RATE_LIMIT" auth:"-"`
 
-    // // Number of seconds to keep retrying HTTP requests. Default is 300 (5 minutes)
-    // RetryTimeoutSeconds int `name:"retry_timeout_seconds" auth:"-"`
+    /** Number of seconds to keep retrying HTTP requests. Default is 300 (5 minutes) */
+    @attribute({
+        name: "retry_timeout_seconds",
+    })
+    retryTimeoutSeconds?: number;
 
     public product?: string;
     public productVersion?: ProductVersion;
@@ -228,7 +231,6 @@ export class Config {
     private auth?: RequestVisitor;
     readonly attributes: ConfigAttributes;
     public logger: NamedLogger;
-    public env: typeof process.env;
 
     constructor(private config: ConfigOptions) {
         this.attributes = getAttributesFromDecorators(
@@ -241,7 +243,6 @@ export class Config {
         }
         this.logger =
             config.logger || NamedLogger.getOrCreate(ExposedLoggers.SDK);
-        this.env = config.env || process.env;
     }
 
     async getHost(): Promise<URL> {

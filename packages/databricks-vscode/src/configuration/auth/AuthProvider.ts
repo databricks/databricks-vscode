@@ -120,7 +120,6 @@ export class TokenAuthProvider extends AuthProvider {
             authType: "pat",
             token: this.token,
             host: this.host.toString(),
-            env: {},
         });
     }
 }
@@ -152,10 +151,7 @@ export class ProfileAuthProvider extends AuthProvider {
     getSdkConfig(): Config {
         return new Config({
             profile: this.profile,
-            env: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
-            },
+            configFile: process.env.DATABRICKS_CONFIG_FILE,
         });
     }
 }
@@ -187,7 +183,6 @@ export class AzureCliAuthProvider extends AuthProvider {
         return new Config({
             host: this.host.toString(),
             authType: "azure-cli",
-            env: {},
         });
     }
 

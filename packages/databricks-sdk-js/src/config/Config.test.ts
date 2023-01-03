@@ -7,9 +7,11 @@ import path from "node:path";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const testData = require("./testdata/unified-auth-cases.json");
 
-describe(__dirname, () => {
+describe(__dirname, function () {
     let envBackup: Record<string, string | undefined>;
     const debug = false;
+
+    this.timeout(5_000);
 
     beforeEach(() => {
         envBackup = process.env;
@@ -64,7 +66,14 @@ describe(__dirname, () => {
         }
 
         for (const envName of Object.keys(cf.env || {})) {
-            process.env[envName] = cf.env![envName];
+            if (envName === "PATH" && cf.env![envName].indexOf("$PATH") >= 0) {
+                process.env[envName] = cf.env![envName].replace(
+                    "$PATH",
+                    envBackup.PATH || ""
+                );
+            } else {
+                process.env[envName] = cf.env![envName];
+            }
         }
 
         try {

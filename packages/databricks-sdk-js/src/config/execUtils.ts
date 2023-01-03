@@ -63,6 +63,8 @@ export async function execFileWithShell(
     try {
         return await execFile(cmd, args, {shell: true});
     } catch (e) {
+        // eslint-disable-next-line no-console
+        console.log(`XXXXX execFileWithShell: ${e}`);
         if (isFileNotFound(e)) {
             throw new FileNotFoundException(e.message);
         } else {

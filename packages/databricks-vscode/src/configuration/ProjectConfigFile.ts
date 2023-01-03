@@ -73,10 +73,7 @@ export class ProjectConfigFile {
     static async importOldConfig(config: any): Promise<ProfileAuthProvider> {
         const sdkConfig = new Config({
             profile: config.profile,
-            env: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
-            },
+            configFile: process.env.DATABRICKS_CONFIG_FILE,
         });
 
         await sdkConfig.ensureResolved();

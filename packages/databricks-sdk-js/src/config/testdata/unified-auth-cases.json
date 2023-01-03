@@ -161,7 +161,7 @@
             "azure_resource_id": "/sub/rg/ws",
             "env": {
                 "HOME": "testdata/azure",
-                "PATH": "testdata:/bin"
+                "PATH": "testdata:$PATH"
             },
             "assert_auth": "azure-cli",
             "assert_host": "https://x",
@@ -173,7 +173,7 @@
             "env": {
                 "FAIL": "yes",
                 "HOME": "testdata/azure",
-                "PATH": "testdata:/bin"
+                "PATH": "testdata:$PATH"
             },
             "assert_error": "default auth: azure-cli: cannot get access token: This is just a failing script.\n. Config: azure_workspace_resource_id=/sub/rg/ws"
         },
@@ -192,7 +192,7 @@
             "azure_resource_id": "/sub/rg/ws",
             "env": {
                 "HOME": "testdata/azure",
-                "PATH": "testdata:/bin"
+                "PATH": "testdata:$PATH"
             },
             "assert_error": "validate: more than one authorization method configured: azure and pat. Config: token=***, azure_workspace_resource_id=/sub/rg/ws"
         },
@@ -202,7 +202,7 @@
             "azure_resource_id": "/sub/rg/ws",
             "env": {
                 "HOME": "testdata/azure",
-                "PATH": "testdata:/bin"
+                "PATH": "testdata:$PATH"
             },
             "assert_auth": "azure-cli",
             "assert_host": "https://x",
@@ -215,7 +215,7 @@
             "env": {
                 "DATABRICKS_CONFIG_PROFILE": "justhost",
                 "HOME": "testdata/azure",
-                "PATH": "testdata:/bin"
+                "PATH": "testdata:$PATH"
             },
             "assert_auth": "azure-cli",
             "assert_host": "https://x",
@@ -228,7 +228,7 @@
             "env": {
                 "DATABRICKS_USERNAME": "x",
                 "HOME": "testdata/azure",
-                "PATH": "testdata:/bin"
+                "PATH": "testdata:$PATH"
             },
             "assert_error": "validate: more than one authorization method configured: azure and basic. Config: host=x, username=x, azure_workspace_resource_id=/sub/rg/ws. Env: DATABRICKS_USERNAME"
         },

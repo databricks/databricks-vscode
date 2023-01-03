@@ -110,7 +110,10 @@ export class ApiClient {
         const response = await retry<
             Awaited<Awaited<ReturnType<typeof fetch>>["response"]>
         >({
-            timeout: new Time(10, TimeUnits.seconds),
+            timeout: new Time(
+                this.config.retryTimeoutSeconds || 300,
+                TimeUnits.seconds
+            ),
             fn: async () => {
                 let response;
                 try {

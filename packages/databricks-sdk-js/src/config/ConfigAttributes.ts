@@ -83,7 +83,7 @@ export class ConfigAttribute {
 
     readEnv(): string | undefined {
         if (this.envVar) {
-            return this.config.env[this.envVar];
+            return process.env[this.envVar];
         }
     }
 
