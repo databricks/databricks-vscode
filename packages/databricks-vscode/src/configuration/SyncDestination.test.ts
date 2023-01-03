@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiClient, Repo} from "@databricks/databricks-sdk";
+import {ApiClient, WorkspaceFsRepo} from "@databricks/databricks-sdk";
 import {ListRequest} from "@databricks/databricks-sdk/dist/apis/repos";
 import assert from "assert";
 import {instance, mock, when} from "ts-mockito";
@@ -26,7 +26,7 @@ describe(__filename, () => {
     });
     it("should map a file", async () => {
         const mapper = new SyncDestination(
-            instance(mock(Repo)),
+            instance(mock(WorkspaceFsRepo)),
             Uri.from({
                 scheme: "wsfs",
                 path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
@@ -46,7 +46,7 @@ describe(__filename, () => {
 
     it("should prepend '/Workspace' if missing", async () => {
         const mapper = new SyncDestination(
-            instance(mock(Repo)),
+            instance(mock(WorkspaceFsRepo)),
             Uri.from({
                 scheme: "wsfs",
                 path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
@@ -64,29 +64,9 @@ describe(__filename, () => {
         );
     });
 
-    it("should map a directory", async () => {
-        const mapper = new SyncDestination(
-            instance(mock(Repo)),
-            Uri.from({
-                scheme: "wsfs",
-                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
-            }),
-            Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
-        );
-
-        assert.equal(
-            mapper.localToRemoteDir(
-                Uri.file(
-                    "/Users/fabian.jakobs/Desktop/notebook-best-practices/jobs/hello.py"
-                )
-            ),
-            "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices/jobs"
-        );
-    });
-
     it("should get repo name", async () => {
         const mapper = new SyncDestination(
-            instance(mock(Repo)),
+            instance(mock(WorkspaceFsRepo)),
             Uri.from({
                 scheme: "wsfs",
                 path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
@@ -99,7 +79,7 @@ describe(__filename, () => {
 
     it("should compute relative repo path", () => {
         const mapper = new SyncDestination(
-            instance(mock(Repo)),
+            instance(mock(WorkspaceFsRepo)),
             Uri.from({
                 scheme: "wsfs",
                 path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
@@ -108,14 +88,14 @@ describe(__filename, () => {
         );
 
         assert.equal(
-            mapper.relativeRepoPath,
+            mapper.relativeWsfsDirPath,
             "/Repos/fabian.jakobs@databricks.com/notebook-best-practices"
         );
     });
 
     it("should map notebooks", async () => {
         const mapper = new SyncDestination(
-            instance(mock(Repo)),
+            instance(mock(WorkspaceFsRepo)),
             Uri.from({
                 scheme: "wsfs",
                 path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",

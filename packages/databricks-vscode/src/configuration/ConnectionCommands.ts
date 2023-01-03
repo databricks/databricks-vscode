@@ -1,4 +1,4 @@
-import {Cluster, Repo} from "@databricks/databricks-sdk";
+import {Cluster} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
     Disposable,
@@ -13,6 +13,7 @@ import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
+import {SyncDestination} from "./SyncDestination";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -186,70 +187,36 @@ export class ConnectionCommands implements Disposable {
                 return;
             }
 
-            const quickPick = window.createQuickPick<WorkspaceItem>();
+            let input: string | undefined = `/Users/${me}`;
+            while (true) {
+                input = await window.showInputBox({
+                    prompt: "Enter full sync destination path",
+                    value: input,
+                });
+                if (input === undefined) {
+                    return undefined;
+                }
 
-            quickPick.busy = true;
-            quickPick.canSelectMany = false;
-            const items: WorkspaceItem[] = [
-                {
-                    label: "Create New Repo",
-                    detail: `Open Databricks in the browser and create a new repo under /Repo/${me}`,
-                    alwaysShow: false,
-                },
-                {
-                    label: "",
-                    kind: QuickPickItemKind.Separator,
-                },
-            ];
-            quickPick.items = items;
-
-            quickPick.show();
-
-            const repos = await Repo.list(apiClient, {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                path_prefix: `/Repos/${me}`,
-            });
-
-            quickPick.items = items.concat(
-                ...repos!.map((r) => ({
-                    label: r.path.split("/").pop() || "",
-                    detail: r.path,
-                    path: r.path,
-                    id: r.id,
-                }))
-            );
-            quickPick.busy = false;
-
-            await new Promise<void>((resolve) => {
-                quickPick.onDidAccept(async () => {
-                    if (
-                        quickPick.selectedItems[0].label === "Create New Repo"
-                    ) {
-                        await UrlUtils.openExternal(
-                            `${
-                                (
-                                    await this.connectionManager.apiClient?.host
-                                )?.href ?? ""
-                            }#folder/${this.connectionManager.repoRootId ?? ""}`
-                        );
-                    } else {
-                        const repoPath = quickPick.selectedItems[0].path;
-                        await this.connectionManager.attachSyncDestination(
-                            Uri.from({
-                                scheme: "wsfs",
-                                path: repoPath,
-                            })
-                        );
-                        quickPick.dispose();
-                        resolve();
+                const uri = Uri.from({scheme: "wsfs", path: input});
+                if (
+                    (await SyncDestination.getWorkspaceFsDir(
+                        apiClient,
+                        uri
+                    )) === undefined
+                ) {
+                    const retry = await window.showErrorMessage(
+                        `Invalid sync destination: ${input}`,
+                        "Enter another path",
+                        "Cancel"
+                    );
+                    if (retry === "Cancel") {
+                        return undefined;
                     }
-                });
-
-                quickPick.onDidHide(() => {
-                    quickPick.dispose();
-                    resolve();
-                });
-            });
+                    continue;
+                }
+                this.connectionManager.attachSyncDestination(uri);
+                break;
+            }
         };
     }
 

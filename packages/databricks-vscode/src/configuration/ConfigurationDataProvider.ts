@@ -110,9 +110,9 @@ export class ConfigurationDataProvider
                 // TODO: Add another icon over here for in_progress state
                 // DECO-220
                 children.push({
-                    label: `Repo`,
-                    iconPath: new ThemeIcon("repo"),
-                    id: "REPO",
+                    label: `Remote Directory`,
+                    iconPath: new ThemeIcon("file-directory"),
+                    id: "SYNC-DESTINATION",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
                     contextValue:
                         this.sync.state === "WATCHING_FOR_CHANGES" ||
@@ -122,9 +122,9 @@ export class ConfigurationDataProvider
                 });
             } else {
                 children.push({
-                    label: `Repo - "None attached"`,
-                    iconPath: new ThemeIcon("repo"),
-                    id: "REPO",
+                    label: `Remote Directory - "None attached"`,
+                    iconPath: new ThemeIcon("file-directory"),
+                    id: "SYNC-DESTINATION",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
                     contextValue: "syncDetached",
                 });
@@ -226,7 +226,7 @@ export class ConfigurationDataProvider
             ];
         }
 
-        if (element.id === "REPO" && syncDestination) {
+        if (element.id === "SYNC-DESTINATION" && syncDestination) {
             const children: Array<TreeItem> = [
                 {
                     label: `Name:`,
@@ -244,9 +244,9 @@ export class ConfigurationDataProvider
                 syncDestination.name !== syncDestination.vscodeWorkspacePathName
             ) {
                 children.push({
-                    label: "The remote repo name does not match the current vscode workspace name",
+                    label: "The remote sync destination name does not match the current vscode workspace name",
                     tooltip:
-                        "If syncing to repo with a different name is the intended behaviour, this warning can be ignored",
+                        "If syncing to directory with a different name is the intended behaviour, this warning can be ignored",
                     iconPath: new ThemeIcon(
                         "warning",
                         new ThemeColor("problemsWarningIcon.foreground")
@@ -256,7 +256,7 @@ export class ConfigurationDataProvider
             children.push(
                 {
                     label: `URL:`,
-                    description: await syncDestination.repo.url,
+                    description: await syncDestination.wsfsDir.url,
                     contextValue: "databricks-link",
                 },
                 {

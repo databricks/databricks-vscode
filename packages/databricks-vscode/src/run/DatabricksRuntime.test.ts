@@ -7,7 +7,7 @@ import {
     Cluster,
     Command,
     ExecutionContext,
-    Repo,
+    WorkspaceFsRepo,
 } from "@databricks/databricks-sdk";
 import {DatabricksRuntime, OutputEvent} from "./DatabricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -54,7 +54,7 @@ describe(__filename, () => {
         );
 
         const syncDestination = new SyncDestination(
-            instance(mock(Repo)),
+            instance(mock(WorkspaceFsRepo)),
             Uri.from({
                 scheme: "wsfs",
                 path: "/Workspace/Repos/fabian@databricks.com/test",

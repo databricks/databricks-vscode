@@ -6,7 +6,7 @@ import {execFile as execFileCb} from "node:child_process";
 
 import {CliWrapper} from "./CliWrapper";
 import {instance, mock} from "ts-mockito";
-import {Repo} from "@databricks/databricks-sdk";
+import {WorkspaceFsRepo} from "@databricks/databricks-sdk";
 
 const execFile = promisify(execFileCb);
 
@@ -24,7 +24,7 @@ describe(__filename, () => {
             },
         } as any);
         const mapper = new SyncDestination(
-            instance(mock(Repo)),
+            instance(mock(WorkspaceFsRepo)),
             Uri.from({
                 scheme: "wsfs",
                 path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",

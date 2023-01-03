@@ -171,6 +171,16 @@
                 "command": "databricks.utils.openExternal",
                 "title": "Open link externally",
                 "icon": "$(link)"
+            },
+            {
+                "command": "databricks.workspacefs.attachSyncDestination",
+                "title": "Attach sync destination",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.workspacefs.refresh",
+                "title": "Refresh",
+                "icon": "$(refresh)"
             }
         ],
         "viewsContainers": {
@@ -187,6 +197,10 @@
                 {
                     "id": "configurationView",
                     "name": "Configuration"
+                },
+                {
+                    "id": "workspaceFsView",
+                    "name": "/Workspace/"
                 },
                 {
                     "id": "clusterView",
@@ -226,6 +240,11 @@
                     "command": "databricks.cluster.refresh",
                     "when": "view == clusterView",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.workspacefs.refresh",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
                 }
             ],
             "databricks.cluster.filter": [
@@ -292,8 +311,17 @@
                 },
                 {
                     "command": "databricks.utils.openExternal",
-                    "when": "view == configurationView && viewItem =~ /^.*databricks-link.*$/ || view == clusterView && viewItem =~ /^.*databricks-link.*$/",
+                    "when": "viewItem =~ /^.*databricks-link.*$/ ",
                     "group": "inline@0"
+                },
+                {
+                    "command": "databricks.workspacefs.attachSyncDestination",
+                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.directory.*$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.workspacefs.createNewFolder",
+                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.directory.*$/"
                 }
             ],
             "editor/title/run": [

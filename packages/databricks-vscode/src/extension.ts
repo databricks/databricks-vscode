@@ -20,6 +20,7 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {workspaceConfigs} from "./WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
+import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 
 export async function activate(
     context: ExtensionContext
@@ -261,6 +262,31 @@ export async function activate(
             "databricks.utils.openExternal",
             utilCommands.openExternalCommand(),
             utilCommands
+        )
+    );
+
+    const workspaceFsDataProvider = new WorkspaceFsDataProvider(
+        connectionManager
+    );
+    const workspaceFsCommands = new WorkspaceFsCommands(
+        connectionManager,
+        workspaceFsDataProvider
+    );
+
+    context.subscriptions.push(
+        window.registerTreeDataProvider(
+            "workspaceFsView",
+            workspaceFsDataProvider
+        ),
+        commands.registerCommand(
+            "databricks.workspacefs.attachSyncDestination",
+            workspaceFsCommands.attachSyncDestination,
+            workspaceFsCommands
+        ),
+        commands.registerCommand(
+            "databricks.workspacefs.refresh",
+            workspaceFsCommands.refresh,
+            workspaceFsCommands
         )
     );
 

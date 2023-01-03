@@ -36,7 +36,7 @@ export class CliWrapper {
         const args = [
             "sync",
             "--remote-path",
-            syncDestination.relativeRepoPath,
+            syncDestination.relativeWsfsDirPath,
         ];
         if (syncType === "full") {
             args.push("--persist-snapshot=false");

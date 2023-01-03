@@ -54,3 +54,6 @@ export {TimeUnits, default as Time} from "./retries/Time";
 export * as logging from "./logging";
 
 export {Redactor, defaultRedactor} from "./Redactor";
+
+export * from "./workspace-fs";
+export * from "./config";

@@ -129,7 +129,7 @@ export class DatabricksRuntime implements Disposable {
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
             log(
-                `Synchronizing code to ${syncDestination.relativeRepoPath} ...`
+                `Synchronizing code to ${syncDestination.relativeWsfsDirPath} ...`
             );
 
             this.disposables.push(
