@@ -11,7 +11,7 @@ export class KnownConfigLoader implements Loader {
         const configFile = cfg.configFile || "~/.databrickscfg";
 
         const configPath = path.resolve(
-            configFile.replace(/~/, process.env.HOME || os.homedir())
+            configFile.replace(/^~/, process.env.HOME || os.homedir())
         );
 
         try {

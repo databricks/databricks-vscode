@@ -148,7 +148,7 @@ export class ConfigAttributes {
     public resolveFromEnv() {
         for (const attr of this.attributes) {
             if (!attr.isZero()) {
-                // don't overwtite a value previously set
+                // don't overwrite a value previously set
                 continue;
             }
 
