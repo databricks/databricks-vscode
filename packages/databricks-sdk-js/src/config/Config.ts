@@ -231,6 +231,7 @@ export class Config {
     private auth?: RequestVisitor;
     readonly attributes: ConfigAttributes;
     public logger: NamedLogger;
+    public env: typeof process.env;
 
     constructor(private config: ConfigOptions) {
         this.attributes = getAttributesFromDecorators(
@@ -243,6 +244,7 @@ export class Config {
         }
         this.logger =
             config.logger || NamedLogger.getOrCreate(ExposedLoggers.SDK);
+        this.env = config.env || process.env;
     }
 
     async getHost(): Promise<URL> {

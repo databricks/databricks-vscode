@@ -120,6 +120,7 @@ export class TokenAuthProvider extends AuthProvider {
             authType: "pat",
             token: this.token,
             host: this.host.toString(),
+            env: {},
         });
     }
 }
@@ -152,6 +153,7 @@ export class ProfileAuthProvider extends AuthProvider {
         return new Config({
             profile: this.profile,
             configFile: process.env.DATABRICKS_CONFIG_FILE,
+            env: {},
         });
     }
 }
@@ -183,6 +185,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         return new Config({
             host: this.host.toString(),
             authType: "azure-cli",
+            env: {},
         });
     }
 

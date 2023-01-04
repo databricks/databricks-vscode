@@ -74,6 +74,7 @@ export class ProjectConfigFile {
         const sdkConfig = new Config({
             profile: config.profile,
             configFile: process.env.DATABRICKS_CONFIG_FILE,
+            env: {},
         });
 
         await sdkConfig.ensureResolved();
