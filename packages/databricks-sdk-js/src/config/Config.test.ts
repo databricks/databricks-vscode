@@ -68,8 +68,8 @@ describe(__dirname, function () {
         for (const envName of Object.keys(cf.env || {})) {
             if (envName === "PATH" && cf.env![envName].indexOf("$PATH") >= 0) {
                 process.env[envName] = cf
-                    .env![envName].replace("$PATH", envBackup.PATH || "")
-                    .replace(/:/g, path.delimiter);
+                    .env![envName].replace(/:/g, path.delimiter)
+                    .replace("$PATH", envBackup.PATH || "");
             } else {
                 process.env[envName] = cf.env![envName];
             }
