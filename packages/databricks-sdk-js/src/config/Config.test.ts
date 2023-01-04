@@ -67,10 +67,9 @@ describe(__dirname, function () {
 
         for (const envName of Object.keys(cf.env || {})) {
             if (envName === "PATH" && cf.env![envName].indexOf("$PATH") >= 0) {
-                process.env[envName] = cf.env![envName].replace(
-                    "$PATH",
-                    envBackup.PATH || ""
-                );
+                process.env[envName] = cf
+                    .env![envName].replace("$PATH", envBackup.PATH || "")
+                    .replace(/:/g, path.delimiter);
             } else {
                 process.env[envName] = cf.env![envName];
             }
@@ -82,8 +81,9 @@ describe(__dirname, function () {
             if (cf.assertError) {
                 assert.equal(
                     error.message
-                        .replace(__dirname + path.sep, "")
-                        .replace(/\\/g, "/"),
+                        .replace(/\r?\n/g, "\n") // normalize line endings between windows and unix
+                        .replace(__dirname + path.sep, "") // make paths relative
+                        .replace(/\\/g, "/"), // normalize path separators
                     cf.assertError.replace()
                 );
                 return;
