@@ -14,9 +14,13 @@ export class IntegrationTestSetup {
     private static _instance: IntegrationTestSetup;
     static async getInstance(): Promise<IntegrationTestSetup> {
         if (!this._instance) {
-            const client = new WorkspaceClient({
-                userAgentExtra: {"integration-tests": "0.0.1"},
-            });
+            const client = new WorkspaceClient(
+                {},
+                {
+                    product: "integration-tests",
+                    productVersion: "0.0.1",
+                }
+            );
 
             if (!process.env["TEST_DEFAULT_CLUSTER_ID"]) {
                 throw new Error(

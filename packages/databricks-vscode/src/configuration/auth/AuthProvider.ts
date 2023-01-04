@@ -42,10 +42,11 @@ export abstract class AuthProvider {
 
     getWorkspaceClient(): WorkspaceClient {
         const config = this.getSdkConfig();
-        config.product = "databricks-vscode";
-        config.productVersion = extensionVersion;
 
-        return new WorkspaceClient(config);
+        return new WorkspaceClient(config, {
+            product: "databricks-vscode",
+            productVersion: extensionVersion,
+        });
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -42,16 +42,34 @@ function logAndReturnError(
     return error;
 }
 
+export type ProductVersion = `${number}.${number}.${number}`;
+
+export interface ClientOptions {
+    agent?: https.Agent;
+    product?: string;
+    productVersion?: ProductVersion;
+    userAgentExtra?: Record<string, string>;
+}
+
 export class ApiClient {
     private agent: https.Agent;
+    readonly product: string;
+    readonly productVersion: ProductVersion;
+    readonly userAgentExtra: Record<string, string>;
 
-    constructor(readonly config: Config) {
-        this.agent = new https.Agent({
-            keepAlive: true,
-            keepAliveMsecs: 15_000,
-            rejectUnauthorized: config.insecureSkipVerify === false,
-            timeout: (config.httpTimeoutSeconds || 5) * 1000,
-        });
+    constructor(readonly config: Config, options: ClientOptions = {}) {
+        this.agent =
+            options.agent ||
+            new https.Agent({
+                keepAlive: true,
+                keepAliveMsecs: 15_000,
+                rejectUnauthorized: config.insecureSkipVerify === false,
+                timeout: (config.httpTimeoutSeconds || 5) * 1000,
+            });
+
+        this.product = options.product || "unknown";
+        this.productVersion = options.productVersion || "0.0.0";
+        this.userAgentExtra = options.userAgentExtra || {};
     }
 
     get host(): Promise<URL> {
@@ -60,16 +78,14 @@ export class ApiClient {
 
     userAgent(): string {
         const pairs = [
-            `${this.config.product}/${this.config.productVersion}`,
+            `${this.product}/${this.productVersion}`,
             `databricks-sdk-js/${sdkVersion}`,
             `nodejs/${process.version.slice(1)}`,
             `os/${process.platform}`,
             `auth/${this.config.authType}`,
         ];
 
-        for (const [key, value] of Object.entries(
-            this.config.userAgentExtra || {}
-        )) {
+        for (const [key, value] of Object.entries(this.userAgentExtra)) {
             pairs.push(`${key}/${value}`);
         }
         return pairs.join(" ");

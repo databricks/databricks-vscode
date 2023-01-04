@@ -57,16 +57,8 @@ export type ConfigOptions = Partial<PublicInterface<Config>>;
 export type AuthType = "default" | "pat" | "basic" | "azure-cli" | "google-id";
 export type AttributeName = keyof Omit<
     ConfigOptions,
-    | "credentials"
-    | "logger"
-    | "env"
-    | "loaders"
-    | "userAgentExtra"
-    | "product"
-    | "productVersion"
+    "credentials" | "logger" | "env" | "loaders"
 >;
-
-export type ProductVersion = `${number}.${number}.${number}`;
 
 export class Config {
     /**
@@ -222,10 +214,6 @@ export class Config {
         name: "retry_timeout_seconds",
     })
     retryTimeoutSeconds?: number;
-
-    public product?: string;
-    public productVersion?: ProductVersion;
-    public userAgentExtra?: Record<string, string>;
 
     private resolved = false;
     private auth?: RequestVisitor;

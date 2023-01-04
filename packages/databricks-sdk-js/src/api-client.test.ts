@@ -15,10 +15,12 @@ describe(__filename, () => {
     it("should create proper user agent", () => {
         const ua = new ApiClient(
             new Config({
+                authType: "pat",
+            }),
+            {
                 product: "unit",
                 productVersion: "3.4.5",
-                authType: "pat",
-            })
+            }
         ).userAgent();
         assert.equal(
             ua,

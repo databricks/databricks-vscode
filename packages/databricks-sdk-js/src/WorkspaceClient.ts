@@ -1,5 +1,5 @@
 import {Config, ConfigOptions} from "./config/Config";
-import {ApiClient} from "./api-client";
+import {ApiClient, ClientOptions} from "./api-client";
 import {ClustersService} from "./apis/clusters";
 import {CommandExecutionService} from "./apis/commands";
 import {DbfsService} from "./apis/dbfs";
@@ -20,13 +20,13 @@ export class WorkspaceClient {
     readonly config: Config;
     readonly apiClient: ApiClient;
 
-    constructor(config: ConfigOptions | Config) {
+    constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
         if (!(config instanceof Config)) {
             config = new Config(config);
         }
 
         this.config = config as Config;
-        this.apiClient = new ApiClient(this.config);
+        this.apiClient = new ApiClient(this.config, options);
     }
 
     get clusters() {
