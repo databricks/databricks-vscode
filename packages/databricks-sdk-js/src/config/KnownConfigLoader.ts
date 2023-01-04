@@ -4,6 +4,10 @@ import fs from "node:fs/promises";
 import {Config, ConfigError, Loader} from "./Config";
 import {parse} from "ini";
 
+/**
+ * Loads configuration from the Databricks config file which is by default
+ * in `~/.databrickscfg`.
+ */
 export class KnownConfigLoader implements Loader {
     public name = "config-file";
 
@@ -34,12 +38,12 @@ export class KnownConfigLoader implements Loader {
                     `resolve: ${configPath} has no ${profile} profile configured`
                 );
                 return;
-            } else {
-                throw new ConfigError(
-                    `resolve: ${configPath} has no ${profile} profile configured`,
-                    cfg
-                );
             }
+
+            throw new ConfigError(
+                `resolve: ${configPath} has no ${profile} profile configured`,
+                cfg
+            );
         }
         cfg.logger.info(`loading ${profile} profile from ${configPath}`);
         cfg.attributes.resolveFromStringMap(iniFile[profile]);

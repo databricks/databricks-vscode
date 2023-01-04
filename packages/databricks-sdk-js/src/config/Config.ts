@@ -325,9 +325,9 @@ export class Config {
                     `${this.credentials.name} auth: ${e.baseMessage}`,
                     this
                 );
-            } else {
-                throw e;
             }
+
+            throw e;
         }
         this.authType = this.credentials.name;
     }

@@ -16,6 +16,9 @@ import {
 // Resource ID of the Azure application we need to log in.
 const azureDatabricksLoginAppID = "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d";
 
+/**
+ * Authenticate using Azure CLI
+ */
 export class AzureCliCredentials implements CredentialProvider {
     public name: AuthType = "azure-cli";
 
@@ -39,9 +42,9 @@ export class AzureCliCredentials implements CredentialProvider {
                     return;
                 }
                 throw error;
-            } else {
-                throw error;
             }
+
+            throw error;
         }
 
         return refreshableTokenProvider(ts);
@@ -55,7 +58,9 @@ export class AzureCliCredentials implements CredentialProvider {
                     "account",
                     "get-access-token",
                     "--resource",
-                    azureDatabricksLoginAppID,
+                    appId,
+                    "--output",
+                    "json",
                 ]));
             } catch (e: any) {
                 if (e instanceof FileNotFoundException) {
@@ -76,11 +81,22 @@ export class AzureCliCredentials implements CredentialProvider {
                 );
             }
 
-            const azureToken = JSON.parse(stdout);
-            const token = new Token({
-                accessToken: azureToken.accessToken,
-                expiry: new Date(azureToken.expiresOn).getTime(),
-            });
+            let token: Token;
+            let azureToken: any;
+
+            try {
+                azureToken = JSON.parse(stdout);
+                token = new Token({
+                    accessToken: azureToken.accessToken,
+                    expiry: new Date(azureToken.expiresOn).getTime(),
+                });
+            } catch (e: any) {
+                throw new ConfigError(
+                    `azure-cli: cannot parse access token: ${e.message}`,
+                    config
+                );
+            }
+
             config.logger.info(
                 `Refreshed OAuth token for ${appId} from Azure CLI, which expires on ${azureToken.expiresOn}`
             );

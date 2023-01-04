@@ -55,7 +55,6 @@ export class ConfigAttribute {
     auth?: string | undefined;
     sensitive: boolean;
     internal: boolean;
-    num: number;
 
     constructor(
         options: {
@@ -74,10 +73,9 @@ export class ConfigAttribute {
         this.auth = options.auth;
         this.sensitive = options.sensitive || false;
         this.internal = options.internal || false;
-        this.num = 0;
     }
 
-    isZero(): boolean {
+    isUndefined(): boolean {
         return this.config[this.name] === undefined;
     }
 
@@ -123,7 +121,7 @@ export class ConfigAttributes {
 
         const authsUsed = new Set<string>();
         for (const attr of this.attributes) {
-            if (attr.isZero()) {
+            if (attr.isUndefined()) {
                 continue;
             }
             if (attr.auth === undefined) {
@@ -147,7 +145,7 @@ export class ConfigAttributes {
 
     public resolveFromEnv() {
         for (const attr of this.attributes) {
-            if (!attr.isZero()) {
+            if (!attr.isUndefined()) {
                 // don't overwrite a value previously set
                 continue;
             }
@@ -161,7 +159,7 @@ export class ConfigAttributes {
 
     public resolveFromStringMap(map: Record<string, string>): void {
         for (const attr of this.attributes) {
-            if (!attr.isZero()) {
+            if (!attr.isUndefined()) {
                 // don't overwrite a value previously set
                 continue;
             }
@@ -184,7 +182,7 @@ export class ConfigAttributes {
         let result = "";
 
         for (const attr of this.attributes) {
-            if (attr.isZero()) {
+            if (attr.isUndefined()) {
                 continue;
             }
 

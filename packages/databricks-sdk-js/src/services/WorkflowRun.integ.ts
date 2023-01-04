@@ -57,7 +57,7 @@ describe(__filename, function () {
             integSetup.cluster.id
         );
 
-        const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
+        const jobPath = `/tmp/js-sdk-jobs-tests/sdk-js-integ-${integSetup.testRunId}.py`;
         await integSetup.client.workspace.mkdirs({
             path: "/tmp/js-sdk-jobs-tests",
         });

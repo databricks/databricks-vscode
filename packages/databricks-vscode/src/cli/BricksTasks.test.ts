@@ -60,8 +60,6 @@ describe(__filename, () => {
             () => {}
         );
 
-        console.log(terminal.getProcessOptions());
-
         assert.deepEqual(terminal.getProcessOptions(), {
             cwd: Uri.file("/path/to/local/workspace").fsPath,
             env: {

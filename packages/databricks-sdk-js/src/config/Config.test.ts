@@ -1,12 +1,21 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import assert from "node:assert";
-import {AuthType, Config} from "./Config";
+import {Config, ConfigOptions} from "./Config";
 import {NamedLogger} from "../logging";
 import path from "node:path";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const testData = require("./testdata/unified-auth-cases.json");
 
+/**
+ * Test runner for the unified auth test cases in `testdata/unified-auth-cases.json`.
+ *
+ * Run a single test case:
+ * Add a `only: true` property to the test case in `testdata/unified-auth-cases.json`.
+ *
+ * Skip a test case:
+ * Add a `skip: true` property to the test case in `testdata/unified-auth-cases.json`.
+ */
 describe(__dirname, function () {
     let envBackup: Record<string, string | undefined>;
     const debug = false;
@@ -42,16 +51,7 @@ describe(__dirname, function () {
         cf: Partial<ConfigFixture>
     ): Promise<Config> {
         const config = new Config({
-            host: cf.host,
-            token: cf.token,
-            username: cf.username,
-            password: cf.password,
-            profile: cf.profile,
-            azureClientId: cf.azureClientId,
-            azureClientSecret: cf.azureClientSecret,
-            azureTenantId: cf.azureTenantId,
-            azureResourceId: cf.azureResourceId,
-            authType: cf.authType as AuthType,
+            ...cf,
             logger: debug ? (console as unknown as NamedLogger) : undefined,
         });
 
@@ -62,7 +62,7 @@ describe(__dirname, function () {
     async function apply(cf: any) {
         let config: Config;
         for (const key of Object.keys(cf)) {
-            cf[GoToJavaScript[key]] = cf[key];
+            cf[ConfigToAttribute[key]] = cf[key];
         }
 
         for (const envName of Object.keys(cf.env || {})) {
@@ -98,25 +98,14 @@ describe(__dirname, function () {
     }
 });
 
-interface ConfigFixture {
-    host: string;
-    token: string;
-    username: string;
-    password: string;
-    configFile: string;
-    profile: string;
-    azureClientId: string;
-    azureClientSecret: string;
-    azureTenantId: string;
-    azureResourceId: string;
-    authType: string;
+interface ConfigFixture extends ConfigOptions {
     assertError: string;
     assertAuth: string;
     assertHost: string;
     assertAzure: boolean;
 }
 
-const GoToJavaScript: Record<string, string> = {
+const ConfigToAttribute: Record<string, string> = {
     host: "host",
     token: "token",
     username: "username",

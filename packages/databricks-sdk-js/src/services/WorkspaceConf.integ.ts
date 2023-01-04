@@ -11,7 +11,7 @@ describe(__filename, function () {
     before(async function () {
         integSetup = await IntegrationTestSetup.getInstance();
         try {
-            const wsConf = new WorkspaceConf(integSetup.client);
+            const wsConf = new WorkspaceConf(integSetup.client.apiClient);
             await wsConf.getStatus(["enableProjectTypeInWorkspace"]);
         } catch (e: any) {
             if (e.code === 403) {

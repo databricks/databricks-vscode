@@ -6,6 +6,9 @@ import {
     AuthType,
 } from "./Config";
 
+/**
+ * Authenticate using username and password
+ */
 export class BasicCredentials implements CredentialProvider {
     public name: AuthType = "basic";
 

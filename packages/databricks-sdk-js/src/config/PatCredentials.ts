@@ -6,6 +6,9 @@ import {
     AuthType,
 } from "./Config";
 
+/**
+ * Authenticate using a personal access token (PAT)
+ */
 export class PatCredentials implements CredentialProvider {
     public name: AuthType = "pat";
 
