@@ -13,21 +13,27 @@ type SyncDestinationType = "workspace" | "repo";
  * Either Databricks repo or workspace that acts as a sync target for the current workspace.
  */
 export class SyncDestination {
+    readonly wsfsDirPath: Uri;
     /**
      * ONLY USE FOR TESTING
      */
     constructor(
         readonly wsfsDir: IWorkspaceFsEntity,
-        readonly wsfsDirPath: Uri,
+        wsfsDirPath: Uri,
         readonly vscodeWorkspacePath: Uri
-    ) {}
+    ) {
+        this.wsfsDirPath = SyncDestination.normalizeWorkspacePath(wsfsDirPath);
+    }
 
     static async from(
         client: ApiClient,
         wsfsDirUri: Uri,
         vscodeWorkspacePath: Uri
     ) {
-        const wsfsDir = await this.getWorkspaceFsDir(client, wsfsDirUri);
+        const wsfsDir = await SyncDestination.getWorkspaceFsDir(
+            client,
+            wsfsDirUri
+        );
         if (wsfsDir === undefined) {
             return undefined;
         }
