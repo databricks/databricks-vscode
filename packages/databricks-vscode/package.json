@@ -282,12 +282,12 @@
                 },
                 {
                     "command": "databricks.cluster.stop",
-                    "when": "view == configurationView && viewItem == clusterRunning || view == configurationView && viewItem == clusterPending",
+                    "when": "view == configurationView && viewItem =~ /^databricks.cluster.(running|pending)$/",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.cluster.start",
-                    "when": "view == configurationView && viewItem == clusterStopped",
+                    "when": "view == configurationView && viewItem == databricks.cluster.terminated",
                     "group": "inline@0"
                 },
                 {
