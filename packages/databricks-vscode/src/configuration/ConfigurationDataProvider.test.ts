@@ -132,7 +132,7 @@ describe(__filename, () => {
             },
             {
                 collapsibleState: 2,
-                contextValue: "clusterStopped",
+                contextValue: "databricks.cluster.terminated",
                 iconPath: {
                     color: undefined,
                     id: "server",
