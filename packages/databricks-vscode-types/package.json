@@ -8,7 +8,7 @@
         "type": "git",
         "url": "git+https://github.com/databricks/databricks-vscode.git"
     },
-    "license": "Apache-2.0",
+    "license": "LicenseRef-LICENSE",
     "bugs": {
         "url": "https://github.com/databricks/databricks-vscode/issues"
     },
