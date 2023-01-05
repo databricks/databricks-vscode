@@ -20,6 +20,8 @@ jobs:
     test-sdk:
         name: Test Databricks SDK
         runs-on: ${{ inputs.os }}
+        environment:
+            name: azure-prod-usr
 
         defaults:
             run:
