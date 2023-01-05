@@ -3,28 +3,69 @@
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
 
 // all definitions in this file are in alphabetical order
+export interface AddInstanceProfile {
+    /**
+     * The AWS IAM role ARN of the role associated with the instance profile.
+     * This field is required if your role name and instance profile name do not
+     * match and you want to use the instance profile with [Databricks SQL
+     * Serverless].
+     *
+     * Otherwise, this field is optional.
+     *
+     * [Databricks SQL Serverless]: https://docs.databricks.com/sql/admin/serverless.html
+     */
+    iam_role_arn?: string;
+    /**
+     * The AWS ARN of the instance profile to register with Databricks. This
+     * field is required.
+     */
+    instance_profile_arn: string;
+    /**
+     * By default, Databricks validates that it has sufficient permissions to
+     * launch instances with the instance profile. This validation uses AWS
+     * dry-run mode for the RunInstances API. If validation fails with an error
+     * message that does not indicate an IAM related permission issue, (e.g.
+     * `Your requested instance type is not supported in your requested
+     * availability zone`), you can pass this flag to skip the validation and
+     * forcibly add the instance profile.
+     */
+    is_meta_instance_profile?: boolean;
+    /**
+     * By default, Databricks validates that it has sufficient permissions to
+     * launch instances with the instance profile. This validation uses AWS
+     * dry-run mode for the RunInstances API. If validation fails with an error
+     * message that does not indicate an IAM related permission issue, (e.g.
+     * “Your requested instance type is not supported in your requested
+     * availability zone”), you can pass this flag to skip the validation and
+     * forcibly add the instance profile.
+     */
+    skip_validation?: boolean;
+}
+
 export interface AutoScale {
     /**
      * The maximum number of workers to which the cluster can scale up when
-     * overloaded. Note that ``max_workers`` must be strictly greater than
-     * ``min_workers``.
+     * overloaded. Note that `max_workers` must be strictly greater than
+     * `min_workers`.
      */
-    max_workers?: number;
+    max_workers: number;
     /**
      * The minimum number of workers to which the cluster can scale down when
      * underutilized. It is also the initial number of workers the cluster will
      * have after creation.
      */
-    min_workers?: number;
+    min_workers: number;
 }
 
 export interface AwsAttributes {
     /**
-     * Availability type used for all subsequent nodes past the
-     * ``first_on_demand`` ones. Note: If ``first_on_demand`` is zero, this
-     * availability type will be used for the entire cluster.
+     * Availability type used for all subsequent nodes past the `first_on_demand`
+     * ones.
+     *
+     * Note: If `first_on_demand` is zero, this availability type will be used
+     * for the entire cluster.
      */
-    availability?: AwsAttributesAvailability;
+    availability?: AwsAvailability;
     /**
      * The number of volumes launched for each instance. Users can choose up to
      * 10 volumes. This feature is only enabled for supported node types. Legacy
@@ -32,9 +73,8 @@ export interface AwsAttributes {
      * instance store, at least one EBS volume needs to be specified; otherwise,
      * cluster creation will fail.
      *
-     * These EBS volumes will be mounted at ``/ebs0``, ``/ebs1``, and etc.
-     * Instance store volumes will be mounted at ``/local_disk0``,
-     * ``/local_disk1``, and etc.
+     * These EBS volumes will be mounted at `/ebs0`, `/ebs1`, and etc. Instance
+     * store volumes will be mounted at `/local_disk0`, `/local_disk1`, and etc.
      *
      * If EBS volumes are attached, Databricks will configure Spark to use only
      * the EBS volumes for scratch storage because heterogenously sized scratch
@@ -42,7 +82,7 @@ export interface AwsAttributes {
      * attached, Databricks will configure Spark to use instance store volumes.
      *
      * Please note that if EBS volumes are specified, then the Spark
-     * configuration ``spark.local.dir`` will be overridden.
+     * configuration `spark.local.dir` will be overridden.
      */
     ebs_volume_count?: number;
     /**
@@ -62,15 +102,15 @@ export interface AwsAttributes {
     /**
      * The type of EBS volumes that will be launched with this cluster.
      */
-    ebs_volume_type?: AwsAttributesEbsVolumeType;
+    ebs_volume_type?: EbsVolumeType;
     /**
-     * The first ``first_on_demand`` nodes of the cluster will be placed on
+     * The first `first_on_demand` nodes of the cluster will be placed on
      * on-demand instances. If this value is greater than 0, the cluster driver
      * node in particular will be placed on an on-demand instance. If this value
      * is greater than or equal to the current cluster size, all nodes will be
      * placed on on-demand instances. If this value is less than the current
-     * cluster size, ``first_on_demand`` nodes will be placed on on-demand
-     * instances and the remainder will be placed on ``availability`` instances.
+     * cluster size, `first_on_demand` nodes will be placed on on-demand
+     * instances and the remainder will be placed on `availability` instances.
      * Note that this value does not affect cluster size and cannot currently be
      * mutated over the lifetime of a cluster.
      */
@@ -90,14 +130,13 @@ export interface AwsAttributes {
     /**
      * The bid price for AWS spot instances, as a percentage of the corresponding
      * instance type's on-demand price. For example, if this field is set to 50,
-     * and the cluster needs a new ``r3.xlarge`` spot instance, then the bid
-     * price is half of the price of on-demand ``r3.xlarge`` instances.
-     * Similarly, if this field is set to 200, the bid price is twice the price
-     * of on-demand ``r3.xlarge`` instances. If not specified, the default value
-     * is 100. When spot instances are requested for this cluster, only spot
-     * instances whose bid price percentage matches this field will be
-     * considered. Note that, for safety, we enforce this field to be no more
-     * than 10000.
+     * and the cluster needs a new `r3.xlarge` spot instance, then the bid price
+     * is half of the price of on-demand `r3.xlarge` instances. Similarly, if
+     * this field is set to 200, the bid price is twice the price of on-demand
+     * `r3.xlarge` instances. If not specified, the default value is 100. When
+     * spot instances are requested for this cluster, only spot instances whose
+     * bid price percentage matches this field will be considered. Note that, for
+     * safety, we enforce this field to be no more than 10000.
      *
      * The default value and documentation here should be kept consistent with
      * CommonConf.defaultSpotBidPricePercent and
@@ -121,38 +160,29 @@ export interface AwsAttributes {
 }
 
 /**
- * Availability type used for all subsequent nodes past the ``first_on_demand``
- * ones. Note: If ``first_on_demand`` is zero, this availability type will be
- * used for the entire cluster.
+ * Availability type used for all subsequent nodes past the `first_on_demand`
+ * ones.
+ *
+ * Note: If `first_on_demand` is zero, this availability type will be used for
+ * the entire cluster.
  */
-export type AwsAttributesAvailability =
-    | "ON_DEMAND"
-    | "SPOT"
-    | "SPOT_WITH_FALLBACK";
-
-/**
- * The type of EBS volumes that will be launched with this cluster.
- */
-export type AwsAttributesEbsVolumeType =
-    | "GENERAL_PURPOSE_SSD"
-    | "THROUGHPUT_OPTIMIZED_HDD";
+export type AwsAvailability = "ON_DEMAND" | "SPOT" | "SPOT_WITH_FALLBACK";
 
 export interface AzureAttributes {
     /**
-     * Availability type used for all subsequent nodes past the
-     * ``first_on_demand`` ones. Note: If ``first_on_demand`` is zero (which only
-     * happens on pool clusters), this availability type will be used for the
-     * entire cluster.
+     * Availability type used for all subsequent nodes past the `first_on_demand`
+     * ones. Note: If `first_on_demand` is zero (which only happens on pool
+     * clusters), this availability type will be used for the entire cluster.
      */
-    availability?: AzureAttributesAvailability;
+    availability?: AzureAvailability;
     /**
-     * The first ``first_on_demand`` nodes of the cluster will be placed on
+     * The first `first_on_demand` nodes of the cluster will be placed on
      * on-demand instances. This value should be greater than 0, to make sure the
      * cluster driver node is placed on an on-demand instance. If this value is
      * greater than or equal to the current cluster size, all nodes will be
      * placed on on-demand instances. If this value is less than the current
-     * cluster size, ``first_on_demand`` nodes will be placed on on-demand
-     * instances and the remainder will be placed on ``availability`` instances.
+     * cluster size, `first_on_demand` nodes will be placed on on-demand
+     * instances and the remainder will be placed on `availability` instances.
      * Note that this value does not affect cluster size and cannot currently be
      * mutated over the lifetime of a cluster.
      */
@@ -172,11 +202,11 @@ export interface AzureAttributes {
 }
 
 /**
- * Availability type used for all subsequent nodes past the ``first_on_demand``
- * ones. Note: If ``first_on_demand`` is zero (which only happens on pool
+ * Availability type used for all subsequent nodes past the `first_on_demand`
+ * ones. Note: If `first_on_demand` is zero (which only happens on pool
  * clusters), this availability type will be used for the entire cluster.
  */
-export type AzureAttributesAvailability =
+export type AzureAvailability =
     | "ON_DEMAND_AZURE"
     | "SPOT_AZURE"
     | "SPOT_WITH_FALLBACK_AZURE";
@@ -189,7 +219,7 @@ export interface ChangeClusterOwner {
     /**
      * New owner of the cluster_id after this RPC.
      */
-    owner_username?: string;
+    owner_username: string;
 }
 
 export interface ClientsTypes {
@@ -233,9 +263,9 @@ export interface ClusterAttributes {
      * The configuration for delivering spark logs to a long-term storage
      * destination. Two kinds of destinations (dbfs and s3) are supported. Only
      * one destination can be specified for one cluster. If the conf is given,
-     * the logs will be delivered to the destination every ``5 mins``. The
-     * destination of driver logs is ``$destination/$clusterId/driver``, while
-     * the destination of executor logs is ``$destination/$clusterId/executor``.
+     * the logs will be delivered to the destination every `5 mins`. The
+     * destination of driver logs is `$destination/$clusterId/driver`, while the
+     * destination of executor logs is `$destination/$clusterId/executor`.
      */
     cluster_log_conf?: ClusterLogConf;
     /**
@@ -248,11 +278,11 @@ export interface ClusterAttributes {
      * created by the Databricks Jobs Scheduler, or through an API request. This
      * is the same as cluster_creator, but read only.
      */
-    cluster_source?: ClusterAttributesClusterSource;
+    cluster_source?: ClusterSource;
     /**
      * Additional tags for cluster resources. Databricks will tag all cluster
      * resources (e.g., AWS instances and EBS volumes) with these tags in
-     * addition to ``default_tags``. Notes:
+     * addition to `default_tags`. Notes:
      *
      * - Currently, Databricks allows at most 45 custom tags
      *
@@ -270,21 +300,8 @@ export interface ClusterAttributes {
      * The node type of the Spark driver. Note that this field is optional; if
      * unset, the driver node type will be set as the same value as
      * `node_type_id` defined above.
-     *
-     * This field, along with node_type_id, should not be set if
-     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
-     * and virtual_cluster_size are specified, driver_node_type_id and
-     * node_type_id take precedence.
      */
     driver_node_type_id?: string;
-    /**
-     * The key of the spark version running in the dataplane. This is possibly
-     * different from the spark_version (index 2). The spark_version is the raw
-     * string provided by the user through API or UI, which could map to a
-     * different effective_spark_version running in the dataplane, depending on
-     * the cluster's instance type or the runtimeEngine parameter.
-     */
-    effective_spark_version?: string;
     /**
      * Autoscaling Local Storage: when enabled, this cluster will dynamically
      * acquire additional disk space when its Spark workers are running low on
@@ -308,14 +325,9 @@ export interface ClusterAttributes {
     /**
      * This field encodes, through a single value, the resources available to
      * each of the Spark nodes in this cluster. For example, the Spark nodes can
-     * be provisioned and optimized for memory or compute intensive workloads A
+     * be provisioned and optimized for memory or compute intensive workloads. A
      * list of available node types can be retrieved by using the
-     * :ref:`clusterClusterServicelistNodeTypes` API call.
-     *
-     * This field, along with driver_node_type_id, should not be set if
-     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
-     * and virtual_cluster_size are specified, driver_node_type_id and
-     * node_type_id take precedence.
+     * :method:listNodeTypes API call.
      */
     node_type_id?: string;
     /**
@@ -326,71 +338,44 @@ export interface ClusterAttributes {
      * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
      * unspecified, the runtime engine is inferred from spark_version.
      */
-    runtime_engine?: ClusterAttributesRuntimeEngine;
+    runtime_engine?: RuntimeEngine;
     /**
      * An object containing a set of optional, user-specified Spark configuration
      * key-value pairs. Users can also pass in a string of extra JVM options to
-     * the driver and the executors via ``spark.driver.extraJavaOptions`` and
-     * ``spark.executor.extraJavaOptions`` respectively.
-     *
-     * Example Spark confs: ``{"spark.speculation": true,
-     * "spark.streaming.ui.retainedBatches": 5}`` or
-     * ``{"spark.driver.extraJavaOptions": "-verbose:gc -XX:+PrintGCDetails"}``
+     * the driver and the executors via `spark.driver.extraJavaOptions` and
+     * `spark.executor.extraJavaOptions` respectively.
      */
     spark_conf?: Record<string, string>;
     /**
      * An object containing a set of optional, user-specified environment
      * variable key-value pairs. Please note that key-value pair of the form
-     * (X,Y) will be exported as is (i.e., ``export X='Y'``) while launching the
+     * (X,Y) will be exported as is (i.e., `export X='Y'`) while launching the
      * driver and workers.
      *
-     * In order to specify an additional set of ``SPARK_DAEMON_JAVA_OPTS``, we
-     * recommend appending them to ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the
+     * In order to specify an additional set of `SPARK_DAEMON_JAVA_OPTS`, we
+     * recommend appending them to `$SPARK_DAEMON_JAVA_OPTS` as shown in the
      * example below. This ensures that all default databricks managed
      * environmental variables are included as well.
      *
-     * Example Spark environment variables: ``{"SPARK_WORKER_MEMORY": "28000m",
-     * "SPARK_LOCAL_DIRS": "/local_disk0"}`` or ``{"SPARK_DAEMON_JAVA_OPTS":
-     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}``
+     * Example Spark environment variables: `{"SPARK_WORKER_MEMORY": "28000m",
+     * "SPARK_LOCAL_DIRS": "/local_disk0"}` or `{"SPARK_DAEMON_JAVA_OPTS":
+     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}`
      */
     spark_env_vars?: Record<string, string>;
     /**
-     * The Spark version of the cluster, e.g. "3.3.x-scala2.11". A list of
+     * The Spark version of the cluster, e.g. `3.3.x-scala2.11`. A list of
      * available Spark versions can be retrieved by using the
-     * :ref:`clusterClusterServicelistSparkVersions` API call. This is the Spark
-     * version provided from the user input (API/UI) and may be different from
-     * the effective_spark_version, which is the spark version that is actually
-     * run in the dataplane. See index 45 for more context.
+     * :method:sparkVersions API call.
      */
-    spark_version?: string;
+    spark_version: string;
     /**
      * SSH public key contents that will be added to each Spark node in this
      * cluster. The corresponding private keys can be used to login with the user
-     * name ``ubuntu`` on port ``2200``. Up to 10 keys can be specified.
+     * name `ubuntu` on port `2200`. Up to 10 keys can be specified.
      */
     ssh_public_keys?: Array<string>;
     workload_type?: WorkloadType;
 }
-
-/**
- * Determines whether the cluster was created by a user through the UI, created
- * by the Databricks Jobs Scheduler, or through an API request. This is the same
- * as cluster_creator, but read only.
- */
-export type ClusterAttributesClusterSource =
-    | "API"
-    | "JOB"
-    | "MODELS"
-    | "PIPELINE"
-    | "PIPELINE_MAINTENANCE"
-    | "SQL"
-    | "UI";
-
-/**
- * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
- * unspecified, the runtime engine is inferred from spark_version.
- */
-export type ClusterAttributesRuntimeEngine = "NULL" | "PHOTON" | "STANDARD";
 
 export interface ClusterEvent {
     /**
@@ -411,41 +396,8 @@ export interface ClusterEvent {
      * by the Timeline service.
      */
     timestamp?: number;
-    /**
-     * <needs content added>
-     */
-    type?: ClusterEventType;
+    type?: EventType;
 }
-
-/**
- * <needs content added>
- */
-export type ClusterEventType =
-    | "AUTOSCALING_STATS_REPORT"
-    | "CREATING"
-    | "DBFS_DOWN"
-    | "DID_NOT_EXPAND_DISK"
-    | "DRIVER_HEALTHY"
-    | "DRIVER_NOT_RESPONDING"
-    | "DRIVER_UNAVAILABLE"
-    | "EDITED"
-    | "EXPANDED_DISK"
-    | "FAILED_TO_EXPAND_DISK"
-    | "INIT_SCRIPTS_FINISHED"
-    | "INIT_SCRIPTS_STARTED"
-    | "METASTORE_DOWN"
-    | "NODE_BLACKLISTED"
-    | "NODE_EXCLUDED_DECOMMISSIONED"
-    | "NODES_LOST"
-    | "PINNED"
-    | "RESIZING"
-    | "RESTARTING"
-    | "RUNNING"
-    | "SPARK_EXCEPTION"
-    | "STARTING"
-    | "TERMINATING"
-    | "UNPINNED"
-    | "UPSIZE_COMPLETED";
 
 export interface ClusterInfo {
     /**
@@ -486,9 +438,9 @@ export interface ClusterInfo {
      * The configuration for delivering spark logs to a long-term storage
      * destination. Two kinds of destinations (dbfs and s3) are supported. Only
      * one destination can be specified for one cluster. If the conf is given,
-     * the logs will be delivered to the destination every ``5 mins``. The
-     * destination of driver logs is ``$destination/$clusterId/driver``, while
-     * the destination of executor logs is ``$destination/$clusterId/executor``.
+     * the logs will be delivered to the destination every `5 mins`. The
+     * destination of driver logs is `$destination/$clusterId/driver`, while the
+     * destination of executor logs is `$destination/$clusterId/executor`.
      */
     cluster_log_conf?: ClusterLogConf;
     /**
@@ -509,7 +461,7 @@ export interface ClusterInfo {
      * created by the Databricks Jobs Scheduler, or through an API request. This
      * is the same as cluster_creator, but read only.
      */
-    cluster_source?: ClusterInfoClusterSource;
+    cluster_source?: ClusterSource;
     /**
      * Creator user name. The field won't be included in the response if the user
      * has already been deleted.
@@ -518,7 +470,7 @@ export interface ClusterInfo {
     /**
      * Additional tags for cluster resources. Databricks will tag all cluster
      * resources (e.g., AWS instances and EBS volumes) with these tags in
-     * addition to ``default_tags``. Notes:
+     * addition to `default_tags`. Notes:
      *
      * - Currently, Databricks allows at most 45 custom tags
      *
@@ -526,10 +478,12 @@ export interface ClusterInfo {
      * subset of the cluster tags
      */
     custom_tags?: Record<string, string>;
-    data_security_mode?: DataSecurityMode;
-    access_mode?: AccessMode;
     /**
-     * Tags that are added by Databricks regardless of any ``custom_tags``,
+     * This describes an enum
+     */
+    data_security_mode?: DataSecurityMode;
+    /**
+     * Tags that are added by Databricks regardless of any `custom_tags`,
      * including:
      *
      * - Vendor: Databricks
@@ -559,21 +513,8 @@ export interface ClusterInfo {
      * The node type of the Spark driver. Note that this field is optional; if
      * unset, the driver node type will be set as the same value as
      * `node_type_id` defined above.
-     *
-     * This field, along with node_type_id, should not be set if
-     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
-     * and virtual_cluster_size are specified, driver_node_type_id and
-     * node_type_id take precedence.
      */
     driver_node_type_id?: string;
-    /**
-     * The key of the spark version running in the dataplane. This is possibly
-     * different from the spark_version (index 2). The spark_version is the raw
-     * string provided by the user through API or UI, which could map to a
-     * different effective_spark_version running in the dataplane, depending on
-     * the cluster's instance type or the runtimeEngine parameter.
-     */
-    effective_spark_version?: string;
     /**
      * Autoscaling Local Storage: when enabled, this cluster will dynamically
      * acquire additional disk space when its Spark workers are running low on
@@ -617,24 +558,19 @@ export interface ClusterInfo {
      * each of the Spark nodes in this cluster. For example, the Spark nodes can
      * be provisioned and optimized for memory or compute intensive workloads. A
      * list of available node types can be retrieved by using the
-     * :ref:`clusterClusterServicelistNodeTypes` API call.
-     *
-     * This field, along with driver_node_type_id, should not be set if
-     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
-     * and virtual_cluster_size are specified, driver_node_type_id and
-     * node_type_id take precedence.
+     * :method:listNodeTypes API call.
      */
     node_type_id?: string;
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
-     * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes.
+     * Spark Driver and `num_workers` Executors for a total of `num_workers` + 1
+     * Spark nodes.
      *
      * Note: When reading the properties of a cluster, this field reflects the
      * desired number of workers rather than the actual current number of
      * workers. For instance, if a cluster is resized from 5 to 10 workers, this
      * field will immediately be updated to reflect the target size of 10
-     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * workers, whereas the workers listed in `spark_info` will gradually
      * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
@@ -646,7 +582,7 @@ export interface ClusterInfo {
      * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
      * unspecified, the runtime engine is inferred from spark_version.
      */
-    runtime_engine?: ClusterInfoRuntimeEngine;
+    runtime_engine?: RuntimeEngine;
     /**
      * Single user name if data_security_mode is `SINGLE_USER`
      */
@@ -654,12 +590,8 @@ export interface ClusterInfo {
     /**
      * An object containing a set of optional, user-specified Spark configuration
      * key-value pairs. Users can also pass in a string of extra JVM options to
-     * the driver and the executors via ``spark.driver.extraJavaOptions`` and
-     * ``spark.executor.extraJavaOptions`` respectively.
-     *
-     * Example Spark confs: ``{"spark.speculation": true,
-     * "spark.streaming.ui.retainedBatches": 5}`` or
-     * ``{"spark.driver.extraJavaOptions": "-verbose:gc -XX:+PrintGCDetails"}``
+     * the driver and the executors via `spark.driver.extraJavaOptions` and
+     * `spark.executor.extraJavaOptions` respectively.
      */
     spark_conf?: Record<string, string>;
     /**
@@ -672,39 +604,42 @@ export interface ClusterInfo {
      * An object containing a set of optional, user-specified environment
      * variable key-value pairs. Please note that key-value pair of the form
      * (X,Y) will be exported as is (i.e., `export X='Y'`) while launching the
-     * driver and workers. In order to specify an additional set of
-     * ``SPARK_DAEMON_JAVA_OPTS``, we recommend appending them to
-     * ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the example. This ensures that all
-     * default databricks managed environmental variables are included as well.
+     * driver and workers.
+     *
+     * In order to specify an additional set of `SPARK_DAEMON_JAVA_OPTS`, we
+     * recommend appending them to `$SPARK_DAEMON_JAVA_OPTS` as shown in the
+     * example below. This ensures that all default databricks managed
+     * environmental variables are included as well.
+     *
+     * Example Spark environment variables: `{"SPARK_WORKER_MEMORY": "28000m",
+     * "SPARK_LOCAL_DIRS": "/local_disk0"}` or `{"SPARK_DAEMON_JAVA_OPTS":
+     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}`
      */
     spark_env_vars?: Record<string, string>;
     /**
-     * The Spark version of the cluster, e.g. "3.3.x-scala2.11". A list of
+     * The Spark version of the cluster, e.g. `3.3.x-scala2.11`. A list of
      * available Spark versions can be retrieved by using the
-     * :ref:`clusterClusterServicelistSparkVersions` API call. This is the Spark
-     * version provided from the user input (API/UI) and may be different from
-     * the effective_spark_version, which is the spark version that is actually
-     * run in the dataplane. See index 45 for more context.
+     * :method:sparkVersions API call.
      */
     spark_version?: string;
     /**
      * SSH public key contents that will be added to each Spark node in this
      * cluster. The corresponding private keys can be used to login with the user
-     * name ``ubuntu`` on port ``2200``. Up to 10 keys can be specified.
+     * name `ubuntu` on port `2200`. Up to 10 keys can be specified.
      */
     ssh_public_keys?: Array<string>;
     /**
      * Time (in epoch milliseconds) when the cluster creation request was
-     * received (when the cluster entered a ``PENDING`` state).
+     * received (when the cluster entered a `PENDING` state).
      */
     start_time?: number;
     /**
      * Current state of the cluster.
      */
-    state?: ClusterInfoState;
+    state?: State;
     /**
      * A message associated with the most recent state transition (e.g., the
-     * reason why the cluster entered a ``TERMINATED`` state).
+     * reason why the cluster entered a `TERMINATED` state).
      */
     state_message?: string;
     /**
@@ -714,56 +649,23 @@ export interface ClusterInfo {
     terminated_time?: number;
     /**
      * Information about why the cluster was terminated. This field only appears
-     * when the cluster is in a ``TERMINATING`` or ``TERMINATED`` state.
+     * when the cluster is in a `TERMINATING` or `TERMINATED` state.
      */
     termination_reason?: TerminationReason;
     workload_type?: WorkloadType;
 }
 
-/**
- * Determines whether the cluster was created by a user through the UI, created
- * by the Databricks Jobs Scheduler, or through an API request. This is the same
- * as cluster_creator, but read only.
- */
-export type ClusterInfoClusterSource =
-    | "API"
-    | "JOB"
-    | "MODELS"
-    | "PIPELINE"
-    | "PIPELINE_MAINTENANCE"
-    | "SQL"
-    | "UI";
-
-/**
- * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
- * unspecified, the runtime engine is inferred from spark_version.
- */
-export type ClusterInfoRuntimeEngine = "NULL" | "PHOTON" | "STANDARD";
-
-/**
- * Current state of the cluster.
- */
-export type ClusterInfoState =
-    | "ERROR"
-    | "PENDING"
-    | "RESIZING"
-    | "RESTARTING"
-    | "RUNNING"
-    | "TERMINATED"
-    | "TERMINATING"
-    | "UNKNOWN";
-
 export interface ClusterLogConf {
     /**
-     * destination needs to be provided. e.g. ``{ "dbfs" : { "destination" :
-     * "dbfs:/home/cluster_log" } }``
+     * destination needs to be provided. e.g. `{ "dbfs" : { "destination" :
+     * "dbfs:/home/cluster_log" } }`
      */
     dbfs?: DbfsStorageInfo;
     /**
-     * destination and either region or endpoint should also be provided. e.g.
-     * ``{ "s3": { "destination" : "s3://cluster_log_bucket/prefix", "region" :
-     * "us-west-2" } }`` Cluster iam role is used to access s3, please make sure
-     * the cluster iam role in ``instance_profile_arn`` has permission to write
+     * destination and either region or endpoint should also be provided. e.g. `{
+     * "s3": { "destination" : "s3://cluster_log_bucket/prefix", "region" :
+     * "us-west-2" } }` Cluster iam role is used to access s3, please make sure
+     * the cluster iam role in `instance_profile_arn` has permission to write
      * data to the s3 destination.
      */
     s3?: S3StorageInfo;
@@ -778,18 +680,32 @@ export interface ClusterSize {
     autoscale?: AutoScale;
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
-     * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes.
+     * Spark Driver and `num_workers` Executors for a total of `num_workers` + 1
+     * Spark nodes.
      *
      * Note: When reading the properties of a cluster, this field reflects the
      * desired number of workers rather than the actual current number of
      * workers. For instance, if a cluster is resized from 5 to 10 workers, this
      * field will immediately be updated to reflect the target size of 10
-     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * workers, whereas the workers listed in `spark_info` will gradually
      * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
 }
+
+/**
+ * Determines whether the cluster was created by a user through the UI, created
+ * by the Databricks Jobs Scheduler, or through an API request. This is the same
+ * as cluster_creator, but read only.
+ */
+export type ClusterSource =
+    | "API"
+    | "JOB"
+    | "MODELS"
+    | "PIPELINE"
+    | "PIPELINE_MAINTENANCE"
+    | "SQL"
+    | "UI";
 
 export interface CreateCluster {
     /**
@@ -824,9 +740,9 @@ export interface CreateCluster {
      * The configuration for delivering spark logs to a long-term storage
      * destination. Two kinds of destinations (dbfs and s3) are supported. Only
      * one destination can be specified for one cluster. If the conf is given,
-     * the logs will be delivered to the destination every ``5 mins``. The
-     * destination of driver logs is ``$destination/$clusterId/driver``, while
-     * the destination of executor logs is ``$destination/$clusterId/executor``.
+     * the logs will be delivered to the destination every `5 mins`. The
+     * destination of driver logs is `$destination/$clusterId/driver`, while the
+     * destination of executor logs is `$destination/$clusterId/executor`.
      */
     cluster_log_conf?: ClusterLogConf;
     /**
@@ -839,11 +755,11 @@ export interface CreateCluster {
      * created by the Databricks Jobs Scheduler, or through an API request. This
      * is the same as cluster_creator, but read only.
      */
-    cluster_source?: CreateClusterClusterSource;
+    cluster_source?: ClusterSource;
     /**
      * Additional tags for cluster resources. Databricks will tag all cluster
      * resources (e.g., AWS instances and EBS volumes) with these tags in
-     * addition to ``default_tags``. Notes:
+     * addition to `default_tags`. Notes:
      *
      * - Currently, Databricks allows at most 45 custom tags
      *
@@ -861,21 +777,8 @@ export interface CreateCluster {
      * The node type of the Spark driver. Note that this field is optional; if
      * unset, the driver node type will be set as the same value as
      * `node_type_id` defined above.
-     *
-     * This field, along with node_type_id, should not be set if
-     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
-     * and virtual_cluster_size are specified, driver_node_type_id and
-     * node_type_id take precedence.
      */
     driver_node_type_id?: string;
-    /**
-     * The key of the spark version running in the dataplane. This is possibly
-     * different from the spark_version (index 2). The spark_version is the raw
-     * string provided by the user through API or UI, which could map to a
-     * different effective_spark_version running in the dataplane, depending on
-     * the cluster's instance type or the runtimeEngine parameter.
-     */
-    effective_spark_version?: string;
     /**
      * Autoscaling Local Storage: when enabled, this cluster will dynamically
      * acquire additional disk space when its Spark workers are running low on
@@ -899,26 +802,21 @@ export interface CreateCluster {
     /**
      * This field encodes, through a single value, the resources available to
      * each of the Spark nodes in this cluster. For example, the Spark nodes can
-     * be provisioned and optimized for memory or compute intensive workloads A
+     * be provisioned and optimized for memory or compute intensive workloads. A
      * list of available node types can be retrieved by using the
-     * :ref:`clusterClusterServicelistNodeTypes` API call.
-     *
-     * This field, along with driver_node_type_id, should not be set if
-     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
-     * and virtual_cluster_size are specified, driver_node_type_id and
-     * node_type_id take precedence.
+     * :method:listNodeTypes API call.
      */
     node_type_id?: string;
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
-     * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes.
+     * Spark Driver and `num_workers` Executors for a total of `num_workers` + 1
+     * Spark nodes.
      *
      * Note: When reading the properties of a cluster, this field reflects the
      * desired number of workers rather than the actual current number of
      * workers. For instance, if a cluster is resized from 5 to 10 workers, this
      * field will immediately be updated to reflect the target size of 10
-     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * workers, whereas the workers listed in `spark_info` will gradually
      * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
@@ -930,71 +828,48 @@ export interface CreateCluster {
      * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
      * unspecified, the runtime engine is inferred from spark_version.
      */
-    runtime_engine?: CreateClusterRuntimeEngine;
+    runtime_engine?: RuntimeEngine;
     /**
      * An object containing a set of optional, user-specified Spark configuration
      * key-value pairs. Users can also pass in a string of extra JVM options to
-     * the driver and the executors via ``spark.driver.extraJavaOptions`` and
-     * ``spark.executor.extraJavaOptions`` respectively.
+     * the driver and the executors via `spark.driver.extraJavaOptions` and
+     * `spark.executor.extraJavaOptions` respectively.
      */
     spark_conf?: Record<string, string>;
     /**
      * An object containing a set of optional, user-specified environment
      * variable key-value pairs. Please note that key-value pair of the form
-     * (X,Y) will be exported as is (i.e., ``export X='Y'``) while launching the
+     * (X,Y) will be exported as is (i.e., `export X='Y'`) while launching the
      * driver and workers.
      *
-     * In order to specify an additional set of ``SPARK_DAEMON_JAVA_OPTS``, we
-     * recommend appending them to ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the
+     * In order to specify an additional set of `SPARK_DAEMON_JAVA_OPTS`, we
+     * recommend appending them to `$SPARK_DAEMON_JAVA_OPTS` as shown in the
      * example below. This ensures that all default databricks managed
      * environmental variables are included as well.
      *
-     * Example Spark environment variables: ``{"SPARK_WORKER_MEMORY": "28000m",
-     * "SPARK_LOCAL_DIRS": "/local_disk0"}`` or ``{"SPARK_DAEMON_JAVA_OPTS":
-     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}``
+     * Example Spark environment variables: `{"SPARK_WORKER_MEMORY": "28000m",
+     * "SPARK_LOCAL_DIRS": "/local_disk0"}` or `{"SPARK_DAEMON_JAVA_OPTS":
+     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}`
      */
     spark_env_vars?: Record<string, string>;
     /**
-     * The Spark version of the cluster, e.g. "3.3.x-scala2.11". A list of
+     * The Spark version of the cluster, e.g. `3.3.x-scala2.11`. A list of
      * available Spark versions can be retrieved by using the
-     * :ref:`clusterClusterServicelistSparkVersions` API call. This is the Spark
-     * version provided from the user input (API/UI) and may be different from
-     * the effective_spark_version, which is the spark version that is actually
-     * run in the dataplane. See index 45 for more context.
+     * :method:sparkVersions API call.
      */
-    spark_version?: string;
+    spark_version: string;
     /**
      * SSH public key contents that will be added to each Spark node in this
      * cluster. The corresponding private keys can be used to login with the user
-     * name ``ubuntu`` on port ``2200``. Up to 10 keys can be specified.
+     * name `ubuntu` on port `2200`. Up to 10 keys can be specified.
      */
     ssh_public_keys?: Array<string>;
     workload_type?: WorkloadType;
 }
 
-/**
- * Determines whether the cluster was created by a user through the UI, created
- * by the Databricks Jobs Scheduler, or through an API request. This is the same
- * as cluster_creator, but read only.
- */
-export type CreateClusterClusterSource =
-    | "API"
-    | "JOB"
-    | "MODELS"
-    | "PIPELINE"
-    | "PIPELINE_MAINTENANCE"
-    | "SQL"
-    | "UI";
-
 export interface CreateClusterResponse {
     cluster_id?: string;
 }
-
-/**
- * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
- * unspecified, the runtime engine is inferred from spark_version.
- */
-export type CreateClusterRuntimeEngine = "NULL" | "PHOTON" | "STANDARD";
 
 export interface DataPlaneEventDetails {
     /**
@@ -1022,11 +897,10 @@ export type DataPlaneEventDetailsEventType =
     | "NODE_BLACKLISTED"
     | "NODE_EXCLUDED_DECOMMISSIONED";
 
+/**
+ * This describes an enum
+ */
 export type DataSecurityMode =
-    /**
-     * This is mode where single user is enforced but no actual security feature enabled.
-     */
-    | "LEGACY_SINGLE_USER_STANDARD"
     /**
      * This mode is for users migrating from legacy Passthrough on high concurrency
      * clusters.
@@ -1052,61 +926,16 @@ export type DataSecurityMode =
      */
     | "SINGLE_USER"
     /**
-     * A secure cluster that can be shared by multiple users. Cluster users are fully isolated
-     * so that they cannot see each other's data and credentials. Most data governance features
-     * are supported in this mode. But programming languages and cluster features might be limited.
+     * A secure cluster that can be shared by multiple users. Cluster users are fully
+     * isolated so that they cannot see each other's data and credentials. Most data
+     * governance features are supported in this mode. But programming languages and
+     * cluster features might be limited.
      */
-    | "USER_ISOLATION"
-    /**
-     * Internal mode used by DBSQL endpoint clusters
-     */
-    | "INTERNAL_SQL";
-
-/**
- * This describes an enum
- */
-export type AccessMode =
-    /**
-     * No security isolation for multiple users sharing the cluster. Data governance features
-     * are not available in this mode.
-     */
-    | "NO_ISOLATION"
-    /**
-     *  A secure cluster that can only be exclusively used by a single user specified in
-     *``single_user_name``. Most programming languages, cluster features and data governance
-     * features are available in this mode.
-     */
-    | "SINGLE_USER"
-    /**
-     * A secure cluster that can be shared by multiple users. Cluster users are fully isolated
-     * so that they cannot see each other's data and credentials. Most data governance features
-     * are supported in this mode. But programming languages and cluster features might be limited.
-     */
-    | "SHARED"
-    /**
-     * This mode is for users migrating from legacy Table ACL clusters.
-     */
-    | "LEGACY_SHARED_TABLE_ACL"
-    /**
-     * This mode is for users migrating from legacy Passthrough on high concurrency clusters.
-     */
-    | "LEGACY_SHARED_PASSTHROUGH"
-    /**
-     * Internal mode used by DBSQL endpoint clusters
-     */
-    | "INTERNAL_SQL"
-    /**
-     * This mode is for users migrating from legacy Passthrough on standard clusters.
-     */
-    | "LEGACY_SINGLE_USER_PASSTHROUGH"
-    /**
-     * This is mode where single user is enforced but no actual security feature enabled.
-     */
-    | "LEGACY_SINGLE_USER_STANDARD";
+    | "USER_ISOLATION";
 
 export interface DbfsStorageInfo {
     /**
-     * dbfs destination, e.g. ``dbfs:/my/path``
+     * dbfs destination, e.g. `dbfs:/my/path`
      */
     destination?: string;
 }
@@ -1117,6 +946,11 @@ export interface DeleteCluster {
      */
     cluster_id: string;
 }
+
+/**
+ * The type of EBS volumes that will be launched with this cluster.
+ */
+export type EbsVolumeType = "GENERAL_PURPOSE_SSD" | "THROUGHPUT_OPTIMIZED_HDD";
 
 export interface EditCluster {
     /**
@@ -1148,16 +982,16 @@ export interface EditCluster {
      */
     azure_attributes?: AzureAttributes;
     /**
-     * <needs content added>
+     * ID of the cluser
      */
     cluster_id: string;
     /**
      * The configuration for delivering spark logs to a long-term storage
      * destination. Two kinds of destinations (dbfs and s3) are supported. Only
      * one destination can be specified for one cluster. If the conf is given,
-     * the logs will be delivered to the destination every ``5 mins``. The
-     * destination of driver logs is ``$destination/$clusterId/driver``, while
-     * the destination of executor logs is ``$destination/$clusterId/executor``.
+     * the logs will be delivered to the destination every `5 mins`. The
+     * destination of driver logs is `$destination/$clusterId/driver`, while the
+     * destination of executor logs is `$destination/$clusterId/executor`.
      */
     cluster_log_conf?: ClusterLogConf;
     /**
@@ -1170,11 +1004,11 @@ export interface EditCluster {
      * created by the Databricks Jobs Scheduler, or through an API request. This
      * is the same as cluster_creator, but read only.
      */
-    cluster_source?: EditClusterClusterSource;
+    cluster_source?: ClusterSource;
     /**
      * Additional tags for cluster resources. Databricks will tag all cluster
      * resources (e.g., AWS instances and EBS volumes) with these tags in
-     * addition to ``default_tags``. Notes:
+     * addition to `default_tags`. Notes:
      *
      * - Currently, Databricks allows at most 45 custom tags
      *
@@ -1192,21 +1026,8 @@ export interface EditCluster {
      * The node type of the Spark driver. Note that this field is optional; if
      * unset, the driver node type will be set as the same value as
      * `node_type_id` defined above.
-     *
-     * This field, along with node_type_id, should not be set if
-     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
-     * and virtual_cluster_size are specified, driver_node_type_id and
-     * node_type_id take precedence.
      */
     driver_node_type_id?: string;
-    /**
-     * The key of the spark version running in the dataplane. This is possibly
-     * different from the spark_version (index 2). The spark_version is the raw
-     * string provided by the user through API or UI, which could map to a
-     * different effective_spark_version running in the dataplane, depending on
-     * the cluster's instance type or the runtimeEngine parameter.
-     */
-    effective_spark_version?: string;
     /**
      * Autoscaling Local Storage: when enabled, this cluster will dynamically
      * acquire additional disk space when its Spark workers are running low on
@@ -1230,26 +1051,21 @@ export interface EditCluster {
     /**
      * This field encodes, through a single value, the resources available to
      * each of the Spark nodes in this cluster. For example, the Spark nodes can
-     * be provisioned and optimized for memory or compute intensive workloads A
+     * be provisioned and optimized for memory or compute intensive workloads. A
      * list of available node types can be retrieved by using the
-     * :ref:`clusterClusterServicelistNodeTypes` API call.
-     *
-     * This field, along with driver_node_type_id, should not be set if
-     * virtual_cluster_size is set. If both driver_node_type_id, node_type_id,
-     * and virtual_cluster_size are specified, driver_node_type_id and
-     * node_type_id take precedence.
+     * :method:listNodeTypes API call.
      */
     node_type_id?: string;
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
-     * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes.
+     * Spark Driver and `num_workers` Executors for a total of `num_workers` + 1
+     * Spark nodes.
      *
      * Note: When reading the properties of a cluster, this field reflects the
      * desired number of workers rather than the actual current number of
      * workers. For instance, if a cluster is resized from 5 to 10 workers, this
      * field will immediately be updated to reflect the target size of 10
-     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * workers, whereas the workers listed in `spark_info` will gradually
      * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
@@ -1261,74 +1077,44 @@ export interface EditCluster {
      * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
      * unspecified, the runtime engine is inferred from spark_version.
      */
-    runtime_engine?: EditClusterRuntimeEngine;
+    runtime_engine?: RuntimeEngine;
     /**
      * An object containing a set of optional, user-specified Spark configuration
      * key-value pairs. Users can also pass in a string of extra JVM options to
-     * the driver and the executors via ``spark.driver.extraJavaOptions`` and
-     * ``spark.executor.extraJavaOptions`` respectively.
-     *
-     * Example Spark confs: ``{"spark.speculation": true,
-     * "spark.streaming.ui.retainedBatches": 5}`` or
-     * ``{"spark.driver.extraJavaOptions": "-verbose:gc -XX:+PrintGCDetails"}``
+     * the driver and the executors via `spark.driver.extraJavaOptions` and
+     * `spark.executor.extraJavaOptions` respectively.
      */
     spark_conf?: Record<string, string>;
     /**
      * An object containing a set of optional, user-specified environment
      * variable key-value pairs. Please note that key-value pair of the form
-     * (X,Y) will be exported as is (i.e., ``export X='Y'``) while launching the
+     * (X,Y) will be exported as is (i.e., `export X='Y'`) while launching the
      * driver and workers.
      *
-     * In order to specify an additional set of ``SPARK_DAEMON_JAVA_OPTS``, we
-     * recommend appending them to ``$SPARK_DAEMON_JAVA_OPTS`` as shown in the
+     * In order to specify an additional set of `SPARK_DAEMON_JAVA_OPTS`, we
+     * recommend appending them to `$SPARK_DAEMON_JAVA_OPTS` as shown in the
      * example below. This ensures that all default databricks managed
      * environmental variables are included as well.
      *
-     * Example Spark environment variables: ``{"SPARK_WORKER_MEMORY": "28000m",
-     * "SPARK_LOCAL_DIRS": "/local_disk0"}`` or ``{"SPARK_DAEMON_JAVA_OPTS":
-     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}``
+     * Example Spark environment variables: `{"SPARK_WORKER_MEMORY": "28000m",
+     * "SPARK_LOCAL_DIRS": "/local_disk0"}` or `{"SPARK_DAEMON_JAVA_OPTS":
+     * "$SPARK_DAEMON_JAVA_OPTS -Dspark.shuffle.service.enabled=true"}`
      */
     spark_env_vars?: Record<string, string>;
     /**
-     * The Spark version of the cluster, e.g. "3.3.x-scala2.11". A list of
+     * The Spark version of the cluster, e.g. `3.3.x-scala2.11`. A list of
      * available Spark versions can be retrieved by using the
-     * :ref:`clusterClusterServicelistSparkVersions` API call. This is the Spark
-     * version provided from the user input (API/UI) and may be different from
-     * the effective_spark_version, which is the spark version that is actually
-     * run in the dataplane. See index 45 for more context.
+     * :method:sparkVersions API call.
      */
-    spark_version?: string;
+    spark_version: string;
     /**
      * SSH public key contents that will be added to each Spark node in this
      * cluster. The corresponding private keys can be used to login with the user
-     * name ``ubuntu`` on port ``2200``. Up to 10 keys can be specified.
+     * name `ubuntu` on port `2200`. Up to 10 keys can be specified.
      */
     ssh_public_keys?: Array<string>;
-    /**
-     * <needs content added>
-     */
     workload_type?: WorkloadType;
 }
-
-/**
- * Determines whether the cluster was created by a user through the UI, created
- * by the Databricks Jobs Scheduler, or through an API request. This is the same
- * as cluster_creator, but read only.
- */
-export type EditClusterClusterSource =
-    | "API"
-    | "JOB"
-    | "MODELS"
-    | "PIPELINE"
-    | "PIPELINE_MAINTENANCE"
-    | "SQL"
-    | "UI";
-
-/**
- * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
- * unspecified, the runtime engine is inferred from spark_version.
- */
-export type EditClusterRuntimeEngine = "NULL" | "PHOTON" | "STANDARD";
 
 export interface EventDetails {
     /**
@@ -1425,74 +1211,7 @@ export type EventDetailsCause =
     | "REPLACE_BAD_NODES"
     | "USER_REQUEST";
 
-export interface GcpAttributes {
-    /**
-     * This field determines whether the spark executors will be scheduled to run
-     * on preemptible VMs, on-demand VMs, or preemptible VMs with a fallback to
-     * on-demand VMs if the former is unavailable.
-     */
-    availability?: GcpAttributesAvailability;
-    /**
-     * boot disk size in GB
-     */
-    boot_disk_size?: number;
-    /**
-     * If provided, the cluster will impersonate the google service account when
-     * accessing gcloud services (like GCS). The google service account must have
-     * previously been added to the Databricks environment by an account
-     * administrator.
-     */
-    google_service_account?: string;
-}
-
-/**
- * This field determines whether the spark executors will be scheduled to run on
- * preemptible VMs, on-demand VMs, or preemptible VMs with a fallback to
- * on-demand VMs if the former is unavailable.
- */
-export type GcpAttributesAvailability =
-    | "ON_DEMAND_GCP"
-    | "PREEMPTIBLE_GCP"
-    | "PREEMPTIBLE_WITH_FALLBACK_GCP";
-
-export interface GetEvents {
-    /**
-     * The ID of the cluster to retrieve events about.
-     */
-    cluster_id: string;
-    /**
-     * The end time in epoch milliseconds. If empty, returns events up to the
-     * current time.
-     */
-    end_time?: number;
-    /**
-     * An optional set of event types to filter on. If empty, all event types are
-     * returned.
-     */
-    event_types?: Array<GetEventsEventTypesItem>;
-    /**
-     * The maximum number of events to include in a page of events. Defaults to
-     * 50, and maximum allowed value is 500.
-     */
-    limit?: number;
-    /**
-     * The offset in the result set. Defaults to 0 (no offset). When an offset is
-     * specified and the results are requested in descending order, the end_time
-     * field is required.
-     */
-    offset?: number;
-    /**
-     * The order to list events in; either "ASC" or "DESC". Defaults to "DESC".
-     */
-    order?: GetEventsOrder;
-    /**
-     * The start time in epoch milliseconds. If empty, returns events starting
-     * from the beginning of time.
-     */
-    start_time?: number;
-}
-
-export type GetEventsEventTypesItem =
+export type EventType =
     | "AUTOSCALING_STATS_REPORT"
     | "CREATING"
     | "DBFS_DOWN"
@@ -1518,6 +1237,83 @@ export type GetEventsEventTypesItem =
     | "TERMINATING"
     | "UNPINNED"
     | "UPSIZE_COMPLETED";
+
+export interface GcpAttributes {
+    /**
+     * This field determines whether the spark executors will be scheduled to run
+     * on preemptible VMs, on-demand VMs, or preemptible VMs with a fallback to
+     * on-demand VMs if the former is unavailable.
+     */
+    availability?: GcpAvailability;
+    /**
+     * boot disk size in GB
+     */
+    boot_disk_size?: number;
+    /**
+     * If provided, the cluster will impersonate the google service account when
+     * accessing gcloud services (like GCS). The google service account must have
+     * previously been added to the Databricks environment by an account
+     * administrator.
+     */
+    google_service_account?: string;
+}
+
+/**
+ * This field determines whether the spark executors will be scheduled to run on
+ * preemptible VMs, on-demand VMs, or preemptible VMs with a fallback to
+ * on-demand VMs if the former is unavailable.
+ */
+export type GcpAvailability =
+    | "ON_DEMAND_GCP"
+    | "PREEMPTIBLE_GCP"
+    | "PREEMPTIBLE_WITH_FALLBACK_GCP";
+
+/**
+ * Get cluster info
+ */
+export interface Get {
+    /**
+     * The cluster about which to retrieve information.
+     */
+    cluster_id: string;
+}
+
+export interface GetEvents {
+    /**
+     * The ID of the cluster to retrieve events about.
+     */
+    cluster_id: string;
+    /**
+     * The end time in epoch milliseconds. If empty, returns events up to the
+     * current time.
+     */
+    end_time?: number;
+    /**
+     * An optional set of event types to filter on. If empty, all event types are
+     * returned.
+     */
+    event_types?: Array<EventType>;
+    /**
+     * The maximum number of events to include in a page of events. Defaults to
+     * 50, and maximum allowed value is 500.
+     */
+    limit?: number;
+    /**
+     * The offset in the result set. Defaults to 0 (no offset). When an offset is
+     * specified and the results are requested in descending order, the end_time
+     * field is required.
+     */
+    offset?: number;
+    /**
+     * The order to list events in; either "ASC" or "DESC". Defaults to "DESC".
+     */
+    order?: GetEventsOrder;
+    /**
+     * The start time in epoch milliseconds. If empty, returns events starting
+     * from the beginning of time.
+     */
+    start_time?: number;
+}
 
 /**
  * The order to list events in; either "ASC" or "DESC". Defaults to "DESC".
@@ -1548,10 +1344,51 @@ export interface GetSparkVersionsResponse {
     versions?: Array<SparkVersion>;
 }
 
+export interface InstanceProfile {
+    /**
+     * The AWS IAM role ARN of the role associated with the instance profile.
+     * This field is required if your role name and instance profile name do not
+     * match and you want to use the instance profile with [Databricks SQL
+     * Serverless].
+     *
+     * Otherwise, this field is optional.
+     *
+     * [Databricks SQL Serverless]: https://docs.databricks.com/sql/admin/serverless.html
+     */
+    iam_role_arn?: string;
+    /**
+     * The AWS ARN of the instance profile to register with Databricks. This
+     * field is required.
+     */
+    instance_profile_arn: string;
+    /**
+     * By default, Databricks validates that it has sufficient permissions to
+     * launch instances with the instance profile. This validation uses AWS
+     * dry-run mode for the RunInstances API. If validation fails with an error
+     * message that does not indicate an IAM related permission issue, (e.g.
+     * `Your requested instance type is not supported in your requested
+     * availability zone`), you can pass this flag to skip the validation and
+     * forcibly add the instance profile.
+     */
+    is_meta_instance_profile?: boolean;
+}
+
+/**
+ * List all clusters
+ */
+export interface List {
+    /**
+     * Filter clusters based on what type of client it can be used for. Could be
+     * either NOTEBOOKS or JOBS. No input for this field will get all clusters in
+     * the workspace without filtering on its supported client
+     */
+    can_use_client?: string;
+}
+
 export interface ListAvailableZonesResponse {
     /**
-     * The availability zone if no ``zone_id`` is provided in the cluster
-     * creation request.
+     * The availability zone if no `zone_id` is provided in the cluster creation
+     * request.
      */
     default_zone?: string;
     /**
@@ -1565,6 +1402,13 @@ export interface ListClustersResponse {
      * <needs content added>
      */
     clusters?: Array<ClusterInfo>;
+}
+
+export interface ListInstanceProfilesResponse {
+    /**
+     * A list of instance profiles that the user can access.
+     */
+    instance_profiles?: Array<InstanceProfile>;
 }
 
 export interface ListNodeTypesResponse {
@@ -1587,8 +1431,8 @@ export interface LogAnalyticsInfo {
 
 export interface LogSyncStatus {
     /**
-     * The timestamp of last attempt. If the last attempt fails,
-     * ``last_exception`` will contain the exception in the last attempt.
+     * The timestamp of last attempt. If the last attempt fails, `last_exception`
+     * will contain the exception in the last attempt.
      */
     last_attempted?: number;
     /**
@@ -1669,6 +1513,13 @@ export interface PinCluster {
     cluster_id: string;
 }
 
+export interface RemoveInstanceProfile {
+    /**
+     * The ARN of the instance profile to remove. This field is required.
+     */
+    instance_profile_arn: string;
+}
+
 export interface ResizeCluster {
     /**
      * Parameters needed in order to automatically scale clusters up and down
@@ -1682,14 +1533,14 @@ export interface ResizeCluster {
     cluster_id: string;
     /**
      * Number of worker nodes that this cluster should have. A cluster has one
-     * Spark Driver and ``num_workers`` Executors for a total of ``num_workers``
-     * + 1 Spark nodes.
+     * Spark Driver and `num_workers` Executors for a total of `num_workers` + 1
+     * Spark nodes.
      *
      * Note: When reading the properties of a cluster, this field reflects the
      * desired number of workers rather than the actual current number of
      * workers. For instance, if a cluster is resized from 5 to 10 workers, this
      * field will immediately be updated to reflect the target size of 10
-     * workers, whereas the workers listed in ``spark_info`` will gradually
+     * workers, whereas the workers listed in `spark_info` will gradually
      * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number;
@@ -1706,48 +1557,53 @@ export interface RestartCluster {
     restart_user?: string;
 }
 
+/**
+ * Decides which runtime engine to be use, e.g. Standard vs. Photon. If
+ * unspecified, the runtime engine is inferred from spark_version.
+ */
+export type RuntimeEngine = "NULL" | "PHOTON" | "STANDARD";
+
 export interface S3StorageInfo {
     /**
      * (Optional) Set canned access control list for the logs, e.g.
-     * ``bucket-owner-full-control``. If ``canned_cal`` is set, please make sure
-     * the cluster iam role has ``s3:PutObjectAcl`` permission on the destination
+     * `bucket-owner-full-control`. If `canned_cal` is set, please make sure the
+     * cluster iam role has `s3:PutObjectAcl` permission on the destination
      * bucket and prefix. The full list of possible canned acl can be found at
      * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
      * Please also note that by default only the object owner gets full controls.
      * If you are using cross account role for writing data, you may want to set
-     * ``bucket-owner-full-control`` to make bucket owner able to read the logs.
+     * `bucket-owner-full-control` to make bucket owner able to read the logs.
      */
     canned_acl?: string;
     /**
-     * S3 destination, e.g. ``s3://my-bucket/some-prefix`` Note that logs will be
+     * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be
      * delivered using cluster iam role, please make sure you set cluster iam
      * role and the role has write access to the destination. Please also note
      * that you cannot use AWS keys to deliver logs.
      */
     destination?: string;
     /**
-     * (Optional) Flag to enable server side encryption, ``false`` by default.
+     * (Optional) Flag to enable server side encryption, `false` by default.
      */
     enable_encryption?: boolean;
     /**
-     * (Optional) The encryption type, it could be ``sse-s3`` or ``sse-kms``. It
-     * will be used only when encryption is enabled and the default type is
-     * ``sse-s3``.
+     * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will
+     * be used only when encryption is enabled and the default type is `sse-s3`.
      */
     encryption_type?: string;
     /**
-     * S3 endpoint, e.g. ``https://s3-us-west-2.amazonaws.com``. Either region or
+     * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or
      * endpoint needs to be set. If both are set, endpoint will be used.
      */
     endpoint?: string;
     /**
      * (Optional) Kms key which will be used if encryption is enabled and
-     * encryption type is set to ``sse-kms``.
+     * encryption type is set to `sse-kms`.
      */
     kms_key?: string;
     /**
-     * S3 region, e.g. ``us-west-2``. Either region or endpoint needs to be set.
-     * If both are set, endpoint will be used.
+     * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If
+     * both are set, endpoint will be used.
      */
     region?: string;
 }
@@ -1822,6 +1678,19 @@ export interface StartCluster {
      */
     cluster_id: string;
 }
+
+/**
+ * Current state of the cluster.
+ */
+export type State =
+    | "ERROR"
+    | "PENDING"
+    | "RESIZING"
+    | "RESTARTING"
+    | "RUNNING"
+    | "TERMINATED"
+    | "TERMINATING"
+    | "UNKNOWN";
 
 export interface TerminationReason {
     /**
@@ -1946,28 +1815,4 @@ export interface WorkloadType {
     clients?: ClientsTypes;
 }
 
-export interface GetRequest {
-    /**
-     * The cluster about which to retrieve information.
-     */
-    cluster_id: string;
-}
-
-export interface ListRequest {
-    /**
-     * Filter clusters based on what type of client it can be used for. Could be
-     * either NOTEBOOKS or JOBS. No input for this field will get all clusters in
-     * the workspace without filtering on its supported client
-     */
-    can_use_client?: string;
-}
-
-export interface ChangeClusterOwnerResponse {}
-export interface DeleteClusterResponse {}
-export interface EditClusterResponse {}
-export interface PermanentDeleteClusterResponse {}
-export interface PinClusterResponse {}
-export interface ResizeClusterResponse {}
-export interface RestartClusterResponse {}
-export interface StartClusterResponse {}
-export interface UnpinClusterResponse {}
+export interface EmptyResponse {}

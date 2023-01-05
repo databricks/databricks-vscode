@@ -11,7 +11,7 @@ export interface AccessControlRequest {
     /**
      * Permission level
      */
-    permission_level?: AccessControlRequestPermissionLevel;
+    permission_level?: PermissionLevel;
     /**
      * name of the service principal
      */
@@ -21,26 +21,6 @@ export interface AccessControlRequest {
      */
     user_name?: string;
 }
-
-/**
- * Permission level
- */
-export type AccessControlRequestPermissionLevel =
-    | "CAN_ATTACH_TO"
-    | "CAN_BIND"
-    | "CAN_EDIT"
-    | "CAN_EDIT_METADATA"
-    | "CAN_MANAGE"
-    | "CAN_MANAGE_PRODUCTION_VERSIONS"
-    | "CAN_MANAGE_RUN"
-    | "CAN_MANAGE_STAGING_VERSIONS"
-    | "CAN_READ"
-    | "CAN_RESTART"
-    | "CAN_RUN"
-    | "CAN_USE"
-    | "CAN_VIEW"
-    | "CAN_VIEW_METADATA"
-    | "IS_OWNER";
 
 export interface AccessControlResponse {
     /**
@@ -61,11 +41,81 @@ export interface AccessControlResponse {
     user_name?: string;
 }
 
+export interface CreateWorkspaceAssignments {
+    /**
+     * Array of permissions assignments to apply to a workspace.
+     */
+    permission_assignments: Array<PermissionAssignmentInput>;
+    /**
+     * The workspace ID for the account.
+     */
+    workspace_id: number;
+}
+
+/**
+ * Delete permissions assignment
+ */
+export interface DeleteWorkspaceAssignmentRequest {
+    /**
+     * The ID of the service principal.
+     */
+    principal_id: number;
+    /**
+     * The workspace ID.
+     */
+    workspace_id: number;
+}
+
+/**
+ * Get object permissions
+ */
+export interface Get {
+    request_object_id: string;
+    /**
+     * <needs content>
+     */
+    request_object_type: string;
+}
+
+/**
+ * Get permission levels
+ */
+export interface GetPermissionLevels {
+    /**
+     * <needs content>
+     */
+    request_object_id: string;
+    /**
+     * <needs content>
+     */
+    request_object_type: string;
+}
+
 export interface GetPermissionLevelsResponse {
     /**
      * Specific permission levels
      */
     permission_levels?: Array<PermissionsDescription>;
+}
+
+/**
+ * List workspace permissions
+ */
+export interface GetWorkspaceAssignmentRequest {
+    /**
+     * The workspace ID.
+     */
+    workspace_id: number;
+}
+
+/**
+ * Get permission assignments
+ */
+export interface ListWorkspaceAssignmentRequest {
+    /**
+     * The workspace ID for the account.
+     */
+    workspace_id: number;
 }
 
 export interface ObjectPermissions {
@@ -77,10 +127,57 @@ export interface ObjectPermissions {
 export interface Permission {
     inherited?: boolean;
     inherited_from_object?: Array<string>;
-    permission_level?: PermissionPermissionLevel;
+    /**
+     * Permission level
+     */
+    permission_level?: PermissionLevel;
 }
 
-export type PermissionPermissionLevel =
+export interface PermissionAssignment {
+    /**
+     * Error response associated with a workspace permission assignment, if any.
+     */
+    error?: string;
+    /**
+     * The permissions level of the service principal.
+     */
+    permissions?: Array<WorkspacePermission>;
+    /**
+     * Information about the service principal assigned for the workspace.
+     */
+    principal?: PrincipalOutput;
+}
+
+export interface PermissionAssignmentInput {
+    /**
+     * The group name for the service principal.
+     */
+    group_name?: string;
+    /**
+     * Array of permissions to apply to the workspace for the service principal.
+     */
+    permissions: Array<WorkspacePermission>;
+    /**
+     * The name of the service principal.
+     */
+    service_principal_name?: string;
+    /**
+     * The username of the owner of the service principal.
+     */
+    user_name?: string;
+}
+
+export interface PermissionAssignments {
+    /**
+     * Array of permissions assignments defined for a workspace.
+     */
+    permission_assignments?: Array<PermissionAssignment>;
+}
+
+/**
+ * Permission level
+ */
+export type PermissionLevel =
     | "CAN_ATTACH_TO"
     | "CAN_BIND"
     | "CAN_EDIT"
@@ -96,53 +193,25 @@ export type PermissionPermissionLevel =
     | "CAN_VIEW"
     | "CAN_VIEW_METADATA"
     | "IS_OWNER";
+
+export interface PermissionOutput {
+    /**
+     * The results of a permissions query.
+     */
+    description?: string;
+    permission_level?: WorkspacePermission;
+}
 
 export interface PermissionsDescription {
     description?: string;
-    permission_level?: PermissionsDescriptionPermissionLevel;
-}
-
-export type PermissionsDescriptionPermissionLevel =
-    | "CAN_ATTACH_TO"
-    | "CAN_BIND"
-    | "CAN_EDIT"
-    | "CAN_EDIT_METADATA"
-    | "CAN_MANAGE"
-    | "CAN_MANAGE_PRODUCTION_VERSIONS"
-    | "CAN_MANAGE_RUN"
-    | "CAN_MANAGE_STAGING_VERSIONS"
-    | "CAN_READ"
-    | "CAN_RESTART"
-    | "CAN_RUN"
-    | "CAN_USE"
-    | "CAN_VIEW"
-    | "CAN_VIEW_METADATA"
-    | "IS_OWNER";
-
-export interface SetObjectPermissions {
-    access_control_list?: Array<AccessControlRequest>;
-    object_id?: string;
-    object_type?: string;
-}
-
-export interface UpdateObjectPermissions {
-    access_control_list?: Array<AccessControlRequest>;
-    object_id?: string;
-    object_type?: string;
-}
-
-export interface GetObjectPermissionsRequest {
-    object_id: string;
     /**
-     * <needs content>
+     * Permission level
      */
-    object_type: string;
+    permission_level?: PermissionLevel;
 }
 
-export interface GetPermissionLevelsRequest {
-    /**
-     * <needs content>
-     */
+export interface PermissionsRequest {
+    access_control_list?: Array<AccessControlRequest>;
     request_object_id: string;
     /**
      * <needs content>
@@ -150,5 +219,58 @@ export interface GetPermissionLevelsRequest {
     request_object_type: string;
 }
 
-export interface SetObjectPermissionsResponse {}
-export interface UpdateObjectPermissionsResponse {}
+export interface PrincipalOutput {
+    /**
+     * The display name of the service principal.
+     */
+    display_name?: string;
+    /**
+     * The group name for the service principal.
+     */
+    group_name?: string;
+    /**
+     * The unique, opaque id of the principal.
+     */
+    principal_id?: number;
+    /**
+     * The name of the service principal.
+     */
+    service_principal_name?: string;
+    /**
+     * The username of the owner of the service principal.
+     */
+    user_name?: string;
+}
+
+export interface UpdateWorkspaceAssignments {
+    /**
+     * Array of permissions assignments to update on the workspace.
+     */
+    permissions: Array<WorkspacePermission>;
+    /**
+     * The ID of the service principal.
+     */
+    principal_id: number;
+    /**
+     * The workspace ID.
+     */
+    workspace_id: number;
+}
+
+export interface WorkspaceAssignmentsCreated {
+    /**
+     * Array of permissions assignments applied to a workspace.
+     */
+    permission_assignments?: Array<PermissionAssignment>;
+}
+
+export type WorkspacePermission = "ADMIN" | "UNKNOWN" | "USER";
+
+export interface WorkspacePermissions {
+    /**
+     * Array of permissions defined for a workspace.
+     */
+    permissions?: Array<PermissionOutput>;
+}
+
+export interface EmptyResponse {}

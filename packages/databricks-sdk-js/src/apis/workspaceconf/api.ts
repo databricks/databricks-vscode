@@ -23,18 +23,18 @@ export class WorkspaceConfError extends ApiError {
 }
 
 /**
-
-*/
+ * This API allows updating known workspace settings for advanced users.
+ */
 export class WorkspaceConfService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Check configuration status
+     * Check configuration status.
      *
      * Gets the configuration status for a workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
     async getStatus(
-        request: model.GetStatusRequest,
+        request: model.GetStatus,
         @context context?: Context
     ): Promise<model.WorkspaceConf> {
         const path = "/api/2.0/workspace-conf";
@@ -43,11 +43,11 @@ export class WorkspaceConfService {
             "GET",
             request,
             context
-        )) as model.WorkspaceConf;
+        )) as unknown as model.WorkspaceConf;
     }
 
     /**
-     * Enable/disable features
+     * Enable/disable features.
      *
      * Sets the configuration status for a workspace, including enabling or
      * disabling it.
@@ -56,13 +56,13 @@ export class WorkspaceConfService {
     async setStatus(
         request: model.WorkspaceConf,
         @context context?: Context
-    ): Promise<model.SetStatusResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/workspace-conf";
         return (await this.client.request(
             path,
             "PATCH",
             request,
             context
-        )) as model.SetStatusResponse;
+        )) as unknown as model.EmptyResponse;
     }
 }

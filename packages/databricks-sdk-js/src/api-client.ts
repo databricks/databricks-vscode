@@ -56,6 +56,7 @@ export class ApiClient {
     readonly product: string;
     readonly productVersion: ProductVersion;
     readonly userAgentExtra: Record<string, string>;
+    readonly accountId = "";
 
     constructor(readonly config: Config, options: ClientOptions = {}) {
         this.agent =

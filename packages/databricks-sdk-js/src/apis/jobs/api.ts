@@ -24,11 +24,27 @@ export class JobsError extends ApiError {
 
 /**
  * The Jobs API allows you to create, edit, and delete jobs.
+ *
+ * You can use a Databricks job to run a data processing or data analysis task in
+ * a Databricks cluster with scalable resources. Your job can consist of a single
+ * task or can be a large, multi-task workflow with complex dependencies.
+ * Databricks manages the task orchestration, cluster management, monitoring, and
+ * error reporting for all of your jobs. You can run your jobs immediately or
+ * periodically through an easy-to-use scheduling system. You can implement job
+ * tasks using notebooks, JARS, Delta Live Tables pipelines, or Python, Scala,
+ * Spark submit, and Java applications.
+ *
+ * You should never hard code secrets or store them in plain text. Use the
+ * :service:secrets to manage secrets in the [Databricks CLI]. Use the [Secrets
+ * utility] to reference secrets in notebooks and jobs.
+ *
+ * [Databricks CLI]: https://docs.databricks.com/dev-tools/cli/index.html
+ * [Secrets utility]: https://docs.databricks.com/dev-tools/databricks-utils.html#dbutils-secrets
  */
 export class JobsService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Cancel all runs of a job
+     * Cancel all runs of a job.
      *
      * Cancels all active runs of a job. The runs are canceled asynchronously, so
      * it doesn't prevent new runs from being started.
@@ -37,18 +53,18 @@ export class JobsService {
     async cancelAllRuns(
         request: model.CancelAllRuns,
         @context context?: Context
-    ): Promise<model.CancelAllRunsResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.1/jobs/runs/cancel-all";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.CancelAllRunsResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
-     * Cancel a job run
+     * Cancel a job run.
      *
      * Cancels a job run. The run is canceled asynchronously, so it may still be
      * running when this request completes.
@@ -57,14 +73,14 @@ export class JobsService {
     async cancelRun(
         request: model.CancelRun,
         @context context?: Context
-    ): Promise<model.CancelRunResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.1/jobs/runs/cancel";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.CancelRunResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
@@ -132,7 +148,7 @@ export class JobsService {
     }
 
     /**
-     * Create a new job
+     * Create a new job.
      *
      * Create a new job.
      */
@@ -147,11 +163,11 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as model.CreateResponse;
+        )) as unknown as model.CreateResponse;
     }
 
     /**
-     * Delete a job
+     * Delete a job.
      *
      * Deletes a job.
      */
@@ -159,18 +175,18 @@ export class JobsService {
     async delete(
         request: model.DeleteJob,
         @context context?: Context
-    ): Promise<model.DeleteResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.1/jobs/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.DeleteResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
-     * Delete a job run
+     * Delete a job run.
      *
      * Deletes a non-active run. Returns an error if the run is active.
      */
@@ -178,24 +194,24 @@ export class JobsService {
     async deleteRun(
         request: model.DeleteRun,
         @context context?: Context
-    ): Promise<model.DeleteRunResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.1/jobs/runs/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.DeleteRunResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
-     * Export and retrieve a job run
+     * Export and retrieve a job run.
      *
      * Export and retrieve the job run task.
      */
     @withLogContext(ExposedLoggers.SDK)
     async exportRun(
-        request: model.ExportRunRequest,
+        request: model.ExportRun,
         @context context?: Context
     ): Promise<model.ExportRunOutput> {
         const path = "/api/2.1/jobs/runs/export";
@@ -204,17 +220,17 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as model.ExportRunOutput;
+        )) as unknown as model.ExportRunOutput;
     }
 
     /**
-     * Get a single job
+     * Get a single job.
      *
      * Retrieves the details for a single job.
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.GetRequest,
+        request: model.Get,
         @context context?: Context
     ): Promise<model.Job> {
         const path = "/api/2.1/jobs/get";
@@ -223,17 +239,17 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as model.Job;
+        )) as unknown as model.Job;
     }
 
     /**
-     * Get a single job run
+     * Get a single job run.
      *
      * Retrieve the metadata of a run.
      */
     @withLogContext(ExposedLoggers.SDK)
     async getRun(
-        request: model.GetRunRequest,
+        request: model.GetRun,
         @context context?: Context
     ): Promise<model.Run> {
         const path = "/api/2.1/jobs/runs/get";
@@ -242,7 +258,7 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as model.Run;
+        )) as unknown as model.Run;
     }
 
     /**
@@ -251,7 +267,7 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async getRunAndWait(
-        getRunRequest: model.GetRunRequest,
+        getRun: model.GetRun,
         options?: {
             timeout?: Time;
             onProgress?: (newPollResponse: model.Run) => Promise<void>;
@@ -264,7 +280,7 @@ export class JobsService {
         const {timeout, onProgress} = options;
         const cancellationToken = context?.cancellationToken;
 
-        const run = await this.getRun(getRunRequest, context);
+        const run = await this.getRun(getRun, context);
 
         return await retry<model.Run>({
             timeout,
@@ -310,13 +326,13 @@ export class JobsService {
     }
 
     /**
-     * Get the output for a single run
+     * Get the output for a single run.
      *
      * Retrieve the output and metadata of a single task run. When a notebook
      * task returns a value through the `dbutils.notebook.exit()` call, you can
-     * use this endpoint to retrieve that value. " + serviceName + " restricts
-     * this API to returning the first 5 MB of the output. To return a larger
-     * result, you can store job results in a cloud storage service.
+     * use this endpoint to retrieve that value. Databricks restricts this API to
+     * returning the first 5 MB of the output. To return a larger result, you can
+     * store job results in a cloud storage service.
      *
      * This endpoint validates that the __run_id__ parameter is valid and returns
      * an HTTP status code 400 if the __run_id__ parameter is invalid. Runs are
@@ -325,7 +341,7 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async getRunOutput(
-        request: model.GetRunOutputRequest,
+        request: model.GetRunOutput,
         @context context?: Context
     ): Promise<model.RunOutput> {
         const path = "/api/2.1/jobs/runs/get-output";
@@ -334,36 +350,36 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as model.RunOutput;
+        )) as unknown as model.RunOutput;
     }
 
     /**
-     * List all jobs
+     * List all jobs.
      *
      * Retrieves a list of jobs.
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(
-        request: model.ListRequest,
+        request: model.List,
         @context context?: Context
-    ): Promise<model.ListResponse> {
+    ): Promise<model.ListJobsResponse> {
         const path = "/api/2.1/jobs/list";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListResponse;
+        )) as unknown as model.ListJobsResponse;
     }
 
     /**
-     * List runs for a job
+     * List runs for a job.
      *
      * List runs in descending order by start time.
      */
     @withLogContext(ExposedLoggers.SDK)
     async listRuns(
-        request: model.ListRunsRequest,
+        request: model.ListRuns,
         @context context?: Context
     ): Promise<model.ListRunsResponse> {
         const path = "/api/2.1/jobs/runs/list";
@@ -372,11 +388,11 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as model.ListRunsResponse;
+        )) as unknown as model.ListRunsResponse;
     }
 
     /**
-     * Repair a job run
+     * Repair a job run.
      *
      * Re-run one or more tasks. Tasks are re-run as part of the original job
      * run. They use the current job and task settings, and can be viewed in the
@@ -393,7 +409,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as model.RepairRunResponse;
+        )) as unknown as model.RepairRunResponse;
     }
 
     /**
@@ -461,7 +477,7 @@ export class JobsService {
     }
 
     /**
-     * Overwrites all settings for a job
+     * Overwrites all settings for a job.
      *
      * Overwrites all the settings for a specific job. Use the Update endpoint to
      * update job settings partially.
@@ -470,18 +486,18 @@ export class JobsService {
     async reset(
         request: model.ResetJob,
         @context context?: Context
-    ): Promise<model.ResetResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.1/jobs/reset";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.ResetResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
-     * Trigger a new job run
+     * Trigger a new job run.
      *
      * Run a job and return the `run_id` of the triggered run.
      */
@@ -496,7 +512,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as model.RunNowResponse;
+        )) as unknown as model.RunNowResponse;
     }
 
     /**
@@ -564,12 +580,12 @@ export class JobsService {
     }
 
     /**
-     * Create and trigger a one-time run
+     * Create and trigger a one-time run.
      *
      * Submit a one-time run. This endpoint allows you to submit a workload
-     * directly without creating a job. Runs submitted using this endpoint don?t
-     * display in the UI. Use the `jobs/runs/get` API to check the run state
-     * after the job is submitted.
+     * directly without creating a job. Runs submitted using this endpoint
+     * don’t display in the UI. Use the `jobs/runs/get` API to check the run
+     * state after the job is submitted.
      */
     @withLogContext(ExposedLoggers.SDK)
     async submit(
@@ -582,7 +598,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as model.SubmitRunResponse;
+        )) as unknown as model.SubmitRunResponse;
     }
 
     /**
@@ -650,7 +666,7 @@ export class JobsService {
     }
 
     /**
-     * Partially updates a job
+     * Partially updates a job.
      *
      * Add, update, or remove specific settings of an existing job. Use the
      * ResetJob to overwrite all job settings.
@@ -659,13 +675,13 @@ export class JobsService {
     async update(
         request: model.UpdateJob,
         @context context?: Context
-    ): Promise<model.UpdateResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.1/jobs/update";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.UpdateResponse;
+        )) as unknown as model.EmptyResponse;
     }
 }

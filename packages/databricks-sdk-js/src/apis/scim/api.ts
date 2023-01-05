@@ -11,6 +11,428 @@ import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
 
+export class AccountGroupsRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("AccountGroups", method, message);
+    }
+}
+export class AccountGroupsError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("AccountGroups", method, message);
+    }
+}
+
+/**
+ * Groups simplify identity management, making it easier to assign access to
+ * Databricks Account, data, and other securable objects.
+ *
+ * It is best practice to assign access to workspaces and access-control policies
+ * in Unity Catalog to groups, instead of to users individually. All Databricks
+ * Account identities can be assigned as members of groups, and members inherit
+ * permissions that are assigned to their group.
+ */
+export class AccountGroupsService {
+    constructor(readonly client: ApiClient) {}
+    /**
+     * Create a new group.
+     *
+     * Creates a group in the Databricks Account with a unique name, using the
+     * supplied group details.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.Group,
+        @context context?: Context
+    ): Promise<model.Group> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as unknown as model.Group;
+    }
+
+    /**
+     * Delete a group.
+     *
+     * Deletes a group from the Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteGroupRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+
+    /**
+     * Get group details.
+     *
+     * Gets the information for a specific group in the Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetGroupRequest,
+        @context context?: Context
+    ): Promise<model.Group> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.Group;
+    }
+
+    /**
+     * List group details.
+     *
+     * Gets all details of the groups associated with the Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListGroupsRequest,
+        @context context?: Context
+    ): Promise<model.ListGroupsResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.ListGroupsResponse;
+    }
+
+    /**
+     * Update group details.
+     *
+     * Partially updates the details of a group.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async patch(
+        request: model.PartialUpdate,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+
+    /**
+     * Replace a group.
+     *
+     * Updates the details of a group by replacing the entire group entity.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.Group,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PUT",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+}
+
+export class AccountServicePrincipalsRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("AccountServicePrincipals", method, message);
+    }
+}
+export class AccountServicePrincipalsError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("AccountServicePrincipals", method, message);
+    }
+}
+
+/**
+ * Identities for use with jobs, automated tools, and systems such as scripts,
+ * apps, and CI/CD platforms. Databricks recommends creating service principals
+ * to run production jobs or modify production data. If all processes that act on
+ * production data run with service principals, interactive users do not need any
+ * write, delete, or modify privileges in production. This eliminates the risk of
+ * a user overwriting production data by accident.
+ */
+export class AccountServicePrincipalsService {
+    constructor(readonly client: ApiClient) {}
+    /**
+     * Create a service principal.
+     *
+     * Creates a new service principal in the Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.ServicePrincipal,
+        @context context?: Context
+    ): Promise<model.ServicePrincipal> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as unknown as model.ServicePrincipal;
+    }
+
+    /**
+     * Delete a service principal.
+     *
+     * Delete a single service principal in the Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteServicePrincipalRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+
+    /**
+     * Get service principal details.
+     *
+     * Gets the details for a single service principal define in the Databricks
+     * Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetServicePrincipalRequest,
+        @context context?: Context
+    ): Promise<model.ServicePrincipal> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.ServicePrincipal;
+    }
+
+    /**
+     * List service principals.
+     *
+     * Gets the set of service principals associated with a Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListServicePrincipalsRequest,
+        @context context?: Context
+    ): Promise<model.ListServicePrincipalResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.ListServicePrincipalResponse;
+    }
+
+    /**
+     * Update service principal details.
+     *
+     * Partially updates the details of a single service principal in the
+     * Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async patch(
+        request: model.PartialUpdate,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+
+    /**
+     * Replace service principal.
+     *
+     * Updates the details of a single service principal.
+     *
+     * This action replaces the existing service principal with the same name.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.ServicePrincipal,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PUT",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+}
+
+export class AccountUsersRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("AccountUsers", method, message);
+    }
+}
+export class AccountUsersError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("AccountUsers", method, message);
+    }
+}
+
+/**
+ * User identities recognized by Databricks and represented by email addresses.
+ *
+ * Databricks recommends using SCIM provisioning to sync users and groups
+ * automatically from your identity provider to your Databricks Account. SCIM
+ * streamlines onboarding a new employee or team by using your identity provider
+ * to create users and groups in Databricks Account and give them the proper
+ * level of access. When a user leaves your organization or no longer needs
+ * access to Databricks Account, admins can terminate the user in your identity
+ * provider and that user’s account will also be removed from Databricks
+ * Account. This ensures a consistent offboarding process and prevents
+ * unauthorized users from accessing sensitive data.
+ */
+export class AccountUsersService {
+    constructor(readonly client: ApiClient) {}
+    /**
+     * Create a new user.
+     *
+     * Creates a new user in the Databricks Account. This new user will also be
+     * added to the Databricks account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.User,
+        @context context?: Context
+    ): Promise<model.User> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as unknown as model.User;
+    }
+
+    /**
+     * Delete a user.
+     *
+     * Deletes a user. Deleting a user from a Databricks Account also removes
+     * objects associated with the user.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteUserRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+
+    /**
+     * Get user details.
+     *
+     * Gets information for a specific user in Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetUserRequest,
+        @context context?: Context
+    ): Promise<model.User> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.User;
+    }
+
+    /**
+     * List users.
+     *
+     * Gets details for all the users associated with a Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListUsersRequest,
+        @context context?: Context
+    ): Promise<model.ListUsersResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.ListUsersResponse;
+    }
+
+    /**
+     * Update user details.
+     *
+     * Partially updates a user resource by applying the supplied operations on
+     * specific user attributes.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async patch(
+        request: model.PartialUpdate,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+
+    /**
+     * Replace a user.
+     *
+     * Replaces a user's information with the data supplied in request.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.User,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PUT",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+}
+
 export class CurrentUserRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
         super("CurrentUser", method, message);
@@ -23,14 +445,15 @@ export class CurrentUserError extends ApiError {
 }
 
 /**
-
-*/
+ * This API allows retrieving information about currently authenticated user or
+ * service principal.
+ */
 export class CurrentUserService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Fetch details about caller identity
+     * Get current user info.
      *
-     * Get details about caller identity
+     * Get details about the current method caller's identity.
      */
     @withLogContext(ExposedLoggers.SDK)
     async me(@context context?: Context): Promise<model.User> {
@@ -40,7 +463,7 @@ export class CurrentUserService {
             "GET",
             undefined,
             context
-        )) as model.User;
+        )) as unknown as model.User;
     }
 }
 
@@ -56,74 +479,24 @@ export class GroupsError extends ApiError {
 }
 
 /**
-
-*/
+ * Groups simplify identity management, making it easier to assign access to
+ * Databricks Workspace, data, and other securable objects.
+ *
+ * It is best practice to assign access to workspaces and access-control policies
+ * in Unity Catalog to groups, instead of to users individually. All Databricks
+ * Workspace identities can be assigned as members of groups, and members inherit
+ * permissions that are assigned to their group.
+ */
 export class GroupsService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Delete a group in <Workspace>
+     * Create a new group.
      *
-     * Remove a group in the <Workspace>.
+     * Creates a group in the Databricks Workspace with a unique name, using the
+     * supplied group details.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async deleteGroup(
-        request: model.DeleteGroupRequest,
-        @context context?: Context
-    ): Promise<model.DeleteGroupResponse> {
-        const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.DeleteGroupResponse;
-    }
-
-    /**
-     * Fetch details of a group in <Workspace>
-     *
-     * Fetch information of one group in the <Workspace>
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async fetchGroup(
-        request: model.FetchGroupRequest,
-        @context context?: Context
-    ): Promise<model.Group> {
-        const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.Group;
-    }
-
-    /**
-     * Fetch details of multiple groups in <Workspace>
-     *
-     * Get all details of the groups associated with the <Workspace>.
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async listGroups(
-        request: model.ListGroupsRequest,
-        @context context?: Context
-    ): Promise<model.ListGroupsResponse> {
-        const path = "/api/2.0/preview/scim/v2/Groups";
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.ListGroupsResponse;
-    }
-
-    /**
-     * Create a new group in <Workspace>
-     *
-     * Create one group in the <Workspace> with a unique name
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async newGroup(
+    async create(
         request: model.Group,
         @context context?: Context
     ): Promise<model.Group> {
@@ -133,45 +506,102 @@ export class GroupsService {
             "POST",
             request,
             context
-        )) as model.Group;
+        )) as unknown as model.Group;
     }
 
     /**
-     * Update details of a group
+     * Delete a group.
      *
-     * Partially update details of a group
+     * Deletes a group from the Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async patchGroup(
+    async delete(
+        request: model.DeleteGroupRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+
+    /**
+     * Get group details.
+     *
+     * Gets the information for a specific group in the Databricks Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetGroupRequest,
+        @context context?: Context
+    ): Promise<model.Group> {
+        const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.Group;
+    }
+
+    /**
+     * List group details.
+     *
+     * Gets all details of the groups associated with the Databricks Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListGroupsRequest,
+        @context context?: Context
+    ): Promise<model.ListGroupsResponse> {
+        const path = "/api/2.0/preview/scim/v2/Groups";
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.ListGroupsResponse;
+    }
+
+    /**
+     * Update group details.
+     *
+     * Partially updates the details of a group.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async patch(
         request: model.PartialUpdate,
         @context context?: Context
-    ): Promise<model.PatchGroupResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
             context
-        )) as model.PatchGroupResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
-     * Update details of a group
+     * Replace a group.
      *
-     * Update details of a group by replacing the entire entity
+     * Updates the details of a group by replacing the entire group entity.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async replaceGroup(
+    async update(
         request: model.Group,
         @context context?: Context
-    ): Promise<model.ReplaceGroupResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "PUT",
             request,
             context
-        )) as model.ReplaceGroupResponse;
+        )) as unknown as model.EmptyResponse;
     }
 }
 
@@ -187,74 +617,22 @@ export class ServicePrincipalsError extends ApiError {
 }
 
 /**
-
-*/
+ * Identities for use with jobs, automated tools, and systems such as scripts,
+ * apps, and CI/CD platforms. Databricks recommends creating service principals
+ * to run production jobs or modify production data. If all processes that act on
+ * production data run with service principals, interactive users do not need any
+ * write, delete, or modify privileges in production. This eliminates the risk of
+ * a user overwriting production data by accident.
+ */
 export class ServicePrincipalsService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Delete a service principal in <Workspace>
+     * Create a service principal.
      *
-     * Delete one service principal
+     * Creates a new service principal in the Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async deleteServicePrincipal(
-        request: model.DeleteServicePrincipalRequest,
-        @context context?: Context
-    ): Promise<model.DeleteServicePrincipalResponse> {
-        const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.DeleteServicePrincipalResponse;
-    }
-
-    /**
-     * Fetch details of a service principal in <Workspace>
-     *
-     * Fetch information of one service principal
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async fetchServicePrincipal(
-        request: model.FetchServicePrincipalRequest,
-        @context context?: Context
-    ): Promise<model.ServicePrincipal> {
-        const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.ServicePrincipal;
-    }
-
-    /**
-     * Fetch details of multiple service principals in <Workspace>
-     *
-     * Get multiple service principals associated with a <Workspace>.
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async listServicePrincipals(
-        request: model.ListServicePrincipalsRequest,
-        @context context?: Context
-    ): Promise<model.ListServicePrincipalResponse> {
-        const path = "/api/2.0/preview/scim/v2/ServicePrincipals";
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.ListServicePrincipalResponse;
-    }
-
-    /**
-     * Create a new service principal in <Workspace>
-     *
-     * Create one service principal in the <Workspace>.
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async newServicePrincipal(
+    async create(
         request: model.ServicePrincipal,
         @context context?: Context
     ): Promise<model.ServicePrincipal> {
@@ -264,45 +642,106 @@ export class ServicePrincipalsService {
             "POST",
             request,
             context
-        )) as model.ServicePrincipal;
+        )) as unknown as model.ServicePrincipal;
     }
 
     /**
-     * Update details of a service principal in <Workspace>
+     * Delete a service principal.
      *
-     * Partially update details of one service principal.
+     * Delete a single service principal in the Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async patchServicePrincipal(
+    async delete(
+        request: model.DeleteServicePrincipalRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+
+    /**
+     * Get service principal details.
+     *
+     * Gets the details for a single service principal define in the Databricks
+     * Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetServicePrincipalRequest,
+        @context context?: Context
+    ): Promise<model.ServicePrincipal> {
+        const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.ServicePrincipal;
+    }
+
+    /**
+     * List service principals.
+     *
+     * Gets the set of service principals associated with a Databricks Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListServicePrincipalsRequest,
+        @context context?: Context
+    ): Promise<model.ListServicePrincipalResponse> {
+        const path = "/api/2.0/preview/scim/v2/ServicePrincipals";
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.ListServicePrincipalResponse;
+    }
+
+    /**
+     * Update service principal details.
+     *
+     * Partially updates the details of a single service principal in the
+     * Databricks Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async patch(
         request: model.PartialUpdate,
         @context context?: Context
-    ): Promise<model.PatchServicePrincipalResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
             context
-        )) as model.PatchServicePrincipalResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
-     * Replace service principal in <Workspace>
+     * Replace service principal.
      *
-     * Update details of one service principal.
+     * Updates the details of a single service principal.
+     *
+     * This action replaces the existing service principal with the same name.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async replaceServicePrincipal(
+    async update(
         request: model.ServicePrincipal,
         @context context?: Context
-    ): Promise<model.ReplaceServicePrincipalResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "PUT",
             request,
             context
-        )) as model.ReplaceServicePrincipalResponse;
+        )) as unknown as model.EmptyResponse;
     }
 }
 
@@ -318,76 +757,28 @@ export class UsersError extends ApiError {
 }
 
 /**
-
-*/
+ * User identities recognized by Databricks and represented by email addresses.
+ *
+ * Databricks recommends using SCIM provisioning to sync users and groups
+ * automatically from your identity provider to your Databricks Workspace. SCIM
+ * streamlines onboarding a new employee or team by using your identity provider
+ * to create users and groups in Databricks Workspace and give them the proper
+ * level of access. When a user leaves your organization or no longer needs
+ * access to Databricks Workspace, admins can terminate the user in your identity
+ * provider and that user’s account will also be removed from Databricks
+ * Workspace. This ensures a consistent offboarding process and prevents
+ * unauthorized users from accessing sensitive data.
+ */
 export class UsersService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Delete a user in <Workspace>
+     * Create a new user.
      *
-     * Delete one user. Deleting a user from a workspace also removes objects
-     * associated with the user.
+     * Creates a new user in the Databricks Workspace. This new user will also be
+     * added to the Databricks account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async deleteUser(
-        request: model.DeleteUserRequest,
-        @context context?: Context
-    ): Promise<model.DeleteUserResponse> {
-        const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.DeleteUserResponse;
-    }
-
-    /**
-     * Get details of a user in <Workspace>
-     *
-     * Fetch information of one user in <Workspace>
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async fetchUser(
-        request: model.FetchUserRequest,
-        @context context?: Context
-    ): Promise<model.User> {
-        const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.User;
-    }
-
-    /**
-     * Fetch details of multiple users in <Workspace>
-     *
-     * Get all the users associated with a <Workspace>.
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async listUsers(
-        request: model.ListUsersRequest,
-        @context context?: Context
-    ): Promise<model.ListUsersResponse> {
-        const path = "/api/2.0/preview/scim/v2/Users";
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.ListUsersResponse;
-    }
-
-    /**
-     * Create a new user in <Workspace>
-     *
-     * Create a user in the <Workspace> who will automatically added to the
-     * account.
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async newUser(
+    async create(
         request: model.User,
         @context context?: Context
     ): Promise<model.User> {
@@ -397,44 +788,103 @@ export class UsersService {
             "POST",
             request,
             context
-        )) as model.User;
+        )) as unknown as model.User;
     }
 
     /**
-     * Update details of a user in <Workspace>
+     * Delete a user.
      *
-     * Partially update a user resource with operations on specific attributes
+     * Deletes a user. Deleting a user from a Databricks Workspace also removes
+     * objects associated with the user.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async patchUser(
+    async delete(
+        request: model.DeleteUserRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as unknown as model.EmptyResponse;
+    }
+
+    /**
+     * Get user details.
+     *
+     * Gets information for a specific user in Databricks Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetUserRequest,
+        @context context?: Context
+    ): Promise<model.User> {
+        const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.User;
+    }
+
+    /**
+     * List users.
+     *
+     * Gets details for all the users associated with a Databricks Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListUsersRequest,
+        @context context?: Context
+    ): Promise<model.ListUsersResponse> {
+        const path = "/api/2.0/preview/scim/v2/Users";
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as unknown as model.ListUsersResponse;
+    }
+
+    /**
+     * Update user details.
+     *
+     * Partially updates a user resource by applying the supplied operations on
+     * specific user attributes.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async patch(
         request: model.PartialUpdate,
         @context context?: Context
-    ): Promise<model.PatchUserResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
             context
-        )) as model.PatchUserResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
-     * Update details of a user in <Workspace>
+     * Replace a user.
      *
-     * Replaces user with the data supplied in request
+     * Replaces a user's information with the data supplied in request.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async replaceUser(
+    async update(
         request: model.User,
         @context context?: Context
-    ): Promise<model.ReplaceUserResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "PUT",
             request,
             context
-        )) as model.ReplaceUserResponse;
+        )) as unknown as model.EmptyResponse;
     }
 }

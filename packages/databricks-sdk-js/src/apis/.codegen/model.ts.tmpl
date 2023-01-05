@@ -23,8 +23,7 @@
 {{end}}
 {{end}}
 
-{{range .EmptyTypes}}export interface {{.PascalName}}{};
-{{end}}
+export interface EmptyResponse {};
 
 {{- define "type" -}}
 	{{- if not . }}any /* ERROR */

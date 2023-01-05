@@ -20,6 +20,8 @@
         "build": "tsc -p tsconfig.json && cp src/fetch.* dist/",
         "watch": "tsc -w -p tsconfig.json",
         "clean": "rm -rf dist node_modules",
+        "openapi:fetch": "./scripts/fetch_openapi.sh 4609d709fc94a1b8dbe79ac78a1cece281fdaeff",
+        "openapi:generate": "./scripts/generate_openapi.sh v0.2.0 && yarn run build",
         "fix": "eslint src --ext ts --fix && prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "ts-mocha --type-check 'src/**/*.test.ts'",

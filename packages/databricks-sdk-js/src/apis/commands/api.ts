@@ -23,25 +23,30 @@ export class CommandExecutionError extends ApiError {
 }
 
 /**
-
-*/
+ * This API allows execution of Python, Scala, SQL, or R commands on running
+ * Databricks Clusters.
+ */
 export class CommandExecutionService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Cancel a command
+     * Cancel a command.
+     *
+     * Cancels a currently running command within an execution context.
+     *
+     * The command ID is obtained from a prior successful call to __execute__.
      */
     @withLogContext(ExposedLoggers.SDK)
     async cancel(
         request: model.CancelCommand,
         @context context?: Context
-    ): Promise<model.CancelResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/1.2/commands/cancel";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.CancelResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
@@ -120,7 +125,12 @@ export class CommandExecutionService {
     }
 
     /**
-     * Get information about a command
+     * Get command info.
+     *
+     * Gets the status of and, if available, the results from a currently
+     * executing command.
+     *
+     * The command ID is obtained from a prior successful call to __execute__.
      */
     @withLogContext(ExposedLoggers.SDK)
     async commandStatus(
@@ -133,11 +143,13 @@ export class CommandExecutionService {
             "GET",
             request,
             context
-        )) as model.CommandStatusResponse;
+        )) as unknown as model.CommandStatusResponse;
     }
 
     /**
-     * Get information about an execution context
+     * Get status.
+     *
+     * Gets the status for an execution context.
      */
     @withLogContext(ExposedLoggers.SDK)
     async contextStatus(
@@ -150,11 +162,15 @@ export class CommandExecutionService {
             "GET",
             request,
             context
-        )) as model.ContextStatusResponse;
+        )) as unknown as model.ContextStatusResponse;
     }
 
     /**
-     * Create an execution context
+     * Create an execution context.
+     *
+     * Creates an execution context for running cluster commands.
+     *
+     * If successful, this method returns the ID of the new execution context.
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
@@ -167,7 +183,7 @@ export class CommandExecutionService {
             "POST",
             request,
             context
-        )) as model.Created;
+        )) as unknown as model.Created;
     }
 
     /**
@@ -245,24 +261,32 @@ export class CommandExecutionService {
     }
 
     /**
-     * Delete an execution context
+     * Delete an execution context.
+     *
+     * Deletes an execution context.
      */
     @withLogContext(ExposedLoggers.SDK)
     async destroy(
         request: model.DestroyContext,
         @context context?: Context
-    ): Promise<model.DestroyResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/1.2/contexts/destroy";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.DestroyResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
-     * Run a command
+     * Run a command.
+     *
+     * Runs a cluster command in the given execution context, using the provided
+     * language.
+     *
+     * If successful, it returns an ID for tracking the status of the command's
+     * execution.
      */
     @withLogContext(ExposedLoggers.SDK)
     async execute(
@@ -275,7 +299,7 @@ export class CommandExecutionService {
             "POST",
             request,
             context
-        )) as model.Created;
+        )) as unknown as model.Created;
     }
 
     /**

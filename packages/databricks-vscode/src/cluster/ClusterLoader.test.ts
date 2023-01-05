@@ -60,7 +60,7 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             state: "RUNNING",
             single_user_name: me.userName,
             access_mode: "SINGLE_USER",
-        },
+        } as cluster.ClusterInfo & {access_mode: "SINGLE_USER"},
     ],
 };
 

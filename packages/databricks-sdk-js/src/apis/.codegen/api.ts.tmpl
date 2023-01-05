@@ -36,14 +36,26 @@ export class {{$s.PascalName}}Service {
 	@withLogContext(ExposedLoggers.SDK)
     async {{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}},{{end}}
         @context context?: Context
-	): Promise<model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}}> {
-			const path = {{if .PathParts}}`{{range .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.SnakeName}}}{{end}}{{end}}`{{else}}"{{.Path}}"{{end}}
+	): Promise<{{if .Response}}
+        {{if .Response.ArrayValue}}
+            Array<model.{{.Response.ArrayValue.PascalName}}>
+        {{else}}
+            model.{{.Response.PascalName}}
+        {{end}}
+	{{else}}
+      model.EmptyResponse
+	{{end}}> 
+	
+	{
+            const path = {{if .PathParts -}}
+		        `{{range  .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.Name}}}{{ else if .IsAccountId }}${this.client.accountId}{{end}}{{ end }}`
+	        {{- else}}"{{.Path}}"{{end}}
 			return (await this.client.request(
 				path,
 				"{{.Verb}}",
 				{{if .Request -}}request{{else}}undefined{{end}}, 
 				context
-			) as model.{{if .Response}}{{.Response.PascalName}}{{else}}{{.EmptyResponseName.PascalName}}{{end}})
+			) as unknown as {{if .Response}}{{if .Response.ArrayValue}}Array<model.{{.Response.ArrayValue.PascalName}}>{{else}}model.{{.Response.PascalName}}{{end}}{{else}}model.EmptyResponse{{end}})
 		}
 
 	{{if .Wait}}
@@ -71,8 +83,8 @@ export class {{$s.PascalName}}Service {
 		return await retry<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}>({
 			timeout,
 			fn: async () => {
-				const pollResponse = await this.{{.Wait.Poll.CamelName}}({ {{$e := .}}{{range .Wait.Binding}}
-					{{.PollField.Name}}: {{.Bind.Of.CamelName}}.{{.Bind.Name}}!,{{end}}
+				const pollResponse = await this.{{.Wait.Poll.CamelName}}({
+                    {{range .Wait.Binding}}{{.PollField.Name}}: {{.Bind.Of.CamelName}}.{{.Bind.Name}}!,{{end}}
 				}, context)
 				if(cancellationToken?.isCancellationRequested) {
 					context?.logger?.error("{{$s.PascalName}}.{{.CamelName}}AndWait: cancelled");

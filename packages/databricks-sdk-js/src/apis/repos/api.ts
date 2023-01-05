@@ -25,11 +25,19 @@ export class ReposError extends ApiError {
 /**
  * The Repos API allows users to manage their git repos. Users can use the API to
  * access all repos that they have manage permissions on.
+ *
+ * Databricks Repos is a visual Git client in Databricks. It supports common Git
+ * operations such a cloning a repository, committing and pushing, pulling,
+ * branch management, and visual comparison of diffs when committing.
+ *
+ * Within Repos you can develop code in notebooks or other files and follow data
+ * science and engineering code development best practices using Git for version
+ * control, collaboration, and CI/CD.
  */
 export class ReposService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Create a repo
+     * Create a repo.
      *
      * Creates a repo in the workspace and links it to the remote Git repo
      * specified. Note that repos created programmatically must be linked to a
@@ -46,36 +54,36 @@ export class ReposService {
             "POST",
             request,
             context
-        )) as model.RepoInfo;
+        )) as unknown as model.RepoInfo;
     }
 
     /**
-     * Delete a repo
+     * Delete a repo.
      *
      * Deletes the specified repo.
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
-        request: model.DeleteRequest,
+        request: model.Delete,
         @context context?: Context
-    ): Promise<model.DeleteResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/repos/${request.repo_id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
             context
-        )) as model.DeleteResponse;
+        )) as unknown as model.EmptyResponse;
     }
 
     /**
-     * Get a repo
+     * Get a repo.
      *
      * Returns the repo with the given repo ID.
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.GetRequest,
+        request: model.Get,
         @context context?: Context
     ): Promise<model.RepoInfo> {
         const path = `/api/2.0/repos/${request.repo_id}`;
@@ -84,18 +92,18 @@ export class ReposService {
             "GET",
             request,
             context
-        )) as model.RepoInfo;
+        )) as unknown as model.RepoInfo;
     }
 
     /**
-     * Get repos
+     * Get repos.
      *
      * Returns repos that the calling user has Manage permissions on. Results are
      * paginated with each page containing twenty repos.
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(
-        request: model.ListRequest,
+        request: model.List,
         @context context?: Context
     ): Promise<model.ListReposResponse> {
         const path = "/api/2.0/repos";
@@ -104,11 +112,11 @@ export class ReposService {
             "GET",
             request,
             context
-        )) as model.ListReposResponse;
+        )) as unknown as model.ListReposResponse;
     }
 
     /**
-     * Update a repo
+     * Update a repo.
      *
      * Updates the repo to a different branch or tag, or updates the repo to the
      * latest commit on the same branch.
@@ -117,13 +125,13 @@ export class ReposService {
     async update(
         request: model.UpdateRepo,
         @context context?: Context
-    ): Promise<model.UpdateResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/repos/${request.repo_id}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
             context
-        )) as model.UpdateResponse;
+        )) as unknown as model.EmptyResponse;
     }
 }
