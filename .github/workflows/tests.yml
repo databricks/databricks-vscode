@@ -66,6 +66,8 @@ jobs:
     test-extension:
         name: Test VSCode Extension
         runs-on: ${{ inputs.os }}
+        environment:
+            name: azure-prod-usr
 
         env:
             VSCODE_TEST_VERSION: ${{ inputs.vscode-version }}
