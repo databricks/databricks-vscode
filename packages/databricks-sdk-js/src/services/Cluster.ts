@@ -11,7 +11,7 @@ import {
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-import {commands, PermissionsService, Time, TimeUnits} from "..";
+import {commands, Time, TimeUnits} from "..";
 import {
     ClusterInfo,
     ClustersService,
@@ -21,6 +21,7 @@ import {
 import {Context, context} from "../context";
 import {User} from "../apis/scim";
 import {ExposedLoggers, withLogContext} from "../logging";
+import {PermissionsService} from "../apis/permissions";
 
 export class ClusterRetriableError extends RetriableError {}
 export class ClusterError extends Error {}

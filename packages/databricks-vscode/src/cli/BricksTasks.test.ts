@@ -2,7 +2,7 @@ import "@databricks/databricks-sdk";
 import * as assert from "assert";
 import {instance, mock, when} from "ts-mockito";
 import {Uri} from "vscode";
-import {ProfileAuthProvider} from "../configuration/AuthProvider";
+import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {SyncDestination} from "../configuration/SyncDestination";
@@ -66,7 +66,6 @@ describe(__filename, () => {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                 DATABRICKS_CONFIG_PROFILE: "profile",
-                DATABRICKS_HOST: "https://000000000000.00.azuredatabricks.net/",
                 DATABRICKS_CONFIG_FILE: undefined,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,

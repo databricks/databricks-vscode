@@ -1,7 +1,6 @@
-import {CurrentUserService} from "@databricks/databricks-sdk";
+import {WorkspaceClient} from "@databricks/databricks-sdk";
 import {commands, Disposable, Uri, window} from "vscode";
-import {ConnectionManager} from "./ConnectionManager";
-import {AuthProvider} from "./AuthProvider";
+import {AuthProvider} from "./auth/AuthProvider";
 import {execFileWithShell} from "@databricks/databricks-sdk/dist/config/execUtils";
 
 export type Step<S, N> = () => Promise<
@@ -72,7 +71,7 @@ export class AzureCliCheck implements Disposable {
 
         const steps: Record<AzureStepName, Step<boolean, AzureStepName>> = {
             tryLogin: async () => {
-                const result = await this.tryLogin();
+                const result = await this.tryLogin(this.authProvider.host);
                 if (typeof result === "string") {
                     tenant = result;
                     return {
@@ -158,10 +157,13 @@ export class AzureCliCheck implements Disposable {
         return result;
     }
 
-    private async tryLogin(): Promise<boolean | string> {
-        const apiClient = ConnectionManager.apiClientFrom(this.authProvider);
+    private async tryLogin(host: URL): Promise<boolean | string> {
+        const workspaceClient = new WorkspaceClient({
+            host: host.toString(),
+            authType: "azure-cli",
+        });
         try {
-            await new CurrentUserService(apiClient).me();
+            await workspaceClient.currentUser.me();
         } catch (e: any) {
             // parse error message
             const m = e.message.match(
@@ -185,7 +187,7 @@ export class AzureCliCheck implements Disposable {
             if (stdout.indexOf("azure-cli") !== -1) {
                 return true;
             }
-        } catch (e: any) {
+        } catch (e) {
             return false;
         }
         return false;
@@ -222,7 +224,7 @@ export class AzureCliCheck implements Disposable {
             if (stderr.indexOf("az login") !== -1) {
                 return false;
             }
-        } catch (e: any) {
+        } catch (e) {
             return false;
         }
         return true;

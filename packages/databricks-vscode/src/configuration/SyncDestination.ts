@@ -1,4 +1,4 @@
-import {ApiClient, Repo} from "@databricks/databricks-sdk";
+import {WorkspaceClient, Repo} from "@databricks/databricks-sdk";
 import * as assert from "assert";
 import path = require("path");
 import {Uri} from "vscode";
@@ -19,7 +19,7 @@ export class SyncDestination {
     ) {}
 
     static async from(
-        client: ApiClient,
+        client: WorkspaceClient,
         repoUri: Uri,
         vscodeWorkspacePath: Uri
     ) {
@@ -29,7 +29,7 @@ export class SyncDestination {
         repoUri = SyncDestination.normalizeWorkspacePath(repoUri);
 
         const repo = await Repo.fromPath(
-            client,
+            client.apiClient,
             repoUri.path.replace(/^\/Workspace\//, "/")
         );
 

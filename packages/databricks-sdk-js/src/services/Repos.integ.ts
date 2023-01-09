@@ -18,7 +18,8 @@ describe(__filename, function () {
     async function createRandomRepo(
         repoService?: ReposService
     ): Promise<RepoInfo> {
-        repoService = repoService ?? new ReposService(integSetup.client);
+        repoService =
+            repoService ?? new ReposService(integSetup.client.apiClient);
         const id = randomUUID();
         const resp = await repoService.create({
             path: `${repoDir}/test-${id}`,
@@ -32,23 +33,25 @@ describe(__filename, function () {
 
     before(async () => {
         integSetup = await IntegrationTestSetup.getInstance();
-        const workspaceService = new WorkspaceService(integSetup.client);
+        const workspaceService = new WorkspaceService(
+            integSetup.client.apiClient
+        );
         await workspaceService.mkdirs({
             path: repoDir,
         });
 
         testRepoDetails = await createRandomRepo(
-            new ReposService(integSetup.client)
+            new ReposService(integSetup.client.apiClient)
         );
     });
 
     after(async () => {
-        const repos = new ReposService(integSetup.client);
+        const repos = new ReposService(integSetup.client.apiClient);
         await repos.delete({repo_id: testRepoDetails.id!});
     });
 
     it("should list repos by prefix", async () => {
-        const response = await Repo.list(integSetup.client, {
+        const response = await Repo.list(integSetup.client.apiClient, {
             path_prefix: repoDir,
         });
         assert.ok(response.length > 0);
@@ -56,7 +59,7 @@ describe(__filename, function () {
 
     // skip test as it takes too long to run
     it.skip("should list all repos", async () => {
-        const response = await Repo.list(integSetup.client, {});
+        const response = await Repo.list(integSetup.client.apiClient, {});
 
         assert.notEqual(response, undefined);
         assert.ok(response.length > 0);
@@ -68,7 +71,7 @@ describe(__filename, function () {
         };
 
         const response = Repo.list(
-            integSetup.client,
+            integSetup.client.apiClient,
             {
                 path_prefix: repoDir,
             },
@@ -88,7 +91,7 @@ describe(__filename, function () {
 
     it("Should find the exact matching repo if multiple repos with same prefix in fromPath", async () => {
         const actual = await Repo.fromPath(
-            integSetup.client,
+            integSetup.client.apiClient,
             testRepoDetails.path!
         );
         assert.equal(actual.path, testRepoDetails.path);

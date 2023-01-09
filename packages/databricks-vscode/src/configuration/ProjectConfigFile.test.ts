@@ -5,7 +5,7 @@ import {ProjectConfig, ProjectConfigFile} from "./ProjectConfigFile";
 import * as assert from "assert";
 import path from "path";
 import * as os from "os";
-import {ProfileAuthProvider} from "./AuthProvider";
+import {ProfileAuthProvider} from "./auth/AuthProvider";
 import {Uri} from "vscode";
 
 describe(__filename, () => {

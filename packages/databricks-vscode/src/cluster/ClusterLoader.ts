@@ -72,7 +72,7 @@ export class ClusterLoader implements Disposable {
     }
 
     async _load() {
-        const apiClient = this.connectionManager.apiClient;
+        const apiClient = this.connectionManager.workspaceClient?.apiClient;
         if (!apiClient) {
             this.cleanup();
             return;
