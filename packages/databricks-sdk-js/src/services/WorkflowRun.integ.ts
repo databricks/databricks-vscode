@@ -1,7 +1,9 @@
-import {DbfsService, Cluster, jobs, WorkflowRun, WorkspaceService} from "..";
 import assert from "assert";
+import {RunLifeCycleState} from "../apis/jobs";
 
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
+import {Cluster} from "./Cluster";
+import {WorkflowRun} from "./WorkflowRun";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
@@ -14,12 +16,12 @@ describe(__filename, function () {
 
     it("should run a python job", async () => {
         const cluster = await Cluster.fromClusterId(
-            integSetup.client,
+            integSetup.client.apiClient,
             integSetup.cluster.id
         );
 
-        const dbfsApi = new DbfsService(integSetup.client);
-        const jobPath = `/tmp/js-sdk-jobs-tests/sdk-js-integ-${integSetup.testRunId}.py`;
+        const dbfsApi = integSetup.client.dbfs;
+        const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
 
         await dbfsApi.put({
             path: jobPath,
@@ -33,10 +35,7 @@ describe(__filename, function () {
             const progress: Array<WorkflowRun> = [];
             const output = await cluster.runPythonAndWait({
                 path: `dbfs:${jobPath}`,
-                onProgress: (
-                    _state: jobs.RunLifeCycleState,
-                    run: WorkflowRun
-                ) => {
+                onProgress: (_state: RunLifeCycleState, run: WorkflowRun) => {
                     progress.push(run);
                 },
             });
@@ -54,16 +53,16 @@ describe(__filename, function () {
 
     it("should run a notebook job", async () => {
         const cluster = await Cluster.fromClusterId(
-            integSetup.client,
+            integSetup.client.apiClient,
             integSetup.cluster.id
         );
 
         const jobPath = `/tmp/js-sdk-jobs-tests/sdk-js-integ-${integSetup.testRunId}.py`;
-        const workspaceService = new WorkspaceService(integSetup.client);
+        await integSetup.client.workspace.mkdirs({
+            path: "/tmp/js-sdk-jobs-tests",
+        });
 
-        await workspaceService.mkdirs({path: "/tmp/js-sdk-jobs-tests"});
-
-        await workspaceService.import({
+        await integSetup.client.workspace.import({
             path: jobPath,
             format: "SOURCE",
             language: "PYTHON",
@@ -77,10 +76,7 @@ describe(__filename, function () {
             const progress: Array<WorkflowRun> = [];
             const output = await cluster.runNotebookAndWait({
                 path: `${jobPath}`,
-                onProgress: (
-                    _state: jobs.RunLifeCycleState,
-                    run: WorkflowRun
-                ) => {
+                onProgress: (_state: RunLifeCycleState, run: WorkflowRun) => {
                     progress.push(run);
                 },
             });
@@ -98,22 +94,22 @@ describe(__filename, function () {
             );
             assert(output.views[0].content.startsWith("<!DOCTYPE html>"));
         } finally {
-            await workspaceService.delete({path: jobPath});
+            await integSetup.client.workspace.delete({path: jobPath});
         }
     });
 
     it("should run a broken notebook job", async () => {
         const cluster = await Cluster.fromClusterId(
-            integSetup.client,
+            integSetup.client.apiClient,
             integSetup.cluster.id
         );
 
         const jobPath = `/tmp/js-sdk-jobs-tests/sdk-js-integ-${integSetup.testRunId}.py`;
-        const workspaceService = new WorkspaceService(integSetup.client);
+        await integSetup.client.workspace.mkdirs({
+            path: "/tmp/js-sdk-jobs-tests",
+        });
 
-        await workspaceService.mkdirs({path: "/tmp/js-sdk-jobs-tests"});
-
-        await workspaceService.import({
+        await integSetup.client.workspace.import({
             path: jobPath,
             format: "SOURCE",
             language: "PYTHON",
@@ -134,10 +130,7 @@ print("Cell 2")`
             const progress: Array<WorkflowRun> = [];
             const output = await cluster.runNotebookAndWait({
                 path: `${jobPath}`,
-                onProgress: (
-                    _state: jobs.RunLifeCycleState,
-                    run: WorkflowRun
-                ) => {
+                onProgress: (_state: RunLifeCycleState, run: WorkflowRun) => {
                     progress.push(run);
                 },
             });
@@ -155,7 +148,7 @@ print("Cell 2")`
             );
             assert(output.views[0].content.startsWith("<!DOCTYPE html>"));
         } finally {
-            await workspaceService.delete({path: jobPath});
+            await integSetup.client.workspace.delete({path: jobPath});
         }
     });
 });

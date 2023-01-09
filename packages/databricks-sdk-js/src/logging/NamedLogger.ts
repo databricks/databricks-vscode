@@ -122,6 +122,14 @@ export class NamedLogger {
         this.log(LEVELS.debug, message, obj);
     }
 
+    info(message?: string, obj?: any) {
+        this.log(LEVELS.info, message, obj);
+    }
+
+    warn(message?: string, obj?: any) {
+        this.log(LEVELS.warn, message, obj);
+    }
+
     error(message?: string, obj?: any) {
         this.log(LEVELS.error, message, obj);
     }

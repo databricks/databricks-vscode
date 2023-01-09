@@ -1,4 +1,4 @@
-import "..";
+import "reflect-metadata";
 const CONTEXT_SYMBOL = Symbol.for("context");
 
 export function context(

@@ -1,8 +1,8 @@
 import {EventEmitter} from "events";
 import retry, {RetriableError} from "../retries/retries";
 import {ExecutionContext} from "./ExecutionContext";
-import {CommandExecutionService, commands} from "..";
 import {CancellationToken} from "../types";
+import {CommandExecutionService, CommandStatusResponse} from "../apis/commands";
 
 interface CommandErrorParams {
     commandId: string;
@@ -27,17 +27,15 @@ class CommandError extends Error {
 
 export interface CommandWithResult {
     cmd: Command;
-    result: commands.CommandStatusResponse;
+    result: CommandStatusResponse;
 }
 
-export type StatusUpdateListener = (
-    result: commands.CommandStatusResponse
-) => void;
+export type StatusUpdateListener = (result: CommandStatusResponse) => void;
 
 export class Command extends EventEmitter {
     readonly context: ExecutionContext;
     readonly commandsApi: CommandExecutionService;
-    result?: commands.CommandStatusResponse;
+    result?: CommandStatusResponse;
     id?: string;
 
     private static statusUpdateEvent = "statusUpdate";
@@ -112,7 +110,7 @@ export class Command extends EventEmitter {
 
     async response(
         cancellationToken?: CancellationToken
-    ): Promise<commands.CommandStatusResponse> {
+    ): Promise<CommandStatusResponse> {
         await retry({
             fn: async () => {
                 await this.refresh();

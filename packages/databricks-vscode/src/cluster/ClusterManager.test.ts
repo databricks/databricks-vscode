@@ -4,11 +4,11 @@ import {
     ApiClient,
     cluster,
     Cluster,
-    ClusterFixture,
     Time,
     TimeUnits,
     retries,
 } from "@databricks/databricks-sdk";
+import {ClusterFixture} from "@databricks/databricks-sdk/dist/test/fixtures";
 import {
     anything,
     deepEqual,

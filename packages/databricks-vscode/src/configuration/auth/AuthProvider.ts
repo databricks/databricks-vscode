@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {
-    CredentialProvider,
-    fromAzureCli,
-    fromConfigFile,
-    fromToken,
+    Config,
+    ProductVersion,
+    WorkspaceClient,
 } from "@databricks/databricks-sdk";
-import {normalizeHost} from "../utils/urlUtils";
+import {normalizeHost} from "../../utils/urlUtils";
 
-import {AzureCliCheck} from "./AzureCliCheck";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const extensionVersion = require("../../../package.json")
+    .version as ProductVersion;
+
+import {AzureCliCheck} from "../AzureCliCheck";
 
 export type AuthType =
     | "azure-cli"
@@ -17,8 +20,6 @@ export type AuthType =
     | "pat";
 
 export abstract class AuthProvider {
-    _credentialProvider?: CredentialProvider;
-
     constructor(
         private readonly _host: URL,
         private readonly _authType: AuthType
@@ -37,14 +38,23 @@ export abstract class AuthProvider {
      */
     abstract describe(): string;
     abstract toJSON(): Record<string, unknown>;
-    abstract getEnvVars(): {[key: string]: string};
+    abstract getEnvVars(): Record<string, string | undefined>;
 
-    public abstract getCredentialProvider(): CredentialProvider;
+    getWorkspaceClient(): WorkspaceClient {
+        const config = this.getSdkConfig();
+
+        return new WorkspaceClient(config, {
+            product: "databricks-vscode",
+            productVersion: extensionVersion,
+        });
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async check(silent: boolean): Promise<boolean> {
         return true;
     }
+
+    protected abstract getSdkConfig(): Config;
 
     static fromJSON(json: Record<string, any>): AuthProvider {
         const host =
@@ -98,7 +108,7 @@ export class TokenAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): {[key: string]: string} {
+    getEnvVars(): Record<string, string | undefined> {
         return {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: this.authType,
@@ -106,8 +116,13 @@ export class TokenAuthProvider extends AuthProvider {
         };
     }
 
-    getCredentialProvider(): CredentialProvider {
-        return fromToken(this.host, this.token);
+    getSdkConfig(): Config {
+        return new Config({
+            authType: "pat",
+            token: this.token,
+            host: this.host.toString(),
+            env: {},
+        });
     }
 }
 
@@ -128,15 +143,19 @@ export class ProfileAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): {[key: string]: string} {
+    getEnvVars(): Record<string, string | undefined> {
         return {
-            DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_CONFIG_PROFILE: this.profile,
+            DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
         };
     }
 
-    getCredentialProvider(): CredentialProvider {
-        return fromConfigFile(this.profile);
+    getSdkConfig(): Config {
+        return new Config({
+            profile: this.profile,
+            configFile: process.env.DATABRICKS_CONFIG_FILE,
+            env: {},
+        });
     }
 }
 
@@ -156,15 +175,19 @@ export class AzureCliAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): {[key: string]: string} {
+    getEnvVars(): Record<string, string | undefined> {
         return {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: this.authType,
         };
     }
 
-    getCredentialProvider(): CredentialProvider {
-        return fromAzureCli(this.host);
+    getSdkConfig(): Config {
+        return new Config({
+            host: this.host.toString(),
+            authType: "azure-cli",
+            env: {},
+        });
     }
 
     async check(silent: boolean): Promise<boolean> {

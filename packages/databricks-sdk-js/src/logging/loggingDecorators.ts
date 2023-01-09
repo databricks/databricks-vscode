@@ -1,4 +1,4 @@
-import "..";
+import "reflect-metadata";
 import {NamedLogger} from "./NamedLogger";
 import {getContextParamIndex, Context, ContextItems} from "../context";
 

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {JobsService, DbfsService} from "../..";
 import assert from "assert";
 
 import {IntegrationTestSetup, sleep} from "../../test/IntegrationTestSetup";
@@ -15,9 +14,9 @@ describe(__filename, function () {
     });
 
     it("should run a notebook job", async () => {
-        const jobsService = new JobsService(integSetup.client);
+        const jobsService = integSetup.client.jobs;
 
-        const dbfsApi = new DbfsService(integSetup.client);
+        const dbfsApi = integSetup.client.dbfs;
         const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
 
         await dbfsApi.put({

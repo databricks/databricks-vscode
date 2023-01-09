@@ -159,9 +159,9 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         }
 
         const cluster = this.connection.cluster;
-        const apiClient = this.connection.apiClient;
+        const workspaceClient = this.connection.workspaceClient;
 
-        if (!cluster || !apiClient) {
+        if (!cluster || !workspaceClient) {
             return this.onError(
                 "You must attach to a cluster to run on Databricks"
             );
