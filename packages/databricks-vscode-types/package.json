@@ -14,8 +14,8 @@
     },
     "homepage": "https://github.com/databricks/databricks-vscode#readme",
     "scripts": {
-        "build": "tsc",
-        "watch": "tsc -w",
+        "build": "tsc --build",
+        "watch": "tsc --build --watch",
         "clean": "rm -rf dist node_modules",
         "fix": "eslint . --ext ts --fix && prettier . --write",
         "test:lint": "eslint . --ext ts && prettier . -c",
