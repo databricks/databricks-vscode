@@ -4,11 +4,8 @@
 
 ## <small>0.0.9 (2023-01-09)</small>
 
--   Bump bricks to v0.0.15 (#339) ([29a93a0](https://github.com/databricks/databricks-vscode/commit/29a93a0)), closes [#339](https://github.com/databricks/databricks-vscode/issues/339)
--   Don't show start icon for terminating clusters (#338) ([6a6b7f4](https://github.com/databricks/databricks-vscode/commit/6a6b7f4)), closes [#338](https://github.com/databricks/databricks-vscode/issues/338)
--   update dependencies (#336) ([1850d1c](https://github.com/databricks/databricks-vscode/commit/1850d1c)), closes [#336](https://github.com/databricks/databricks-vscode/issues/336)
--   Update JSON5 to 2.2.2 (#346) ([9f38691](https://github.com/databricks/databricks-vscode/commit/9f38691)), closes [#346](https://github.com/databricks/databricks-vscode/issues/346)
--   Use Databricks license for the extension (#320) ([263c7eb](https://github.com/databricks/databricks-vscode/commit/263c7eb)), closes [#320](https://github.com/databricks/databricks-vscode/issues/320)
+-   Fix: Don't show `start cluster` icon for terminating clusters. Wait for termination.
+-   Update license to Databricks License
 
 # Release: v0.0.8
 
