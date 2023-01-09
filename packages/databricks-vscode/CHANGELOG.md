@@ -1,3 +1,12 @@
+# Release: v0.0.9
+
+## packages/databricks-vscode
+
+## <small>0.0.9 (2023-01-09)</small>
+
+-   Fix: Don't show `start cluster` icon for terminating clusters. Wait for termination.
+-   Update license to Databricks License
+
 # Release: v0.0.8
 
 ## packages/databricks-vscode
