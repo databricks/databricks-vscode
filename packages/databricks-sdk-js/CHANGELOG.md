@@ -1,3 +1,12 @@
+# Release: v0.0.9
+
+## packages/databricks-sdk-js
+
+## <small>0.0.9 (2023-01-09)</small>
+
+-   update dependencies (#336) ([1850d1c](https://github.com/databricks/databricks-vscode/commit/1850d1c)), closes [#336](https://github.com/databricks/databricks-vscode/issues/336)
+-   Use Databricks license for the extension (#320) ([263c7eb](https://github.com/databricks/databricks-vscode/commit/263c7eb)), closes [#320](https://github.com/databricks/databricks-vscode/issues/320)
+
 # Release: v0.0.8
 
 ## packages/databricks-sdk-js
