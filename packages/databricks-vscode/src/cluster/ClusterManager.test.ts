@@ -87,7 +87,7 @@ describe(__filename, async () => {
         await mockedCluster.refresh();
         assert.equal(mockedCluster.state, "TERMINATED");
         interface OnProgContainer {
-            onProgress: (state: cluster.ClusterInfoState) => void;
+            onProgress: (state: cluster.State) => void;
         }
         const mockOnProgContainer = mock<OnProgContainer>();
         await new ClusterManager(mockedCluster).start(

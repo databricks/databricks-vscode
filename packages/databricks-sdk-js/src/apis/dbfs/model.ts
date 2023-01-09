@@ -27,8 +27,7 @@ export interface Create {
      */
     overwrite?: boolean;
     /**
-     * The path of the new file. The path should be the absolute DBFS path (e.g.
-     * "/mnt/foo.txt").
+     * The path of the new file. The path should be the absolute DBFS path.
      */
     path: string;
 }
@@ -44,7 +43,7 @@ export interface CreateResponse {
 export interface Delete {
     /**
      * The path of the file or directory to delete. The path should be the
-     * absolute DBFS path (e.g. "/mnt/foo/").
+     * absolute DBFS path.
      */
     path: string;
     /**
@@ -73,6 +72,28 @@ export interface FileInfo {
     path?: string;
 }
 
+/**
+ * Get the information of a file or directory
+ */
+export interface GetStatus {
+    /**
+     * The path of the file or directory. The path should be the absolute DBFS
+     * path.
+     */
+    path: string;
+}
+
+/**
+ * List directory contents or file details
+ */
+export interface List {
+    /**
+     * The path of the file or directory. The path should be the absolute DBFS
+     * path.
+     */
+    path: string;
+}
+
 export interface ListStatusResponse {
     /**
      * A list of FileInfo's that describe contents of directory or file. See
@@ -83,8 +104,7 @@ export interface ListStatusResponse {
 
 export interface MkDirs {
     /**
-     * The path of the new directory. The path should be the absolute DBFS path
-     * (e.g. "/mnt/foo/").
+     * The path of the new directory. The path should be the absolute DBFS path.
      */
     path: string;
 }
@@ -92,12 +112,12 @@ export interface MkDirs {
 export interface Move {
     /**
      * The destination path of the file or directory. The path should be the
-     * absolute DBFS path (e.g. "/mnt/bar/").
+     * absolute DBFS path.
      */
     destination_path: string;
     /**
      * The source path of the file or directory. The path should be the absolute
-     * DBFS path (e.g. "/mnt/foo/").
+     * DBFS path.
      */
     source_path: string;
 }
@@ -112,42 +132,15 @@ export interface Put {
      */
     overwrite?: boolean;
     /**
-     * The path of the new file. The path should be the absolute DBFS path (e.g.
-     * "/mnt/foo/").
+     * The path of the new file. The path should be the absolute DBFS path.
      */
     path: string;
 }
 
-export interface ReadResponse {
-    /**
-     * The number of bytes read (could be less than ``length`` if we hit end of
-     * file). This refers to number of bytes read in unencoded version (response
-     * data is base64-encoded).
-     */
-    bytes_read?: number;
-    /**
-     * The base64-encoded contents of the file read.
-     */
-    data?: string;
-}
-
-export interface GetStatusRequest {
-    /**
-     * The path of the file or directory. The path should be the absolute DBFS
-     * path (e.g. "/mnt/foo/").
-     */
-    path: string;
-}
-
-export interface ListRequest {
-    /**
-     * The path of the file or directory. The path should be the absolute DBFS
-     * path (e.g. "/mnt/foo/").
-     */
-    path: string;
-}
-
-export interface ReadRequest {
+/**
+ * Get the contents of a file
+ */
+export interface Read {
     /**
      * The number of bytes to read starting from the offset. This has a limit of
      * 1 MB, and a default value of 0.5 MB.
@@ -158,15 +151,22 @@ export interface ReadRequest {
      */
     offset?: number;
     /**
-     * The path of the file to read. The path should be the absolute DBFS path
-     * (e.g. "/mnt/foo/").
+     * The path of the file to read. The path should be the absolute DBFS path.
      */
     path: string;
 }
 
-export interface AddBlockResponse {}
-export interface CloseResponse {}
-export interface DeleteResponse {}
-export interface MkDirsResponse {}
-export interface MoveResponse {}
-export interface PutResponse {}
+export interface ReadResponse {
+    /**
+     * The number of bytes read (could be less than `length` if we hit end of
+     * file). This refers to number of bytes read in unencoded version (response
+     * data is base64-encoded).
+     */
+    bytes_read?: number;
+    /**
+     * The base64-encoded contents of the file read.
+     */
+    data?: string;
+}
+
+export interface EmptyResponse {}

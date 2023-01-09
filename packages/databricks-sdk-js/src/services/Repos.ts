@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiClient} from "../api-client";
-import {ListRequest, ReposService, RepoInfo, CreateRepo} from "../apis/repos";
+import {List, ReposService, RepoInfo, CreateRepo} from "../apis/repos";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "../context";
 import {Context} from "../context";
@@ -16,10 +16,10 @@ export class RepoError extends Error {}
 
 export class Repos {
     constructor(private readonly client: ApiClient) {}
-    @paginated<ListRequest, RepoList>("next_page_token", "repos")
+    @paginated<List, RepoList>("next_page_token", "repos")
     @withLogContext(ExposedLoggers.SDK)
     async paginatedList(
-        req: ListRequest,
+        req: List,
         @context context?: Context
     ): Promise<RepoList> {
         const reposApi = new ReposService(this.client);
@@ -71,7 +71,7 @@ export class Repo {
     @withLogContext(ExposedLoggers.SDK)
     static async list(
         client: ApiClient,
-        req: ListRequest,
+        req: List,
         @context context?: Context
     ) {
         return (await new Repos(client).paginatedList(req, context)).repos;

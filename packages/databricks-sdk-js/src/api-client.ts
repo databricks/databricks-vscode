@@ -56,6 +56,7 @@ export class ApiClient {
     readonly product: string;
     readonly productVersion: ProductVersion;
     readonly userAgentExtra: Record<string, string>;
+    readonly accountId = "";
 
     constructor(readonly config: Config, options: ClientOptions = {}) {
         this.agent =
@@ -97,7 +98,7 @@ export class ApiClient {
         method: HttpMethod,
         payload?: any,
         @context context?: Context
-    ): Promise<Record<string, unknown>> {
+    ): Promise<unknown> {
         const headers: Headers = {
             "User-Agent": this.userAgent(),
             "Content-Type": "text/json",

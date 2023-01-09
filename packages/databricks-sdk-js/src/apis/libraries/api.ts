@@ -23,12 +23,31 @@ export class LibrariesError extends ApiError {
 }
 
 /**
- * Databricks Managed Libraries REST API
+ * The Libraries API allows you to install and uninstall libraries and get the
+ * status of libraries on a cluster.
+ *
+ * To make third-party or custom code available to notebooks and jobs running on
+ * your clusters, you can install a library. Libraries can be written in Python,
+ * Java, Scala, and R. You can upload Java, Scala, and Python libraries and point
+ * to external packages in PyPI, Maven, and CRAN repositories.
+ *
+ * Cluster libraries can be used by all notebooks running on a cluster. You can
+ * install a cluster library directly from a public repository such as PyPI or
+ * Maven, using a previously installed workspace library, or using an init
+ * script.
+ *
+ * When you install a library on a cluster, a notebook already attached to that
+ * cluster will not immediately see the new library. You must first detach and
+ * then reattach the notebook to the cluster.
+ *
+ * When you uninstall a library from a cluster, the library is removed only when
+ * you restart the cluster. Until you restart the cluster, the status of the
+ * uninstalled library appears as Uninstall pending restart.
  */
 export class LibrariesService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Get all statuses
+     * Get all statuses.
      *
      * Get the status of all libraries on all clusters. A status will be
      * available for all libraries installed on this cluster via the API or the
@@ -49,7 +68,7 @@ export class LibrariesService {
     }
 
     /**
-     * Get status
+     * Get status.
      *
      * Get the status of libraries on a cluster. A status will be available for
      * all libraries installed on this cluster via the API or the libraries UI as
@@ -69,7 +88,7 @@ export class LibrariesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async clusterStatus(
-        request: model.ClusterStatusRequest,
+        request: model.ClusterStatus,
         @context context?: Context
     ): Promise<model.ClusterLibraryStatuses> {
         const path = "/api/2.0/libraries/cluster-status";
@@ -82,7 +101,7 @@ export class LibrariesService {
     }
 
     /**
-     * Add a library
+     * Add a library.
      *
      * Add libraries to be installed on a cluster. The installation is
      * asynchronous; it happens in the background after the completion of this
@@ -96,18 +115,18 @@ export class LibrariesService {
     async install(
         request: model.InstallLibraries,
         @context context?: Context
-    ): Promise<model.InstallLibrariesResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/libraries/install";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.InstallLibrariesResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
-     * Uninstall libraries
+     * Uninstall libraries.
      *
      * Set libraries to be uninstalled on a cluster. The libraries won't be
      * uninstalled until the cluster is restarted. Uninstalling libraries that
@@ -117,13 +136,13 @@ export class LibrariesService {
     async uninstall(
         request: model.UninstallLibraries,
         @context context?: Context
-    ): Promise<model.UninstallLibrariesResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/libraries/uninstall";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.UninstallLibrariesResponse;
+        )) as model.EmptyResponse;
     }
 }

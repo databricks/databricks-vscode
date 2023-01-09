@@ -60,7 +60,7 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             state: "RUNNING",
             single_user_name: me.userName,
             access_mode: "SINGLE_USER",
-        },
+        } as cluster.ClusterInfo & {access_mode: "SINGLE_USER"},
     ],
 };
 
@@ -107,7 +107,7 @@ describe(__filename, () => {
                 "GET",
                 anything(),
                 anything()
-            )
+            ) as Promise<cluster.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);
         when(mockedConnectionManager.workspaceClient).thenReturn(
             instance(mockedWorkspaceClient)
@@ -119,7 +119,7 @@ describe(__filename, () => {
                     "GET",
                     anything(),
                     anything()
-                )
+                ) as Promise<permissions.ObjectPermissions>
             ).thenResolve(perms);
         }
         when(mockedConnectionManager.databricksWorkspace).thenReturn({

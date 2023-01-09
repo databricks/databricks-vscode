@@ -33,6 +33,15 @@ export type CommandStatus =
     | "Queued"
     | "Running";
 
+/**
+ * Get command info
+ */
+export interface CommandStatusRequest {
+    clusterId: string;
+    commandId: string;
+    contextId: string;
+}
+
 export interface CommandStatusResponse {
     id?: string;
     results?: Results;
@@ -40,6 +49,14 @@ export interface CommandStatusResponse {
 }
 
 export type ContextStatus = "Error" | "Pending" | "Running";
+
+/**
+ * Get status
+ */
+export interface ContextStatusRequest {
+    clusterId: string;
+    contextId: string;
+}
 
 export interface ContextStatusResponse {
     id?: string;
@@ -102,16 +119,4 @@ export interface Results {
     truncated?: boolean;
 }
 
-export interface CommandStatusRequest {
-    clusterId: string;
-    commandId: string;
-    contextId: string;
-}
-
-export interface ContextStatusRequest {
-    clusterId: string;
-    contextId: string;
-}
-
-export interface CancelResponse {}
-export interface DestroyResponse {}
+export interface EmptyResponse {}

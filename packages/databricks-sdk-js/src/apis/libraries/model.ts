@@ -14,6 +14,16 @@ export interface ClusterLibraryStatuses {
     library_statuses?: Array<LibraryFullStatus>;
 }
 
+/**
+ * Get status
+ */
+export interface ClusterStatus {
+    /**
+     * Unique identifier of the cluster whose status should be retrieved.
+     */
+    cluster_id: string;
+}
+
 export interface InstallLibraries {
     /**
      * Unique identifier for the cluster on which to install these libraries.
@@ -22,7 +32,7 @@ export interface InstallLibraries {
     /**
      * The libraries to install.
      */
-    libraries?: Array<Library>;
+    libraries: Array<Library>;
 }
 
 export interface Library {
@@ -32,35 +42,35 @@ export interface Library {
     cran?: RCranLibrary;
     /**
      * URI of the egg to be installed. Currently only DBFS and S3 URIs are
-     * supported. For example: ``{ "egg": "dbfs:/my/egg" }`` or ``{ "egg":
-     * "s3://my-bucket/egg" }``. If S3 is used, please make sure the cluster has
+     * supported. For example: `{ "egg": "dbfs:/my/egg" }` or `{ "egg":
+     * "s3://my-bucket/egg" }`. If S3 is used, please make sure the cluster has
      * read access on the library. You may need to launch the cluster with an IAM
      * role to access the S3 URI.
      */
     egg?: string;
     /**
      * URI of the jar to be installed. Currently only DBFS and S3 URIs are
-     * supported. For example: ``{ "jar": "dbfs:/mnt/databricks/library.jar" }``
-     * or ``{ "jar": "s3://my-bucket/library.jar" }``. If S3 is used, please make
-     * sure the cluster has read access on the library. You may need to launch
-     * the cluster with an IAM role to access the S3 URI.
+     * supported. For example: `{ "jar": "dbfs:/mnt/databricks/library.jar" }` or
+     * `{ "jar": "s3://my-bucket/library.jar" }`. If S3 is used, please make sure
+     * the cluster has read access on the library. You may need to launch the
+     * cluster with an IAM role to access the S3 URI.
      */
     jar?: string;
     /**
-     * Specification of a maven library to be installed. For example: ``{
-     * "coordinates": "org.jsoup:jsoup:1.7.2" }``
+     * Specification of a maven library to be installed. For example: `{
+     * "coordinates": "org.jsoup:jsoup:1.7.2" }`
      */
     maven?: MavenLibrary;
     /**
-     * Specification of a PyPi library to be installed. For example: ``{
-     * "package": "simplejson" }``
+     * Specification of a PyPi library to be installed. For example: `{
+     * "package": "simplejson" }`
      */
     pypi?: PythonPyPiLibrary;
     /**
-     * URI of the wheel to be installed. For example: ``{ "whl": "dbfs:/my/whl"
-     * }`` or ``{ "whl": "s3://my-bucket/whl" }``. If S3 is used, please make
-     * sure the cluster has read access on the library. You may need to launch
-     * the cluster with an IAM role to access the S3 URI.
+     * URI of the wheel to be installed. For example: `{ "whl": "dbfs:/my/whl" }`
+     * or `{ "whl": "s3://my-bucket/whl" }`. If S3 is used, please make sure the
+     * cluster has read access on the library. You may need to launch the cluster
+     * with an IAM role to access the S3 URI.
      */
     whl?: string;
 }
@@ -111,8 +121,8 @@ export interface MavenLibrary {
      */
     coordinates: string;
     /**
-     * List of dependences to exclude. For example: ``["slf4j:slf4j",
-     * "*:hadoop-client"]``.
+     * List of dependences to exclude. For example: `["slf4j:slf4j",
+     * "*:hadoop-client"]`.
      *
      * Maven dependency exclusions:
      * https://maven.apache.org/guides/introduction/introduction-to-optional-and-excludes-dependencies.html.
@@ -159,15 +169,7 @@ export interface UninstallLibraries {
     /**
      * The libraries to uninstall.
      */
-    libraries?: Array<Library>;
+    libraries: Array<Library>;
 }
 
-export interface ClusterStatusRequest {
-    /**
-     * Unique identifier of the cluster whose status should be retrieved.
-     */
-    cluster_id: string;
-}
-
-export interface InstallLibrariesResponse {}
-export interface UninstallLibrariesResponse {}
+export interface EmptyResponse {}

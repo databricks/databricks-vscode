@@ -4,51 +4,69 @@
 
 // all definitions in this file are in alphabetical order
 export interface ComplexValue {
-    $ref?: string;
     display?: string;
     primary?: boolean;
+    $ref?: string;
     type?: string;
     value?: string;
 }
 
+/**
+ * Delete a group
+ */
 export interface DeleteGroupRequest {
     /**
-     * Unique ID for a group in the <Workspace>.
+     * Unique ID for a group in the Databricks Account.
      */
     id: string;
 }
 
+/**
+ * Delete a service principal
+ */
 export interface DeleteServicePrincipalRequest {
     /**
-     * Unique ID for a service principal in the <Workspace>.
+     * Unique ID for a service principal in the Databricks Account.
      */
     id: string;
 }
 
+/**
+ * Delete a user
+ */
 export interface DeleteUserRequest {
     /**
-     * Unique ID for a user in the <Workspace>.
+     * Unique ID for a user in the Databricks Account.
      */
     id: string;
 }
 
-export interface FetchGroupRequest {
+/**
+ * Get group details
+ */
+export interface GetGroupRequest {
     /**
-     * Unique ID for a group in the <Workspace>.
+     * Unique ID for a group in the Databricks Account.
      */
     id: string;
 }
 
-export interface FetchServicePrincipalRequest {
+/**
+ * Get service principal details
+ */
+export interface GetServicePrincipalRequest {
     /**
-     * Unique ID for a service principal in the <Workspace>.
+     * Unique ID for a service principal in the Databricks Account.
      */
     id: string;
 }
 
-export interface FetchUserRequest {
+/**
+ * Get user details
+ */
+export interface GetUserRequest {
     /**
-     * Unique ID for a user in the <Workspace>.
+     * Unique ID for a user in the Databricks Account.
      */
     id: string;
 }
@@ -69,6 +87,9 @@ export interface Group {
     roles?: Array<ComplexValue>;
 }
 
+/**
+ * List group details
+ */
 export interface ListGroupsRequest {
     /**
      * Comma-separated list of attributes to return in response.
@@ -86,9 +107,10 @@ export interface ListGroupsRequest {
      * Query by which the results have to be filtered. Supported operators are
      * equals(`eq`), contains(`co`), starts with(`sw`) and not equals(`ne`).
      * Additionally, simple expressions can be formed using logical operators -
-     * `and` and `or`. The [SCIM
-     * RFC](https://tools.ietf.org/html/rfc7644#section-3.4.2.2) has more details
-     * but we currently only support simple expressions.
+     * `and` and `or`. The [SCIM RFC] has more details but we currently only
+     * support simple expressions.
+     *
+     * [SCIM RFC]: https://tools.ietf.org/html/rfc7644#section-3.4.2.2
      */
     filter?: string;
     /**
@@ -98,7 +120,7 @@ export interface ListGroupsRequest {
     /**
      * The order to sort the results.
      */
-    sortOrder?: ListGroupsSortOrder;
+    sortOrder?: ListSortOrder;
     /**
      * Specifies the index of the first result. First item is number 1.
      */
@@ -107,13 +129,13 @@ export interface ListGroupsRequest {
 
 export interface ListGroupsResponse {
     /**
-     * User objects returned in the response.
-     */
-    Resources?: Array<Group>;
-    /**
      * Total results returned in the response.
      */
     itemsPerPage?: number;
+    /**
+     * User objects returned in the response.
+     */
+    Resources?: Array<Group>;
     /**
      * Starting index of all the results that matched the request filters. First
      * item is number 1.
@@ -125,18 +147,16 @@ export interface ListGroupsResponse {
     totalResults?: number;
 }
 
-export type ListGroupsSortOrder = "ascending" | "descending";
-
 export interface ListServicePrincipalResponse {
+    /**
+     * Total results returned in the response.
+     */
+    itemsPerPage?: number;
     /**
      * User objects returned in the response.
      */
     Resources?: Array<ServicePrincipal>;
     /**
-     * Total results returned in the response.
-     */
-    itemsPerPage?: number;
-    /**
      * Starting index of all the results that matched the request filters. First
      * item is number 1.
      */
@@ -147,6 +167,9 @@ export interface ListServicePrincipalResponse {
     totalResults?: number;
 }
 
+/**
+ * List service principals
+ */
 export interface ListServicePrincipalsRequest {
     /**
      * Comma-separated list of attributes to return in response.
@@ -164,9 +187,10 @@ export interface ListServicePrincipalsRequest {
      * Query by which the results have to be filtered. Supported operators are
      * equals(`eq`), contains(`co`), starts with(`sw`) and not equals(`ne`).
      * Additionally, simple expressions can be formed using logical operators -
-     * `and` and `or`. The [SCIM
-     * RFC](https://tools.ietf.org/html/rfc7644#section-3.4.2.2) has more details
-     * but we currently only support simple expressions.
+     * `and` and `or`. The [SCIM RFC] has more details but we currently only
+     * support simple expressions.
+     *
+     * [SCIM RFC]: https://tools.ietf.org/html/rfc7644#section-3.4.2.2
      */
     filter?: string;
     /**
@@ -176,15 +200,18 @@ export interface ListServicePrincipalsRequest {
     /**
      * The order to sort the results.
      */
-    sortOrder?: ListServicePrincipalsSortOrder;
+    sortOrder?: ListSortOrder;
     /**
      * Specifies the index of the first result. First item is number 1.
      */
     startIndex?: number;
 }
 
-export type ListServicePrincipalsSortOrder = "ascending" | "descending";
+export type ListSortOrder = "ascending" | "descending";
 
+/**
+ * List users
+ */
 export interface ListUsersRequest {
     /**
      * Comma-separated list of attributes to return in response.
@@ -202,9 +229,10 @@ export interface ListUsersRequest {
      * Query by which the results have to be filtered. Supported operators are
      * equals(`eq`), contains(`co`), starts with(`sw`) and not equals(`ne`).
      * Additionally, simple expressions can be formed using logical operators -
-     * `and` and `or`. The [SCIM
-     * RFC](https://tools.ietf.org/html/rfc7644#section-3.4.2.2) has more details
-     * but we currently only support simple expressions.
+     * `and` and `or`. The [SCIM RFC] has more details but we currently only
+     * support simple expressions.
+     *
+     * [SCIM RFC]: https://tools.ietf.org/html/rfc7644#section-3.4.2.2
      */
     filter?: string;
     /**
@@ -215,7 +243,7 @@ export interface ListUsersRequest {
     /**
      * The order to sort the results.
      */
-    sortOrder?: ListUsersSortOrder;
+    sortOrder?: ListSortOrder;
     /**
      * Specifies the index of the first result. First item is number 1.
      */
@@ -224,13 +252,13 @@ export interface ListUsersRequest {
 
 export interface ListUsersResponse {
     /**
-     * User objects returned in the response.
-     */
-    Resources?: Array<User>;
-    /**
      * Total results returned in the response.
      */
     itemsPerPage?: number;
+    /**
+     * User objects returned in the response.
+     */
+    Resources?: Array<User>;
     /**
      * Starting index of all the results that matched the request filters. First
      * item is number 1.
@@ -241,8 +269,6 @@ export interface ListUsersResponse {
      */
     totalResults?: number;
 }
-
-export type ListUsersSortOrder = "ascending" | "descending";
 
 export interface Name {
     /**
@@ -257,7 +283,7 @@ export interface Name {
 
 export interface PartialUpdate {
     /**
-     * Unique ID for a group in the <Workspace>.
+     * Unique ID for a group in the Databricks Account.
      */
     id: string;
     operations?: Array<Patch>;
@@ -293,8 +319,7 @@ export interface ServicePrincipal {
      */
     applicationId?: string;
     /**
-     * String that represents a concatenation of given and family names. For
-     * example `John Smith`.
+     * String that represents a concatenation of given and family names.
      */
     displayName?: string;
     entitlements?: Array<ComplexValue>;
@@ -336,12 +361,4 @@ export interface User {
     userName?: string;
 }
 
-export interface DeleteGroupResponse {}
-export interface DeleteServicePrincipalResponse {}
-export interface DeleteUserResponse {}
-export interface PatchGroupResponse {}
-export interface PatchServicePrincipalResponse {}
-export interface PatchUserResponse {}
-export interface ReplaceGroupResponse {}
-export interface ReplaceServicePrincipalResponse {}
-export interface ReplaceUserResponse {}
+export interface EmptyResponse {}

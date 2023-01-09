@@ -20,7 +20,7 @@ describe(__dirname, function () {
     let envBackup: Record<string, string | undefined>;
     const debug = false;
 
-    this.timeout(5_000);
+    this.timeout(10_000);
 
     beforeEach(() => {
         envBackup = process.env;

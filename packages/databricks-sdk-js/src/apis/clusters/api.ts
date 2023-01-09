@@ -23,12 +23,38 @@ export class ClustersError extends ApiError {
 }
 
 /**
- * <needs content added>
+ * The Clusters API allows you to create, start, edit, list, terminate, and
+ * delete clusters.
+ *
+ * Databricks maps cluster node instance types to compute units known as DBUs.
+ * See the instance type pricing page for a list of the supported instance types
+ * and their corresponding DBUs.
+ *
+ * A Databricks cluster is a set of computation resources and configurations on
+ * which you run data engineering, data science, and data analytics workloads,
+ * such as production ETL pipelines, streaming analytics, ad-hoc analytics, and
+ * machine learning.
+ *
+ * You run these workloads as a set of commands in a notebook or as an automated
+ * job. Databricks makes a distinction between all-purpose clusters and job
+ * clusters. You use all-purpose clusters to analyze data collaboratively using
+ * interactive notebooks. You use job clusters to run fast and robust automated
+ * jobs.
+ *
+ * You can create an all-purpose cluster using the UI, CLI, or REST API. You can
+ * manually terminate and restart an all-purpose cluster. Multiple users can
+ * share such clusters to do collaborative interactive analysis.
+ *
+ * IMPORTANT: Databricks retains cluster configuration information for up to 200
+ * all-purpose clusters terminated in the last 30 days and up to 30 job clusters
+ * recently terminated by the job scheduler. To keep an all-purpose cluster
+ * configuration even after it has been terminated for more than 30 days, an
+ * administrator can pin a cluster to the cluster list.
  */
 export class ClustersService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Change cluster owner
+     * Change cluster owner.
      *
      * Change the owner of the cluster. You must be an admin to perform this
      * operation.
@@ -37,24 +63,24 @@ export class ClustersService {
     async changeOwner(
         request: model.ChangeClusterOwner,
         @context context?: Context
-    ): Promise<model.ChangeClusterOwnerResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/clusters/change-owner";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.ChangeClusterOwnerResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
-     * Create new cluster
+     * Create new cluster.
      *
      * Creates a new Spark cluster. This method will acquire new instances from
      * the cloud provider if necessary. This method is asynchronous; the returned
-     * ``cluster_id`` can be used to poll the cluster status. When this method
-     * returns, the cluster will be in\na ``PENDING`` state. The cluster will be
-     * usable once it enters a ``RUNNING`` state.
+     * `cluster_id` can be used to poll the cluster status. When this method
+     * returns, the cluster will be in\na `PENDING` state. The cluster will be
+     * usable once it enters a `RUNNING` state.
      *
      * Note: Databricks may not be able to acquire some of the requested nodes,
      * due to cloud provider limitations (account limits, spot price, etc.) or
@@ -80,7 +106,7 @@ export class ClustersService {
 
     /**
      * create and wait to reach RUNNING state
-     *  or fail on reaching ERROR state
+     *  or fail on reaching ERROR or TERMINATED state
      */
     @withLogContext(ExposedLoggers.SDK)
     async createAndWait(
@@ -119,7 +145,8 @@ export class ClustersService {
                     case "RUNNING": {
                         return pollResponse;
                     }
-                    case "ERROR": {
+                    case "ERROR":
+                    case "TERMINATED": {
                         const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
                         context?.logger?.error(
                             `Clusters.createAndWait: ${errorMessage}`
@@ -142,25 +169,25 @@ export class ClustersService {
     }
 
     /**
-     * Terminate cluster
+     * Terminate cluster.
      *
      * Terminates the Spark cluster with the specified ID. The cluster is removed
      * asynchronously. Once the termination has completed, the cluster will be in
-     * a ``TERMINATED`` state. If the cluster is already in a ``TERMINATING`` or
-     * ``TERMINATED`` state, nothing will happen.
+     * a `TERMINATED` state. If the cluster is already in a `TERMINATING` or
+     * `TERMINATED` state, nothing will happen.
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
         request: model.DeleteCluster,
         @context context?: Context
-    ): Promise<model.DeleteClusterResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/clusters/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.DeleteClusterResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -227,19 +254,19 @@ export class ClustersService {
     }
 
     /**
-     * Update cluster configuration
+     * Update cluster configuration.
      *
      * Updates the configuration of a cluster to match the provided attributes
-     * and size. A cluster can be updated if it is in a ``RUNNING`` or
-     * ``TERMINATED`` state.
+     * and size. A cluster can be updated if it is in a `RUNNING` or `TERMINATED`
+     * state.
      *
-     * If a cluster is updated while in a ``RUNNING`` state, it will be restarted
+     * If a cluster is updated while in a `RUNNING` state, it will be restarted
      * so that the new attributes can take effect.
      *
-     * If a cluster is updated while in a ``TERMINATED`` state, it will remain
-     * ``TERMINATED``. The next time it is started using the ``clusters/start``
-     * API, the new attributes will take effect. Any attempt to update a cluster
-     * in any other state will be rejected with an ``INVALID_STATE`` error code.
+     * If a cluster is updated while in a `TERMINATED` state, it will remain
+     * `TERMINATED`. The next time it is started using the `clusters/start` API,
+     * the new attributes will take effect. Any attempt to update a cluster in
+     * any other state will be rejected with an `INVALID_STATE` error code.
      *
      * Clusters created by the Databricks Jobs service cannot be edited.
      */
@@ -247,19 +274,19 @@ export class ClustersService {
     async edit(
         request: model.EditCluster,
         @context context?: Context
-    ): Promise<model.EditClusterResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/clusters/edit";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EditClusterResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
      * edit and wait to reach RUNNING state
-     *  or fail on reaching ERROR state
+     *  or fail on reaching ERROR or TERMINATED state
      */
     @withLogContext(ExposedLoggers.SDK)
     async editAndWait(
@@ -298,7 +325,8 @@ export class ClustersService {
                     case "RUNNING": {
                         return pollResponse;
                     }
-                    case "ERROR": {
+                    case "ERROR":
+                    case "TERMINATED": {
                         const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
                         context?.logger?.error(
                             `Clusters.editAndWait: ${errorMessage}`
@@ -321,7 +349,7 @@ export class ClustersService {
     }
 
     /**
-     * List cluster activity events
+     * List cluster activity events.
      *
      * Retrieves a list of events about the activity of a cluster. This API is
      * paginated. If there are more events to read, the response includes all the
@@ -342,7 +370,7 @@ export class ClustersService {
     }
 
     /**
-     * Get cluster info
+     * Get cluster info.
      *
      * "Retrieves the information for a cluster given its identifier. Clusters
      * can be described while they are running, or up to 60 days after they are
@@ -350,7 +378,7 @@ export class ClustersService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.GetRequest,
+        request: model.Get,
         @context context?: Context
     ): Promise<model.ClusterInfo> {
         const path = "/api/2.0/clusters/get";
@@ -364,11 +392,11 @@ export class ClustersService {
 
     /**
      * get and wait to reach RUNNING state
-     *  or fail on reaching ERROR state
+     *  or fail on reaching ERROR or TERMINATED state
      */
     @withLogContext(ExposedLoggers.SDK)
     async getAndWait(
-        getRequest: model.GetRequest,
+        get: model.Get,
         options?: {
             timeout?: Time;
             onProgress?: (newPollResponse: model.ClusterInfo) => Promise<void>;
@@ -381,7 +409,7 @@ export class ClustersService {
         const {timeout, onProgress} = options;
         const cancellationToken = context?.cancellationToken;
 
-        const clusterInfo = await this.get(getRequest, context);
+        const clusterInfo = await this.get(get, context);
 
         return await retry<model.ClusterInfo>({
             timeout,
@@ -403,7 +431,8 @@ export class ClustersService {
                     case "RUNNING": {
                         return pollResponse;
                     }
-                    case "ERROR": {
+                    case "ERROR":
+                    case "TERMINATED": {
                         const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
                         context?.logger?.error(
                             `Clusters.getAndWait: ${errorMessage}`
@@ -426,7 +455,7 @@ export class ClustersService {
     }
 
     /**
-     * List all clusters
+     * List all clusters.
      *
      * Returns information about all pinned clusters, currently active clusters,
      * up to 70 of the most recently terminated interactive clusters in the past
@@ -441,7 +470,7 @@ export class ClustersService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(
-        request: model.ListRequest,
+        request: model.List,
         @context context?: Context
     ): Promise<model.ListClustersResponse> {
         const path = "/api/2.0/clusters/list";
@@ -454,7 +483,7 @@ export class ClustersService {
     }
 
     /**
-     * List node types
+     * List node types.
      *
      * Returns a list of supported Spark node types. These node types can be used
      * to launch a cluster.
@@ -473,7 +502,7 @@ export class ClustersService {
     }
 
     /**
-     * List availability zones
+     * List availability zones.
      *
      * Returns a list of availability zones where clusters can be created in (For
      * example, us-west-2a). These zones can be used to launch a cluster.
@@ -492,7 +521,7 @@ export class ClustersService {
     }
 
     /**
-     * Permanently delete cluster
+     * Permanently delete cluster.
      *
      * Permanently deletes a Spark cluster. This cluster is terminated and
      * resources are asynchronously removed.
@@ -505,18 +534,18 @@ export class ClustersService {
     async permanentDelete(
         request: model.PermanentDeleteCluster,
         @context context?: Context
-    ): Promise<model.PermanentDeleteClusterResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/clusters/permanent-delete";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.PermanentDeleteClusterResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
-     * Pin cluster
+     * Pin cluster.
      *
      * Pinning a cluster ensures that the cluster will always be returned by the
      * ListClusters API. Pinning a cluster that is already pinned will have no
@@ -526,18 +555,18 @@ export class ClustersService {
     async pin(
         request: model.PinCluster,
         @context context?: Context
-    ): Promise<model.PinClusterResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/clusters/pin";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.PinClusterResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
-     * Resize cluster
+     * Resize cluster.
      *
      * Resizes a cluster to have a desired number of workers. This will fail
      * unless the cluster is in a `RUNNING` state.
@@ -546,19 +575,19 @@ export class ClustersService {
     async resize(
         request: model.ResizeCluster,
         @context context?: Context
-    ): Promise<model.ResizeClusterResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/clusters/resize";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.ResizeClusterResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
      * resize and wait to reach RUNNING state
-     *  or fail on reaching ERROR state
+     *  or fail on reaching ERROR or TERMINATED state
      */
     @withLogContext(ExposedLoggers.SDK)
     async resizeAndWait(
@@ -597,7 +626,8 @@ export class ClustersService {
                     case "RUNNING": {
                         return pollResponse;
                     }
-                    case "ERROR": {
+                    case "ERROR":
+                    case "TERMINATED": {
                         const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
                         context?.logger?.error(
                             `Clusters.resizeAndWait: ${errorMessage}`
@@ -620,7 +650,7 @@ export class ClustersService {
     }
 
     /**
-     * Restart cluster
+     * Restart cluster.
      *
      * Restarts a Spark cluster with the supplied ID. If the cluster is not
      * currently in a `RUNNING` state, nothing will happen.
@@ -629,19 +659,19 @@ export class ClustersService {
     async restart(
         request: model.RestartCluster,
         @context context?: Context
-    ): Promise<model.RestartClusterResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/clusters/restart";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.RestartClusterResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
      * restart and wait to reach RUNNING state
-     *  or fail on reaching ERROR state
+     *  or fail on reaching ERROR or TERMINATED state
      */
     @withLogContext(ExposedLoggers.SDK)
     async restartAndWait(
@@ -682,7 +712,8 @@ export class ClustersService {
                     case "RUNNING": {
                         return pollResponse;
                     }
-                    case "ERROR": {
+                    case "ERROR":
+                    case "TERMINATED": {
                         const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
                         context?.logger?.error(
                             `Clusters.restartAndWait: ${errorMessage}`
@@ -705,7 +736,7 @@ export class ClustersService {
     }
 
     /**
-     * List available Spark versions
+     * List available Spark versions.
      *
      * Returns the list of available Spark versions. These versions can be used
      * to launch a cluster.
@@ -724,7 +755,7 @@ export class ClustersService {
     }
 
     /**
-     * Start terminated cluster
+     * Start terminated cluster.
      *
      * Starts a terminated Spark cluster with the supplied ID. This works similar
      * to `createCluster` except:
@@ -732,26 +763,26 @@ export class ClustersService {
      * * The previous cluster id and attributes are preserved. * The cluster
      * starts with the last specified cluster size. * If the previous cluster was
      * an autoscaling cluster, the current cluster starts with the minimum number
-     * of nodes. * If the cluster is not currently in a ``TERMINATED`` state,
+     * of nodes. * If the cluster is not currently in a `TERMINATED` state,
      * nothing will happen. * Clusters launched to run a job cannot be started.
      */
     @withLogContext(ExposedLoggers.SDK)
     async start(
         request: model.StartCluster,
         @context context?: Context
-    ): Promise<model.StartClusterResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/clusters/start";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.StartClusterResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
      * start and wait to reach RUNNING state
-     *  or fail on reaching ERROR state
+     *  or fail on reaching ERROR or TERMINATED state
      */
     @withLogContext(ExposedLoggers.SDK)
     async startAndWait(
@@ -790,7 +821,8 @@ export class ClustersService {
                     case "RUNNING": {
                         return pollResponse;
                     }
-                    case "ERROR": {
+                    case "ERROR":
+                    case "TERMINATED": {
                         const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
                         context?.logger?.error(
                             `Clusters.startAndWait: ${errorMessage}`
@@ -813,7 +845,7 @@ export class ClustersService {
     }
 
     /**
-     * Unpin cluster
+     * Unpin cluster.
      *
      * Unpinning a cluster will allow the cluster to eventually be removed from
      * the ListClusters API. Unpinning a cluster that is not pinned will have no
@@ -823,13 +855,131 @@ export class ClustersService {
     async unpin(
         request: model.UnpinCluster,
         @context context?: Context
-    ): Promise<model.UnpinClusterResponse> {
+    ): Promise<model.EmptyResponse> {
         const path = "/api/2.0/clusters/unpin";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.UnpinClusterResponse;
+        )) as model.EmptyResponse;
+    }
+}
+
+export class InstanceProfilesRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("InstanceProfiles", method, message);
+    }
+}
+export class InstanceProfilesError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("InstanceProfiles", method, message);
+    }
+}
+
+/**
+ * The Instance Profiles API allows admins to add, list, and remove instance
+ * profiles that users can launch clusters with. Regular users can list the
+ * instance profiles available to them. See [Secure access to S3 buckets] using
+ * instance profiles for more information.
+ *
+ * [Secure access to S3 buckets]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/instance-profiles.html
+ */
+export class InstanceProfilesService {
+    constructor(readonly client: ApiClient) {}
+    /**
+     * Register an instance profile.
+     *
+     * In the UI, you can select the instance profile when launching clusters.
+     * This API is only available to admin users.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async add(
+        request: model.AddInstanceProfile,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/instance-profiles/add";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
+     * Edit an instance profile.
+     *
+     * The only supported field to change is the optional IAM role ARN associated
+     * with the instance profile. It is required to specify the IAM role ARN if
+     * both of the following are true:
+     *
+     * * Your role name and instance profile name do not match. The name is the
+     * part after the last slash in each ARN. * You want to use the instance
+     * profile with [Databricks SQL Serverless].
+     *
+     * To understand where these fields are in the AWS console, see [Enable
+     * serverless SQL warehouses].
+     *
+     * This API is only available to admin users.
+     *
+     * [Databricks SQL Serverless]: https://docs.databricks.com/sql/admin/serverless.html
+     * [Enable serverless SQL warehouses]: https://docs.databricks.com/sql/admin/serverless.html
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async edit(
+        request: model.InstanceProfile,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/instance-profiles/edit";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
+     * List available instance profiles.
+     *
+     * List the instance profiles that the calling user can use to launch a
+     * cluster.
+     *
+     * This API is available to all users.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        @context context?: Context
+    ): Promise<model.ListInstanceProfilesResponse> {
+        const path = "/api/2.0/instance-profiles/list";
+        return (await this.client.request(
+            path,
+            "GET",
+            undefined,
+            context
+        )) as model.ListInstanceProfilesResponse;
+    }
+
+    /**
+     * Remove the instance profile.
+     *
+     * Remove the instance profile with the provided ARN. Existing clusters with
+     * this instance profile will continue to function.
+     *
+     * This API is only accessible to admin users.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async remove(
+        request: model.RemoveInstanceProfile,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/instance-profiles/remove";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
     }
 }

@@ -1,19 +1,4 @@
 {
-    "includeTags": [
-        "Clusters",
-        "Jobs",
-        "Repos",
-        "Workspace",
-        "Dbfs",
-        "Permissions",
-        "Workspace Conf",
-        "Users",
-        "Groups",
-        "CurrentUser",
-        "Service Principals",
-        "ManagedLibraries",
-        "Command Execution"
-    ],
     "formatter": "yarn fix",
     "packages": {
         ".codegen/api.ts.tmpl": "{{.Name}}/api.ts",
