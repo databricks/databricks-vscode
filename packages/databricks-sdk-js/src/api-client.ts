@@ -98,7 +98,7 @@ export class ApiClient {
         method: HttpMethod,
         payload?: any,
         @context context?: Context
-    ): Promise<Record<string, unknown>> {
+    ): Promise<unknown> {
         const headers: Headers = {
             "User-Agent": this.userAgent(),
             "Content-Type": "text/json",

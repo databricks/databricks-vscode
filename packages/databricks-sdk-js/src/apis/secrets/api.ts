@@ -56,7 +56,7 @@ export class SecretsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -80,7 +80,7 @@ export class SecretsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -103,7 +103,7 @@ export class SecretsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -127,7 +127,7 @@ export class SecretsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -151,7 +151,7 @@ export class SecretsService {
             "GET",
             request,
             context
-        )) as unknown as model.AclItem;
+        )) as model.AclItem;
     }
 
     /**
@@ -175,7 +175,7 @@ export class SecretsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListAclsResponse;
+        )) as model.ListAclsResponse;
     }
 
     /**
@@ -196,7 +196,7 @@ export class SecretsService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListScopesResponse;
+        )) as model.ListScopesResponse;
     }
 
     /**
@@ -222,7 +222,7 @@ export class SecretsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListSecretsResponse;
+        )) as model.ListSecretsResponse;
     }
 
     /**
@@ -267,7 +267,7 @@ export class SecretsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -305,6 +305,6 @@ export class SecretsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

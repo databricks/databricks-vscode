@@ -45,7 +45,7 @@ export class TokenManagementService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateOboTokenResponse;
+        )) as model.CreateOboTokenResponse;
     }
 
     /**
@@ -64,7 +64,7 @@ export class TokenManagementService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -83,7 +83,7 @@ export class TokenManagementService {
             "GET",
             request,
             context
-        )) as unknown as model.TokenInfo;
+        )) as model.TokenInfo;
     }
 
     /**
@@ -102,6 +102,6 @@ export class TokenManagementService {
             "GET",
             request,
             context
-        )) as unknown as model.ListTokensResponse;
+        )) as model.ListTokensResponse;
     }
 }

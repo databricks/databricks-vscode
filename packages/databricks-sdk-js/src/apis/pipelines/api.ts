@@ -58,7 +58,7 @@ export class PipelinesService {
             "POST",
             request,
             context
-        )) as unknown as model.CreatePipelineResponse;
+        )) as model.CreatePipelineResponse;
     }
 
     /**
@@ -77,7 +77,7 @@ export class PipelinesService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -94,7 +94,7 @@ export class PipelinesService {
             "GET",
             request,
             context
-        )) as unknown as model.GetPipelineResponse;
+        )) as model.GetPipelineResponse;
     }
 
     /**
@@ -178,7 +178,7 @@ export class PipelinesService {
             "GET",
             request,
             context
-        )) as unknown as model.GetUpdateResponse;
+        )) as model.GetUpdateResponse;
     }
 
     /**
@@ -197,7 +197,7 @@ export class PipelinesService {
             "GET",
             request,
             context
-        )) as unknown as model.ListPipelinesResponse;
+        )) as model.ListPipelinesResponse;
     }
 
     /**
@@ -216,7 +216,7 @@ export class PipelinesService {
             "GET",
             request,
             context
-        )) as unknown as model.ListUpdatesResponse;
+        )) as model.ListUpdatesResponse;
     }
 
     /**
@@ -235,7 +235,7 @@ export class PipelinesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -319,7 +319,7 @@ export class PipelinesService {
             "POST",
             request,
             context
-        )) as unknown as model.StartUpdateResponse;
+        )) as model.StartUpdateResponse;
     }
 
     /**
@@ -338,7 +338,7 @@ export class PipelinesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -422,6 +422,6 @@ export class PipelinesService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

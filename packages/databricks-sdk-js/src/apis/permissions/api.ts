@@ -45,7 +45,7 @@ export class PermissionsService {
             "GET",
             request,
             context
-        )) as unknown as model.ObjectPermissions;
+        )) as model.ObjectPermissions;
     }
 
     /**
@@ -64,7 +64,7 @@ export class PermissionsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetPermissionLevelsResponse;
+        )) as model.GetPermissionLevelsResponse;
     }
 
     /**
@@ -84,7 +84,7 @@ export class PermissionsService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -103,7 +103,7 @@ export class PermissionsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -139,7 +139,7 @@ export class WorkspaceAssignmentService {
             "POST",
             request,
             context
-        )) as unknown as model.WorkspaceAssignmentsCreated;
+        )) as model.WorkspaceAssignmentsCreated;
     }
 
     /**
@@ -159,7 +159,7 @@ export class WorkspaceAssignmentService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -179,7 +179,7 @@ export class WorkspaceAssignmentService {
             "GET",
             request,
             context
-        )) as unknown as model.WorkspacePermissions;
+        )) as model.WorkspacePermissions;
     }
 
     /**
@@ -199,7 +199,7 @@ export class WorkspaceAssignmentService {
             "GET",
             request,
             context
-        )) as unknown as model.PermissionAssignments;
+        )) as model.PermissionAssignments;
     }
 
     /**
@@ -219,6 +219,6 @@ export class WorkspaceAssignmentService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

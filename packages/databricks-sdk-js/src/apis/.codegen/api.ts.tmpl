@@ -55,7 +55,7 @@ export class {{$s.PascalName}}Service {
 				"{{.Verb}}",
 				{{if .Request -}}request{{else}}undefined{{end}}, 
 				context
-			) as unknown as {{if .Response}}{{if .Response.ArrayValue}}Array<model.{{.Response.ArrayValue.PascalName}}>{{else}}model.{{.Response.PascalName}}{{end}}{{else}}model.EmptyResponse{{end}})
+			) as {{if .Response}}{{if .Response.ArrayValue}}Array<model.{{.Response.ArrayValue.PascalName}}>{{else}}model.{{.Response.PascalName}}{{end}}{{else}}model.EmptyResponse{{end}})
 		}
 
 	{{if .Wait}}

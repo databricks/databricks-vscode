@@ -66,7 +66,7 @@ export class ClusterPoliciesService {
             "POST",
             request,
             context
-        )) as unknown as model.CreatePolicyResponse;
+        )) as model.CreatePolicyResponse;
     }
 
     /**
@@ -86,7 +86,7 @@ export class ClusterPoliciesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -106,7 +106,7 @@ export class ClusterPoliciesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -126,7 +126,7 @@ export class ClusterPoliciesService {
             "GET",
             request,
             context
-        )) as unknown as model.Policy;
+        )) as model.Policy;
     }
 
     /**
@@ -145,7 +145,7 @@ export class ClusterPoliciesService {
             "GET",
             request,
             context
-        )) as unknown as model.ListPoliciesResponse;
+        )) as model.ListPoliciesResponse;
     }
 }
 
@@ -187,7 +187,7 @@ export class PolicyFamiliesService {
             "GET",
             request,
             context
-        )) as unknown as model.PolicyFamily;
+        )) as model.PolicyFamily;
     }
 
     /**
@@ -204,6 +204,6 @@ export class PolicyFamiliesService {
             "GET",
             request,
             context
-        )) as unknown as model.ListPolicyFamiliesResponse;
+        )) as model.ListPolicyFamiliesResponse;
     }
 }

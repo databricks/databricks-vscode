@@ -48,7 +48,7 @@ export class BillableUsageService {
             "GET",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -85,7 +85,7 @@ export class BudgetsService {
             "POST",
             request,
             context
-        )) as unknown as model.WrappedBudgetWithStatus;
+        )) as model.WrappedBudgetWithStatus;
     }
 
     /**
@@ -104,7 +104,7 @@ export class BudgetsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -124,7 +124,7 @@ export class BudgetsService {
             "GET",
             request,
             context
-        )) as unknown as model.WrappedBudgetWithStatus;
+        )) as model.WrappedBudgetWithStatus;
     }
 
     /**
@@ -141,7 +141,7 @@ export class BudgetsService {
             "GET",
             undefined,
             context
-        )) as unknown as model.BudgetList;
+        )) as model.BudgetList;
     }
 
     /**
@@ -161,7 +161,7 @@ export class BudgetsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -282,7 +282,7 @@ export class LogDeliveryService {
             "POST",
             request,
             context
-        )) as unknown as model.WrappedLogDeliveryConfiguration;
+        )) as model.WrappedLogDeliveryConfiguration;
     }
 
     /**
@@ -302,7 +302,7 @@ export class LogDeliveryService {
             "GET",
             request,
             context
-        )) as unknown as model.WrappedLogDeliveryConfiguration;
+        )) as model.WrappedLogDeliveryConfiguration;
     }
 
     /**
@@ -322,7 +322,7 @@ export class LogDeliveryService {
             "GET",
             request,
             context
-        )) as unknown as model.WrappedLogDeliveryConfigurations;
+        )) as model.WrappedLogDeliveryConfigurations;
     }
 
     /**
@@ -346,6 +346,6 @@ export class LogDeliveryService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

@@ -60,7 +60,7 @@ export class CredentialsService {
             "POST",
             request,
             context
-        )) as unknown as model.Credential;
+        )) as model.Credential;
     }
 
     /**
@@ -81,7 +81,7 @@ export class CredentialsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -101,7 +101,7 @@ export class CredentialsService {
             "GET",
             request,
             context
-        )) as unknown as model.Credential;
+        )) as model.Credential;
     }
 
     /**
@@ -118,7 +118,7 @@ export class CredentialsService {
             "GET",
             undefined,
             context
-        )) as unknown as Array<model.Credential>;
+        )) as Array<model.Credential>;
     }
 }
 
@@ -184,7 +184,7 @@ export class EncryptionKeysService {
             "POST",
             request,
             context
-        )) as unknown as model.CustomerManagedKey;
+        )) as model.CustomerManagedKey;
     }
 
     /**
@@ -204,7 +204,7 @@ export class EncryptionKeysService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -237,7 +237,7 @@ export class EncryptionKeysService {
             "GET",
             request,
             context
-        )) as unknown as model.CustomerManagedKey;
+        )) as model.CustomerManagedKey;
     }
 
     /**
@@ -267,7 +267,7 @@ export class EncryptionKeysService {
             "GET",
             undefined,
             context
-        )) as unknown as Array<model.CustomerManagedKey>;
+        )) as Array<model.CustomerManagedKey>;
     }
 }
 
@@ -326,7 +326,7 @@ export class NetworksService {
             "POST",
             request,
             context
-        )) as unknown as model.Network;
+        )) as model.Network;
     }
 
     /**
@@ -350,7 +350,7 @@ export class NetworksService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -376,7 +376,7 @@ export class NetworksService {
             "GET",
             request,
             context
-        )) as unknown as model.Network;
+        )) as model.Network;
     }
 
     /**
@@ -396,7 +396,7 @@ export class NetworksService {
             "GET",
             undefined,
             context
-        )) as unknown as Array<model.Network>;
+        )) as Array<model.Network>;
     }
 }
 
@@ -459,7 +459,7 @@ export class PrivateAccessService {
             "POST",
             request,
             context
-        )) as unknown as model.PrivateAccessSettings;
+        )) as model.PrivateAccessSettings;
     }
 
     /**
@@ -490,7 +490,7 @@ export class PrivateAccessService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -521,7 +521,7 @@ export class PrivateAccessService {
             "GET",
             request,
             context
-        )) as unknown as model.PrivateAccessSettings;
+        )) as model.PrivateAccessSettings;
     }
 
     /**
@@ -545,7 +545,7 @@ export class PrivateAccessService {
             "GET",
             undefined,
             context
-        )) as unknown as Array<model.PrivateAccessSettings>;
+        )) as Array<model.PrivateAccessSettings>;
     }
 
     /**
@@ -588,7 +588,7 @@ export class PrivateAccessService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -638,7 +638,7 @@ export class StorageService {
             "POST",
             request,
             context
-        )) as unknown as model.StorageConfiguration;
+        )) as model.StorageConfiguration;
     }
 
     /**
@@ -658,7 +658,7 @@ export class StorageService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -678,7 +678,7 @@ export class StorageService {
             "GET",
             request,
             context
-        )) as unknown as model.StorageConfiguration;
+        )) as model.StorageConfiguration;
     }
 
     /**
@@ -697,7 +697,7 @@ export class StorageService {
             "GET",
             undefined,
             context
-        )) as unknown as Array<model.StorageConfiguration>;
+        )) as Array<model.StorageConfiguration>;
     }
 }
 
@@ -771,7 +771,7 @@ export class VpcEndpointsService {
             "POST",
             request,
             context
-        )) as unknown as model.VpcEndpoint;
+        )) as model.VpcEndpoint;
     }
 
     /**
@@ -808,7 +808,7 @@ export class VpcEndpointsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -837,7 +837,7 @@ export class VpcEndpointsService {
             "GET",
             request,
             context
-        )) as unknown as model.VpcEndpoint;
+        )) as model.VpcEndpoint;
     }
 
     /**
@@ -863,7 +863,7 @@ export class VpcEndpointsService {
             "GET",
             undefined,
             context
-        )) as unknown as Array<model.VpcEndpoint>;
+        )) as Array<model.VpcEndpoint>;
     }
 }
 
@@ -940,7 +940,7 @@ export class WorkspacesService {
             "POST",
             request,
             context
-        )) as unknown as model.Workspace;
+        )) as model.Workspace;
     }
 
     /**
@@ -1035,7 +1035,7 @@ export class WorkspacesService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1068,7 +1068,7 @@ export class WorkspacesService {
             "GET",
             request,
             context
-        )) as unknown as model.Workspace;
+        )) as model.Workspace;
     }
 
     /**
@@ -1088,7 +1088,7 @@ export class WorkspacesService {
             "GET",
             undefined,
             context
-        )) as unknown as Array<model.Workspace>;
+        )) as Array<model.Workspace>;
     }
 
     /**
@@ -1211,7 +1211,7 @@ export class WorkspacesService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**

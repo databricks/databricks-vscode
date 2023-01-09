@@ -47,7 +47,12 @@ describe(__filename, () => {
         mockedWorkspaceClient = mock(WorkspaceClient);
 
         when<cluster.ListClustersResponse>(
-            mockedApiClient.request(anyString(), "GET", anything(), anything())
+            mockedApiClient.request(
+                anyString(),
+                "GET",
+                anything(),
+                anything()
+            ) as Promise<cluster.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);
 
         when(mockedWorkspaceClient.apiClient).thenReturn(

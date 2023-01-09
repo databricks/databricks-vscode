@@ -51,7 +51,7 @@ export class CatalogsService {
             "POST",
             request,
             context
-        )) as unknown as model.CatalogInfo;
+        )) as model.CatalogInfo;
     }
 
     /**
@@ -71,7 +71,7 @@ export class CatalogsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -92,7 +92,7 @@ export class CatalogsService {
             "GET",
             request,
             context
-        )) as unknown as model.CatalogInfo;
+        )) as model.CatalogInfo;
     }
 
     /**
@@ -113,7 +113,7 @@ export class CatalogsService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListCatalogsResponse;
+        )) as model.ListCatalogsResponse;
     }
 
     /**
@@ -134,7 +134,7 @@ export class CatalogsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.CatalogInfo;
+        )) as model.CatalogInfo;
     }
 }
 
@@ -184,7 +184,7 @@ export class ExternalLocationsService {
             "POST",
             request,
             context
-        )) as unknown as model.ExternalLocationInfo;
+        )) as model.ExternalLocationInfo;
     }
 
     /**
@@ -204,7 +204,7 @@ export class ExternalLocationsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -225,7 +225,7 @@ export class ExternalLocationsService {
             "GET",
             request,
             context
-        )) as unknown as model.ExternalLocationInfo;
+        )) as model.ExternalLocationInfo;
     }
 
     /**
@@ -245,7 +245,7 @@ export class ExternalLocationsService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListExternalLocationsResponse;
+        )) as model.ListExternalLocationsResponse;
     }
 
     /**
@@ -266,7 +266,7 @@ export class ExternalLocationsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.ExternalLocationInfo;
+        )) as model.ExternalLocationInfo;
     }
 }
 
@@ -316,7 +316,7 @@ export class GrantsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetPermissionsResponse;
+        )) as model.GetPermissionsResponse;
     }
 
     /**
@@ -335,7 +335,7 @@ export class GrantsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -386,7 +386,7 @@ export class MetastoresService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -405,7 +405,7 @@ export class MetastoresService {
             "POST",
             request,
             context
-        )) as unknown as model.MetastoreInfo;
+        )) as model.MetastoreInfo;
     }
 
     /**
@@ -424,7 +424,7 @@ export class MetastoresService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -444,7 +444,7 @@ export class MetastoresService {
             "GET",
             request,
             context
-        )) as unknown as model.MetastoreInfo;
+        )) as model.MetastoreInfo;
     }
 
     /**
@@ -463,7 +463,7 @@ export class MetastoresService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListMetastoresResponse;
+        )) as model.ListMetastoresResponse;
     }
 
     /**
@@ -483,7 +483,7 @@ export class MetastoresService {
             "GET",
             undefined,
             context
-        )) as unknown as model.GetMetastoreSummaryResponse;
+        )) as model.GetMetastoreSummaryResponse;
     }
 
     /**
@@ -503,7 +503,7 @@ export class MetastoresService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -523,7 +523,7 @@ export class MetastoresService {
             "PATCH",
             request,
             context
-        )) as unknown as model.MetastoreInfo;
+        )) as model.MetastoreInfo;
     }
 
     /**
@@ -546,7 +546,7 @@ export class MetastoresService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -583,7 +583,7 @@ export class ProvidersService {
             "POST",
             request,
             context
-        )) as unknown as model.ProviderInfo;
+        )) as model.ProviderInfo;
     }
 
     /**
@@ -603,7 +603,7 @@ export class ProvidersService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -624,7 +624,7 @@ export class ProvidersService {
             "GET",
             request,
             context
-        )) as unknown as model.ProviderInfo;
+        )) as model.ProviderInfo;
     }
 
     /**
@@ -645,7 +645,7 @@ export class ProvidersService {
             "GET",
             request,
             context
-        )) as unknown as model.ListProvidersResponse;
+        )) as model.ListProvidersResponse;
     }
 
     /**
@@ -666,7 +666,7 @@ export class ProvidersService {
             "GET",
             request,
             context
-        )) as unknown as model.ListProviderSharesResponse;
+        )) as model.ListProviderSharesResponse;
     }
 
     /**
@@ -688,7 +688,7 @@ export class ProvidersService {
             "PATCH",
             request,
             context
-        )) as unknown as model.ProviderInfo;
+        )) as model.ProviderInfo;
     }
 }
 
@@ -724,7 +724,7 @@ export class RecipientActivationService {
             "GET",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -744,7 +744,7 @@ export class RecipientActivationService {
             "GET",
             request,
             context
-        )) as unknown as model.RetrieveTokenResponse;
+        )) as model.RetrieveTokenResponse;
     }
 }
 
@@ -782,7 +782,7 @@ export class RecipientsService {
             "POST",
             request,
             context
-        )) as unknown as model.RecipientInfo;
+        )) as model.RecipientInfo;
     }
 
     /**
@@ -802,7 +802,7 @@ export class RecipientsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -824,7 +824,7 @@ export class RecipientsService {
             "GET",
             request,
             context
-        )) as unknown as model.RecipientInfo;
+        )) as model.RecipientInfo;
     }
 
     /**
@@ -845,7 +845,7 @@ export class RecipientsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListRecipientsResponse;
+        )) as model.ListRecipientsResponse;
     }
 
     /**
@@ -866,7 +866,7 @@ export class RecipientsService {
             "POST",
             request,
             context
-        )) as unknown as model.RecipientInfo;
+        )) as model.RecipientInfo;
     }
 
     /**
@@ -886,7 +886,7 @@ export class RecipientsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetRecipientSharePermissionsResponse;
+        )) as model.GetRecipientSharePermissionsResponse;
     }
 
     /**
@@ -908,7 +908,7 @@ export class RecipientsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -950,7 +950,7 @@ export class SchemasService {
             "POST",
             request,
             context
-        )) as unknown as model.SchemaInfo;
+        )) as model.SchemaInfo;
     }
 
     /**
@@ -970,7 +970,7 @@ export class SchemasService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -991,7 +991,7 @@ export class SchemasService {
             "GET",
             request,
             context
-        )) as unknown as model.SchemaInfo;
+        )) as model.SchemaInfo;
     }
 
     /**
@@ -1013,7 +1013,7 @@ export class SchemasService {
             "GET",
             request,
             context
-        )) as unknown as model.ListSchemasResponse;
+        )) as model.ListSchemasResponse;
     }
 
     /**
@@ -1036,7 +1036,7 @@ export class SchemasService {
             "PATCH",
             request,
             context
-        )) as unknown as model.SchemaInfo;
+        )) as model.SchemaInfo;
     }
 }
 
@@ -1074,7 +1074,7 @@ export class SharesService {
             "POST",
             request,
             context
-        )) as unknown as model.ShareInfo;
+        )) as model.ShareInfo;
     }
 
     /**
@@ -1094,7 +1094,7 @@ export class SharesService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1114,7 +1114,7 @@ export class SharesService {
             "GET",
             request,
             context
-        )) as unknown as model.ShareInfo;
+        )) as model.ShareInfo;
     }
 
     /**
@@ -1131,7 +1131,7 @@ export class SharesService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListSharesResponse;
+        )) as model.ListSharesResponse;
     }
 
     /**
@@ -1151,7 +1151,7 @@ export class SharesService {
             "GET",
             request,
             context
-        )) as unknown as model.GetSharePermissionsResponse;
+        )) as model.GetSharePermissionsResponse;
     }
 
     /**
@@ -1184,7 +1184,7 @@ export class SharesService {
             "PATCH",
             request,
             context
-        )) as unknown as model.ShareInfo;
+        )) as model.ShareInfo;
     }
 
     /**
@@ -1207,7 +1207,7 @@ export class SharesService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -1263,7 +1263,7 @@ export class StorageCredentialsService {
             "POST",
             request,
             context
-        )) as unknown as model.StorageCredentialInfo;
+        )) as model.StorageCredentialInfo;
     }
 
     /**
@@ -1283,7 +1283,7 @@ export class StorageCredentialsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1304,7 +1304,7 @@ export class StorageCredentialsService {
             "GET",
             request,
             context
-        )) as unknown as model.StorageCredentialInfo;
+        )) as model.StorageCredentialInfo;
     }
 
     /**
@@ -1325,7 +1325,7 @@ export class StorageCredentialsService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListStorageCredentialsResponse;
+        )) as model.ListStorageCredentialsResponse;
     }
 
     /**
@@ -1346,7 +1346,7 @@ export class StorageCredentialsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.StorageCredentialInfo;
+        )) as model.StorageCredentialInfo;
     }
 }
 
@@ -1393,7 +1393,7 @@ export class TablesService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1416,7 +1416,7 @@ export class TablesService {
             "GET",
             request,
             context
-        )) as unknown as model.TableInfo;
+        )) as model.TableInfo;
     }
 
     /**
@@ -1439,7 +1439,7 @@ export class TablesService {
             "GET",
             request,
             context
-        )) as unknown as model.ListTablesResponse;
+        )) as model.ListTablesResponse;
     }
 
     /**
@@ -1467,6 +1467,6 @@ export class TablesService {
             "GET",
             request,
             context
-        )) as unknown as model.ListTableSummariesResponse;
+        )) as model.ListTableSummariesResponse;
     }
 }

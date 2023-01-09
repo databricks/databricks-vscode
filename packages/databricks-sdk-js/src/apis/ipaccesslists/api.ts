@@ -78,7 +78,7 @@ export class IpAccessListsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateIpAccessListResponse;
+        )) as model.CreateIpAccessListResponse;
     }
 
     /**
@@ -97,7 +97,7 @@ export class IpAccessListsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -116,7 +116,7 @@ export class IpAccessListsService {
             "GET",
             request,
             context
-        )) as unknown as model.FetchIpAccessListResponse;
+        )) as model.FetchIpAccessListResponse;
     }
 
     /**
@@ -134,7 +134,7 @@ export class IpAccessListsService {
             "GET",
             undefined,
             context
-        )) as unknown as model.GetIpAccessListResponse;
+        )) as model.GetIpAccessListResponse;
     }
 
     /**
@@ -163,7 +163,7 @@ export class IpAccessListsService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -197,6 +197,6 @@ export class IpAccessListsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

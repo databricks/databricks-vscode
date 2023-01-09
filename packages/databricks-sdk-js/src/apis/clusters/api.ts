@@ -70,7 +70,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -101,7 +101,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateClusterResponse;
+        )) as model.CreateClusterResponse;
     }
 
     /**
@@ -187,7 +187,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -281,7 +281,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -366,7 +366,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.GetEventsResponse;
+        )) as model.GetEventsResponse;
     }
 
     /**
@@ -387,7 +387,7 @@ export class ClustersService {
             "GET",
             request,
             context
-        )) as unknown as model.ClusterInfo;
+        )) as model.ClusterInfo;
     }
 
     /**
@@ -479,7 +479,7 @@ export class ClustersService {
             "GET",
             request,
             context
-        )) as unknown as model.ListClustersResponse;
+        )) as model.ListClustersResponse;
     }
 
     /**
@@ -498,7 +498,7 @@ export class ClustersService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListNodeTypesResponse;
+        )) as model.ListNodeTypesResponse;
     }
 
     /**
@@ -517,7 +517,7 @@ export class ClustersService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListAvailableZonesResponse;
+        )) as model.ListAvailableZonesResponse;
     }
 
     /**
@@ -541,7 +541,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -562,7 +562,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -582,7 +582,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -666,7 +666,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -751,7 +751,7 @@ export class ClustersService {
             "GET",
             undefined,
             context
-        )) as unknown as model.GetSparkVersionsResponse;
+        )) as model.GetSparkVersionsResponse;
     }
 
     /**
@@ -777,7 +777,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -862,7 +862,7 @@ export class ClustersService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -904,7 +904,7 @@ export class InstanceProfilesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -937,7 +937,7 @@ export class InstanceProfilesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -958,7 +958,7 @@ export class InstanceProfilesService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListInstanceProfilesResponse;
+        )) as model.ListInstanceProfilesResponse;
     }
 
     /**
@@ -980,6 +980,6 @@ export class InstanceProfilesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

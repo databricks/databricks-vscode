@@ -46,7 +46,7 @@ export class CommandExecutionService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -143,7 +143,7 @@ export class CommandExecutionService {
             "GET",
             request,
             context
-        )) as unknown as model.CommandStatusResponse;
+        )) as model.CommandStatusResponse;
     }
 
     /**
@@ -162,7 +162,7 @@ export class CommandExecutionService {
             "GET",
             request,
             context
-        )) as unknown as model.ContextStatusResponse;
+        )) as model.ContextStatusResponse;
     }
 
     /**
@@ -183,7 +183,7 @@ export class CommandExecutionService {
             "POST",
             request,
             context
-        )) as unknown as model.Created;
+        )) as model.Created;
     }
 
     /**
@@ -276,7 +276,7 @@ export class CommandExecutionService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -299,7 +299,7 @@ export class CommandExecutionService {
             "POST",
             request,
             context
-        )) as unknown as model.Created;
+        )) as model.Created;
     }
 
     /**

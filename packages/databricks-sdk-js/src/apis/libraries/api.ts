@@ -64,7 +64,7 @@ export class LibrariesService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListAllClusterLibraryStatusesResponse;
+        )) as model.ListAllClusterLibraryStatusesResponse;
     }
 
     /**
@@ -97,7 +97,7 @@ export class LibrariesService {
             "GET",
             request,
             context
-        )) as unknown as model.ClusterLibraryStatuses;
+        )) as model.ClusterLibraryStatuses;
     }
 
     /**
@@ -122,7 +122,7 @@ export class LibrariesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -143,6 +143,6 @@ export class LibrariesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

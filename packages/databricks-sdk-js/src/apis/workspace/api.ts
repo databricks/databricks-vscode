@@ -54,7 +54,7 @@ export class WorkspaceService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -80,7 +80,7 @@ export class WorkspaceService {
             "GET",
             request,
             context
-        )) as unknown as model.ExportResponse;
+        )) as model.ExportResponse;
     }
 
     /**
@@ -100,7 +100,7 @@ export class WorkspaceService {
             "GET",
             request,
             context
-        )) as unknown as model.ObjectInfo;
+        )) as model.ObjectInfo;
     }
 
     /**
@@ -122,7 +122,7 @@ export class WorkspaceService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -143,7 +143,7 @@ export class WorkspaceService {
             "GET",
             request,
             context
-        )) as unknown as model.ListResponse;
+        )) as model.ListResponse;
     }
 
     /**
@@ -167,6 +167,6 @@ export class WorkspaceService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

@@ -49,7 +49,7 @@ export class ExperimentsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateExperimentResponse;
+        )) as model.CreateExperimentResponse;
     }
 
     /**
@@ -70,7 +70,7 @@ export class ExperimentsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -89,7 +89,7 @@ export class ExperimentsService {
             "GET",
             request,
             context
-        )) as unknown as model.Experiment;
+        )) as model.Experiment;
     }
 
     /**
@@ -116,7 +116,7 @@ export class ExperimentsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetExperimentByNameResponse;
+        )) as model.GetExperimentByNameResponse;
     }
 
     /**
@@ -135,7 +135,7 @@ export class ExperimentsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListExperimentsResponse;
+        )) as model.ListExperimentsResponse;
     }
 
     /**
@@ -158,7 +158,7 @@ export class ExperimentsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -177,7 +177,7 @@ export class ExperimentsService {
             "POST",
             request,
             context
-        )) as unknown as model.SearchExperimentsResponse;
+        )) as model.SearchExperimentsResponse;
     }
 
     /**
@@ -197,7 +197,7 @@ export class ExperimentsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -216,7 +216,7 @@ export class ExperimentsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -254,7 +254,7 @@ export class MLflowArtifactsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListArtifactsResponse;
+        )) as model.ListArtifactsResponse;
     }
 }
 
@@ -295,7 +295,7 @@ export class MLflowDatabricksService {
             "GET",
             request,
             context
-        )) as unknown as model.GetResponse;
+        )) as model.GetResponse;
     }
 
     /**
@@ -319,7 +319,7 @@ export class MLflowDatabricksService {
             "POST",
             request,
             context
-        )) as unknown as model.TransitionStageResponse;
+        )) as model.TransitionStageResponse;
     }
 }
 
@@ -355,7 +355,7 @@ export class MLflowMetricsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetMetricHistoryResponse;
+        )) as model.GetMetricHistoryResponse;
     }
 }
 
@@ -394,7 +394,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateRunResponse;
+        )) as model.CreateRunResponse;
     }
 
     /**
@@ -413,7 +413,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -433,7 +433,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -457,7 +457,7 @@ export class MLflowRunsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetRunResponse;
+        )) as model.GetRunResponse;
     }
 
     /**
@@ -514,7 +514,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -535,7 +535,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -555,7 +555,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -577,7 +577,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -596,7 +596,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -617,7 +617,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.SearchRunsResponse;
+        )) as model.SearchRunsResponse;
     }
 
     /**
@@ -637,7 +637,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -656,7 +656,7 @@ export class MLflowRunsService {
             "POST",
             request,
             context
-        )) as unknown as model.UpdateRunResponse;
+        )) as model.UpdateRunResponse;
     }
 }
 
@@ -694,7 +694,7 @@ export class ModelVersionCommentsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateResponse;
+        )) as model.CreateResponse;
     }
 
     /**
@@ -713,7 +713,7 @@ export class ModelVersionCommentsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -732,7 +732,7 @@ export class ModelVersionCommentsService {
             "POST",
             request,
             context
-        )) as unknown as model.UpdateResponse;
+        )) as model.UpdateResponse;
     }
 }
 
@@ -768,7 +768,7 @@ export class ModelVersionsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateModelVersionResponse;
+        )) as model.CreateModelVersionResponse;
     }
 
     /**
@@ -787,7 +787,7 @@ export class ModelVersionsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -806,7 +806,7 @@ export class ModelVersionsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -825,7 +825,7 @@ export class ModelVersionsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetModelVersionResponse;
+        )) as model.GetModelVersionResponse;
     }
 
     /**
@@ -844,7 +844,7 @@ export class ModelVersionsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetModelVersionDownloadUriResponse;
+        )) as model.GetModelVersionDownloadUriResponse;
     }
 
     /**
@@ -863,7 +863,7 @@ export class ModelVersionsService {
             "GET",
             request,
             context
-        )) as unknown as model.SearchModelVersionsResponse;
+        )) as model.SearchModelVersionsResponse;
     }
 
     /**
@@ -882,7 +882,7 @@ export class ModelVersionsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -901,7 +901,7 @@ export class ModelVersionsService {
             "POST",
             request,
             context
-        )) as unknown as model.TransitionModelVersionStageResponse;
+        )) as model.TransitionModelVersionStageResponse;
     }
 
     /**
@@ -920,7 +920,7 @@ export class ModelVersionsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -960,7 +960,7 @@ export class RegisteredModelsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateRegisteredModelResponse;
+        )) as model.CreateRegisteredModelResponse;
     }
 
     /**
@@ -979,7 +979,7 @@ export class RegisteredModelsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -998,7 +998,7 @@ export class RegisteredModelsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1017,7 +1017,7 @@ export class RegisteredModelsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetRegisteredModelResponse;
+        )) as model.GetRegisteredModelResponse;
     }
 
     /**
@@ -1036,7 +1036,7 @@ export class RegisteredModelsService {
             "POST",
             request,
             context
-        )) as unknown as model.GetLatestVersionsResponse;
+        )) as model.GetLatestVersionsResponse;
     }
 
     /**
@@ -1056,7 +1056,7 @@ export class RegisteredModelsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListRegisteredModelsResponse;
+        )) as model.ListRegisteredModelsResponse;
     }
 
     /**
@@ -1075,7 +1075,7 @@ export class RegisteredModelsService {
             "POST",
             request,
             context
-        )) as unknown as model.RenameRegisteredModelResponse;
+        )) as model.RenameRegisteredModelResponse;
     }
 
     /**
@@ -1094,7 +1094,7 @@ export class RegisteredModelsService {
             "GET",
             request,
             context
-        )) as unknown as model.SearchRegisteredModelsResponse;
+        )) as model.SearchRegisteredModelsResponse;
     }
 
     /**
@@ -1113,7 +1113,7 @@ export class RegisteredModelsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1132,7 +1132,7 @@ export class RegisteredModelsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -1170,7 +1170,7 @@ export class RegistryWebhooksService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateResponse;
+        )) as model.CreateResponse;
     }
 
     /**
@@ -1191,7 +1191,7 @@ export class RegistryWebhooksService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1212,7 +1212,7 @@ export class RegistryWebhooksService {
             "GET",
             request,
             context
-        )) as unknown as model.ListRegistryWebhooks;
+        )) as model.ListRegistryWebhooks;
     }
 
     /**
@@ -1233,7 +1233,7 @@ export class RegistryWebhooksService {
             "POST",
             request,
             context
-        )) as unknown as model.TestRegistryWebhookResponse;
+        )) as model.TestRegistryWebhookResponse;
     }
 
     /**
@@ -1254,7 +1254,7 @@ export class RegistryWebhooksService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -1290,7 +1290,7 @@ export class TransitionRequestsService {
             "POST",
             request,
             context
-        )) as unknown as model.ApproveResponse;
+        )) as model.ApproveResponse;
     }
 
     /**
@@ -1309,7 +1309,7 @@ export class TransitionRequestsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateResponse;
+        )) as model.CreateResponse;
     }
 
     /**
@@ -1328,7 +1328,7 @@ export class TransitionRequestsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1347,7 +1347,7 @@ export class TransitionRequestsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListResponse;
+        )) as model.ListResponse;
     }
 
     /**
@@ -1366,6 +1366,6 @@ export class TransitionRequestsService {
             "POST",
             request,
             context
-        )) as unknown as model.RejectResponse;
+        )) as model.RejectResponse;
     }
 }

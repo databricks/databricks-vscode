@@ -48,7 +48,7 @@ export class AlertsService {
             "POST",
             request,
             context
-        )) as unknown as model.Alert;
+        )) as model.Alert;
     }
 
     /**
@@ -69,7 +69,7 @@ export class AlertsService {
             "POST",
             request,
             context
-        )) as unknown as model.RefreshSchedule;
+        )) as model.RefreshSchedule;
     }
 
     /**
@@ -90,7 +90,7 @@ export class AlertsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -110,7 +110,7 @@ export class AlertsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -129,7 +129,7 @@ export class AlertsService {
             "GET",
             request,
             context
-        )) as unknown as model.Alert;
+        )) as model.Alert;
     }
 
     /**
@@ -152,7 +152,7 @@ export class AlertsService {
             "GET",
             request,
             context
-        )) as unknown as Array<model.Subscription>;
+        )) as Array<model.Subscription>;
     }
 
     /**
@@ -168,7 +168,7 @@ export class AlertsService {
             "GET",
             undefined,
             context
-        )) as unknown as Array<model.Alert>;
+        )) as Array<model.Alert>;
     }
 
     /**
@@ -193,7 +193,7 @@ export class AlertsService {
             "GET",
             request,
             context
-        )) as unknown as Array<model.RefreshSchedule>;
+        )) as Array<model.RefreshSchedule>;
     }
 
     /**
@@ -210,7 +210,7 @@ export class AlertsService {
             "POST",
             request,
             context
-        )) as unknown as model.Subscription;
+        )) as model.Subscription;
     }
 
     /**
@@ -229,7 +229,7 @@ export class AlertsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -248,7 +248,7 @@ export class AlertsService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -286,7 +286,7 @@ export class DashboardsService {
             "POST",
             request,
             context
-        )) as unknown as model.Dashboard;
+        )) as model.Dashboard;
     }
 
     /**
@@ -306,7 +306,7 @@ export class DashboardsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -326,7 +326,7 @@ export class DashboardsService {
             "GET",
             request,
             context
-        )) as unknown as model.Dashboard;
+        )) as model.Dashboard;
     }
 
     /**
@@ -345,7 +345,7 @@ export class DashboardsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListResponse;
+        )) as model.ListResponse;
     }
 
     /**
@@ -364,7 +364,7 @@ export class DashboardsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -409,7 +409,7 @@ export class DataSourcesService {
             "GET",
             undefined,
             context
-        )) as unknown as Array<model.DataSource>;
+        )) as Array<model.DataSource>;
     }
 }
 
@@ -458,7 +458,7 @@ export class DbsqlPermissionsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetResponse;
+        )) as model.GetResponse;
     }
 
     /**
@@ -478,7 +478,7 @@ export class DbsqlPermissionsService {
             "POST",
             request,
             context
-        )) as unknown as model.SetResponse;
+        )) as model.SetResponse;
     }
 
     /**
@@ -498,7 +498,7 @@ export class DbsqlPermissionsService {
             "POST",
             request,
             context
-        )) as unknown as model.Success;
+        )) as model.Success;
     }
 }
 
@@ -544,7 +544,7 @@ export class QueriesService {
             "POST",
             request,
             context
-        )) as unknown as model.Query;
+        )) as model.Query;
     }
 
     /**
@@ -565,7 +565,7 @@ export class QueriesService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -585,7 +585,7 @@ export class QueriesService {
             "GET",
             request,
             context
-        )) as unknown as model.Query;
+        )) as model.Query;
     }
 
     /**
@@ -605,7 +605,7 @@ export class QueriesService {
             "GET",
             request,
             context
-        )) as unknown as model.QueryList;
+        )) as model.QueryList;
     }
 
     /**
@@ -625,7 +625,7 @@ export class QueriesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -646,7 +646,7 @@ export class QueriesService {
             "POST",
             request,
             context
-        )) as unknown as model.Query;
+        )) as model.Query;
     }
 }
 
@@ -684,7 +684,7 @@ export class QueryHistoryService {
             "GET",
             request,
             context
-        )) as unknown as model.ListQueriesResponse;
+        )) as model.ListQueriesResponse;
     }
 }
 
@@ -722,7 +722,7 @@ export class WarehousesService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateWarehouseResponse;
+        )) as model.CreateWarehouseResponse;
     }
 
     /**
@@ -815,7 +815,7 @@ export class WarehousesService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -894,7 +894,7 @@ export class WarehousesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -979,7 +979,7 @@ export class WarehousesService {
             "GET",
             request,
             context
-        )) as unknown as model.GetWarehouseResponse;
+        )) as model.GetWarehouseResponse;
     }
 
     /**
@@ -1067,7 +1067,7 @@ export class WarehousesService {
             "GET",
             undefined,
             context
-        )) as unknown as model.GetWorkspaceWarehouseConfigResponse;
+        )) as model.GetWorkspaceWarehouseConfigResponse;
     }
 
     /**
@@ -1086,7 +1086,7 @@ export class WarehousesService {
             "GET",
             request,
             context
-        )) as unknown as model.ListWarehousesResponse;
+        )) as model.ListWarehousesResponse;
     }
 
     /**
@@ -1106,7 +1106,7 @@ export class WarehousesService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1125,7 +1125,7 @@ export class WarehousesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1212,7 +1212,7 @@ export class WarehousesService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**

@@ -47,7 +47,7 @@ export class TokensService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateTokenResponse;
+        )) as model.CreateTokenResponse;
     }
 
     /**
@@ -69,7 +69,7 @@ export class TokensService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -85,6 +85,6 @@ export class TokensService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListTokensResponse;
+        )) as model.ListTokensResponse;
     }
 }

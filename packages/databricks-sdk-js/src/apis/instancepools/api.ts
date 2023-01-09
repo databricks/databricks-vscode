@@ -60,7 +60,7 @@ export class InstancePoolsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateInstancePoolResponse;
+        )) as model.CreateInstancePoolResponse;
     }
 
     /**
@@ -80,7 +80,7 @@ export class InstancePoolsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -99,7 +99,7 @@ export class InstancePoolsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -118,7 +118,7 @@ export class InstancePoolsService {
             "GET",
             request,
             context
-        )) as unknown as model.GetInstancePool;
+        )) as model.GetInstancePool;
     }
 
     /**
@@ -134,6 +134,6 @@ export class InstancePoolsService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListInstancePools;
+        )) as model.ListInstancePools;
     }
 }

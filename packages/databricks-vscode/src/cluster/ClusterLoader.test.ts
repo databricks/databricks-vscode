@@ -107,7 +107,7 @@ describe(__filename, () => {
                 "GET",
                 anything(),
                 anything()
-            )
+            ) as Promise<cluster.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);
         when(mockedConnectionManager.workspaceClient).thenReturn(
             instance(mockedWorkspaceClient)
@@ -119,7 +119,7 @@ describe(__filename, () => {
                     "GET",
                     anything(),
                     anything()
-                )
+                ) as Promise<permissions.ObjectPermissions>
             ).thenResolve(perms);
         }
         when(mockedConnectionManager.databricksWorkspace).thenReturn({

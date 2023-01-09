@@ -60,7 +60,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -80,7 +80,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -163,7 +163,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateResponse;
+        )) as model.CreateResponse;
     }
 
     /**
@@ -182,7 +182,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -201,7 +201,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -220,7 +220,7 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as unknown as model.ExportRunOutput;
+        )) as model.ExportRunOutput;
     }
 
     /**
@@ -239,7 +239,7 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as unknown as model.Job;
+        )) as model.Job;
     }
 
     /**
@@ -258,7 +258,7 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as unknown as model.Run;
+        )) as model.Run;
     }
 
     /**
@@ -350,7 +350,7 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as unknown as model.RunOutput;
+        )) as model.RunOutput;
     }
 
     /**
@@ -369,7 +369,7 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListJobsResponse;
+        )) as model.ListJobsResponse;
     }
 
     /**
@@ -388,7 +388,7 @@ export class JobsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListRunsResponse;
+        )) as model.ListRunsResponse;
     }
 
     /**
@@ -409,7 +409,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.RepairRunResponse;
+        )) as model.RepairRunResponse;
     }
 
     /**
@@ -493,7 +493,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -512,7 +512,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.RunNowResponse;
+        )) as model.RunNowResponse;
     }
 
     /**
@@ -598,7 +598,7 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.SubmitRunResponse;
+        )) as model.SubmitRunResponse;
     }
 
     /**
@@ -682,6 +682,6 @@ export class JobsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

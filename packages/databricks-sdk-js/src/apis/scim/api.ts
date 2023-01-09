@@ -50,7 +50,7 @@ export class AccountGroupsService {
             "POST",
             request,
             context
-        )) as unknown as model.Group;
+        )) as model.Group;
     }
 
     /**
@@ -69,7 +69,7 @@ export class AccountGroupsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -88,7 +88,7 @@ export class AccountGroupsService {
             "GET",
             request,
             context
-        )) as unknown as model.Group;
+        )) as model.Group;
     }
 
     /**
@@ -107,7 +107,7 @@ export class AccountGroupsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListGroupsResponse;
+        )) as model.ListGroupsResponse;
     }
 
     /**
@@ -126,7 +126,7 @@ export class AccountGroupsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -145,7 +145,7 @@ export class AccountGroupsService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -186,7 +186,7 @@ export class AccountServicePrincipalsService {
             "POST",
             request,
             context
-        )) as unknown as model.ServicePrincipal;
+        )) as model.ServicePrincipal;
     }
 
     /**
@@ -205,7 +205,7 @@ export class AccountServicePrincipalsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -225,7 +225,7 @@ export class AccountServicePrincipalsService {
             "GET",
             request,
             context
-        )) as unknown as model.ServicePrincipal;
+        )) as model.ServicePrincipal;
     }
 
     /**
@@ -244,7 +244,7 @@ export class AccountServicePrincipalsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListServicePrincipalResponse;
+        )) as model.ListServicePrincipalResponse;
     }
 
     /**
@@ -264,7 +264,7 @@ export class AccountServicePrincipalsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -285,7 +285,7 @@ export class AccountServicePrincipalsService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -332,7 +332,7 @@ export class AccountUsersService {
             "POST",
             request,
             context
-        )) as unknown as model.User;
+        )) as model.User;
     }
 
     /**
@@ -352,7 +352,7 @@ export class AccountUsersService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -371,7 +371,7 @@ export class AccountUsersService {
             "GET",
             request,
             context
-        )) as unknown as model.User;
+        )) as model.User;
     }
 
     /**
@@ -390,7 +390,7 @@ export class AccountUsersService {
             "GET",
             request,
             context
-        )) as unknown as model.ListUsersResponse;
+        )) as model.ListUsersResponse;
     }
 
     /**
@@ -410,7 +410,7 @@ export class AccountUsersService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -429,7 +429,7 @@ export class AccountUsersService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -463,7 +463,7 @@ export class CurrentUserService {
             "GET",
             undefined,
             context
-        )) as unknown as model.User;
+        )) as model.User;
     }
 }
 
@@ -506,7 +506,7 @@ export class GroupsService {
             "POST",
             request,
             context
-        )) as unknown as model.Group;
+        )) as model.Group;
     }
 
     /**
@@ -525,7 +525,7 @@ export class GroupsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -544,7 +544,7 @@ export class GroupsService {
             "GET",
             request,
             context
-        )) as unknown as model.Group;
+        )) as model.Group;
     }
 
     /**
@@ -563,7 +563,7 @@ export class GroupsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListGroupsResponse;
+        )) as model.ListGroupsResponse;
     }
 
     /**
@@ -582,7 +582,7 @@ export class GroupsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -601,7 +601,7 @@ export class GroupsService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -642,7 +642,7 @@ export class ServicePrincipalsService {
             "POST",
             request,
             context
-        )) as unknown as model.ServicePrincipal;
+        )) as model.ServicePrincipal;
     }
 
     /**
@@ -661,7 +661,7 @@ export class ServicePrincipalsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -681,7 +681,7 @@ export class ServicePrincipalsService {
             "GET",
             request,
             context
-        )) as unknown as model.ServicePrincipal;
+        )) as model.ServicePrincipal;
     }
 
     /**
@@ -700,7 +700,7 @@ export class ServicePrincipalsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListServicePrincipalResponse;
+        )) as model.ListServicePrincipalResponse;
     }
 
     /**
@@ -720,7 +720,7 @@ export class ServicePrincipalsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -741,7 +741,7 @@ export class ServicePrincipalsService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }
 
@@ -788,7 +788,7 @@ export class UsersService {
             "POST",
             request,
             context
-        )) as unknown as model.User;
+        )) as model.User;
     }
 
     /**
@@ -808,7 +808,7 @@ export class UsersService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -827,7 +827,7 @@ export class UsersService {
             "GET",
             request,
             context
-        )) as unknown as model.User;
+        )) as model.User;
     }
 
     /**
@@ -846,7 +846,7 @@ export class UsersService {
             "GET",
             request,
             context
-        )) as unknown as model.ListUsersResponse;
+        )) as model.ListUsersResponse;
     }
 
     /**
@@ -866,7 +866,7 @@ export class UsersService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -885,6 +885,6 @@ export class UsersService {
             "PUT",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

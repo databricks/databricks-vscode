@@ -54,7 +54,7 @@ export class ReposService {
             "POST",
             request,
             context
-        )) as unknown as model.RepoInfo;
+        )) as model.RepoInfo;
     }
 
     /**
@@ -73,7 +73,7 @@ export class ReposService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -92,7 +92,7 @@ export class ReposService {
             "GET",
             request,
             context
-        )) as unknown as model.RepoInfo;
+        )) as model.RepoInfo;
     }
 
     /**
@@ -112,7 +112,7 @@ export class ReposService {
             "GET",
             request,
             context
-        )) as unknown as model.ListReposResponse;
+        )) as model.ListReposResponse;
     }
 
     /**
@@ -132,6 +132,6 @@ export class ReposService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

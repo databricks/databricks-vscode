@@ -51,7 +51,7 @@ export class GitCredentialsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateCredentialsResponse;
+        )) as model.CreateCredentialsResponse;
     }
 
     /**
@@ -70,7 +70,7 @@ export class GitCredentialsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -89,7 +89,7 @@ export class GitCredentialsService {
             "GET",
             request,
             context
-        )) as unknown as model.CredentialInfo;
+        )) as model.CredentialInfo;
     }
 
     /**
@@ -108,7 +108,7 @@ export class GitCredentialsService {
             "GET",
             undefined,
             context
-        )) as unknown as model.GetCredentialsResponse;
+        )) as model.GetCredentialsResponse;
     }
 
     /**
@@ -127,6 +127,6 @@ export class GitCredentialsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

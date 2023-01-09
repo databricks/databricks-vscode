@@ -51,7 +51,7 @@ export class GlobalInitScriptsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateResponse;
+        )) as model.CreateResponse;
     }
 
     /**
@@ -70,7 +70,7 @@ export class GlobalInitScriptsService {
             "DELETE",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -89,7 +89,7 @@ export class GlobalInitScriptsService {
             "GET",
             request,
             context
-        )) as unknown as model.GlobalInitScriptDetailsWithContent;
+        )) as model.GlobalInitScriptDetailsWithContent;
     }
 
     /**
@@ -110,7 +110,7 @@ export class GlobalInitScriptsService {
             "GET",
             undefined,
             context
-        )) as unknown as model.ListGlobalInitScriptsResponse;
+        )) as model.ListGlobalInitScriptsResponse;
     }
 
     /**
@@ -130,6 +130,6 @@ export class GlobalInitScriptsService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

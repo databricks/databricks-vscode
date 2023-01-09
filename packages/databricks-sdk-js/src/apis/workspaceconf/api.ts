@@ -43,7 +43,7 @@ export class WorkspaceConfService {
             "GET",
             request,
             context
-        )) as unknown as model.WorkspaceConf;
+        )) as model.WorkspaceConf;
     }
 
     /**
@@ -63,6 +63,6 @@ export class WorkspaceConfService {
             "PATCH",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 }

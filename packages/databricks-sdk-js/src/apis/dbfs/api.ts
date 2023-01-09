@@ -49,7 +49,7 @@ export class DbfsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -69,7 +69,7 @@ export class DbfsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -97,7 +97,7 @@ export class DbfsService {
             "POST",
             request,
             context
-        )) as unknown as model.CreateResponse;
+        )) as model.CreateResponse;
     }
 
     /**
@@ -133,7 +133,7 @@ export class DbfsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -154,7 +154,7 @@ export class DbfsService {
             "GET",
             request,
             context
-        )) as unknown as model.FileInfo;
+        )) as model.FileInfo;
     }
 
     /**
@@ -184,7 +184,7 @@ export class DbfsService {
             "GET",
             request,
             context
-        )) as unknown as model.ListStatusResponse;
+        )) as model.ListStatusResponse;
     }
 
     /**
@@ -207,7 +207,7 @@ export class DbfsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -231,7 +231,7 @@ export class DbfsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -261,7 +261,7 @@ export class DbfsService {
             "POST",
             request,
             context
-        )) as unknown as model.EmptyResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -288,6 +288,6 @@ export class DbfsService {
             "GET",
             request,
             context
-        )) as unknown as model.ReadResponse;
+        )) as model.ReadResponse;
     }
 }
