@@ -1,3 +1,11 @@
+# Release: v0.0.9
+
+## packages/databricks-vscode-types
+
+## <small>0.0.9 (2023-01-09)</small>
+
+-   Update license to Databricks License
+
 # Release: v0.0.8
 
 ## packages/databricks-vscode-types
