@@ -1,0 +1,12 @@
+{
+    "output": "markdown",
+    "only": "prod",
+    "fields": [
+        "name",
+        "installedVersion",
+        "licenseType",
+        "author",
+        "link"
+    ],
+    "header": "Copyright (2022) Databricks, Inc.\n\nThis Software includes software developed at Databricks (https://www.databricks.com/) and its use is subject to the included LICENSE file.\n***\nThis Software contains code from the following open source projects:"
+}

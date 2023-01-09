@@ -26,7 +26,9 @@
         "test": "yarn run test:lint && yarn run test:unit",
         "test:integ": "ts-mocha --type-check 'src/**/*.integ.ts'",
         "test:cov": "nyc --report-dir ./coverage/unit yarn run test:unit",
-        "test:integ:cov": "nyc --report-dir ./coverage/integration yarn run test:integ"
+        "test:integ:cov": "nyc --report-dir ./coverage/integration yarn run test:integ",
+        "license-report": "cat ../../.license-reportrc | jq -r .header > NOTICE.md && license-report --config ../../.license-reportrc >> NOTICE.md",
+        "postinstall": "yarn run license-report"
     },
     "dependencies": {
         "ini": "^3.0.1",
@@ -44,6 +46,7 @@
         "@types/tmp": "^0.2.3",
         "@types/uuid": "^9.0.0",
         "eslint": "^8.31.0",
+        "license-report": "^6.3.0",
         "mocha": "^10.2.0",
         "nyc": "^15.1.0",
         "prettier": "^2.8.1",
