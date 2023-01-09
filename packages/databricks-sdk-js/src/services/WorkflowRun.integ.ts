@@ -19,7 +19,7 @@ describe(__filename, function () {
         );
 
         const dbfsApi = new DbfsService(integSetup.client);
-        const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
+        const jobPath = `/tmp/js-sdk-jobs-tests/sdk-js-integ-${integSetup.testRunId}.py`;
 
         await dbfsApi.put({
             path: jobPath,
@@ -58,10 +58,10 @@ describe(__filename, function () {
             integSetup.cluster.id
         );
 
-        const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
+        const jobPath = `/tmp/js-sdk-jobs-tests/sdk-js-integ-${integSetup.testRunId}.py`;
         const workspaceService = new WorkspaceService(integSetup.client);
 
-        await workspaceService.mkdirs({path: "/tmp"});
+        await workspaceService.mkdirs({path: "/tmp/js-sdk-jobs-tests"});
 
         await workspaceService.import({
             path: jobPath,
@@ -108,10 +108,10 @@ describe(__filename, function () {
             integSetup.cluster.id
         );
 
-        const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
+        const jobPath = `/tmp/js-sdk-jobs-tests/sdk-js-integ-${integSetup.testRunId}.py`;
         const workspaceService = new WorkspaceService(integSetup.client);
 
-        await workspaceService.mkdirs({path: "/tmp"});
+        await workspaceService.mkdirs({path: "/tmp/js-sdk-jobs-tests"});
 
         await workspaceService.import({
             path: jobPath,

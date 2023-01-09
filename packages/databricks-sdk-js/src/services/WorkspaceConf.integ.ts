@@ -8,8 +8,20 @@ describe(__filename, function () {
 
     this.timeout(10 * 60 * 1000);
 
-    before(async () => {
+    before(async function () {
         integSetup = await IntegrationTestSetup.getInstance();
+        try {
+            const wsConf = new WorkspaceConf(integSetup.client);
+            await wsConf.getStatus(["enableProjectTypeInWorkspace"]);
+        } catch (e: any) {
+            if (e.code === 403) {
+                // eslint-disable-next-line no-console
+                console.log(
+                    "Workspace conf tests require administrator permissions"
+                );
+                this.skip();
+            }
+        }
     });
 
     it("should read configuration properties", async () => {
