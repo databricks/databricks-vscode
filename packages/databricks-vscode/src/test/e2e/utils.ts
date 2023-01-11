@@ -9,7 +9,7 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const ViewSectionTypes = ["CLUSTERS", "CONFIGURATION"] as const;
-export type ViewSectionType = typeof ViewSectionTypes[number];
+export type ViewSectionType = (typeof ViewSectionTypes)[number];
 
 export async function findViewSection(name: ViewSectionType) {
     const workbench = await browser.getWorkbench();
