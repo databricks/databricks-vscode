@@ -48,7 +48,7 @@
         "eslint": "^8.31.0",
         "mocha": "^10.2.0",
         "nyc": "^15.1.0",
-        "prettier": "^2.8.1",
+        "prettier": "^2.8.2",
         "tmp-promise": "^3.0.3",
         "ts-loader": "^9.4.2",
         "ts-mocha": "^10.0.0",
