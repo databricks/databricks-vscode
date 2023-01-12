@@ -12,6 +12,15 @@ export class AccountClient {
     readonly config: Config;
     readonly apiClient: ApiClient;
 
+    {{range .Services}}{{if .IsAccounts}}
+    /**
+    {{.Comment "* " 80}}
+    */    
+    readonly {{if eq .Package.Name "scim" -}}
+			{{.Name | trimPrefix "Account" | lowerFirst }} 
+		{{- else}}{{.CamelName}}{{end}}: {{.Package.Name}}.{{.PascalName}}Service;
+    {{end -}}{{end}}   
+
     constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
         if (!(config instanceof Config)) {
             config = new Config(config);
@@ -25,18 +34,10 @@ export class AccountClient {
         }
 
         this.apiClient = new ApiClient(this.config, options);
-    }
 
-    {{range .Services}}{{if .IsAccounts}}
-    /**
-    {{.Comment "* " 80}}
-    */      
-    get {{if eq .Package.Name "scim" -}}
-			{{.Name | trimPrefix "Account" | lowerFirst }} 
-		{{- else}}{{.CamelName}}{{end}} () {
-      return new {{.Package.Name}}.{{.PascalName}}Service(this.apiClient)
+        {{range .Services}}{{if .IsAccounts}}
+        this.{{if eq .Package.Name "scim" -}}
+            {{.Name | trimPrefix "Account" | lowerFirst }} 
+        {{- else}}{{.CamelName}}{{end}} = new {{.Package.Name}}.{{.PascalName}}Service(this.apiClient);{{end}}{{end}}
     }
-
-    {{end}}   
-    {{end}}
 }

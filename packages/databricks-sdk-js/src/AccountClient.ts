@@ -34,36 +34,17 @@ export class AccountClient {
     readonly config: Config;
     readonly apiClient: ApiClient;
 
-    constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
-        if (!(config instanceof Config)) {
-            config = new Config(config);
-        }
-
-        this.config = config as Config;
-
-        this.config.ensureResolved();
-        if (!this.config.accountId || !this.config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        this.apiClient = new ApiClient(this.config, options);
-    }
-
     /**
      * This API allows you to download billable usage logs for the specified account
      * and date range. This feature works with all account types.
      */
-    get billableUsage() {
-        return new billing.BillableUsageService(this.apiClient);
-    }
+    readonly billableUsage: billing.BillableUsageService;
 
     /**
      * These APIs manage budget configuration including notifications for exceeding a
      * budget for a period. They can also retrieve the status of each budget.
      */
-    get budgets() {
-        return new billing.BudgetsService(this.apiClient);
-    }
+    readonly budgets: billing.BudgetsService;
 
     /**
      * These APIs manage credential configurations for this workspace. Databricks
@@ -72,9 +53,7 @@ export class AccountClient {
      * credential configuration encapsulates this role information, and its ID is
      * used when creating a new workspace.
      */
-    get credentials() {
-        return new deployment.CredentialsService(this.apiClient);
-    }
+    readonly credentials: deployment.CredentialsService;
 
     /**
      * These APIs manage encryption key configurations for this workspace (optional).
@@ -94,9 +73,7 @@ export class AccountClient {
      * If you have an older workspace, it might not be on the E2 version of the
      * platform. If you are not sure, contact your Databricks reprsentative.
      */
-    get encryptionKeys() {
-        return new deployment.EncryptionKeysService(this.apiClient);
-    }
+    readonly encryptionKeys: deployment.EncryptionKeysService;
 
     /**
      * Groups simplify identity management, making it easier to assign access to
@@ -107,9 +84,7 @@ export class AccountClient {
      * Account identities can be assigned as members of groups, and members inherit
      * permissions that are assigned to their group.
      */
-    get groups() {
-        return new scim.AccountGroupsService(this.apiClient);
-    }
+    readonly groups: scim.AccountGroupsService;
 
     /**
      * These APIs manage log delivery configurations for this account. The two
@@ -173,9 +148,7 @@ export class AccountClient {
      * [Usage page]: https://docs.databricks.com/administration-guide/account-settings/usage.html
      * [create a new AWS S3 bucket]: https://docs.databricks.com/administration-guide/account-api/aws-storage.html
      */
-    get logDelivery() {
-        return new billing.LogDeliveryService(this.apiClient);
-    }
+    readonly logDelivery: billing.LogDeliveryService;
 
     /**
      * These APIs manage network configurations for customer-managed VPCs (optional).
@@ -183,9 +156,7 @@ export class AccountClient {
      * security groups. Its ID is used when creating a new workspace if you use
      * customer-managed VPCs.
      */
-    get networks() {
-        return new deployment.NetworksService(this.apiClient);
-    }
+    readonly networks: deployment.NetworksService;
 
     /**
      * These APIs manage private access settings for this account. A private access
@@ -198,9 +169,7 @@ export class AccountClient {
      *
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
      */
-    get privateAccess() {
-        return new deployment.PrivateAccessService(this.apiClient);
-    }
+    readonly privateAccess: deployment.PrivateAccessService;
 
     /**
      * Identities for use with jobs, automated tools, and systems such as scripts,
@@ -210,9 +179,7 @@ export class AccountClient {
      * write, delete, or modify privileges in production. This eliminates the risk of
      * a user overwriting production data by accident.
      */
-    get servicePrincipals() {
-        return new scim.AccountServicePrincipalsService(this.apiClient);
-    }
+    readonly servicePrincipals: scim.AccountServicePrincipalsService;
 
     /**
      * These APIs manage storage configurations for this workspace. A root storage S3
@@ -222,9 +189,7 @@ export class AccountClient {
      * encapsulates this bucket information, and its ID is used when creating a new
      * workspace.
      */
-    get storage() {
-        return new deployment.StorageService(this.apiClient);
-    }
+    readonly storage: deployment.StorageService;
 
     /**
      * User identities recognized by Databricks and represented by email addresses.
@@ -239,9 +204,7 @@ export class AccountClient {
      * Account. This ensures a consistent offboarding process and prevents
      * unauthorized users from accessing sensitive data.
      */
-    get users() {
-        return new scim.AccountUsersService(this.apiClient);
-    }
+    readonly users: scim.AccountUsersService;
 
     /**
      * These APIs manage VPC endpoint configurations for this account. This object
@@ -255,16 +218,12 @@ export class AccountClient {
      *
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
      */
-    get vpcEndpoints() {
-        return new deployment.VpcEndpointsService(this.apiClient);
-    }
+    readonly vpcEndpoints: deployment.VpcEndpointsService;
 
     /**
      * Databricks Workspace Assignment REST API
      */
-    get workspaceAssignment() {
-        return new permissions.WorkspaceAssignmentService(this.apiClient);
-    }
+    readonly workspaceAssignment: permissions.WorkspaceAssignmentService;
 
     /**
      * These APIs manage workspaces for this account. A Databricks workspace is an
@@ -276,7 +235,43 @@ export class AccountClient {
      * platform or on a select custom plan that allows multiple workspaces per
      * account.
      */
-    get workspaces() {
-        return new deployment.WorkspacesService(this.apiClient);
+    readonly workspaces: deployment.WorkspacesService;
+
+    constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
+        if (!(config instanceof Config)) {
+            config = new Config(config);
+        }
+
+        this.config = config as Config;
+
+        this.config.ensureResolved();
+        if (!this.config.accountId || !this.config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        this.apiClient = new ApiClient(this.config, options);
+
+        this.billableUsage = new billing.BillableUsageService(this.apiClient);
+        this.budgets = new billing.BudgetsService(this.apiClient);
+        this.credentials = new deployment.CredentialsService(this.apiClient);
+        this.encryptionKeys = new deployment.EncryptionKeysService(
+            this.apiClient
+        );
+        this.groups = new scim.AccountGroupsService(this.apiClient);
+        this.logDelivery = new billing.LogDeliveryService(this.apiClient);
+        this.networks = new deployment.NetworksService(this.apiClient);
+        this.privateAccess = new deployment.PrivateAccessService(
+            this.apiClient
+        );
+        this.servicePrincipals = new scim.AccountServicePrincipalsService(
+            this.apiClient
+        );
+        this.storage = new deployment.StorageService(this.apiClient);
+        this.users = new scim.AccountUsersService(this.apiClient);
+        this.vpcEndpoints = new deployment.VpcEndpointsService(this.apiClient);
+        this.workspaceAssignment = new permissions.WorkspaceAssignmentService(
+            this.apiClient
+        );
+        this.workspaces = new deployment.WorkspacesService(this.apiClient);
     }
 }
