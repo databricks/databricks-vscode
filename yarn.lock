@@ -790,6 +790,54 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@microsoft/1ds-core-js@npm:3.2.8, @microsoft/1ds-core-js@npm:^3.2.3":
+  version: 3.2.8
+  resolution: "@microsoft/1ds-core-js@npm:3.2.8"
+  dependencies:
+    "@microsoft/applicationinsights-core-js": 2.8.9
+    "@microsoft/applicationinsights-shims": ^2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  checksum: 84f40134fdda06ca124a21fd40982f8cc9867c338c40afbc0e4bc28e19118a9bc368e3a9128dec618ef8663a92eff86f8ac6c4638e6faa73d34868dd923bbf39
+  languageName: node
+  linkType: hard
+
+"@microsoft/1ds-post-js@npm:^3.2.3":
+  version: 3.2.8
+  resolution: "@microsoft/1ds-post-js@npm:3.2.8"
+  dependencies:
+    "@microsoft/1ds-core-js": 3.2.8
+    "@microsoft/applicationinsights-shims": ^2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  checksum: 0e2d07876eb7390f091231795c15893011a0ca587b3363034f8938c6174d122491502dc9e1b9bde127d25028e1e48ab7253cf2970cab795a208718f3e355a197
+  languageName: node
+  linkType: hard
+
+"@microsoft/applicationinsights-core-js@npm:2.8.9":
+  version: 2.8.9
+  resolution: "@microsoft/applicationinsights-core-js@npm:2.8.9"
+  dependencies:
+    "@microsoft/applicationinsights-shims": 2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  peerDependencies:
+    tslib: "*"
+  checksum: 8066707bb058e9faf570cfeda4ffd4cfcd764e2f186e02d43cb858ffe988a75eb82f252cd58abaa84e6e7db78233bc92300f7879f2481b87e390227249e60ed5
+  languageName: node
+  linkType: hard
+
+"@microsoft/applicationinsights-shims@npm:2.0.2, @microsoft/applicationinsights-shims@npm:^2.0.2":
+  version: 2.0.2
+  resolution: "@microsoft/applicationinsights-shims@npm:2.0.2"
+  checksum: 838e1b6620a12b475db9d39213d5ad64f4b63f9293c62e1ff55a9422a2ec3516ec69d98acb592274fcbbcd6508e1a00b6631c4e68dea8372d18f24a62b805c2f
+  languageName: node
+  linkType: hard
+
+"@microsoft/dynamicproto-js@npm:^1.1.7":
+  version: 1.1.7
+  resolution: "@microsoft/dynamicproto-js@npm:1.1.7"
+  checksum: 60446aaa7dc7918bf514099bc2b26610319e1d78dbca3d43b5878273b108f17743b361197f083c7faa46130ee24a147eb60bac98e34c5214f386789cc1708424
+  languageName: node
+  linkType: hard
+
 "@microsoft/fast-element@npm:^1.11.0, @microsoft/fast-element@npm:^1.6.2, @microsoft/fast-element@npm:^1.9.0":
   version: 1.11.0
   resolution: "@microsoft/fast-element@npm:1.11.0"
@@ -1478,6 +1526,16 @@ __metadata:
   version: 1.59.0
   resolution: "@vscode/debugprotocol@npm:1.59.0"
   checksum: 7a7de9e51f791b217da2e6f0d7a08e4732f933e973eaa24b9e7078958c8d6828401f2591334968bb067d42e4dd09ea4ad209f2e32caed8c31b4329320976af5e
+  languageName: node
+  linkType: hard
+
+"@vscode/extension-telemetry@npm:0.6.2":
+  version: 0.6.2
+  resolution: "@vscode/extension-telemetry@npm:0.6.2"
+  dependencies:
+    "@microsoft/1ds-core-js": ^3.2.3
+    "@microsoft/1ds-post-js": ^3.2.3
+  checksum: d3e9ef679d8694e7af338750af1203464f910953e206fa712ae2b109918ccf6482aacff71c6770b4dfc44d1242447d80aaa113e714cb6b8d20585e201d203b1e
   languageName: node
   linkType: hard
 
@@ -3192,6 +3250,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": ^5.52.0
     "@typescript-eslint/parser": ^5.52.0
     "@vscode/debugadapter": ^1.59.0
+    "@vscode/extension-telemetry": 0.6.2
     "@vscode/test-electron": ^2.2.3
     "@vscode/webview-ui-toolkit": ^1.2.1
     "@wdio/cli": ^7.30.1

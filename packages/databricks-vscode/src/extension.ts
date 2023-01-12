@@ -36,6 +36,7 @@ import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
 import path from "node:path";
+import TelemetryReporter from "@vscode/extension-telemetry";
 
 export async function activate(
     context: ExtensionContext
@@ -77,6 +78,33 @@ export async function activate(
         `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
 
+    // create telemetry reporter on extension activation
+    const pkg = await PackageJsonUtils.getMetadata(context);
+    const reporter = new TelemetryReporter(
+        pkg.packageName,
+        pkg.version,
+        "dc4ec136-d862-4379-8d5f-b1746222d7f5",
+        false
+    );
+
+    // ensure it gets properly disposed. Upon disposal the events will be flushed
+    context.subscriptions.push(reporter);
+
+    function registerCommand(
+        command: string,
+        callback: (...args: any[]) => any,
+        thisArg?: any
+    ) {
+        return commands.registerCommand(
+            command,
+            (...args) => {
+                reporter.sendTelemetryEvent(`command-${command}`);
+                return callback.call(thisArg, ...args);
+            },
+            thisArg
+        );
+    }
+
     const loggerManager = new LoggerManager(context);
     if (workspaceConfigs.loggingEnabled) {
         loggerManager.initLoggers();
@@ -96,7 +124,7 @@ export async function activate(
     );
     context.subscriptions.push(
         configureAutocomplete,
-        commands.registerCommand(
+        registerCommand(
             "databricks.autocomplete.configure",
             configureAutocomplete.configureCommand,
             configureAutocomplete
@@ -104,7 +132,7 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        commands.registerCommand(
+        registerCommand(
             "databricks.logs.openFolder",
             loggerManager.openLogFolder,
             loggerManager
@@ -172,42 +200,42 @@ export async function activate(
             "configurationView",
             configurationDataProvider
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.connection.logout",
             connectionCommands.logoutCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.connection.configureWorkspace",
             connectionCommands.configureWorkspaceCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.connection.openDatabricksConfigFile",
             connectionCommands.openDatabricksConfigFileCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.connection.attachCluster",
             connectionCommands.attachClusterCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.connection.attachClusterQuickPick",
             connectionCommands.attachClusterQuickPickCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.connection.detachCluster",
             connectionCommands.detachClusterCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.connection.attachSyncDestination",
             connectionCommands.attachSyncDestinationCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.connection.detachSyncDestination",
             connectionCommands.detachWorkspaceCommand(),
             connectionCommands
@@ -236,12 +264,12 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        commands.registerCommand(
+        registerCommand(
             "databricks.run.runEditorContents",
             runCommands.runEditorContentsCommand(),
             runCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.run.runEditorContentsAsWorkflow",
             runCommands.runEditorContentsAsWorkflowCommand(),
             runCommands
@@ -267,32 +295,32 @@ export async function activate(
         clusterTreeDataProvider,
         window.registerTreeDataProvider("clusterView", clusterTreeDataProvider),
 
-        commands.registerCommand(
+        registerCommand(
             "databricks.cluster.refresh",
             clusterCommands.refreshCommand(),
             clusterCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.cluster.filterByAll",
             clusterCommands.filterCommand("ALL"),
             clusterCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.cluster.filterByRunning",
             clusterCommands.filterCommand("RUNNING"),
             clusterCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.cluster.filterByMe",
             clusterCommands.filterCommand("ME"),
             clusterCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.cluster.start",
             clusterCommands.startClusterCommand,
             clusterCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.cluster.stop",
             clusterCommands.stopClusterCommand,
             clusterCommands
@@ -302,17 +330,17 @@ export async function activate(
     // Sync
     const syncCommands = new SyncCommands(synchronizer);
     context.subscriptions.push(
-        commands.registerCommand(
+        registerCommand(
             "databricks.sync.start",
             syncCommands.startCommand("incremental"),
             syncCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.sync.startFull",
             syncCommands.startCommand("full"),
             syncCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.sync.stop",
             syncCommands.stopCommand(),
             syncCommands
@@ -326,7 +354,7 @@ export async function activate(
     // Quickstart
     const quickstartCommands = new QuickstartCommands(context);
     context.subscriptions.push(
-        commands.registerCommand(
+        registerCommand(
             "databricks.quickstart.open",
             quickstartCommands.openQuickstartCommand(),
             quickstartCommands
@@ -340,7 +368,7 @@ export async function activate(
     // Utils
     const utilCommands = new UtilsCommands.UtilsCommands();
     context.subscriptions.push(
-        commands.registerCommand(
+        registerCommand(
             "databricks.utils.openExternal",
             utilCommands.openExternalCommand(),
             utilCommands
