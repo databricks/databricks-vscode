@@ -1,0 +1,40 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+// Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
+
+import {Config, ConfigOptions} from "./config/Config";
+import {ApiClient, ClientOptions} from "./api-client";
+
+{{range .Packages}}
+import * as {{.Name}} from "./apis/{{.Name}}";{{end}}
+
+export class AccountClient {
+    readonly config: Config;
+    readonly apiClient: ApiClient;
+
+    constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
+        if (!(config instanceof Config)) {
+            config = new Config(config);
+        }
+
+        this.config = config as Config;
+
+        this.config.ensureResolved();
+        if (!this.config.accountId || !this.config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        this.apiClient = new ApiClient(this.config, options);
+    }
+
+    {{range .Services}}{{if .IsAccounts}}
+    /**
+    {{.Comment "* " 80}}
+    */      
+    get {{.CamelName}}() {
+      return new {{.Package.Name}}.{{.PascalName}}Service(this.apiClient)
+    }
+
+    {{end}}   
+    {{end}}
+}

@@ -56,7 +56,6 @@ export class ApiClient {
     readonly product: string;
     readonly productVersion: ProductVersion;
     readonly userAgentExtra: Record<string, string>;
-    readonly accountId = "";
 
     constructor(readonly config: Config, options: ClientOptions = {}) {
         this.agent =
@@ -75,6 +74,10 @@ export class ApiClient {
 
     get host(): Promise<URL> {
         return this.config.getHost();
+    }
+
+    get accountId(): string | undefined {
+        return this.config.accountId;
     }
 
     userAgent(): string {

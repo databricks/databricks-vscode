@@ -3,6 +3,7 @@ import "reflect-metadata";
 export * from "./api-client";
 export * from "./config";
 export * from "./WorkspaceClient";
+export * from "./AccountClient";
 
 export * as cluster from "./apis/clusters";
 export * as dbfs from "./apis/dbfs";
