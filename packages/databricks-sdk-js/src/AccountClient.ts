@@ -107,7 +107,7 @@ export class AccountClient {
      * Account identities can be assigned as members of groups, and members inherit
      * permissions that are assigned to their group.
      */
-    get accountGroups() {
+    get groups() {
         return new scim.AccountGroupsService(this.apiClient);
     }
 
@@ -210,7 +210,7 @@ export class AccountClient {
      * write, delete, or modify privileges in production. This eliminates the risk of
      * a user overwriting production data by accident.
      */
-    get accountServicePrincipals() {
+    get servicePrincipals() {
         return new scim.AccountServicePrincipalsService(this.apiClient);
     }
 
@@ -239,7 +239,7 @@ export class AccountClient {
      * Account. This ensures a consistent offboarding process and prevents
      * unauthorized users from accessing sensitive data.
      */
-    get accountUsers() {
+    get users() {
         return new scim.AccountUsersService(this.apiClient);
     }
 

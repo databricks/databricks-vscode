@@ -31,7 +31,9 @@ export class AccountClient {
     /**
     {{.Comment "* " 80}}
     */      
-    get {{.CamelName}}() {
+    get {{if eq .Package.Name "scim" -}}
+			{{.Name | trimPrefix "Account" | lowerFirst }} 
+		{{- else}}{{.CamelName}}{{end}} () {
       return new {{.Package.Name}}.{{.PascalName}}Service(this.apiClient)
     }
 
