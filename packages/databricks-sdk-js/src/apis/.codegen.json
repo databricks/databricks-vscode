@@ -1,8 +1,0 @@
-{
-    "formatter": "yarn fix",
-    "packages": {
-        ".codegen/api.ts.tmpl": "{{.Name}}/api.ts",
-        ".codegen/index.ts.tmpl": "{{.Name}}/index.ts",
-        ".codegen/model.ts.tmpl": "{{.Name}}/model.ts"
-    }
-}

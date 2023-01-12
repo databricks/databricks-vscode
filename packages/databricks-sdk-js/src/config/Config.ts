@@ -277,6 +277,13 @@ export class Config {
         return !!this.host && !this.isAzure() && !this.isGcp();
     }
 
+    /**
+     * isAccountClient returns true if client is configured for Accounts API
+     */
+    public isAccountClient(): boolean {
+        return !!this.host && this.host.startsWith("https://accounts.");
+    }
+
     public async ensureResolved() {
         if (this.resolved) {
             return;
