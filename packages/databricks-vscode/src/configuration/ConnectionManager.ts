@@ -1,9 +1,4 @@
-import {
-    ApiClient,
-    Cluster,
-    WorkspaceService,
-    HttpError,
-} from "@databricks/databricks-sdk";
+import {WorkspaceClient, Cluster, HttpError} from "@databricks/databricks-sdk";
 import {
     env,
     EventEmitter,
@@ -20,10 +15,6 @@ import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
-import {AuthProvider} from "./AuthProvider";
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const extensionVersion = require("../../package.json").version;
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
@@ -35,7 +26,7 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
  */
 export class ConnectionManager {
     private _state: ConnectionState = "DISCONNECTED";
-    private _apiClient?: ApiClient;
+    private _workspaceClient?: WorkspaceClient;
     private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
     private _clusterManager?: ClusterManager;
@@ -86,20 +77,8 @@ export class ConnectionManager {
      * it might be invalidated as the configuration changes. If you have to store a reference
      * make sure to listen to the onChangeCluster event and update as appropriate.
      */
-    get apiClient(): ApiClient | undefined {
-        return this._apiClient;
-    }
-
-    public static apiClientFrom(authProvider: AuthProvider): ApiClient {
-        return new ApiClient({
-            extraUserAgent: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                "vscode-extension": extensionVersion,
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                "auth-type": authProvider.authType,
-            },
-            credentialProvider: authProvider.getCredentialProvider(),
-        });
+    get workspaceClient(): WorkspaceClient | undefined {
+        return this._workspaceClient;
     }
 
     async login(interactive = false): Promise<void> {
@@ -118,8 +97,8 @@ export class ConnectionManager {
         await this.logout();
         this.updateState("CONNECTING");
 
-        let projectConfigFile;
-        let apiClient;
+        let projectConfigFile: ProjectConfigFile;
+        let workspaceClient: WorkspaceClient;
 
         try {
             projectConfigFile = await ProjectConfigFile.load(
@@ -132,13 +111,13 @@ export class ConnectionManager {
                 );
             }
 
-            await projectConfigFile.authProvider.getCredentialProvider();
+            workspaceClient =
+                projectConfigFile.authProvider.getWorkspaceClient();
 
-            apiClient = ConnectionManager.apiClientFrom(
-                projectConfigFile.authProvider
-            );
+            await workspaceClient.config.authenticate({});
+
             this._databricksWorkspace = await DatabricksWorkspace.load(
-                apiClient,
+                workspaceClient,
                 projectConfigFile.authProvider
             );
         } catch (e: any) {
@@ -172,7 +151,7 @@ export class ConnectionManager {
                     "Open Databricks UI"
                 );
                 if (result === "Open Databricks UI") {
-                    const host = await apiClient.host;
+                    const host = await workspaceClient.apiClient.host;
                     await env.openExternal(
                         Uri.parse(
                             host.toString() +
@@ -183,7 +162,7 @@ export class ConnectionManager {
             }
         }
 
-        this._apiClient = apiClient;
+        this._workspaceClient = workspaceClient;
         this._projectConfigFile = projectConfigFile;
 
         if (projectConfigFile.clusterId) {
@@ -204,9 +183,7 @@ export class ConnectionManager {
         }
 
         try {
-            this._repoRootDetails = await new WorkspaceService(
-                apiClient
-            ).getStatus({
+            this._repoRootDetails = await workspaceClient.workspace.getStatus({
                 path: `/Repos/${this.databricksWorkspace?.userName}`,
             });
         } catch (e) {
@@ -226,7 +203,7 @@ export class ConnectionManager {
         }
 
         this._projectConfigFile = undefined;
-        this._apiClient = undefined;
+        this._workspaceClient = undefined;
         this._repoRootDetails = undefined;
         this._databricksWorkspace = undefined;
         this.updateCluster(undefined);
@@ -252,8 +229,13 @@ export class ConnectionManager {
             }
 
             try {
+                const workspaceClient =
+                    config.authProvider.getWorkspaceClient();
+
+                await workspaceClient.config.authenticate({});
+
                 await DatabricksWorkspace.load(
-                    ConnectionManager.apiClientFrom(config.authProvider),
+                    workspaceClient,
                     config.authProvider
                 );
             } catch (e: any) {
@@ -310,7 +292,7 @@ export class ConnectionManager {
 
             if (typeof cluster === "string") {
                 cluster = await Cluster.fromClusterId(
-                    this._apiClient!,
+                    this._workspaceClient!.apiClient,
                     cluster
                 );
             }
@@ -397,13 +379,17 @@ export class ConnectionManager {
             }
 
             const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
-            if (this.apiClient === undefined) {
+            if (this.workspaceClient === undefined) {
                 throw new Error(
                     "Can't attach a Repo when profile is not connected"
                 );
             }
             this.updateSyncDestination(
-                await SyncDestination.from(this.apiClient, workspacePath, wsUri)
+                await SyncDestination.from(
+                    this.workspaceClient.apiClient,
+                    workspacePath,
+                    wsUri
+                )
             );
         } catch (e) {
             NamedLogger.getOrCreate("Extension").error(

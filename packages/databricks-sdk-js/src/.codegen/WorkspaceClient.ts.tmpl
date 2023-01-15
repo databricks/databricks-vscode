@@ -1,0 +1,44 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+// Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
+
+import {Config, ConfigOptions} from "./config/Config";
+import {ApiClient, ClientOptions} from "./api-client";
+
+{{range .Packages}}
+import * as {{.Name}} from "./apis/{{.Name}}";{{end}}
+
+export class WorkspaceClient {
+    readonly config: Config;
+    readonly apiClient: ApiClient;
+
+    {{range .Services}}{{if not .IsAccounts}}
+    {{- if eq .Name "CommandExecution" -}}
+    /**
+    * This API allows executing commands on running clusters.
+    */
+    readonly commands: commands.CommandExecutionService;
+    {{else -}}
+    /**
+    {{.Comment "* " 80}}
+    */    
+    readonly {{.CamelName}}: {{.Package.Name}}.{{.PascalName}}Service;
+    {{end -}}{{end}}   
+    {{end}}
+
+    constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
+        if (!(config instanceof Config)) {
+            config = new Config(config);
+        }
+
+        this.config = config as Config;
+        this.apiClient = new ApiClient(this.config, options);
+
+        {{range .Services}}{{if not .IsAccounts}}
+        {{- if eq .Name "CommandExecution" -}}
+        this.commands = new commands.CommandExecutionService(this.apiClient);
+        {{else -}}
+        this.{{.CamelName}} = new {{.Package.Name}}.{{.PascalName}}Service(this.apiClient);
+        {{end -}}{{end}}{{end}}
+    }
+}

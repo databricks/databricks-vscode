@@ -20,6 +20,8 @@ jobs:
     test-sdk:
         name: Test Databricks SDK
         runs-on: ${{ inputs.os }}
+        environment:
+            name: azure-prod-usr
 
         defaults:
             run:
@@ -28,7 +30,7 @@ jobs:
         env:
             DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
             DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
+            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_JS_SDK_CLUSTER_ID }}
 
         steps:
             - uses: actions/checkout@v3
@@ -64,12 +66,14 @@ jobs:
     test-extension:
         name: Test VSCode Extension
         runs-on: ${{ inputs.os }}
+        environment:
+            name: azure-prod-usr
 
         env:
             VSCODE_TEST_VERSION: ${{ inputs.vscode-version }}
             DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
             DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_DEFAULT_CLUSTER_ID }}
+            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_VSCODE_CLUSTER_ID }}
             BRICKS_ARCH: ${{ inputs.bricks_arch }}
 
         defaults:

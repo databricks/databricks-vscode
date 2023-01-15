@@ -2,7 +2,12 @@
 
 import assert from "assert";
 import {mock, when, anything, anyString, instance, spy} from "ts-mockito";
-import {ApiClient, Cluster, cluster} from "@databricks/databricks-sdk";
+import {
+    ApiClient,
+    Cluster,
+    cluster,
+    WorkspaceClient,
+} from "@databricks/databricks-sdk";
 import {ClusterModel} from "./ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Disposable} from "vscode";
@@ -30,6 +35,7 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
 
 describe(__filename, () => {
     let mockedConnectionManager: ConnectionManager;
+    let mockedWorkspaceClient: WorkspaceClient;
     let mockedApiClient: ApiClient;
     let disposables: Array<Disposable>;
     let mockedClusterLoader: ClusterLoader;
@@ -38,12 +44,25 @@ describe(__filename, () => {
         disposables = [];
         mockedConnectionManager = mock(ConnectionManager);
         mockedApiClient = mock<ApiClient>();
+        mockedWorkspaceClient = mock(WorkspaceClient);
+
         when<cluster.ListClustersResponse>(
-            mockedApiClient.request(anyString(), "GET", anything(), anything())
+            mockedApiClient.request(
+                anyString(),
+                "GET",
+                anything(),
+                anything()
+            ) as Promise<cluster.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);
-        when(mockedConnectionManager.apiClient).thenReturn(
+
+        when(mockedWorkspaceClient.apiClient).thenReturn(
             instance(mockedApiClient)
         );
+
+        when(mockedConnectionManager.workspaceClient).thenReturn(
+            instance(mockedWorkspaceClient)
+        );
+
         mockedClusterLoader = spy(
             new ClusterLoader(instance(mockedConnectionManager))
         );

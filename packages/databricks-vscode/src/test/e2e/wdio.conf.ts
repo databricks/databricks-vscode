@@ -7,12 +7,7 @@ const video = require("wdio-video-reporter");
 import path from "node:path";
 import assert from "assert";
 import fs from "fs/promises";
-import {
-    ApiClient,
-    Cluster,
-    CurrentUserService,
-    Repo,
-} from "@databricks/databricks-sdk";
+import {WorkspaceClient, Cluster, Repo} from "@databricks/databricks-sdk";
 import {initialiseCustomCommands} from "./customCommands";
 
 const WORKSPACE_PATH = path.resolve(__dirname, "workspace");
@@ -233,16 +228,13 @@ export const config: Options.Testrunner = {
             await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
             await fs.mkdir(WORKSPACE_PATH);
 
-            const apiClient = getApiClient(
+            const client = getWorkspaceClient(
                 getHost(),
                 process.env["DATABRICKS_TOKEN"]
             );
-            const repoPath = await createRepo(apiClient);
+            const repoPath = await createRepo(client);
             const configFile = await writeDatabricksConfig();
-            await startCluster(
-                apiClient,
-                process.env["TEST_DEFAULT_CLUSTER_ID"]
-            );
+            await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
 
             process.env.DATABRICKS_CONFIG_FILE = configFile;
             process.env.WORKSPACE_PATH = WORKSPACE_PATH;
@@ -427,35 +419,32 @@ token = ${process.env["DATABRICKS_TOKEN"]}`
     return configFile;
 }
 
-function getApiClient(host: string, token: string) {
-    const apiClient = new ApiClient({
-        credentialProvider: async () => {
-            return {
-                host: new URL(host),
-                token,
-            };
-        },
-        extraUserAgent: {"integration-tests": "0.0.1"},
+function getWorkspaceClient(host: string, token: string) {
+    const client = new WorkspaceClient({
+        host,
+        token,
+        authType: "pat",
+        product: "integration-tests",
+        productVersion: "0.0.1",
     });
 
-    return apiClient;
+    return client;
 }
 
 /**
  * Create a repo for the integration tests to use
  */
-async function createRepo(apiClient: ApiClient): Promise<string> {
-    const meService = new CurrentUserService(apiClient);
-    const me = (await meService.me()).userName!;
+async function createRepo(workspaceClient: WorkspaceClient): Promise<string> {
+    const me = (await workspaceClient.currentUser.me()).userName!;
     const repoPath = `/Repos/${me}/${REPO_NAME}`;
 
     console.log(`Creating test Repo: ${repoPath}`);
 
     let repo: Repo;
     try {
-        repo = await Repo.fromPath(apiClient, repoPath);
+        repo = await Repo.fromPath(workspaceClient.apiClient, repoPath);
     } catch (e) {
-        repo = await Repo.create(apiClient, {
+        repo = await Repo.create(workspaceClient.apiClient, {
             path: repoPath,
             url: "https://github.com/fjakobs/empty-repo.git",
             provider: "github",
@@ -465,9 +454,15 @@ async function createRepo(apiClient: ApiClient): Promise<string> {
     return repo.path;
 }
 
-async function startCluster(apiClient: ApiClient, clusterId: string) {
+async function startCluster(
+    workspaceClient: WorkspaceClient,
+    clusterId: string
+) {
     console.log(`Starting cluster: ${clusterId}`);
-    const cluster = await Cluster.fromClusterId(apiClient, clusterId);
+    const cluster = await Cluster.fromClusterId(
+        workspaceClient.apiClient,
+        clusterId
+    );
     await cluster.start(undefined, (state) =>
         console.log(`Cluster state: ${state}`)
     );

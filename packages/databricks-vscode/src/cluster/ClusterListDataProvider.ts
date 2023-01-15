@@ -3,6 +3,7 @@ import {
     Event,
     EventEmitter,
     ProviderResult,
+    ThemeColor,
     ThemeIcon,
     TreeDataProvider,
     TreeItem,
@@ -82,7 +83,10 @@ export class ClusterListDataProvider
                 break;
 
             case "TERMINATING":
-                icon = new ThemeIcon("stop-circle");
+                icon = new ThemeIcon(
+                    "stop-circle",
+                    new ThemeColor("notificationsErrorIcon.foreground")
+                );
                 break;
 
             case "TERMINATED":

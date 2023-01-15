@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as https from "node:https";
 import {TextDecoder} from "node:util";
-import {fromDefaultChain} from "./auth/fromChain";
 import {fetch} from "./fetch";
 import {ExposedLoggers, Utils, withLogContext} from "./logging";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "./context";
 import {Context} from "./context";
+import {Headers, Config} from "./config/Config";
 import retry, {RetriableError} from "./retries/retries";
 import Time, {TimeUnits} from "./retries/Time";
-import {CredentialProvider} from "./auth/types";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sdkVersion = require("../package.json").version;
@@ -47,53 +46,56 @@ function logAndReturnError(
     return error;
 }
 
+export type ProductVersion = `${number}.${number}.${number}`;
+
+export interface ClientOptions {
+    agent?: https.Agent;
+    product?: string;
+    productVersion?: ProductVersion;
+    userAgentExtra?: Record<string, string>;
+}
+
 export class ApiClient {
     private agent: https.Agent;
-    private _host?: URL;
+    readonly product: string;
+    readonly productVersion: ProductVersion;
+    readonly userAgentExtra: Record<string, string>;
 
-    private credentialProvider: CredentialProvider;
-    private readonly extraUserAgent: Record<string, string>;
+    constructor(readonly config: Config, options: ClientOptions = {}) {
+        this.agent =
+            options.agent ||
+            new https.Agent({
+                keepAlive: true,
+                keepAliveMsecs: 15_000,
+                rejectUnauthorized: config.insecureSkipVerify === false,
+                timeout: (config.httpTimeoutSeconds || 5) * 1000,
+            });
 
-    get host(): Promise<URL> {
-        return (async () => {
-            if (!this._host) {
-                const credentials = await this.credentialProvider();
-                this._host = credentials.host;
-            }
-            return this._host;
-        })();
+        this.product = options.product || "unknown";
+        this.productVersion = options.productVersion || "0.0.0";
+        this.userAgentExtra = options.userAgentExtra || {};
     }
 
-    constructor({
-        credentialProvider = fromDefaultChain,
-        extraUserAgent = {},
-    }: {
-        credentialProvider?: CredentialProvider;
-        extraUserAgent?: Record<string, string>;
-    }) {
-        this.credentialProvider = credentialProvider;
-        this.extraUserAgent = extraUserAgent;
+    get host(): Promise<URL> {
+        return this.config.getHost();
+    }
 
-        this.agent = new https.Agent({
-            keepAlive: true,
-            keepAliveMsecs: 15_000,
-        });
+    get accountId(): string | undefined {
+        return this.config.accountId;
     }
 
     userAgent(): string {
-        const pairs: Array<string> = [];
-        for (const [key, value] of Object.entries(this.extraUserAgent)) {
-            pairs.push(`${key}/${value}`);
-        }
-
-        pairs.push(
+        const pairs = [
+            `${this.product}/${this.productVersion}`,
             `databricks-sdk-js/${sdkVersion}`,
             `nodejs/${process.version.slice(1)}`,
-            `os/${process.platform}`
-        );
+            `os/${process.platform}`,
+            `auth/${this.config.authType}`,
+        ];
 
-        // TODO: add ability of per-request extra-information,
-        // so that we can track sub-functionality, like in Terraform
+        for (const [key, value] of Object.entries(this.userAgentExtra)) {
+            pairs.push(`${key}/${value}`);
+        }
         return pairs.join(" ");
     }
 
@@ -103,16 +105,16 @@ export class ApiClient {
         method: HttpMethod,
         payload?: any,
         @context context?: Context
-    ): Promise<Record<string, unknown>> {
-        const credentials = await this.credentialProvider();
-        const headers = {
-            "Authorization": `Bearer ${credentials.token}`,
+    ): Promise<unknown> {
+        const headers: Headers = {
             "User-Agent": this.userAgent(),
             "Content-Type": "text/json",
         };
 
+        await this.config.authenticate(headers);
+
         // create a copy of the URL, so that we can modify it
-        const url = new URL(credentials.host.toString());
+        const url = new URL(this.config.host!);
         url.pathname = path;
 
         const options: any = {
@@ -132,7 +134,10 @@ export class ApiClient {
         const response = await retry<
             Awaited<Awaited<ReturnType<typeof fetch>>["response"]>
         >({
-            timeout: new Time(10, TimeUnits.seconds),
+            timeout: new Time(
+                this.config.retryTimeoutSeconds || 300,
+                TimeUnits.seconds
+            ),
             fn: async () => {
                 let response;
                 try {

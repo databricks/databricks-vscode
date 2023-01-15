@@ -82,19 +82,36 @@ export class ConfigurationDataProvider
             });
 
             if (cluster) {
+                let contextValue:
+                    | "databricks.cluster.running"
+                    | "databricks.cluster.pending"
+                    | "databricks.cluster.terminating"
+                    | "databricks.cluster.terminated" =
+                    "databricks.cluster.terminated";
+
+                switch (cluster.state) {
+                    case "RUNNING":
+                        contextValue = "databricks.cluster.running";
+                        break;
+                    case "PENDING":
+                    case "RESIZING":
+                    case "RESTARTING":
+                        contextValue = "databricks.cluster.pending";
+                        break;
+                    case "TERMINATING":
+                        contextValue = "databricks.cluster.terminating";
+                        break;
+                    case "TERMINATED":
+                        contextValue = "databricks.cluster.terminated";
+                        break;
+                }
+
                 children.push({
                     label: "Cluster",
                     iconPath: new ThemeIcon("server"),
                     id: "CLUSTER",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
-                    contextValue:
-                        cluster.state === "RUNNING"
-                            ? "clusterRunning"
-                            : ["PENDING", "RESIZING", "RESTARTING"].includes(
-                                  cluster.state
-                              )
-                            ? "clusterPending"
-                            : "clusterStopped",
+                    contextValue,
                 });
             } else {
                 children.push({

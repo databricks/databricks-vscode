@@ -1,10 +1,10 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import {AuthProvider, ProfileAuthProvider} from "./AuthProvider";
-import {fromConfigFile} from "@databricks/databricks-sdk";
+import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Uri} from "vscode";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
+import {Config} from "@databricks/databricks-sdk";
 
 export interface ProjectConfig {
     authProvider: AuthProvider;
@@ -71,10 +71,18 @@ export class ProjectConfigFile {
     }
 
     static async importOldConfig(config: any): Promise<ProfileAuthProvider> {
-        const credentialProvider = fromConfigFile(config.profile);
-        const creds = await credentialProvider();
+        const sdkConfig = new Config({
+            profile: config.profile,
+            configFile: process.env.DATABRICKS_CONFIG_FILE,
+            env: {},
+        });
 
-        return new ProfileAuthProvider(creds.host, config.profile);
+        await sdkConfig.ensureResolved();
+
+        return new ProfileAuthProvider(
+            new URL(sdkConfig.host!),
+            sdkConfig.profile!
+        );
     }
 
     static async load(rootPath?: string): Promise<ProjectConfigFile> {
@@ -104,12 +112,14 @@ export class ProjectConfigFile {
             } else {
                 authProvider = AuthProvider.fromJSON(config);
             }
-        } catch (e) {
+        } catch (e: any) {
             NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Error parsing project config file",
                 e
             );
-            throw new ConfigFileError("Error parsing project config file");
+            throw new ConfigFileError(
+                `Error parsing project config file: ${e.message}`
+            );
         }
         return new ProjectConfigFile(
             {

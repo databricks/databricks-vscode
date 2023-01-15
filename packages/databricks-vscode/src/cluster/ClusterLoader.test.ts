@@ -4,6 +4,7 @@ import {
     cluster,
     permissions,
     scim,
+    WorkspaceClient,
 } from "@databricks/databricks-sdk";
 import assert from "assert";
 import {anything, instance, mock, spy, when} from "ts-mockito";
@@ -59,7 +60,7 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             state: "RUNNING",
             single_user_name: me.userName,
             access_mode: "SINGLE_USER",
-        },
+        } as cluster.ClusterInfo & {access_mode: "SINGLE_USER"},
     ],
 };
 
@@ -92,21 +93,24 @@ const mockClusterPermissions: Map<string, permissions.ObjectPermissions> =
     ]);
 describe(__filename, () => {
     let mockedConnectionManager: ConnectionManager;
+    let mockedWorkspaceClient: WorkspaceClient;
     let mockedApiClient: ApiClient;
 
     beforeEach(() => {
         mockedConnectionManager = mock(ConnectionManager);
+        mockedWorkspaceClient = mock<WorkspaceClient>();
         mockedApiClient = mock<ApiClient>();
+
         when<cluster.ListClustersResponse>(
             mockedApiClient.request(
                 "/api/2.0/clusters/list",
                 "GET",
                 anything(),
                 anything()
-            )
+            ) as Promise<cluster.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);
-        when(mockedConnectionManager.apiClient).thenReturn(
-            instance(mockedApiClient)
+        when(mockedConnectionManager.workspaceClient).thenReturn(
+            instance(mockedWorkspaceClient)
         );
         for (const [id, perms] of mockClusterPermissions.entries()) {
             when<permissions.ObjectPermissions>(
@@ -115,13 +119,17 @@ describe(__filename, () => {
                     "GET",
                     anything(),
                     anything()
-                )
+                ) as Promise<permissions.ObjectPermissions>
             ).thenResolve(perms);
         }
         when(mockedConnectionManager.databricksWorkspace).thenReturn({
             user: me,
             userName: me.userName,
         } as any);
+
+        when(mockedWorkspaceClient.apiClient).thenReturn(
+            instance(mockedApiClient)
+        );
     });
 
     it("should only load accessible clusters", async () => {

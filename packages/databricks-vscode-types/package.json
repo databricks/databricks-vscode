@@ -1,6 +1,6 @@
 {
     "name": "@databricks/databricks-vscode-types",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "description": "Package with types and interfaces to develop extensions to the Databricks VSCode plugin",
     "main": "index.js",
     "types": "index.d.ts",
@@ -8,14 +8,14 @@
         "type": "git",
         "url": "git+https://github.com/databricks/databricks-vscode.git"
     },
-    "license": "Apache-2.0",
+    "license": "LicenseRef-LICENSE",
     "bugs": {
         "url": "https://github.com/databricks/databricks-vscode/issues"
     },
     "homepage": "https://github.com/databricks/databricks-vscode#readme",
     "scripts": {
-        "build": "tsc",
-        "watch": "tsc -w",
+        "build": "tsc --build",
+        "watch": "tsc --build --watch",
         "clean": "rm -rf dist node_modules",
         "fix": "eslint . --ext ts --fix && prettier . --write",
         "test:lint": "eslint . --ext ts && prettier . -c",
@@ -23,9 +23,9 @@
         "test": "yarn run test:lint && yarn run test:unit"
     },
     "devDependencies": {
-        "@types/vscode": "^1.73.0",
-        "eslint": "^8.29.0",
-        "prettier": "^2.8.1",
+        "@types/vscode": "^1.74.0",
+        "eslint": "^8.31.0",
+        "prettier": "^2.8.2",
         "typescript": "^4.9.4"
     },
     "dependencies": {

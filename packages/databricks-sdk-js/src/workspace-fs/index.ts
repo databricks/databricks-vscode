@@ -1,10 +1,10 @@
-import {ObjectInfoObjectType} from "../apis/workspace";
+import {ObjectType} from "../apis/workspace";
 
 export interface IWorkspaceFsEntity {
     children: Promise<Array<IWorkspaceFsEntity>>;
     url: Promise<string>;
     path: string;
-    type: ObjectInfoObjectType;
+    type: ObjectType;
     id: string;
     parent: Promise<IWorkspaceFsEntity | undefined>;
 }

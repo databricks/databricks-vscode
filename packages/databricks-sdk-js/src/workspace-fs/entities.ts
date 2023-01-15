@@ -1,6 +1,6 @@
 import {posix} from "path";
 import {IWorkspaceFsEntity} from ".";
-import {ApiClient, ApiClientResponseError, HttpError} from "../api-client";
+import {ApiClient, ApiClientResponseError} from "../api-client";
 import {ObjectInfo, WorkspaceService} from "../apis/workspace";
 import {context, Context} from "../context";
 import {ExposedLoggers, withLogContext} from "../logging";
@@ -61,9 +61,7 @@ export abstract class WorkspaceFsEntity implements IWorkspaceFsEntity {
         return this._details.path;
     }
 
-    protected async generateUrl(host: URL): Promise<string> {
-        throw new Error("generateUrl not implemented");
-    }
+    protected abstract generateUrl(host: URL): Promise<string>;
 
     get url() {
         return new Promise<string>((resolve) => {

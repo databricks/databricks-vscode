@@ -7,7 +7,7 @@ export class ClusterManager implements Disposable {
 
     constructor(
         readonly cluster: Cluster,
-        readonly onChange: (state: cluster.ClusterInfoState) => void = () => {},
+        readonly onChange: (state: cluster.State) => void = () => {},
         readonly refreshTimeout: Time = new Time(10, TimeUnits.seconds)
     ) {
         this.setInterval();
@@ -31,9 +31,7 @@ export class ClusterManager implements Disposable {
         this.clearInterval();
     }
 
-    async start(
-        onProgress: (state: cluster.ClusterInfoState) => void = () => {}
-    ) {
+    async start(onProgress: (state: cluster.State) => void = () => {}) {
         this.clearInterval();
         this.cancellationTokenSource?.cancel();
         this.cancellationTokenSource = new CancellationTokenSource();
@@ -47,14 +45,11 @@ export class ClusterManager implements Disposable {
         this.setInterval();
     }
 
-    async stop(
-        onProgress: (state?: cluster.ClusterInfoState) => void = () => {}
-    ) {
+    async stop(onProgress: (state?: cluster.State) => void = () => {}) {
         this.clearInterval();
         this.cancellationTokenSource?.cancel();
         this.cancellationTokenSource = new CancellationTokenSource();
 
-        //TODO: add cancellation and onProgress cb after adding these to API generator
         await this.cluster.stop(
             this.cancellationTokenSource.token,
             async (clusterInfo: cluster.ClusterInfo) =>

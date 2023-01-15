@@ -1,4 +1,5 @@
-import {ApiClient, WorkspaceConfService} from "..";
+import {ApiClient} from "../api-client";
+import {WorkspaceConfService} from "../apis/workspaceconf";
 import {context, Context} from "../context";
 import {ExposedLoggers, withLogContext} from "../logging";
 

@@ -1,20 +1,11 @@
 {
+    "extends": "../../tsconfig_base.json",
     "compilerOptions": {
-        "declaration": true,
+        "allowJs": true,
         "types": ["reflect-metadata", "mocha", "node"],
-        "module": "CommonJS",
-        "target": "ES2020",
-        "moduleResolution": "Node",
-        "esModuleInterop": true,
-        "isolatedModules": true,
         "lib": ["ES2020", "DOM", "ES2021.String"],
-        "sourceMap": true,
         "rootDir": "src",
-        "outDir": "dist",
-        "strict": true /* enable all strict type-checking options */,
-        "experimentalDecorators": true,
-        "emitDecoratorMetadata": true,
-        "forceConsistentCasingInFileNames": true
+        "outDir": "dist"
     },
     "include": ["src"]
 }

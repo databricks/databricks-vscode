@@ -11,7 +11,6 @@ import {
     ThemeIcon,
     TreeItemCollapsibleState,
     ThemeColor,
-    ProviderResult,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
@@ -31,7 +30,7 @@ export class WorkspaceFsDataProvider
 
     constructor(private readonly _connectionManager: ConnectionManager) {
         this.disposables.push(
-            this._connectionManager.onDidChangeState((state) => {
+            this._connectionManager.onDidChangeState(() => {
                 this._onDidChangeTreeData.fire();
             })
         );
@@ -93,10 +92,10 @@ export class WorkspaceFsDataProvider
     getChildren(
         element?: IWorkspaceFsEntity | undefined
     ): Thenable<IWorkspaceFsEntity[] | undefined> {
-        if (!this._connectionManager.apiClient) {
+        if (!this._connectionManager.workspaceClient?.apiClient) {
             return Promise.resolve(undefined);
         }
-        const apiClient = this._connectionManager.apiClient;
+        const apiClient = this._connectionManager.workspaceClient.apiClient;
 
         if (element === undefined) {
             return (async () => {

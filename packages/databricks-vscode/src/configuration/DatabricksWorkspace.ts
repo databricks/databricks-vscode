@@ -1,7 +1,6 @@
 import {
-    ApiClient,
+    WorkspaceClient,
     Cluster,
-    CurrentUserService,
     scim,
     WorkspaceConf,
     WorkspaceConfProps,
@@ -10,7 +9,7 @@ import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
-import {AuthProvider} from "./AuthProvider";
+import {AuthProvider} from "./auth/AuthProvider";
 
 export class DatabricksWorkspace {
     constructor(
@@ -72,14 +71,13 @@ export class DatabricksWorkspace {
 
     @withLogContext(Loggers.Extension, "DatabricksWorkspace.load")
     static async load(
-        client: ApiClient,
+        client: WorkspaceClient,
         authProvider: AuthProvider,
         @context ctx?: Context
     ) {
-        const scimApi = new CurrentUserService(client);
-        const me = await scimApi.me(ctx);
+        const me = await client.currentUser.me(ctx);
 
-        const wsConfApi = new WorkspaceConf(client);
+        const wsConfApi = new WorkspaceConf(client.apiClient);
         let state: WorkspaceConfProps = {
             enableProjectTypeInWorkspace: "true",
             enableWorkspaceFilesystem: "true",

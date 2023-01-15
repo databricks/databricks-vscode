@@ -11,16 +11,17 @@ import {
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-import {commands, PermissionsService, Time, TimeUnits} from "..";
+import {commands, Time, TimeUnits} from "..";
 import {
     ClusterInfo,
+    ClusterSource,
     ClustersService,
-    ClusterInfoState,
-    ClusterInfoClusterSource,
+    State,
 } from "../apis/clusters";
 import {Context, context} from "../context";
 import {User} from "../apis/scim";
 import {ExposedLoggers, withLogContext} from "../logging";
+import {PermissionsService} from "../apis/permissions";
 
 export class ClusterRetriableError extends RetriableError {}
 export class ClusterError extends Error {}
@@ -105,7 +106,7 @@ export class Cluster {
         return this.clusterDetails.creator_user_name || "";
     }
 
-    get state(): ClusterInfoState {
+    get state(): State {
         return this.clusterDetails.state!;
     }
 
@@ -113,7 +114,7 @@ export class Cluster {
         return this.clusterDetails.state_message || "";
     }
 
-    get source(): ClusterInfoClusterSource {
+    get source(): ClusterSource {
         return this.clusterDetails.cluster_source!;
     }
 
@@ -127,7 +128,8 @@ export class Cluster {
     isSingleUser() {
         const modeProperty =
             //TODO: deprecate data_security_mode once access_mode is available everywhere
-            this.details.access_mode ?? this.details.data_security_mode;
+            (this.details as any).access_mode ??
+            this.details.data_security_mode;
         return (
             modeProperty !== undefined &&
             [
@@ -162,9 +164,9 @@ export class Cluster {
         }
 
         const permissionApi = new PermissionsService(this.client);
-        const perms = await permissionApi.getObjectPermissions({
-            object_id: this.id,
-            object_type: "clusters",
+        const perms = await permissionApi.get({
+            request_object_id: this.id,
+            request_object_type: "clusters",
         });
 
         return (this._hasExecutePerms =
@@ -186,7 +188,7 @@ export class Cluster {
 
     async start(
         token?: CancellationToken,
-        onProgress: (state: ClusterInfoState) => void = () => {}
+        onProgress: (state: State) => void = () => {}
     ) {
         await this.refresh();
         onProgress(this.state);
@@ -378,12 +380,7 @@ export class Cluster {
                     existing_cluster_id: this.id,
                     notebook_task: {
                         notebook_path: path,
-                        base_parameters: Object.keys(parameters).map((key) => {
-                            return {
-                                key,
-                                value: parameters[key],
-                            };
-                        }),
+                        base_parameters: parameters,
                     },
                     depends_on: [],
                     libraries: [],

@@ -1,0 +1,12 @@
+{
+    "formatter": "yarn fix",
+    "packages": {
+        ".codegen/api.ts.tmpl": "apis/{{.Name}}/api.ts",
+        ".codegen/index.ts.tmpl": "apis/{{.Name}}/index.ts",
+        ".codegen/model.ts.tmpl": "apis/{{.Name}}/model.ts"
+    },
+    "batch": {
+        ".codegen/WorkspaceClient.ts.tmpl": "WorkspaceClient.ts",
+        ".codegen/AccountClient.ts.tmpl": "AccountClient.ts"
+    }
+}

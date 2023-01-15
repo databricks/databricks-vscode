@@ -4,11 +4,11 @@ import {
     loadConfigFile,
     Profile,
     Profiles,
-} from "@databricks/databricks-sdk";
+} from "./auth/configFile";
 import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
 import {MultiStepInput} from "../ui/wizard";
 import {normalizeHost} from "../utils/urlUtils";
-import {AuthProvider, AuthType} from "./AuthProvider";
+import {AuthProvider, AuthType} from "./auth/AuthProvider";
 import {ProjectConfig} from "./ProjectConfigFile";
 
 interface AuthTypeQuickPickItem extends QuickPickItem {

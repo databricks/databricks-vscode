@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiClient, WorkspaceFsRepo} from "@databricks/databricks-sdk";
-import {ListRequest} from "@databricks/databricks-sdk/dist/apis/repos";
+import {List} from "@databricks/databricks-sdk/dist/apis/repos";
 import assert from "assert";
 import {instance, mock, when} from "ts-mockito";
 import {Uri} from "vscode";
@@ -14,7 +14,7 @@ describe(__filename, () => {
             mockClient.request("/api/2.0/repos", "GET", {
                 path_prefix:
                     "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
-            } as ListRequest)
+            } as List)
         ).thenResolve({
             repos: [
                 {

@@ -18,7 +18,7 @@ describe(__filename, function () {
 
     it("should run python with high level API", async () => {
         const context = await ExecutionContext.create(
-            integSetup.client,
+            integSetup.client.apiClient,
             integSetup.cluster
         );
 
@@ -46,7 +46,7 @@ describe(__filename, function () {
 
     it("should cancel running command", async () => {
         const context = await ExecutionContext.create(
-            integSetup.client,
+            integSetup.client.apiClient,
             integSetup.cluster
         );
 
