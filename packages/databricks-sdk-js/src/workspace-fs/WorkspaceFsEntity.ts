@@ -1,9 +1,14 @@
 import {posix} from "path";
-import {IWorkspaceFsEntity} from ".";
 import {ApiClient, ApiClientResponseError} from "../api-client";
 import {ObjectInfo, WorkspaceService} from "../apis/workspace";
 import {context, Context} from "../context";
 import {ExposedLoggers, withLogContext} from "../logging";
+import {
+    WorkspaceFsDir,
+    WorkspaceFsRepo,
+    WorkspaceFsFile,
+    WorkspaceFsNotebook,
+} from ".";
 
 export class ObjectInfoValidationError extends Error {
     constructor(message: string, readonly details: ObjectInfo) {
@@ -18,9 +23,9 @@ class RequiredFields {
 }
 type RequiredObjectInfo = ObjectInfo & RequiredFields;
 
-export abstract class WorkspaceFsEntity implements IWorkspaceFsEntity {
-    private _workspaceFsService: WorkspaceService;
-    private _children?: Array<IWorkspaceFsEntity>;
+export abstract class WorkspaceFsEntity {
+    protected _workspaceFsService: WorkspaceService;
+    private _children?: Array<WorkspaceFsEntity>;
     private _details: RequiredObjectInfo;
 
     constructor(protected readonly _apiClient: ApiClient, details: ObjectInfo) {
@@ -81,8 +86,8 @@ export abstract class WorkspaceFsEntity implements IWorkspaceFsEntity {
 
     protected async fetchChildren() {
         function objIsDefined(
-            obj: IWorkspaceFsEntity | undefined
-        ): obj is IWorkspaceFsEntity {
+            obj: WorkspaceFsEntity | undefined
+        ): obj is WorkspaceFsEntity {
             return obj !== undefined ? true : false;
         }
 
@@ -117,7 +122,7 @@ export abstract class WorkspaceFsEntity implements IWorkspaceFsEntity {
     }
 
     get children() {
-        return new Promise<Array<IWorkspaceFsEntity>>((resolve) => {
+        return new Promise<Array<WorkspaceFsEntity>>((resolve) => {
             if (this._children === undefined) {
                 this.fetchChildren().then(() => resolve(this._children ?? []));
             } else {
@@ -147,16 +152,33 @@ export abstract class WorkspaceFsEntity implements IWorkspaceFsEntity {
         }
     }
 
-    get parent(): Promise<IWorkspaceFsEntity | undefined> {
+    get parent(): Promise<WorkspaceFsEntity | undefined> {
         const parentPath = posix.dirname(this.path);
         return WorkspaceFsEntity.fromPath(this._apiClient, parentPath);
+    }
+
+    get basename(): string {
+        return posix.basename(this.path);
+    }
+
+    protected abstract _mkdir(
+        path: string,
+        ctx?: Context
+    ): Promise<WorkspaceFsEntity | undefined>;
+
+    @withLogContext(ExposedLoggers.SDK)
+    async mkdir(
+        path: string,
+        @context ctx?: Context
+    ): Promise<WorkspaceFsEntity | undefined> {
+        return this._mkdir(path, ctx);
     }
 }
 
 function entityFromObjInfo(
     apiClient: ApiClient,
     details: ObjectInfo
-): IWorkspaceFsEntity | undefined {
+): WorkspaceFsEntity | undefined {
     switch (details.object_type) {
         case "DIRECTORY":
             return new WorkspaceFsDir(apiClient, details);
@@ -169,27 +191,3 @@ function entityFromObjInfo(
     }
     return undefined;
 }
-
-export class WorkspaceFsFile extends WorkspaceFsEntity {
-    override get children() {
-        return Promise.resolve([]);
-    }
-
-    override async generateUrl(host: URL): Promise<string> {
-        return `${host.host}#folder/${(await this.parent)?.id ?? ""}`;
-    }
-}
-
-export class WorkspaceFsDir extends WorkspaceFsEntity {
-    override async generateUrl(host: URL): Promise<string> {
-        return `${host.host}#folder/${this.details.object_id}`;
-    }
-}
-
-export class WorkspaceFsNotebook extends WorkspaceFsFile {
-    get language() {
-        return this.details.language;
-    }
-}
-
-export class WorkspaceFsRepo extends WorkspaceFsDir {}

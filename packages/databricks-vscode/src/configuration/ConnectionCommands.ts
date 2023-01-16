@@ -1,6 +1,7 @@
-import {Cluster} from "@databricks/databricks-sdk";
+import {Cluster, WorkspaceFsEntity} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
+    commands,
     Disposable,
     QuickPickItem,
     QuickPickItemKind,
@@ -13,7 +14,8 @@ import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
-import {SyncDestination} from "./SyncDestination";
+import {workspaceConfigs} from "../WorkspaceConfigs";
+import {posix} from "path/posix";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -183,41 +185,91 @@ export class ConnectionCommands implements Disposable {
         return async () => {
             const apiClient = this.connectionManager.workspaceClient?.apiClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
-            if (!apiClient || !me) {
+            const rootDirPath =
+                this.connectionManager.databricksWorkspace?.currentFsRoot;
+            if (!apiClient || !me || !rootDirPath) {
                 // TODO
                 return;
             }
 
-            let input: string | undefined = `/Users/${me}`;
-            while (true) {
-                input = await window.showInputBox({
-                    prompt: "Enter full sync destination path",
-                    value: input,
-                });
-                if (input === undefined) {
-                    return undefined;
+            let rootDir = await WorkspaceFsEntity.fromPath(
+                apiClient,
+                rootDirPath.path
+            );
+            if (!rootDir) {
+                const created = await (
+                    await WorkspaceFsEntity.fromPath(apiClient, `/Users/${me}`)
+                )?.mkdir(rootDirPath.path);
+
+                if (!created) {
+                    window.showErrorMessage(
+                        `Can't find or create ${rootDirPath}`
+                    );
+                    return;
                 }
 
-                const uri = Uri.from({scheme: "wsfs", path: input});
-                if (
-                    (await SyncDestination.getWorkspaceFsDir(
-                        apiClient,
-                        uri
-                    )) === undefined
-                ) {
-                    const retry = await window.showErrorMessage(
-                        `Invalid sync destination: ${input}`,
-                        "Enter another path",
-                        "Cancel"
-                    );
-                    if (retry === "Cancel") {
-                        return undefined;
-                    }
-                    continue;
-                }
-                this.connectionManager.attachSyncDestination(uri);
-                break;
+                rootDir = created;
             }
+
+            type WorkspaceFsQuickPickItem = QuickPickItem & {
+                path?: string;
+            };
+            const children: WorkspaceFsQuickPickItem[] = [
+                {
+                    label: "Create New Sync Destination",
+                    alwaysShow: true,
+                    detail: workspaceConfigs.enableFilesInWorkspace
+                        ? ""
+                        : `Open Databricks in the browser and create a new repo under /Repo/${me}`,
+                },
+                {
+                    label: "",
+                    kind: QuickPickItemKind.Separator,
+                },
+            ];
+
+            const input = window.createQuickPick();
+            input.busy = true;
+            input.items = children;
+            input.show();
+            children.push(
+                ...((await rootDir?.children) ?? []).map((entity) => {
+                    return {
+                        label: entity.basename,
+                        detail: entity.path,
+                        path: entity.path,
+                    };
+                })
+            );
+            input.items = children;
+            input.busy = false;
+
+            const disposables = [
+                input,
+                input.onDidAccept(async () => {
+                    const selection = input
+                        .selectedItems[0] as WorkspaceFsQuickPickItem;
+
+                    if (selection.label === "Create New Sync Destination") {
+                        if (workspaceConfigs.enableFilesInWorkspace) {
+                            commands.executeCommand(
+                                "databricks.workspacefs.createFolder",
+                                rootDir
+                            );
+                        } else {
+                            UrlUtils.openExternal((await rootDir?.url) ?? "");
+                        }
+                    } else {
+                        this.connectionManager.attachSyncDestination(
+                            Uri.from({scheme: "wsfs", path: selection.path})
+                        );
+                    }
+                    disposables.forEach((i) => i.dispose());
+                }),
+                input.onDidHide(() => {
+                    disposables.forEach((i) => i.dispose());
+                }),
+            ];
         };
     }
 

@@ -1,5 +1,7 @@
-import {Disposable, Uri, window} from "vscode";
+import {WorkspaceFsEntity, WorkspaceFsUtils} from "@databricks/databricks-sdk";
+import {Disposable, Uri} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {createDirWizard} from "./createDirectoryWizard";
 import {IFsTreeItem, WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
 
 export class WorkspaceFsCommands implements Disposable {
@@ -10,23 +12,33 @@ export class WorkspaceFsCommands implements Disposable {
         private _workspaceFsDataProvider: WorkspaceFsDataProvider
     ) {}
 
-    async attachSyncDestination(element: IFsTreeItem) {
+    async attachSyncDestination(element: WorkspaceFsEntity) {
         await this._connectionManager.attachSyncDestination(
-            Uri.from({
-                scheme: "wsfs",
-                path: element.path,
-            })
+            Uri.from({scheme: "wsfs", path: element.path})
         );
     }
-    //TODO
-    async createFolder(element: IFsTreeItem) {
-        let name = await window.showInputBox({placeHolder: "New Folder"});
-        if (name === undefined) {
+
+    async createFolder(element: WorkspaceFsEntity) {
+        const path =
+            element?.path ??
+            this._connectionManager.databricksWorkspace?.currentFsRoot.path;
+
+        if (!this._connectionManager.workspaceClient || !path) {
             return;
         }
 
-        if (name === "") {
-            name = "New Folder";
+        const root = await WorkspaceFsEntity.fromPath(
+            this._connectionManager.workspaceClient.apiClient,
+            path
+        );
+
+        if (!WorkspaceFsUtils.isDirectory(root)) {
+            return;
+        }
+
+        const created = await createDirWizard(root);
+        if (created) {
+            this._workspaceFsDataProvider.refresh();
         }
     }
 

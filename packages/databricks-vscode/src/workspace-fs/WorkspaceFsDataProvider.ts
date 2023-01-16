@@ -1,7 +1,4 @@
-import {
-    IWorkspaceFsEntity,
-    WorkspaceFsEntity,
-} from "@databricks/databricks-sdk";
+import {WorkspaceFsEntity} from "@databricks/databricks-sdk";
 import {posix} from "path";
 import {
     Disposable,
@@ -11,19 +8,20 @@ import {
     ThemeIcon,
     TreeItemCollapsibleState,
     ThemeColor,
+    Uri,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export interface IFsTreeItem extends TreeItem {
-    path: string;
+    path: Uri;
     url: Promise<string>;
 }
 
 export class WorkspaceFsDataProvider
-    implements TreeDataProvider<IWorkspaceFsEntity>, Disposable
+    implements TreeDataProvider<WorkspaceFsEntity>, Disposable
 {
     private _onDidChangeTreeData = new EventEmitter<
-        IWorkspaceFsEntity | undefined | void
+        WorkspaceFsEntity | undefined | void
     >();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
     private disposables: Disposable[] = [];
@@ -31,17 +29,17 @@ export class WorkspaceFsDataProvider
     constructor(private readonly _connectionManager: ConnectionManager) {
         this.disposables.push(
             this._connectionManager.onDidChangeState(() => {
-                this._onDidChangeTreeData.fire();
+                this._onDidChangeTreeData.fire(undefined);
             })
         );
     }
 
     getTreeItem(
-        element: IWorkspaceFsEntity
+        element: WorkspaceFsEntity
     ): IFsTreeItem | Thenable<IFsTreeItem> {
         let treeItem: IFsTreeItem = {
             label: posix.basename(element.path),
-            path: element.path,
+            path: Uri.from({scheme: "wsfs", path: element.path}),
             url: element.url,
         };
         switch (element.type) {
@@ -90,18 +88,23 @@ export class WorkspaceFsDataProvider
     }
 
     getChildren(
-        element?: IWorkspaceFsEntity | undefined
-    ): Thenable<IWorkspaceFsEntity[] | undefined> {
-        if (!this._connectionManager.workspaceClient?.apiClient) {
+        element?: WorkspaceFsEntity | undefined
+    ): Thenable<WorkspaceFsEntity[] | undefined> {
+        const apiClient = this._connectionManager.workspaceClient?.apiClient;
+        const rootDirPath =
+            this._connectionManager.databricksWorkspace?.currentFsRoot;
+        if (!apiClient || !rootDirPath) {
             return Promise.resolve(undefined);
         }
-        const apiClient = this._connectionManager.workspaceClient.apiClient;
 
         if (element === undefined) {
             return (async () => {
                 return this.sort(
                     (await (
-                        await WorkspaceFsEntity.fromPath(apiClient, "/")
+                        await WorkspaceFsEntity.fromPath(
+                            apiClient,
+                            rootDirPath.path
+                        )
                     )?.children) ?? []
                 );
             })();
@@ -112,15 +115,15 @@ export class WorkspaceFsDataProvider
     }
 
     getParent(
-        element: IWorkspaceFsEntity
-    ): Thenable<IWorkspaceFsEntity | undefined> {
+        element: WorkspaceFsEntity
+    ): Thenable<WorkspaceFsEntity | undefined> {
         if (element.path === "/") {
             return Promise.resolve(undefined);
         }
         return element.parent;
     }
 
-    sort(elements: IWorkspaceFsEntity[]) {
+    sort(elements: WorkspaceFsEntity[]) {
         const priorityPaths = [
             "/Users",
             "/Shared",

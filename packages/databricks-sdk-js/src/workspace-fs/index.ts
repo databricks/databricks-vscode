@@ -1,12 +1,4 @@
-import {ObjectType} from "../apis/workspace";
-
-export interface IWorkspaceFsEntity {
-    children: Promise<Array<IWorkspaceFsEntity>>;
-    url: Promise<string>;
-    path: string;
-    type: ObjectType;
-    id: string;
-    parent: Promise<IWorkspaceFsEntity | undefined>;
-}
-
-export * from "./entities";
+export * from "./WorkspaceFsEntity";
+export * from "./WorkspaceFsDir";
+export * from "./WorkspaceFsFile";
+export * as WorkspaceFsUtils from "./utils";

@@ -1,8 +1,4 @@
-import {
-    ApiClient,
-    IWorkspaceFsEntity,
-    WorkspaceFsEntity,
-} from "@databricks/databricks-sdk";
+import {ApiClient, WorkspaceFsEntity} from "@databricks/databricks-sdk";
 import * as assert from "assert";
 import path = require("path");
 import {Uri} from "vscode";
@@ -18,7 +14,7 @@ export class SyncDestination {
      * ONLY USE FOR TESTING
      */
     constructor(
-        readonly wsfsDir: IWorkspaceFsEntity,
+        readonly wsfsDir: WorkspaceFsEntity,
         wsfsDirPath: Uri,
         readonly vscodeWorkspacePath: Uri
     ) {

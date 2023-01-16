@@ -181,6 +181,11 @@
                 "command": "databricks.workspacefs.refresh",
                 "title": "Refresh",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "databricks.workspacefs.createFolder",
+                "title": "Create Folder",
+                "icon": "$(new-folder)"
             }
         ],
         "viewsContainers": {
@@ -200,7 +205,7 @@
                 },
                 {
                     "id": "workspaceFsView",
-                    "name": "/Workspace/"
+                    "name": "Workspace explorer"
                 },
                 {
                     "id": "clusterView",
@@ -243,6 +248,11 @@
                 },
                 {
                     "command": "databricks.workspacefs.refresh",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.workspacefs.createFolder",
                     "when": "view == workspaceFsView",
                     "group": "navigation@1"
                 }
@@ -311,8 +321,11 @@
                 },
                 {
                     "command": "databricks.workspacefs.attachSyncDestination",
-                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.directory.*$/",
-                    "group": "inline@0"
+                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.directory.*$/"
+                },
+                {
+                    "command": "databricks.workspacefs.createFolder",
+                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.directory.*$/"
                 }
             ],
             "editor/title/run": [
@@ -526,6 +539,19 @@
                         "type": "boolean",
                         "default": false,
                         "description": "Enable verbose logging for bricks CLI (sync mode)."
+                    },
+                    "databricks.sync.destinationType": {
+                        "type": "string",
+                        "default": "repo",
+                        "enum": [
+                            "workspace",
+                            "repo"
+                        ],
+                        "description": "Use a folder in Workspace or a Databricks Repo as sync destination (Reload for changes to take effect).",
+                        "enumDescriptions": [
+                            "Use a folder in Workspace as sync destination",
+                            "Use a Repo as sync destination"
+                        ]
                     }
                 }
             }

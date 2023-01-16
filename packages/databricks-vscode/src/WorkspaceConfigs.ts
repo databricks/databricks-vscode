@@ -43,4 +43,12 @@ export const workspaceConfigs = {
                 ?.get<boolean>("bricks.verboseMode") ?? false
         );
     },
+    get enableFilesInWorkspace() {
+        return (
+            (workspace
+                .getConfiguration("databricks")
+                ?.get<"repo" | "workspace">("sync.destinationType") ??
+                "repo") === "workspace"
+        );
+    },
 };

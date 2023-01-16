@@ -287,6 +287,11 @@ export async function activate(
             "databricks.workspacefs.refresh",
             workspaceFsCommands.refresh,
             workspaceFsCommands
+        ),
+        commands.registerCommand(
+            "databricks.workspacefs.createFolder",
+            workspaceFsCommands.createFolder,
+            workspaceFsCommands
         )
     );
 
