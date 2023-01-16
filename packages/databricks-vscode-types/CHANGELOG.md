@@ -4,11 +4,6 @@
 
 ## <small>0.0.10 (2023-01-16)</small>
 
--   Unified auth for JS SDK (#309) ([ad95183](https://github.com/databricks/databricks-vscode/commit/ad95183)), closes [#309](https://github.com/databricks/databricks-vscode/issues/309)
--   Update dependencies (#360) ([53363f2](https://github.com/databricks/databricks-vscode/commit/53363f2)), closes [#360](https://github.com/databricks/databricks-vscode/issues/360)
--   Use typescript project references (#356) ([5fbe525](https://github.com/databricks/databricks-vscode/commit/5fbe525)), closes [#356](https://github.com/databricks/databricks-vscode/issues/356)
--   Use updated Databricks license (#357) ([9d0ee01](https://github.com/databricks/databricks-vscode/commit/9d0ee01)), closes [#357](https://github.com/databricks/databricks-vscode/issues/357)
-
 # Release: v0.0.9
 
 ## packages/databricks-vscode-types
