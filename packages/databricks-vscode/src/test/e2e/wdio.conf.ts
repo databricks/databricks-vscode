@@ -215,7 +215,6 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      */
     onPrepare: async function () {
-        console.log("CI:", process.env.CI);
         try {
             assert(
                 process.env["DATABRICKS_TOKEN"],
