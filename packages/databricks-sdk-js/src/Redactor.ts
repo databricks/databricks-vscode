@@ -10,7 +10,6 @@ function isPrimitveType(obj: any) {
 
 export class Redactor {
     constructor(private fieldNames: string[] = []) {}
-    count = 0;
     addFieldName(fieldName: string) {
         this.fieldNames.push(fieldName);
     }
@@ -33,10 +32,6 @@ export class Redactor {
         }
         if (Array.isArray(obj)) {
             return obj.map((e) => this.sanitize(e, dropFields, seen));
-        }
-        this.count += 1;
-        if (this.count === 4) {
-            return;
         }
 
         //make a copy of the object
