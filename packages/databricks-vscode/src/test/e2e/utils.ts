@@ -8,7 +8,11 @@ import {
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-const ViewSectionTypes = ["CLUSTERS", "CONFIGURATION"] as const;
+const ViewSectionTypes = [
+    "CLUSTERS",
+    "CONFIGURATION",
+    "WORKSPACE EXPLORER",
+] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
 
 export async function findViewSection(name: ViewSectionType) {
@@ -154,7 +158,7 @@ export async function waitForSyncComplete() {
         async () => {
             const repoConfigItem = await getViewSubSection(
                 "CONFIGURATION",
-                "Repo"
+                "Sync Destination"
             );
             if (repoConfigItem === undefined) {
                 return false;
@@ -191,7 +195,7 @@ export async function startSyncIfStopped() {
         async () => {
             const repoConfigItem = await getViewSubSection(
                 "CONFIGURATION",
-                "Repo"
+                "Sync Destination"
             );
             if (repoConfigItem === undefined) {
                 return false;

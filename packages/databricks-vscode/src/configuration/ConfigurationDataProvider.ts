@@ -127,7 +127,7 @@ export class ConfigurationDataProvider
                 // TODO: Add another icon over here for in_progress state
                 // DECO-220
                 children.push({
-                    label: `Remote Directory`,
+                    label: `Sync Destination`,
                     iconPath: new ThemeIcon("file-directory"),
                     id: "SYNC-DESTINATION",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
@@ -139,7 +139,7 @@ export class ConfigurationDataProvider
                 });
             } else {
                 children.push({
-                    label: `Remote Directory - "None attached"`,
+                    label: `Sync Destination - "None attached"`,
                     iconPath: new ThemeIcon("file-directory"),
                     id: "SYNC-DESTINATION",
                     collapsibleState: TreeItemCollapsibleState.Expanded,

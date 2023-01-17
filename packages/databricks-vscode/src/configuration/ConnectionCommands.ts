@@ -15,7 +15,6 @@ import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../WorkspaceConfigs";
-import {posix} from "path/posix";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {

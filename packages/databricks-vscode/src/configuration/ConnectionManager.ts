@@ -1,4 +1,9 @@
-import {WorkspaceClient, Cluster, HttpError} from "@databricks/databricks-sdk";
+import {
+    WorkspaceClient,
+    Cluster,
+    WorkspaceFsEntity,
+    WorkspaceFsUtils,
+} from "@databricks/databricks-sdk";
 import {
     env,
     EventEmitter,
@@ -11,7 +16,6 @@ import {SyncDestination} from "./SyncDestination";
 import {ProjectConfig, ProjectConfigFile} from "./ProjectConfigFile";
 import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
-import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
@@ -357,6 +361,18 @@ export class ConnectionManager {
                 // TODO how do we handle this?
                 return;
             }
+            if (
+                this.workspaceClient === undefined ||
+                this.databricksWorkspace === undefined
+            ) {
+                throw new Error(
+                    "Can't attach a Repo when profile is not connected"
+                );
+            }
+            if (!(await SyncDestination.validateRemote(this, workspacePath))) {
+                await this.detachSyncDestination();
+                return;
+            }
 
             if (!skipWrite) {
                 this._projectConfigFile!.workspacePath = workspacePath;
@@ -364,11 +380,6 @@ export class ConnectionManager {
             }
 
             const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
-            if (this.workspaceClient === undefined) {
-                throw new Error(
-                    "Can't attach a Repo when profile is not connected"
-                );
-            }
             this.updateSyncDestination(
                 await SyncDestination.from(
                     this.workspaceClient.apiClient,

@@ -1,7 +1,13 @@
-import {ApiClient, WorkspaceFsEntity} from "@databricks/databricks-sdk";
+import {
+    ApiClient,
+    WorkspaceClient,
+    WorkspaceFsEntity,
+    WorkspaceFsUtils,
+} from "@databricks/databricks-sdk";
 import * as assert from "assert";
 import path = require("path");
 import {Uri} from "vscode";
+import {ConnectionManager} from "./ConnectionManager";
 
 type SyncDestinationType = "workspace" | "repo";
 
@@ -19,6 +25,37 @@ export class SyncDestination {
         readonly vscodeWorkspacePath: Uri
     ) {
         this.wsfsDirPath = SyncDestination.normalizeWorkspacePath(wsfsDirPath);
+    }
+
+    static async validateRemote(
+        connectionManager: ConnectionManager,
+        remotePath: Uri
+    ) {
+        remotePath = SyncDestination.normalizeWorkspacePath(remotePath);
+        remotePath = Uri.from({
+            scheme: "wsfs",
+            path: remotePath.path.replace(/^\/Workspace\//, "/"),
+        });
+
+        if (
+            connectionManager.workspaceClient === undefined ||
+            connectionManager.databricksWorkspace === undefined
+        ) {
+            return false;
+        }
+
+        const rootDir = await WorkspaceFsEntity.fromPath(
+            connectionManager.workspaceClient.apiClient,
+            connectionManager.databricksWorkspace.currentFsRoot.path
+        );
+        if (
+            !WorkspaceFsUtils.isDirectory(rootDir) ||
+            rootDir.getAbsoluteChildPath(remotePath.path) === undefined
+        ) {
+            return false;
+        }
+
+        return true;
     }
 
     static async from(

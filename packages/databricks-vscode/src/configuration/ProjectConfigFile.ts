@@ -53,8 +53,8 @@ export class ProjectConfigFile {
         try {
             const originalConfig = await ProjectConfigFile.load(this.rootPath);
             if (
-                JSON.stringify(originalConfig, null, 2) ===
-                JSON.stringify(this, null, 2)
+                JSON.stringify(originalConfig.toJSON(), null, 2) ===
+                JSON.stringify(this.toJSON(), null, 2)
             ) {
                 return;
             }
@@ -125,7 +125,10 @@ export class ProjectConfigFile {
             {
                 authProvider: authProvider!,
                 clusterId: config.clusterId,
-                workspacePath: config.workspacePath,
+                workspacePath: Uri.from({
+                    scheme: "wsfs",
+                    path: config.workspacePath,
+                }),
             },
             rootPath
         );
