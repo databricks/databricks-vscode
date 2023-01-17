@@ -75,9 +75,10 @@ describe(__filename, () => {
 
     it("should type discriminate notebook", async () => {
         const file = await WorkspaceFsEntity.fromPath(
-            mockWorkspaceClient,
+            instance(mockWorkspaceClient),
             "/notebook"
         );
+
         assert.ok(isFile(file));
         assert.ok(isNotebook(file));
         assert.ok(!isDirectory(file));
@@ -86,8 +87,8 @@ describe(__filename, () => {
 
     it("should type discriminate dir", async () => {
         const file = await WorkspaceFsEntity.fromPath(
-            mockWorkspaceClient,
-            "/directory"
+            instance(mockWorkspaceClient),
+            "/dir"
         );
         assert.ok(!isFile(file));
         assert.ok(!isNotebook(file));
@@ -97,7 +98,7 @@ describe(__filename, () => {
 
     it("should type discriminate repo", async () => {
         const file = await WorkspaceFsEntity.fromPath(
-            mockWorkspaceClient,
+            instance(mockWorkspaceClient),
             "/repo"
         );
         assert.ok(!isFile(file));
