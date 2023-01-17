@@ -2,7 +2,7 @@ import {WorkspaceFsEntity, WorkspaceFsUtils} from "@databricks/databricks-sdk";
 import {Disposable, Uri} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {createDirWizard} from "./createDirectoryWizard";
-import {IFsTreeItem, WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
+import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
 
 export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];

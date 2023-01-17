@@ -1,9 +1,4 @@
-import {
-    WorkspaceClient,
-    Cluster,
-    WorkspaceFsEntity,
-    WorkspaceFsUtils,
-} from "@databricks/databricks-sdk";
+import {WorkspaceClient, Cluster} from "@databricks/databricks-sdk";
 import {
     env,
     EventEmitter,

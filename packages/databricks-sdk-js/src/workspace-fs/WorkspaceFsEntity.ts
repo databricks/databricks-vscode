@@ -17,7 +17,9 @@ export class ObjectInfoValidationError extends Error {
 }
 
 class RequiredFields {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     "object_id" = "";
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     "object_type" = "";
     "path" = "";
 }

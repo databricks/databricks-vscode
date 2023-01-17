@@ -1,6 +1,5 @@
 import {
     ApiClient,
-    WorkspaceClient,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
 } from "@databricks/databricks-sdk";
