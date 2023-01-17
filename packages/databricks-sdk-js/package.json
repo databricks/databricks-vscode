@@ -34,7 +34,7 @@
     "dependencies": {
         "ini": "^3.0.1",
         "inversify": "^6.0.1",
-        "node-fetch": "^3.3.0",
+        "node-fetch-commonjs": "^3.2.4",
         "reflect-metadata": "^0.1.13"
     },
     "devDependencies": {
