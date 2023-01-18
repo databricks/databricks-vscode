@@ -1,6 +1,6 @@
 import {posix} from "path";
-import {ApiClientResponseError} from "../api-client";
-import {Context} from "../context";
+import {ApiClientResponseError} from "../../api-client";
+import {Context} from "../../context";
 import {WorkspaceFsEntity} from ".";
 
 export class WorkspaceFsDir extends WorkspaceFsEntity {

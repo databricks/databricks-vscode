@@ -1,4 +1,4 @@
-import {Context} from "../context";
+import {Context} from "../../context";
 import {WorkspaceFsEntity} from ".";
 
 export class WorkspaceFsFile extends WorkspaceFsEntity {

@@ -1,14 +1,15 @@
 import {posix} from "path";
-import {ApiClient, ApiClientResponseError} from "../api-client";
-import {ObjectInfo, WorkspaceService} from "../apis/workspace";
-import {context, Context} from "../context";
-import {ExposedLoggers, withLogContext} from "../logging";
+import {ApiClientResponseError} from "../../api-client";
+import {ObjectInfo, WorkspaceService} from "../../apis/workspace";
+import {context, Context} from "../../context";
+import {ExposedLoggers, withLogContext} from "../../logging";
 import {
     WorkspaceFsDir,
     WorkspaceFsRepo,
     WorkspaceFsFile,
     WorkspaceFsNotebook,
 } from ".";
+import {WorkspaceClient} from "../../WorkspaceClient";
 
 export class ObjectInfoValidationError extends Error {
     constructor(message: string, readonly details: ObjectInfo) {
@@ -17,9 +18,7 @@ export class ObjectInfoValidationError extends Error {
 }
 
 class RequiredFields {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     "object_id" = "";
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     "object_type" = "";
     "path" = "";
 }
@@ -30,8 +29,11 @@ export abstract class WorkspaceFsEntity {
     private _children?: Array<WorkspaceFsEntity>;
     private _details: RequiredObjectInfo;
 
-    constructor(protected readonly _apiClient: ApiClient, details: ObjectInfo) {
-        this._workspaceFsService = new WorkspaceService(this._apiClient);
+    constructor(
+        protected readonly _apiClient: WorkspaceClient,
+        details: ObjectInfo
+    ) {
+        this._workspaceFsService = _apiClient.workspace;
         this._details = this.validateDetails(details);
     }
 
@@ -72,7 +74,7 @@ export abstract class WorkspaceFsEntity {
 
     get url() {
         return new Promise<string>((resolve) => {
-            this._apiClient.host.then((host) =>
+            this._apiClient.apiClient.host.then((host) =>
                 resolve(this.generateUrl(host))
             );
         });
@@ -135,14 +137,14 @@ export abstract class WorkspaceFsEntity {
 
     @withLogContext(ExposedLoggers.SDK, "WorkspaceFsEntity.fromPath")
     static async fromPath(
-        apiClient: ApiClient,
+        apiClient: WorkspaceClient,
         path: string,
         @context ctx?: Context
     ) {
         try {
             const entity = entityFromObjInfo(
                 apiClient,
-                await new WorkspaceService(apiClient).getStatus({path}, ctx)
+                await apiClient.workspace.getStatus({path}, ctx)
             );
             return entity;
         } catch (e) {
@@ -178,7 +180,7 @@ export abstract class WorkspaceFsEntity {
 }
 
 function entityFromObjInfo(
-    apiClient: ApiClient,
+    apiClient: WorkspaceClient,
     details: ObjectInfo
 ): WorkspaceFsEntity | undefined {
     switch (details.object_type) {
