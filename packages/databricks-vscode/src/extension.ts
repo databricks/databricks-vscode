@@ -279,17 +279,17 @@ export async function activate(
             workspaceFsDataProvider
         ),
         commands.registerCommand(
-            "databricks.workspacefs.attachSyncDestination",
+            "databricks.wsfs.attachSyncDestination",
             workspaceFsCommands.attachSyncDestination,
             workspaceFsCommands
         ),
         commands.registerCommand(
-            "databricks.workspacefs.refresh",
+            "databricks.wsfs.refresh",
             workspaceFsCommands.refresh,
             workspaceFsCommands
         ),
         commands.registerCommand(
-            "databricks.workspacefs.createFolder",
+            "databricks.wsfs.createFolder",
             workspaceFsCommands.createFolder,
             workspaceFsCommands
         )

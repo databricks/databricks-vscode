@@ -173,17 +173,17 @@
                 "icon": "$(link)"
             },
             {
-                "command": "databricks.workspacefs.attachSyncDestination",
+                "command": "databricks.wsfs.attachSyncDestination",
                 "title": "Attach sync destination",
                 "icon": "$(plug)"
             },
             {
-                "command": "databricks.workspacefs.refresh",
+                "command": "databricks.wsfs.refresh",
                 "title": "Refresh",
                 "icon": "$(refresh)"
             },
             {
-                "command": "databricks.workspacefs.createFolder",
+                "command": "databricks.wsfs.createFolder",
                 "title": "Create Folder",
                 "icon": "$(new-folder)"
             }
@@ -248,12 +248,12 @@
                     "group": "navigation@2"
                 },
                 {
-                    "command": "databricks.workspacefs.refresh",
+                    "command": "databricks.wsfs.refresh",
                     "when": "view == workspaceFsView",
                     "group": "navigation@1"
                 },
                 {
-                    "command": "databricks.workspacefs.createFolder",
+                    "command": "databricks.wsfs.createFolder",
                     "when": "view == workspaceFsView",
                     "group": "navigation@1"
                 }
@@ -321,12 +321,12 @@
                     "group": "inline@0"
                 },
                 {
-                    "command": "databricks.workspacefs.attachSyncDestination",
-                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace || view == workspaceFsView && viewItem =~ /^workspacefs.repo.*$/ && config.databricks.sync.destinationType == repo"
+                    "command": "databricks.wsfs.attachSyncDestination",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace || view == workspaceFsView && viewItem =~ /^wsfs.repo.*$/ && config.databricks.sync.destinationType == repo"
                 },
                 {
-                    "command": "databricks.workspacefs.createFolder",
-                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace"
+                    "command": "databricks.wsfs.createFolder",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace"
                 }
             ],
             "editor/title/run": [
@@ -351,7 +351,7 @@
                     "when": "resourceLangId == python"
                 },
                 {
-                    "command": "databricks.workspacefs.createFolder",
+                    "command": "databricks.wsfs.createFolder",
                     "when": "config.databricks.sync.destinationType == workspace"
                 }
             ],

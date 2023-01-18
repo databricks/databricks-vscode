@@ -377,7 +377,7 @@ export class ConnectionManager {
             const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
             this.updateSyncDestination(
                 await SyncDestination.from(
-                    this.workspaceClient.apiClient,
+                    this.workspaceClient,
                     workspacePath,
                     wsUri
                 )

@@ -1,5 +1,6 @@
 import {
     ApiClient,
+    WorkspaceClient,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
 } from "@databricks/databricks-sdk";
@@ -44,7 +45,7 @@ export class SyncDestination {
         }
 
         const rootDir = await WorkspaceFsEntity.fromPath(
-            connectionManager.workspaceClient.apiClient,
+            connectionManager.workspaceClient,
             connectionManager.databricksWorkspace.currentFsRoot.path
         );
         if (
@@ -58,7 +59,7 @@ export class SyncDestination {
     }
 
     static async from(
-        client: ApiClient,
+        client: WorkspaceClient,
         wsfsDirUri: Uri,
         vscodeWorkspacePath: Uri
     ) {
@@ -72,7 +73,7 @@ export class SyncDestination {
         return new SyncDestination(wsfsDir, wsfsDirUri, vscodeWorkspacePath);
     }
 
-    static async getWorkspaceFsDir(client: ApiClient, wsfsDirUri: Uri) {
+    static async getWorkspaceFsDir(client: WorkspaceClient, wsfsDirUri: Uri) {
         assert.equal(wsfsDirUri.scheme, "wsfs");
 
         // Repo paths always start with "/Workspace" but the repos API strips this off.

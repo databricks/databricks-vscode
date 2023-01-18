@@ -182,7 +182,7 @@ export class ConnectionCommands implements Disposable {
 
     attachSyncDestinationCommand() {
         return async () => {
-            const apiClient = this.connectionManager.workspaceClient?.apiClient;
+            const apiClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
             const rootDirPath =
                 this.connectionManager.databricksWorkspace?.currentFsRoot;
@@ -252,7 +252,7 @@ export class ConnectionCommands implements Disposable {
                     if (selection.label === "Create New Sync Destination") {
                         if (workspaceConfigs.enableFilesInWorkspace) {
                             commands.executeCommand(
-                                "databricks.workspacefs.createFolder",
+                                "databricks.wsfs.createFolder",
                                 rootDir
                             );
                         } else {

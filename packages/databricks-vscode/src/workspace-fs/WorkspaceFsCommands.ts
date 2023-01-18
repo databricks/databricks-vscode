@@ -28,7 +28,7 @@ export class WorkspaceFsCommands implements Disposable {
         }
 
         const root = await WorkspaceFsEntity.fromPath(
-            this._connectionManager.workspaceClient.apiClient,
+            this._connectionManager.workspaceClient,
             path
         );
 

@@ -50,7 +50,7 @@ export class WorkspaceFsDataProvider
                         "file-directory",
                         new ThemeColor("charts.green")
                     ),
-                    contextValue: "workspacefs.directory",
+                    contextValue: "wsfs.directory",
                     collapsibleState: TreeItemCollapsibleState.Collapsed,
                 };
                 break;
@@ -61,7 +61,7 @@ export class WorkspaceFsDataProvider
                         "repo",
                         new ThemeColor("charts.green")
                     ),
-                    contextValue: "workspacefs.repo",
+                    contextValue: "wsfs.repo",
                     collapsibleState: TreeItemCollapsibleState.Collapsed,
                 };
                 break;
@@ -90,7 +90,7 @@ export class WorkspaceFsDataProvider
     getChildren(
         element?: WorkspaceFsEntity | undefined
     ): Thenable<WorkspaceFsEntity[] | undefined> {
-        const apiClient = this._connectionManager.workspaceClient?.apiClient;
+        const apiClient = this._connectionManager.workspaceClient;
         const rootDirPath =
             this._connectionManager.databricksWorkspace?.currentFsRoot;
         if (!apiClient || !rootDirPath) {
