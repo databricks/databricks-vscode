@@ -10,12 +10,19 @@ function isPrimitveType(obj: any) {
 
 export class Redactor {
     constructor(private fieldNames: string[] = []) {}
-
     addFieldName(fieldName: string) {
         this.fieldNames.push(fieldName);
     }
 
-    sanitize(obj?: any, dropFields: string[] = []): any {
+    sanitize(
+        obj?: any,
+        dropFields: string[] = [],
+        seen: Set<any> = new Set()
+    ): any {
+        if (seen.has(obj)) {
+            return `circular ref`;
+        }
+        seen.add(obj);
         if (obj === undefined) {
             return undefined;
         }
@@ -24,24 +31,25 @@ export class Redactor {
             return obj;
         }
         if (Array.isArray(obj)) {
-            return obj.map((e) => this.sanitize(e, dropFields));
+            return obj.map((e) => this.sanitize(e, dropFields, seen));
         }
+
         //make a copy of the object
-        obj = Object.assign({}, obj);
-        for (const key in obj) {
+        const copyObj = Object.assign({}, obj);
+        for (const key in copyObj) {
             if (dropFields.includes(key)) {
-                delete obj[key];
+                delete copyObj[key];
             } else if (
                 isPrimitveType(obj[key]) &&
                 this.fieldNames.includes(key)
             ) {
-                obj[key] = "***REDACTED***";
+                copyObj[key] = "***REDACTED***";
             } else {
-                obj[key] = this.sanitize(obj[key], dropFields);
+                copyObj[key] = this.sanitize(obj[key], dropFields, seen);
             }
         }
 
-        return obj;
+        return copyObj;
     }
 }
 
