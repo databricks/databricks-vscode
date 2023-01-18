@@ -118,9 +118,7 @@ export class ConnectionManager {
         } catch (e: any) {
             const message = `Can't login to Databricks: ${e.message}`;
             NamedLogger.getOrCreate("Extension").error(message, e);
-            if (interactive) {
-                window.showErrorMessage(message);
-            }
+            window.showErrorMessage(message);
 
             this.updateState("DISCONNECTED");
             await this.logout();

@@ -17,11 +17,14 @@ export class ObjectInfoValidationError extends Error {
     }
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
 class RequiredFields {
     "object_id" = "";
     "object_type" = "";
     "path" = "";
 }
+/* eslint-enable @typescript-eslint/naming-convention */
+
 type RequiredObjectInfo = ObjectInfo & RequiredFields;
 
 export abstract class WorkspaceFsEntity {
