@@ -50,11 +50,7 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
             throw err;
         }
 
-        return await WorkspaceFsEntity.fromPath(
-            this._apiClient,
-            validPath,
-            ctx
-        );
+        return await WorkspaceFsEntity.fromPath(this.wsClient, validPath, ctx);
     }
 }
 
