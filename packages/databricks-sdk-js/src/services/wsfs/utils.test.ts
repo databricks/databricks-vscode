@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import assert from "assert";
 import {anything, deepEqual, instance, mock, when} from "ts-mockito";
 import {WorkspaceService} from "../../apis/workspace";
