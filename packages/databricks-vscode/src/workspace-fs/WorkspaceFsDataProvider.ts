@@ -61,7 +61,7 @@ export class WorkspaceFsDataProvider
                         "repo",
                         new ThemeColor("charts.green")
                     ),
-                    contextValue: "workspacefs.directory",
+                    contextValue: "workspacefs.repo",
                     collapsibleState: TreeItemCollapsibleState.Collapsed,
                 };
                 break;

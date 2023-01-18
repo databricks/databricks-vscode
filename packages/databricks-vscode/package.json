@@ -321,11 +321,11 @@
                 },
                 {
                     "command": "databricks.workspacefs.attachSyncDestination",
-                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.directory.*$/"
+                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace || view == workspaceFsView && viewItem =~ /^workspacefs.repo.*$/ && config.databricks.sync.destinationType == repo"
                 },
                 {
                     "command": "databricks.workspacefs.createFolder",
-                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.directory.*$/"
+                    "when": "view == workspaceFsView && viewItem =~ /^workspacefs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace"
                 }
             ],
             "editor/title/run": [
@@ -348,6 +348,10 @@
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python"
+                },
+                {
+                    "command": "databricks.workspacefs.createFolder",
+                    "when": "config.databricks.sync.destinationType == workspace"
                 }
             ],
             "explorer/context": [
