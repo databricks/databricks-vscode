@@ -17,11 +17,14 @@ export class ObjectInfoValidationError extends Error {
     }
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
 class RequiredFields {
     "object_id" = "";
     "object_type" = "";
     "path" = "";
 }
+/* eslint-enable @typescript-eslint/naming-convention */
+
 type RequiredObjectInfo = ObjectInfo & RequiredFields;
 
 export abstract class WorkspaceFsEntity {
@@ -30,10 +33,10 @@ export abstract class WorkspaceFsEntity {
     private _details: RequiredObjectInfo;
 
     constructor(
-        protected readonly _apiClient: WorkspaceClient,
+        protected readonly wsClient: WorkspaceClient,
         details: ObjectInfo
     ) {
-        this._workspaceFsService = _apiClient.workspace;
+        this._workspaceFsService = wsClient.workspace;
         this._details = this.validateDetails(details);
     }
 
@@ -74,7 +77,7 @@ export abstract class WorkspaceFsEntity {
 
     get url() {
         return new Promise<string>((resolve) => {
-            this._apiClient.apiClient.host.then((host) =>
+            this.wsClient.apiClient.host.then((host) =>
                 resolve(this.generateUrl(host))
             );
         });
@@ -98,7 +101,7 @@ export abstract class WorkspaceFsEntity {
         this._children = (
             await this._workspaceFsService.list({path: this.path})
         ).objects
-            ?.map((obj) => entityFromObjInfo(this._apiClient, obj))
+            ?.map((obj) => entityFromObjInfo(this.wsClient, obj))
             .filter(objIsDefined);
     }
 
@@ -137,14 +140,14 @@ export abstract class WorkspaceFsEntity {
 
     @withLogContext(ExposedLoggers.SDK, "WorkspaceFsEntity.fromPath")
     static async fromPath(
-        apiClient: WorkspaceClient,
+        wsClient: WorkspaceClient,
         path: string,
         @context ctx?: Context
     ) {
         try {
             const entity = entityFromObjInfo(
-                apiClient,
-                await apiClient.workspace.getStatus({path}, ctx)
+                wsClient,
+                await wsClient.workspace.getStatus({path}, ctx)
             );
             return entity;
         } catch (e) {
@@ -158,7 +161,7 @@ export abstract class WorkspaceFsEntity {
 
     get parent(): Promise<WorkspaceFsEntity | undefined> {
         const parentPath = posix.dirname(this.path);
-        return WorkspaceFsEntity.fromPath(this._apiClient, parentPath);
+        return WorkspaceFsEntity.fromPath(this.wsClient, parentPath);
     }
 
     get basename(): string {
@@ -180,18 +183,18 @@ export abstract class WorkspaceFsEntity {
 }
 
 function entityFromObjInfo(
-    apiClient: WorkspaceClient,
+    wsClient: WorkspaceClient,
     details: ObjectInfo
 ): WorkspaceFsEntity | undefined {
     switch (details.object_type) {
         case "DIRECTORY":
-            return new WorkspaceFsDir(apiClient, details);
+            return new WorkspaceFsDir(wsClient, details);
         case "REPO":
-            return new WorkspaceFsRepo(apiClient, details);
+            return new WorkspaceFsRepo(wsClient, details);
         case "FILE":
-            return new WorkspaceFsFile(apiClient, details);
+            return new WorkspaceFsFile(wsClient, details);
         case "NOTEBOOK":
-            return new WorkspaceFsNotebook(apiClient, details);
+            return new WorkspaceFsNotebook(wsClient, details);
     }
     return undefined;
 }

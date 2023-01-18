@@ -22,6 +22,18 @@ describe(__filename, function () {
         });
     });
 
+    after(async () => {
+        try {
+            await integSetup.client.workspace.delete({
+                path: testDirPath,
+                recursive: true,
+            });
+        } catch (e: unknown) {
+            // eslint-disable-next-line no-console
+            console.error(`Can't cleanup ${testDirPath}`, e);
+        }
+    });
+
     beforeEach(async () => {
         const dir = await WorkspaceFsEntity.fromPath(
             integSetup.client,
