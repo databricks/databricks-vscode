@@ -35,10 +35,13 @@ export async function findViewSection(name: ViewSectionType) {
             timeoutMsg: `Can't find view control "${name}"`,
         }
     );
-    const view = await (await control?.openView())
-        ?.getContent()
-        ?.getSection(name);
-    return view;
+    const views =
+        (await (await control?.openView())?.getContent()?.getSections()) ?? [];
+    for (const v of views) {
+        if ((await v.getTitle()).toUpperCase() === name) {
+            return v;
+        }
+    }
 }
 
 export async function getViewSection(

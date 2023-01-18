@@ -205,7 +205,8 @@
                 },
                 {
                     "id": "workspaceFsView",
-                    "name": "Workspace explorer"
+                    "name": "Workspace explorer",
+                    "when": "config.databricks.sync.destinationType == workspace"
                 },
                 {
                     "id": "clusterView",

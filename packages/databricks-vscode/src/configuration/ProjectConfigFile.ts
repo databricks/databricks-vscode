@@ -125,10 +125,13 @@ export class ProjectConfigFile {
             {
                 authProvider: authProvider!,
                 clusterId: config.clusterId,
-                workspacePath: Uri.from({
-                    scheme: "wsfs",
-                    path: config.workspacePath,
-                }),
+                workspacePath:
+                    config.workspacePath !== undefined
+                        ? Uri.from({
+                              scheme: "wsfs",
+                              path: config.workspacePath,
+                          })
+                        : undefined,
             },
             rootPath
         );
