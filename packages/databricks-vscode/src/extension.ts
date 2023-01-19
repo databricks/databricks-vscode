@@ -269,6 +269,7 @@ export async function activate(
         connectionManager
     );
     const workspaceFsCommands = new WorkspaceFsCommands(
+        workspace.workspaceFolders[0].uri,
         connectionManager,
         workspaceFsDataProvider
     );

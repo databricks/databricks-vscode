@@ -1,5 +1,5 @@
 import {WorkspaceFsEntity, WorkspaceFsUtils} from "@databricks/databricks-sdk";
-import {Disposable, Uri} from "vscode";
+import {Disposable, ExtensionContext, Uri, window, workspace} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
@@ -8,6 +8,7 @@ export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
     constructor(
+        private _workspaceFolder: Uri,
         private _connectionManager: ConnectionManager,
         private _workspaceFsDataProvider: WorkspaceFsDataProvider
     ) {}
@@ -36,7 +37,7 @@ export class WorkspaceFsCommands implements Disposable {
             return;
         }
 
-        const created = await createDirWizard(root);
+        const created = await createDirWizard(root, this._workspaceFolder);
         if (created) {
             this._workspaceFsDataProvider.refresh();
         }

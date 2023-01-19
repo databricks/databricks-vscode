@@ -14,7 +14,8 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
 
         if (
             !posix.isAbsolute(relative) &&
-            !relative.startsWith(".." + posix.sep)
+            !relative.startsWith(".." + posix.sep) &&
+            relative !== ".."
         ) {
             return resolved;
         }
