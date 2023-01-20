@@ -565,7 +565,7 @@
         "@vscode/test-electron": "^2.2.2",
         "@wdio/cli": "^7.29.1",
         "@wdio/local-runner": "^7.29.1",
-        "@wdio/mocha-framework": "^7.26.0",
+        "@wdio/mocha-framework": "^8.2.0",
         "@wdio/spec-reporter": "^7.29.1",
         "@wdio/types": "^7.26.0",
         "esbuild": "^0.16.16",
