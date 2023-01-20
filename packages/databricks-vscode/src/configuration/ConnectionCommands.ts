@@ -1,7 +1,6 @@
 import {Cluster, WorkspaceFsEntity} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
-    commands,
     Disposable,
     QuickPickItem,
     QuickPickItemKind,
@@ -15,6 +14,7 @@ import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../WorkspaceConfigs";
+import {WorkspaceFsCommands} from "../workspace-fs";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -51,6 +51,7 @@ export interface ClusterItem extends QuickPickItem {
 export class ConnectionCommands implements Disposable {
     private disposables: Disposable[] = [];
     constructor(
+        private wsfsCommands: WorkspaceFsCommands,
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel
     ) {}
@@ -246,24 +247,43 @@ export class ConnectionCommands implements Disposable {
             const disposables = [
                 input,
                 input.onDidAccept(async () => {
-                    const selection = input
-                        .selectedItems[0] as WorkspaceFsQuickPickItem;
-
-                    if (selection.label === "Create New Sync Destination") {
-                        if (workspaceConfigs.enableFilesInWorkspace) {
-                            commands.executeCommand(
-                                "databricks.wsfs.createFolder",
-                                rootDir
+                    const fn = async () => {
+                        const selection = input
+                            .selectedItems[0] as WorkspaceFsQuickPickItem;
+                        if (selection.label !== "Create New Sync Destination") {
+                            this.connectionManager.attachSyncDestination(
+                                Uri.from({scheme: "wsfs", path: selection.path})
                             );
-                        } else {
-                            UrlUtils.openExternal((await rootDir?.url) ?? "");
+                            return;
                         }
-                    } else {
-                        this.connectionManager.attachSyncDestination(
-                            Uri.from({scheme: "wsfs", path: selection.path})
+                        if (!workspaceConfigs.enableFilesInWorkspace) {
+                            UrlUtils.openExternal((await rootDir?.url) ?? "");
+                            return;
+                        }
+                        const created = await this.wsfsCommands.createFolder(
+                            rootDir
                         );
+                        if (created === undefined) {
+                            return;
+                        }
+                        this.connectionManager.attachSyncDestination(
+                            Uri.from({
+                                scheme: "wsfs",
+                                path: created.path,
+                            })
+                        );
+                    };
+                    try {
+                        await fn();
+                    } catch (e: unknown) {
+                        if (e instanceof Error) {
+                            window.showErrorMessage(
+                                `Error while creating a new directory: ${e.message}`
+                            );
+                        }
+                    } finally {
+                        disposables.forEach((i) => i.dispose());
                     }
-                    disposables.forEach((i) => i.dispose());
                 }),
                 input.onDidHide(() => {
                     disposables.forEach((i) => i.dispose());

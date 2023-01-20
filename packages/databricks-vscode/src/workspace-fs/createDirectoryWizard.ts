@@ -19,6 +19,10 @@ export async function createDirWizard(
     });
 
     if (inputPath !== undefined) {
-        return await root.mkdir(inputPath);
+        const created = await root.mkdir(inputPath);
+        if (created === undefined) {
+            window.showErrorMessage(`Can't create directory ${inputPath}`);
+        }
+        return created;
     }
 }

@@ -78,10 +78,42 @@ export async function activate(
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
 
+    const workspaceFsDataProvider = new WorkspaceFsDataProvider(
+        connectionManager
+    );
+    const workspaceFsCommands = new WorkspaceFsCommands(
+        workspace.workspaceFolders[0].uri,
+        connectionManager,
+        workspaceFsDataProvider
+    );
+
+    context.subscriptions.push(
+        window.registerTreeDataProvider(
+            "workspaceFsView",
+            workspaceFsDataProvider
+        ),
+        commands.registerCommand(
+            "databricks.wsfs.attachSyncDestination",
+            workspaceFsCommands.attachSyncDestination,
+            workspaceFsCommands
+        ),
+        commands.registerCommand(
+            "databricks.wsfs.refresh",
+            workspaceFsCommands.refresh,
+            workspaceFsCommands
+        ),
+        commands.registerCommand(
+            "databricks.wsfs.createFolder",
+            workspaceFsCommands.createFolder,
+            workspaceFsCommands
+        )
+    );
+
     const synchronizer = new CodeSynchronizer(connectionManager, cli);
     const clusterModel = new ClusterModel(connectionManager);
 
     const connectionCommands = new ConnectionCommands(
+        workspaceFsCommands,
         connectionManager,
         clusterModel
     );
@@ -262,37 +294,6 @@ export async function activate(
             "databricks.utils.openExternal",
             utilCommands.openExternalCommand(),
             utilCommands
-        )
-    );
-
-    const workspaceFsDataProvider = new WorkspaceFsDataProvider(
-        connectionManager
-    );
-    const workspaceFsCommands = new WorkspaceFsCommands(
-        workspace.workspaceFolders[0].uri,
-        connectionManager,
-        workspaceFsDataProvider
-    );
-
-    context.subscriptions.push(
-        window.registerTreeDataProvider(
-            "workspaceFsView",
-            workspaceFsDataProvider
-        ),
-        commands.registerCommand(
-            "databricks.wsfs.attachSyncDestination",
-            workspaceFsCommands.attachSyncDestination,
-            workspaceFsCommands
-        ),
-        commands.registerCommand(
-            "databricks.wsfs.refresh",
-            workspaceFsCommands.refresh,
-            workspaceFsCommands
-        ),
-        commands.registerCommand(
-            "databricks.wsfs.createFolder",
-            workspaceFsCommands.createFolder,
-            workspaceFsCommands
         )
     );
 
