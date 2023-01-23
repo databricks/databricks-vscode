@@ -103,36 +103,36 @@ jobs:
 
       - run: yarn install --immutable
 
-      # - name: Prettier and Linting
-      #   run: yarn run test:lint
-      #   working-directory: packages/databricks-vscode
+      - name: Prettier and Linting
+        run: yarn run test:lint
+        working-directory: packages/databricks-vscode
 
       - name: Fetching Bricks CLI
         run: yarn run package:cli:fetch
         working-directory: packages/databricks-vscode
         env:
-          # TODO: Remove this once the bricks repo is public
+          TODO: Remove this once the bricks repo is public
           GH_TOKEN: ${{ secrets.DECO_GITHUB_TOKEN }}
 
       - name: Building packages
         run: yarn run build
 
-      # - name: Unit Tests with Coverage (OSX)
-      #   uses: GabrielBB/xvfb-action@v1
-      #   if: inputs.os != 'windows-latest'
-      #   with:
-      #       run: yarn run test:cov
-      #       working-directory: packages/databricks-vscode
+      - name: Unit Tests with Coverage (OSX)
+        uses: GabrielBB/xvfb-action@v1
+        if: inputs.os != 'windows-latest'
+        with:
+          run: yarn run test:cov
+          working-directory: packages/databricks-vscode
 
-      # - name: Unit Tests with Coverage (Windows)
-      #   if: inputs.os == 'windows-latest'
-      #   run: yarn run test:cov
-      #   working-directory: packages/databricks-vscode
+      - name: Unit Tests with Coverage (Windows)
+        if: inputs.os == 'windows-latest'
+        run: yarn run test:cov
+        working-directory: packages/databricks-vscode
 
-      # - name: Show coverage test result
-      #   continue-on-error: true
-      #   run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
-      #   working-directory: packages/databricks-vscode
+      - name: Show coverage test result
+        continue-on-error: true
+        run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
+        working-directory: packages/databricks-vscode
 
       - name: Integration Tests
         run: yarn run test:integ
