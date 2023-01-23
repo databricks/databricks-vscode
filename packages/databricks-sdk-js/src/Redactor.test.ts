@@ -32,4 +32,25 @@ describe(__filename, () => {
         const str = "1234567890";
         assert.equal(onlyNBytes(str, n), "12345...(5 more bytes)");
     });
+
+    it("should handle circular objects", () => {
+        const a: any = {};
+        a["a"] = a;
+        a["b"] = "b";
+
+        const actual = defaultRedactor.sanitize(a);
+        const expected = {
+            a: "circular ref",
+            b: "b",
+        };
+        assert.deepEqual(actual, expected);
+    });
+
+    it("should handle circular lists", () => {
+        const a: any[] = [1, 2];
+        a.push(a);
+        const actual = defaultRedactor.sanitize(a);
+        const expected = [1, 2, "circular ref"];
+        assert.deepEqual(actual, expected);
+    });
 });
