@@ -32,3 +32,6 @@ export {TimeUnits, default as Time} from "./retries/Time";
 
 export * as logging from "./logging";
 export {Redactor, defaultRedactor} from "./Redactor";
+
+export * from "./services/wsfs";
+export * from "./config";

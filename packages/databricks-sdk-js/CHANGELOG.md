@@ -1,3 +1,12 @@
+# Release: v0.0.10
+
+## packages/databricks-sdk-js
+
+## <small>0.0.10 (2023-01-16)</small>
+
+-   Feature: Add coverage for all public Databricks APIs
+-   Feature: Unify configuration for authentication methods and make then compatible with the GO SDK and all future SDKs
+
 # Release: v0.0.9
 
 ## packages/databricks-sdk-js

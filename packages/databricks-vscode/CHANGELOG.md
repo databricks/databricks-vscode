@@ -1,3 +1,11 @@
+# Release: v0.0.10
+
+## packages/databricks-vscode
+
+## <small>0.0.10 (2023-01-16)</small>
+
+-   Update to use the latest JavaScript SDK for Databricks
+
 # Release: v0.0.9
 
 ## packages/databricks-vscode

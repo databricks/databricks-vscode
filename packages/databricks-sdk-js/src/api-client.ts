@@ -22,7 +22,11 @@ export class HttpError extends Error {
 }
 
 export class ApiClientResponseError extends Error {
-    constructor(readonly message: string, readonly response: any) {
+    constructor(
+        readonly message: string,
+        readonly response: any,
+        readonly error_code?: string
+    ) {
         super(message);
     }
 }
@@ -235,7 +239,11 @@ export class ApiClient {
                 url,
                 options,
                 responseJson,
-                new HttpError(message, responseJson.error_code),
+                new ApiClientResponseError(
+                    message,
+                    responseJson,
+                    responseJson.error_code
+                ),
                 context
             );
         }
