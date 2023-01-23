@@ -302,6 +302,7 @@ export const config: Options.Testrunner = {
             execFile(
                 cli,
                 [
+                    "--force",
                     "--extensions-dir",
                     EXTENSION_DIR,
                     "--install-extension",
@@ -309,6 +310,7 @@ export const config: Options.Testrunner = {
                     "--install-extension",
                     VSIX_PATH,
                 ],
+                {shell: true},
                 (error, stdout, stderr) => {
                     console.log(stdout);
                     console.error(stderr);
