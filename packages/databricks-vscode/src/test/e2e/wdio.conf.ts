@@ -299,7 +299,7 @@ export const config: Options.Testrunner = {
         let cli: string;
         switch (process.platform) {
             case "win32":
-                cli = binary;
+                cli = path.resolve(binary, "..", "bin", "code");
                 break;
             case "darwin":
                 cli = path.resolve(
