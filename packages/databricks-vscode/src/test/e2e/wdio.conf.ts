@@ -343,6 +343,9 @@ export const config: Options.Testrunner = {
                     );
                 });
             } catch (error) {
+                if (i === 1) {
+                    throw error;
+                }
                 continue;
             }
             break;
