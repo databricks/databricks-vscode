@@ -296,6 +296,7 @@ export const config: Options.Testrunner = {
     beforeSession: async function (config, capabilities) {
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
+        console.error(binary);
         const cli = path.resolve(binary, "..", "..", "Resources/app/bin/code");
 
         await new Promise((resolve, reject) => {
