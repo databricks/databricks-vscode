@@ -296,8 +296,20 @@ export const config: Options.Testrunner = {
     beforeSession: async function (config, capabilities) {
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
-        console.error(binary);
-        const cli = path.resolve(binary, "..", "..", "Resources/app/bin/code");
+        let cli: string;
+        switch (process.platform) {
+            case "win32":
+                cli = binary;
+                break;
+            case "darwin":
+                cli = path.resolve(
+                    binary,
+                    "..",
+                    "..",
+                    "Resources/app/bin/code"
+                );
+                break;
+        }
 
         await new Promise((resolve, reject) => {
             execFile(
@@ -311,7 +323,6 @@ export const config: Options.Testrunner = {
                     "--install-extension",
                     VSIX_PATH,
                 ],
-                {shell: true},
                 (error, stdout, stderr) => {
                     console.log(stdout);
                     console.error(stderr);
