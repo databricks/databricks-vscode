@@ -317,30 +317,36 @@ export const config: Options.Testrunner = {
                 };
                 break;
         }
-
-        await new Promise((resolve, reject) => {
-            execFile(
-                cli,
-                [
-                    "--extensions-dir",
-                    EXTENSION_DIR,
-                    "--install-extension",
-                    "ms-python.python",
-                    "--install-extension",
-                    VSIX_PATH,
-                ],
-                spawnArgs,
-                (error, stdout, stderr) => {
-                    console.log(stdout);
-                    console.error(stderr);
-                    console.error(error);
-                    if (error) {
-                        reject(error);
-                    }
-                    resolve(undefined);
-                }
-            );
-        });
+        for (let i = 0; i < 2; i++) {
+            try {
+                await new Promise((resolve, reject) => {
+                    execFile(
+                        cli,
+                        [
+                            "--extensions-dir",
+                            EXTENSION_DIR,
+                            "--install-extension",
+                            "ms-python.python",
+                            "--install-extension",
+                            VSIX_PATH,
+                        ],
+                        spawnArgs,
+                        (error, stdout, stderr) => {
+                            console.log(stdout);
+                            console.error(stderr);
+                            console.error(error);
+                            if (error) {
+                                reject(error);
+                            }
+                            resolve(undefined);
+                        }
+                    );
+                });
+            } catch (error) {
+                continue;
+            }
+            break;
+        }
 
         await fs.rm(path.join(WORKSPACE_PATH, ".databricks"), {
             recursive: true,
