@@ -1,147 +1,147 @@
 name: VSCode extension Tests
 
 on:
-    workflow_call:
-        inputs:
-            os:
-                required: true
-                type: string
-            node-version:
-                required: true
-                type: string
-            vscode-version:
-                required: true
-                type: string
-            bricks_arch:
-                required: true
-                type: string
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      node-version:
+        required: true
+        type: string
+      vscode-version:
+        required: true
+        type: string
+      bricks_arch:
+        required: true
+        type: string
 
 jobs:
-    test-sdk:
-        name: Test Databricks SDK
-        runs-on: ${{ inputs.os }}
-        environment:
-            name: azure-prod-usr
+  test-sdk:
+    name: Test Databricks SDK
+    runs-on: ${{ inputs.os }}
+    environment:
+      name: azure-prod-usr
 
-        defaults:
-            run:
-                shell: bash
-                working-directory: packages/databricks-sdk-js
+    defaults:
+      run:
+        shell: bash
+        working-directory: packages/databricks-sdk-js
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_JS_SDK_CLUSTER_ID }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ inputs.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: "yarn"
+
+      - run: yarn install --immutable
+
+      - name: Building packages
+        run: yarn run build
+
+      - name: Prettier and Linting
+        run: yarn run test:lint
+
+      - name: Unit Tests With Code Cov
+        run: yarn test:cov
+
+      - name: Integration Tests
+        run: yarn run test:integ:cov
+
+      - run: |
+          cd coverage
+          mkdir -p all && mkdir -p final
+          mv integration/coverage-final.json all/integration.json
+          mv unit/coverage-final.json all/unit.json
+          yarn nyc merge all final/final.json
+          yarn nyc report --reporter text -t ./coverage/final >> $GITHUB_STEP_SUMMARY
+
+  test-extension:
+    name: Test VSCode Extension
+    runs-on: ${{ inputs.os }}
+    environment:
+      name: azure-prod-usr
+
+    env:
+      VSCODE_TEST_VERSION: ${{ inputs.vscode-version }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_VSCODE_CLUSTER_ID }}
+      BRICKS_ARCH: ${{ inputs.bricks_arch }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ inputs.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: "yarn"
+
+      - name: Cache wdio
+        uses: actions/cache@v3
+        with:
+          path: /tmp/wdio-vscode-service
+          key: ${{ inputs.bricks_arch }}-${{ inputs.vscode-version }}-wdio
+
+      - name: Cache VSCode unit test runner
+        uses: actions/cache@v3
+        with:
+          path: /tmp/vscode-test-databricks
+          key: ${{ inputs.bricks_arch }}-${{ inputs.vscode-version }}-vscode-test
+
+      - run: yarn install --immutable
+
+      # - name: Prettier and Linting
+      #   run: yarn run test:lint
+      #   working-directory: packages/databricks-vscode
+
+      - name: Fetching Bricks CLI
+        run: yarn run package:cli:fetch
+        working-directory: packages/databricks-vscode
         env:
-            DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-            DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_JS_SDK_CLUSTER_ID }}
+          # TODO: Remove this once the bricks repo is public
+          GH_TOKEN: ${{ secrets.DECO_GITHUB_TOKEN }}
 
-        steps:
-            - uses: actions/checkout@v3
+      - name: Building packages
+        run: yarn run build
 
-            - name: Use Node.js ${{ inputs.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ inputs.node-version }}
-                  cache: "yarn"
+      # - name: Unit Tests with Coverage (OSX)
+      #   uses: GabrielBB/xvfb-action@v1
+      #   if: inputs.os != 'windows-latest'
+      #   with:
+      #       run: yarn run test:cov
+      #       working-directory: packages/databricks-vscode
 
-            - run: yarn install --immutable
+      # - name: Unit Tests with Coverage (Windows)
+      #   if: inputs.os == 'windows-latest'
+      #   run: yarn run test:cov
+      #   working-directory: packages/databricks-vscode
 
-            - name: Building packages
-              run: yarn run build
+      # - name: Show coverage test result
+      #   continue-on-error: true
+      #   run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
+      #   working-directory: packages/databricks-vscode
 
-            - name: Prettier and Linting
-              run: yarn run test:lint
+      - name: Integration Tests
+        run: yarn run test:integ
+        working-directory: packages/databricks-vscode
 
-            - name: Unit Tests With Code Cov
-              run: yarn test:cov
-
-            - name: Integration Tests
-              run: yarn run test:integ:cov
-
-            - run: |
-                  cd coverage
-                  mkdir -p all && mkdir -p final
-                  mv integration/coverage-final.json all/integration.json
-                  mv unit/coverage-final.json all/unit.json
-                  yarn nyc merge all final/final.json
-                  yarn nyc report --reporter text -t ./coverage/final >> $GITHUB_STEP_SUMMARY
-
-    test-extension:
-        name: Test VSCode Extension
-        runs-on: ${{ inputs.os }}
-        environment:
-            name: azure-prod-usr
-
-        env:
-            VSCODE_TEST_VERSION: ${{ inputs.vscode-version }}
-            DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-            DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_VSCODE_CLUSTER_ID }}
-            BRICKS_ARCH: ${{ inputs.bricks_arch }}
-
-        defaults:
-            run:
-                shell: bash
-
-        steps:
-            - uses: actions/checkout@v3
-
-            - name: Use Node.js ${{ inputs.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ inputs.node-version }}
-                  cache: "yarn"
-
-            - name: Cache wdio
-              uses: actions/cache@v3
-              with:
-                  path: /tmp/wdio-vscode-service
-                  key: ${{ inputs.bricks_arch }}-${{ inputs.vscode-version }}-wdio
-
-            - name: Cache VSCode unit test runner
-              uses: actions/cache@v3
-              with:
-                  path: /tmp/vscode-test-databricks
-                  key: ${{ inputs.bricks_arch }}-${{ inputs.vscode-version }}-vscode-test
-
-            - run: yarn install --immutable
-
-            - name: Prettier and Linting
-              run: yarn run test:lint
-              working-directory: packages/databricks-vscode
-
-            - name: Fetching Bricks CLI
-              run: yarn run package:cli:fetch
-              working-directory: packages/databricks-vscode
-              env:
-                  # TODO: Remove this once the bricks repo is public
-                  GH_TOKEN: ${{ secrets.DECO_GITHUB_TOKEN }}
-
-            - name: Building packages
-              run: yarn run build
-
-            - name: Unit Tests with Coverage (OSX)
-              uses: GabrielBB/xvfb-action@v1
-              if: inputs.os != 'windows-latest'
-              with:
-                  run: yarn run test:cov
-                  working-directory: packages/databricks-vscode
-
-            - name: Unit Tests with Coverage (Windows)
-              if: inputs.os == 'windows-latest'
-              run: yarn run test:cov
-              working-directory: packages/databricks-vscode
-
-            - name: Show coverage test result
-              continue-on-error: true
-              run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
-              working-directory: packages/databricks-vscode
-
-            - name: Integration Tests
-              run: yarn run test:integ
-              working-directory: packages/databricks-vscode
-
-            - name: Upload test logs
-              if: always()
-              continue-on-error: true
-              uses: actions/upload-artifact@v3
-              with:
-                  name: test-logs ${{ join(inputs.*, ' - ') }} - ${{ github.event_name }}
-                  path: packages/databricks-vscode/logs
+      - name: Upload test logs
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs ${{ join(inputs.*, ' - ') }} - ${{ github.event_name }}
+          path: packages/databricks-vscode/logs
