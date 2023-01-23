@@ -322,7 +322,6 @@ export const config: Options.Testrunner = {
             execFile(
                 cli,
                 [
-                    "--force",
                     "--extensions-dir",
                     EXTENSION_DIR,
                     "--install-extension",
