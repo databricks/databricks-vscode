@@ -9,7 +9,7 @@ import assert from "assert";
 import fs from "fs/promises";
 import {WorkspaceClient, Cluster, Repo} from "@databricks/databricks-sdk";
 import {initialiseCustomCommands} from "./customCommands";
-import {execFile} from "node:child_process";
+import {execFile, ExecFileOptions} from "node:child_process";
 import {mkdirSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {version, name} from "../../../package.json";
@@ -297,9 +297,13 @@ export const config: Options.Testrunner = {
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
         let cli: string;
+        let spawnArgs: ExecFileOptions;
         switch (process.platform) {
             case "win32":
                 cli = path.resolve(binary, "..", "bin", "code");
+                spawnArgs = {
+                    shell: true,
+                };
                 break;
             case "darwin":
                 cli = path.resolve(
@@ -308,6 +312,9 @@ export const config: Options.Testrunner = {
                     "..",
                     "Resources/app/bin/code"
                 );
+                spawnArgs = {
+                    shell: false,
+                };
                 break;
         }
 
@@ -323,6 +330,7 @@ export const config: Options.Testrunner = {
                     "--install-extension",
                     VSIX_PATH,
                 ],
+                spawnArgs,
                 (error, stdout, stderr) => {
                     console.log(stdout);
                     console.error(stderr);
