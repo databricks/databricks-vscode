@@ -293,7 +293,7 @@ export const config: Options.Testrunner = {
      * @param {Array.<String>} specs List of spec file paths that are to be run
      * @param {String} cid worker id (e.g. 0-0)
      */
-    beforeSession: async function (config, capabilities, specs, cid) {
+    beforeSession: async function (config, capabilities) {
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
         const cli = path.resolve(binary, "..", "..", "Resources/app/bin/code");
@@ -351,7 +351,7 @@ export const config: Options.Testrunner = {
      * Hook that gets executed before the suite starts
      * @param {Object} suite suite details
      */
-    beforeSuite: async function (suite) {
+    beforeSuite: async function () {
         await sleep(2000);
     },
 
