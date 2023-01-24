@@ -12,12 +12,7 @@ const extensionVersion = require("../../../package.json")
 
 import {AzureCliCheck} from "../AzureCliCheck";
 
-export type AuthType =
-    | "azure-cli"
-    | "google-id"
-    | "oauth-u2m"
-    | "profile"
-    | "pat";
+export type AuthType = "azure-cli" | "google-id" | "oauth-u2m" | "profile";
 
 export abstract class AuthProvider {
     constructor(
@@ -79,50 +74,9 @@ export abstract class AuthProvider {
                 }
                 return new ProfileAuthProvider(host, json.profile);
 
-            case "pat":
-                if (!json.token) {
-                    throw new Error("Missing token");
-                }
-                return new TokenAuthProvider(host, json.token);
-
             default:
                 throw new Error(`Unknown auth type: ${json.authType}`);
         }
-    }
-}
-
-export class TokenAuthProvider extends AuthProvider {
-    constructor(host: URL, private readonly token: string) {
-        super(host, "pat");
-    }
-
-    describe(): string {
-        return "Personal Access Token";
-    }
-
-    toJSON(): Record<string, unknown> {
-        return {
-            host: this.host.toString(),
-            authType: this.authType,
-            token: this.token,
-        };
-    }
-
-    getEnvVars(): Record<string, string | undefined> {
-        return {
-            DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AUTH_TYPE: this.authType,
-            DATABRICKS_TOKEN: this.token,
-        };
-    }
-
-    getSdkConfig(): Config {
-        return new Config({
-            authType: "pat",
-            token: this.token,
-            host: this.host.toString(),
-            env: {},
-        });
     }
 }
 
