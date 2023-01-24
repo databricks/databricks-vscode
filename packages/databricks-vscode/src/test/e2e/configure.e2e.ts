@@ -1,11 +1,7 @@
 import assert from "node:assert";
 import path from "node:path";
 import * as fs from "fs/promises";
-import {
-    getViewSection,
-    waitForPythonExtension,
-    waitForTreeItems,
-} from "./utils";
+import {dismissNotifications, getViewSection, waitForTreeItems} from "./utils";
 import {
     CustomTreeSection,
     InputBox,
@@ -41,11 +37,7 @@ describe("Configure Databricks Extension", async function () {
         host = process.env.DATABRICKS_HOST;
 
         workbench = await browser.getWorkbench();
-    });
-
-    it("should install vscode python extension", async function () {
-        this.retries(1);
-        await waitForPythonExtension();
+        await dismissNotifications();
     });
 
     it("should open VSCode", async function () {
