@@ -37,9 +37,10 @@ export class CliWrapper {
             "sync",
             "--remote-path",
             syncDestination.relativeRepoPath,
+            "--watch",
         ];
         if (syncType === "full") {
-            args.push("--persist-snapshot=false");
+            args.push("--full");
         }
         if (workspaceConfigs.bricksVerboseMode) {
             args.push("-v");
