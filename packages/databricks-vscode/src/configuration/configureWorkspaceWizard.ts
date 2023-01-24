@@ -70,21 +70,6 @@ export async function configureWorkspaceWizard(
                     });
                     break;
 
-                // Disabled PAT until we can figure out how we want to deal with the secret on disk
-                // case "pat":
-                //     items.push({
-                //         label: "PAT",
-                //         kind: QuickPickItemKind.Separator,
-                //         authType: "none",
-                //     });
-
-                //     items.push({
-                //         label: "Personal Access Token",
-                //         detail: "Authenticate using a personal access token",
-                //         authType: "pat",
-                //     });
-                //     break;
-
                 case "profile":
                     items.push({
                         label: "Databricks CLI Profiles",
@@ -154,10 +139,6 @@ export async function configureWorkspaceWizard(
                 state.authType = pick.authType;
                 break;
 
-            case "pat":
-                state.authType = pick.authType;
-                return (input: MultiStepInput) => inputToken(input, state);
-
             case "profile":
                 state.authType = pick.authType;
                 state.profile = pick.profile;
@@ -168,26 +149,6 @@ export async function configureWorkspaceWizard(
                     "databricks.connection.openDatabricksConfigFile"
                 );
         }
-    }
-
-    async function inputToken(input: MultiStepInput, state: Partial<State>) {
-        state.token = await input.showInputBox({
-            title,
-            step: 4,
-            totalSteps: 4,
-            value: typeof state.token === "string" ? state.token : "",
-            prompt: "Databricks personal access token (PAT)",
-            validate: async (s) => {
-                if (!s.length) {
-                    return "Invalid access token";
-                }
-            },
-            shouldResume: shouldResume,
-        });
-    }
-    async function shouldResume(): Promise<boolean> {
-        // Could show a notification with the option to resume.
-        return true;
     }
 
     const state = await collectInputs();
@@ -212,16 +173,16 @@ async function validateDatabricksHost(
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
     if (host.hostname.endsWith(".azuredatabricks.net")) {
-        return ["azure-cli", "pat", "profile"];
+        return ["azure-cli", "profile"];
     }
 
     if (host.hostname.endsWith(".gcp.databricks.com")) {
-        return ["google-id", "pat", "profile"];
+        return ["google-id", "profile"];
     }
 
     if (host.hostname.endsWith(".cloud.databricks.com")) {
-        return ["oauth-u2m", "pat", "profile"];
+        return ["oauth-u2m", "profile"];
     }
 
-    return ["pat", "profile"];
+    return ["profile"];
 }
