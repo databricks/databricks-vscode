@@ -96,51 +96,9 @@ export async function waitForTreeItems(
     }
 }
 
-export async function waitForPythonExtension() {
-    const section = await getViewSection("CONFIGURATION");
-    assert(section);
-    const welcome = await section.findWelcomeContent();
-    assert(welcome);
-    sleep(5000);
-
+export async function dismissNotifications() {
     const workbench = await browser.getWorkbench();
-    browser.waitUntil(
-        async () => {
-            const notifs = await workbench.getNotifications();
-            let found = false;
-            for (const n of notifs) {
-                if (
-                    (await n.getActions()).find(
-                        (btn) => btn.getTitle() === "Install and Reload"
-                    ) !== undefined
-                ) {
-                    await n.takeAction("Install and Reload");
-                    found = true;
-                }
-            }
-
-            return found;
-        },
-        {
-            timeout: 10 * 1000,
-        }
-    );
-
-    await browser.waitUntil(
-        async () =>
-            (
-                await (
-                    await workbench.getEditorView().getActiveTab()
-                )?.getTitle()
-            )?.includes("README.quickstart.md") === true,
-        {
-            timeout: 1.5 * 60 * 1000,
-            timeoutMsg:
-                "Timeout when installing python extension and reloading",
-        }
-    );
-
-    sleep(1000);
+    await sleep(1000);
     const notifs = await workbench.getNotifications();
     try {
         for (const n of notifs) {
