@@ -194,22 +194,22 @@ export class ConnectionCommands implements Disposable {
 
     attachSyncDestinationCommand() {
         return async () => {
-            const apiClient = this.connectionManager.workspaceClient;
+            const wsClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
             const rootDirPath =
                 this.connectionManager.databricksWorkspace?.currentFsRoot;
-            if (!apiClient || !me || !rootDirPath) {
+            if (!wsClient || !me || !rootDirPath) {
                 // TODO
                 return;
             }
 
             let rootDir = await WorkspaceFsEntity.fromPath(
-                apiClient,
+                wsClient,
                 rootDirPath.path
             );
             if (!rootDir) {
                 const created = await (
-                    await WorkspaceFsEntity.fromPath(apiClient, `/Users/${me}`)
+                    await WorkspaceFsEntity.fromPath(wsClient, `/Users/${me}`)
                 )?.mkdir(rootDirPath.path);
 
                 if (!created) {
