@@ -2,6 +2,7 @@ import {Cluster, WorkspaceFsEntity} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
     Disposable,
+    FileSystemError,
     QuickPickItem,
     QuickPickItemKind,
     ThemeIcon,
@@ -73,9 +74,19 @@ export class ConnectionCommands implements Disposable {
 
     openDatabricksConfigFileCommand() {
         return async () => {
-            const doc = await workspace.openTextDocument(
-                Uri.joinPath(Uri.file(homedir()), ".databrickscfg")
-            );
+            const uri = Uri.joinPath(Uri.file(homedir()), ".databrickscfg");
+
+            try {
+                await workspace.fs.stat(uri);
+            } catch (e) {
+                if (e instanceof FileSystemError && e.code === "FileNotFound") {
+                    await workspace.fs.writeFile(uri, Buffer.from(""));
+                } else {
+                    throw e;
+                }
+            }
+
+            const doc = await workspace.openTextDocument(uri);
             await window.showTextDocument(doc);
         };
     }

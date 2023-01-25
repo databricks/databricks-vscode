@@ -2,9 +2,9 @@ import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
+    dismissNotifications,
     getViewSection,
     startSyncIfStopped,
-    waitForPythonExtension,
     waitForSyncComplete,
     waitForTreeItems,
 } from "./utils";
@@ -46,11 +46,7 @@ describe("Run job on cluster", async function () {
         const section = await getViewSection("CONFIGURATION");
         assert(section);
         await waitForTreeItems(section);
-    });
-
-    it("should install vscode python extension", async function () {
-        this.retries(1);
-        await waitForPythonExtension();
+        await dismissNotifications();
     });
 
     it("should run a python notebook as a job on a cluster", async () => {

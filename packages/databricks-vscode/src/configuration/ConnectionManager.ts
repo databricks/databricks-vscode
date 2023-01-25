@@ -8,7 +8,11 @@ import {
 } from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {SyncDestination} from "./SyncDestination";
-import {ProjectConfig, ProjectConfigFile} from "./ProjectConfigFile";
+import {
+    ConfigFileError,
+    ProjectConfig,
+    ProjectConfigFile,
+} from "./ProjectConfigFile";
 import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
@@ -96,9 +100,22 @@ export class ConnectionManager {
         let workspaceClient: WorkspaceClient;
 
         try {
-            projectConfigFile = await ProjectConfigFile.load(
-                vscodeWorkspace.rootPath
-            );
+            try {
+                projectConfigFile = await ProjectConfigFile.load(
+                    vscodeWorkspace.rootPath
+                );
+            } catch (e) {
+                if (
+                    e instanceof ConfigFileError &&
+                    e.message.startsWith("Project config file does not exist")
+                ) {
+                    this.updateState("DISCONNECTED");
+                    await this.logout();
+                    return;
+                } else {
+                    throw e;
+                }
+            }
 
             if (!(await projectConfigFile.authProvider.check(true))) {
                 throw new Error(

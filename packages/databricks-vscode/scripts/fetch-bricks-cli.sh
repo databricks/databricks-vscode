@@ -19,8 +19,5 @@ popd
 mkdir -p bin
 cd ./bin
 rm -rf bricks
-BRICKS_BINARY=$(cd $BRICKS_DIR && ls bricks*)
-# strip the version from the binary name but keep exe on Windows
-BRICKS_TARGET_NAME=$(echo $BRICKS_BINARY | sed -E 's/(.*)_v[0-9]+\.[0-9]+\.[0-9]+(\.exe)?/\1\2/g')
-mv $BRICKS_DIR/$BRICKS_BINARY $BRICKS_TARGET_NAME
+mv $BRICKS_DIR/bricks .
 rm -rf $BRICKS_DIR

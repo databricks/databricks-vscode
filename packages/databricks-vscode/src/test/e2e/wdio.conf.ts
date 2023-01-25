@@ -9,10 +9,22 @@ import assert from "assert";
 import fs from "fs/promises";
 import {WorkspaceClient, Cluster, Repo} from "@databricks/databricks-sdk";
 import {initialiseCustomCommands} from "./customCommands";
+import {execFile, ExecFileOptions} from "node:child_process";
+import {mkdirSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {version, name} from "../../../package.json";
+import {sleep} from "wdio-vscode-service";
 
 const WORKSPACE_PATH = path.resolve(__dirname, "workspace");
 const REPO_NAME = "vscode-integ-test";
-
+const EXTENSION_DIR = path.resolve(tmpdir(), "extension-test", "extension");
+const VSIX_PATH = path.resolve(
+    __dirname,
+    "..",
+    "..",
+    "..",
+    `${name}-${version}.vsix`
+);
 export const config: Options.Testrunner = {
     //
     // ====================
@@ -87,29 +99,34 @@ export const config: Options.Testrunner = {
     // Sauce Labs platform configurator - a great tool to configure your capabilities:
     // https://saucelabs.com/platform/platform-configurator
     //
-    capabilities: [
-        {
-            "browserName": "vscode",
-            "browserVersion": "1.71.1",
-            "wdio:vscodeOptions": {
-                extensionPath: process.env.CI
-                    ? path.resolve(__dirname, "..", "..", "..", "extension")
-                    : path.resolve(__dirname, "..", "..", ".."),
-                vscodeArgs: {
-                    disableExtensions: false,
-                },
-                workspacePath: WORKSPACE_PATH,
-                userSettings: {
-                    "editor.fontSize": 14,
-                    "typescript.updateImportsOnFileMove.enabled": "always",
-                    "files.simpleDialog.enable": true,
-                    "workbench.editor.enablePreview": true,
-                    "window.newWindowDimensions": "default",
-                    "window.openFoldersInNewWindow": "off",
+    get capabilities() {
+        return [
+            {
+                "browserName": "vscode",
+                "browserVersion": "1.71.1",
+                "wdio:vscodeOptions": {
+                    extensionPath: path.resolve(
+                        __dirname,
+                        "resources",
+                        "dumm-test"
+                    ),
+                    vscodeArgs: {
+                        extensionsDir: EXTENSION_DIR,
+                        disableExtensions: false,
+                    },
+                    workspacePath: WORKSPACE_PATH,
+                    userSettings: {
+                        "editor.fontSize": 14,
+                        "typescript.updateImportsOnFileMove.enabled": "always",
+                        "files.simpleDialog.enable": true,
+                        "workbench.editor.enablePreview": true,
+                        "window.newWindowDimensions": "default",
+                        "window.openFoldersInNewWindow": "off",
+                    },
                 },
             },
-        },
-    ],
+        ];
+    },
 
     //
     // ===================
@@ -216,6 +233,7 @@ export const config: Options.Testrunner = {
      */
     onPrepare: async function () {
         try {
+            mkdirSync(EXTENSION_DIR, {recursive: true});
             assert(
                 process.env["DATABRICKS_TOKEN"],
                 "Environment variable DATABRICKS_TOKEN must be set"
@@ -275,7 +293,64 @@ export const config: Options.Testrunner = {
      * @param {Array.<String>} specs List of spec file paths that are to be run
      * @param {String} cid worker id (e.g. 0-0)
      */
-    beforeSession: async function () {
+    beforeSession: async function (config, capabilities) {
+        const binary: string = capabilities["wdio:vscodeOptions"]
+            .binary as string;
+        let cli: string;
+        let spawnArgs: ExecFileOptions;
+        switch (process.platform) {
+            case "win32":
+                cli = path.resolve(binary, "..", "bin", "code");
+                spawnArgs = {
+                    shell: true,
+                };
+                break;
+            case "darwin":
+                cli = path.resolve(
+                    binary,
+                    "..",
+                    "..",
+                    "Resources/app/bin/code"
+                );
+                spawnArgs = {
+                    shell: false,
+                };
+                break;
+        }
+        for (let i = 0; i < 2; i++) {
+            try {
+                await new Promise((resolve, reject) => {
+                    execFile(
+                        cli,
+                        [
+                            "--extensions-dir",
+                            EXTENSION_DIR,
+                            "--install-extension",
+                            "ms-python.python",
+                            "--install-extension",
+                            VSIX_PATH,
+                        ],
+                        spawnArgs,
+                        (error, stdout, stderr) => {
+                            console.log(stdout);
+                            console.error(stderr);
+                            console.error(error);
+                            if (error) {
+                                reject(error);
+                            }
+                            resolve(undefined);
+                        }
+                    );
+                });
+            } catch (error) {
+                if (i === 1) {
+                    throw error;
+                }
+                continue;
+            }
+            break;
+        }
+
         await fs.rm(path.join(WORKSPACE_PATH, ".databricks"), {
             recursive: true,
             force: true,
@@ -290,7 +365,7 @@ export const config: Options.Testrunner = {
      * @param {Object}         browser      instance of created browser/device session
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    before: async function (capabilities, specs, browser) {
+    before: async function () {
         initialiseCustomCommands();
     },
 
@@ -306,8 +381,9 @@ export const config: Options.Testrunner = {
      * Hook that gets executed before the suite starts
      * @param {Object} suite suite details
      */
-    // beforeSuite: function (suite) {
-    // },
+    beforeSuite: async function () {
+        await sleep(2000);
+    },
 
     /**
      * Function to be executed before a test (in Mocha/Jasmine) starts.
@@ -420,13 +496,17 @@ token = ${process.env["DATABRICKS_TOKEN"]}`
 }
 
 function getWorkspaceClient(host: string, token: string) {
-    const client = new WorkspaceClient({
-        host,
-        token,
-        authType: "pat",
-        product: "integration-tests",
-        productVersion: "0.0.1",
-    });
+    const client = new WorkspaceClient(
+        {
+            host,
+            token,
+            authType: "pat",
+        },
+        {
+            product: "integration-tests",
+            productVersion: "0.0.1",
+        }
+    );
 
     return client;
 }
