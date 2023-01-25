@@ -1,6 +1,6 @@
 import {WorkspaceFsEntity, WorkspaceFsUtils} from "@databricks/databricks-sdk";
-import {context, Context} from "@databricks/databricks-sdk/src/context";
-import {withLogContext} from "@databricks/databricks-sdk/src/logging";
+import {context, Context} from "@databricks/databricks-sdk/dist/context";
+import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Loggers} from "../logger";

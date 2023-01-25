@@ -1,6 +1,6 @@
 import {ExecUtils, WorkspaceClient} from "@databricks/databricks-sdk";
 import {commands, Disposable, Uri, window} from "vscode";
-import {AuthProvider} from "./auth/AuthProvider";
+import {AzureCliAuthProvider} from "./auth/AuthProvider";
 
 export type Step<S, N> = () => Promise<
     SuccessResult<S> | NextResult<N> | ErrorResult
@@ -54,11 +54,16 @@ type AzureStepName =
 
 export class AzureCliCheck implements Disposable {
     private disposables: Disposable[] = [];
+    private isCodeSpaces: boolean;
+
+    tenantId: string | undefined;
 
     constructor(
-        private authProvider: AuthProvider,
+        private authProvider: AzureCliAuthProvider,
         private azBinPath: string = "az"
-    ) {}
+    ) {
+        this.isCodeSpaces = process.env.CODESPACES === "true";
+    }
 
     dispose() {
         this.disposables.forEach((i) => i.dispose());
@@ -66,13 +71,13 @@ export class AzureCliCheck implements Disposable {
     }
 
     public async check(silent = false): Promise<boolean> {
-        let tenant: string;
+        this.tenantId = this.authProvider.tenantId;
 
         const steps: Record<AzureStepName, Step<boolean, AzureStepName>> = {
             tryLogin: async () => {
                 const result = await this.tryLogin(this.authProvider.host);
                 if (typeof result === "string") {
-                    tenant = result;
+                    this.tenantId = result;
                     return {
                         type: "next",
                         next: "loginAzureCli",
@@ -123,7 +128,7 @@ export class AzureCliCheck implements Disposable {
                 };
             },
             loginAzureCli: async () => {
-                if (await this.loginAzureCli(tenant)) {
+                if (await this.loginAzureCli(this.tenantId)) {
                     return {
                         type: "next",
                         next: "tryLogin",
@@ -233,7 +238,7 @@ export class AzureCliCheck implements Disposable {
     public async loginAzureCli(tenant = ""): Promise<boolean> {
         let message = 'You need to run "az login" to login with Azure.';
         if (tenant) {
-            message = `You are logged in with the wrong tenant ID. Run "az login -t ${tenant}" to login with Azure with the correct tenant.`;
+            message = `You need to tun "az login -t ${tenant}" to login with Azure.`;
         }
         const choice = await window.showInformationMessage(
             message,
@@ -245,8 +250,11 @@ export class AzureCliCheck implements Disposable {
             const terminal = window.createTerminal("az login");
             this.disposables.push(terminal);
             terminal.show();
+
+            const useDeviceCode = this.isCodeSpaces ? "--use-device-code" : "";
+
             terminal.sendText(
-                `${this.azBinPath} login ${
+                `${this.azBinPath} login ${useDeviceCode} ${
                     tenant ? "-t " + tenant : ""
                 }; echo "Press any key to close the terminal and continue ..."; read; exit`
             );

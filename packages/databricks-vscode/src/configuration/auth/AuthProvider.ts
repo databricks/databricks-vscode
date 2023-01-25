@@ -66,7 +66,7 @@ export abstract class AuthProvider {
 
         switch (json.authType as AuthType) {
             case "azure-cli":
-                return new AzureCliAuthProvider(host);
+                return new AzureCliAuthProvider(host, json.tenantId);
 
             case "profile":
                 if (!json.profile) {
@@ -114,8 +114,16 @@ export class ProfileAuthProvider extends AuthProvider {
 }
 
 export class AzureCliAuthProvider extends AuthProvider {
-    constructor(host: URL) {
+    private _tenantId?: string;
+
+    constructor(host: URL, tenantId?: string) {
         super(host, "azure-cli");
+
+        this._tenantId = tenantId;
+    }
+
+    get tenantId(): string | undefined {
+        return this._tenantId;
     }
 
     describe(): string {
@@ -126,6 +134,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         return {
             host: this.host.toString(),
             authType: this.authType,
+            tenantId: this.tenantId,
         };
     }
 
@@ -145,6 +154,9 @@ export class AzureCliAuthProvider extends AuthProvider {
     }
 
     async check(silent: boolean): Promise<boolean> {
-        return await new AzureCliCheck(this).check(silent);
+        const cliCheck = new AzureCliCheck(this);
+        const result = await cliCheck.check(silent);
+        this._tenantId = cliCheck.tenantId;
+        return result;
     }
 }
