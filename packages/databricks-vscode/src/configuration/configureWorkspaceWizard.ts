@@ -1,11 +1,5 @@
-import {
-    ConfigFileError,
-    isConfigFileParsingError,
-    loadConfigFile,
-    Profile,
-    Profiles,
-} from "./auth/configFile";
 import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
+import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
 import {MultiStepInput} from "../ui/wizard";
 import {normalizeHost} from "../utils/urlUtils";
 import {AuthProvider, AuthType} from "./auth/AuthProvider";
@@ -24,6 +18,7 @@ interface State {
 }
 
 export async function configureWorkspaceWizard(
+    cliWrapper: CliWrapper,
     host?: string
 ): Promise<ProjectConfig | undefined> {
     const title = "Configure Databricks Workspace";
@@ -37,16 +32,42 @@ export async function configureWorkspaceWizard(
     }
 
     async function inputHost(input: MultiStepInput, state: Partial<State>) {
-        const host = await input.showInputBox({
+        const items: Array<QuickPickItem> = [];
+
+        if (state.host) {
+            items.push({
+                label: state.host.toString(),
+                detail: "Currently selected host",
+            });
+        }
+
+        if (process.env.DATABRICKS_HOST) {
+            items.push({
+                label: process.env.DATABRICKS_HOST,
+                detail: "DATABRICKS_HOST environment variable",
+            });
+        }
+
+        const profiles = await listProfiles(cliWrapper);
+        items.push(
+            ...profiles.map((profile) => {
+                return {
+                    label: profile.host!.toString(),
+                    detail: `Profile: ${profile.name}`,
+                };
+            })
+        );
+
+        const host = await input.showQuickAutoComplete({
             title,
             step: 1,
             totalSteps: 2,
-            value: typeof state.host === "string" ? state.host : "",
             prompt: "Databricks Host (should begin with https://)",
             validate: validateDatabricksHost,
             shouldResume: async () => {
                 return false;
             },
+            items,
         });
 
         state.host = normalizeHost(host);
@@ -58,7 +79,7 @@ export async function configureWorkspaceWizard(
         state: Partial<State>
     ) {
         const items: Array<AuthTypeQuickPickItem> = [];
-        let profiles: Profiles = {};
+        let profiles: Array<ConfigEntry> = [];
 
         for (const authMethod of authMethodsForHostname(state.host!)) {
             switch (authMethod) {
@@ -77,31 +98,24 @@ export async function configureWorkspaceWizard(
                         authType: "none",
                     });
 
-                    try {
-                        profiles = await loadConfigFile();
-                    } catch (e) {
-                        if (!(e instanceof ConfigFileError)) {
-                            throw e;
-                        }
-                    }
+                    profiles = await listProfiles(cliWrapper);
 
                     items.push(
-                        ...Object.keys(profiles)
-                            .filter(
-                                (label) =>
-                                    !isConfigFileParsingError(profiles[label])
-                            )
-                            .filter(
-                                (label) =>
-                                    (profiles[label] as Profile).host
-                                        .hostname === state.host!.hostname
-                            )
-                            .map((label) => ({
-                                label,
-                                detail: `Authenticate using the ${label} profile`,
-                                authType: "profile" as const,
-                                profile: label,
-                            }))
+                        ...profiles
+                            .filter((profile) => {
+                                return (
+                                    profile.host?.hostname ===
+                                    state.host!.hostname
+                                );
+                            })
+                            .map((profile) => {
+                                return {
+                                    label: profile.name,
+                                    detail: `Authenticate using the ${profile.name} profile`,
+                                    authType: "profile" as const,
+                                    profile: profile.name,
+                                };
+                            })
                     );
 
                     items.push({
@@ -159,6 +173,13 @@ export async function configureWorkspaceWizard(
     return {
         authProvider: AuthProvider.fromJSON(state),
     };
+}
+
+async function listProfiles(cliWrapper: CliWrapper) {
+    const profiles = await cliWrapper.listProfiles();
+    return profiles.filter((profile) => {
+        return ["pat", "basic", "azure-cli"].includes(profile.authType);
+    });
 }
 
 async function validateDatabricksHost(

@@ -75,6 +75,10 @@ describe(__dirname, function () {
             }
         }
 
+        if (!cf.env || !cf.env["HOME"]) {
+            process.env["HOME"] = "i-dont-exist";
+        }
+
         try {
             config = await configureProviderAndReturnConfig(cf);
         } catch (error: any) {
