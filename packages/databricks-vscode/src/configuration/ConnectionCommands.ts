@@ -1,4 +1,4 @@
-import {Cluster, Repo} from "@databricks/databricks-sdk";
+import {Cluster, WorkspaceFsEntity} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
     Disposable,
@@ -14,6 +14,8 @@ import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
+import {workspaceConfigs} from "../WorkspaceConfigs";
+import {WorkspaceFsCommands} from "../workspace-fs";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -50,6 +52,7 @@ export interface ClusterItem extends QuickPickItem {
 export class ConnectionCommands implements Disposable {
     private disposables: Disposable[] = [];
     constructor(
+        private wsfsCommands: WorkspaceFsCommands,
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel
     ) {}
@@ -191,78 +194,112 @@ export class ConnectionCommands implements Disposable {
 
     attachSyncDestinationCommand() {
         return async () => {
-            const apiClient = this.connectionManager.workspaceClient?.apiClient;
+            const wsClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
-            if (!apiClient || !me) {
+            const rootDirPath =
+                this.connectionManager.databricksWorkspace?.currentFsRoot;
+            if (!wsClient || !me || !rootDirPath) {
                 // TODO
                 return;
             }
 
-            const quickPick = window.createQuickPick<WorkspaceItem>();
+            let rootDir = await WorkspaceFsEntity.fromPath(
+                wsClient,
+                rootDirPath.path
+            );
+            if (!rootDir) {
+                const created = await (
+                    await WorkspaceFsEntity.fromPath(wsClient, `/Users/${me}`)
+                )?.mkdir(rootDirPath.path);
 
-            quickPick.busy = true;
-            quickPick.canSelectMany = false;
-            const items: WorkspaceItem[] = [
+                if (!created) {
+                    window.showErrorMessage(
+                        `Can't find or create ${rootDirPath}`
+                    );
+                    return;
+                }
+
+                rootDir = created;
+            }
+
+            type WorkspaceFsQuickPickItem = QuickPickItem & {
+                path?: string;
+            };
+            const children: WorkspaceFsQuickPickItem[] = [
                 {
-                    label: "Create New Repo",
-                    detail: `Open Databricks in the browser and create a new repo under /Repo/${me}`,
-                    alwaysShow: false,
+                    label: "Create New Sync Destination",
+                    alwaysShow: true,
+                    detail: workspaceConfigs.enableFilesInWorkspace
+                        ? ""
+                        : `Open Databricks in the browser and create a new repo under /Repo/${me}`,
                 },
                 {
                     label: "",
                     kind: QuickPickItemKind.Separator,
                 },
             ];
-            quickPick.items = items;
 
-            quickPick.show();
-
-            const repos = await Repo.list(apiClient, {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                path_prefix: `/Repos/${me}`,
-            });
-
-            quickPick.items = items.concat(
-                ...repos!.map((r) => ({
-                    label: r.path.split("/").pop() || "",
-                    detail: r.path,
-                    path: r.path,
-                    id: r.id,
-                }))
+            const input = window.createQuickPick();
+            input.busy = true;
+            input.items = children;
+            input.show();
+            children.push(
+                ...((await rootDir?.children) ?? []).map((entity) => {
+                    return {
+                        label: entity.basename,
+                        detail: entity.path,
+                        path: entity.path,
+                    };
+                })
             );
-            quickPick.busy = false;
+            input.items = children;
+            input.busy = false;
 
-            await new Promise<void>((resolve) => {
-                quickPick.onDidAccept(async () => {
-                    if (
-                        quickPick.selectedItems[0].label === "Create New Repo"
-                    ) {
-                        await UrlUtils.openExternal(
-                            `${
-                                (
-                                    await this.connectionManager.workspaceClient
-                                        ?.apiClient.host
-                                )?.href ?? ""
-                            }#folder/${this.connectionManager.repoRootId ?? ""}`
+            const disposables = [
+                input,
+                input.onDidAccept(async () => {
+                    const fn = async () => {
+                        const selection = input
+                            .selectedItems[0] as WorkspaceFsQuickPickItem;
+                        if (selection.label !== "Create New Sync Destination") {
+                            this.connectionManager.attachSyncDestination(
+                                Uri.from({scheme: "wsfs", path: selection.path})
+                            );
+                            return;
+                        }
+                        if (!workspaceConfigs.enableFilesInWorkspace) {
+                            UrlUtils.openExternal((await rootDir?.url) ?? "");
+                            return;
+                        }
+                        const created = await this.wsfsCommands.createFolder(
+                            rootDir
                         );
-                    } else {
-                        const repoPath = quickPick.selectedItems[0].path;
-                        await this.connectionManager.attachSyncDestination(
+                        if (created === undefined) {
+                            return;
+                        }
+                        this.connectionManager.attachSyncDestination(
                             Uri.from({
                                 scheme: "wsfs",
-                                path: repoPath,
+                                path: created.path,
                             })
                         );
-                        quickPick.dispose();
-                        resolve();
+                    };
+                    try {
+                        await fn();
+                    } catch (e: unknown) {
+                        if (e instanceof Error) {
+                            window.showErrorMessage(
+                                `Error while creating a new directory: ${e.message}`
+                            );
+                        }
+                    } finally {
+                        disposables.forEach((i) => i.dispose());
                     }
-                });
-
-                quickPick.onDidHide(() => {
-                    quickPick.dispose();
-                    resolve();
-                });
-            });
+                }),
+                input.onDidHide(() => {
+                    disposables.forEach((i) => i.dispose());
+                }),
+            ];
         };
     }
 

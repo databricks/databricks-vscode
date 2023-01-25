@@ -171,6 +171,21 @@
                 "command": "databricks.utils.openExternal",
                 "title": "Open link externally",
                 "icon": "$(link)"
+            },
+            {
+                "command": "databricks.wsfs.attachSyncDestination",
+                "title": "Attach sync destination",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.wsfs.refresh",
+                "title": "Refresh",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "databricks.wsfs.createFolder",
+                "title": "Create Folder",
+                "icon": "$(new-folder)"
             }
         ],
         "viewsContainers": {
@@ -187,6 +202,11 @@
                 {
                     "id": "configurationView",
                     "name": "Configuration"
+                },
+                {
+                    "id": "workspaceFsView",
+                    "name": "Workspace explorer",
+                    "when": "config.databricks.sync.destinationType == workspace"
                 },
                 {
                     "id": "clusterView",
@@ -226,6 +246,16 @@
                     "command": "databricks.cluster.refresh",
                     "when": "view == clusterView",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.wsfs.refresh",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
                 }
             ],
             "databricks.cluster.filter": [
@@ -287,8 +317,16 @@
                 },
                 {
                     "command": "databricks.utils.openExternal",
-                    "when": "view == configurationView && viewItem =~ /^.*databricks-link.*$/ || view == clusterView && viewItem =~ /^.*databricks-link.*$/",
+                    "when": "viewItem =~ /^.*databricks-link.*$/ ",
                     "group": "inline@0"
+                },
+                {
+                    "command": "databricks.wsfs.attachSyncDestination",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace || view == workspaceFsView && viewItem =~ /^wsfs.repo.*$/ && config.databricks.sync.destinationType == repo"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace"
                 }
             ],
             "editor/title/run": [
@@ -311,6 +349,10 @@
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder",
+                    "when": "config.databricks.sync.destinationType == workspace"
                 }
             ],
             "explorer/context": [
@@ -502,6 +544,19 @@
                         "type": "boolean",
                         "default": false,
                         "description": "Enable verbose logging for bricks CLI (sync mode)."
+                    },
+                    "databricks.sync.destinationType": {
+                        "type": "string",
+                        "default": "repo",
+                        "enum": [
+                            "workspace",
+                            "repo"
+                        ],
+                        "description": "Use a folder in Workspace or a Databricks Repo as sync destination (Reload for changes to take effect).",
+                        "enumDescriptions": [
+                            "Use a folder in Workspace as sync destination",
+                            "Use a Repo as sync destination"
+                        ]
                     }
                 }
             }

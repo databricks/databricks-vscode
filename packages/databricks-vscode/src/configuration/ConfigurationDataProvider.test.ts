@@ -145,10 +145,10 @@ describe(__filename, () => {
                 contextValue: "syncDetached",
                 iconPath: {
                     color: undefined,
-                    id: "repo",
+                    id: "file-directory",
                 },
-                id: "REPO",
-                label: 'Repo - "None attached"',
+                id: "SYNC-DESTINATION",
+                label: 'Sync Destination - "None attached"',
             },
         ]);
     });

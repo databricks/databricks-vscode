@@ -1,4 +1,4 @@
-import {WorkspaceClient, Cluster, HttpError} from "@databricks/databricks-sdk";
+import {WorkspaceClient, Cluster} from "@databricks/databricks-sdk";
 import {
     env,
     EventEmitter,
@@ -15,7 +15,6 @@ import {
 } from "./ProjectConfigFile";
 import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
-import {workspace} from "@databricks/databricks-sdk";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
@@ -34,7 +33,6 @@ export class ConnectionManager {
     private _syncDestination?: SyncDestination;
     private _projectConfigFile?: ProjectConfigFile;
     private _clusterManager?: ClusterManager;
-    private _repoRootDetails?: workspace.ObjectInfo;
     private _databricksWorkspace?: DatabricksWorkspace;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
@@ -69,9 +67,6 @@ export class ConnectionManager {
         return this._syncDestination;
     }
 
-    get repoRootId() {
-        return this._repoRootDetails?.object_id;
-    }
     get databricksWorkspace(): DatabricksWorkspace | undefined {
         return this._databricksWorkspace;
     }
@@ -197,16 +192,6 @@ export class ConnectionManager {
             this.updateSyncDestination(undefined);
         }
 
-        try {
-            this._repoRootDetails = await workspaceClient.workspace.getStatus({
-                path: `/Repos/${this.databricksWorkspace?.userName}`,
-            });
-        } catch (e) {
-            if (!(e instanceof HttpError && e.code === 404)) {
-                throw e;
-            }
-        }
-
         this.updateState("CONNECTED");
     }
 
@@ -219,7 +204,6 @@ export class ConnectionManager {
 
         this._projectConfigFile = undefined;
         this._workspaceClient = undefined;
-        this._repoRootDetails = undefined;
         this._databricksWorkspace = undefined;
         this.updateCluster(undefined);
         this.updateSyncDestination(undefined);
@@ -387,6 +371,18 @@ export class ConnectionManager {
                 // TODO how do we handle this?
                 return;
             }
+            if (
+                this.workspaceClient === undefined ||
+                this.databricksWorkspace === undefined
+            ) {
+                throw new Error(
+                    "Can't attach a Repo when profile is not connected"
+                );
+            }
+            if (!(await SyncDestination.validateRemote(this, workspacePath))) {
+                await this.detachSyncDestination();
+                return;
+            }
 
             if (!skipWrite) {
                 this._projectConfigFile!.workspacePath = workspacePath;
@@ -394,11 +390,6 @@ export class ConnectionManager {
             }
 
             const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
-            if (this.workspaceClient === undefined) {
-                throw new Error(
-                    "Can't attach a Repo when profile is not connected"
-                );
-            }
             this.updateSyncDestination(
                 await SyncDestination.from(
                     this.workspaceClient,

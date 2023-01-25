@@ -8,7 +8,11 @@ import {
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-const ViewSectionTypes = ["CLUSTERS", "CONFIGURATION"] as const;
+const ViewSectionTypes = [
+    "CLUSTERS",
+    "CONFIGURATION",
+    "WORKSPACE EXPLORER",
+] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
 
 export async function findViewSection(name: ViewSectionType) {
@@ -31,10 +35,13 @@ export async function findViewSection(name: ViewSectionType) {
             timeoutMsg: `Can't find view control "${name}"`,
         }
     );
-    const view = await (await control?.openView())
-        ?.getContent()
-        ?.getSection(name);
-    return view;
+    const views =
+        (await (await control?.openView())?.getContent()?.getSections()) ?? [];
+    for (const v of views) {
+        if ((await v.getTitle()).toUpperCase() === name) {
+            return v;
+        }
+    }
 }
 
 export async function getViewSection(
@@ -112,7 +119,7 @@ export async function waitForSyncComplete() {
         async () => {
             const repoConfigItem = await getViewSubSection(
                 "CONFIGURATION",
-                "Repo"
+                "Sync Destination"
             );
             if (repoConfigItem === undefined) {
                 return false;
@@ -149,7 +156,7 @@ export async function startSyncIfStopped() {
         async () => {
             const repoConfigItem = await getViewSubSection(
                 "CONFIGURATION",
-                "Repo"
+                "Sync Destination"
             );
             if (repoConfigItem === undefined) {
                 return false;

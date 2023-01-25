@@ -42,7 +42,7 @@ export class ProjectConfigFileWatcher implements Disposable {
                 }
                 if (
                     connectionManager.syncDestination?.path.path !==
-                    configFile.workspacePath
+                    configFile.workspacePath?.path
                 ) {
                     if (configFile.workspacePath) {
                         await connectionManager.attachSyncDestination(

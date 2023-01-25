@@ -65,9 +65,7 @@ export class ClusterListDataProvider
                 return [];
             }
         } else {
-            return (() => {
-                return this.model.roots;
-            })();
+            return this.model.roots;
         }
     }
 

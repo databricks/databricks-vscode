@@ -1,7 +1,6 @@
-import {WorkspaceClient} from "@databricks/databricks-sdk";
+import {ExecUtils, WorkspaceClient} from "@databricks/databricks-sdk";
 import {commands, Disposable, Uri, window} from "vscode";
 import {AuthProvider} from "./auth/AuthProvider";
-import {execFileWithShell} from "@databricks/databricks-sdk/dist/config/execUtils";
 
 export type Step<S, N> = () => Promise<
     SuccessResult<S> | NextResult<N> | ErrorResult
@@ -181,7 +180,7 @@ export class AzureCliCheck implements Disposable {
     // check if Azure CLI is installed
     public async hasAzureCli(): Promise<boolean> {
         try {
-            const {stdout} = await execFileWithShell(this.azBinPath, [
+            const {stdout} = await ExecUtils.execFileWithShell(this.azBinPath, [
                 "--version",
             ]);
             if (stdout.indexOf("azure-cli") !== -1) {
@@ -214,10 +213,10 @@ export class AzureCliCheck implements Disposable {
     // check if Azure CLI is logged in
     public async isAzureCliLoggedIn(): Promise<boolean> {
         try {
-            const {stdout, stderr} = await execFileWithShell(this.azBinPath, [
-                "account",
-                "list",
-            ]);
+            const {stdout, stderr} = await ExecUtils.execFileWithShell(
+                this.azBinPath,
+                ["account", "list"]
+            );
             if (stdout === "[]") {
                 return false;
             }
