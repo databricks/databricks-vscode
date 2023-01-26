@@ -10,6 +10,7 @@ import {
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import {UserFacingStrings} from "../user-facing-strings";
 import {ConnectionManager} from "./ConnectionManager";
 
 /**
@@ -261,9 +262,9 @@ export class ConfigurationDataProvider
                 syncDestination.name !== syncDestination.vscodeWorkspacePathName
             ) {
                 children.push({
-                    label: "The remote sync destination name does not match the current vscode workspace name",
+                    label: UserFacingStrings.configurationView.syncDestination.nameDoesNotMatch.label.visibleString(),
                     tooltip:
-                        "If syncing to directory with a different name is the intended behaviour, this warning can be ignored",
+                        UserFacingStrings.configurationView.syncDestination.nameDoesNotMatch.tooltip.visibleString(),
                     iconPath: new ThemeIcon(
                         "warning",
                         new ThemeColor("problemsWarningIcon.foreground")

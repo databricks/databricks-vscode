@@ -21,6 +21,7 @@ import {workspaceConfigs} from "./WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
+import {UserFacingStrings} from "./user-facing-strings";
 
 export async function activate(
     context: ExtensionContext
@@ -33,7 +34,9 @@ export async function activate(
         workspace.workspaceFolders === undefined ||
         workspace.workspaceFolders?.length === 0
     ) {
-        window.showErrorMessage("Open a folder to use Databricks extension");
+        window.showErrorMessage(
+            UserFacingStrings.activation.openFolderPrompt.visibleString()
+        );
         /*
             We force the user to open a folder from the databricks sidebar view. Returning
             here blocks all other commands from running. 

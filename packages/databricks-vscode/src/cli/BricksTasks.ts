@@ -17,6 +17,7 @@ import {BricksSyncParser} from "./BricksSyncParser";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {UserFacingStrings} from "../user-facing-strings";
 
 enum TaskSyncType {
     syncFull = "sync-full",
@@ -216,7 +217,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
             this.connection.syncDestination?.vscodeWorkspacePath.fsPath;
         if (!workspacePath) {
             throw this.showErrorAndKillThis(
-                "Can't start sync: No workspace opened!",
+                UserFacingStrings.bricksTask.noWorkspaceOpened.visibleString(),
                 ctx
             );
         }
@@ -224,7 +225,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         const dbWorkspace = this.connection.databricksWorkspace;
         if (!dbWorkspace) {
             throw this.showErrorAndKillThis(
-                "Can't start sync: Databricks connection not configured!",
+                UserFacingStrings.bricksTask.connectionNotConfigured.visibleString(),
                 ctx
             );
         }
@@ -252,7 +253,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
 
         if (!syncDestination) {
             throw this.showErrorAndKillThis(
-                "Can't start sync: Databricks synchronization destination not configured!",
+                UserFacingStrings.bricksTask.syncDestinationNotConfigured.visibleString(),
                 ctx
             );
         }

@@ -16,6 +16,7 @@ import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
+import {UserFacingStrings} from "../user-facing-strings";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -122,7 +123,7 @@ export class ConnectionCommands implements Disposable {
             const items: QuickPickItem[] = [
                 {
                     label: "Create New Cluster",
-                    detail: `Open Databricks in the browser and create a new cluster`,
+                    detail: UserFacingStrings.connectionCommands.createCluster.visibleString(),
                     alwaysShow: false,
                 },
                 {
@@ -214,7 +215,9 @@ export class ConnectionCommands implements Disposable {
 
                 if (!created) {
                     window.showErrorMessage(
-                        `Can't find or create ${rootDirPath}`
+                        UserFacingStrings.connectionCommands.rootDirNotFound.visibleString(
+                            {rootDirPath: rootDirPath.path}
+                        )
                     );
                     return;
                 }
@@ -231,7 +234,9 @@ export class ConnectionCommands implements Disposable {
                     alwaysShow: true,
                     detail: workspaceConfigs.enableFilesInWorkspace
                         ? ""
-                        : `Open Databricks in the browser and create a new repo under /Repo/${me}`,
+                        : UserFacingStrings.connectionCommands.createRepo.visibleString(
+                              {me}
+                          ),
                 },
                 {
                     label: "",
@@ -289,7 +294,9 @@ export class ConnectionCommands implements Disposable {
                     } catch (e: unknown) {
                         if (e instanceof Error) {
                             window.showErrorMessage(
-                                `Error while creating a new directory: ${e.message}`
+                                UserFacingStrings.connectionCommands.dirCreationError.visibleString(
+                                    {e}
+                                )
                             );
                         }
                     } finally {
