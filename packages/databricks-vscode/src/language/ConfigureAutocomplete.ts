@@ -231,7 +231,8 @@ export class ConfigureAutocomplete implements Disposable {
         }
         extraPaths = extraPaths.filter(
             (value) =>
-                !value.endsWith(path.join("resources", "python", "stubs"))
+                !value.endsWith(path.join("resources", "python", "stubs")) &&
+                value.includes("databricks")
         );
         extraPaths.push(stubPath);
         workspace
