@@ -153,7 +153,7 @@ export class ConnectionManager {
             }
 
             workspaceClient =
-                projectConfigFile.authProvider.getWorkspaceClient();
+                await projectConfigFile.authProvider.getWorkspaceClient();
 
             await workspaceClient.config.authenticate({});
 
@@ -290,7 +290,7 @@ export class ConnectionManager {
 
             try {
                 const workspaceClient =
-                    config.authProvider.getWorkspaceClient();
+                    await config.authProvider.getWorkspaceClient();
 
                 await workspaceClient.config.authenticate({});
 

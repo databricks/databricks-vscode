@@ -1,50 +1,52 @@
 import {
     commands,
     debug,
+    Extension,
     ExtensionContext,
     extensions,
     window,
     workspace,
 } from "vscode";
-import {CliWrapper} from "./cli/CliWrapper";
-import {ConnectionCommands} from "./configuration/ConnectionCommands";
-import {ConnectionManager} from "./configuration/ConnectionManager";
-import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
-import {ClusterModel} from "./cluster/ClusterModel";
-import {ClusterCommands} from "./cluster/ClusterCommands";
-import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
-import {RunCommands} from "./run/RunCommands";
-import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
-import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
-import {SyncCommands} from "./sync/SyncCommands";
-import {CodeSynchronizer} from "./sync/CodeSynchronizer";
-import {ProjectConfigFileWatcher} from "./file-managers/ProjectConfigFileWatcher";
-import {QuickstartCommands} from "./quickstart/QuickstartCommands";
-import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
-import {PublicApi} from "@databricks/databricks-vscode-types";
-import {LoggerManager, Loggers} from "./logger";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
-import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
-import {PackageJsonUtils, UtilsCommands} from "./utils";
-import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
+import { CliWrapper } from "./cli/CliWrapper";
+import { ConnectionCommands } from "./configuration/ConnectionCommands";
+import { ConnectionManager } from "./configuration/ConnectionManager";
+import { ClusterListDataProvider } from "./cluster/ClusterListDataProvider";
+import { ClusterModel } from "./cluster/ClusterModel";
+import { ClusterCommands } from "./cluster/ClusterCommands";
+import { ConfigurationDataProvider } from "./configuration/ConfigurationDataProvider";
+import { RunCommands } from "./run/RunCommands";
+import { DatabricksDebugAdapterFactory } from "./run/DatabricksDebugAdapter";
+import { DatabricksWorkflowDebugAdapterFactory } from "./run/DatabricksWorkflowDebugAdapter";
+import { SyncCommands } from "./sync/SyncCommands";
+import { CodeSynchronizer } from "./sync/CodeSynchronizer";
+import { ProjectConfigFileWatcher } from "./file-managers/ProjectConfigFileWatcher";
+import { QuickstartCommands } from "./quickstart/QuickstartCommands";
+import { showQuickStartOnFirstUse } from "./quickstart/QuickStart";
+import { PublicApi } from "@databricks/databricks-vscode-types";
+import { LoggerManager, Loggers } from "./logger";
+import { NamedLogger } from "@databricks/databricks-sdk/dist/logging";
+import { workspaceConfigs } from "./vscode-objs/WorkspaceConfigs";
+import { PackageJsonUtils, UtilsCommands } from "./utils";
+import { ConfigureAutocomplete } from "./language/ConfigureAutocomplete";
 import {
     WorkspaceFsAccessVerifier,
     WorkspaceFsCommands,
     WorkspaceFsDataProvider,
 } from "./workspace-fs";
-import {generateBundleSchema} from "./bundle/GenerateBundle";
-import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
-import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
+import { AzureAccountExtensionApi } from "./azure-accounts.api";
+import { generateBundleSchema } from "./bundle/GenerateBundle";
+import { CustomWhenContext } from "./vscode-objs/CustomWhenContext";
+import { WorkspaceStateManager } from "./vscode-objs/WorkspaceState";
 import path from "node:path";
-import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManager";
-import {FeatureManager} from "./feature-manager/FeatureManager";
-import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
-import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
-import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
-import {Telemetry, toUserMetadata} from "./telemetry";
+import { MetadataServiceManager } from "./configuration/auth/MetadataServiceManager";
+import { FeatureManager } from "./feature-manager/FeatureManager";
+import { DbConnectAccessVerifier } from "./language/DbConnectAccessVerifier";
+import { MsPythonExtensionWrapper } from "./language/MsPythonExtensionWrapper";
+import { DatabricksEnvFileManager } from "./file-managers/DatabricksEnvFileManager";
+import { Telemetry, toUserMetadata } from "./telemetry";
 import "./telemetry/commandExtensions";
-import {Events, Metadata} from "./telemetry/constants";
-import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
+import { Events, Metadata } from "./telemetry/constants";
+import { DbConnectInstallPrompt } from "./language/DbConnectInstallPrompt";
 
 export async function activate(
     context: ExtensionContext
@@ -80,6 +82,43 @@ export async function activate(
     }
 
     const workspaceStateManager = new WorkspaceStateManager(context);
+
+    const azureAccountExtensionId = "ms-vscode.azure-account";
+    const extension: Extension<AzureAccountExtensionApi> | undefined =
+        extensions.getExtension<AzureAccountExtensionApi>(
+            azureAccountExtensionId
+        );
+    if (extension) {
+        // try {
+        //     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        //     if (
+        //         semver.lt(
+        //             extension.packageJSON.version,
+        //             minAccountExtensionVersion
+        //         )
+        //     ) {
+        //         return "needsUpdate";
+        //     }
+        // } catch {
+        //     // ignore and assume extension is up to date
+        // }
+
+        if (!extension.isActive) {
+            await extension.activate();
+        }
+
+        const azureAccount = extension.exports;
+
+        if (!(await azureAccount.waitForLogin())) {
+            await commands.executeCommand("azure-account.login");
+        }
+
+        console.log("Azure account extension activated", azureAccount);
+        console.log(
+            "sessions",
+            await azureAccount.sessions[0].credentials2.getToken()
+        );
+    }
 
     // Add the bricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.persistent = true;
