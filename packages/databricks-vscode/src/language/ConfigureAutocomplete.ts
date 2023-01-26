@@ -219,7 +219,7 @@ export class ConfigureAutocomplete implements Disposable {
     }
 
     private async updateExtraPaths(): Promise<StepResult> {
-        const extraPaths =
+        let extraPaths =
             workspace
                 .getConfiguration("python")
                 .get<Array<string>>("analysis.extraPaths") ?? [];
@@ -229,6 +229,10 @@ export class ConfigureAutocomplete implements Disposable {
         if (extraPaths.includes(stubPath)) {
             return;
         }
+        extraPaths = extraPaths.filter(
+            (value) =>
+                !value.endsWith(path.join("resources", "python", "stubs"))
+        );
         extraPaths.push(stubPath);
         workspace
             .getConfiguration("python")
