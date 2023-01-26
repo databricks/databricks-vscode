@@ -25,6 +25,13 @@ export class CliWrapper {
         };
     }
 
+    getGenerateSchemaCommand(schemaPath: string) {
+        return {
+            command: this.context.asAbsolutePath("./bin/bricks"),
+            args: ["bundle", "schema", ">", schemaPath],
+        };
+    }
+
     /**
      * Constructs the bricks sync command
      */

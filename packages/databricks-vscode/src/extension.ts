@@ -1,4 +1,11 @@
-import {commands, debug, ExtensionContext, window, workspace} from "vscode";
+import {
+    commands,
+    debug,
+    ExtensionContext,
+    Uri,
+    window,
+    workspace,
+} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -21,6 +28,7 @@ import {workspaceConfigs} from "./WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
+import {generateBundleSchema} from "./bundle/GenerateBundle";
 
 export async function activate(
     context: ExtensionContext
@@ -296,6 +304,13 @@ export async function activate(
             utilCommands
         )
     );
+
+    window.showInformationMessage("check7");
+    const schemaUri = Uri.joinPath(
+        workspace.workspaceFolders[0].uri,
+        ".databricks/bundle-schema.json"
+    );
+    await generateBundleSchema(cli, schemaUri);
 
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate("Extension").error("Login error", e);
