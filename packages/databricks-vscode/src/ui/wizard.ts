@@ -19,7 +19,25 @@ class InputFlowAction {
     static resume = new InputFlowAction();
 }
 
+interface EditItem {
+    label: string;
+    detail?: string;
+    edit: boolean;
+    error: boolean;
+}
+
 type InputStep = (input: MultiStepInput) => Thenable<InputStep | void>;
+
+interface QuickAutoCompleteParameters {
+    title: string;
+    step: number;
+    totalSteps: number;
+    prompt: string;
+    validate: (value: string) => Promise<string | undefined>;
+    buttons?: QuickInputButton[];
+    shouldResume: () => Thenable<boolean>;
+    items: Array<QuickPickItem>;
+}
 
 interface QuickPickParameters<T extends QuickPickItem> {
     title: string;
@@ -77,6 +95,125 @@ export class MultiStepInput {
         }
         if (this.current) {
             this.current.dispose();
+        }
+    }
+
+    /**
+     * Creates a quick inout box with an auto completion list.
+     *
+     * VSCode doesn't have a built-in way to do this, so we have to create a custom quick pick.
+     */
+    async showQuickAutoComplete({
+        title,
+        step,
+        totalSteps,
+        prompt,
+        validate,
+        buttons,
+        shouldResume,
+        items,
+    }: QuickAutoCompleteParameters): Promise<
+        | string
+        | (QuickAutoCompleteParameters extends {buttons: (infer I)[]}
+              ? I
+              : never)
+    > {
+        const disposables: Disposable[] = [];
+        try {
+            return await new Promise<
+                | string
+                | (QuickAutoCompleteParameters extends {buttons: (infer I)[]}
+                      ? I
+                      : never)
+            >((resolve, reject) => {
+                const input = window.createQuickPick<
+                    QuickPickItem | EditItem
+                >();
+                input.title = title;
+                input.step = step;
+                input.totalSteps = totalSteps;
+                input.placeholder = prompt;
+                input.items = [...items];
+
+                disposables.push(
+                    input.onDidChangeValue(async () => {
+                        // INJECT user values into proposed values
+                        for (const item of items) {
+                            if (item.label.indexOf(input.value) !== -1) {
+                                if (
+                                    (input.items[0] as EditItem).edit === true
+                                ) {
+                                    input.items = [...items];
+                                }
+                                return;
+                            }
+                        }
+
+                        if (
+                            input.value === "" &&
+                            input.items[0] &&
+                            (input.items[0] as EditItem).edit === true
+                        ) {
+                            input.items = [...items];
+                        } else if (input.value !== "") {
+                            const validationMessage = validate
+                                ? await validate(input.value)
+                                : undefined;
+
+                            input.items = [
+                                {
+                                    label: input.value,
+                                    detail: validationMessage
+                                        ? `$(error) ${validationMessage}`
+                                        : undefined,
+                                    edit: true,
+                                    error: !!validationMessage,
+                                } as EditItem,
+                                ...items,
+                            ];
+                        }
+                    })
+                );
+
+                input.buttons = [
+                    ...(this.steps.length > 1 ? [QuickInputButtons.Back] : []),
+                    ...(buttons || []),
+                ];
+                disposables.push(
+                    input.onDidTriggerButton((item) => {
+                        if (item === QuickInputButtons.Back) {
+                            reject(InputFlowAction.back);
+                        } else {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            resolve(item as any);
+                        }
+                    }),
+                    input.onDidChangeSelection((items) => {
+                        const firstItem = items[0] as EditItem;
+                        if (!firstItem || (firstItem.edit && firstItem.error)) {
+                            return;
+                        }
+
+                        resolve(items[0].label);
+                    }),
+                    input.onDidHide(() => {
+                        (async () => {
+                            reject(
+                                shouldResume && (await shouldResume())
+                                    ? InputFlowAction.resume
+                                    : InputFlowAction.cancel
+                            );
+                        })().catch(reject);
+                    })
+                );
+                if (this.current) {
+                    this.current.dispose();
+                }
+                this.current = input;
+                this.current.show();
+            });
+        } finally {
+            disposables.forEach((d) => d.dispose());
         }
     }
 
