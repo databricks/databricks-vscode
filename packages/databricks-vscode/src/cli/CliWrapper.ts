@@ -97,11 +97,10 @@ export class CliWrapper {
 
     public async getBundleSchema(): Promise<string> {
         const execFile = promisify(execFileCb);
-        const {stdout, stderr} = await execFile(
+        const {stdout} = await execFile(
             this.context.asAbsolutePath("./bin/bricks"),
             ["bundle", "schema"]
         );
-
         return stdout;
     }
 

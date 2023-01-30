@@ -300,14 +300,12 @@ export async function activate(
 
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
-    try {
-        await generateBundleSchema(cli);
-    } catch (e) {
+    generateBundleSchema(cli).catch((e) => {
         NamedLogger.getOrCreate("Extension").error(
             "Failed to load bundle schema: ",
             e
         );
-    }
+    });
 
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate("Extension").error("Login error", e);
