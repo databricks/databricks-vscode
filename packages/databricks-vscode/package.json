@@ -42,7 +42,11 @@
         "onView:clusterView",
         "onTaskType:databricks",
         "onDebugResolve:databricks",
-        "onDebugResolve:databricks-workflow"
+        "onDebugResolve:databricks-workflow",
+        "workspaceContains:**/databricks.yml",
+        "workspaceContains:**/bundle.yml",
+        "workspaceContains:**/databricks.yaml",
+        "workspaceContains:**/bundle.yaml"
     ],
     "main": "out/extension.js",
     "types": "out/extension.d.ts",
