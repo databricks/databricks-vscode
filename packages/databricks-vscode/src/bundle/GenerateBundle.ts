@@ -1,18 +1,15 @@
 import {CliWrapper} from "../cli/CliWrapper";
 import {extensions, Uri} from "vscode";
-import * as child_process from "node:child_process";
-import {promisify} from "node:util";
 import path from "node:path";
 
 export async function generateBundleSchema(cli: CliWrapper) {
-    const cmd = cli.getGenerateSchemaCommand();
-    const execFile = promisify(child_process.execFile);
-    const {stdout, stderr} = await execFile(cmd.command, cmd.args);
+    // get freshly generated bundle schema
+    const bundleSchema = await cli.getBundleSchema();
 
-    // dabs URI scheme encapsulates json schemas for DABs configs
+    // URI scheme for DABs JSON schemas
     const dabsUriScheme = "dabs";
 
-    // URI for the JSON schema for the root of bundle config
+    // URI for bundle root config json schema
     const rootConfigSchemaUri = `${dabsUriScheme}:///root.json`;
 
     const extensionYaml = extensions.getExtension("redhat.vscode-yaml");
@@ -20,7 +17,7 @@ export async function generateBundleSchema(cli: CliWrapper) {
         const redHatYamlSchemaApi = await extensionYaml.activate();
 
         // We use the API exposed from teh activate() function of the redhat.vscode-yaml
-        // extension to registor a custom schema provider for the dabs scheme
+        // extension to registor a custom schema provider
         redHatYamlSchemaApi.registerContributor(
             "dabs",
             (resource: string) => {
@@ -38,10 +35,10 @@ export async function generateBundleSchema(cli: CliWrapper) {
                 return undefined;
             },
             (uri: string) => {
-                // Any JSON schemas with URI scheme = "dabs" resolve here
+                // Any JSON schemas with URI scheme = "dabs" resolves here
                 const parsedUri = Uri.parse(uri);
                 if (parsedUri.scheme === dabsUriScheme) {
-                    return stdout;
+                    return bundleSchema;
                 }
             }
         );

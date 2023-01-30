@@ -37,13 +37,6 @@ export class CliWrapper {
         };
     }
 
-    getGenerateSchemaCommand() {
-        return {
-            command: this.context.asAbsolutePath("./bin/bricks"),
-            args: ["bundle", "schema"],
-        };
-    }
-
     /**
      * Constructs the bricks sync command
      */
@@ -100,6 +93,16 @@ export class CliWrapper {
             });
         }
         return result;
+    }
+
+    public async getBundleSchema(): Promise<string> {
+        const execFile = promisify(execFileCb);
+        const {stdout, stderr} = await execFile(
+            this.context.asAbsolutePath("./bin/bricks"),
+            ["bundle", "schema"]
+        );
+
+        return stdout;
     }
 
     getAddProfileCommand(profile: string, host: URL): Command {
