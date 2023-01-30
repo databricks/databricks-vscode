@@ -1,7 +1,5 @@
-import {ExecUtils} from "@databricks/databricks-sdk";
-// Q: How does this import work?
 import {CliWrapper} from "../cli/CliWrapper";
-import {extensions, Uri} from "vscode";
+import {extensions} from "vscode";
 import * as child_process from "node:child_process";
 import {promisify} from "node:util";
 
