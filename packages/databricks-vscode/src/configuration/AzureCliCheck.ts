@@ -254,7 +254,9 @@ export class AzureCliCheck implements Disposable {
             const useDeviceCode = this.isCodeSpaces ? "--use-device-code" : "";
 
             terminal.sendText(
-                `${this.azBinPath} login ${useDeviceCode} ${
+                `${
+                    this.azBinPath
+                } login --allow-no-subscriptions ${useDeviceCode} ${
                     tenant ? "-t " + tenant : ""
                 }; echo "Press any key to close the terminal and continue ..."; read; exit`
             );
