@@ -2,6 +2,7 @@ import {CliWrapper} from "../cli/CliWrapper";
 import {extensions} from "vscode";
 import * as child_process from "node:child_process";
 import {promisify} from "node:util";
+import path from "node:path";
 
 export async function generateBundleSchema(cli: CliWrapper) {
     const cmd = cli.getGenerateSchemaCommand();
@@ -30,7 +31,7 @@ export async function generateBundleSchema(cli: CliWrapper) {
                     "bundle.yaml",
                 ];
                 for (const name of validFileNames) {
-                    if (resource.endsWith(name)) {
+                    if (path.basename(resource) === name) {
                         return rootConfigSchemaUri;
                     }
                 }
