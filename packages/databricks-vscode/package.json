@@ -632,7 +632,7 @@
         "@wdio/local-runner": "^7.29.1",
         "@wdio/mocha-framework": "^7.26.0",
         "@wdio/spec-reporter": "^7.29.1",
-        "@wdio/types": "^7.26.0",
+        "@wdio/types": "^8.3.0",
         "esbuild": "^0.16.17",
         "eslint": "^8.32.0",
         "fs-extra": "^11.1.0",
