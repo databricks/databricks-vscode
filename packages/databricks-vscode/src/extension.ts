@@ -305,12 +305,16 @@ export async function activate(
         )
     );
 
-    window.showInformationMessage("check7");
-    const schemaUri = Uri.joinPath(
-        workspace.workspaceFolders[0].uri,
-        ".databricks/bundle-schema.json"
-    );
-    await generateBundleSchema(cli, schemaUri);
+    // generate a json schema for bundle root and load a custom provider into
+    // redhat.vscode-yaml extension to validate bundle config files with this schema
+    try {
+        await generateBundleSchema(cli);
+    } catch (e) {
+        NamedLogger.getOrCreate("Extension").error(
+            "Failed to load bundle schema: ",
+            e
+        );
+    }
 
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate("Extension").error("Login error", e);

@@ -2,19 +2,28 @@ import {ExecUtils} from "@databricks/databricks-sdk";
 // Q: How does this import work?
 import {CliWrapper} from "../cli/CliWrapper";
 import {extensions, Uri} from "vscode";
+import * as child_process from "node:child_process";
+import {promisify} from "node:util";
 
-export async function generateBundleSchema(cli: CliWrapper, schemaUri: Uri) {
-    const cmd = cli.getGenerateSchemaCommand(schemaUri.fsPath);
-    await ExecUtils.execFileWithShell(cmd.command, cmd.args);
+export async function generateBundleSchema(cli: CliWrapper) {
+    const cmd = cli.getGenerateSchemaCommand();
+    const execFile = promisify(child_process.execFile);
+    const {stdout, stderr} = await execFile(cmd.command, cmd.args);
+
+    // dabs URI scheme encapsulates json schemas for DABs configs
+    const dabsUriScheme = "dabs";
+
+    // URI for the JSON schema for the root of bundle config
+    const rootConfigSchemaUri = `${dabsUriScheme}:///root.json`;
 
     const extensionYaml = extensions.getExtension("redhat.vscode-yaml");
     if (extensionYaml) {
         const redHatYamlSchemaApi = await extensionYaml.activate();
 
-        // TODO: test that other file schema's are not overriden
-        // TODO: Test priority here, does settings yaml.settigns override this?
+        // We use the API exposed from teh activate() function of the redhat.vscode-yaml
+        // extension to registor a custom schema provider for the dabs scheme
         redHatYamlSchemaApi.registerContributor(
-            "databricks",
+            "dabs",
             (resource: string) => {
                 const validFileNames: string[] = [
                     "databricks.yml",
@@ -24,10 +33,14 @@ export async function generateBundleSchema(cli: CliWrapper, schemaUri: Uri) {
                 ];
                 for (const name of validFileNames) {
                     if (resource.endsWith(name)) {
-                        return schemaUri.toString();
+                        return rootConfigSchemaUri;
                     }
                 }
                 return undefined;
+            },
+            // Any JSON schemas with URI scheme = "dabs" resolve here
+            (uri: string) => {
+                return stdout;
             }
         );
     }
