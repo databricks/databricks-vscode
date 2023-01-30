@@ -376,7 +376,7 @@ export class ConnectionManager {
                 this.databricksWorkspace === undefined
             ) {
                 throw new Error(
-                    "Can't attach a Repo when profile is not connected"
+                    "Can't attach a Sync Destination when profile is not connected"
                 );
             }
             if (!(await SyncDestination.validateRemote(this, workspacePath))) {

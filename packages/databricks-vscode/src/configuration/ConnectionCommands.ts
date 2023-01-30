@@ -231,7 +231,7 @@ export class ConnectionCommands implements Disposable {
                     alwaysShow: true,
                     detail: workspaceConfigs.enableFilesInWorkspace
                         ? ""
-                        : `Open Databricks in the browser and create a new repo under /Repo/${me}`,
+                        : `Open Databricks in the browser and create a new Repo under /Repo/${me}`,
                 },
                 {
                     label: "",

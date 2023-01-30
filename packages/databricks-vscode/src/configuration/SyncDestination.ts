@@ -157,7 +157,7 @@ export class SyncDestination {
     localToRemoteNotebook(localPath: Uri): string {
         assert.equal(localPath.scheme, "file");
         return this.localToRemote(localPath).replace(
-            /^\/Workspace(\/.*)\.(py|ipynb)/g,
+            /^\/Workspace(\/.*)\.(py|ipynb|scala|r|sql)/g,
             "$1"
         );
     }

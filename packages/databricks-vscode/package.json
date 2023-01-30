@@ -342,7 +342,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "resourceLangId == python || resourceExtname == .ipynb",
+                    "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb",
                     "group": "navigation@1"
                 }
             ],
@@ -460,7 +460,10 @@
             {
                 "type": "databricks-workflow",
                 "languages": [
-                    "python"
+                    "python",
+                    "sql",
+                    "r",
+                    "scala"
                 ],
                 "label": "Databricks Workflow",
                 "configurationAttributes": {

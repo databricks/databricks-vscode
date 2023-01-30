@@ -34,12 +34,12 @@ export class RunCommands {
                 if (this.connection.syncDestination === undefined) {
                     await promptForAttachingSyncDest(async () => {
                         window.showErrorMessage(
-                            "Execution cancelled because no Databricks Repo is attached"
+                            "Execution cancelled because no Sync Destination is configured"
                         );
                     });
                     if (this.connection.syncDestination === undefined) {
                         window.showErrorMessage(
-                            "Execution cancelled because no Databricks Repo is attached"
+                            "Execution cancelled because no Sync Destination is configured"
                         );
                         return;
                     }
@@ -73,12 +73,12 @@ export class RunCommands {
                 if (this.connection.syncDestination === undefined) {
                     await promptForAttachingSyncDest(async () => {
                         window.showErrorMessage(
-                            "Execution cancelled because no Databricks Repo is attached"
+                            "Execution cancelled because no Sync Destination is configured"
                         );
                     });
                     if (this.connection.syncDestination === undefined) {
                         window.showErrorMessage(
-                            "Execution cancelled because no Databricks Repo is attached"
+                            "Execution cancelled because no Sync Destination is configured"
                         );
                         return;
                     }
