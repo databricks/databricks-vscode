@@ -1,11 +1,23 @@
-import {spawn} from "child_process";
+import {execFile as execFileCb, spawn} from "child_process";
 import {ExtensionContext} from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
 import {workspaceConfigs} from "../WorkspaceConfigs";
+import {promisify} from "node:util";
+
+const execFile = promisify(execFileCb);
 
 export interface Command {
     command: string;
     args: string[];
+}
+
+export interface ConfigEntry {
+    name: string;
+    host?: URL;
+    accountId?: string;
+    cloud: "aws" | "azure" | "gcp";
+    authType: string;
+    valid: boolean;
 }
 
 export type SyncType = "full" | "incremental";
@@ -53,6 +65,41 @@ export class CliWrapper {
             args.push("-v");
         }
         return {command, args};
+    }
+
+    private getListProfilesCommand(): Command {
+        return {
+            command: this.context.asAbsolutePath("./bin/bricks"),
+            args: ["auth", "profiles", "--skip-validate"],
+        };
+    }
+
+    public async listProfiles(
+        configfilePath?: string
+    ): Promise<Array<ConfigEntry>> {
+        const cmd = await this.getListProfilesCommand();
+        const res = await execFile(cmd.command, cmd.args, {
+            env: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                HOME: process.env.HOME,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                DATABRICKS_CONFIG_FILE:
+                    configfilePath || process.env.DATABRICKS_CONFIG_FILE,
+            },
+        });
+        const profiles = JSON.parse(res.stdout).profiles || [];
+        const result = [];
+        for (const profile of profiles) {
+            result.push({
+                name: profile.name,
+                host: new URL(profile.host),
+                accountId: profile.account_id,
+                cloud: profile.cloud,
+                authType: profile.auth_type,
+                valid: profile.valid,
+            });
+        }
+        return result;
     }
 
     getAddProfileCommand(profile: string, host: URL): Command {
