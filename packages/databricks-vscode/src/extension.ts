@@ -288,7 +288,7 @@ export async function activate(
         NamedLogger.getOrCreate("Extension").error("Quick Start error", e);
     });
 
-    //utils
+    // Utils
     const utilCommands = new UtilsCommands.UtilsCommands();
     context.subscriptions.push(
         commands.registerCommand(

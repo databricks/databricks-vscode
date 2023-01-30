@@ -109,7 +109,13 @@ describe("Configure Databricks Extension", async function () {
         const buttons = await (
             clusterConfigItem as TreeItem
         ).getActionButtons();
-        await buttons[0].elem.click();
+
+        const configureButton = buttons.filter((b) => {
+            return b.getLabel() === "Configure cluster";
+        })[0];
+        assert(configureButton);
+
+        await configureButton.elem.click();
 
         const input = await new InputBox(workbench.locatorMap).wait();
         await sleep(200);
@@ -131,7 +137,7 @@ describe("Configure Databricks Extension", async function () {
             clusterProps[await i.getLabel()] = (await i.getDescription()) || "";
         }
 
-        const testClusterId = clusterProps["Cluster ID:"];
+        const testClusterId = clusterProps["Cluster ID"];
         assert.equal(testClusterId, clusterId);
     });
 
