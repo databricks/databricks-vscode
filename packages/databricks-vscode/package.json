@@ -271,29 +271,39 @@
             ],
             "view/item/context": [
                 {
+                    "command": "databricks.utils.openExternal",
+                    "when": "view == configurationView && viewItem == workspace || view == configurationView && viewItem =~ /^.*cluster.*$/ || view == configurationView && viewItem =~ /^sync.*$/",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.utils.openExternal",
+                    "when": "view == clusterView && viewItem == cluster",
+                    "group": "inline@1"
+                },
+                {
                     "command": "databricks.connection.attachCluster",
                     "when": "view == clusterView",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.configureWorkspace",
                     "when": "view == configurationView && viewItem == workspace",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.attachClusterQuickPick",
                     "when": "view == configurationView && viewItem == clusterDetached || view == configurationView && viewItem =~ /^databricks.cluster.*$/",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.attachSyncDestination",
                     "when": "view == configurationView && viewItem == syncDetached",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.attachSyncDestination",
                     "when": "view == configurationView && viewItem == syncStopped || view == configurationView && viewItem == syncRunning",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.sync.start",
@@ -313,11 +323,6 @@
                 {
                     "command": "databricks.cluster.start",
                     "when": "view == configurationView && viewItem == databricks.cluster.terminated",
-                    "group": "inline@0"
-                },
-                {
-                    "command": "databricks.utils.openExternal",
-                    "when": "viewItem =~ /^.*databricks-link.*$/ ",
                     "group": "inline@0"
                 },
                 {

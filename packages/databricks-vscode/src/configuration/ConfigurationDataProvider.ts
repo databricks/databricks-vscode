@@ -8,20 +8,27 @@ import {
     TreeItem,
     TreeItemCollapsibleState,
 } from "vscode";
+
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
+
+export type ConfigurationTreeItem = TreeItem & {
+    url?: string;
+};
 
 /**
  * Data provider for the cluster tree view
  */
 export class ConfigurationDataProvider
-    implements TreeDataProvider<TreeItem>, Disposable
+    implements TreeDataProvider<ConfigurationTreeItem>, Disposable
 {
-    private _onDidChangeTreeData: EventEmitter<TreeItem | undefined | void> =
-        new EventEmitter<TreeItem | undefined | void>();
-    readonly onDidChangeTreeData: Event<TreeItem | undefined | void> =
-        this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: EventEmitter<
+        ConfigurationTreeItem | undefined | void
+    > = new EventEmitter<ConfigurationTreeItem | undefined | void>();
+    readonly onDidChangeTreeData: Event<
+        ConfigurationTreeItem | undefined | void
+    > = this._onDidChangeTreeData.event;
 
     private disposables: Array<Disposable> = [];
 
@@ -51,13 +58,13 @@ export class ConfigurationDataProvider
         this.disposables.forEach((d) => d.dispose());
     }
 
-    getTreeItem(element: TreeItem): TreeItem | Thenable<TreeItem> {
+    getTreeItem(element: ConfigurationTreeItem): TreeItem | Thenable<TreeItem> {
         return element;
     }
 
     async getChildren(
-        element?: TreeItem | undefined
-    ): Promise<Array<TreeItem>> {
+        element?: ConfigurationTreeItem | undefined
+    ): Promise<Array<ConfigurationTreeItem>> {
         switch (this.connectionManager.state) {
             case "CONNECTED":
                 break;
@@ -72,13 +79,14 @@ export class ConfigurationDataProvider
         const syncDestination = this.connectionManager.syncDestination;
 
         if (!element) {
-            const children: Array<TreeItem> = [];
+            const children: Array<ConfigurationTreeItem> = [];
             children.push({
                 label: `Workspace`,
                 iconPath: new ThemeIcon("account"),
                 id: "WORKSPACE",
                 collapsibleState: TreeItemCollapsibleState.Expanded,
                 contextValue: "workspace",
+                url: this.connectionManager.databricksWorkspace?.host?.toString(),
             });
 
             if (cluster) {
@@ -112,6 +120,7 @@ export class ConfigurationDataProvider
                     id: "CLUSTER",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
                     contextValue,
+                    url: (await cluster.url).toString(),
                 });
             } else {
                 children.push({
@@ -131,6 +140,7 @@ export class ConfigurationDataProvider
                     iconPath: new ThemeIcon("file-directory"),
                     id: "SYNC-DESTINATION",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
+                    url: await syncDestination.wsfsDir.url,
                     contextValue:
                         this.sync.state === "WATCHING_FOR_CHANGES" ||
                         this.sync.state === "IN_PROGRESS"
@@ -231,7 +241,7 @@ export class ConfigurationDataProvider
 
             return [
                 {
-                    label: "Name:",
+                    label: "Name",
                     description: cluster.name,
                     iconPath: clusterItem.iconPath,
                     collapsibleState: TreeItemCollapsibleState.None,
@@ -246,7 +256,7 @@ export class ConfigurationDataProvider
         if (element.id === "SYNC-DESTINATION" && syncDestination) {
             const children: Array<TreeItem> = [
                 {
-                    label: `Name:`,
+                    label: `Name`,
                     description: syncDestination.name,
                     iconPath:
                         this.sync.state === "WATCHING_FOR_CHANGES" ||
@@ -272,17 +282,12 @@ export class ConfigurationDataProvider
             }
             children.push(
                 {
-                    label: `URL:`,
-                    description: await syncDestination.wsfsDir.url,
-                    contextValue: "databricks-link",
-                },
-                {
-                    label: `State:`,
+                    label: `State`,
                     description: this.sync.state,
                     collapsibleState: TreeItemCollapsibleState.None,
                 },
                 {
-                    label: `Path:`,
+                    label: `Path`,
                     description: syncDestination.path.path,
                     collapsibleState: TreeItemCollapsibleState.None,
                 }

@@ -128,7 +128,7 @@ export async function waitForSyncComplete() {
 
             let status: TreeItem | undefined = undefined;
             for (const i of await repoConfigItem.getChildren()) {
-                if ((await i.getLabel()).includes("State:")) {
+                if ((await i.getLabel()).includes("State")) {
                     status = i;
                     break;
                 }
@@ -165,7 +165,7 @@ export async function startSyncIfStopped() {
 
             let status: TreeItem | undefined = undefined;
             for (const i of await repoConfigItem.getChildren()) {
-                if ((await i.getLabel()).includes("State:")) {
+                if ((await i.getLabel()).includes("State")) {
                     status = i;
                     break;
                 }

@@ -15,6 +15,8 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             cluster_name: "cluster-name-2",
             cluster_source: "UI",
             creator_user_name: "user-2",
+            driver_node_type_id: "Standard_DS3_v2",
+            node_type_id: "Standard_DS3_v2",
             spark_version: "10.4.x-scala2.12",
             state: "TERMINATED",
         },
@@ -23,6 +25,8 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             cluster_name: "cluster-name-1",
             cluster_source: "UI",
             creator_user_name: "user-1",
+            driver_node_type_id: "Standard_DS3_v2",
+            node_type_id: "Standard_DS3_v2",
             spark_version: "10.4.x-scala2.12",
             state: "RUNNING",
         },
@@ -100,7 +104,7 @@ describe(__filename, () => {
             provider.getChildren(cluster)
         );
         assert(children);
-        assert.equal(children.length, 5);
+        assert.equal(children.length, 6);
     });
 
     it("should get cluster tree node items", async () => {
@@ -115,25 +119,27 @@ describe(__filename, () => {
         assert.deepEqual(items, [
             {
                 description: "cluster-id-2",
-                label: "Cluster ID:",
+                label: "Cluster ID",
             },
             {
-                contextValue: "databricks-link",
-                description:
-                    "https://www.example.com/#setting/clusters/cluster-id-2/configuration",
-                label: "URL:",
+                description: "Standard_DS3_v2",
+                label: "Driver",
+            },
+            {
+                description: "None (single node cluster)",
+                label: "Worker",
             },
             {
                 description: "10.4.x",
-                label: "Databricks Runtime:",
+                label: "Databricks Runtime",
             },
             {
                 description: "TERMINATED",
-                label: "State:",
+                label: "State",
             },
             {
                 description: "user-2",
-                label: "Creator:",
+                label: "Creator",
             },
         ]);
     });
@@ -147,6 +153,7 @@ describe(__filename, () => {
         let item = ClusterListDataProvider.clusterNodeToTreeItem(cluster);
         assert.deepEqual(item, {
             collapsibleState: 1,
+            contextValue: "cluster",
             iconPath: {
                 color: undefined,
                 id: "debug-stop",
@@ -163,6 +170,7 @@ describe(__filename, () => {
         item = ClusterListDataProvider.clusterNodeToTreeItem(cluster);
         assert.deepEqual(item, {
             collapsibleState: 1,
+            contextValue: "cluster",
             iconPath: {
                 color: undefined,
                 id: "debug-start",
