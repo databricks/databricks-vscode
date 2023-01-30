@@ -21,6 +21,7 @@ import {workspaceConfigs} from "./WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
+import {generateBundleSchema} from "./bundle/GenerateBundle";
 
 export async function activate(
     context: ExtensionContext
@@ -296,6 +297,15 @@ export async function activate(
             utilCommands
         )
     );
+
+    // generate a json schema for bundle root and load a custom provider into
+    // redhat.vscode-yaml extension to validate bundle config files with this schema
+    generateBundleSchema(cli).catch((e) => {
+        NamedLogger.getOrCreate("Extension").error(
+            "Failed to load bundle schema: ",
+            e
+        );
+    });
 
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate("Extension").error("Login error", e);

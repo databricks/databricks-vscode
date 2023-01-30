@@ -95,6 +95,15 @@ export class CliWrapper {
         return result;
     }
 
+    public async getBundleSchema(): Promise<string> {
+        const execFile = promisify(execFileCb);
+        const {stdout} = await execFile(
+            this.context.asAbsolutePath("./bin/bricks"),
+            ["bundle", "schema"]
+        );
+        return stdout;
+    }
+
     getAddProfileCommand(profile: string, host: URL): Command {
         return {
             command: this.context.asAbsolutePath("./bin/bricks"),
