@@ -1,5 +1,5 @@
 import {CliWrapper} from "../cli/CliWrapper";
-import {extensions} from "vscode";
+import {extensions, Uri} from "vscode";
 import * as child_process from "node:child_process";
 import {promisify} from "node:util";
 import path from "node:path";
@@ -37,9 +37,12 @@ export async function generateBundleSchema(cli: CliWrapper) {
                 }
                 return undefined;
             },
-            // Any JSON schemas with URI scheme = "dabs" resolve here
             (uri: string) => {
-                return stdout;
+                // Any JSON schemas with URI scheme = "dabs" resolve here
+                const parsedUri = Uri.parse(uri);
+                if (parsedUri.scheme === dabsUriScheme) {
+                    return stdout;
+                }
             }
         );
     }
