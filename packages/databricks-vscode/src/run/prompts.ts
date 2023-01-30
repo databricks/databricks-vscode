@@ -30,12 +30,12 @@ export async function promptForAttachingSyncDest(
     onAccept: () => Promise<void> = async () => {}
 ) {
     const response = await window.showErrorMessage(
-        "Please configure a Databricks Repo for syncing",
-        "Attach Repo",
+        "Please configure a Sync Destination",
+        "Configure Sync Destination",
         "Cancel"
     );
     switch (response) {
-        case "Attach Repo":
+        case "Configure Sync Destination":
             await commands.executeCommand(
                 "databricks.connection.attachSyncDestination"
             );

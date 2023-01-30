@@ -25,6 +25,7 @@ import {Subject} from "./Subject";
 import {WorkflowRunner} from "./WorkflowRunner";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import {isNotebook} from "../utils";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -154,6 +155,13 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         parameters: Record<string, string>,
         args: Array<string>
     ): Promise<void> {
+        if (
+            !(await isNotebook(Uri.file(program))) &&
+            !program.endsWith(".py")
+        ) {
+            return this.onError("Only Python files can be run as a workflow");
+        }
+
         if (this.connection.state === "CONNECTING") {
             await this.connection.waitForConnect();
         }
