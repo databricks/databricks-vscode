@@ -1,3 +1,14 @@
+# Release: v0.0.11
+
+## packages/databricks-sdk-js
+
+## <small>0.0.11 (2023-01-30)</small>
+
+-   Add SDK support for Files in Workspace (#366) ([bbb4131](https://github.com/databricks/databricks-vscode/commit/bbb4131)), closes [#366](https://github.com/databricks/databricks-vscode/issues/366)
+-   Files in Workspace support (#337) ([128962b](https://github.com/databricks/databricks-vscode/commit/128962b)), closes [#337](https://github.com/databricks/databricks-vscode/issues/337)
+-   Update dependencies (#390) ([c101af2](https://github.com/databricks/databricks-vscode/commit/c101af2)), closes [#390](https://github.com/databricks/databricks-vscode/issues/390)
+-   use "bricks auth profiles" and list host names (#389) ([7633281](https://github.com/databricks/databricks-vscode/commit/7633281)), closes [#389](https://github.com/databricks/databricks-vscode/issues/389)
+
 # Release: v0.0.10
 
 ## packages/databricks-sdk-js

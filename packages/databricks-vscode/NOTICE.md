@@ -25,7 +25,6 @@ This Software contains code from the following open source projects:
 | [color-string](https://www.npmjs.com/package/color-string)                                   | 1.9.1             | MIT          | Qix-/color-string                                              |
 | [color](https://www.npmjs.com/package/color)                                                 | 3.2.1             | MIT          | Qix-/color                                                     |
 | [colorspace](https://www.npmjs.com/package/colorspace)                                       | 1.1.4             | MIT          | https://github.com/3rd-Eden/colorspace                         |
-| [data-uri-to-buffer](https://www.npmjs.com/package/data-uri-to-buffer)                       | 4.0.0             | MIT          | git://github.com/TooTallNate/node-data-uri-to-buffer.git       |
 | [enabled](https://www.npmjs.com/package/enabled)                                             | 2.0.0             | MIT          | git://github.com/3rd-Eden/enabled.git                          |
 | [entities](https://www.npmjs.com/package/entities)                                           | 2.2.0             | BSD-2-Clause | git://github.com/fb55/entities.git                             |
 | [exenv-es6](https://www.npmjs.com/package/exenv-es6)                                         | 1.1.1             | MIT          | git+https://github.com/chrisdholt/exenv-es6.git                |
@@ -42,12 +41,12 @@ This Software contains code from the following open source projects:
 | [logform](https://www.npmjs.com/package/logform)                                             | 2.4.2             | MIT          | git+https://github.com/winstonjs/logform.git                   |
 | [ms](https://www.npmjs.com/package/ms)                                                       | 2.1.3             | MIT          | vercel/ms                                                      |
 | [node-domexception](https://www.npmjs.com/package/node-domexception)                         | 1.0.0             | MIT          | git+https://github.com/jimmywarting/node-domexception.git      |
-| [node-fetch](https://www.npmjs.com/package/node-fetch)                                       | 3.3.0             | MIT          | https://github.com/node-fetch/node-fetch.git                   |
+| [node-fetch-commonjs](https://www.npmjs.com/package/node-fetch-commonjs)                     | 3.2.4             | MIT          | git@github.com:proteriax/node-fetch-cjs.git                    |
 | [one-time](https://www.npmjs.com/package/one-time)                                           | 1.0.0             | MIT          | https://github.com/3rd-Eden/one-time.git                       |
 | [readable-stream](https://www.npmjs.com/package/readable-stream)                             | 3.6.0             | MIT          | git://github.com/nodejs/readable-stream                        |
 | [reflect-metadata](https://www.npmjs.com/package/reflect-metadata)                           | 0.1.13            | Apache-2.0   | https://github.com/rbuckton/reflect-metadata.git               |
 | [safe-buffer](https://www.npmjs.com/package/safe-buffer)                                     | 5.2.1             | MIT          | git://github.com/feross/safe-buffer.git                        |
-| [safe-stable-stringify](https://www.npmjs.com/package/safe-stable-stringify)                 | 2.4.1             | MIT          | git+https://github.com/BridgeAR/safe-stable-stringify.git      |
+| [safe-stable-stringify](https://www.npmjs.com/package/safe-stable-stringify)                 | 2.4.2             | MIT          | git+https://github.com/BridgeAR/safe-stable-stringify.git      |
 | [simple-swizzle](https://www.npmjs.com/package/simple-swizzle)                               | 0.2.2             | MIT          | qix-/node-simple-swizzle                                       |
 | [stack-trace](https://www.npmjs.com/package/stack-trace)                                     | 0.0.10            | MIT          | git://github.com/felixge/node-stack-trace.git                  |
 | [string_decoder](https://www.npmjs.com/package/string_decoder)                               | 1.3.0             | MIT          | git://github.com/nodejs/string_decoder.git                     |

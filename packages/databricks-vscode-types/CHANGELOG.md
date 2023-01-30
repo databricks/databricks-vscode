@@ -1,3 +1,11 @@
+# Release: v0.0.11
+
+## packages/databricks-vscode-types
+
+## <small>0.0.11 (2023-01-30)</small>
+
+-   Update dependencies (#390) ([c101af2](https://github.com/databricks/databricks-vscode/commit/c101af2)), closes [#390](https://github.com/databricks/databricks-vscode/issues/390)
+
 # Release: v0.0.10
 
 ## packages/databricks-vscode-types
