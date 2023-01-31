@@ -162,8 +162,10 @@ export class ConfigureAutocomplete implements Disposable {
         }
 
         const choice = await window.showInformationMessage(
-            "To allow autocompletion for Databricks specific globals (like dbutils), we need to install pyspark and add (or modify) __builtins__.pyi file to your project",
-            "Continue",
+            [
+                "Autocompletion for Databricks specific globals (dbutils etc) needs to be configured.",
+            ].join(""),
+            "Configure",
             "Cancel"
         );
 

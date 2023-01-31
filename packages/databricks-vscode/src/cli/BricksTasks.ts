@@ -18,10 +18,12 @@ import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 
-enum TaskSyncType {
-    syncFull = "sync-full",
-    sync = "sync",
-}
+export const TaskSyncType = {
+    syncFull: "sync-full",
+    sync: "sync",
+} as const;
+type TaskSyncType = (typeof TaskSyncType)[keyof typeof TaskSyncType];
+
 const cliToTaskSyncType = new Map<SyncType, TaskSyncType>([
     ["full", TaskSyncType.syncFull],
     ["incremental", TaskSyncType.sync],

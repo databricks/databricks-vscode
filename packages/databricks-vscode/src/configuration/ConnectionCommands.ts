@@ -207,7 +207,7 @@ export class ConnectionCommands implements Disposable {
                 wsClient,
                 rootDirPath.path
             );
-            if (!rootDir) {
+            if (!rootDir && workspaceConfigs.enableFilesInWorkspace) {
                 const created = await (
                     await WorkspaceFsEntity.fromPath(wsClient, `/Users/${me}`)
                 )?.mkdir(rootDirPath.path);
@@ -268,7 +268,14 @@ export class ConnectionCommands implements Disposable {
                             return;
                         }
                         if (!workspaceConfigs.enableFilesInWorkspace) {
-                            UrlUtils.openExternal((await rootDir?.url) ?? "");
+                            UrlUtils.openExternal(
+                                (await rootDir?.url) ??
+                                    (
+                                        await this.connectionManager
+                                            .workspaceClient?.apiClient?.host
+                                    )?.href ??
+                                    ""
+                            );
                             return;
                         }
                         const created = await this.wsfsCommands.createFolder(
