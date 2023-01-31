@@ -238,7 +238,7 @@ export class AzureCliCheck implements Disposable {
     public async loginAzureCli(tenant = ""): Promise<boolean> {
         let message = 'You need to run "az login" to login with Azure.';
         if (tenant) {
-            message = `You need to tun "az login -t ${tenant}" to login with Azure.`;
+            message = `You need to tun "az login --allow-no-subscriptions -t ${tenant}" to login with Azure.`;
         }
         const choice = await window.showInformationMessage(
             message,
