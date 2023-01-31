@@ -1,3 +1,20 @@
+# Release: v0.0.11
+
+## packages/databricks-vscode
+
+## <small>0.0.11 (2023-01-30)</small>
+
+-   Feature: Allow running Scala, R and SQL notebooks as workflow
+-   Feature: List hostnames from `~/.databrickscfg` when selecting a host
+-   Feature: Take into account `.gitignore` rules defined in parent directories for file syncronization.
+-   Feature: Make `az login` work on Github CodeSpaces
+-   Experimental feature: Add support for synchronizing to a workspace folder (Files in Workspace)
+-   Fix: Don't show error when config file doesn't exist
+-   Fix: Support `az login` when user doesn't have a subscription
+-   Fix: Gracefully handle adding a profile when `~/.databrickscfg` doesn't exist
+-   Fix: Running the "full sync" command now resets the synchronization state
+-   UI tweaks: Clean up and unify items in the side panel
+
 # Release: v0.0.10
 
 ## packages/databricks-vscode

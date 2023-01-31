@@ -1,3 +1,11 @@
+# Release: v0.0.11
+
+## packages/databricks-sdk-js
+
+## <small>0.0.11 (2023-01-30)</small>
+
+-   Feature: Add SDK support for Files in Workspace
+
 # Release: v0.0.10
 
 ## packages/databricks-sdk-js
