@@ -52,7 +52,7 @@ interface IPythonExtension {
 
 const importString = "from databricks.sdk.runtime import *";
 
-type StepResult = "Skip" | "Cancel" | "Error" | undefined;
+type StepResult = "Skip" | "Cancel" | "Error" | "Silent" | undefined;
 
 interface Step {
     fn: (dryRun: boolean) => Promise<StepResult>;
@@ -147,8 +147,7 @@ export class ConfigureAutocomplete implements Disposable {
                     ),
             },
             {
-                fn: async (dryRun = false) => this.updateExtraPaths(dryRun),
-                required: true,
+                fn: async () => this.updateExtraPaths(),
             },
             {
                 fn: async (dryRun = false) => this.addBuiltinsFile(dryRun),
@@ -219,7 +218,7 @@ export class ConfigureAutocomplete implements Disposable {
         terminal.show();
     }
 
-    private async updateExtraPaths(dryRun = false): Promise<StepResult> {
+    private async updateExtraPaths(): Promise<StepResult> {
         const extraPaths =
             workspace
                 .getConfiguration("python")
@@ -228,9 +227,6 @@ export class ConfigureAutocomplete implements Disposable {
             path.join("resources", "python", "stubs")
         );
         if (extraPaths.includes(stubPath)) {
-            return "Skip";
-        }
-        if (dryRun) {
             return;
         }
         extraPaths.push(stubPath);
