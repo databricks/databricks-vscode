@@ -7,8 +7,8 @@
 -   Feature: Allow running Scala, R and SQL notebooks as workflow
 -   Feature: List hostnames from `~/.databrickscfg` when selecting a host
 -   Feature: Take into account `.gitignore` rules defined in parent directories for file syncronization.
--   Feature: Add support for synchronizing for a workspace folder (Files in Workspace)
 -   Feature: Make `az login` work on Github CodeSpaces
+-   Experimental feature: Add support for synchronizing to a workspace folder (Files in Workspace)
 -   Fix: Don't show error when config file doesn't exist
 -   Fix: Support `az login` when user doesn't have a subscription
 -   Fix: Gracefully handle adding a profile when `~/.databrickscfg` doesn't exist
