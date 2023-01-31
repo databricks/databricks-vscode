@@ -162,9 +162,7 @@ export class ConfigureAutocomplete implements Disposable {
         }
 
         const choice = await window.showInformationMessage(
-            [
-                "Autocompletion for Databricks specific globals (dbutils etc) needs to be configured.",
-            ].join(""),
+            "Do you want to configure autocompletion for Databricks specific globals (dbutils etc)?",
             "Configure",
             "Cancel"
         );
