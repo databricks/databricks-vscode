@@ -4,21 +4,16 @@
 
 ## <small>0.0.11 (2023-01-30)</small>
 
--   Add **init**.py to type stubs (#393) ([999aed8](https://github.com/databricks/databricks-vscode/commit/999aed8)), closes [#393](https://github.com/databricks/databricks-vscode/issues/393)
--   Add loading fresh generated bundle schema to `redhat.vscode-yaml` extension (#398) ([517a9fd](https://github.com/databricks/databricks-vscode/commit/517a9fd)), closes [#398](https://github.com/databricks/databricks-vscode/issues/398)
--   Allow running scala/r/sql notebooks as workflow (#402) ([6b8bf79](https://github.com/databricks/databricks-vscode/commit/6b8bf79)), closes [#402](https://github.com/databricks/databricks-vscode/issues/402)
--   bump bricks to v0.0.20 (#407) ([46c314e](https://github.com/databricks/databricks-vscode/commit/46c314e)), closes [#407](https://github.com/databricks/databricks-vscode/issues/407)
--   Don't show error when config file doesn't exist. (#382) ([3a4f7e1](https://github.com/databricks/databricks-vscode/commit/3a4f7e1)), closes [#382](https://github.com/databricks/databricks-vscode/issues/382)
--   Files in Workspace support (#337) ([128962b](https://github.com/databricks/databricks-vscode/commit/128962b)), closes [#337](https://github.com/databricks/databricks-vscode/issues/337)
--   Fix "az login" when user doesn't have a subscription (#400) ([e39a9ec](https://github.com/databricks/databricks-vscode/commit/e39a9ec)), closes [#400](https://github.com/databricks/databricks-vscode/issues/400)
--   Handle missing ~/.databrickscfg (#383) ([89aadbe](https://github.com/databricks/databricks-vscode/commit/89aadbe)), closes [#383](https://github.com/databricks/databricks-vscode/issues/383)
--   Install extension from vsix for integration tests (#377) ([169dfbf](https://github.com/databricks/databricks-vscode/commit/169dfbf)), closes [#377](https://github.com/databricks/databricks-vscode/issues/377)
--   UI tweaks (#401) ([1a16be2](https://github.com/databricks/databricks-vscode/commit/1a16be2)), closes [#401](https://github.com/databricks/databricks-vscode/issues/401)
--   Update dependencies (#390) ([c101af2](https://github.com/databricks/databricks-vscode/commit/c101af2)), closes [#390](https://github.com/databricks/databricks-vscode/issues/390)
--   use "bricks auth profiles" and list host names (#389) ([7633281](https://github.com/databricks/databricks-vscode/commit/7633281)), closes [#389](https://github.com/databricks/databricks-vscode/issues/389)
--   Use /dist/ instead of /src/ (#391) ([9664394](https://github.com/databricks/databricks-vscode/commit/9664394)), closes [#391](https://github.com/databricks/databricks-vscode/issues/391)
--   Use updated flags for bricks sync command (#387) ([ce2ebb0](https://github.com/databricks/databricks-vscode/commit/ce2ebb0)), closes [#387](https://github.com/databricks/databricks-vscode/issues/387)
--   AAD: Use device code flow on CodeSpaces (#392) ([c46055a](https://github.com/databricks/databricks-vscode/commit/c46055a)), closes [#392](https://github.com/databricks/databricks-vscode/issues/392)
+-   Feature: Allow running Scala, R and SQL notebooks as workflow
+-   Feature: List hostnames from `~/.databrickscfg` when selecting a host
+-   Feature: Take into account `.gitignore` rules defined in parent directories for file syncronization.
+-   Feature: Add support for synchronizing for a workspace folder (Files in Workspace)
+-   Feature: Make `az login` work on Github CodeSpaces
+-   Fix: Don't show error when config file doesn't exist
+-   Fix: Support `az login` when user doesn't have a subscription
+-   Fix: Gracefully handle adding a profile when `~/.databrickscfg` doesn't exist
+-   Fix: Running the "full sync" command now resets the synchronization state
+-   UI tweaks: Clean up and unify items in the side panel
 
 # Release: v0.0.10
 
