@@ -45,6 +45,13 @@ export async function activate(
         return undefined;
     }
 
+    // Add the bricks binary to the PATH environment variable in terminals
+    context.environmentVariableCollection.persistent = true;
+    context.environmentVariableCollection.prepend(
+        "PATH",
+        `${context.asAbsolutePath("./bin")}:`
+    );
+
     const loggerManager = new LoggerManager(context);
     if (workspaceConfigs.loggingEnabled) {
         loggerManager.initLoggers();
