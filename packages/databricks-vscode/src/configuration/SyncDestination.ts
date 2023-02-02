@@ -141,7 +141,9 @@ export class SyncDestination {
     getRelativePath(path: Uri): string {
         if (path.scheme === "file") {
             if (!path.path.startsWith(this.vscodeWorkspacePath.path)) {
-                throw new Error("local path is not within the workspace");
+                throw new Error(
+                    `local path is not within the workspace. Expected ${path.path} to start with ${this.vscodeWorkspacePath.path}.`
+                );
             }
             return path.path.replace(this.vscodeWorkspacePath.path, "");
         } else if (path.scheme === "wsfs") {
@@ -168,7 +170,9 @@ export class SyncDestination {
     localToRemote(localPath: Uri): string {
         assert.equal(localPath.scheme, "file");
         if (!localPath.path.startsWith(this.vscodeWorkspacePath.path)) {
-            throw new Error("local path is not within the workspace");
+            throw new Error(
+                `local path is not within the workspace. Expected ${localPath.path} to start with ${this.vscodeWorkspacePath.path}.`
+            );
         }
 
         const relativePath = localPath.path.replace(
