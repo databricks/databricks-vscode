@@ -21,7 +21,9 @@ describe("Run python on cluster", async function () {
         assert(process.env.WORKSPACE_PATH);
         projectDir = process.env.WORKSPACE_PATH;
 
-        await fs.mkdir(path.join(projectDir, ".databricks"));
+        await fs.mkdir(path.join(projectDir, ".databricks"), {
+            recursive: true,
+        });
 
         await fs.writeFile(
             path.join(projectDir, ".databricks", "project.json"),
