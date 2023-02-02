@@ -231,6 +231,21 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
             );
         }
 
+        // Pass through proxy settings to child process.
+        const proxySettings: {[key: string]: string | undefined} = {
+            /* eslint-disable @typescript-eslint/naming-convention */
+            HTTP_PROXY: process.env.HTTP_PROXY,
+            HTTPS_PROXY: process.env.HTTPS_PROXY,
+            /* eslint-enable @typescript-eslint/naming-convention */
+        };
+
+        // Remove undefined keys.
+        Object.keys(proxySettings).forEach((key) => {
+            if (proxySettings[key] === undefined) {
+                delete proxySettings[key];
+            }
+        });
+
         return {
             cwd: workspacePath,
             env: {
@@ -239,6 +254,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
+                ...proxySettings,
                 ...dbWorkspace.authProvider.getEnvVars(),
                 /* eslint-enable @typescript-eslint/naming-convention */
             },
