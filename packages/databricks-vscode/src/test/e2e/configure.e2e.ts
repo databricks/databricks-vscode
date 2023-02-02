@@ -62,14 +62,19 @@ describe("Configure Databricks Extension", async function () {
         assert(buttons.length > 0);
         await (await buttons[0].elem).click();
 
+        await sleep(500);
         let input = await new InputBox(workbench.locatorMap).wait();
-        await sleep(200);
+        while (await input.hasProgress()) {
+            await sleep(500);
+        }
 
         await input.confirm();
-        await sleep(200);
+        await sleep(1000);
 
         input = await new InputBox(workbench.locatorMap).wait();
-        await sleep(200);
+        while (await input.hasProgress()) {
+            await sleep(500);
+        }
 
         await input.selectQuickPick("DEFAULT");
 
