@@ -21,6 +21,7 @@ export class WorkspaceFsCommands implements Disposable {
             Uri.from({scheme: "wsfs", path: element.path})
         );
     }
+
     @withLogContext(Loggers.Extension)
     async createFolder(element?: WorkspaceFsEntity, @context ctx?: Context) {
         const rootPath =
@@ -65,6 +66,7 @@ export class WorkspaceFsCommands implements Disposable {
     async refresh() {
         this._workspaceFsDataProvider.refresh();
     }
+
     dispose() {
         this.disposables.forEach((i) => i.dispose());
     }

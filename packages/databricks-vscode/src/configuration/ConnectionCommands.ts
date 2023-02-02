@@ -16,6 +16,7 @@ import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
+import path from "path";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -229,9 +230,6 @@ export class ConnectionCommands implements Disposable {
                 {
                     label: "Create New Sync Destination",
                     alwaysShow: true,
-                    detail: workspaceConfigs.enableFilesInWorkspace
-                        ? ""
-                        : `Open Databricks in the browser and create a new Repo under /Repo/${me}`,
                 },
                 {
                     label: "",
@@ -268,13 +266,34 @@ export class ConnectionCommands implements Disposable {
                             return;
                         }
                         if (!workspaceConfigs.enableFilesInWorkspace) {
-                            UrlUtils.openExternal(
-                                (await rootDir?.url) ??
-                                    (
-                                        await this.connectionManager
-                                            .workspaceClient?.apiClient?.host
-                                    )?.href ??
-                                    ""
+                            const workspaceFolder =
+                                workspace.workspaceFolders![0].uri;
+
+                            const inputPath = await window.showInputBox({
+                                title: `Create new Repo`,
+                                placeHolder: path.basename(rootDirPath.path),
+                                value: path.basename(workspaceFolder.fsPath),
+                                validateInput: (input) => {
+                                    if (input === "") {
+                                        return "Please enter a name";
+                                    }
+                                    if (input.includes("/")) {
+                                        return "Invalid name";
+                                    }
+                                },
+                            });
+
+                            await wsClient.repos.create({
+                                path: rootDirPath.path + "/" + inputPath,
+                                provider: "github",
+                                url: "https://github.com/fjakobs/empty-repo.git",
+                            });
+
+                            this.connectionManager.attachSyncDestination(
+                                Uri.from({
+                                    scheme: "wsfs",
+                                    path: rootDirPath.path + "/" + inputPath,
+                                })
                             );
                             return;
                         }
