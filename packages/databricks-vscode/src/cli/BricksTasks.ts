@@ -239,6 +239,8 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
+                HTTP_PROXY: process.env.HTTP_PROXY,
+                HTTPS_PROXY: process.env.HTTPS_PROXY,
                 ...dbWorkspace.authProvider.getEnvVars(),
                 /* eslint-enable @typescript-eslint/naming-convention */
             },
