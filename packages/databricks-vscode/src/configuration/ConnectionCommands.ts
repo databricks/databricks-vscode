@@ -17,6 +17,7 @@ import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import path from "path";
+import {REPO_NAME_PREFIX} from "./SyncDestination";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -230,26 +231,63 @@ export class ConnectionCommands implements Disposable {
                 {
                     label: "Create New Sync Destination",
                     alwaysShow: true,
+                    detail: workspaceConfigs.enableFilesInWorkspace
+                        ? `Create a new folder under /Workspace/${me}/.ide as sync destination`
+                        : `Create a new Repo under /Repo/${me} as sync destination`,
                 },
                 {
-                    label: "",
+                    label: "Sync Destinations",
                     kind: QuickPickItemKind.Separator,
                 },
             ];
 
             const input = window.createQuickPick();
             input.busy = true;
-            input.items = children;
             input.show();
-            children.push(
-                ...((await rootDir?.children) ?? []).map((entity) => {
-                    return {
-                        label: entity.basename,
-                        detail: entity.path,
-                        path: entity.path,
-                    };
-                })
-            );
+            input.items = children;
+            if (workspaceConfigs.enableFilesInWorkspace) {
+                children.push(
+                    ...((await rootDir?.children) ?? []).map((entity) => {
+                        return {
+                            label: entity.basename,
+                            detail: entity.path,
+                            path: entity.path,
+                        };
+                    })
+                );
+            } else {
+                const repos = (await rootDir?.children) ?? [];
+
+                children.push(
+                    ...repos
+                        .filter((entity) => {
+                            return entity.basename.startsWith(REPO_NAME_PREFIX);
+                        })
+                        .map((entity) => {
+                            return {
+                                label: entity.basename.replace(
+                                    REPO_NAME_PREFIX,
+                                    ""
+                                ),
+                                detail: entity.path,
+                                path: entity.path,
+                            };
+                        })
+                );
+                children.push(
+                    {
+                        label: "Repos",
+                        kind: QuickPickItemKind.Separator,
+                    },
+                    ...repos.map((entity) => {
+                        return {
+                            label: entity.basename,
+                            detail: entity.path,
+                            path: entity.path,
+                        };
+                    })
+                );
+            }
             input.items = children;
             input.busy = false;
 
@@ -284,7 +322,11 @@ export class ConnectionCommands implements Disposable {
                             });
 
                             await wsClient.repos.create({
-                                path: rootDirPath.path + "/" + inputPath,
+                                path:
+                                    rootDirPath.path +
+                                    "/" +
+                                    REPO_NAME_PREFIX +
+                                    inputPath,
                                 provider: "github",
                                 url: "https://github.com/fjakobs/empty-repo.git",
                             });
