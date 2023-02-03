@@ -18,15 +18,16 @@ import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 
-export const TaskSyncType = {
+export const TASK_SYNC_TYPE = {
     syncFull: "sync-full",
     sync: "sync",
 } as const;
-type TaskSyncType = (typeof TaskSyncType)[keyof typeof TaskSyncType];
+
+type TaskSyncType = (typeof TASK_SYNC_TYPE)[keyof typeof TASK_SYNC_TYPE];
 
 const cliToTaskSyncType = new Map<SyncType, TaskSyncType>([
-    ["full", TaskSyncType.syncFull],
-    ["incremental", TaskSyncType.sync],
+    ["full", TASK_SYNC_TYPE.syncFull],
+    ["incremental", TASK_SYNC_TYPE.sync],
 ]);
 
 export class SyncTask extends Task {
@@ -65,7 +66,7 @@ export class SyncTask extends Task {
     static killAll() {
         window.terminals.forEach((terminal) => {
             if (
-                Object.values(TaskSyncType)
+                Object.values(TASK_SYNC_TYPE)
                     .map((e) => e as string)
                     .includes(terminal.name)
             ) {
