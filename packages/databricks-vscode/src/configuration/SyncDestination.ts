@@ -9,7 +9,7 @@ import {Uri} from "vscode";
 import {ConnectionManager} from "./ConnectionManager";
 
 type SyncDestinationType = "workspace" | "repo";
-export const REPO_NAME_PREFIX = ".ide-";
+export const REPO_NAME_SUFFIX = ".ide";
 
 /**
  * Either Databricks repo or workspace that acts as a sync target for the current workspace.
@@ -122,8 +122,8 @@ export class SyncDestination {
 
     get name(): string {
         const base = path.basename(this.wsfsDirPath.path);
-        if (base.startsWith(REPO_NAME_PREFIX)) {
-            return base.replace(REPO_NAME_PREFIX, "");
+        if (base.endsWith(REPO_NAME_SUFFIX)) {
+            return base.slice(0, -REPO_NAME_SUFFIX.length);
         } else {
             return base;
         }

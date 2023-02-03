@@ -17,7 +17,7 @@ import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import path from "path";
-import {REPO_NAME_PREFIX} from "./SyncDestination";
+import {REPO_NAME_SUFFIX} from "./SyncDestination";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -261,13 +261,13 @@ export class ConnectionCommands implements Disposable {
                 children.push(
                     ...repos
                         .filter((entity) => {
-                            return entity.basename.startsWith(REPO_NAME_PREFIX);
+                            return entity.basename.endsWith(REPO_NAME_SUFFIX);
                         })
                         .map((entity) => {
                             return {
-                                label: entity.basename.replace(
-                                    REPO_NAME_PREFIX,
-                                    ""
+                                label: entity.basename.slice(
+                                    0,
+                                    -REPO_NAME_SUFFIX.length
                                 ),
                                 detail: entity.path,
                                 path: entity.path,
@@ -321,12 +321,14 @@ export class ConnectionCommands implements Disposable {
                                 },
                             });
 
+                            const repoPath =
+                                rootDirPath.path +
+                                "/" +
+                                inputPath +
+                                REPO_NAME_SUFFIX;
+
                             await wsClient.repos.create({
-                                path:
-                                    rootDirPath.path +
-                                    "/" +
-                                    REPO_NAME_PREFIX +
-                                    inputPath,
+                                path: repoPath,
                                 provider: "github",
                                 url: "https://github.com/fjakobs/empty-repo.git",
                             });
@@ -334,7 +336,7 @@ export class ConnectionCommands implements Disposable {
                             this.connectionManager.attachSyncDestination(
                                 Uri.from({
                                     scheme: "wsfs",
-                                    path: rootDirPath.path + "/" + inputPath,
+                                    path: repoPath,
                                 })
                             );
                             return;
