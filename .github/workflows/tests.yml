@@ -110,9 +110,6 @@ jobs:
             - name: Fetching Bricks CLI
               run: yarn run package:cli:fetch
               working-directory: packages/databricks-vscode
-              env:
-                  # TODO: Remove this once the bricks repo is public
-                  GH_TOKEN: ${{ secrets.DECO_GITHUB_TOKEN }}
 
             - name: Building packages
               run: yarn run build
