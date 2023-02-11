@@ -1,5 +1,5 @@
 {
-    "name": "databricks-vscode",
+    "name": "databricks",
     "displayName": "Databricks for Visual Studio Code",
     "description": "IDE support for Databricks",
     "publisher": "databricks",
