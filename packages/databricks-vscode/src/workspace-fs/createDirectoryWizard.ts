@@ -14,7 +14,7 @@ export async function createDirWizard(
                 return "Please enter a name";
             }
             if (input.includes("/")) {
-                return "Invalid name";
+                return "Invalid name: Folders cannot contain '/'";
             }
         },
     });

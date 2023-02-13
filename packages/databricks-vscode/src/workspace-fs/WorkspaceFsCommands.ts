@@ -34,7 +34,9 @@ export class WorkspaceFsCommands implements Disposable {
             this._connectionManager.databricksWorkspace?.currentFsRoot.path;
 
         if (!this._connectionManager.workspaceClient) {
-            window.showErrorMessage(`Login to create a new directory`);
+            window.showErrorMessage(
+                `Please login first to create a new directory`
+            );
             return;
         }
 
@@ -89,7 +91,7 @@ export class WorkspaceFsCommands implements Disposable {
     private async createRepo(repoPath: string) {
         const wsClient = this._connectionManager.workspaceClient;
         if (!wsClient) {
-            window.showErrorMessage(`Login to create a new repo`);
+            window.showErrorMessage(`Please login first to create a new repo`);
             return;
         }
 
