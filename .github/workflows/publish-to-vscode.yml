@@ -49,7 +49,7 @@ jobs:
               run: |
                   vsce -V
                   BASE_URL="https://github.com/databricks/databricks-vscode/raw/$TAG/packages/databricks-vscode"
-                  vsce publish -p ${{ secrets.VSCE_TOKEN }} --packagePath databricks-*.vsix --baseContentUrl $BASE_URL --baseImagesUrl $BASE_URL
+                  vsce publish -p ${{ secrets.VSCE_TOKEN }} --skip-duplicate --packagePath databricks-*.vsix --baseContentUrl $BASE_URL --baseImagesUrl $BASE_URL
 
               env:
                   VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
