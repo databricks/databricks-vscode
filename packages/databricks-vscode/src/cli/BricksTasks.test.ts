@@ -24,7 +24,9 @@ describe(__filename, () => {
             instance(connection),
             instance(cli),
             "incremental",
-            {} as PackageMetaData,
+            {
+                version: "1.0.0",
+            } as PackageMetaData,
             () => {}
         );
 
@@ -80,7 +82,9 @@ describe(__filename, () => {
                 instance(connection),
                 instance(cli),
                 "full",
-                {} as PackageMetaData,
+                {
+                    version: "1.0.0",
+                } as PackageMetaData,
                 () => {}
             );
         });
@@ -94,6 +98,8 @@ describe(__filename, () => {
                 env: {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
+                    BRICKS_UPSTREAM: "databricks-vscode",
+                    BRICKS_UPSTREAM_VERSION: "1.0.0",
                     DATABRICKS_CONFIG_PROFILE: "profile",
                     BRICKS_UPSTREAM: "databricks-vscode",
                     BRICKS_UPSTREAM_VERSION: undefined,
@@ -114,6 +120,8 @@ describe(__filename, () => {
                 env: {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
+                    BRICKS_UPSTREAM: "databricks-vscode",
+                    BRICKS_UPSTREAM_VERSION: "1.0.0",
                     DATABRICKS_CONFIG_PROFILE: "profile",
                     DATABRICKS_CONFIG_FILE: undefined,
                     BRICKS_UPSTREAM: "databricks-vscode",
