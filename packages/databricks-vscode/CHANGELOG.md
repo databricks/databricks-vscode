@@ -4,14 +4,9 @@
 
 ## 0.1.0 (2023-02-13)
 
--   Add "bricks" from the extension to the PATH of terminals (#411) ([e7943d0](https://github.com/databricks/databricks-vscode/commit/e7943d0)), closes [#411](https://github.com/databricks/databricks-vscode/issues/411)
--   Cleanup old extraPaths (#395) ([84901e2](https://github.com/databricks/databricks-vscode/commit/84901e2)), closes [#395](https://github.com/databricks/databricks-vscode/issues/395)
--   Fetch bricks from S3 (#416) ([9d48570](https://github.com/databricks/databricks-vscode/commit/9d48570)), closes [#416](https://github.com/databricks/databricks-vscode/issues/416)
--   Minor bug fixes (#412) ([4be0cd7](https://github.com/databricks/databricks-vscode/commit/4be0cd7)), closes [#412](https://github.com/databricks/databricks-vscode/issues/412)
--   Pass proxy environment variables if set (#413) ([f993f37](https://github.com/databricks/databricks-vscode/commit/f993f37)), closes [#413](https://github.com/databricks/databricks-vscode/issues/413)
--   Rename extension from `databricks-vscode` to `databricks` (#363) ([67ac12c](https://github.com/databricks/databricks-vscode/commit/67ac12c)), closes [#363](https://github.com/databricks/databricks-vscode/issues/363)
--   Try to make the E2E tests more robust. (#414) ([1d5416d](https://github.com/databricks/databricks-vscode/commit/1d5416d)), closes [#414](https://github.com/databricks/databricks-vscode/issues/414)
--   Update dependencies (#426) ([774819d](https://github.com/databricks/databricks-vscode/commit/774819d)), closes [#426](https://github.com/databricks/databricks-vscode/issues/426)
+-   Feature: Allow creation of Repos directly from the IDE
+-   Feature: Add `bricks` CLI to the PATH of VS Code terminals
+-   Rename extension from `databricks-vscode` to `databricks`
 
 # Release: v0.0.11
 
