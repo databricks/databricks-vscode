@@ -1,5 +1,5 @@
 import {Disposable, Event, EventEmitter, TaskExecution, tasks} from "vscode";
-import {SyncTask, TaskSyncType} from "../cli/BricksTasks";
+import {SyncTask, TASK_SYNC_TYPE} from "../cli/BricksTasks";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {PackageMetaData} from "../utils/packageJsonUtils";
@@ -40,7 +40,7 @@ export class CodeSynchronizer implements Disposable {
                 const {type, task} = e.execution.task.definition;
                 if (
                     type === "databricks" &&
-                    Object.values(TaskSyncType).includes(task)
+                    Object.values(TASK_SYNC_TYPE).includes(task)
                 ) {
                     this.currentTaskExecution = e.execution;
                     this._onDidChangeStateEmitter.fire(this.state);
@@ -50,7 +50,7 @@ export class CodeSynchronizer implements Disposable {
                 const {type, task} = e.execution.task.definition;
                 if (
                     type === "databricks" &&
-                    Object.values(TaskSyncType).includes(task)
+                    Object.values(TASK_SYNC_TYPE).includes(task)
                 ) {
                     this.currentTaskExecution = undefined;
                     this._onDidChangeStateEmitter.fire(this.state);
