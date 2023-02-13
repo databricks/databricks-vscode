@@ -4,8 +4,6 @@
 
 ## 0.1.0 (2023-02-13)
 
--   Update dependencies (#426) ([774819d](https://github.com/databricks/databricks-vscode/commit/774819d)), closes [#426](https://github.com/databricks/databricks-vscode/issues/426)
-
 # Release: v0.0.11
 
 ## packages/databricks-sdk-js
