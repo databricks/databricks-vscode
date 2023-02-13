@@ -1,3 +1,13 @@
+# Release: v0.2.0
+
+## packages/databricks-vscode
+
+## 0.2.0 (2023-02-13)
+
+-   Experimental: Create repo from IDE (#418) ([d8b8ad8](https://github.com/databricks/databricks-vscode/commit/d8b8ad8)), closes [#418](https://github.com/databricks/databricks-vscode/issues/418)
+-   Bump bricks to v0.0.21 (#430) ([08472b1](https://github.com/databricks/databricks-vscode/commit/08472b1)), closes [#430](https://github.com/databricks/databricks-vscode/issues/430)
+-   Pass on upstream tool and version to bricks sync (#432) ([62e1e98](https://github.com/databricks/databricks-vscode/commit/62e1e98)), closes [#432](https://github.com/databricks/databricks-vscode/issues/432)
+
 # Release: v0.0.11
 
 ## packages/databricks-vscode
