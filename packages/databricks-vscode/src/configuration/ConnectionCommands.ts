@@ -279,13 +279,17 @@ export class ConnectionCommands implements Disposable {
                         label: "Repos",
                         kind: QuickPickItemKind.Separator,
                     },
-                    ...repos.map((entity) => {
-                        return {
-                            label: entity.basename,
-                            detail: entity.path,
-                            path: entity.path,
-                        };
-                    })
+                    ...repos
+                        .filter((entity) => {
+                            return !entity.basename.endsWith(REPO_NAME_SUFFIX);
+                        })
+                        .map((entity) => {
+                            return {
+                                label: entity.basename,
+                                detail: entity.path,
+                                path: entity.path,
+                            };
+                        })
                 );
             }
             input.items = children;
