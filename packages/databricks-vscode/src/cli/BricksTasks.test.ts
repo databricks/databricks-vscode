@@ -6,6 +6,7 @@ import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {SyncDestination} from "../configuration/SyncDestination";
+import {PackageMetaData} from "../utils/packageJsonUtils";
 import {LazyCustomSyncTerminal, SyncTask} from "./BricksTasks";
 import type {CliWrapper} from "./CliWrapper";
 
@@ -23,6 +24,7 @@ describe(__filename, () => {
             instance(connection),
             instance(cli),
             "incremental",
+            {} as PackageMetaData,
             () => {}
         );
 
@@ -78,6 +80,7 @@ describe(__filename, () => {
                 instance(connection),
                 instance(cli),
                 "full",
+                {} as PackageMetaData,
                 () => {}
             );
         });
