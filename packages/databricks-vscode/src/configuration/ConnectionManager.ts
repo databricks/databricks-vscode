@@ -433,6 +433,8 @@ export class ConnectionManager {
             this._state = newState;
             this.onDidChangeStateEmitter.fire(this._state);
         }
+        if (this._state === "CONNECTED") {
+        }
     }
 
     private updateCluster(newCluster: Cluster | undefined) {

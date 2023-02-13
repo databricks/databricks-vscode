@@ -14,7 +14,7 @@ import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
-import {workspaceConfigs} from "../WorkspaceConfigs";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {

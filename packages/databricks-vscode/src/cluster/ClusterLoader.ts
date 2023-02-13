@@ -4,7 +4,7 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Loggers} from "../logger";
-import {workspaceConfigs} from "../WorkspaceConfigs";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {sortClusters} from "./ClusterModel";
 
 export class ClusterLoader implements Disposable {

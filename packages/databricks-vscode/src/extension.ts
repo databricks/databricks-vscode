@@ -1,4 +1,13 @@
-import {commands, debug, ExtensionContext, window, workspace} from "vscode";
+import {
+    commands,
+    debug,
+    env,
+    ExtensionContext,
+    extensions,
+    ProgressLocation,
+    window,
+    workspace,
+} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -17,15 +26,70 @@ import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {LoggerManager, Loggers} from "./logger";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
-import {workspaceConfigs} from "./WorkspaceConfigs";
+import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {generateBundleSchema} from "./bundle/GenerateBundle";
+import {execFile} from "child_process";
+import {promisify} from "util";
+import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
+
+/**
+ * VSCode associates extensions with ids. We had to change the id of the extension from `databricks.databricks-vsode`
+ * to `databricks.databricks` after private preview. This check prompts all private preview users to uninstall the
+ * old extension, either manually or by attempting to unsintall it automatically.
+ */
+async function hasOldExtension() {
+    const ext = await extensions.getExtension("databricks.databricks-vscode");
+    if (ext === undefined) {
+        return false;
+    }
+    const choice = await window.showErrorMessage(
+        `Please uninstall the old databricks extension. Run rm -rf ${ext.extensionPath}`,
+        {modal: true},
+        "Try deleting automatically",
+        "Delete Manually"
+    );
+
+    if (choice === "Try deleting automatically") {
+        const {stderr} = await window.withProgress(
+            {location: ProgressLocation.Notification},
+            async (progress) => {
+                progress.report({message: `Deleting ${ext.extensionPath}`});
+                return await promisify(execFile)(`rm`, [
+                    "-r",
+                    ext.extensionPath,
+                ]);
+            }
+        );
+
+        if (stderr !== "") {
+            const shouldCopy = await window.showErrorMessage(
+                `Couldn't delete old databricks extension. Please run rm -r "${ext.extensionPath}" manually.`,
+                {modal: true, detail: stderr},
+                "Copy command to clipboard"
+            );
+
+            if (shouldCopy === "Copy command to clipboard") {
+                await env.clipboard.writeText(`rm -r "${ext.extensionPath}"`);
+            }
+            window.showErrorMessage("Could not activate Databricks extension");
+            return true;
+        }
+
+        commands.executeCommand("Developer: Reload Window");
+    }
+}
 
 export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
+    CustomWhenContext.setActivated(false);
+
+    if (await hasOldExtension()) {
+        return undefined;
+    }
     if (!(await PackageJsonUtils.checkArchCompat(context))) {
         return undefined;
     }
@@ -318,10 +382,13 @@ export async function activate(
         NamedLogger.getOrCreate("Extension").error("Login error", e);
     });
 
+    CustomWhenContext.setActivated(true);
     return {
         connectionManager: connectionManager,
     };
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+    CustomWhenContext.setActivated(false);
+}

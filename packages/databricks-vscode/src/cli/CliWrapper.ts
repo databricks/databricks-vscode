@@ -1,7 +1,7 @@
 import {execFile as execFileCb, spawn} from "child_process";
 import {ExtensionContext} from "vscode";
 import {SyncDestination} from "../configuration/SyncDestination";
-import {workspaceConfigs} from "../WorkspaceConfigs";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 
 const execFile = promisify(execFileCb);
