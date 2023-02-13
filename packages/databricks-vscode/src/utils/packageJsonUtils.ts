@@ -9,14 +9,6 @@ interface ArchDetails {
     arch?: ArchType;
 }
 
-interface MetaData {
-    packageName: string;
-    version: string;
-    bricksArch?: string;
-    vsixArch?: string;
-    commitSha?: string;
-}
-
 // Possible values https://nodejs.org/api/process.html#processplatform
 export const nodeOsMap: Map<string, OsType> = new Map([
     ["darwin", "macos"],
@@ -51,6 +43,14 @@ export const vsixArchMap: Map<string, ArchDetails> = new Map([
     ["win32-ia32", {os: "windows", arch: "x86_32"}],
 ]);
 
+export interface PackageMetaData {
+    packageName: string;
+    version: string;
+    bricksArch?: string;
+    vsixArch?: string;
+    commitSha?: string;
+}
+
 function getNodeArchDetails(): ArchDetails {
     return {
         os: nodeOsMap.get(process.platform),
@@ -62,7 +62,9 @@ export function isEqual(l: ArchDetails, r: ArchDetails) {
     return l.os === r.os && l.arch === r.arch;
 }
 
-export async function getMetadata(context: ExtensionContext) {
+export async function getMetadata(
+    context: ExtensionContext
+): Promise<PackageMetaData> {
     const rawData = await fs.readFile(
         context.asAbsolutePath("./package.json"),
         {
@@ -82,7 +84,7 @@ export async function getMetadata(context: ExtensionContext) {
 
 export function getCorrectVsixInstallString(
     nodeArch: ArchDetails,
-    metaData: MetaData
+    metaData: PackageMetaData
 ): string | undefined {
     const correctVsix = Array.from(vsixArchMap.entries()).find((keyValue) =>
         isEqual(keyValue[1], nodeArch)
@@ -97,7 +99,7 @@ export function isCompatibleArchitecture(
     depName: string,
     depArch: ArchDetails | undefined,
     nodeArch: ArchDetails,
-    metaData: MetaData
+    metaData: PackageMetaData
 ) {
     if (depArch && !isEqual(depArch, nodeArch)) {
         window.showErrorMessage(
@@ -119,13 +121,15 @@ export async function checkArchCompat(context: ExtensionContext) {
     return (
         isCompatibleArchitecture(
             "extension",
-            vsixArchMap.get(metaData.vsixArch),
+            metaData.vsixArch ? vsixArchMap.get(metaData.vsixArch) : undefined,
             nodeArch,
             metaData
         ) &&
         isCompatibleArchitecture(
             "bricks-cli",
-            bricksArchMap.get(metaData.bricksArch),
+            metaData.bricksArch
+                ? bricksArchMap.get(metaData.bricksArch)
+                : undefined,
             nodeArch,
             metaData
         )
