@@ -95,6 +95,8 @@ describe(__filename, () => {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                     DATABRICKS_CONFIG_PROFILE: "profile",
+                    BRICKS_UPSTREAM: "databricks-vscode",
+                    BRICKS_UPSTREAM_VERSION: undefined,
                     DATABRICKS_CONFIG_FILE: undefined,
                     HOME: process.env.HOME,
                     PATH: process.env.PATH,
@@ -114,6 +116,8 @@ describe(__filename, () => {
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                     DATABRICKS_CONFIG_PROFILE: "profile",
                     DATABRICKS_CONFIG_FILE: undefined,
+                    BRICKS_UPSTREAM: "databricks-vscode",
+                    BRICKS_UPSTREAM_VERSION: undefined,
                     HOME: process.env.HOME,
                     PATH: process.env.PATH,
                     HTTP_PROXY: "http_proxy",
