@@ -77,7 +77,7 @@ async function hasOldExtension() {
             return true;
         }
 
-        commands.executeCommand("Developer: Reload Window");
+        commands.executeCommand("workbench.action.reloadWindow");
     }
 }
 
