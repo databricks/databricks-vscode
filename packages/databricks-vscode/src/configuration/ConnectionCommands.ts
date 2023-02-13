@@ -16,7 +16,6 @@ import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
-import path from "path";
 import {REPO_NAME_SUFFIX} from "./SyncDestination";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
@@ -307,46 +306,11 @@ export class ConnectionCommands implements Disposable {
                             );
                             return;
                         }
-                        if (!workspaceConfigs.enableFilesInWorkspace) {
-                            const workspaceFolder =
-                                workspace.workspaceFolders![0].uri;
-
-                            const inputPath = await window.showInputBox({
-                                title: `Create new Repo`,
-                                placeHolder: path.basename(rootDirPath.path),
-                                value: path.basename(workspaceFolder.fsPath),
-                                validateInput: (input) => {
-                                    if (input === "") {
-                                        return "Please enter a name";
-                                    }
-                                    if (input.includes("/")) {
-                                        return "Invalid name";
-                                    }
-                                },
-                            });
-
-                            const repoPath =
-                                rootDirPath.path +
-                                "/" +
-                                inputPath +
-                                REPO_NAME_SUFFIX;
-
-                            await wsClient.repos.create({
-                                path: repoPath,
-                                provider: "github",
-                                url: "https://github.com/fjakobs/empty-repo.git",
-                            });
-
-                            this.connectionManager.attachSyncDestination(
-                                Uri.from({
-                                    scheme: "wsfs",
-                                    path: repoPath,
-                                })
-                            );
-                            return;
-                        }
                         const created = await this.wsfsCommands.createFolder(
-                            rootDir
+                            rootDir,
+                            workspaceConfigs.enableFilesInWorkspace
+                                ? "Folder"
+                                : "Repo"
                         );
                         if (created === undefined) {
                             return;
