@@ -118,8 +118,9 @@ export async function activate(
         loggerManager.initLoggers();
     }
 
+    const packageMetadata = await PackageJsonUtils.getMetadata(context);
     NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
-        metadata: await PackageJsonUtils.getMetadata(context),
+        metadata: packageMetadata,
     });
 
     const configureAutocomplete = new ConfigureAutocomplete(
@@ -178,7 +179,11 @@ export async function activate(
         )
     );
 
-    const synchronizer = new CodeSynchronizer(connectionManager, cli);
+    const synchronizer = new CodeSynchronizer(
+        connectionManager,
+        cli,
+        packageMetadata
+    );
     const clusterModel = new ClusterModel(connectionManager);
 
     const connectionCommands = new ConnectionCommands(

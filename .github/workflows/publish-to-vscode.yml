@@ -38,7 +38,7 @@ jobs:
                   echo Tag: $TAG
                   gh release download $TAG -R databricks/databricks-vscode
                   ls -lR
-                  cho "TAG=$TAG" >> $GITHUB_ENV
+                  echo "TAG=$TAG" >> $GITHUB_ENV
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
