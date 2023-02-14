@@ -1,3 +1,11 @@
+# Release: v0.2.1
+
+## packages/databricks-vscode
+
+## <small>0.2.1 (2023-02-14)</small>
+
+-   Minor: Doc updates after extension was made public
+
 # Release: v0.2.0
 
 ## packages/databricks-vscode
