@@ -46,6 +46,10 @@ jobs:
 
         runs-on: ${{ matrix.arch.os }}
 
+        defaults:
+            run:
+                shell: bash
+
         env:
             BRICKS_ARCH: ${{ matrix.arch.bricks_arch }}
 
@@ -71,11 +75,10 @@ jobs:
                   yarn run fix
 
             - run: |
-                  TAG="release-v$(cat package.json | jq -r .version)"
-                  yarn run package -t ${{ matrix.arch.vsix_arch }}
+                  TAG="release-v$(cat package.json | jq -r .version)" yarn run package -t ${{ matrix.arch.vsix_arch }}
               working-directory: packages/databricks-vscode
 
-            - uses: actions/upload-artifact@v2
+            - uses: actions/upload-artifact@v3
               with:
                   name: databricks-${{ matrix.arch.vsix_arch }}
                   path: "packages/databricks-vscode/*.vsix"
