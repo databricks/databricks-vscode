@@ -4,7 +4,6 @@
 
 ## 0.2.0 (2023-02-13)
 
-
 -   Feature: Allow creation of Repos directly from the IDE
 -   Feature: Add `bricks` CLI to the PATH of VS Code terminals
 -   Feature: Watch `.gitignore` files for changes while sync is running
