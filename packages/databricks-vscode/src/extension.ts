@@ -1,4 +1,11 @@
-import {commands, debug, ExtensionContext, window, workspace} from "vscode";
+import {
+    commands,
+    debug,
+    ExtensionContext,
+    extensions,
+    window,
+    workspace,
+} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -26,6 +33,15 @@ import {generateBundleSchema} from "./bundle/GenerateBundle";
 export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
+    if (extensions.getExtension("databricks.databricks-vscode") !== undefined) {
+        await commands.executeCommand(
+            "workbench.extensions.uninstallExtension",
+            "databricks.databricks-vscode"
+        );
+
+        await commands.executeCommand("workbench.action.reloadWindow");
+    }
+
     if (!(await PackageJsonUtils.checkArchCompat(context))) {
         return undefined;
     }

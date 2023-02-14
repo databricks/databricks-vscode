@@ -65,7 +65,8 @@ export class WorkspaceFsCommands implements Disposable {
 
         const inputPath = await createDirWizard(
             this._workspaceFolder,
-            type === "Repo" ? "Repo Name" : "Directory Name"
+            type === "Repo" ? "Repo Name" : "Directory Name",
+            root
         );
         let created: WorkspaceFsEntity | undefined;
 
