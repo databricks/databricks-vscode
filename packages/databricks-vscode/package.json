@@ -38,8 +38,6 @@
     },
     "activationEvents": [
         "onCommand:databricks.*",
-        "onView:configurationView",
-        "onView:clusterView",
         "onTaskType:databricks",
         "onDebugResolve:databricks",
         "onDebugResolve:databricks-workflow",
