@@ -1,3 +1,11 @@
+# Release: v0.2.1
+
+## packages/databricks-vscode
+
+## <small>0.2.1 (2023-02-14)</small>
+
+-   Update readme after extension is public (#438) ([e064701](https://github.com/databricks/databricks-vscode/commit/e064701)), closes [#438](https://github.com/databricks/databricks-vscode/issues/438)
+
 # Release: v0.2.0
 
 ## packages/databricks-vscode
