@@ -4,9 +4,11 @@
 
 ## 0.2.0 (2023-02-13)
 
--   Experimental: Create repo from IDE (#418) ([d8b8ad8](https://github.com/databricks/databricks-vscode/commit/d8b8ad8)), closes [#418](https://github.com/databricks/databricks-vscode/issues/418)
--   Bump bricks to v0.0.21 (#430) ([08472b1](https://github.com/databricks/databricks-vscode/commit/08472b1)), closes [#430](https://github.com/databricks/databricks-vscode/issues/430)
--   Pass on upstream tool and version to bricks sync (#432) ([62e1e98](https://github.com/databricks/databricks-vscode/commit/62e1e98)), closes [#432](https://github.com/databricks/databricks-vscode/issues/432)
+
+-   Feature: Allow creation of Repos directly from the IDE
+-   Feature: Add `bricks` CLI to the PATH of VS Code terminals
+-   Feature: Watch `.gitignore` files for changes while sync is running
+-   Breaking change: Rename extension from `databricks-vscode` to `databricks` so it can be published to the VS Code marketplace.
 
 # Release: v0.0.11
 
