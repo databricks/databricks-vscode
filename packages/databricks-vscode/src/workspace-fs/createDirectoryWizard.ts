@@ -1,28 +1,30 @@
 import {Uri, window} from "vscode";
-import {WorkspaceFsDir} from "@databricks/databricks-sdk";
 import path from "path";
+import {WorkspaceFsDir} from "@databricks/databricks-sdk";
+import {workspaceConfigs} from "../WorkspaceConfigs";
 
 export async function createDirWizard(
-    root: WorkspaceFsDir,
-    workspaceFolder: Uri
-) {
-    const inputPath = await window.showInputBox({
-        title: `Create new directory`,
+    workspaceFolder: Uri,
+    title: string,
+    root?: WorkspaceFsDir
+): Promise<string | undefined> {
+    return await window.showInputBox({
+        title: title,
         placeHolder: path.basename(workspaceFolder.fsPath),
         value: path.basename(workspaceFolder.fsPath),
         validateInput: (input) => {
-            const childPath = root.getAbsoluteChildPath(input);
-            if (childPath === undefined || childPath === root.path) {
-                return `The path must be a child of ${root.path}`;
+            if (workspaceConfigs.enableFilesInWorkspace && root) {
+                const childPath = root.getAbsoluteChildPath(input);
+                if (childPath === undefined || childPath === root.path) {
+                    return `The path must be a child of ${root.path}`;
+                }
+            }
+            if (input === "") {
+                return "Please enter a name";
+            }
+            if (input.includes("/")) {
+                return "Invalid name: Folders cannot contain '/'";
             }
         },
     });
-
-    if (inputPath !== undefined) {
-        const created = await root.mkdir(inputPath);
-        if (created === undefined) {
-            window.showErrorMessage(`Can't create directory ${inputPath}`);
-        }
-        return created;
-    }
 }

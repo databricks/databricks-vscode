@@ -3,6 +3,7 @@ import {context, Context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {REPO_NAME_SUFFIX} from "../configuration/SyncDestination";
 import {Loggers} from "../logger";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
@@ -21,14 +22,21 @@ export class WorkspaceFsCommands implements Disposable {
             Uri.from({scheme: "wsfs", path: element.path})
         );
     }
+
     @withLogContext(Loggers.Extension)
-    async createFolder(element?: WorkspaceFsEntity, @context ctx?: Context) {
+    async createFolder(
+        element?: WorkspaceFsEntity,
+        type: "Repo" | "Folder" = "Folder",
+        @context ctx?: Context
+    ) {
         const rootPath =
             element?.path ??
             this._connectionManager.databricksWorkspace?.currentFsRoot.path;
 
         if (!this._connectionManager.workspaceClient) {
-            window.showErrorMessage(`Login to create a new directory`);
+            window.showErrorMessage(
+                `Please login first to create a new directory`
+            );
             return;
         }
 
@@ -55,16 +63,52 @@ export class WorkspaceFsCommands implements Disposable {
             return;
         }
 
-        const created = await createDirWizard(root, this._workspaceFolder);
+        const inputPath = await createDirWizard(
+            this._workspaceFolder,
+            type === "Repo" ? "Repo Name" : "Directory Name",
+            root
+        );
+        let created: WorkspaceFsEntity | undefined;
+
+        if (inputPath !== undefined) {
+            if (type === "Repo") {
+                created = await this.createRepo(
+                    rootPath + "/" + inputPath + REPO_NAME_SUFFIX
+                );
+            } else {
+                created = await root.mkdir(inputPath);
+            }
+            if (created === undefined) {
+                window.showErrorMessage(`Can't create directory ${inputPath}`);
+            }
+        }
+
         if (created) {
             this._workspaceFsDataProvider.refresh();
             return created;
         }
     }
 
+    private async createRepo(repoPath: string) {
+        const wsClient = this._connectionManager.workspaceClient;
+        if (!wsClient) {
+            window.showErrorMessage(`Please login first to create a new repo`);
+            return;
+        }
+
+        await wsClient.repos.create({
+            path: repoPath,
+            provider: "github",
+            url: "https://github.com/databricks/databricks-empty-ide-project",
+        });
+
+        return await WorkspaceFsEntity.fromPath(wsClient, repoPath);
+    }
+
     async refresh() {
         this._workspaceFsDataProvider.refresh();
     }
+
     dispose() {
         this.disposables.forEach((i) => i.dispose());
     }

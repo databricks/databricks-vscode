@@ -17,16 +17,18 @@ import {BricksSyncParser} from "./BricksSyncParser";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {PackageMetaData} from "../utils/packageJsonUtils";
 
-export const TaskSyncType = {
+export const TASK_SYNC_TYPE = {
     syncFull: "sync-full",
     sync: "sync",
 } as const;
-type TaskSyncType = (typeof TaskSyncType)[keyof typeof TaskSyncType];
+
+type TaskSyncType = (typeof TASK_SYNC_TYPE)[keyof typeof TASK_SYNC_TYPE];
 
 const cliToTaskSyncType = new Map<SyncType, TaskSyncType>([
-    ["full", TaskSyncType.syncFull],
-    ["incremental", TaskSyncType.sync],
+    ["full", TASK_SYNC_TYPE.syncFull],
+    ["incremental", TASK_SYNC_TYPE.sync],
 ]);
 
 export class SyncTask extends Task {
@@ -34,6 +36,7 @@ export class SyncTask extends Task {
         connection: ConnectionManager,
         cli: CliWrapper,
         syncType: SyncType,
+        packageMetadata: PackageMetaData,
         syncStateCallback: (state: SyncState) => void
     ) {
         super(
@@ -49,6 +52,7 @@ export class SyncTask extends Task {
                     connection,
                     cli,
                     syncType,
+                    packageMetadata,
                     syncStateCallback
                 );
             })
@@ -65,7 +69,7 @@ export class SyncTask extends Task {
     static killAll() {
         window.terminals.forEach((terminal) => {
             if (
-                Object.values(TaskSyncType)
+                Object.values(TASK_SYNC_TYPE)
                     .map((e) => e as string)
                     .includes(terminal.name)
             ) {
@@ -175,6 +179,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         private connection: ConnectionManager,
         private cli: CliWrapper,
         private syncType: SyncType,
+        private packageMetadata: PackageMetaData,
         syncStateCallback: (state: SyncState) => void
     ) {
         super("", [], {}, syncStateCallback);
@@ -251,6 +256,8 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
             env: {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: workspacePath,
+                BRICKS_UPSTREAM: "databricks-vscode",
+                BRICKS_UPSTREAM_VERSION: this.packageMetadata.version,
                 DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,

@@ -16,6 +16,7 @@ import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
+import {REPO_NAME_SUFFIX} from "./SyncDestination";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -230,28 +231,66 @@ export class ConnectionCommands implements Disposable {
                     label: "Create New Sync Destination",
                     alwaysShow: true,
                     detail: workspaceConfigs.enableFilesInWorkspace
-                        ? ""
-                        : `Open Databricks in the browser and create a new Repo under /Repo/${me}`,
+                        ? `Create a new folder under /Workspace/${me}/.ide as sync destination`
+                        : `Create a new Repo under /Repo/${me} as sync destination`,
                 },
                 {
-                    label: "",
+                    label: "Sync Destinations",
                     kind: QuickPickItemKind.Separator,
                 },
             ];
 
             const input = window.createQuickPick();
             input.busy = true;
-            input.items = children;
             input.show();
-            children.push(
-                ...((await rootDir?.children) ?? []).map((entity) => {
-                    return {
-                        label: entity.basename,
-                        detail: entity.path,
-                        path: entity.path,
-                    };
-                })
-            );
+            input.items = children;
+            if (workspaceConfigs.enableFilesInWorkspace) {
+                children.push(
+                    ...((await rootDir?.children) ?? []).map((entity) => {
+                        return {
+                            label: entity.basename,
+                            detail: entity.path,
+                            path: entity.path,
+                        };
+                    })
+                );
+            } else {
+                const repos = (await rootDir?.children) ?? [];
+
+                children.push(
+                    ...repos
+                        .filter((entity) => {
+                            return entity.basename.endsWith(REPO_NAME_SUFFIX);
+                        })
+                        .map((entity) => {
+                            return {
+                                label: entity.basename.slice(
+                                    0,
+                                    -REPO_NAME_SUFFIX.length
+                                ),
+                                detail: entity.path,
+                                path: entity.path,
+                            };
+                        })
+                );
+                children.push(
+                    {
+                        label: "Repos",
+                        kind: QuickPickItemKind.Separator,
+                    },
+                    ...repos
+                        .filter((entity) => {
+                            return !entity.basename.endsWith(REPO_NAME_SUFFIX);
+                        })
+                        .map((entity) => {
+                            return {
+                                label: entity.basename,
+                                detail: entity.path,
+                                path: entity.path,
+                            };
+                        })
+                );
+            }
             input.items = children;
             input.busy = false;
 
@@ -267,19 +306,11 @@ export class ConnectionCommands implements Disposable {
                             );
                             return;
                         }
-                        if (!workspaceConfigs.enableFilesInWorkspace) {
-                            UrlUtils.openExternal(
-                                (await rootDir?.url) ??
-                                    (
-                                        await this.connectionManager
-                                            .workspaceClient?.apiClient?.host
-                                    )?.href ??
-                                    ""
-                            );
-                            return;
-                        }
                         const created = await this.wsfsCommands.createFolder(
-                            rootDir
+                            rootDir,
+                            workspaceConfigs.enableFilesInWorkspace
+                                ? "Folder"
+                                : "Repo"
                         );
                         if (created === undefined) {
                             return;

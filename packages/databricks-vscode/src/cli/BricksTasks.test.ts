@@ -6,6 +6,7 @@ import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {SyncDestination} from "../configuration/SyncDestination";
+import {PackageMetaData} from "../utils/packageJsonUtils";
 import {LazyCustomSyncTerminal, SyncTask} from "./BricksTasks";
 import type {CliWrapper} from "./CliWrapper";
 
@@ -23,6 +24,9 @@ describe(__filename, () => {
             instance(connection),
             instance(cli),
             "incremental",
+            {
+                version: "1.0.0",
+            } as PackageMetaData,
             () => {}
         );
 
@@ -78,6 +82,9 @@ describe(__filename, () => {
                 instance(connection),
                 instance(cli),
                 "full",
+                {
+                    version: "1.0.0",
+                } as PackageMetaData,
                 () => {}
             );
         });
@@ -91,6 +98,8 @@ describe(__filename, () => {
                 env: {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
+                    BRICKS_UPSTREAM: "databricks-vscode",
+                    BRICKS_UPSTREAM_VERSION: "1.0.0",
                     DATABRICKS_CONFIG_PROFILE: "profile",
                     DATABRICKS_CONFIG_FILE: undefined,
                     HOME: process.env.HOME,
@@ -109,6 +118,8 @@ describe(__filename, () => {
                 env: {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
+                    BRICKS_UPSTREAM: "databricks-vscode",
+                    BRICKS_UPSTREAM_VERSION: "1.0.0",
                     DATABRICKS_CONFIG_PROFILE: "profile",
                     DATABRICKS_CONFIG_FILE: undefined,
                     HOME: process.env.HOME,

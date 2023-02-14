@@ -14,8 +14,8 @@ This Software contains code from the following open source projects:
 | [@microsoft/fast-foundation](https://www.npmjs.com/package/@microsoft/fast-foundation)       | 2.47.0            | MIT          | git+https://github.com/Microsoft/fast.git                      |
 | [@microsoft/fast-react-wrapper](https://www.npmjs.com/package/@microsoft/fast-react-wrapper) | 0.1.48            | MIT          | git+https://github.com/Microsoft/fast.git                      |
 | [@microsoft/fast-web-utilities](https://www.npmjs.com/package/@microsoft/fast-web-utilities) | 5.4.1             | MIT          | git+https://github.com/Microsoft/fast.git                      |
-| [@vscode/debugadapter](https://www.npmjs.com/package/@vscode/debugadapter)                   | 1.58.0            | MIT          | https://github.com/microsoft/vscode-debugadapter-node.git      |
-| [@vscode/debugprotocol](https://www.npmjs.com/package/@vscode/debugprotocol)                 | 1.58.0            | MIT          | https://github.com/microsoft/vscode-debugadapter-node.git      |
+| [@vscode/debugadapter](https://www.npmjs.com/package/@vscode/debugadapter)                   | 1.59.0            | MIT          | https://github.com/microsoft/vscode-debugadapter-node.git      |
+| [@vscode/debugprotocol](https://www.npmjs.com/package/@vscode/debugprotocol)                 | 1.59.0            | MIT          | https://github.com/microsoft/vscode-debugadapter-node.git      |
 | [@vscode/webview-ui-toolkit](https://www.npmjs.com/package/@vscode/webview-ui-toolkit)       | 1.2.1             | MIT          | git+https://github.com/microsoft/vscode-webview-ui-toolkit.git |
 | [ansi-to-html](https://www.npmjs.com/package/ansi-to-html)                                   | 0.7.2             | MIT          | https://github.com/rburns/ansi-to-html.git                     |
 | [async](https://www.npmjs.com/package/async)                                                 | 3.2.4             | MIT          | https://github.com/caolan/async.git                            |

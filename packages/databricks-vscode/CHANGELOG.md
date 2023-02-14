@@ -1,3 +1,14 @@
+# Release: v0.2.0
+
+## packages/databricks-vscode
+
+## 0.2.0 (2023-02-13)
+
+-   Feature: Allow creation of Repos directly from the IDE
+-   Feature: Add `bricks` CLI to the PATH of VS Code terminals
+-   Feature: Watch `.gitignore` files for changes while sync is running
+-   Breaking change: Rename extension from `databricks-vscode` to `databricks` so it can be published to the VS Code marketplace.
+
 # Release: v0.0.11
 
 ## packages/databricks-vscode
