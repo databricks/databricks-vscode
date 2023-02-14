@@ -48,8 +48,7 @@ jobs:
             - name: Publish to VS Code Marketplace
               run: |
                   vsce -V
-                  BASE_URL="https://github.com/databricks/databricks-vscode/raw/$TAG/packages/databricks-vscode"
-                  vsce publish -p ${{ secrets.VSCE_TOKEN }} --packagePath databricks-*.vsix --baseContentUrl $BASE_URL --baseImagesUrl $BASE_URL
+                  vsce publish -p ${{ secrets.VSCE_TOKEN }} --packagePath databricks-*.vsix
 
               env:
                   VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}

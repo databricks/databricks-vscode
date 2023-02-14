@@ -10,7 +10,7 @@ The extension is available from the [Visual Studio Marketplace](https://marketpl
 -   Run Python files on a Databricks cluster
 -   Run notebooks and Python files as Workflows
 
-![run](./images/run.gif)
+![run](images/run.gif)
 
 ## Requirements
 
