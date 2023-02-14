@@ -180,12 +180,14 @@
                 "command": "databricks.cluster.start",
                 "title": "Start Cluster",
                 "icon": "$(debug-start)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.cluster.stop",
                 "title": "Stop Cluster",
                 "icon": "$(debug-stop)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             },
             {
@@ -197,20 +199,23 @@
             },
             {
                 "command": "databricks.wsfs.attachSyncDestination",
-                "title": "Attach sync destination",
+                "title": "Attach folder as sync destination",
                 "icon": "$(plug)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.wsfs.refresh",
-                "title": "Refresh",
+                "title": "Refresh workspace filesystem view",
                 "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.wsfs.createFolder",
                 "title": "Create Folder",
                 "icon": "$(new-folder)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             }
         ],
