@@ -23,9 +23,11 @@ In order to use this extension you need access to a Databricks workspace:
 3. Access to an interactive cluster or permissions to create a cluster
 4. Permissions to create Databricks Repos
 
-## Documentation
+## Getting started
 
-Comment out until the repo is public so the image can be loaded by the marketplace
+![configure](./images/configure.gif)
+
+## Documentation
 
 -   The [Quick Start Guide](README.quickstart.md) provides an overview
     of common features.
