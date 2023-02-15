@@ -3,7 +3,7 @@ import {context, Context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {REPO_NAME_SUFFIX} from "../configuration/SyncDestination";
+import {RemoteUri, REPO_NAME_SUFFIX} from "../configuration/SyncDestination";
 import {Loggers} from "../logger";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
@@ -19,7 +19,7 @@ export class WorkspaceFsCommands implements Disposable {
 
     async attachSyncDestination(element: WorkspaceFsEntity) {
         await this._connectionManager.attachSyncDestination(
-            Uri.from({scheme: "wsfs", path: element.path})
+            new RemoteUri(element.path)
         );
     }
 

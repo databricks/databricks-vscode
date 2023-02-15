@@ -5,7 +5,10 @@ import {Uri} from "vscode";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {SyncDestination} from "../configuration/SyncDestination";
+import {
+    LocalUri,
+    SyncDestinationMapper,
+} from "../configuration/SyncDestination";
 import {PackageMetaData} from "../utils/packageJsonUtils";
 import {LazyCustomSyncTerminal, SyncTask} from "./BricksTasks";
 import type {CliWrapper} from "./CliWrapper";
@@ -65,16 +68,16 @@ describe(__filename, () => {
                 )
             );
 
-            const mockSyncDestination = mock(SyncDestination);
-            when(mockSyncDestination.vscodeWorkspacePath).thenReturn(
-                Uri.file("/path/to/local/workspace")
+            const mockSyncDestination = mock(SyncDestinationMapper);
+            when(mockSyncDestination.localUri).thenReturn(
+                new LocalUri(Uri.file("/path/to/local/workspace"))
             );
 
             when(connection.databricksWorkspace).thenReturn(
                 instance(mockDbWorkspace)
             );
 
-            when(connection.syncDestination).thenReturn(
+            when(connection.syncDestinationMapper).thenReturn(
                 instance(mockSyncDestination)
             );
 

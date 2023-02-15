@@ -14,7 +14,11 @@ import {
     Uri,
 } from "vscode";
 
-import {SyncDestination} from "../configuration/SyncDestination";
+import {
+    LocalUri,
+    RemoteUri,
+    SyncDestinationMapper,
+} from "../configuration/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
@@ -109,7 +113,7 @@ export class DatabricksRuntime implements Disposable {
                 return;
             }
 
-            const syncDestination = this.connection.syncDestination;
+            const syncDestination = this.connection.syncDestinationMapper;
             if (!syncDestination) {
                 return this._onErrorEmitter.fire(
                     "You must configure code synchronization to run on Databricks"
@@ -126,10 +130,14 @@ export class DatabricksRuntime implements Disposable {
                 await executionContext.destroy();
             });
 
+            const currentFsRoot =
+                this.connection.databricksWorkspace?.currentFsRoot;
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
             log(
-                `Synchronizing code to ${syncDestination.relativeWsfsDirPath} ...`
+                `Synchronizing code to ${syncDestination.remoteUri.relativePath(
+                    new RemoteUri(currentFsRoot ?? "")
+                )} ...`
             );
 
             this.disposables.push(
@@ -151,8 +159,8 @@ export class DatabricksRuntime implements Disposable {
             await this.codeSynchronizer.waitForSyncComplete();
 
             log(
-                `Running ${syncDestination.getRelativePath(
-                    Uri.file(program)
+                `Running ${syncDestination.localUri.relativePath(
+                    new LocalUri(program)
                 )} ...\n`
             );
 
@@ -183,11 +191,8 @@ export class DatabricksRuntime implements Disposable {
                     try {
                         if (frame.file) {
                             localFile = syncDestination.remoteToLocal(
-                                Uri.from({
-                                    scheme: "wsfs",
-                                    path: path.normalize(frame.file),
-                                })
-                            ).fsPath;
+                                new RemoteUri(path.normalize(frame.file))
+                            ).path;
 
                             frame.text = frame.text.replace(
                                 frame.file,
@@ -236,7 +241,7 @@ export class DatabricksRuntime implements Disposable {
     private async compileCommandString(
         program: string,
         args: Array<string>,
-        syncDestination: SyncDestination,
+        syncDestination: SyncDestinationMapper,
         envVars: EnvVars
     ): Promise<string> {
         const bootstrapPath = Uri.joinPath(
@@ -247,7 +252,7 @@ export class DatabricksRuntime implements Disposable {
         );
 
         const argv = [
-            syncDestination.localToRemote(Uri.file(program)),
+            syncDestination.localToRemote(new LocalUri(Uri.file(program))).path,
             ...args,
         ];
 
@@ -264,11 +269,14 @@ export class DatabricksRuntime implements Disposable {
 
         bootstrap = bootstrap.replace(
             '"PYTHON_FILE"',
-            `"${syncDestination.localToRemote(Uri.file(program))}"`
+            `"${
+                syncDestination.localToRemote(new LocalUri(Uri.file(program)))
+                    .workspacePrefixPath
+            }"`
         );
         bootstrap = bootstrap.replace(
             '"REPO_PATH"',
-            `"${syncDestination.path.path}"`
+            `"${syncDestination.remoteUri.path}"`
         );
         bootstrap = bootstrap.replace(
             "args = []",

@@ -220,7 +220,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
     @withLogContext(Loggers.Extension)
     getProcessOptions(@context ctx?: Context): SpawnOptions {
         const workspacePath =
-            this.connection.syncDestination?.vscodeWorkspacePath.fsPath;
+            this.connection.syncDestinationMapper?.localUri.path;
         if (!workspacePath) {
             throw this.showErrorAndKillThis(
                 "Can't start sync: No workspace opened!",
@@ -273,7 +273,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         if (this.command) {
             return this.command;
         }
-        const syncDestination = this.connection.syncDestination;
+        const syncDestination = this.connection.syncDestinationMapper;
 
         if (!syncDestination) {
             throw this.showErrorAndKillThis(
