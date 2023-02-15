@@ -59,6 +59,7 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           directory: ./coverage
+          working-directory: packages/databricks-sdk-js
 
   test-extension:
     name: Test VSCode Extension
