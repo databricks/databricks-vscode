@@ -35,6 +35,19 @@ describe("tests for BricksSycnParser", () => {
         assert.equal(syncState, "IN_PROGRESS");
     });
 
+    it("should handle files with spaces in their names", () => {
+        assert.equal(syncState, "STOPPED");
+        bricksSycnParser.process(
+            "Action: PUT: hello world.txt, hello.py, world hello.py"
+        );
+        assert.equal(syncState, "IN_PROGRESS");
+        bricksSycnParser.process("Uploaded hello world.txt");
+        bricksSycnParser.process("Uploaded hello.py");
+        bricksSycnParser.process("Uploaded world hello.py");
+        bricksSycnParser.process("[INFO] Initial Sync Complete");
+        assert.equal(syncState, "WATCHING_FOR_CHANGES");
+    });
+
     it("test bricksSycnParser.process correctly keeps track of state of inflight requests", () => {
         // recieving some random logs from bricks sync
         assert.equal(syncState, "STOPPED");
