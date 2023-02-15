@@ -69,7 +69,8 @@
         "exclude": [
             "src/**/*.test.ts",
             "src/**/*.integ.ts",
-            "src/apis/**"
+            "src/apis/**",
+            "src/test/**"
         ],
         "reporter": [
             "lcov",
