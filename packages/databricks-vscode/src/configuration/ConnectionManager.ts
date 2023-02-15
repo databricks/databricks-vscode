@@ -18,6 +18,7 @@ import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
+import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
@@ -433,6 +434,7 @@ export class ConnectionManager {
             this._state = newState;
             this.onDidChangeStateEmitter.fire(this._state);
         }
+        CustomWhenContext.setLoggedIn(this._state === "CONNECTED");
     }
 
     private updateCluster(newCluster: Cluster | undefined) {

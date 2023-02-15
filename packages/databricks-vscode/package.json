@@ -39,6 +39,8 @@
     "activationEvents": [
         "onCommand:databricks.*",
         "onTaskType:databricks",
+        "onView:configurationView",
+        "onView:clusterView",
         "onDebugResolve:databricks",
         "onDebugResolve:databricks-workflow",
         "workspaceContains:**/databricks.yml",
@@ -53,81 +55,96 @@
             {
                 "command": "databricks.connection.logout",
                 "title": "Logout",
-                "category": "Databricks"
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.connection.configureWorkspace",
                 "icon": "$(gear)",
                 "title": "Configure workspace",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.connection.openDatabricksConfigFile",
                 "title": "Open Databricks configuration file",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.connection.attachCluster",
                 "title": "Attach cluster",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(plug)"
             },
             {
                 "command": "databricks.connection.attachClusterQuickPick",
                 "title": "Configure cluster",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachCluster",
                 "title": "Detach cluster",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(debug-disconnect)"
             },
             {
                 "command": "databricks.sync.start",
                 "title": "Start synchronization",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.startFull",
                 "title": "Start synchronization (full sync)",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.stop",
                 "title": "Stop synchronization",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(sync-ignored)"
             },
             {
                 "command": "databricks.cluster.filterByAll",
-                "title": "All"
+                "title": "All",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.cluster.filterByRunning",
-                "title": "Running"
+                "title": "Running",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.cluster.filterByMe",
-                "title": "Created by me"
+                "title": "Created by me",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.cluster.refresh",
                 "icon": "$(refresh)",
-                "title": "Refresh"
+                "title": "Refresh",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.connection.attachSyncDestination",
                 "title": "Configure sync destination",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachSyncDestination",
                 "title": "Detach sync destination",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(debug-disconnect)"
             },
             {
@@ -162,32 +179,43 @@
             {
                 "command": "databricks.cluster.start",
                 "title": "Start Cluster",
-                "icon": "$(debug-start)"
+                "icon": "$(debug-start)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.cluster.stop",
                 "title": "Stop Cluster",
-                "icon": "$(debug-stop)"
+                "icon": "$(debug-stop)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.utils.openExternal",
                 "title": "Open link externally",
-                "icon": "$(link)"
+                "icon": "$(link)",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.wsfs.attachSyncDestination",
-                "title": "Attach sync destination",
-                "icon": "$(plug)"
+                "title": "Attach folder as sync destination",
+                "icon": "$(plug)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.wsfs.refresh",
-                "title": "Refresh",
-                "icon": "$(refresh)"
+                "title": "Refresh workspace filesystem view",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.wsfs.createFolder",
                 "title": "Create Folder",
-                "icon": "$(new-folder)"
+                "icon": "$(new-folder)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -360,6 +388,18 @@
                 {
                     "command": "databricks.wsfs.createFolder",
                     "when": "config.databricks.sync.destinationType == workspace"
+                },
+                {
+                    "command": "databricks.wsfs.refresh",
+                    "when": "config.databricks.sync.destinationType == workspace"
+                },
+                {
+                    "command": "databricks.wsfs.attachSyncDestination",
+                    "when": "config.databricks.sync.destinationType == workspace"
+                },
+                {
+                    "command": "databricks.utils.openExternal",
+                    "when": "false"
                 }
             ],
             "explorer/context": [
