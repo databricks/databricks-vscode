@@ -4,25 +4,20 @@
     "description": "A dummy extension to run integration tests",
     "version": "0.0.1",
     "engines": {
-        "vscode": "^1.74.0"
+        "vscode": "^1.69.0"
     },
     "categories": [
         "Other"
     ],
-    "main": "./out/extension.js",
-    "scripts": {
-        "vscode:prepublish": "yarn run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
-        "pretest": "yarn run compile && yarn run lint",
-        "lint": "eslint src --ext ts"
-    },
+    "activationEvents": [
+        "*"
+    ],
+    "main": "./src/extension.js",
     "devDependencies": {
         "@types/node": "^18.13.0",
         "@types/vscode": "^1.75.0",
         "@typescript-eslint/eslint-plugin": "^5.51.0",
         "@typescript-eslint/parser": "^5.51.0",
-        "eslint": "^8.34.0",
-        "typescript": "^4.9.5"
+        "eslint": "^8.34.0"
     }
 }

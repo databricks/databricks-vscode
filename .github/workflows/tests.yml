@@ -124,10 +124,11 @@ jobs:
         run: yarn run test:cov
         working-directory: packages/databricks-vscode
 
-      - name: Show coverage test result
-        continue-on-error: true
-        run: yarn nyc report --reporter text -t ./coverage >> $GITHUB_STEP_SUMMARY
-        working-directory: packages/databricks-vscode
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./coverage
+          working-directory: packages/databricks-vscode
 
       - name: Integration Tests
         run: yarn run test:integ
