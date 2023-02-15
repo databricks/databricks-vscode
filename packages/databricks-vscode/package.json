@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "0.2.0",
+    "version": "0.2.2",
     "engines": {
         "vscode": "^1.69.1"
     },
@@ -38,8 +38,6 @@
     },
     "activationEvents": [
         "onCommand:databricks.*",
-        "onView:configurationView",
-        "onView:clusterView",
         "onTaskType:databricks",
         "onDebugResolve:databricks",
         "onDebugResolve:databricks-workflow",
@@ -618,7 +616,7 @@
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
-        "package": "vsce package",
+        "package": "BASE_URL=https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-main}/packages/databricks-vscode && vsce package --baseContentUrl $BASE_URL --baseImagesUrl $BASE_URL",
         "package:cli:fetch": "BRICKS_VERSION=0.0.21 && bash ./scripts/fetch-bricks-cli.sh ${BRICKS_VERSION} ${BRICKS_ARCH:-}",
         "package:cli:link": "rm -f ./bin/bricks && ln -s ../../../../bricks/bricks bin",
         "package:compile": "yarn run esbuild:base",
