@@ -330,6 +330,7 @@ export const config: Options.Testrunner = {
                             "ms-python.python",
                             "--install-extension",
                             VSIX_PATH,
+                            "--force",
                         ],
                         spawnArgs,
                         (error, stdout, stderr) => {

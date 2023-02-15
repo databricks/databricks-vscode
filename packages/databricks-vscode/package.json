@@ -62,6 +62,7 @@
                 "command": "databricks.connection.configureWorkspace",
                 "icon": "$(gear)",
                 "title": "Configure workspace",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
