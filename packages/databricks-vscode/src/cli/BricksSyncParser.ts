@@ -25,56 +25,26 @@ export class BricksSyncParser {
     // const s1 = "Action: PUT: g, .gitignore, DELETE: f"
     // A hacky way to solve this, lets move to structed logs from bricks later
     private parseForActionsInitiated(line: string) {
-        const indexOfAction = line.indexOf("Action:");
-        // The log line is not relevant for actions
-        if (indexOfAction === -1) {
+        const match = line.match(/Action:( PUT: (.*?))?( DELETE: (.*?))?$/);
+        if (!match) {
             return;
         }
 
-        const tokenizedLine = line.substring(indexOfAction).split(" ");
-        let isPut = false;
-        let isDelete = false;
-        for (let i = 1; i < tokenizedLine.length; i++) {
-            switch (tokenizedLine[i]) {
-                case "PUT:": {
-                    isPut = true;
-                    isDelete = false;
-                    break;
-                }
-                case "DELETE:": {
-                    isDelete = true;
-                    isPut = false;
-                    break;
-                }
-                default: {
-                    // trim the trailing , if it exists
-                    const filePath = tokenizedLine[i].replace(/,$/, "");
-                    if (isPut) {
-                        this.filesBeingUploaded.add(filePath);
-                    } else if (isDelete) {
-                        this.filesBeingDeleted.add(filePath);
-                    } else {
-                        throw new Error(
-                            "[BricksSyncParser] unexpected logs recieved"
-                        );
-                    }
-                }
-            }
-        }
+        const toAdd = match[2]?.split(", ");
+        const toDelete = match[4]?.split(", ");
+
+        toAdd?.forEach((f) => this.filesBeingUploaded.add(f));
+        toDelete?.forEach((f) => this.filesBeingDeleted.add(f));
     }
 
     // We expect a single line of logs for all files being put/delete
     private parseForUploadCompleted(line: string) {
-        const indexOfUploaded = line.indexOf("Uploaded");
-        if (indexOfUploaded === -1) {
+        const match = line.match(/Uploaded (.*)/);
+        if (!match) {
             return;
         }
 
-        const tokenizedLine = line.substring(indexOfUploaded).split(" ");
-        if (tokenizedLine.length !== 2) {
-            throw new Error("[BricksSyncParser] unexpected logs recieved");
-        }
-        const filePath = tokenizedLine[1];
+        const filePath = match[1];
         if (!this.filesBeingUploaded.has(filePath)) {
             throw new Error(
                 "[BricksSyncParser] untracked file uploaded. All upload complete " +
@@ -89,16 +59,12 @@ export class BricksSyncParser {
     }
 
     private parseForDeleteCompleted(line: string) {
-        const indexOfDeleted = line.indexOf("Deleted");
-        if (indexOfDeleted === -1) {
+        const match = line.match(/Deleted (.*)/);
+        if (!match) {
             return;
         }
 
-        const tokenizedLine = line.substring(indexOfDeleted).split(" ");
-        if (tokenizedLine.length !== 2) {
-            throw new Error("[BricksSyncParser] unexpected logs recieved");
-        }
-        const filePath = tokenizedLine[1];
+        const filePath = match[1];
         if (!this.filesBeingDeleted.has(filePath)) {
             throw new Error(
                 "[BricksSyncParser] untracked file deleted. All delete complete " +
