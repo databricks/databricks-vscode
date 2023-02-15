@@ -165,7 +165,7 @@ class CustomSyncTerminal implements Pseudoterminal {
 /**
  * Wrapper around the CustomSyncTerminal class that lazily evaluates the process
  * and args properties. This is necessary because the process and args properties
- * re not known up front can only be computed dynamically at runtime.
+ * are not known up front and can only be computed dynamically at runtime.
  *
  * A Custom implmentation of the terminal is needed to run bricks sync as a CustomExecution
  * vscode task, which allows us to parse the stdout/stderr bricks sync logs and compute
