@@ -1,0 +1,14 @@
+comment:
+  layout: "header, diff, flags, components"
+
+component_management:
+  individual_components:
+    - component_id: sdk
+      name: js-sdk
+      paths:
+        - packages/databricks-sdk-js
+
+flag_management:
+  individual_flags:
+    - name: unit
+    - name: integration
