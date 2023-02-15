@@ -114,7 +114,7 @@ export class LocalUri extends DatabricksUri<LocalUri> {
             throw err;
         }
 
-        super(uri);
+        super(Uri.file(uri.fsPath));
     }
 
     get name(): string {
