@@ -1,3 +1,13 @@
+# Release: v0.2.3
+
+## packages/databricks-vscode
+
+## <small>0.2.3 (2023-02-15)</small>
+
+-   Add support for syncing files with spaces (#450) ([115b6a5](https://github.com/databricks/databricks-vscode/commit/115b6a5)), closes [#450](https://github.com/databricks/databricks-vscode/issues/450)
+-   Command cleanup, integration test fixes and code coverage (#445) ([60dcf80](https://github.com/databricks/databricks-vscode/commit/60dcf80)), closes [#445](https://github.com/databricks/databricks-vscode/issues/445)
+-   fix image link to getting started guide (#446) ([2a343b9](https://github.com/databricks/databricks-vscode/commit/2a343b9)), closes [#446](https://github.com/databricks/databricks-vscode/issues/446)
+
 # Release: v0.2.2
 
 ## packages/databricks-vscode
