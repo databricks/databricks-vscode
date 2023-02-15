@@ -3,14 +3,35 @@ import {
     WorkspaceFsEntity,
     WorkspaceFsUtils,
 } from "@databricks/databricks-sdk";
+import {NamedLogger} from "@databricks/databricks-sdk/src/logging";
 import * as assert from "assert";
 import path = require("path");
 import {Uri} from "vscode";
+import {Loggers} from "../logger";
 import {ConnectionManager} from "./ConnectionManager";
 
 type SyncDestinationType = "workspace" | "repo";
 export const REPO_NAME_SUFFIX = ".ide";
 
+class RemoteUri {
+    readonly wsfsDirPath: Uri;
+
+    constructor(wsfsDirPath: Uri) {
+        this.wsfsDirPath = SyncDestination.normalizeWorkspacePath(wsfsDirPath);
+    }
+}
+
+class LocalUri {
+    constructor(readonly localDirPath: Uri) {
+        if (localDirPath.scheme !== "file") {
+            const err = new Error(
+                `Local file URI scheme must be file. Found ${localDirPath.scheme} (${localDirPath.fsPath})`
+            );
+            NamedLogger.getOrCreate(Loggers.Extension).error(err.message, err);
+            throw err;
+        }
+    }
+}
 /**
  * Either Databricks repo or workspace that acts as a sync target for the current workspace.
  */
@@ -19,11 +40,7 @@ export class SyncDestination {
     /**
      * ONLY USE FOR TESTING
      */
-    constructor(
-        readonly wsfsDir: WorkspaceFsEntity,
-        wsfsDirPath: Uri,
-        readonly vscodeWorkspacePath: Uri
-    ) {
+    constructor(wsfsDirPath: Uri, readonly vscodeWorkspacePath: Uri) {
         this.wsfsDirPath = SyncDestination.normalizeWorkspacePath(wsfsDirPath);
     }
 
@@ -70,7 +87,7 @@ export class SyncDestination {
         if (wsfsDir === undefined) {
             return undefined;
         }
-        return new SyncDestination(wsfsDir, wsfsDirUri, vscodeWorkspacePath);
+        return new SyncDestination(wsfsDirUri, vscodeWorkspacePath);
     }
 
     static async getWorkspaceFsDir(client: WorkspaceClient, wsfsDirUri: Uri) {
@@ -93,6 +110,7 @@ export class SyncDestination {
 
         return wsfsDir;
     }
+
     static normalizeWorkspacePath(workspacePath: string | Uri): Uri {
         if (typeof workspacePath === "string") {
             workspacePath = Uri.from({
@@ -109,15 +127,6 @@ export class SyncDestination {
         }
 
         return workspacePath;
-    }
-
-    get type(): SyncDestinationType | undefined {
-        switch (this.wsfsDir.type) {
-            case "DIRECTORY":
-                return "workspace";
-            case "REPO":
-                return "repo";
-        }
     }
 
     get name(): string {
