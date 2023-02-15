@@ -194,7 +194,6 @@
                 "command": "databricks.utils.openExternal",
                 "title": "Open link externally",
                 "icon": "$(link)",
-                "enablement": "false",
                 "category": "Databricks"
             },
             {
@@ -397,6 +396,10 @@
                 {
                     "command": "databricks.wsfs.attachSyncDestination",
                     "when": "config.databricks.sync.destinationType == workspace"
+                },
+                {
+                    "command": "databricks.utils.openExternal",
+                    "when": "false"
                 }
             ],
             "explorer/context": [
