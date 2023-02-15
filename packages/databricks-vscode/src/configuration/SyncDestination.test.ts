@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiClient} from "@databricks/databricks-sdk";
-import {List} from "@databricks/databricks-sdk/dist/apis/repos";
 import assert from "assert";
-import {mock, when} from "ts-mockito";
 import {Uri} from "vscode";
 import {LocalUri, RemoteUri, SyncDestinationMapper} from "./SyncDestination";
-import * as path from "node:path";
 
 describe(__filename, () => {
     let mapper: SyncDestinationMapper;
