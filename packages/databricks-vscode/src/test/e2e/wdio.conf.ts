@@ -108,7 +108,7 @@ export const config: Options.Testrunner = {
                     extensionPath: path.resolve(
                         __dirname,
                         "resources",
-                        "dumm-test"
+                        "dummy-test"
                     ),
                     vscodeArgs: {
                         extensionsDir: EXTENSION_DIR,
@@ -122,6 +122,7 @@ export const config: Options.Testrunner = {
                         "workbench.editor.enablePreview": true,
                         "window.newWindowDimensions": "default",
                         "window.openFoldersInNewWindow": "off",
+                        "extensions.autoCheckUpdates": false,
                     },
                 },
             },
