@@ -123,6 +123,7 @@ export const config: Options.Testrunner = {
                         "window.newWindowDimensions": "default",
                         "window.openFoldersInNewWindow": "off",
                         "extensions.autoCheckUpdates": false,
+                        "extensions.autoUpdate": false,
                     },
                 },
             },
