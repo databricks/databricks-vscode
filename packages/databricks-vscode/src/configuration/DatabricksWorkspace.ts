@@ -9,7 +9,7 @@ import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
-import {workspaceConfigs} from "../WorkspaceConfigs";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider} from "./auth/AuthProvider";
 
 export class DatabricksWorkspace {

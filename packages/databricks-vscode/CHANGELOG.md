@@ -1,3 +1,19 @@
+# Release: v0.2.2
+
+## packages/databricks-vscode
+
+## <small>0.2.2 (2023-02-14)</small>
+
+-   fix image links in README.md (#440) ([423b94b](https://github.com/databricks/databricks-vscode/commit/423b94b)), closes [#440](https://github.com/databricks/databricks-vscode/issues/440)
+
+# Release: v0.2.1
+
+## packages/databricks-vscode
+
+## <small>0.2.1 (2023-02-14)</small>
+
+-   Minor: Doc updates after extension was made public
+
 # Release: v0.2.0
 
 ## packages/databricks-vscode

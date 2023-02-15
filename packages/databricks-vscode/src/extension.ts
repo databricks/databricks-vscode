@@ -24,15 +24,18 @@ import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {LoggerManager, Loggers} from "./logger";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
-import {workspaceConfigs} from "./WorkspaceConfigs";
+import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {generateBundleSchema} from "./bundle/GenerateBundle";
+import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 
 export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
+    CustomWhenContext.setActivated(false);
+
     if (extensions.getExtension("databricks.databricks-vscode") !== undefined) {
         await commands.executeCommand(
             "workbench.extensions.uninstallExtension",
@@ -339,10 +342,13 @@ export async function activate(
         NamedLogger.getOrCreate("Extension").error("Login error", e);
     });
 
+    CustomWhenContext.setActivated(true);
     return {
         connectionManager: connectionManager,
     };
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+    CustomWhenContext.setActivated(false);
+}

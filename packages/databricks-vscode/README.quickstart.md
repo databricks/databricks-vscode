@@ -34,8 +34,7 @@ The Databricks extension for VS Code allows you to develop for the Databricks La
     1. You can also select the first entry in the list to create a new cluster. Selecting the item will take you into the Databricks web application.
     2. We recommend creating a Personal Compute Cluster.
 5. Click the "gear" icon in the Repo tree item to select a repo to sync code to
-    1. You can also select the first entry in the list to create a new Databricks repo. Selecting the item will take you into the Databricks web application.
-    2. We recommend to not configure a git remote for you repo and do all git operations from the IDE
+    1. You can also select the first entry in the list to create a new Databricks repo
 
 ![configure](./images/configure.gif)
 

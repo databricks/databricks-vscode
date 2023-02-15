@@ -1,6 +1,6 @@
 {
     "name": "@databricks/databricks-sdk",
-    "version": "0.2.0",
+    "version": "0.2.2",
     "description": "Databricks SDK",
     "repository": {
         "type": "git",
