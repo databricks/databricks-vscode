@@ -1,3 +1,11 @@
+# Release: v0.2.4
+
+## packages/databricks-vscode
+
+## <small>0.2.4 (2023-02-15)</small>
+
+-   Bump bricks (#455) ([7fffba0](https://github.com/databricks/databricks-vscode/commit/7fffba0)), closes [#455](https://github.com/databricks/databricks-vscode/issues/455)
+
 # Release: v0.2.3
 
 ## packages/databricks-vscode
