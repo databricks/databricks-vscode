@@ -246,7 +246,8 @@ export class DatabricksRuntime implements Disposable {
         );
 
         const argv = [
-            syncDestination.localToRemote(new LocalUri(Uri.file(program))).path,
+            syncDestination.localToRemote(new LocalUri(Uri.file(program)))
+                .workspacePrefixPath,
             ...args,
         ];
 
