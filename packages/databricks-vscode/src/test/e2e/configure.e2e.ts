@@ -53,7 +53,26 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should wait for quickstart", async () => {
-        workbench.getEditorView().getTabByTitle("");
+        const section = await getViewSection("CONFIGURATION");
+        assert(section);
+        const welcome = await section.findWelcomeContent();
+        assert(welcome);
+        await browser.waitUntil(
+            async () => {
+                return (
+                    (
+                        await (
+                            await workbench.getEditorView().getEditorGroup(0)
+                        ).getOpenTabs()
+                    ).findIndex(async (value) => {
+                        return (await value.getTitle()).includes(
+                            "DATABRICKS.quickstart.md"
+                        );
+                    }) !== -1
+                );
+            },
+            {timeout: 5000}
+        );
     });
 
     it("should open databricks panel and login", async function () {
