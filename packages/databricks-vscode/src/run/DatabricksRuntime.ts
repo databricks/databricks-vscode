@@ -130,15 +130,9 @@ export class DatabricksRuntime implements Disposable {
                 await executionContext.destroy();
             });
 
-            const currentFsRoot =
-                this.connection.databricksWorkspace?.currentFsRoot;
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
-            log(
-                `Synchronizing code to ${syncDestination.remoteUri.relativePath(
-                    new RemoteUri(currentFsRoot ?? "")
-                )} ...`
-            );
+            log(`Synchronizing code to ${syncDestination.remoteUri.path} ...`);
 
             this.disposables.push(
                 this.codeSynchronizer.onDidChangeState((state) => {
@@ -276,7 +270,7 @@ export class DatabricksRuntime implements Disposable {
         );
         bootstrap = bootstrap.replace(
             '"REPO_PATH"',
-            `"${syncDestination.remoteUri.path}"`
+            `"${syncDestination.remoteUri.workspacePrefixPath}"`
         );
         bootstrap = bootstrap.replace(
             "args = []",

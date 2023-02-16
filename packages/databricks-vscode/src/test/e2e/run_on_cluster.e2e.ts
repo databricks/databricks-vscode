@@ -35,9 +35,18 @@ describe("Run python on cluster", async function () {
                 workspacePath: process.env["TEST_REPO_PATH"],
             })
         );
+        await fs.mkdir(path.join(projectDir, "nested"));
         await fs.writeFile(
-            path.join(projectDir, "hello.py"),
-            `spark.sql('SELECT "hello world"').show()`
+            path.join(projectDir, "nested", "hello.py"),
+            [`from lib import func`, "func(spark)"].join("\n")
+        );
+
+        await fs.writeFile(
+            path.join(projectDir, "lib.py"),
+            [
+                "def func(spark):",
+                `\tspark.sql('SELECT "hello world"').show()`,
+            ].join("\n")
         );
         await dismissNotifications();
     });
