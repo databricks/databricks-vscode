@@ -52,6 +52,10 @@ describe("Configure Databricks Extension", async function () {
         }
     });
 
+    it("should wait for quickstart", async () => {
+        workbench.getEditorView().getTabByTitle("");
+    });
+
     it("should open databricks panel and login", async function () {
         const section = await getViewSection("CONFIGURATION");
         assert(section);
