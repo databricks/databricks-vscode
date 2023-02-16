@@ -4,8 +4,6 @@
 
 ## <small>0.2.4 (2023-02-16)</small>
 
--   Seperate unit and integration test coverage (#453) ([6696d0c](https://github.com/databricks/databricks-vscode/commit/6696d0c)), closes [#453](https://github.com/databricks/databricks-vscode/issues/453)
-
 # Release: v0.2.3
 
 ## packages/databricks-sdk-js
