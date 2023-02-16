@@ -1,14 +1,16 @@
 import * as assert from "assert";
 import {Uri} from "vscode";
-import {SyncDestination} from "../configuration/SyncDestination";
+import {
+    LocalUri,
+    RemoteUri,
+    SyncDestinationMapper,
+} from "../configuration/SyncDestination";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
 import {writeFile} from "node:fs/promises";
 
 import {CliWrapper} from "./CliWrapper";
-import {instance, mock} from "ts-mockito";
-import {WorkspaceFsRepo} from "@databricks/databricks-sdk";
 import path from "node:path";
 
 const execFile = promisify(execFileCb);
@@ -26,13 +28,16 @@ describe(__filename, () => {
                 return path;
             },
         } as any);
-        const mapper = new SyncDestination(
-            instance(mock(WorkspaceFsRepo)),
-            Uri.from({
-                scheme: "wsfs",
-                path: "/Workspace/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
-            }),
-            Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
+        const mapper = new SyncDestinationMapper(
+            new LocalUri(
+                Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
+            ),
+            new RemoteUri(
+                Uri.from({
+                    scheme: "wsfs",
+                    path: "/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+                })
+            )
         );
 
         let {command, args} = cli.getSyncCommand(mapper, "incremental");

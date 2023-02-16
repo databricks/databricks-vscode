@@ -1,6 +1,6 @@
 import {execFile as execFileCb, spawn} from "child_process";
 import {ExtensionContext} from "vscode";
-import {SyncDestination} from "../configuration/SyncDestination";
+import {SyncDestinationMapper} from "../configuration/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 
@@ -41,14 +41,14 @@ export class CliWrapper {
      * Constructs the bricks sync command
      */
     getSyncCommand(
-        syncDestination: SyncDestination,
+        syncDestination: SyncDestinationMapper,
         syncType: SyncType
     ): Command {
         const command = this.context.asAbsolutePath("./bin/bricks");
         const args = [
             "sync",
             "--remote-path",
-            syncDestination.relativeWsfsDirPath,
+            syncDestination.remoteUri.path,
             "--watch",
         ];
         if (syncType === "full") {

@@ -3,39 +3,51 @@ import {
     WorkspaceFsEntity,
     WorkspaceFsUtils,
 } from "@databricks/databricks-sdk";
-import * as assert from "assert";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import path = require("path");
 import {Uri} from "vscode";
+import {Loggers} from "../logger";
 import {ConnectionManager} from "./ConnectionManager";
 
-type SyncDestinationType = "workspace" | "repo";
 export const REPO_NAME_SUFFIX = ".ide";
 
-/**
- * Either Databricks repo or workspace that acts as a sync target for the current workspace.
- */
-export class SyncDestination {
-    readonly wsfsDirPath: Uri;
-    /**
-     * ONLY USE FOR TESTING
-     */
-    constructor(
-        readonly wsfsDir: WorkspaceFsEntity,
-        wsfsDirPath: Uri,
-        readonly vscodeWorkspacePath: Uri
-    ) {
-        this.wsfsDirPath = SyncDestination.normalizeWorkspacePath(wsfsDirPath);
+export abstract class DatabricksUri<T> {
+    constructor(readonly uri: Uri) {}
+
+    abstract get name(): string;
+    abstract get path(): string;
+
+    abstract relativePath(other: T): string;
+
+    hasChild(other: T) {
+        const relative = this.relativePath(other);
+        if (!relative.startsWith("..")) {
+            return true;
+        }
+
+        return false;
+    }
+}
+export class RemoteUri extends DatabricksUri<RemoteUri> {
+    constructor(uri: Uri | string) {
+        if (typeof uri === "string") {
+            uri = Uri.from({
+                scheme: "wsfs",
+                path: uri,
+            });
+        } else if (uri.scheme !== "wsfs") {
+            const err = new Error(
+                `Remote file URI scheme must be wsfs. Found ${uri.scheme} (${uri.path})`
+            );
+            NamedLogger.getOrCreate(Loggers.Extension).error(err.message, err);
+            throw err;
+        }
+
+        super(uri);
     }
 
-    static async validateRemote(
-        connectionManager: ConnectionManager,
-        remotePath: Uri
-    ) {
-        remotePath = SyncDestination.normalizeWorkspacePath(remotePath);
-        remotePath = Uri.from({
-            scheme: "wsfs",
-            path: remotePath.path.replace(/^\/Workspace\//, "/"),
-        });
+    async validate(connectionManager: ConnectionManager) {
+        const remotePath = this.uri.path;
 
         if (
             connectionManager.workspaceClient === undefined ||
@@ -50,7 +62,7 @@ export class SyncDestination {
         );
         if (
             !WorkspaceFsUtils.isDirectory(rootDir) ||
-            rootDir.getAbsoluteChildPath(remotePath.path) === undefined
+            rootDir.getAbsoluteChildPath(remotePath) === undefined
         ) {
             return false;
         }
@@ -58,70 +70,8 @@ export class SyncDestination {
         return true;
     }
 
-    static async from(
-        client: WorkspaceClient,
-        wsfsDirUri: Uri,
-        vscodeWorkspacePath: Uri
-    ) {
-        const wsfsDir = await SyncDestination.getWorkspaceFsDir(
-            client,
-            wsfsDirUri
-        );
-        if (wsfsDir === undefined) {
-            return undefined;
-        }
-        return new SyncDestination(wsfsDir, wsfsDirUri, vscodeWorkspacePath);
-    }
-
-    static async getWorkspaceFsDir(client: WorkspaceClient, wsfsDirUri: Uri) {
-        assert.equal(wsfsDirUri.scheme, "wsfs");
-
-        // Repo paths always start with "/Workspace" but the repos API strips this off.
-        wsfsDirUri = SyncDestination.normalizeWorkspacePath(wsfsDirUri);
-
-        const wsfsDir = await WorkspaceFsEntity.fromPath(
-            client,
-            wsfsDirUri.path.replace(/^\/Workspace\//, "/")
-        );
-
-        if (
-            wsfsDir === undefined ||
-            !["REPO", "DIRECTORY"].includes(wsfsDir.type)
-        ) {
-            return undefined;
-        }
-
-        return wsfsDir;
-    }
-    static normalizeWorkspacePath(workspacePath: string | Uri): Uri {
-        if (typeof workspacePath === "string") {
-            workspacePath = Uri.from({
-                scheme: "wsfs",
-                path: workspacePath,
-            });
-        }
-
-        if (!workspacePath.path.startsWith("/Workspace/")) {
-            workspacePath = Uri.from({
-                scheme: "wsfs",
-                path: `/Workspace${workspacePath.path}`,
-            });
-        }
-
-        return workspacePath;
-    }
-
-    get type(): SyncDestinationType | undefined {
-        switch (this.wsfsDir.type) {
-            case "DIRECTORY":
-                return "workspace";
-            case "REPO":
-                return "repo";
-        }
-    }
-
     get name(): string {
-        const base = path.basename(this.wsfsDirPath.path);
+        const base = path.posix.basename(this.path);
         if (base.endsWith(REPO_NAME_SUFFIX)) {
             return base.slice(0, -REPO_NAME_SUFFIX.length);
         } else {
@@ -129,72 +79,110 @@ export class SyncDestination {
         }
     }
 
-    get vscodeWorkspacePathName(): string {
-        return path.basename(this.vscodeWorkspacePath.path);
+    get path(): string {
+        return this.uri.path;
     }
 
-    get path(): Uri {
-        return this.wsfsDirPath;
+    get workspacePrefixPath(): string {
+        return path.posix.join("/Workspace", this.path);
     }
 
-    get relativeWsfsDirPath(): string {
-        return this.wsfsDirPath.path.replace("/Workspace", "");
+    get localPath(): string {
+        return this.uri.fsPath;
     }
 
-    /**
-     * Strips the workspace path from an absolute path
-     */
-    getRelativePath(path: Uri): string {
-        if (path.scheme === "file") {
-            if (!path.path.startsWith(this.vscodeWorkspacePath.path)) {
-                throw new Error(
-                    `local path is not within the workspace. Expected ${path.path} to start with ${this.vscodeWorkspacePath.path}.`
-                );
-            }
-            return path.path.replace(this.vscodeWorkspacePath.path, "");
-        } else if (path.scheme === "wsfs") {
-            return path.path.replace(this.wsfsDirPath.path, "");
-        } else {
-            throw new Error(`Invalid path scheme: ${path.scheme}`);
+    relativePath(other: RemoteUri) {
+        return path.posix.relative(this.path, other.path);
+    }
+
+    async getUrl(wsClient: WorkspaceClient): Promise<string | undefined> {
+        return await (
+            await WorkspaceFsEntity.fromPath(wsClient, this.uri.path)
+        )?.url;
+    }
+}
+
+export class LocalUri extends DatabricksUri<LocalUri> {
+    constructor(uri: Uri | string) {
+        if (typeof uri === "string") {
+            uri = Uri.file(uri);
+        } else if (uri.scheme !== "file") {
+            const err = new Error(
+                `Local file URI scheme must be file. Found ${uri.scheme} (${uri.fsPath})`
+            );
+            NamedLogger.getOrCreate(Loggers.Extension).error(err.message, err);
+            throw err;
         }
+
+        super(Uri.file(uri.fsPath));
     }
 
+    get name(): string {
+        return path.basename(this.path);
+    }
+
+    get path(): string {
+        return this.uri.fsPath;
+    }
+
+    get posixPath(): string {
+        return this.uri.path;
+    }
+
+    relativePath(other: LocalUri) {
+        return path.relative(this.path, other.path);
+    }
+}
+
+export class SyncDestinationMapper {
+    constructor(readonly localUri: LocalUri, readonly remoteUri: RemoteUri) {}
     /**
      * Maps a local notebook to notebook path used in workflow deifnitions.
      */
-    localToRemoteNotebook(localPath: Uri): string {
-        assert.equal(localPath.scheme, "file");
-        return this.localToRemote(localPath).replace(
-            /^\/Workspace(\/.*)\.(py|ipynb|scala|r|sql)/g,
-            "$1"
+    localToRemoteNotebook(localPath: LocalUri): RemoteUri {
+        return new RemoteUri(
+            this.localToRemote(localPath).path.replace(
+                /^(\/.*)\.(py|ipynb|scala|r|sql)/g,
+                "$1"
+            )
         );
     }
-
     /**
      * Maps a local file path to the remote file path whre it gets synced to.
      */
-    localToRemote(localPath: Uri): string {
-        assert.equal(localPath.scheme, "file");
-        if (!localPath.path.startsWith(this.vscodeWorkspacePath.path)) {
+    localToRemote(localPath: LocalUri): RemoteUri {
+        if (
+            localPath.path !== this.localUri.path &&
+            !this.localUri.hasChild(localPath)
+        ) {
             throw new Error(
-                `local path is not within the workspace. Expected ${localPath.path} to start with ${this.vscodeWorkspacePath.path}.`
+                `local path is not within the workspace. Expected ${localPath.path} to start with ${this.localUri.path}.`
             );
         }
 
-        const relativePath = localPath.path.replace(
-            this.vscodeWorkspacePath.path,
-            ""
+        const relativePath = path.posix.relative(
+            this.localUri.posixPath,
+            localPath.posixPath
         );
-        return Uri.joinPath(this.wsfsDirPath, relativePath).path;
+        return new RemoteUri(
+            path.posix.join(this.remoteUri.path, relativePath)
+        );
     }
 
-    remoteToLocal(remotePath: Uri): Uri {
-        assert.equal(remotePath.scheme, "wsfs");
-        if (!remotePath.path.startsWith(this.wsfsDirPath.path)) {
-            throw new Error("remote path is not within the target wsfsDir");
+    remoteToLocal(remotePath: RemoteUri): LocalUri {
+        if (
+            this.remoteUri.path !== remotePath.path &&
+            !this.remoteUri.hasChild(remotePath)
+        ) {
+            throw new Error(
+                `remote path is not within the target remote dir. Expected ${remotePath.path} to start with ${this.remoteUri.path}`
+            );
         }
 
-        const relativePath = remotePath.path.replace(this.wsfsDirPath.path, "");
-        return Uri.joinPath(this.vscodeWorkspacePath, relativePath);
+        const relative = path.relative(
+            this.remoteUri.localPath,
+            remotePath.localPath
+        );
+        return new LocalUri(path.join(this.localUri.path, relative));
     }
 }

@@ -76,7 +76,7 @@ export class ConfigurationDataProvider
         }
 
         const cluster = this.connectionManager.cluster;
-        const syncDestination = this.connectionManager.syncDestination;
+        const syncDestination = this.connectionManager.syncDestinationMapper;
 
         if (!element) {
             const children: Array<ConfigurationTreeItem> = [];
@@ -131,8 +131,12 @@ export class ConfigurationDataProvider
                     contextValue: "clusterDetached",
                 });
             }
-
             if (syncDestination) {
+                const url = this.connectionManager.workspaceClient
+                    ? await syncDestination.remoteUri.getUrl(
+                          this.connectionManager.workspaceClient
+                      )
+                    : undefined;
                 // TODO: Add another icon over here for in_progress state
                 // DECO-220
                 children.push({
@@ -140,7 +144,7 @@ export class ConfigurationDataProvider
                     iconPath: new ThemeIcon("file-directory"),
                     id: "SYNC-DESTINATION",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
-                    url: await syncDestination.wsfsDir.url,
+                    url: url,
                     contextValue:
                         this.sync.state === "WATCHING_FOR_CHANGES" ||
                         this.sync.state === "IN_PROGRESS"
@@ -257,7 +261,7 @@ export class ConfigurationDataProvider
             const children: Array<TreeItem> = [
                 {
                     label: `Name`,
-                    description: syncDestination.name,
+                    description: syncDestination.remoteUri.name,
                     iconPath:
                         this.sync.state === "WATCHING_FOR_CHANGES" ||
                         this.sync.state === "IN_PROGRESS"
@@ -268,7 +272,7 @@ export class ConfigurationDataProvider
             ];
 
             if (
-                syncDestination.name !== syncDestination.vscodeWorkspacePathName
+                syncDestination.remoteUri.name !== syncDestination.localUri.name
             ) {
                 children.push({
                     label: "The remote sync destination name does not match the current vscode workspace name",
@@ -288,7 +292,7 @@ export class ConfigurationDataProvider
                 },
                 {
                     label: `Path`,
-                    description: syncDestination.path.path,
+                    description: syncDestination.remoteUri.path,
                     collapsibleState: TreeItemCollapsibleState.None,
                 }
             );

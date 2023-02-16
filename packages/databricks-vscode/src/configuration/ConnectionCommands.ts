@@ -16,7 +16,7 @@ import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
-import {REPO_NAME_SUFFIX} from "./SyncDestination";
+import {RemoteUri, REPO_NAME_SUFFIX} from "./SyncDestination";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -300,9 +300,12 @@ export class ConnectionCommands implements Disposable {
                     const fn = async () => {
                         const selection = input
                             .selectedItems[0] as WorkspaceFsQuickPickItem;
-                        if (selection.label !== "Create New Sync Destination") {
+                        if (
+                            selection.label !== "Create New Sync Destination" &&
+                            selection.path
+                        ) {
                             this.connectionManager.attachSyncDestination(
-                                Uri.from({scheme: "wsfs", path: selection.path})
+                                new RemoteUri(selection.path)
                             );
                             return;
                         }
@@ -316,10 +319,7 @@ export class ConnectionCommands implements Disposable {
                             return;
                         }
                         this.connectionManager.attachSyncDestination(
-                            Uri.from({
-                                scheme: "wsfs",
-                                path: created.path,
-                            })
+                            new RemoteUri(created.path)
                         );
                     };
                     try {

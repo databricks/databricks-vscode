@@ -31,13 +31,13 @@ export class RunCommands {
                     await this.connection.waitForConnect();
                 }
 
-                if (this.connection.syncDestination === undefined) {
+                if (this.connection.syncDestinationMapper === undefined) {
                     await promptForAttachingSyncDest(async () => {
                         window.showErrorMessage(
                             "Execution cancelled because no Sync Destination is configured"
                         );
                     });
-                    if (this.connection.syncDestination === undefined) {
+                    if (this.connection.syncDestinationMapper === undefined) {
                         window.showErrorMessage(
                             "Execution cancelled because no Sync Destination is configured"
                         );
@@ -70,13 +70,13 @@ export class RunCommands {
                     await this.connection.waitForConnect();
                 }
 
-                if (this.connection.syncDestination === undefined) {
+                if (this.connection.syncDestinationMapper === undefined) {
                     await promptForAttachingSyncDest(async () => {
                         window.showErrorMessage(
                             "Execution cancelled because no Sync Destination is configured"
                         );
                     });
-                    if (this.connection.syncDestination === undefined) {
+                    if (this.connection.syncDestinationMapper === undefined) {
                         window.showErrorMessage(
                             "Execution cancelled because no Sync Destination is configured"
                         );
