@@ -4,8 +4,9 @@
 
 ## <small>0.2.4 (2023-02-16)</small>
 
--   Bump bricks (#455) ([7fffba0](https://github.com/databricks/databricks-vscode/commit/7fffba0)), closes [#455](https://github.com/databricks/databricks-vscode/issues/455)
--   Fix windows support for sync destination (#458) ([bdf610d](https://github.com/databricks/databricks-vscode/commit/bdf610d)), closes [#458](https://github.com/databricks/databricks-vscode/issues/458)
+-   Fix: Ignore symlinked folders when syncing code to Databricks, closes [#455](https://github.com/databricks/databricks-vscode/issues/455)
+-   Fix: Improve handling of notebooks during sync
+-   Fix: Fix Windows support for sync destination, closes [#458](https://github.com/databricks/databricks-vscode/issues/458)
 
 # Release: v0.2.3
 
