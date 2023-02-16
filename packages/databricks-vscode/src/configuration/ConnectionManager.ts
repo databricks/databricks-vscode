@@ -7,7 +7,7 @@ import {
     workspace as vscodeWorkspace,
 } from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
-import {SyncDestination} from "./SyncDestination";
+import {SyncDestinationMapper, RemoteUri, LocalUri} from "./SyncDestination";
 import {
     ConfigFileError,
     ProjectConfig,
@@ -31,7 +31,7 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 export class ConnectionManager {
     private _state: ConnectionState = "DISCONNECTED";
     private _workspaceClient?: WorkspaceClient;
-    private _syncDestination?: SyncDestination;
+    private _syncDestinationMapper?: SyncDestinationMapper;
     private _projectConfigFile?: ProjectConfigFile;
     private _clusterManager?: ClusterManager;
     private _databricksWorkspace?: DatabricksWorkspace;
@@ -42,7 +42,7 @@ export class ConnectionManager {
         Cluster | undefined
     > = new EventEmitter();
     private readonly onDidChangeSyncDestinationEmitter: EventEmitter<
-        SyncDestination | undefined
+        SyncDestinationMapper | undefined
     > = new EventEmitter();
 
     public readonly onDidChangeState = this.onDidChangeStateEmitter.event;
@@ -64,8 +64,8 @@ export class ConnectionManager {
         return this._clusterManager?.cluster;
     }
 
-    get syncDestination(): SyncDestination | undefined {
-        return this._syncDestination;
+    get syncDestinationMapper(): SyncDestinationMapper | undefined {
+        return this._syncDestinationMapper;
     }
 
     get databricksWorkspace(): DatabricksWorkspace | undefined {
@@ -184,9 +184,7 @@ export class ConnectionManager {
 
         if (projectConfigFile.workspacePath) {
             await this.attachSyncDestination(
-                SyncDestination.normalizeWorkspacePath(
-                    projectConfigFile.workspacePath
-                ),
+                new RemoteUri(projectConfigFile.workspacePath),
                 true
             );
         } else {
@@ -361,7 +359,7 @@ export class ConnectionManager {
     }
 
     async attachSyncDestination(
-        workspacePath: Uri,
+        remoteWorkspace: RemoteUri,
         skipWrite = false
     ): Promise<void> {
         try {
@@ -380,23 +378,19 @@ export class ConnectionManager {
                     "Can't attach a Sync Destination when profile is not connected"
                 );
             }
-            if (!(await SyncDestination.validateRemote(this, workspacePath))) {
+            if (!(await remoteWorkspace.validate(this))) {
                 await this.detachSyncDestination();
                 return;
             }
 
             if (!skipWrite) {
-                this._projectConfigFile!.workspacePath = workspacePath;
+                this._projectConfigFile!.workspacePath = remoteWorkspace.uri;
                 await this._projectConfigFile!.write();
             }
 
             const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
             this.updateSyncDestination(
-                await SyncDestination.from(
-                    this.workspaceClient,
-                    workspacePath,
-                    wsUri
-                )
+                new SyncDestinationMapper(new LocalUri(wsUri), remoteWorkspace)
             );
         } catch (e) {
             NamedLogger.getOrCreate("Extension").error(
@@ -404,7 +398,7 @@ export class ConnectionManager {
                 e
             );
             window.showErrorMessage(
-                `Error in attaching sync destination ${workspacePath.fsPath}`
+                `Error in attaching sync destination ${remoteWorkspace.path}`
             );
             await this.detachSyncDestination();
         }
@@ -412,7 +406,7 @@ export class ConnectionManager {
 
     async detachSyncDestination(): Promise<void> {
         if (
-            !this._syncDestination &&
+            !this._syncDestinationMapper &&
             this._projectConfigFile?.workspacePath === undefined
         ) {
             return;
@@ -450,11 +444,13 @@ export class ConnectionManager {
     }
 
     private updateSyncDestination(
-        newSyncDestination: SyncDestination | undefined
+        newSyncDestination: SyncDestinationMapper | undefined
     ) {
-        if (this._syncDestination !== newSyncDestination) {
-            this._syncDestination = newSyncDestination;
-            this.onDidChangeSyncDestinationEmitter.fire(this._syncDestination);
+        if (this._syncDestinationMapper !== newSyncDestination) {
+            this._syncDestinationMapper = newSyncDestination;
+            this.onDidChangeSyncDestinationEmitter.fire(
+                this._syncDestinationMapper
+            );
         }
     }
 

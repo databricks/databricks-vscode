@@ -15,7 +15,10 @@ import {
     ViewColumn,
     window,
 } from "vscode";
-import {SyncDestination} from "../configuration/SyncDestination";
+import {
+    LocalUri,
+    SyncDestinationMapper,
+} from "../configuration/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {isNotebook} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
@@ -78,7 +81,7 @@ export class WorkflowRunner implements Disposable {
         parameters?: Record<string, string>;
         args?: Array<string>;
         cluster: Cluster;
-        syncDestination: SyncDestination;
+        syncDestination: SyncDestinationMapper;
         token?: CancellationToken;
     }) {
         const panel = await this.getPanelForUri(program);
@@ -103,7 +106,9 @@ export class WorkflowRunner implements Disposable {
         try {
             if (await isNotebook(program)) {
                 const response = await cluster.runNotebookAndWait({
-                    path: syncDestination.localToRemoteNotebook(program),
+                    path: syncDestination.localToRemoteNotebook(
+                        new LocalUri(program)
+                    ).path,
                     parameters,
                     onProgress: (
                         state: jobs.RunLifeCycleState,
@@ -117,8 +122,8 @@ export class WorkflowRunner implements Disposable {
                 panel.showHtmlResult(htmlContent || "");
             } else {
                 const response = await cluster.runPythonAndWait({
-                    path:
-                        syncDestination.localToRemoteNotebook(program) + ".py",
+                    path: syncDestination.localToRemote(new LocalUri(program))
+                        .path,
                     args,
                     onProgress: (
                         state: jobs.RunLifeCycleState,

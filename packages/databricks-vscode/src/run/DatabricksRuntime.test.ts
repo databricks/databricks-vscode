@@ -3,15 +3,14 @@
 import assert from "assert";
 import {mock, when, instance, anything, verify, capture} from "ts-mockito";
 import {Disposable, ExtensionContext, Uri} from "vscode";
-import {
-    Cluster,
-    Command,
-    ExecutionContext,
-    WorkspaceFsRepo,
-} from "@databricks/databricks-sdk";
+import {Cluster, Command, ExecutionContext} from "@databricks/databricks-sdk";
 import {DatabricksRuntime, OutputEvent} from "./DatabricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {SyncDestination} from "../configuration/SyncDestination";
+import {
+    LocalUri,
+    RemoteUri,
+    SyncDestinationMapper,
+} from "../configuration/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import path from "node:path";
 
@@ -53,15 +52,13 @@ describe(__filename, () => {
             instance<Cluster>(cluster)
         );
 
-        const syncDestination = new SyncDestination(
-            instance(mock(WorkspaceFsRepo)),
-            Uri.from({
-                scheme: "wsfs",
-                path: "/Workspace/Repos/fabian@databricks.com/test",
-            }),
-            Uri.file("/Desktop/workspaces")
+        const syncDestination = new SyncDestinationMapper(
+            new LocalUri("/Desktop/workspaces"),
+            new RemoteUri("/Repos/fabian@databricks.com/test")
         );
-        when(connectionManagerMock.syncDestination).thenReturn(syncDestination);
+        when(connectionManagerMock.syncDestinationMapper).thenReturn(
+            syncDestination
+        );
 
         const connectionManager = instance<ConnectionManager>(
             connectionManagerMock
@@ -104,7 +101,7 @@ describe(__filename, () => {
             outputs[1].text.includes("Creating execution context on cluster")
         );
         assert(outputs[2].text.includes("Synchronizing code to"));
-        assert(outputs[3].text.includes("Running /hello.py"));
+        assert(outputs[3].text.includes("Running hello.py"));
         assert.equal(outputs[4].text, "43");
         assert(outputs[5].text.includes("Done"));
     });

@@ -1,7 +1,7 @@
 import {Disposable, workspace} from "vscode";
 import {ConnectionManager} from "./ConnectionManager";
 import {ProjectConfigFile} from "./ProjectConfigFile";
-import {SyncDestination} from "./SyncDestination";
+import {RemoteUri} from "./SyncDestination";
 
 export class ProjectConfigFileWatcher implements Disposable {
     private disposables: Array<Disposable> = [];
@@ -41,14 +41,12 @@ export class ProjectConfigFileWatcher implements Disposable {
                     }
                 }
                 if (
-                    connectionManager.syncDestination?.path.path !==
+                    connectionManager.syncDestinationMapper?.remoteUri.path !==
                     configFile.workspacePath?.path
                 ) {
                     if (configFile.workspacePath) {
                         await connectionManager.attachSyncDestination(
-                            SyncDestination.normalizeWorkspacePath(
-                                configFile.workspacePath
-                            )
+                            new RemoteUri(configFile.workspacePath?.path)
                         );
                     } else {
                         await connectionManager.detachSyncDestination();

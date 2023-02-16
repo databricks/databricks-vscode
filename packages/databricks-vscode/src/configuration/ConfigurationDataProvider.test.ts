@@ -7,14 +7,14 @@ import {ConfigurationDataProvider} from "./ConfigurationDataProvider";
 import {ApiClient, Cluster} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "./ConnectionManager";
 import {resolveProviderResult} from "../test/utils";
-import {SyncDestination} from "./SyncDestination";
+import {SyncDestinationMapper} from "./SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 describe(__filename, () => {
     let connectionManagerMock: ConnectionManager;
     let disposables: Array<Disposable>;
     let onChangeClusterListener: (e: Cluster) => void;
-    let onChangeSyncDestinationListener: (e: SyncDestination) => void;
+    let onChangeSyncDestinationListener: (e: SyncDestinationMapper) => void;
     let sync: CodeSynchronizer;
 
     beforeEach(() => {
@@ -87,7 +87,7 @@ describe(__filename, () => {
         );
 
         assert(!called);
-        onChangeSyncDestinationListener(instance(mock(SyncDestination)));
+        onChangeSyncDestinationListener(instance(mock(SyncDestinationMapper)));
         assert(called);
     });
 

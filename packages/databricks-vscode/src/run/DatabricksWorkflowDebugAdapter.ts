@@ -174,7 +174,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
                 "You must attach to a cluster to run on Databricks"
             );
         }
-        const syncDestination = this.connection.syncDestination;
+        const syncDestination = this.connection.syncDestinationMapper;
         if (!syncDestination) {
             return this.onError(
                 "You must configure code synchronization to run on Databricks"
