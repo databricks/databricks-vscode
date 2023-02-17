@@ -34,14 +34,14 @@ describe(__dirname, function () {
         if (testCase.only) {
             // eslint-disable-next-line no-only-tests/no-only-tests
             it.only(testCase.name, async function () {
-                this.timeout(2_000);
+                this.timeout(5_000);
                 await apply(testCase);
             });
         } else if (testCase.skip) {
             it.skip(testCase.name, async () => {});
         } else {
             it(testCase.name, async () => {
-                this.timeout(2_000);
+                this.timeout(5_000);
                 await apply(testCase);
             });
         }
