@@ -20,8 +20,6 @@ describe(__dirname, function () {
     let envBackup: Record<string, string | undefined>;
     const debug = false;
 
-    this.timeout(10_000);
-
     beforeEach(() => {
         envBackup = process.env;
         process.env = {};
@@ -35,13 +33,15 @@ describe(__dirname, function () {
     for (const testCase of testData.testCases) {
         if (testCase.only) {
             // eslint-disable-next-line no-only-tests/no-only-tests
-            it.only(testCase.name, async () => {
+            it.only(testCase.name, async function () {
+                this.timeout(5_000);
                 await apply(testCase);
             });
         } else if (testCase.skip) {
             it.skip(testCase.name, async () => {});
         } else {
-            it(testCase.name, async () => {
+            it(testCase.name, async function () {
+                this.timeout(5_000);
                 await apply(testCase);
             });
         }
