@@ -46,6 +46,8 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should dismiss notifications", async function () {
+        //Collect all notifications
+        sleep(2000);
         const notifications = await workbench.getNotifications();
         for (const n of notifications) {
             await n.dismiss();
