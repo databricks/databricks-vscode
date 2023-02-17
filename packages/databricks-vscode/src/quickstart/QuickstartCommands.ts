@@ -6,7 +6,7 @@ export class QuickstartCommands {
     openQuickstartCommand() {
         return async () => {
             const uri = Uri.file(
-                this.context.asAbsolutePath("README.quickstart.md")
+                this.context.asAbsolutePath("DATABRICKS.quickstart.md")
             );
             await commands.executeCommand("markdown.showPreview", uri);
         };
