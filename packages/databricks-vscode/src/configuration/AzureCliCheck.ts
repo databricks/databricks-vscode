@@ -46,10 +46,7 @@ async function orchestrate<S, KEYS extends string>(
             throw new OrchestrationLoopError();
         }
         const result: StepResult<S, KEYS> = await steps[step]();
-        logger?.info(
-            `Azire CLI check: ${step}`,
-            result
-        );
+        logger?.info(`Azire CLI check: ${step}`, result);
 
         if (result.type === "error") {
             throw result.error;
