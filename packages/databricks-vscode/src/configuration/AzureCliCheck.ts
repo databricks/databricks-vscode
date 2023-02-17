@@ -3,7 +3,6 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../logger";
 import {AzureCliAuthProvider} from "./auth/AuthProvider";
-import * as util from "node:util";
 
 export type Step<S, N> = () => Promise<
     SuccessResult<S> | NextResult<N> | ErrorResult
