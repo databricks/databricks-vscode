@@ -35,7 +35,7 @@ describe("Run python on cluster", async function () {
                 workspacePath: process.env["TEST_REPO_PATH"],
             })
         );
-        await fs.mkdir(path.join(projectDir, "nested"));
+        await fs.mkdir(path.join(projectDir, "nested"), {recursive: true});
         await fs.writeFile(
             path.join(projectDir, "nested", "hello.py"),
             [`from lib import func`, "func(spark)"].join("\n")
