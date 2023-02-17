@@ -122,7 +122,7 @@ export class AzureCliCheck implements Disposable {
                         result: true,
                     };
                 } else {
-                    if (loginAttempts >= 3) {
+                    if (loginAttempts >= 4) {
                         return {
                             type: "error",
                             error:
