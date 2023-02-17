@@ -29,7 +29,7 @@ In order to use this extension you need access to a Databricks workspace:
 
 ## Documentation
 
--   The [Quick Start Guide](README.quickstart.md) provides an overview
+-   The [Quick Start Guide](DATABRICKS.quickstart.md) provides an overview
     of common features.
 -   The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html)
     contains comprehesive documentation about the Databricks extension.
