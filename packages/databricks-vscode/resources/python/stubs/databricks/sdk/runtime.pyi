@@ -282,7 +282,7 @@ class dbutils:
             """
             ...
         @staticmethod
-        def text(name: str, defaultValue: str, label: str = None):
+        def text(name: str, defaultValue: str, label: typing.Optional[str] = None) -> None:
             """Creates a text input widget with given name, default value and optional label for
             display
             :param name: Name of argument associated with the new input widget
@@ -292,8 +292,8 @@ class dbutils:
             ...
         @staticmethod
         def dropdown(
-            name: str, defaultValue: str, choices: typing.List[str], label: str = None
-        ):
+            name: str, defaultValue: str, choices: typing.List[str], label: typing.Optional[str] = None
+        ) -> None:
             """Creates a dropdown input widget with given specification.
             :param name: Name of argument associated with the new input widget
             :param defaultValue: Default value of the input widget (must be one of choices)
@@ -307,7 +307,7 @@ class dbutils:
             defaultValue: str,
             choices: typing.List[str],
             label: typing.Optional[str] = None,
-        ):
+        ) -> None:
             """Creates a combobox input widget with given specification.
             :param name: Name of argument associated with the new input widget
             :param defaultValue: Default value of the input widget
@@ -321,7 +321,7 @@ class dbutils:
             defaultValue: str,
             choices: typing.List[str],
             label: typing.Optional[str] = None,
-        ):
+        ) -> None:
             """Creates a multiselect input widget with given specification.
             :param name: Name of argument associated with the new input widget
             :param defaultValue: Default value of the input widget (must be one of choices)
@@ -330,13 +330,13 @@ class dbutils:
             """
             ...
         @staticmethod
-        def remove(name: str):
+        def remove(name: str) -> None:
             """Removes given input widget. If widget does not exist it will throw an error.
             :param name: Name of argument associated with input widget to be removed
             """
             ...
         @staticmethod
-        def removeAll():
+        def removeAll() -> None:
             """Removes all input widgets in the notebook."""
             ...
     @property
