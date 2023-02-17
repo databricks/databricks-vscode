@@ -73,6 +73,9 @@ describe("Configure Databricks Extension", async function () {
             },
             {timeout: 5000}
         );
+
+        //Wait for quickstart text to be visible.
+        sleep(2000);
     });
 
     it("should open databricks panel and login", async function () {
@@ -83,10 +86,19 @@ describe("Configure Databricks Extension", async function () {
         const buttons = await welcome.getButtons();
         assert(buttons);
         assert(buttons.length > 0);
-        await (await buttons[0].elem).click();
 
-        await sleep(500);
-        let input = await new InputBox(workbench.locatorMap).wait();
+        let input: InputBox | undefined;
+        await browser.waitUntil(
+            async () => {
+                await (await buttons[0].elem).click();
+
+                input = await new InputBox(workbench.locatorMap).wait();
+                return input !== undefined;
+            },
+            {timeout: 3000, interval: 500}
+        );
+
+        assert(input !== undefined);
         while (await input.hasProgress()) {
             await sleep(500);
         }
