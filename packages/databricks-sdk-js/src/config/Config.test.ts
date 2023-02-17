@@ -40,7 +40,7 @@ describe(__dirname, function () {
         } else if (testCase.skip) {
             it.skip(testCase.name, async () => {});
         } else {
-            it(testCase.name, async () => {
+            it(testCase.name, async function () {
                 this.timeout(5_000);
                 await apply(testCase);
             });
