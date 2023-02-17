@@ -49,7 +49,7 @@ async function orchestrate<S, KEYS extends string>(
         const result: StepResult<S, KEYS> = await steps[step]();
         logger?.info(
             `Azire CLI check: ${step}`,
-            util.inspect(result, {depth: 5})
+            result
         );
 
         if (result.type === "error") {
