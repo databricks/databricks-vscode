@@ -11,15 +11,13 @@ import {RemoteUri, REPO_NAME_SUFFIX} from "../configuration/SyncDestination";
 import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {createDirWizard} from "./createDirectoryWizard";
-import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
 
 export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
     constructor(
         private _workspaceFolder: Uri,
-        private _connectionManager: ConnectionManager,
-        private _workspaceFsDataProvider: WorkspaceFsDataProvider
+        private _connectionManager: ConnectionManager
     ) {}
 
     async attachSyncDestination(element: WorkspaceFsEntity) {
@@ -106,10 +104,7 @@ export class WorkspaceFsCommands implements Disposable {
             }
         }
 
-        if (created) {
-            this._workspaceFsDataProvider.refresh();
-            return created;
-        }
+        return created;
     }
 
     private async createRepo(repoPath: string) {
@@ -126,10 +121,6 @@ export class WorkspaceFsCommands implements Disposable {
         });
 
         return await WorkspaceFsEntity.fromPath(wsClient, repoPath);
-    }
-
-    async refresh() {
-        this._workspaceFsDataProvider.refresh();
     }
 
     dispose() {

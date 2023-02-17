@@ -10,7 +10,7 @@ import {
     window,
     workspace,
 } from "vscode";
-import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
+import {clusterNodeToTreeItem} from "../cluster/ClusterTreeNode";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
@@ -138,8 +138,7 @@ export class ConnectionCommands implements Disposable {
                 const clusters = this.clusterModel.roots ?? [];
                 quickPick.items = items.concat(
                     clusters.map((c) => {
-                        const treeItem =
-                            ClusterListDataProvider.clusterNodeToTreeItem(c);
+                        const treeItem = clusterNodeToTreeItem(c);
                         return {
                             label: `$(${
                                 (treeItem.iconPath as ThemeIcon).id

@@ -9,7 +9,10 @@ import {
     TreeItemCollapsibleState,
 } from "vscode";
 
-import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
+import {
+    clusterNodeToTreeItem,
+    clusterNodeToTreeItems,
+} from "../cluster/ClusterTreeNode";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
 
@@ -187,8 +190,7 @@ export class ConfigurationDataProvider
         }
 
         if (element.id?.startsWith("CLUSTER") && cluster) {
-            const clusterItem =
-                ClusterListDataProvider.clusterNodeToTreeItem(cluster);
+            const clusterItem = clusterNodeToTreeItem(cluster);
 
             const children = [];
 
@@ -251,9 +253,7 @@ export class ConfigurationDataProvider
                     collapsibleState: TreeItemCollapsibleState.None,
                 },
                 ...children,
-                ...(await ClusterListDataProvider.clusterNodeToTreeItems(
-                    cluster
-                )),
+                ...(await clusterNodeToTreeItems(cluster)),
             ];
         }
 

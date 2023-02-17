@@ -9,7 +9,6 @@ import {
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
-import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
@@ -27,7 +26,7 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
-import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
+import {WorkspaceFsCommands} from "./workspace-fs";
 import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 
@@ -106,28 +105,15 @@ export async function activate(
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
 
-    const workspaceFsDataProvider = new WorkspaceFsDataProvider(
-        connectionManager
-    );
     const workspaceFsCommands = new WorkspaceFsCommands(
         workspace.workspaceFolders[0].uri,
-        connectionManager,
-        workspaceFsDataProvider
+        connectionManager
     );
 
     context.subscriptions.push(
-        window.registerTreeDataProvider(
-            "workspaceFsView",
-            workspaceFsDataProvider
-        ),
         commands.registerCommand(
             "databricks.wsfs.attachSyncDestination",
             workspaceFsCommands.attachSyncDestination,
-            workspaceFsCommands
-        ),
-        commands.registerCommand(
-            "databricks.wsfs.refresh",
-            workspaceFsCommands.refresh,
             workspaceFsCommands
         ),
         commands.registerCommand(
@@ -238,37 +224,9 @@ export async function activate(
     );
 
     // Cluster group
-    const clusterTreeDataProvider = new ClusterListDataProvider(clusterModel);
-    const clusterCommands = new ClusterCommands(
-        clusterModel,
-        connectionManager
-    );
+    const clusterCommands = new ClusterCommands(connectionManager);
 
     context.subscriptions.push(
-        clusterModel,
-        clusterTreeDataProvider,
-        window.registerTreeDataProvider("clusterView", clusterTreeDataProvider),
-
-        commands.registerCommand(
-            "databricks.cluster.refresh",
-            clusterCommands.refreshCommand(),
-            clusterCommands
-        ),
-        commands.registerCommand(
-            "databricks.cluster.filterByAll",
-            clusterCommands.filterCommand("ALL"),
-            clusterCommands
-        ),
-        commands.registerCommand(
-            "databricks.cluster.filterByRunning",
-            clusterCommands.filterCommand("RUNNING"),
-            clusterCommands
-        ),
-        commands.registerCommand(
-            "databricks.cluster.filterByMe",
-            clusterCommands.filterCommand("ME"),
-            clusterCommands
-        ),
         commands.registerCommand(
             "databricks.cluster.start",
             clusterCommands.startClusterCommand,

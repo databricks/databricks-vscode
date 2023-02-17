@@ -40,7 +40,6 @@
         "onCommand:databricks.*",
         "onTaskType:databricks",
         "onView:configurationView",
-        "onView:clusterView",
         "onDebugResolve:databricks",
         "onDebugResolve:databricks-workflow",
         "workspaceContains:**/databricks.yml",
@@ -111,27 +110,6 @@
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(sync-ignored)"
-            },
-            {
-                "command": "databricks.cluster.filterByAll",
-                "title": "All",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn"
-            },
-            {
-                "command": "databricks.cluster.filterByRunning",
-                "title": "Running",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn"
-            },
-            {
-                "command": "databricks.cluster.filterByMe",
-                "title": "Created by me",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn"
-            },
-            {
-                "command": "databricks.cluster.refresh",
-                "icon": "$(refresh)",
-                "title": "Refresh",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.connection.attachSyncDestination",
@@ -232,15 +210,6 @@
                 {
                     "id": "configurationView",
                     "name": "Configuration"
-                },
-                {
-                    "id": "workspaceFsView",
-                    "name": "Workspace explorer",
-                    "when": "config.databricks.sync.destinationType == workspace"
-                },
-                {
-                    "id": "clusterView",
-                    "name": "Clusters"
                 }
             ]
         },
@@ -266,37 +235,6 @@
                 {
                     "command": "databricks.quickstart.open",
                     "when": "view == configurationView"
-                },
-                {
-                    "when": "view == clusterView",
-                    "group": "navigation@1",
-                    "submenu": "databricks.cluster.filter"
-                },
-                {
-                    "command": "databricks.cluster.refresh",
-                    "when": "view == clusterView",
-                    "group": "navigation@2"
-                },
-                {
-                    "command": "databricks.wsfs.refresh",
-                    "when": "view == workspaceFsView",
-                    "group": "navigation@1"
-                },
-                {
-                    "command": "databricks.wsfs.createFolder",
-                    "when": "view == workspaceFsView",
-                    "group": "navigation@1"
-                }
-            ],
-            "databricks.cluster.filter": [
-                {
-                    "command": "databricks.cluster.filterByAll"
-                },
-                {
-                    "command": "databricks.cluster.filterByMe"
-                },
-                {
-                    "command": "databricks.cluster.filterByRunning"
                 }
             ],
             "view/item/context": [
@@ -304,16 +242,6 @@
                     "command": "databricks.utils.openExternal",
                     "when": "view == configurationView && viewItem == workspace || view == configurationView && viewItem =~ /^.*cluster.*$/ || view == configurationView && viewItem =~ /^sync.*$/",
                     "group": "inline@1"
-                },
-                {
-                    "command": "databricks.utils.openExternal",
-                    "when": "view == clusterView && viewItem == cluster",
-                    "group": "inline@1"
-                },
-                {
-                    "command": "databricks.connection.attachCluster",
-                    "when": "view == clusterView",
-                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.configureWorkspace",
@@ -354,14 +282,6 @@
                     "command": "databricks.cluster.start",
                     "when": "view == configurationView && viewItem == databricks.cluster.terminated",
                     "group": "inline@0"
-                },
-                {
-                    "command": "databricks.wsfs.attachSyncDestination",
-                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace || view == workspaceFsView && viewItem =~ /^wsfs.repo.*$/ && config.databricks.sync.destinationType == repo"
-                },
-                {
-                    "command": "databricks.wsfs.createFolder",
-                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace"
                 }
             ],
             "editor/title/run": [
