@@ -1,3 +1,13 @@
+# Release: v0.2.4
+
+## packages/databricks-vscode
+
+## <small>0.2.4 (2023-02-16)</small>
+
+-   Fix: Ignore symlinked folders when syncing code to Databricks, closes [#455](https://github.com/databricks/databricks-vscode/issues/455)
+-   Fix: Improve handling of notebooks during sync
+-   Fix: Fix Windows support for sync destination, closes [#458](https://github.com/databricks/databricks-vscode/issues/458)
+
 # Release: v0.2.3
 
 ## packages/databricks-vscode

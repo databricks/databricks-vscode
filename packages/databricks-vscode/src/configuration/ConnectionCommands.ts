@@ -310,10 +310,7 @@ export class ConnectionCommands implements Disposable {
                             return;
                         }
                         const created = await this.wsfsCommands.createFolder(
-                            rootDir,
-                            workspaceConfigs.enableFilesInWorkspace
-                                ? "Folder"
-                                : "Repo"
+                            rootDir
                         );
                         if (created === undefined) {
                             return;
