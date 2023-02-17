@@ -273,23 +273,6 @@ export class ConnectionCommands implements Disposable {
                             };
                         })
                 );
-                children.push(
-                    {
-                        label: "Repos",
-                        kind: QuickPickItemKind.Separator,
-                    },
-                    ...repos
-                        .filter((entity) => {
-                            return !entity.basename.endsWith(REPO_NAME_SUFFIX);
-                        })
-                        .map((entity) => {
-                            return {
-                                label: entity.basename,
-                                detail: entity.path,
-                                path: entity.path,
-                            };
-                        })
-                );
             }
             input.items = children;
             input.busy = false;
