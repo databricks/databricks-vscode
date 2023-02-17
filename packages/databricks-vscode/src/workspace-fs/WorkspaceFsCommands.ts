@@ -1,10 +1,15 @@
-import {WorkspaceFsEntity, WorkspaceFsUtils} from "@databricks/databricks-sdk";
+import {
+    WorkspaceFsDir,
+    WorkspaceFsEntity,
+    WorkspaceFsUtils,
+} from "@databricks/databricks-sdk";
 import {context, Context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {RemoteUri, REPO_NAME_SUFFIX} from "../configuration/SyncDestination";
 import {Loggers} from "../logger";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
 
@@ -24,14 +29,13 @@ export class WorkspaceFsCommands implements Disposable {
     }
 
     @withLogContext(Loggers.Extension)
-    async createFolder(
-        element?: WorkspaceFsEntity,
-        type: "Repo" | "Folder" = "Folder",
+    async getValidRoot(
+        rootPath?: string,
         @context ctx?: Context
-    ) {
-        const rootPath =
-            element?.path ??
-            this._connectionManager.databricksWorkspace?.currentFsRoot.path;
+    ): Promise<WorkspaceFsDir | undefined> {
+        if (!workspaceConfigs.enableFilesInWorkspace) {
+            return;
+        }
 
         if (!this._connectionManager.workspaceClient) {
             window.showErrorMessage(
@@ -53,6 +57,12 @@ export class WorkspaceFsCommands implements Disposable {
             rootPath
         );
 
+        if (root === undefined) {
+            ctx?.logger?.error(`Can't fetch details for ${rootPath}. `);
+            window.showErrorMessage(`Can't fetch details for ${rootPath}. `);
+            return;
+        }
+
         if (!WorkspaceFsUtils.isDirectory(root)) {
             ctx?.logger?.error(
                 `Cannot create a directory as a child of a ${root?.type}`
@@ -63,19 +73,32 @@ export class WorkspaceFsCommands implements Disposable {
             return;
         }
 
+        return root;
+    }
+
+    @withLogContext(Loggers.Extension)
+    async createFolder(element?: WorkspaceFsEntity, @context ctx?: Context) {
+        const rootPath =
+            element?.path ??
+            this._connectionManager.databricksWorkspace?.currentFsRoot.path;
+
+        const root = await this.getValidRoot(rootPath, ctx);
+
         const inputPath = await createDirWizard(
             this._workspaceFolder,
-            type === "Repo" ? "Repo Name" : "Directory Name",
+            workspaceConfigs.enableFilesInWorkspace
+                ? "Directory Name"
+                : "Repo Name",
             root
         );
         let created: WorkspaceFsEntity | undefined;
 
         if (inputPath !== undefined) {
-            if (type === "Repo") {
+            if (!workspaceConfigs.enableFilesInWorkspace) {
                 created = await this.createRepo(
                     rootPath + "/" + inputPath + REPO_NAME_SUFFIX
                 );
-            } else {
+            } else if (root) {
                 created = await root.mkdir(inputPath);
             }
             if (created === undefined) {
