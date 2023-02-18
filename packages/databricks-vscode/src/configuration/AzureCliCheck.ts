@@ -1,5 +1,7 @@
 import {ExecUtils, WorkspaceClient} from "@databricks/databricks-sdk";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {commands, Disposable, Uri, window} from "vscode";
+import {Loggers} from "../logger";
 import {AzureCliAuthProvider} from "./auth/AuthProvider";
 
 export type Step<S, N> = () => Promise<
@@ -23,13 +25,29 @@ export interface ErrorResult {
     error: Error;
 }
 
+class OrchestrationLoopError extends Error {
+    constructor() {
+        super("OrchestrationLoopError");
+    }
+}
+
 async function orchestrate<S, KEYS extends string>(
     steps: Record<KEYS, Step<S, KEYS>>,
-    start: KEYS
+    start: KEYS,
+    maxSteps = 20,
+    logger?: NamedLogger
 ): Promise<S> {
+    let counter = 0;
+
     let step: KEYS | undefined = start;
     while (step && steps[step]) {
+        counter += 1;
+        if (counter > maxSteps) {
+            throw new OrchestrationLoopError();
+        }
         const result: StepResult<S, KEYS> = await steps[step]();
+        logger?.info(`Azire CLI check: ${step}`, result);
+
         if (result.type === "error") {
             throw result.error;
         }
@@ -55,14 +73,17 @@ type AzureStepName =
 export class AzureCliCheck implements Disposable {
     private disposables: Disposable[] = [];
     private isCodeSpaces: boolean;
+    private logger: NamedLogger;
 
     tenantId: string | undefined;
+    azureLoginAppId: string | undefined;
 
     constructor(
         private authProvider: AzureCliAuthProvider,
         private azBinPath: string = "az"
     ) {
         this.isCodeSpaces = process.env.CODESPACES === "true";
+        this.logger = NamedLogger.getOrCreate(Loggers.Extension);
     }
 
     dispose() {
@@ -73,26 +94,43 @@ export class AzureCliCheck implements Disposable {
     public async check(silent = false): Promise<boolean> {
         this.tenantId = this.authProvider.tenantId;
 
+        let loginAttempts = 0;
+
         const steps: Record<AzureStepName, Step<boolean, AzureStepName>> = {
             tryLogin: async () => {
+                loginAttempts += 1;
                 const result = await this.tryLogin(this.authProvider.host);
-                if (typeof result === "string") {
-                    this.tenantId = result;
+                if (result.iss) {
+                    this.tenantId = result.iss;
                     return {
                         type: "next",
                         next: "loginAzureCli",
                     };
-                }
-                if (result) {
+                } else if (result.aud) {
+                    this.azureLoginAppId = result.aud;
+                    return {
+                        type: "next",
+                        next: "tryLogin",
+                    };
+                } else if (result.canLogin) {
                     return {
                         type: "success",
                         result: true,
                     };
                 } else {
-                    return {
-                        type: "next",
-                        next: "findCli",
-                    };
+                    if (loginAttempts >= 4) {
+                        return {
+                            type: "error",
+                            error:
+                                result.error ||
+                                new Error("Can't login with Azure CLI"),
+                        };
+                    } else {
+                        return {
+                            type: "next",
+                            next: "findCli",
+                        };
+                    }
                 }
             },
             findCli: async () => {
@@ -146,10 +184,19 @@ export class AzureCliCheck implements Disposable {
         try {
             result = await orchestrate<boolean, keyof typeof steps>(
                 steps,
-                "findCli"
+                "findCli",
+                20,
+                this.logger
             );
         } catch (e: any) {
-            window.showErrorMessage(e.message);
+            let message: string;
+            if (e instanceof OrchestrationLoopError) {
+                message = "Can't login using Azure CLI";
+            } else {
+                message = e.message;
+            }
+
+            window.showErrorMessage(message);
             return false;
         }
 
@@ -161,25 +208,44 @@ export class AzureCliCheck implements Disposable {
         return result;
     }
 
-    private async tryLogin(host: URL): Promise<boolean | string> {
+    private async tryLogin(host: URL): Promise<{
+        iss?: string;
+        aud?: string;
+        canLogin: boolean;
+        error?: Error;
+    }> {
         const workspaceClient = new WorkspaceClient({
             host: host.toString(),
             authType: "azure-cli",
+            azureLoginAppId: this.azureLoginAppId,
         });
         try {
             await workspaceClient.currentUser.me();
         } catch (e: any) {
             // parse error message
-            const m = e.message.match(
+            let m = e.message.match(
                 /Expected iss claim to be: https:\/\/sts\.windows\.net\/([a-z0-9-]+?)\/?, but was: https:\/\/sts\.windows\.net\/([a-z0-9-]+)\/?/
             );
             if (m) {
-                return m[1];
+                return {
+                    iss: m[1],
+                    canLogin: false,
+                };
             }
 
-            return false;
+            m = e.message.match(
+                /Expected aud claim to be: ([a-z0-9-]+?)\/?, but was: ([a-z0-9-]+)\/?/
+            );
+            if (m) {
+                return {
+                    aud: m[1],
+                    canLogin: false,
+                };
+            }
+
+            return {canLogin: false, error: e};
         }
-        return true;
+        return {canLogin: true};
     }
 
     // check if Azure CLI is installed
