@@ -4,8 +4,7 @@
 
 ## 0.3.0 (2023-02-20)
 
--   ⚠️ Breaking change: Don't list existing Repos when selecting a sync destination. This prevents users from accidentally overwriting code in existing 
-    Repos. Existing sync destinations will continue to work but going forward users can only select Repos that have been created from the IDE
+-   ⚠️ Minor breaking change: This releases introduces a minor breaking change in the sync destination selection UI. The extension no longer lists Repos that have been created outside of the IDE. This prevents users from accidentally overwriting code in existing Repos. Existing sync destinations will continue to work but going forward users can only select Repos that have been created from the IDE
 -   Feature: Improve code completion for `dbutils`
 -   Fix: Allow creation of repos even if `/Repos/me` doesn't exist
 -   Fix: Improve AAD login and prevent infinite loops when trying to use AAD
