@@ -58,6 +58,9 @@ describe("Run python on cluster", async function () {
     });
 
     it("should start syncing", async () => {
+        await (
+            await driver.getWorkbench()
+        ).executeCommand("Databricks: Start synchronization (full sync)");
         await startSyncIfStopped();
         await waitForSyncComplete();
     });
@@ -69,10 +72,10 @@ describe("Run python on cluster", async function () {
 
         // open file
         const input = await workbench.openCommandPrompt();
-        await sleep(200);
+        await sleep(1000);
         await input.setText("hello.py");
         await input.confirm();
-        await sleep(500);
+        await sleep(1000);
 
         // run file
         await workbench.executeQuickPick("Databricks: Run File on Databricks");
