@@ -1,3 +1,9 @@
+# Release: v0.3.0
+
+## packages/databricks-sdk-js
+
+## 0.3.0 (2023-02-20)
+
 # Release: v0.2.4
 
 ## packages/databricks-sdk-js
