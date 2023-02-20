@@ -14,6 +14,7 @@ This Software contains code from the following open source projects:
 | [@microsoft/fast-foundation](https://www.npmjs.com/package/@microsoft/fast-foundation)       | 2.47.0            | MIT          | git+https://github.com/Microsoft/fast.git                      |
 | [@microsoft/fast-react-wrapper](https://www.npmjs.com/package/@microsoft/fast-react-wrapper) | 0.1.48            | MIT          | git+https://github.com/Microsoft/fast.git                      |
 | [@microsoft/fast-web-utilities](https://www.npmjs.com/package/@microsoft/fast-web-utilities) | 5.4.1             | MIT          | git+https://github.com/Microsoft/fast.git                      |
+| [@types/triple-beam](https://www.npmjs.com/package/@types/triple-beam)                       | 1.3.2             | MIT          | https://github.com/DefinitelyTyped/DefinitelyTyped.git         |
 | [@vscode/debugadapter](https://www.npmjs.com/package/@vscode/debugadapter)                   | 1.59.0            | MIT          | https://github.com/microsoft/vscode-debugadapter-node.git      |
 | [@vscode/debugprotocol](https://www.npmjs.com/package/@vscode/debugprotocol)                 | 1.59.0            | MIT          | https://github.com/microsoft/vscode-debugadapter-node.git      |
 | [@vscode/webview-ui-toolkit](https://www.npmjs.com/package/@vscode/webview-ui-toolkit)       | 1.2.1             | MIT          | git+https://github.com/microsoft/vscode-webview-ui-toolkit.git |
@@ -38,7 +39,7 @@ This Software contains code from the following open source projects:
 | [is-arrayish](https://www.npmjs.com/package/is-arrayish)                                     | 0.3.2             | MIT          | https://github.com/qix-/node-is-arrayish.git                   |
 | [is-stream](https://www.npmjs.com/package/is-stream)                                         | 2.0.1             | MIT          | sindresorhus/is-stream                                         |
 | [kuler](https://www.npmjs.com/package/kuler)                                                 | 2.0.0             | MIT          | https://github.com/3rd-Eden/kuler                              |
-| [logform](https://www.npmjs.com/package/logform)                                             | 2.4.2             | MIT          | git+https://github.com/winstonjs/logform.git                   |
+| [logform](https://www.npmjs.com/package/logform)                                             | 2.5.1             | MIT          | git+https://github.com/winstonjs/logform.git                   |
 | [ms](https://www.npmjs.com/package/ms)                                                       | 2.1.3             | MIT          | vercel/ms                                                      |
 | [node-domexception](https://www.npmjs.com/package/node-domexception)                         | 1.0.0             | MIT          | git+https://github.com/jimmywarting/node-domexception.git      |
 | [node-fetch-commonjs](https://www.npmjs.com/package/node-fetch-commonjs)                     | 3.2.4             | MIT          | git@github.com:proteriax/node-fetch-cjs.git                    |

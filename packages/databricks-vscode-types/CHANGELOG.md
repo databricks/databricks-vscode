@@ -1,3 +1,11 @@
+# Release: v0.3.0
+
+## packages/databricks-vscode-types
+
+## 0.3.0 (2023-02-20)
+
+-   Update dependencies (#474) ([1dcbca6](https://github.com/databricks/databricks-vscode/commit/1dcbca6)), closes [#474](https://github.com/databricks/databricks-vscode/issues/474)
+
 # Release: v0.2.4
 
 ## packages/databricks-vscode-types

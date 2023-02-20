@@ -1,3 +1,17 @@
+# Release: v0.3.0
+
+## packages/databricks-vscode
+
+## 0.3.0 (2023-02-20)
+
+-   Allow creation of repos even if /Repos/me doesn't exist (#465) ([acd5fbb](https://github.com/databricks/databricks-vscode/commit/acd5fbb)), closes [#465](https://github.com/databricks/databricks-vscode/issues/465)
+-   Fix run_on_cluster integration test (#481) ([05d9e2e](https://github.com/databricks/databricks-vscode/commit/05d9e2e)), closes [#481](https://github.com/databricks/databricks-vscode/issues/481)
+-   Hide existing repos (#478) ([b4b34ad](https://github.com/databricks/databricks-vscode/commit/b4b34ad)), closes [#478](https://github.com/databricks/databricks-vscode/issues/478)
+-   Improve AAD login and prevent infinite loops when trying to use AAD (#473) ([74abba1](https://github.com/databricks/databricks-vscode/commit/74abba1)), closes [#473](https://github.com/databricks/databricks-vscode/issues/473)
+-   Make integration tests less flaky. (#475) ([2d65d84](https://github.com/databricks/databricks-vscode/commit/2d65d84)), closes [#475](https://github.com/databricks/databricks-vscode/issues/475)
+-   Make typings for autocompletion more consistent (#469) ([35ff9d1](https://github.com/databricks/databricks-vscode/commit/35ff9d1)), closes [#469](https://github.com/databricks/databricks-vscode/issues/469) [#464](https://github.com/databricks/databricks-vscode/issues/464)
+-   Update dependencies (#474) ([1dcbca6](https://github.com/databricks/databricks-vscode/commit/1dcbca6)), closes [#474](https://github.com/databricks/databricks-vscode/issues/474)
+
 # Release: v0.2.4
 
 ## packages/databricks-vscode

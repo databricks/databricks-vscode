@@ -1,3 +1,11 @@
+# Release: v0.3.0
+
+## packages/databricks-sdk-js
+
+## 0.3.0 (2023-02-20)
+
+-   Make integration tests less flaky. (#475) ([2d65d84](https://github.com/databricks/databricks-vscode/commit/2d65d84)), closes [#475](https://github.com/databricks/databricks-vscode/issues/475)
+
 # Release: v0.2.4
 
 ## packages/databricks-sdk-js
