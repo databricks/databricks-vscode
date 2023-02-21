@@ -1,8 +1,9 @@
 import {EventEmitter} from "events";
-import retry, {RetriableError} from "../retries/retries";
+import retry, {DEFAULT_MAX_TIMEOUT, RetriableError} from "../retries/retries";
 import {ExecutionContext} from "./ExecutionContext";
 import {CancellationToken} from "../types";
 import {CommandExecutionService, CommandStatusResponse} from "../apis/commands";
+import Time from "../retries/Time";
 
 interface CommandErrorParams {
     commandId: string;
@@ -109,9 +110,11 @@ export class Command extends EventEmitter {
     }
 
     async response(
-        cancellationToken?: CancellationToken
+        cancellationToken?: CancellationToken,
+        timeout: Time = DEFAULT_MAX_TIMEOUT
     ): Promise<CommandStatusResponse> {
         await retry({
+            timeout: timeout,
             fn: async () => {
                 await this.refresh();
 
@@ -143,7 +146,8 @@ export class Command extends EventEmitter {
         context: ExecutionContext,
         command: string,
         onStatusUpdate: StatusUpdateListener = () => {},
-        cancellationToken?: CancellationToken
+        cancellationToken?: CancellationToken,
+        timeout: Time = DEFAULT_MAX_TIMEOUT
     ): Promise<CommandWithResult> {
         const cmd = new Command(context);
 
@@ -158,7 +162,7 @@ export class Command extends EventEmitter {
 
         cmd.id = executeApiResponse.id;
 
-        const executionResult = await cmd.response(cancellationToken);
+        const executionResult = await cmd.response(cancellationToken, timeout);
 
         return {cmd: cmd, result: executionResult};
     }
