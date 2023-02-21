@@ -151,6 +151,7 @@ export class DatabricksRuntime implements Disposable {
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
             await this.codeSynchronizer.waitForSyncComplete();
+            await commands.executeCommand("workbench.panel.repl.view.focus");
 
             log(
                 `Running ${syncDestination.localUri.relativePath(
