@@ -114,7 +114,7 @@ export class Command extends EventEmitter {
         timeout: Time | undefined = DEFAULT_MAX_TIMEOUT
     ): Promise<CommandStatusResponse> {
         await retry({
-            timeout: DEFAULT_MAX_TIMEOUT,
+            timeout: timeout,
             fn: async () => {
                 await this.refresh();
 
