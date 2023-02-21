@@ -111,7 +111,7 @@ export class Command extends EventEmitter {
 
     async response(
         cancellationToken?: CancellationToken,
-        timeout: Time | undefined = DEFAULT_MAX_TIMEOUT
+        timeout: Time = DEFAULT_MAX_TIMEOUT
     ): Promise<CommandStatusResponse> {
         await retry({
             timeout: timeout,
@@ -147,7 +147,7 @@ export class Command extends EventEmitter {
         command: string,
         onStatusUpdate: StatusUpdateListener = () => {},
         cancellationToken?: CancellationToken,
-        timeout: Time | undefined = DEFAULT_MAX_TIMEOUT
+        timeout: Time = DEFAULT_MAX_TIMEOUT
     ): Promise<CommandWithResult> {
         const cmd = new Command(context);
 

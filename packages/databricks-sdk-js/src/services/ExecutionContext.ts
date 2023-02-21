@@ -36,7 +36,7 @@ export class ExecutionContext {
         command: string,
         onStatusUpdate: StatusUpdateListener = () => {},
         token?: CancellationToken,
-        timeout: Time | undefined = DEFAULT_MAX_TIMEOUT
+        timeout: Time = DEFAULT_MAX_TIMEOUT
     ): Promise<CommandWithResult> {
         return await Command.execute(
             this,

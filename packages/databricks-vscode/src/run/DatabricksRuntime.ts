@@ -25,6 +25,7 @@ import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
+import {Time, TimeUnits} from "@databricks/databricks-sdk";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -168,7 +169,7 @@ export class DatabricksRuntime implements Disposable {
                 ),
                 undefined,
                 this.token,
-                undefined
+                new Time(240, TimeUnits.hours)
             );
             const result = response.result;
 
