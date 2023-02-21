@@ -25,6 +25,7 @@ import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
+import {Time, TimeUnits} from "@databricks/databricks-sdk";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -151,6 +152,7 @@ export class DatabricksRuntime implements Disposable {
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
             await this.codeSynchronizer.waitForSyncComplete();
+            await commands.executeCommand("workbench.panel.repl.view.focus");
 
             log(
                 `Running ${syncDestination.localUri.relativePath(
@@ -166,7 +168,8 @@ export class DatabricksRuntime implements Disposable {
                     envVars
                 ),
                 undefined,
-                this.token
+                this.token,
+                new Time(240, TimeUnits.hours)
             );
             const result = response.result;
 

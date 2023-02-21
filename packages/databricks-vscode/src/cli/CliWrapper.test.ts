@@ -12,6 +12,8 @@ import {writeFile} from "node:fs/promises";
 
 import {CliWrapper} from "./CliWrapper";
 import path from "node:path";
+import {Context} from "@databricks/databricks-sdk/dist/context";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 
 const execFile = promisify(execFileCb);
 
@@ -140,9 +142,28 @@ host = https://cloud.databricks.com/
 
 [missing-host-token]
 nothing = true
+
+[typo-host]
+host = example.com
 `
             );
-            const profiles = await cli.listProfiles(path);
+
+            const logs: {level: string; msg?: string; meta: any}[] = [];
+            const profiles = await cli.listProfiles(
+                path,
+                new Context({
+                    logger: NamedLogger.getOrCreate("cli-wrapper-test", {
+                        factory: (name) => {
+                            return {
+                                log: (level, msg, meta) => {
+                                    console.error("here");
+                                    logs.push({level, msg, meta});
+                                },
+                            };
+                        },
+                    }),
+                })
+            );
             assert.equal(profiles.length, 2);
 
             assert.equal(profiles[0].name, "correct");
@@ -152,6 +173,10 @@ nothing = true
             assert.equal(profiles[1].name, "no-token");
             assert.equal(profiles[1].host, "https://cloud.databricks.com/");
             assert.equal(profiles[1].authType, "");
+
+            const typoLog = logs.find((log) => log.msg?.includes("typo-host"));
+            assert.ok(typoLog !== undefined);
+            assert.ok(typoLog.level === "error");
         });
     });
 });

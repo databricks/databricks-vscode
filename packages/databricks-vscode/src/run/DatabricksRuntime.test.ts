@@ -28,7 +28,12 @@ describe(__filename, () => {
 
         executionContextMock = mock(ExecutionContext);
         when(
-            executionContextMock.execute(anything(), anything(), anything())
+            executionContextMock.execute(
+                anything(),
+                anything(),
+                anything(),
+                anything()
+            )
         ).thenResolve({
             cmd: mock(Command),
             result: {
@@ -122,7 +127,12 @@ describe(__filename, () => {
 
     it("should handle failed executions", async () => {
         when(
-            executionContextMock.execute(anything(), anything(), anything())
+            executionContextMock.execute(
+                anything(),
+                anything(),
+                anything(),
+                anything()
+            )
         ).thenResolve({
             cmd: mock(Command),
             result: {
