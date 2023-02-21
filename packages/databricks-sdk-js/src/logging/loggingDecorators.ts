@@ -2,7 +2,11 @@ import "reflect-metadata";
 import {NamedLogger} from "./NamedLogger";
 import {getContextParamIndex, Context, ContextItems} from "../context";
 
-export function withLogContext(name: string, opName?: string) {
+export function withLogContext(
+    name: string,
+    opName?: string,
+    override = false
+) {
     return function (
         _target: any,
         _propertyKey: string,
@@ -23,7 +27,11 @@ export function withLogContext(name: string, opName?: string) {
             ).copy();
 
             const items: ContextItems = {
-                logger,
+                logger:
+                    (contextParam.logger && override) ||
+                    contextParam.logger === undefined
+                        ? logger
+                        : contextParam.logger,
                 opName: contextParam.opName ?? opName,
                 rootClassName:
                     contextParam.rootClassName ?? this.constructor.name,
