@@ -166,7 +166,8 @@ export class DatabricksRuntime implements Disposable {
                     envVars
                 ),
                 undefined,
-                this.token
+                this.token,
+                undefined
             );
             const result = response.result;
 

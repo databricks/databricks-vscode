@@ -1,6 +1,7 @@
-import {CancellationToken} from "..";
+import {CancellationToken, Time} from "..";
 import {ApiClient} from "../api-client";
 import {CommandExecutionService, Language} from "../apis/commands";
+import {DEFAULT_MAX_TIMEOUT} from "../retries/retries";
 import {Cluster} from "./Cluster";
 import {Command, CommandWithResult, StatusUpdateListener} from "./Command";
 
@@ -34,9 +35,16 @@ export class ExecutionContext {
     async execute(
         command: string,
         onStatusUpdate: StatusUpdateListener = () => {},
-        token?: CancellationToken
+        token?: CancellationToken,
+        timeout: Time | undefined = DEFAULT_MAX_TIMEOUT
     ): Promise<CommandWithResult> {
-        return await Command.execute(this, command, onStatusUpdate, token);
+        return await Command.execute(
+            this,
+            command,
+            onStatusUpdate,
+            token,
+            timeout
+        );
     }
 
     async destroy() {
