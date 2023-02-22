@@ -83,6 +83,9 @@ class CustomSyncTerminal implements Pseudoterminal {
     private writeEmitter = new EventEmitter<string>();
     onDidWrite: Event<string> = this.writeEmitter.event;
 
+    private closeEmitter = new EventEmitter<void>();
+    onDidClose: Event<void> = this.closeEmitter.event;
+
     private syncProcess: ChildProcess | undefined;
     private bricksSyncParser: BricksSyncParser;
 
@@ -158,6 +161,14 @@ class CustomSyncTerminal implements Pseudoterminal {
         // we can remove this pipe once we move to a new version of bricks cli
         this.syncProcess.stdout.on("data", (data) => {
             this.bricksSyncParser.process(data.toString());
+        });
+
+        this.syncProcess.on("close", (code) => {
+            if (code !== 0) {
+                this.syncStateCallback("ERROR");
+                // terminate the vscode terminal task
+                this.closeEmitter.fire();
+            }
         });
     }
 }
