@@ -1,8 +1,16 @@
-import {ExecUtils, WorkspaceClient} from "@databricks/databricks-sdk";
+import {
+    ExecUtils,
+    ProductVersion,
+    WorkspaceClient,
+} from "@databricks/databricks-sdk";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../logger";
 import {AzureCliAuthProvider} from "./auth/AuthProvider";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const extensionVersion = require("../../package.json")
+    .version as ProductVersion;
 
 export type Step<S, N> = () => Promise<
     SuccessResult<S> | NextResult<N> | ErrorResult
@@ -214,11 +222,17 @@ export class AzureCliCheck implements Disposable {
         canLogin: boolean;
         error?: Error;
     }> {
-        const workspaceClient = new WorkspaceClient({
-            host: host.toString(),
-            authType: "azure-cli",
-            azureLoginAppId: this.azureLoginAppId,
-        });
+        const workspaceClient = new WorkspaceClient(
+            {
+                host: host.toString(),
+                authType: "azure-cli",
+                azureLoginAppId: this.azureLoginAppId,
+            },
+            {
+                product: "databricks-vscode",
+                productVersion: extensionVersion,
+            }
+        );
         try {
             await workspaceClient.currentUser.me();
         } catch (e: any) {
