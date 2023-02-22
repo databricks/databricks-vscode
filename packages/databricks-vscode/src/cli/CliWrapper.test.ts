@@ -153,10 +153,9 @@ host = example.com
                 path,
                 new Context({
                     logger: NamedLogger.getOrCreate("cli-wrapper-test", {
-                        factory: (name) => {
+                        factory: () => {
                             return {
                                 log: (level, msg, meta) => {
-                                    console.error("here");
                                     logs.push({level, msg, meta});
                                 },
                             };
