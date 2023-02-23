@@ -25,8 +25,8 @@ export class KnownConfigLoader implements Loader {
             return;
         }
 
-        const iniFile = parse(
-            await fs.readFile(configPath, {encoding: "utf-8"})
+        const iniFile = flattenIniObject(
+            parse(await fs.readFile(configPath, {encoding: "utf-8"}))
         );
 
         const profile = cfg.profile || "DEFAULT";
@@ -48,4 +48,45 @@ export class KnownConfigLoader implements Loader {
         cfg.logger.info(`loading ${profile} profile from ${configPath}`);
         cfg.attributes.resolveFromStringMap(iniFile[profile]);
     }
+}
+
+/**
+ * The ini library encodes dots as nested objects, which is not what we want.
+ * See: https://github.com/npm/ini/issues/22
+ *
+ * Reduce the nested object back to a flat object by concatenating object keys with a `.`
+ */
+export function flattenIniObject(obj: {[key: string]: any}): {
+    [key: string]: any;
+} {
+    function _flattenIniObject(
+        obj: {
+            [key: string]: any;
+        },
+        topLevel: Array<string> = [],
+        resp = {}
+    ) {
+        const props: Record<string, any> = {};
+        for (const key in obj) {
+            if (typeof obj[key] === "object") {
+                topLevel.push(key);
+                resp = {
+                    ...resp,
+                    ..._flattenIniObject(obj[key], topLevel, resp),
+                };
+            } else {
+                props[key] = obj[key];
+            }
+        }
+
+        const topLevelName = topLevel.join(".");
+        if (topLevelName !== "" && Object.keys(props).length > 0) {
+            resp = {...resp, [topLevelName]: props};
+        }
+
+        topLevel.pop();
+        return resp;
+    }
+
+    return _flattenIniObject(obj);
 }
