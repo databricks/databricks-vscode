@@ -4,14 +4,12 @@
 
 ## <small>0.3.1 (2023-02-23)</small>
 
--   [DECO-531] Transition sync state to ERROR if the underlying sync process fails (#494) ([2efb765](https://github.com/databricks/databricks-vscode/commit/2efb765)), closes [#494](https://github.com/databricks/databricks-vscode/issues/494)
--   Add an option to silence autocomplete dialog. (#497) ([275ea87](https://github.com/databricks/databricks-vscode/commit/275ea87)), closes [#497](https://github.com/databricks/databricks-vscode/issues/497)
--   Bump bricks (#486) ([949c5cb](https://github.com/databricks/databricks-vscode/commit/949c5cb)), closes [#486](https://github.com/databricks/databricks-vscode/issues/486)
--   Fix parsing `.databrickscfg` profiles that contain a dot (#498) ([264d9fc](https://github.com/databricks/databricks-vscode/commit/264d9fc)), closes [#498](https://github.com/databricks/databricks-vscode/issues/498) [#497](https://github.com/databricks/databricks-vscode/issues/497)
--   Pass product version to JS SDK (#491) ([4405617](https://github.com/databricks/databricks-vscode/commit/4405617)), closes [#491](https://github.com/databricks/databricks-vscode/issues/491)
--   Remove API timeout limit for execution context runs (#487) ([ceb6324](https://github.com/databricks/databricks-vscode/commit/ceb6324)), closes [#487](https://github.com/databricks/databricks-vscode/issues/487) [#482](https://github.com/databricks/databricks-vscode/issues/482)
--   Rename title of the extension (#493) ([e09a728](https://github.com/databricks/databricks-vscode/commit/e09a728)), closes [#493](https://github.com/databricks/databricks-vscode/issues/493)
--   Show errors when parsing of host in .databrickscfg fails (#488) ([1f67001](https://github.com/databricks/databricks-vscode/commit/1f67001)), closes [#488](https://github.com/databricks/databricks-vscode/issues/488) [#479](https://github.com/databricks/databricks-vscode/issues/479)
+-   Feature: Add an option to silence the autocomplete dialog, closes [#497](https://github.com/databricks/databricks-vscode/issues/497)
+-   Fix: Support `.databrickscfg` profiles that contain a dot, closes [#447](https://github.com/databricks/databricks-vscode/issues/447) reported by [@tahaum](https://github.com/tahaum)
+-   Fix: Remove API timeout limit for execution context runs, closes [#482](https://github.com/databricks/databricks-vscode/issues/482) reported by [@sebrahimi1988](https://github.com/sebrahimi1988)
+-   Fix: Show errors when parsing of host in `.databrickscfg` fails, closes [#479](https://github.com/databricks/databricks-vscode/issues/479)
+-   Fix: Show error state in the UI when sync process fails
+-   Minor: Rename title of the extension
 
 # Release: v0.3.0
 
