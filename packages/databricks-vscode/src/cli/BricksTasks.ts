@@ -250,8 +250,8 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         // Pass through proxy settings to child process.
         const proxySettings: {[key: string]: string | undefined} = {
             /* eslint-disable @typescript-eslint/naming-convention */
-            HTTP_PROXY: process.env.HTTP_PROXY,
-            HTTPS_PROXY: process.env.HTTPS_PROXY,
+            HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy,
+            HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy,
             /* eslint-enable @typescript-eslint/naming-convention */
         };
 
