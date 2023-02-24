@@ -1,3 +1,16 @@
+# Release: v0.3.1
+
+## packages/databricks-vscode
+
+## <small>0.3.1 (2023-02-23)</small>
+
+-   Feature: Add an option to silence the autocomplete dialog, closes [#497](https://github.com/databricks/databricks-vscode/issues/497)
+-   Fix: Support `.databrickscfg` profiles that contain a dot, closes [#447](https://github.com/databricks/databricks-vscode/issues/447) reported by [@tahaum](https://github.com/tahaum)
+-   Fix: Remove API timeout limit for execution context runs, closes [#482](https://github.com/databricks/databricks-vscode/issues/482) reported by [@sebrahimi1988](https://github.com/sebrahimi1988)
+-   Fix: Show errors when parsing of host in `.databrickscfg` fails, closes [#479](https://github.com/databricks/databricks-vscode/issues/479)
+-   Fix: Show error state in the UI when sync process fails
+-   Minor: Rename title of the extension
+
 # Release: v0.3.0
 
 ## packages/databricks-vscode
