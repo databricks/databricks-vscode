@@ -4,30 +4,20 @@ import {
     ProductVersion,
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
-import {Extension, extensions, commands} from "vscode";
-import {AzureAccountExtensionApi, AzureSession} from "../../azure-accounts.api";
-import {normalizeHost} from "../../utils/urlUtils";
-import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
-import {BricksCliCheck} from "./BricksCliCheck";
+import { workspaceConfigs } from "../../vscode-objs/WorkspaceConfigs";
+import { BricksCliCheck } from "./BricksCliCheck";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
-interface Token {
-    session: any;
-    accessToken: string;
-    refreshToken: string;
-}
-
-// TODO: Resolve this with SDK's AuthType.
 export type AuthType = "azure-cli" | "google-id" | "bricks-cli" | "profile";
 
 export abstract class AuthProvider {
     constructor(
         private readonly _host: URL,
         private readonly _authType: AuthType
-    ) {}
+    ) { }
 
     get host(): URL {
         return this._host;
@@ -58,44 +48,6 @@ export abstract class AuthProvider {
     }
 
     protected abstract getSdkConfig(): Promise<Config>;
-
-    static fromJSON(
-        json: Record<string, any>,
-        bricksPath: string
-    ): AuthProvider {
-        const host =
-            json.host instanceof URL
-                ? json.host
-                : normalizeHost(json.host as string);
-        if (!host) {
-            throw new Error("Missing host");
-        }
-
-        if (!json.authType) {
-            throw new Error("Missing authType");
-        }
-
-        switch (json.authType as AuthType) {
-            case "azure-cli":
-                return new AzureCliAuthProvider(
-                    host,
-                    json.tenantId,
-                    json.appId
-                );
-
-            case "bricks-cli":
-                return new BricksCliAuthProvider(host, bricksPath);
-
-            case "profile":
-                if (!json.profile) {
-                    throw new Error("Missing profile");
-                }
-                return new ProfileAuthProvider(host, json.profile);
-
-            default:
-                throw new Error(`Unknown auth type: ${json.authType}`);
-        }
-    }
 }
 
 export class ProfileAuthProvider extends AuthProvider {

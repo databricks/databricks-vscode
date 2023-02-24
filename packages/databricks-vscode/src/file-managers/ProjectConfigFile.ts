@@ -8,6 +8,7 @@ import {Uri} from "vscode";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Config} from "@databricks/databricks-sdk";
+import {AuthLoader} from "./auth/AuthLoader";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export interface ProjectConfig {
@@ -126,7 +127,7 @@ export class ProjectConfigFile {
             if (!config.authType && config.profile) {
                 authProvider = await this.importOldConfig(config);
             } else {
-                authProvider = AuthProvider.fromJSON(config, bricksPath);
+                authProvider = AuthLoader.fromJSON(config, bricksPath);
             }
         } catch (e: any) {
             NamedLogger.getOrCreate(Loggers.Extension).error(

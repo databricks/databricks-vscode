@@ -7,8 +7,9 @@ import {
     isGcpHost,
     normalizeHost,
 } from "../utils/urlUtils";
+import {AuthLoader} from "./auth/AuthLoader";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {AuthProvider, AuthType} from "./auth/AuthProvider";
+import {AuthType} from "./auth/AuthProvider";
 import {ProjectConfig} from "../file-managers/ProjectConfigFile";
 
 interface AuthTypeQuickPickItem extends QuickPickItem {
@@ -191,7 +192,7 @@ export async function configureWorkspaceWizard(
     }
 
     return {
-        authProvider: AuthProvider.fromJSON(state, cliWrapper.bricksPath),
+        authProvider: AuthLoader.fromJSON(state),
     };
 }
 
