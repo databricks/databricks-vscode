@@ -4,8 +4,8 @@
 
 ## <small>0.3.2 (2023-02-24)</small>
 
--   bump bricks to v0.0.24 (#495) ([3655f8b](https://github.com/databricks/databricks-vscode/commit/3655f8b)), closes [#495](https://github.com/databricks/databricks-vscode/issues/495)
--   Proxy environment variable can be lower case (#505) ([f3803db](https://github.com/databricks/databricks-vscode/commit/f3803db)), closes [#505](https://github.com/databricks/databricks-vscode/issues/505)
+-   Fix: Support HTTP proxies when the proxy environment variable is lower case, closes [#476](https://github.com/databricks/databricks-vscode/issues/476) reported by [@wibbico](https://github.com/wibbico)
+-   Fix: Increase timeouts to support uploading large files
 
 # Release: v0.3.1
 
