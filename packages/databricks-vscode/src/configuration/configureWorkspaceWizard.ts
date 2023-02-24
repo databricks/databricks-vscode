@@ -93,8 +93,8 @@ export async function configureWorkspaceWizard(
             switch (authMethod) {
                 case "azure-cli":
                     items.push({
-                        label: "Azure CLI",
-                        detail: "Authenticate using the 'az' command line tool",
+                        label: "Azure",
+                        detail: "Authenticate through Azure",
                         authType: "azure-cli",
                     });
                     break;

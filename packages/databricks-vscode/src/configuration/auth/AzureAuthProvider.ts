@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {Config} from "@databricks/databricks-sdk";
+import {Config, Headers, RequestVisitor} from "@databricks/databricks-sdk";
 import {AuthProvider} from "./AuthProvider";
 import {
     commands,
@@ -14,6 +14,7 @@ import {AzureAccountExtensionApi, AzureSession} from "../../azure-accounts.api";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../../logger";
+import {CredentialsServer} from "./CredentialsServer";
 
 const azureDatabricksLoginAppID = "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d";
 
@@ -28,6 +29,7 @@ type AzureStepName = "activateExtension" | "tryLogin" | "setTenantId";
 export class AzureAuthProvider extends AuthProvider {
     private logger: NamedLogger;
     private azureAccount: AzureAccountExtensionApi | undefined;
+    private credentialsServer: CredentialsServer | undefined;
 
     private _tenantId?: string;
     private _appId?: string;
@@ -39,6 +41,10 @@ export class AzureAuthProvider extends AuthProvider {
         this._appId = appId;
 
         this.logger = NamedLogger.getOrCreate(Loggers.Extension);
+    }
+
+    dispose() {
+        this.credentialsServer?.dispose();
     }
 
     get tenantId(): string | undefined {
@@ -78,7 +84,16 @@ export class AzureAuthProvider extends AuthProvider {
 
         return new Config({
             host: this.host.toString(),
-            token: creds!.accessToken,
+            credentials: {
+                name: "pat",
+                async configure(): Promise<RequestVisitor> {
+                    return async (headers: Headers) => {
+                        headers[
+                            "Authorization"
+                        ] = `Bearer ${creds.accessToken}`;
+                    };
+                },
+            },
             env: {},
         });
     }

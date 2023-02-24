@@ -4,6 +4,7 @@ import {
     ProductVersion,
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
+import { Disposable } from "vscode";
 import { workspaceConfigs } from "../../vscode-objs/WorkspaceConfigs";
 import { BricksCliCheck } from "./BricksCliCheck";
 
@@ -13,11 +14,13 @@ const extensionVersion = require("../../../package.json")
 
 export type AuthType = "azure-cli" | "google-id" | "bricks-cli" | "profile";
 
-export abstract class AuthProvider {
+export abstract class AuthProvider implements Disposable {
     constructor(
         private readonly _host: URL,
         private readonly _authType: AuthType
     ) { }
+
+    dispose() { }
 
     get host(): URL {
         return this._host;
