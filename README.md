@@ -25,4 +25,9 @@ npm install -g yarn@2
 yarn install
 ```
 
+### Found an issue?
 
+If you find an issue / bug or have a feature request, please file an issue here: https://github.com/databricks/databricks-vscode/issues/new
+
+Also please send the logs as per these instructions https://docs.databricks.com/dev-tools/vscode-ext.html#send-usage-logs-to-databricks to us at
+vscode-private-preview _at_ databricks _dot_ com (remove_the_spaces)
