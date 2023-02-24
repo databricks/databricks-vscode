@@ -4,8 +4,6 @@
 
 ## <small>0.3.2 (2023-02-24)</small>
 
--   Proxy environment variable can be lower case (#505) ([f3803db](https://github.com/databricks/databricks-vscode/commit/f3803db)), closes [#505](https://github.com/databricks/databricks-vscode/issues/505)
-
 # Release: v0.3.1
 
 ## packages/databricks-sdk-js
