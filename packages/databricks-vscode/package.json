@@ -619,10 +619,20 @@
         "dependencies": false,
         "useYarn": false
     },
+    "bricks": {
+        "version": "0.0.23"
+    },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
         "package": "vsce package --baseContentUrl https://github.com/databricks/databricks-vscode/blob/${TAG:-main}/packages/databricks-vscode --baseImagesUrl https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-main}/packages/databricks-vscode",
-        "package:cli:fetch": "BRICKS_VERSION=0.0.23 && bash ./scripts/fetch-bricks-cli.sh ${BRICKS_VERSION} ${BRICKS_ARCH:-}",
+        "package:linux:x64": "./scripts/package-vsix.sh linux-x64",
+        "package:linux:arm64": "./scripts/package-vsix.sh linux-arm64",
+        "package:darwin:x64": "./scripts/package-vsix.sh darwin-x64",
+        "package:darwin:arm64": "./scripts/package-vsix.sh darwin-arm64",
+        "package:win32:x64": "./scripts/package-vsix.sh win32-x64",
+        "package:win32:arm64": "./scripts/package-vsix.sh win32-arm64",
+        "package:all": "yarn run package:linux:x64 && yarn run package:linux:arm64 && yarn run package:darwin:x64 && yarn run package:darwin:arm64 && yarn run package:win32:x64 && yarn run package:win32:arm64",
+        "package:cli:fetch": "bash ./scripts/fetch-bricks-cli.sh ${BRICKS_ARCH:-}",
         "package:cli:link": "rm -f ./bin/bricks && ln -s ../../../../bricks/bricks bin",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",

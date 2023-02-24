@@ -5,77 +5,23 @@ on:
 
 jobs:
     create-build-artifacts:
-        strategy:
-            fail-fast: false
-            matrix:
-                # VSIX architextures: https://github.com/microsoft/vscode-vsce/blob/main/src/package.ts
-                arch:
-                    [
-                        {
-                            bricks_arch: darwin_arm64,
-                            vsix_arch: darwin-arm64,
-                            os: macos-latest,
-                        },
-                        {
-                            bricks_arch: darwin_amd64,
-                            vsix_arch: darwin-x64,
-                            os: macos-latest,
-                        },
-                        {
-                            bricks_arch: linux_arm64,
-                            vsix_arch: linux-arm64,
-                            os: ubuntu-latest,
-                        },
-                        {
-                            bricks_arch: linux_amd64,
-                            vsix_arch: linux-x64,
-                            os: ubuntu-latest,
-                        },
-                        {
-                            bricks_arch: windows_arm64,
-                            vsix_arch: win32-arm64,
-                            os: windows-latest,
-                        },
-                        {
-                            bricks_arch: windows_amd64,
-                            vsix_arch: win32-x64,
-                            os: windows-latest,
-                        },
-                    ]
-                node-version: [16.x]
-
-        runs-on: ${{ matrix.arch.os }}
-
+        runs-on: ubuntu-latest
         defaults:
             run:
                 shell: bash
 
-        env:
-            BRICKS_ARCH: ${{ matrix.arch.bricks_arch }}
-
         steps:
             - uses: actions/checkout@v3
 
-            - name: Use Node.js ${{ matrix.node-version }}
+            - name: Use Node.js 16
               uses: actions/setup-node@v3
               with:
-                  node-version: ${{ matrix.node-version }}
+                  node-version: 16
                   cache: "yarn"
 
             - run: yarn install
             - run: yarn run build
-
-            - run: yarn run package:cli:fetch
-              working-directory: packages/databricks-vscode
-
-            - name: Update arch in package.json
-              working-directory: packages/databricks-vscode
-              run: |
-                  yarn ts-node scripts/set_arch_in_package.ts -f package.json -b ${{ matrix.arch.bricks_arch }} -V ${{ matrix.arch.vsix_arch }} -c $(git rev-parse --short HEAD)
-                  yarn run fix
-
-            - run: |
-                  TAG="release-v$(cat package.json | jq -r .version)" yarn run package -t ${{ matrix.arch.vsix_arch }}
+            - run: yarn run package:all
               working-directory: packages/databricks-vscode
 
             - uses: actions/upload-artifact@v3

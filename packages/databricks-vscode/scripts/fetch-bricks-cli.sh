@@ -1,11 +1,11 @@
 #!/bin/bash 
 set -ex
 
-BRICKS_VERSION=${1:-}
+BRICKS_VERSION=$(cat package.json | jq -r .bricks.version)
 
-BRICKS_ARCH=$2
+BRICKS_ARCH=$1
 if [ -z "$BRICKS_ARCH" ]; then
-    BRICKS_ARCH="$(uname -s | awk '{print tolower($0)}')_$(uname -m)"
+    BRICKS_ARCH="$(uname -s | awk '{print tolower($0)}')-$(uname -m)"
 fi
 
 BRICKS_DIR=$(mktemp -d -t bricks-XXXXXXXXXX)
@@ -19,5 +19,5 @@ popd
 mkdir -p bin
 cd ./bin
 rm -rf bricks
-mv $BRICKS_DIR/bricks .
+mv $BRICKS_DIR/bricks* .
 rm -rf $BRICKS_DIR
