@@ -113,6 +113,15 @@ export class ConfigureAutocomplete implements Disposable {
     }
 
     private async configure(force = false) {
+        if (
+            !force &&
+            this.context.workspaceState.get<boolean>(
+                "skipConfigureAutocomplete"
+            )
+        ) {
+            return;
+        }
+
         const pythonExtension = extensions.getExtension("ms-python.python");
         if (pythonExtension === undefined) {
             window.showWarningMessage(
@@ -163,10 +172,19 @@ export class ConfigureAutocomplete implements Disposable {
         const choice = await window.showInformationMessage(
             "Do you want to configure autocompletion for Databricks specific globals (dbutils etc)?",
             "Configure",
-            "Cancel"
+            "Cancel",
+            "Never for this workspace"
         );
 
         if (choice === "Cancel" || choice === undefined) {
+            return;
+        }
+
+        if (choice === "Never for this workspace") {
+            this.context.workspaceState.update(
+                "skipConfigureAutocomplete",
+                true
+            );
             return;
         }
 

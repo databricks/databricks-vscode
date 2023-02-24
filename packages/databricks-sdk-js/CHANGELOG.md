@@ -1,3 +1,13 @@
+# Release: v0.3.1
+
+## packages/databricks-sdk-js
+
+## <small>0.3.1 (2023-02-23)</small>
+
+-   Fix: Support `.databrickscfg` profiles that contain a dot, closes [#447](https://github.com/databricks/databricks-vscode/issues/447) reported by [@tahaum](https://github.com/tahaum)
+-   Fix: Remove API timeout limit for execution context runs, closes [#482](https://github.com/databricks/databricks-vscode/issues/482) reported by [@sebrahimi1988](https://github.com/sebrahimi1988)
+-   Fix: Show errors when parsing of host in .databrickscfg fails, closes [#479](https://github.com/databricks/databricks-vscode/issues/479)
+
 # Release: v0.3.0
 
 ## packages/databricks-sdk-js

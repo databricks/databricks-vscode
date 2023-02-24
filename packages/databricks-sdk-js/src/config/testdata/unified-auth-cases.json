@@ -130,6 +130,15 @@
             "assert_error": "default auth: cannot configure default credentials. Config: token=***, profile=nohost. Env: DATABRICKS_CONFIG_PROFILE"
         },
         {
+            "name": "TestConfig_PatFromDatabricksCfg_DotProfile",
+            "env": {
+                "DATABRICKS_CONFIG_PROFILE": "pat.with.dot",
+                "HOME": "testdata"
+            },
+            "assert_auth": "pat",
+            "assert_host": "https://dbc-XXXXXXXX-YYYY.cloud.databricks.com"
+        },
+        {
             "name": "TestConfig_ConfigProfileAndToken",
             "env": {
                 "DATABRICKS_CONFIG_PROFILE": "nohost",
