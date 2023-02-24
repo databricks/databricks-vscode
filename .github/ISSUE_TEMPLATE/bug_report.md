@@ -20,11 +20,10 @@ Steps to reproduce the behavior:
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**System information (please complete the following information):**
- - OS: [e.g. MacOS Sierra, Windows 11]
- - System architecture [Eg arm, x86, amd64]
- - VSCode Version (https://code.visualstudio.com/docs/supporting/FAQ#_how-do-i-find-the-version)
- - Databricks Extension Version
+**System information:**
+
+1. Paste the output ot the `Help: About` command (CMD-Shift-P).
+2. Databricks Extension Version
 
 **Databricks Extension Logs**
 Please attach the [databricks extension logs](https://docs.databricks.com/dev-tools/vscode-ext.html#send-usage-logs-to-databricks)
