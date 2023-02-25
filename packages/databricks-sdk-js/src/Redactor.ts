@@ -17,12 +17,14 @@ export class Redactor {
     sanitize(
         obj?: any,
         dropFields: string[] = [],
-        seen: Set<any> = new Set()
+        seen: WeakSet<any> = new WeakSet()
     ): any {
-        if (seen.has(obj)) {
-            return `circular ref`;
+        if (typeof obj === "object") {
+            if (seen.has(obj)) {
+                return `circular ref`;
+            }
+            seen.add(obj);
         }
-        seen.add(obj);
         if (obj === undefined) {
             return undefined;
         }
@@ -36,6 +38,7 @@ export class Redactor {
 
         //make a copy of the object
         const copyObj = Object.assign({}, obj);
+        // eslint-disable-next-line no-console
         for (const key in copyObj) {
             if (dropFields.includes(key)) {
                 delete copyObj[key];
