@@ -38,7 +38,7 @@ export class Redactor {
 
         //make a copy of the object
         const copyObj = Object.assign({}, obj);
-        // eslint-disable-next-line no-console
+
         for (const key in copyObj) {
             if (dropFields.includes(key)) {
                 delete copyObj[key];
