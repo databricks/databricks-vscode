@@ -1,3 +1,12 @@
+# Release: v0.3.2
+
+## packages/databricks-vscode
+
+## <small>0.3.2 (2023-02-24)</small>
+
+-   Fix: Support HTTP proxies when the proxy environment variable is lower case, closes [#476](https://github.com/databricks/databricks-vscode/issues/476) reported by [@wibbico](https://github.com/wibbico)
+-   Fix: Increase timeouts to support uploading large files
+
 # Release: v0.3.1
 
 ## packages/databricks-vscode
