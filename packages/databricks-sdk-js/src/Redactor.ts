@@ -17,7 +17,7 @@ export class Redactor {
     sanitize(
         obj?: any,
         dropFields: string[] = [],
-        seen: WeakSet<any> = new WeakSet()
+        seen: Set<any> = new Set()
     ): any {
         if (typeof obj === "object") {
             if (seen.has(obj)) {
