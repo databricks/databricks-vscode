@@ -223,6 +223,11 @@ export class DatabricksDebugSession extends LoggingDebugSession {
     }
 
     protected async disconnectRequest(): Promise<void> {
+        if (this.runtime.state !== "FINISHED") {
+            this.sendEvent(new OutputEvent("Execution terminated", "stderr"));
+            this.sendEvent(new TerminatedEvent());
+            this.sendEvent(new ExitedEvent(1));
+        }
         await this.runtime.disconnect();
     }
 
