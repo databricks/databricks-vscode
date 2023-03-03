@@ -43,6 +43,12 @@ export class RemoteUri extends DatabricksUri<RemoteUri> {
             throw err;
         }
 
+        if (uri.path.startsWith("/Workspace/")) {
+            uri = Uri.from({
+                scheme: "wsfs",
+                path: uri.path.replace("/Workspace", ""),
+            });
+        }
         super(uri);
     }
 
