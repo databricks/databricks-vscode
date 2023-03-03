@@ -116,7 +116,7 @@ export class ConfigureAutocomplete implements Disposable {
         if (
             !force &&
             this.context.workspaceState.get<boolean>(
-                "skipConfigureAutocomplete"
+                "databricks.autocompletion.skipConfigure"
             )
         ) {
             return;
@@ -182,7 +182,7 @@ export class ConfigureAutocomplete implements Disposable {
 
         if (choice === "Never for this workspace") {
             this.context.workspaceState.update(
-                "skipConfigureAutocomplete",
+                "databricks.autocompletion.skipConfigure",
                 true
             );
             return;

@@ -2,6 +2,7 @@ import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
 import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
 import {MultiStepInput} from "../ui/wizard";
 import {normalizeHost} from "../utils/urlUtils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider, AuthType} from "./auth/AuthProvider";
 import {ProjectConfig} from "./ProjectConfigFile";
 
@@ -176,7 +177,9 @@ export async function configureWorkspaceWizard(
 }
 
 async function listProfiles(cliWrapper: CliWrapper) {
-    const profiles = await cliWrapper.listProfiles();
+    const profiles = await cliWrapper.listProfiles(
+        workspaceConfigs.databrickscfgLocation
+    );
     return profiles.filter((profile) => {
         return ["pat", "basic", "azure-cli"].includes(profile.authType);
     });

@@ -51,4 +51,11 @@ export const workspaceConfigs = {
                 "repo") === "workspace"
         );
     },
+
+    get databrickscfgLocation() {
+        const config = workspace
+            .getConfiguration("databricks")
+            ?.get<string>("overrideDatabricksConfigFile");
+        return config === "" || config === undefined ? undefined : config;
+    },
 };
