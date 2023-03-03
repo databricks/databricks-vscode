@@ -205,7 +205,7 @@ export async function activate(
     );
 
     // Run/debug group
-    const runCommands = new RunCommands(connectionManager, synchronizer);
+    const runCommands = new RunCommands(connectionManager);
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
         synchronizer,

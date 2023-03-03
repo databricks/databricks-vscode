@@ -17,6 +17,7 @@ import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import {RemoteUri, REPO_NAME_SUFFIX} from "./SyncDestination";
+import path from "node:path";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -75,7 +76,15 @@ export class ConnectionCommands implements Disposable {
 
     openDatabricksConfigFileCommand() {
         return async () => {
-            const uri = Uri.joinPath(Uri.file(homedir()), ".databrickscfg");
+            let filePath =
+                workspaceConfigs.databrickscfgLocation ??
+                process.env.DATABRICKS_CONFIG_FILE ??
+                path.join(homedir(), ".databrickscfg");
+
+            if (filePath.startsWith("~/")) {
+                filePath = path.join(homedir(), filePath.slice(2));
+            }
+            const uri = Uri.file(path.normalize(filePath));
 
             try {
                 await workspace.fs.stat(uri);

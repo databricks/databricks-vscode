@@ -19,10 +19,12 @@ export class Redactor {
         dropFields: string[] = [],
         seen: Set<any> = new Set()
     ): any {
-        if (seen.has(obj)) {
-            return `circular ref`;
+        if (typeof obj === "object") {
+            if (seen.has(obj)) {
+                return `circular ref`;
+            }
+            seen.add(obj);
         }
-        seen.add(obj);
         if (obj === undefined) {
             return undefined;
         }
@@ -36,6 +38,7 @@ export class Redactor {
 
         //make a copy of the object
         const copyObj = Object.assign({}, obj);
+
         for (const key in copyObj) {
             if (dropFields.includes(key)) {
                 delete copyObj[key];

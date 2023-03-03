@@ -1,6 +1,5 @@
 import {debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {CodeSynchronizer} from "../sync";
 import {promptForAttachingSyncDest} from "./prompts";
 import {isNotebook} from "../utils";
 
@@ -8,10 +7,7 @@ import {isNotebook} from "../utils";
  * Run related commands
  */
 export class RunCommands {
-    constructor(
-        private connection: ConnectionManager,
-        private codeSynchronizer: CodeSynchronizer
-    ) {}
+    constructor(private connection: ConnectionManager) {}
 
     /**
      * Run a Python file using the command execution API
