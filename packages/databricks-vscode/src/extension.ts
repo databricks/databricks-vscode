@@ -30,6 +30,9 @@ import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
+import {ProjectCommands} from "./project/ProjectCommands";
+import {ProjectModel} from "./project/ProjectModel";
+import {ProjectDataProvider} from "./project/ProjectDataProvider";
 
 export async function activate(
     context: ExtensionContext
@@ -237,6 +240,41 @@ export async function activate(
         ),
         debugWorkflowFactory
     );
+
+    // Project group
+    const projectModel = new ProjectModel(cli);
+    projectModel.watchFiles();
+    const projectCommands = new ProjectCommands(projectModel);
+    const projectDataProvider = new ProjectDataProvider(projectModel);
+
+    context.subscriptions.push(
+        projectModel,
+        projectDataProvider,
+        window.registerTreeDataProvider("projectView", projectDataProvider),
+
+        commands.registerCommand(
+            "databricks.project.refresh",
+            projectCommands.refreshCommand(),
+            projectCommands
+        ),
+        commands.registerCommand(
+            "databricks.project.openFile",
+            projectCommands.openFileCommand(),
+            projectCommands
+        ),
+        commands.registerCommand(
+            "databricks.project.run",
+            projectCommands.runCommand(),
+            projectCommands
+        ),
+        commands.registerCommand(
+            "databricks.project.deploy",
+            projectCommands.deployCommand(),
+            projectCommands
+        )
+    );
+
+    await commands.executeCommand("databricks.project.refresh");
 
     // Cluster group
     const clusterTreeDataProvider = new ClusterListDataProvider(clusterModel);

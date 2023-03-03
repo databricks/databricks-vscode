@@ -81,7 +81,6 @@ export class CliWrapper {
         };
     }
 
-    @withLogContext(Loggers.Extension)
     public async validateBundle(): Promise<Record<string, any>> {
         const cmd = this.getBundleValidateCommand();
         // TODO: handle errors

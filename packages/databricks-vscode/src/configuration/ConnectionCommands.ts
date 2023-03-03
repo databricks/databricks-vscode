@@ -258,8 +258,8 @@ export class ConnectionCommands implements Disposable {
                             kind: QuickPickItemKind.Separator,
                         },
                         {
-                            label: bundleFilePath,
-                            detail: "Databricks Project",
+                            label: "Databricks Project",
+                            detail: bundleFilePath,
                             path: bundleFilePath,
                         }
                     );

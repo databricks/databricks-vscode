@@ -216,6 +216,27 @@
                 "icon": "$(new-folder)",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.project.refresh",
+                "title": "Refresh project view",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "databricks.project.openFile",
+                "title": "Open file in VS Code",
+                "icon": "$(go-to-file)"
+            },
+            {
+                "command": "databricks.project.run",
+                "title": "Run",
+                "icon": "$(play)"
+            },
+            {
+                "command": "databricks.project.deploy",
+                "title": "Deploy Databricks project",
+                "icon": "$(cloud-upload)",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -232,6 +253,10 @@
                 {
                     "id": "configurationView",
                     "name": "Configuration"
+                },
+                {
+                    "id": "projectView",
+                    "name": "Project"
                 },
                 {
                     "id": "workspaceFsView",
@@ -258,6 +283,16 @@
         ],
         "menus": {
             "view/title": [
+                {
+                    "command": "databricks.project.refresh",
+                    "when": "view == projectView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.project.deploy",
+                    "when": "view == projectView",
+                    "group": "navigation@2"
+                },
                 {
                     "command": "databricks.connection.configureWorkspace",
                     "when": "view == configurationView",
@@ -307,7 +342,22 @@
                 },
                 {
                     "command": "databricks.utils.openExternal",
+                    "when": "view == projectView && viewItem == pipeline || view == projectView && viewItem == workflow || view == projectView && viewItem == url",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.utils.openExternal",
                     "when": "view == clusterView && viewItem == cluster",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.project.openFile",
+                    "when": "view == projectView && viewItem == notebook",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.project.run",
+                    "when": "view == projectView && viewItem == pipeline || view == projectView && viewItem == workflow",
                     "group": "inline@1"
                 },
                 {

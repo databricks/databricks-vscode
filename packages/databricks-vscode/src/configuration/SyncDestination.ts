@@ -66,12 +66,13 @@ export class RemoteUri extends DatabricksUri<RemoteUri> {
             connectionManager.workspaceClient,
             connectionManager.databricksWorkspace.currentFsRoot.path
         );
-        if (
-            !WorkspaceFsUtils.isDirectory(rootDir) ||
-            rootDir.getAbsoluteChildPath(remotePath) === undefined
-        ) {
-            return false;
-        }
+        // TODO: Fix this
+        // if (
+        //     !WorkspaceFsUtils.isDirectory(rootDir) ||
+        //     rootDir.getAbsoluteChildPath(remotePath) === undefined
+        // ) {
+        //     return false;
+        // }
 
         return true;
     }

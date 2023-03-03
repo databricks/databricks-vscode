@@ -271,19 +271,20 @@ export class ConfigurationDataProvider
                 },
             ];
 
-            if (
-                syncDestination.remoteUri.name !== syncDestination.localUri.name
-            ) {
-                children.push({
-                    label: "The remote sync destination name does not match the current vscode workspace name",
-                    tooltip:
-                        "If syncing to directory with a different name is the intended behaviour, this warning can be ignored",
-                    iconPath: new ThemeIcon(
-                        "warning",
-                        new ThemeColor("problemsWarningIcon.foreground")
-                    ),
-                });
-            }
+            // TODO: fix this
+            // if (
+            //     syncDestination.remoteUri.name !== syncDestination.localUri.name
+            // ) {
+            //     children.push({
+            //         label: "The remote sync destination name does not match the current vscode workspace name",
+            //         tooltip:
+            //             "If syncing to directory with a different name is the intended behaviour, this warning can be ignored",
+            //         iconPath: new ThemeIcon(
+            //             "warning",
+            //             new ThemeColor("problemsWarningIcon.foreground")
+            //         ),
+            //     });
+            // }
             children.push(
                 {
                     label: `State`,
