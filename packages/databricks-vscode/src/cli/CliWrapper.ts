@@ -1,5 +1,5 @@
 import {execFile as execFileCb, spawn} from "child_process";
-import {ExtensionContext, window, commands} from "vscode";
+import {ExtensionContext, window, commands, workspace} from "vscode";
 import {SyncDestinationMapper} from "../configuration/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -72,6 +72,23 @@ export class CliWrapper {
             command: this.extensionContext.asAbsolutePath("./bin/bricks"),
             args: ["auth", "profiles", "--skip-validate"],
         };
+    }
+
+    private getBundleValidateCommand(): Command {
+        return {
+            command: this.extensionContext.asAbsolutePath("./bin/bricks"),
+            args: ["bundle", "validate"],
+        };
+    }
+
+    @withLogContext(Loggers.Extension)
+    public async validateBundle(): Promise<Record<string, any>> {
+        const cmd = this.getBundleValidateCommand();
+        // TODO: handle errors
+        const res = await execFile(cmd.command, cmd.args, {
+            cwd: workspace.workspaceFolders?.[0].uri.fsPath,
+        });
+        return JSON.parse(res.stdout);
     }
 
     @withLogContext(Loggers.Extension)

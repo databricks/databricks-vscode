@@ -147,7 +147,8 @@ export async function activate(
     const connectionCommands = new ConnectionCommands(
         workspaceFsCommands,
         connectionManager,
-        clusterModel
+        clusterModel,
+        cli
     );
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,

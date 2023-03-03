@@ -18,6 +18,7 @@ import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import {RemoteUri, REPO_NAME_SUFFIX} from "./SyncDestination";
 import path from "node:path";
+import {CliWrapper} from "../cli/CliWrapper";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -56,7 +57,8 @@ export class ConnectionCommands implements Disposable {
     constructor(
         private wsfsCommands: WorkspaceFsCommands,
         private connectionManager: ConnectionManager,
-        private readonly clusterModel: ClusterModel
+        private readonly clusterModel: ClusterModel,
+        private cliWrapper: CliWrapper
     ) {}
 
     /**
@@ -243,11 +245,31 @@ export class ConnectionCommands implements Disposable {
                         ? `Create a new folder under /Workspace/${me}/.ide as sync destination`
                         : `Create a new Repo under /Repo/${me} as sync destination`,
                 },
-                {
-                    label: "Sync Destinations",
-                    kind: QuickPickItemKind.Separator,
-                },
             ];
+
+            try {
+                const bundle = await this.cliWrapper.validateBundle();
+                const bundleFilePath = bundle?.workspace?.file_path?.workspace;
+
+                if (bundleFilePath) {
+                    children.push(
+                        {
+                            label: "Databricks Project",
+                            kind: QuickPickItemKind.Separator,
+                        },
+                        {
+                            label: bundleFilePath,
+                            detail: "Databricks Project",
+                            path: bundleFilePath,
+                        }
+                    );
+                }
+            } catch (e) {}
+
+            children.push({
+                label: "Sync Destinations",
+                kind: QuickPickItemKind.Separator,
+            });
 
             const input = window.createQuickPick();
             input.busy = true;
