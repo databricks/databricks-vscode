@@ -23,6 +23,7 @@ import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {isNotebook} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
 import Convert from "ansi-to-html";
+import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();
@@ -76,6 +77,7 @@ export class WorkflowRunner implements Disposable {
         cluster,
         syncDestination,
         token,
+        connectionManager,
     }: {
         program: Uri;
         parameters?: Record<string, string>;
@@ -83,6 +85,7 @@ export class WorkflowRunner implements Disposable {
         cluster: Cluster;
         syncDestination: SyncDestinationMapper;
         token?: CancellationToken;
+        connectionManager?: ConnectionManager;
     }) {
         const panel = await this.getPanelForUri(program);
 
@@ -103,23 +106,45 @@ export class WorkflowRunner implements Disposable {
         // with the remote repo files
         await this.codeSynchronizer.waitForSyncComplete();
 
+        panel.onDidReceiveMessage(async (e) => {
+            switch (e.command) {
+                case "refresh_results":
+                    if (
+                        e.args?.runId &&
+                        connectionManager?.workspaceClient?.apiClient
+                    ) {
+                        const run = await WorkflowRun.fromId(
+                            connectionManager?.workspaceClient?.apiClient,
+                            e.args?.runId
+                        );
+
+                        if (await isNotebook(program)) {
+                            panel.showExportedRun(await run.export());
+                        } else {
+                            panel.showStdoutResult(
+                                (await run.getOutput()).logs || ""
+                            );
+                        }
+                    }
+            }
+        });
         try {
             if (await isNotebook(program)) {
-                const response = await cluster.runNotebookAndWait({
-                    path: syncDestination.localToRemoteNotebook(
-                        new LocalUri(program)
-                    ).path,
-                    parameters,
-                    onProgress: (
-                        state: jobs.RunLifeCycleState,
-                        run: WorkflowRun
-                    ) => {
-                        panel.updateState(cluster, state, run);
-                    },
-                    token: cancellation.token,
-                });
-                const htmlContent = response.views![0].content;
-                panel.showHtmlResult(htmlContent || "");
+                panel.showExportedRun(
+                    await cluster.runNotebookAndWait({
+                        path: syncDestination.localToRemoteNotebook(
+                            new LocalUri(program)
+                        ).path,
+                        parameters,
+                        onProgress: (
+                            state: jobs.RunLifeCycleState,
+                            run: WorkflowRun
+                        ) => {
+                            panel.updateState(cluster, state, run);
+                        },
+                        token: cancellation.token,
+                    })
+                );
             } else {
                 const response = await cluster.runPythonAndWait({
                     path: syncDestination.localToRemote(new LocalUri(program))

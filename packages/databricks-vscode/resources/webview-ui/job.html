@@ -34,13 +34,29 @@
                 font-size: small;
             }
 
+            .vscode-button {
+                background-color: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+                border-color: var(--vscode-button-border);
+                border-width: 0;
+                padding: 0.5em;
+            }
+            .vscode-button:hover {
+                background-color: var(--vscode-button-hoverBackground);
+            }
+            .vscode-disabled {
+                color: var(--vscode-disabledForeground);
+            }
+
+            li .vscode-button {
+                margin-top: 1em;
+                display: block;
+            }
+
             .container {
                 display: flex;
                 flex-direction: row;
                 height: 100vh;
-
-                display: flex;
-                flex-direction: row;
             }
 
             .output {
@@ -238,13 +254,31 @@
                             >Synchronizing</span
                         >
                     </li>
+                    <li>
+                        <button
+                            class="vscode-button vscode-disabled"
+                            id="refreshResults"
+                            disabled
+                        >
+                            Refresh Results
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>
         <script>
             const isMac = navigator.platform.indexOf("Mac") >= 0;
 
+            function enableRefreshResultsButton() {
+                document
+                    .getElementById("refreshResults")
+                    .classList.remove("vscode-disabled");
+                document.getElementById("refreshResults").disabled = false;
+                document.getElementById("refreshResults").innerText =
+                    "Refresh Results";
+            }
             class PageHandler {
+                details = {};
                 formatDuration(duration) {
                     if (duration < 0 || duration === undefined) {
                         return "-";
@@ -260,6 +294,7 @@
                 }
 
                 updateDetails(details) {
+                    this.details = details;
                     document
                         .getElementById("run-id")
                         .setAttribute("href", details.runUrl);
@@ -282,6 +317,7 @@
                 }
 
                 setOutputHtml(html) {
+                    enableRefreshResultsButton();
                     var cl = document.getElementById("output").classList;
                     cl.remove("spinner");
                     cl.add("html");
@@ -352,6 +388,7 @@
                 }
 
                 setStdout(stdout) {
+                    enableRefreshResultsButton();
                     var cl = document.getElementById("output").classList;
                     cl.remove("spinner");
                     cl.add("stdout");
@@ -369,6 +406,18 @@
                     document.getElementById("error-stack").innerHTML =
                         stack || "";
                 }
+
+                handleRefreshResultsClick(vscode, e) {
+                    vscode.postMessage({
+                        command: "refresh_results",
+                        args: {
+                            runId: this.details.runId,
+                        },
+                    });
+                    e.target.classList.add("vscode-disabled");
+                    e.target.disabled = true;
+                    e.target.innerText = "Refreshing results...";
+                }
             }
 
             const page = new PageHandler();
@@ -383,6 +432,10 @@
                     page[event.data.fn] &&
                         page[event.data.fn](...event.data.args);
                 });
+
+                document.getElementById("refreshResults").onclick = (e) => {
+                    page.handleRefreshResultsClick(vscode, e);
+                };
             } else {
                 // test code for iterating on the page in a web browser
 
