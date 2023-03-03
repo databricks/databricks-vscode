@@ -607,6 +607,11 @@
                             "Use a folder in Workspace as sync destination",
                             "Use a Repo as sync destination"
                         ]
+                    },
+                    "databricks.overrideDatabricksConfigFile": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Override location of .databrickscfg file (default: DATABRICKS_CONFIG_FILE environment variable or ~/.databrickscfg)"
                     }
                 }
             }

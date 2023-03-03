@@ -5,6 +5,7 @@ import {
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
 import {normalizeHost} from "../../utils/urlUtils";
+import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../../package.json")
@@ -104,14 +105,18 @@ export class ProfileAuthProvider extends AuthProvider {
     getEnvVars(): Record<string, string | undefined> {
         return {
             DATABRICKS_CONFIG_PROFILE: this.profile,
-            DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
+            DATABRICKS_CONFIG_FILE:
+                workspaceConfigs.databrickscfgLocation ??
+                process.env.DATABRICKS_CONFIG_FILE,
         };
     }
 
     getSdkConfig(): Config {
         return new Config({
             profile: this.profile,
-            configFile: process.env.DATABRICKS_CONFIG_FILE,
+            configFile:
+                workspaceConfigs.databrickscfgLocation ??
+                process.env.DATABRICKS_CONFIG_FILE,
             env: {},
         });
     }
