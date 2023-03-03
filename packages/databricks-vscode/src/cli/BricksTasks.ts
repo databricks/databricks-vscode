@@ -18,6 +18,7 @@ import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {PackageMetaData} from "../utils/packageJsonUtils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export const TASK_SYNC_TYPE = {
     syncFull: "sync-full",
@@ -269,7 +270,9 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 BRICKS_ROOT: workspacePath,
                 BRICKS_UPSTREAM: "databricks-vscode",
                 BRICKS_UPSTREAM_VERSION: this.packageMetadata.version,
-                DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
+                DATABRICKS_CONFIG_FILE:
+                    workspaceConfigs.databrickscfgLocation ??
+                    process.env.DATABRICKS_CONFIG_FILE,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
                 ...proxySettings,
