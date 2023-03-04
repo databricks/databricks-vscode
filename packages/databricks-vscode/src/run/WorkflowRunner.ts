@@ -15,10 +15,7 @@ import {
     ViewColumn,
     window,
 } from "vscode";
-import {
-    LocalUri,
-    SyncDestinationMapper,
-} from "../configuration/SyncDestination";
+import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {isNotebook} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";

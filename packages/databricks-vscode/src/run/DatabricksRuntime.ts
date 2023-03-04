@@ -18,7 +18,7 @@ import {
     LocalUri,
     RemoteUri,
     SyncDestinationMapper,
-} from "../configuration/SyncDestination";
+} from "../sync/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";

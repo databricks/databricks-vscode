@@ -7,12 +7,16 @@ import {
     workspace as vscodeWorkspace,
 } from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
-import {SyncDestinationMapper, RemoteUri, LocalUri} from "./SyncDestination";
+import {
+    SyncDestinationMapper,
+    RemoteUri,
+    LocalUri,
+} from "../sync/SyncDestination";
 import {
     ConfigFileError,
     ProjectConfig,
     ProjectConfigFile,
-} from "./ProjectConfigFile";
+} from "../file-managers/ProjectConfigFile";
 import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";

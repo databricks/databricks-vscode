@@ -1,7 +1,7 @@
 import {Disposable, workspace} from "vscode";
-import {ConnectionManager} from "./ConnectionManager";
+import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ProjectConfigFile} from "./ProjectConfigFile";
-import {RemoteUri} from "./SyncDestination";
+import {RemoteUri} from "../sync/SyncDestination";
 
 export class ProjectConfigFileWatcher implements Disposable {
     private disposables: Array<Disposable> = [];
