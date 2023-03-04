@@ -227,7 +227,18 @@ export class ConfigureAutocomplete implements Disposable {
 
         //TODO: Make sure that pyspark is not updated if it is already installed
         const execCommand = execCommandParts
-            .concat(["-m", "pip", "install", "pyspark"])
+            .concat([
+                "-m",
+                "pip",
+                "install",
+                this.context.asAbsolutePath(
+                    path.join(
+                        "resources",
+                        "python",
+                        "databricks-connect-13.0.0.tar.gz"
+                    )
+                ),
+            ])
             .join(" ");
 
         const terminal = window.createTerminal("pip");

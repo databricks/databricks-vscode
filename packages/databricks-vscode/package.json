@@ -216,6 +216,16 @@
                 "icon": "$(new-folder)",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.dbconnect.disable",
+                "title": "Disable dbconnect v2",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.dbconnect.enable",
+                "title": "Enable dbconnect v2",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {

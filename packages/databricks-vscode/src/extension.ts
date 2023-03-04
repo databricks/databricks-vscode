@@ -30,6 +30,8 @@ import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
+import {DbConnectManager} from "./language/DbConnectManager";
+import {DotenvFileManager} from "./file-managers/DotenvFileManager";
 
 export async function activate(
     context: ExtensionContext
@@ -329,6 +331,27 @@ export async function activate(
         )
     );
 
+    const dotEnvManager = new DotenvFileManager(
+        workspace.workspaceFolders[0].uri.fsPath
+    );
+    const dbConnectManager = new DbConnectManager(
+        connectionManager,
+        context,
+        dotEnvManager
+    );
+    context.subscriptions.push(
+        dbConnectManager,
+        commands.registerCommand(
+            "databricks.dbconnect.disable",
+            dbConnectManager.disableDbConnect,
+            dbConnectManager
+        ),
+        commands.registerCommand(
+            "databricks.dbconnect.enable",
+            dbConnectManager.enableDbConnect,
+            dbConnectManager
+        )
+    );
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
     generateBundleSchema(cli).catch((e) => {
