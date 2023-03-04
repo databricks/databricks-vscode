@@ -79,7 +79,7 @@ describe("tests for BricksSycnParser", () => {
 
         // upload and delete multiple files
         bricksSycnParser.process(
-            "Action: PUT: a.txt, c.txt DELETE: b.txt, d.txt"
+            "Action: PUT: a.txt, c.txt, DELETE: b.txt, d.txt"
         );
         bricksSycnParser.process("Uploaded a.txt");
         assert.equal(syncState, "IN_PROGRESS");
@@ -92,7 +92,7 @@ describe("tests for BricksSycnParser", () => {
 
         // multi line logs
         bricksSycnParser.process(
-            "Action: PUT: a.txt, c.txt DELETE: b.txt, d.txt\n" +
+            "Action: PUT: a.txt, c.txt, DELETE: b.txt, d.txt\n" +
                 "Uploaded a.txt\n" +
                 "some random text\n" +
                 "Uploaded c.txt"
