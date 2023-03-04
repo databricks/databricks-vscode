@@ -25,13 +25,20 @@ export class BricksSyncParser {
     // const s1 = "Action: PUT: g, .gitignore, DELETE: f"
     // A hacky way to solve this, lets move to structed logs from bricks later
     private parseForActionsInitiated(line: string) {
-        const match = line.match(/Action:( PUT: (.*?))?( DELETE: (.*?))?$/);
+        const match = line.match(/Action:(?: PUT: (.*?))?(?: DELETE: (.*?))?$/);
         if (!match) {
             return;
         }
 
-        const toAdd = match[2]?.split(", ");
-        const toDelete = match[4]?.split(", ");
+        const toAdd = match[1]
+            ?.split(",")
+            .map((v) => v.trim())
+            .filter((v) => v.length !== 0);
+
+        const toDelete = match[2]
+            ?.split(",")
+            .map((v) => v.trim())
+            .filter((v) => v.length !== 0);
 
         toAdd?.forEach((f) => this.filesBeingUploaded.add(f));
         toDelete?.forEach((f) => this.filesBeingDeleted.add(f));

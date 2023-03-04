@@ -201,6 +201,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             cluster,
             syncDestination: syncDestination,
             token: this.token,
+            connectionManager: this.connection,
         });
     }
 

@@ -156,7 +156,6 @@ host = example.com
                         factory: () => {
                             return {
                                 log: (level, msg, meta) => {
-                                    console.error("here");
                                     logs.push({level, msg, meta});
                                 },
                             };
