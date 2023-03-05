@@ -2,7 +2,6 @@ import {
     Disposable,
     Event,
     EventEmitter,
-    ProviderResult,
     TreeDataProvider,
     TreeItem,
 } from "vscode";
@@ -32,9 +31,9 @@ export class ProjectDataProvider
         return element.getTreeItem();
     }
 
-    getChildren(element?: Resource | undefined): ProviderResult<Resource[]> {
+    async getChildren(element?: Resource | undefined): Promise<Resource[]> {
         if (!element) {
-            return this.projectModel.resources;
+            return await this.projectModel.resources;
         } else {
             return element.getChildren();
         }

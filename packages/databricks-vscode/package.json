@@ -237,6 +237,11 @@
                 "title": "Deploy Databricks project",
                 "icon": "$(cloud-upload)",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.project.new",
+                "title": "Create new Databricks project",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -279,6 +284,10 @@
                 "view": "configurationView",
                 "contents": "Please open a folder to start using Databricks on VSCode.\n[Open Folder](command:vscode.openFolder)",
                 "when": "workspaceFolderCount == 0"
+            },
+            {
+                "view": "projectView",
+                "contents": "Create a Databricks project.\n[Create Project](command:databricks.project.new)"
             }
         ],
         "menus": {

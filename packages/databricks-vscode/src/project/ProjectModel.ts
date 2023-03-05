@@ -16,8 +16,10 @@ export class ProjectModel implements Disposable {
     readonly onDidChange: Event<void> = this._onDidChange.event;
     private disposables: Disposable[] = [];
 
-    public json: any = {};
-    public overlay: any = {};
+    public json: any = undefined;
+    public overlay: any = undefined;
+
+    private dirty = true;
 
     constructor(private cli: CliWrapper) {}
 
@@ -25,9 +27,11 @@ export class ProjectModel implements Disposable {
         this.disposables.forEach((e) => e.dispose());
     }
 
-    async refresh() {
+    private async refresh() {
+        this.dirty = false;
+        this.json = undefined;
+        this.overlay = undefined;
         try {
-            this.json = {};
             this.json = await this.cli.validateBundle();
             // TODO: interpolate environment
             const tfStateFile = Uri.joinPath(
@@ -35,7 +39,6 @@ export class ProjectModel implements Disposable {
                 ".databricks/bundle/development/terraform/terraform.tfstate"
             );
 
-            this.overlay = {};
             this.overlay = JSON.parse(
                 await (await workspace.fs.readFile(tfStateFile)).toString()
             );
@@ -44,7 +47,10 @@ export class ProjectModel implements Disposable {
             // eslint-disable-next-line no-console
             console.error(e);
         }
+    }
 
+    async scheduleRefresh() {
+        this.dirty = true;
         this._onDidChange.fire();
     }
 
@@ -89,7 +95,7 @@ export class ProjectModel implements Disposable {
             );
         });
 
-        await this.refresh();
+        await this.scheduleRefresh();
     }
 
     watchFiles() {
@@ -97,38 +103,42 @@ export class ProjectModel implements Disposable {
         this.disposables.push(
             watcher,
             watcher.onDidChange(() => {
-                this.refresh();
+                this.scheduleRefresh();
             })
         );
     }
 
-    get resources(): Resource[] {
-        const root = this.json.resources;
-        if (root) {
-            const resources: Resource[] = [];
-
-            for (const key of Object.keys(root)) {
-                if (key === "pipelines") {
-                    resources.push(
-                        new GroupResource(
-                            this,
-                            "Delta Live Tables",
-                            root.pipelines
-                        )
-                    );
-                } else if (key === "jobs") {
-                    resources.push(
-                        new GroupResource(this, "Workflows", root.jobs)
-                    );
-                } else {
-                    resources.push(new ResourceProperty(key, root[key]));
-                }
+    get resources(): Promise<Resource[]> {
+        return (async () => {
+            if (this.dirty) {
+                await this.refresh();
             }
 
-            return resources;
-        } else {
-            return [];
-        }
+            if (!this.json) {
+                return [];
+            }
+
+            const root = this.json?.resources;
+            if (root) {
+                const resources: Resource[] = [];
+
+                resources.push(
+                    new GroupResource(
+                        this,
+                        "Delta Live Tables",
+                        root.pipelines || {}
+                    ),
+                    new GroupResource(this, "Workflows", root.jobs || {})
+                );
+
+                return resources;
+            } else {
+                return [
+                    new GroupResource(this, "Delta Live Tables", {}),
+                    new GroupResource(this, "Workflows", {}),
+                ];
+            }
+        })();
     }
 
     get remoteFilePath(): string {
@@ -144,36 +154,19 @@ export interface Resource {
 export class GroupResource implements Resource {
     constructor(
         private model: ProjectModel,
-        readonly type:
-            | "cluster"
-            | "Workflows"
-            | "notebook"
-            | "Delta Live Tables"
-            | "generic",
+        readonly type: "Workflows" | "Delta Live Tables" | "generic",
         private node: any
     ) {}
 
     getChildren(): Resource[] {
         const items = Object.keys(this.node).map((name: any) => {
             switch (this.type) {
-                // case "cluster":
-                // return new ClusterResource(
-                //     this.model,
-                //     name,
-                //     this.node[name]
-                // );
                 case "Workflows":
                     return new WorkflowResource(
                         this.model,
                         name,
                         this.node[name]
                     );
-                // case "notebook":
-                //     return new NotebookResource(
-                //         this.model,
-                //         name,
-                //         this.node[name]
-                //     );
                 case "Delta Live Tables":
                     return new Pipeline(this.model, name, this.node[name]);
 
@@ -207,19 +200,15 @@ export class WorkflowResource implements Resource {
     }
 
     getChildren(): Resource[] {
-        const items = Object.keys(this.node).map((name: any) => {
-            if (name === "tasks") {
-                return new WorkflowTasks(this.model, this.node[name]);
+        const items: Resource[] = [];
+        for (const key of Object.keys(this.node)) {
+            if (key === "tasks") {
+                items.push(new WorkflowTasks(this.model, this.node[key]));
+            } else if (key === "name") {
+                continue;
             } else {
-                return new ResourceProperty(name, this.node[name]);
+                items.push(new ResourceProperty(key, this.node[key]));
             }
-        });
-
-        if (this.url) {
-            items.push(new ResourceProperty("URL", this.url, "url"));
-        }
-        if (this.id) {
-            items.push(new ResourceProperty("ID", this.id));
         }
 
         return items;
@@ -292,30 +281,6 @@ export class WorkflowTask implements Resource {
             }
         }
 
-        // const items = Object.keys(this.node)
-        //     .filter((name: any) => {
-        //         return name !== "task_key";
-        //     })
-        //     .map((name: any) => {
-        //         if (name === "new_cluster") {
-        //             return new ResourceProperty(
-        //                 name,
-        //                 this.node[name],
-        //                 "text",
-        //                 new ThemeIcon("server")
-        //             );
-        //         } else if (name === "notebook_task") {
-        //             return new ResourceProperty(
-        //                 name,
-        //                 this.node[name],
-        //                 "text",
-        //                 new ThemeIcon("notebook")
-        //             );
-        //         } else {
-        //             return new ResourceProperty(name, this.node[name]);
-        //         }
-        //     });
-
         return items;
     }
 
@@ -323,7 +288,7 @@ export class WorkflowTask implements Resource {
         return {
             label: this.node.task_key,
             iconPath: new ThemeIcon("tasklist"),
-            collapsibleState: TreeItemCollapsibleState.Expanded,
+            collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }
 }
@@ -357,12 +322,12 @@ export class Pipeline implements Resource {
             }
         });
 
-        if (this.url) {
-            items.push(new ResourceProperty("URL", this.url, "url"));
-        }
-        if (this.id) {
-            items.push(new ResourceProperty("ID", this.id));
-        }
+        // if (this.url) {
+        //     items.push(new ResourceProperty("URL", this.url, "url"));
+        // }
+        // if (this.id) {
+        //     items.push(new ResourceProperty("ID", this.id));
+        // }
 
         return items;
     }
@@ -423,7 +388,7 @@ export class Notebook implements Resource {
     constructor(private model: ProjectModel, private path: string) {
         this.localPath = this.path.split(this.model.remoteFilePath).pop();
         if (this.localPath) {
-            this.localPath = this.localPath + ".py";
+            this.localPath = this.localPath.replace(/(\.py)?$/, ".py");
         }
     }
 
@@ -462,8 +427,8 @@ export class ResourceProperty implements Resource {
 
     getChildren(): Resource[] {
         if (Array.isArray(this.value)) {
-            return this.value.map((v: any) => {
-                return new ResourceProperty(this.name, v);
+            return this.value.map((v: any, i: number) => {
+                return new ResourceProperty(`[${i}]`, v);
             });
         }
 

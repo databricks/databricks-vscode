@@ -244,7 +244,10 @@ export async function activate(
     // Project group
     const projectModel = new ProjectModel(cli);
     projectModel.watchFiles();
-    const projectCommands = new ProjectCommands(projectModel);
+    const projectCommands = new ProjectCommands(
+        projectModel,
+        connectionManager
+    );
     const projectDataProvider = new ProjectDataProvider(projectModel);
 
     context.subscriptions.push(
@@ -270,6 +273,11 @@ export async function activate(
         commands.registerCommand(
             "databricks.project.deploy",
             projectCommands.deployCommand(),
+            projectCommands
+        ),
+        commands.registerCommand(
+            "databricks.project.new",
+            projectCommands.createProjectCommand(),
             projectCommands
         )
     );
