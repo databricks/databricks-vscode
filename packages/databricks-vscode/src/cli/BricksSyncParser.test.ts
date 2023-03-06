@@ -1,13 +1,14 @@
 import "@databricks/databricks-sdk";
 import assert from "assert";
-import {mock} from "ts-mockito";
-import {EventEmitter} from "vscode";
-import {SyncState} from "../sync";
-import {BricksSyncParser} from "./BricksSyncParser";
+import { mock, instance, capture, reset } from "ts-mockito";
+import { EventEmitter } from "vscode";
+import { SyncState } from "../sync";
+import { BricksSyncParser } from "./BricksSyncParser";
 
 describe("tests for BricksSycnParser", () => {
     let syncState: SyncState = "STOPPED";
-    let bricksSycnParser: BricksSyncParser;
+    let mockedOutput: EventEmitter<string>;
+    let bricksSyncParser: BricksSyncParser;
 
     const syncStateCallback = (state: SyncState) => {
         syncState = state;
@@ -15,113 +16,72 @@ describe("tests for BricksSycnParser", () => {
 
     beforeEach(() => {
         syncState = "STOPPED";
-        bricksSycnParser = new BricksSyncParser(
+        mockedOutput = mock(EventEmitter<string>);
+        bricksSyncParser = new BricksSyncParser(
             syncStateCallback,
-            mock(EventEmitter<string>)
+            instance(mockedOutput)
         );
     });
 
-    it("processing empty logs transitions sync status from STOPPED -> IN_PROGRESS and we wait for initial sync complete", () => {
+    it("ignores empty lines", () => {
         assert.equal(syncState, "STOPPED");
-        bricksSycnParser.process("");
-        assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("[INFO] Initial Sync Complete");
-        assert.equal(syncState, "WATCHING_FOR_CHANGES");
-    });
-
-    it("processing action log transitions sync status from STOPPED -> INPROGRESS", () => {
+        bricksSyncParser.processStdout("\n\n");
         assert.equal(syncState, "STOPPED");
-        bricksSycnParser.process("Action: PUT: hello.txt");
-        assert.equal(syncState, "IN_PROGRESS");
     });
 
-    it("should handle files with spaces in their names", () => {
+    it("ignores non-JSON lines", () => {
         assert.equal(syncState, "STOPPED");
-        bricksSycnParser.process(
-            "Action: PUT: hello world.txt, hello.py, world hello.py"
-        );
-        assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("Uploaded hello world.txt");
-        bricksSycnParser.process("Uploaded hello.py");
-        bricksSycnParser.process("Uploaded world hello.py");
-        bricksSycnParser.process("[INFO] Initial Sync Complete");
-        assert.equal(syncState, "WATCHING_FOR_CHANGES");
-    });
-
-    it("test bricksSycnParser.process correctly keeps track of state of inflight requests", () => {
-        // recieving some random logs from bricks sync
+        bricksSyncParser.processStdout("foo\nbar\n");
         assert.equal(syncState, "STOPPED");
-        bricksSycnParser.process("some random logs");
-        assert.equal(syncState, "IN_PROGRESS");
+    });
 
-        // upload  hello.txt
-        bricksSycnParser.process("Action: PUT: hello.txt");
+    it("transitions from STOPPED -> IN_PROGRESS -> WATCHING_FOR_CHANGES", () => {
+        assert.equal(syncState, "STOPPED");
+        bricksSyncParser.processStdout(`{"type": "start"}`);
         assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("Uploaded hello.txt");
-        assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("[INFO] Initial Sync Complete");
-        assert.equal(syncState, "WATCHING_FOR_CHANGES");
-
-        // delete  bye.txt
-        bricksSycnParser.process("Action: DELETE: bye.txt");
-        assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("Deleted bye.txt");
-        assert.equal(syncState, "WATCHING_FOR_CHANGES");
-
-        // both upload and delete some random prefix string that should be ignored
-        bricksSycnParser.process(
-            "[INFO] foo bar Action: PUT: a.txt DELETE: b.txt"
-        );
-        bricksSycnParser.process("Uploaded a.txt");
-        assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("Deleted b.txt");
-        assert.equal(syncState, "WATCHING_FOR_CHANGES");
-
-        // upload and delete multiple files
-        bricksSycnParser.process(
-            "Action: PUT: a.txt, c.txt, DELETE: b.txt, d.txt"
-        );
-        bricksSycnParser.process("Uploaded a.txt");
-        assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("Deleted b.txt");
-        assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("Deleted d.txt");
-        assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("Uploaded c.txt");
-        assert.equal(syncState, "WATCHING_FOR_CHANGES");
-
-        // multi line logs
-        bricksSycnParser.process(
-            "Action: PUT: a.txt, c.txt, DELETE: b.txt, d.txt\n" +
-                "Uploaded a.txt\n" +
-                "some random text\n" +
-                "Uploaded c.txt"
-        );
-        bricksSycnParser.process("Deleted b.txt");
-        assert.equal(syncState, "IN_PROGRESS");
-        bricksSycnParser.process("Deleted d.txt");
+        bricksSyncParser.processStdout(`{"type": "complete"}`);
         assert.equal(syncState, "WATCHING_FOR_CHANGES");
     });
 
-    it("uploaded logs for untracked files throw errors", () => {
-        assert.throws(
-            () => {
-                bricksSycnParser.process("Uploaded a.txt");
-            },
-            {
-                message: /untracked file uploaded/,
-            }
+    it("writes start events to the terminal", () => {
+        bricksSyncParser.processStdout(
+            `{"type": "start", "put": ["hello"], "delete": ["world"]}`
         );
+        const arg = capture(mockedOutput.fire).first();
+        assert.match(arg[0], /^Starting synchronization /);
     });
 
-    it("delete logs for untracked files throw errors", () => {
-        assert.throws(
-            () => {
-                bricksSycnParser.process("Deleted a.txt");
-            },
-            {
-                message: /untracked file deleted/,
-            }
+    it("writes progress events to the terminal", () => {
+        bricksSyncParser.processStdout(
+            `{"type": "progress", "action": "put", "path": "hello", "progress": 0.0}`
         );
+        bricksSyncParser.processStdout(
+            `{"type": "progress", "action": "put", "path": "hello", "progress": 1.0}`
+        );
+        assert.match(
+            capture(mockedOutput.fire).first()[0],
+            /^Uploaded hello\r\n/
+        );
+        reset(mockedOutput);
+
+        bricksSyncParser.processStdout(
+            `{"type": "progress", "action": "delete", "path": "hello", "progress": 0.0}`
+        );
+        bricksSyncParser.processStdout(
+            `{"type": "progress", "action": "delete", "path": "hello", "progress": 1.0}`
+        );
+        assert.match(
+            capture(mockedOutput.fire).first()[0],
+            /^Deleted hello\r\n/
+        );
+        reset(mockedOutput);
+    });
+
+    it("writes complete events to the terminal", () => {
+        bricksSyncParser.processStdout(
+            `{"type": "complete", "put": ["hello"], "delete": ["world"]}`
+        );
+        const arg = capture(mockedOutput.fire).first();
+        assert.match(arg[0], /^Completed synchronization\r\n/);
     });
 });
