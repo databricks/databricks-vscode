@@ -4,7 +4,7 @@
 
 ## <small>0.3.3 (2023-03-06)</small>
 
--   Feature: Add refresh button to refresh results of a Workflow run, closes [#520](https://github.com/databricks/databricks-vscode/issues/520)
+-   Feature: Add refresh button to refresh results of a Workflow run, closes [#520](https://github.com/databricks/databricks-vscode/issues/470) reported by [@virtualdvid](https://github.com/virtualdvid)
 -   Feature: Add `databricks.overrideDatabricksConfigFile` VS Code setting to override the location of `.databrickscfg` file, closes [#518](https://github.com/databricks/databricks-vscode/issues/518)
 -   Fix: jump-to-error links were not displayed when `Run File on Databricks` runs failed
 -   Fix: sync was hanging when moving files
