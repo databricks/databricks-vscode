@@ -4,7 +4,7 @@
 
 ## <small>0.3.3 (2023-03-06)</small>
 
--   Fix log redaction for objects with circular references.
+-   Fix: Fix log redaction for objects with circular references.
 
 # Release: v0.3.2
 
