@@ -1,3 +1,11 @@
+# Release: v0.3.3
+
+## packages/databricks-sdk-js
+
+## <small>0.3.3 (2023-03-06)</small>
+
+-   Cleanup (#509) ([360bd76](https://github.com/databricks/databricks-vscode/commit/360bd76)), closes [#509](https://github.com/databricks/databricks-vscode/issues/509) [#518](https://github.com/databricks/databricks-vscode/issues/518)
+
 # Release: v0.3.2
 
 ## packages/databricks-sdk-js

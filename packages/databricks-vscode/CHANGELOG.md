@@ -1,3 +1,15 @@
+# Release: v0.3.3
+
+## packages/databricks-vscode
+
+## <small>0.3.3 (2023-03-06)</small>
+
+-   Add refresh button to refresh results of a Workflow run (#520) ([b980ce2](https://github.com/databricks/databricks-vscode/commit/b980ce2)), closes [#520](https://github.com/databricks/databricks-vscode/issues/520)
+-   Add script to create VSIX files for all platforms (#506) ([1d2510b](https://github.com/databricks/databricks-vscode/commit/1d2510b)), closes [#506](https://github.com/databricks/databricks-vscode/issues/506)
+-   Cleanup (#509) ([360bd76](https://github.com/databricks/databricks-vscode/commit/360bd76)), closes [#509](https://github.com/databricks/databricks-vscode/issues/509) [#518](https://github.com/databricks/databricks-vscode/issues/518)
+-   Fix error jump-to-file link (#521) ([78d5eb1](https://github.com/databricks/databricks-vscode/commit/78d5eb1)), closes [#521](https://github.com/databricks/databricks-vscode/issues/521)
+-   Fix sync regex for move operations (#524) ([9cb9ad5](https://github.com/databricks/databricks-vscode/commit/9cb9ad5)), closes [#524](https://github.com/databricks/databricks-vscode/issues/524)
+
 # Release: v0.3.2
 
 ## packages/databricks-vscode
