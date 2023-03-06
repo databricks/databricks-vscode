@@ -1,9 +1,9 @@
 import "@databricks/databricks-sdk";
 import assert from "assert";
-import { mock, instance, capture, reset } from "ts-mockito";
-import { EventEmitter } from "vscode";
-import { SyncState } from "../sync";
-import { BricksSyncParser } from "./BricksSyncParser";
+import {mock, instance, capture, reset} from "ts-mockito";
+import {EventEmitter} from "vscode";
+import {SyncState} from "../sync";
+import {BricksSyncParser} from "./BricksSyncParser";
 
 describe("tests for BricksSycnParser", () => {
     let syncState: SyncState = "STOPPED";

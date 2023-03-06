@@ -1,7 +1,7 @@
-import { LEVELS, NamedLogger } from "@databricks/databricks-sdk/dist/logging";
-import { EventEmitter } from "vscode";
-import { Loggers } from "../logger";
-import { SyncState } from "../sync";
+import {LEVELS, NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {EventEmitter} from "vscode";
+import {Loggers} from "../logger";
+import {SyncState} from "../sync";
 
 const bricksLogLevelToSdk = new Map<string, LEVELS>([
     ["DEBUG", LEVELS.debug],
@@ -47,7 +47,7 @@ export class BricksSyncParser {
     constructor(
         private syncStateCallback: (state: SyncState) => void,
         private writeEmitter: EventEmitter<string>
-    ) { }
+    ) {}
 
     private changeSize(ec: EventChanges): number {
         let size = 0;
@@ -67,8 +67,8 @@ export class BricksSyncParser {
                 this.state = "IN_PROGRESS";
                 this.writeEmitter.fire(
                     "Starting synchronization (" +
-                    this.changeSize(event) +
-                    " files)\r\n"
+                        this.changeSize(event) +
+                        " files)\r\n"
                 );
                 break;
             }
