@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "0.3.2",
+    "version": "0.3.3",
     "engines": {
         "vscode": "^1.69.1"
     },
@@ -625,7 +625,7 @@
         "useYarn": false
     },
     "bricks": {
-        "version": "0.0.24"
+        "version": "0.0.25"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",

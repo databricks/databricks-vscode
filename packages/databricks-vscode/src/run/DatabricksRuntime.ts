@@ -186,7 +186,7 @@ export class DatabricksRuntime implements Disposable {
                 })
             );
 
-            if (this.codeSynchronizer.state === "STOPPED") {
+            if (["STOPPED", "ERROR"].includes(this.codeSynchronizer.state)) {
                 await commands.executeCommand("databricks.sync.start");
             }
 
