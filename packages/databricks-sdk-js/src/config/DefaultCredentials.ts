@@ -1,5 +1,6 @@
 import {AzureCliCredentials} from "./AzureCliCredentials";
 import {BasicCredentials} from "./BasicCredentials";
+import {BricksCliCredentials} from "./BricksCliCredentials";
 import {
     RequestVisitor,
     Config,
@@ -18,6 +19,7 @@ export class DefaultCredentials implements CredentialProvider {
             new MetadataServiceCredentials(),
             new PatCredentials(),
             new BasicCredentials(),
+            new BricksCliCredentials(),
             // new AzureClientSecretCredentials(),
             new AzureCliCredentials(),
             // new GoogleDefaultCredentials(),
