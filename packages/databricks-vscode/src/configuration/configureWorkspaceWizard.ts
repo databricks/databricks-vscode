@@ -21,6 +21,7 @@ interface State {
     authType: AuthType;
     profile?: string;
     token?: string;
+    bricksPath?: string;
 }
 
 export async function configureWorkspaceWizard(
@@ -97,6 +98,14 @@ export async function configureWorkspaceWizard(
                     });
                     break;
 
+                case "bricks-cli":
+                    items.push({
+                        label: "OAuth (user to machine)",
+                        detail: "Authenticate using OAuth",
+                        authType: "bricks-cli",
+                    });
+                    break;
+
                 case "profile":
                     items.push({
                         label: "Databricks CLI Profiles",
@@ -159,6 +168,11 @@ export async function configureWorkspaceWizard(
                 state.authType = pick.authType;
                 break;
 
+            case "bricks-cli":
+                state.authType = pick.authType;
+                state.bricksPath = cliWrapper.bricksPath;
+                break;
+
             case "profile":
                 state.authType = pick.authType;
                 state.profile = pick.profile;
@@ -177,7 +191,7 @@ export async function configureWorkspaceWizard(
     }
 
     return {
-        authProvider: AuthProvider.fromJSON(state),
+        authProvider: AuthProvider.fromJSON(state, cliWrapper.bricksPath),
     };
 }
 
@@ -218,7 +232,7 @@ function authMethodsForHostname(host: URL): Array<AuthType> {
     }
 
     if (isAwsHost(host)) {
-        return ["oauth-u2m", "profile"];
+        return ["bricks-cli", "profile"];
     }
 
     return ["profile"];

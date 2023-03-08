@@ -4,6 +4,7 @@ import {
     ProductVersion,
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
+import {CliWrapper} from "../../cli/CliWrapper";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
@@ -13,7 +14,7 @@ const extensionVersion = require("../../../package.json")
 
 import {AzureCliCheck} from "../AzureCliCheck";
 
-export type AuthType = "azure-cli" | "google-id" | "oauth-u2m" | "profile";
+export type AuthType = "azure-cli" | "google-id" | "bricks-cli" | "profile";
 
 export abstract class AuthProvider {
     constructor(
@@ -51,7 +52,10 @@ export abstract class AuthProvider {
 
     protected abstract getSdkConfig(): Config;
 
-    static fromJSON(json: Record<string, any>): AuthProvider {
+    static fromJSON(
+        json: Record<string, any>,
+        bricksPath: string
+    ): AuthProvider {
         const host =
             json.host instanceof URL
                 ? json.host
@@ -71,6 +75,9 @@ export abstract class AuthProvider {
                     json.tenantId,
                     json.appId
                 );
+
+            case "bricks-cli":
+                return new BricksCliAuthProvider(host, bricksPath);
 
             case "profile":
                 if (!json.profile) {
@@ -110,6 +117,45 @@ export class ProfileAuthProvider extends AuthProvider {
             env: {},
         });
     }
+}
+
+export class BricksCliAuthProvider extends AuthProvider {
+    constructor(host: URL, private readonly bricksPath: string) {
+        super(host, "bricks-cli");
+    }
+
+    describe(): string {
+        return "OAuth U2M";
+    }
+
+    toJSON(): Record<string, unknown> {
+        return {
+            host: this.host.toString(),
+            authType: this.authType,
+            bricksPath: this.bricksPath,
+        };
+    }
+
+    getEnvVars(): Record<string, string | undefined> {
+        return {
+            BRICKS_BIN: this.bricksPath,
+            DATABRICKS_HOST: this.host.toString(),
+            DATABRICKS_AUTH_TYPE: this.authType,
+        };
+    }
+
+    getSdkConfig(): Config {
+        return new Config({
+            host: this.host.toString(),
+            authType: "bricks-cli",
+            bricksCli: this.bricksPath,
+        });
+    }
+
+    // async check(silent: boolean): Promise<boolean> {
+    //     //return AzureCliCheck.check(silent);
+    //     return true;
+    // }
 }
 
 export class AzureCliAuthProvider extends AuthProvider {

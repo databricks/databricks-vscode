@@ -347,7 +347,11 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        new ProjectConfigFileWatcher(connectionManager, workspace.rootPath)
+        new ProjectConfigFileWatcher(
+            connectionManager,
+            workspace.rootPath!,
+            cli.bricksPath
+        )
     );
 
     // Quickstart
