@@ -4,6 +4,7 @@ import {
     ProductVersion,
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
+import {CliWrapper} from "../../cli/CliWrapper";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
