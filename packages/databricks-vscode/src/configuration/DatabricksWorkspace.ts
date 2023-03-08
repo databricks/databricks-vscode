@@ -11,7 +11,7 @@ import {Uri} from "vscode";
 import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider} from "./auth/AuthProvider";
-import {RemoteUri} from "./SyncDestination";
+import {RemoteUri} from "../sync/SyncDestination";
 
 export class DatabricksWorkspace {
     constructor(

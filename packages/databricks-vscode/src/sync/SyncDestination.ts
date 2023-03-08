@@ -7,7 +7,7 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import path = require("path");
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
-import {ConnectionManager} from "./ConnectionManager";
+import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export const REPO_NAME_SUFFIX = ".ide";
 

@@ -10,7 +10,7 @@ import {
     LocalUri,
     RemoteUri,
     SyncDestinationMapper,
-} from "../configuration/SyncDestination";
+} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import path from "node:path";
 

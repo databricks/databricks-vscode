@@ -16,8 +16,8 @@ import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
-import {RemoteUri, REPO_NAME_SUFFIX} from "./SyncDestination";
 import path from "node:path";
+import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
