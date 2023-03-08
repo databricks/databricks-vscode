@@ -4,7 +4,6 @@ import {
     ProductVersion,
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
-import {CliWrapper} from "../../cli/CliWrapper";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
@@ -138,7 +137,7 @@ export class BricksCliAuthProvider extends AuthProvider {
 
     getEnvVars(): Record<string, string | undefined> {
         return {
-            BRICKS_BIN: this.bricksPath,
+            BRICKS_CLI_PATH: this.bricksPath,
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: this.authType,
         };
@@ -148,14 +147,9 @@ export class BricksCliAuthProvider extends AuthProvider {
         return new Config({
             host: this.host.toString(),
             authType: "bricks-cli",
-            bricksCli: this.bricksPath,
+            bricksCliPath: this.bricksPath,
         });
     }
-
-    // async check(silent: boolean): Promise<boolean> {
-    //     //return AzureCliCheck.check(silent);
-    //     return true;
-    // }
 }
 
 export class AzureCliAuthProvider extends AuthProvider {

@@ -196,10 +196,10 @@ export class Config {
 
     /** Path to the 'bricks' CLI */
     @attribute({
-        name: "bricks_cli",
-        env: "BRICKS_CLI",
+        name: "bricks_cli_path",
+        env: "BRICKS_CLI_PATH",
     })
-    public bricksCli?: string;
+    public bricksCliPath?: string;
 
     // When multiple auth attributes are available in the environment, use the auth type
     // specified by this argument. This argument also holds currently selected auth.

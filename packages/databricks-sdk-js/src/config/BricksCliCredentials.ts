@@ -54,7 +54,7 @@ export class BricksCliCredentials implements CredentialProvider {
                 args.push("--host", config.host!);
             }
 
-            const bricksCli = config.bricksCli || "bricks";
+            const bricksCli = config.bricksCliPath || "bricks";
 
             try {
                 const child = await execFile(bricksCli, args);
