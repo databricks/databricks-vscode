@@ -98,7 +98,11 @@ export class BricksSyncParser {
         const logLines = data.split("\n");
         let currentLogLevel: LEVELS = LEVELS.info;
         for (let i = 0; i < logLines.length; i++) {
-            const line = logLines[i];
+            const line = logLines[i].trim();
+            if (line.length === 0) {
+                continue;
+            }
+
             const typeMatch = line.match(
                 /[0-9]+(?:\/[0-9]+)+ [0-9]+(?::[0-9]+)+ \[(.+)\]/
             );
@@ -107,6 +111,7 @@ export class BricksSyncParser {
                     bricksLogLevelToSdk.get(typeMatch[1]) ?? currentLogLevel;
             }
             NamedLogger.getOrCreate(Loggers.Bricks).log(currentLogLevel, line);
+            this.writeEmitter.fire(line.trim() + "\r\n");
         }
     }
 
@@ -115,11 +120,17 @@ export class BricksSyncParser {
     public processStdout(data: string) {
         const logLines = data.split("\n");
         for (let i = 0; i < logLines.length; i++) {
-            const line = logLines[i];
+            const line = logLines[i].trim();
+            if (line.length === 0) {
+                continue;
+            }
+
             try {
                 this.processLine(line);
             } catch (error: any) {
-                // Log error?
+                NamedLogger.getOrCreate(Loggers.Extension).error(
+                    "Error parsing JSON line from bricks sync stdout: " + error
+                );
             }
         }
 
