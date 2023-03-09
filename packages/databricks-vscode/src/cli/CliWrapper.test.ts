@@ -45,13 +45,13 @@ describe(__filename, () => {
         let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/bricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch"
+            "./bin/bricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json"
         );
 
         ({command, args} = cli.getSyncCommand(mapper, "full"));
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/bricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --full"
+            "./bin/bricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json --full"
         );
     });
 

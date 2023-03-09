@@ -56,8 +56,14 @@ export class CliWrapper {
         syncType: SyncType
     ): Command {
         const command = this.extensionContext.asAbsolutePath("./bin/bricks");
-        const args = ["sync", ".", syncDestination.remoteUri.path, "--watch"];
-
+        const args = [
+            "sync",
+            ".",
+            syncDestination.remoteUri.path,
+            "--watch",
+            "--output",
+            "json",
+        ];
         if (syncType === "full") {
             args.push("--full");
         }
