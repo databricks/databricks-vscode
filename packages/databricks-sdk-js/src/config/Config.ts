@@ -258,7 +258,10 @@ export class Config {
      */
     public isAzure(): boolean {
         return (
-            (!!this.host && this.host.endsWith(".azuredatabricks.net")) ||
+            (!!this.host &&
+                !!this.host.match(
+                    /(\.databricks\.azure\.us|\.databricks\.azure\.cn|\.azuredatabricks\.net)$/
+                )) ||
             !!this.azureResourceId
         );
     }

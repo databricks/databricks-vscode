@@ -1,7 +1,12 @@
 import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
 import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
 import {MultiStepInput} from "../ui/wizard";
-import {normalizeHost} from "../utils/urlUtils";
+import {
+    isAwsHost,
+    isAzureHost,
+    isGcpHost,
+    normalizeHost,
+} from "../utils/urlUtils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider, AuthType} from "./auth/AuthProvider";
 import {ProjectConfig} from "../file-managers/ProjectConfigFile";
@@ -177,9 +182,17 @@ export async function configureWorkspaceWizard(
 }
 
 async function listProfiles(cliWrapper: CliWrapper) {
-    const profiles = await cliWrapper.listProfiles(
-        workspaceConfigs.databrickscfgLocation
-    );
+    const profiles = (
+        await cliWrapper.listProfiles(workspaceConfigs.databrickscfgLocation)
+    ).filter((profile) => {
+        try {
+            normalizeHost(profile.host!.toString());
+            return true;
+        } catch (e) {
+            return false;
+        }
+    });
+
     return profiles.filter((profile) => {
         return ["pat", "basic", "azure-cli"].includes(profile.authType);
     });
@@ -196,15 +209,15 @@ async function validateDatabricksHost(
 }
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
-    if (host.hostname.endsWith(".azuredatabricks.net")) {
+    if (isAzureHost(host)) {
         return ["azure-cli", "profile"];
     }
 
-    if (host.hostname.endsWith(".gcp.databricks.com")) {
+    if (isGcpHost(host)) {
         return ["google-id", "profile"];
     }
 
-    if (host.hostname.endsWith(".cloud.databricks.com")) {
+    if (isAwsHost(host)) {
         return ["oauth-u2m", "profile"];
     }
 

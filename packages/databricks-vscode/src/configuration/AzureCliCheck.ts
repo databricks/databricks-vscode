@@ -12,6 +12,8 @@ import {AzureCliAuthProvider} from "./auth/AuthProvider";
 const extensionVersion = require("../../package.json")
     .version as ProductVersion;
 
+type AzureCloud = "AzureCloud" | "AzureChinaCloud" | "AzureUSGovernment";
+
 export type Step<S, N> = () => Promise<
     SuccessResult<S> | NextResult<N> | ErrorResult
 >;
@@ -298,6 +300,13 @@ export class AzureCliCheck implements Disposable {
     // check if Azure CLI is logged in
     public async isAzureCliLoggedIn(): Promise<boolean> {
         try {
+            await ExecUtils.execFileWithShell(this.azBinPath, [
+                "cloud",
+                "set",
+                "--name",
+                this.getAzureCloud(this.authProvider.host),
+            ]);
+
             const {stdout, stderr} = await ExecUtils.execFileWithShell(
                 this.azBinPath,
                 ["account", "list"]
@@ -312,6 +321,16 @@ export class AzureCliCheck implements Disposable {
             return false;
         }
         return true;
+    }
+
+    getAzureCloud(url: URL): AzureCloud {
+        if (url.hostname.endsWith("azure.cn")) {
+            return "AzureChinaCloud";
+        } else if (url.hostname.endsWith("azure.us")) {
+            return "AzureUSGovernment";
+        } else {
+            return "AzureCloud";
+        }
     }
 
     // login using azure CLI
