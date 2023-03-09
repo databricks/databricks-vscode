@@ -15,10 +15,7 @@ import {
     ViewColumn,
     window,
 } from "vscode";
-import {
-    LocalUri,
-    SyncDestinationMapper,
-} from "../configuration/SyncDestination";
+import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {isNotebook} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
@@ -98,7 +95,7 @@ export class WorkflowRunner implements Disposable {
             });
         }
 
-        if (this.codeSynchronizer.state === "STOPPED") {
+        if (["STOPPED", "ERROR"].includes(this.codeSynchronizer.state)) {
             await commands.executeCommand("databricks.sync.start");
         }
 

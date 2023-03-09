@@ -18,7 +18,7 @@ import {
     LocalUri,
     RemoteUri,
     SyncDestinationMapper,
-} from "../configuration/SyncDestination";
+} from "../sync/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
@@ -186,7 +186,7 @@ export class DatabricksRuntime implements Disposable {
                 })
             );
 
-            if (this.codeSynchronizer.state === "STOPPED") {
+            if (["STOPPED", "ERROR"].includes(this.codeSynchronizer.state)) {
                 await commands.executeCommand("databricks.sync.start");
             }
 

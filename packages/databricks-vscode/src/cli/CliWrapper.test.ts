@@ -4,7 +4,7 @@ import {
     LocalUri,
     RemoteUri,
     SyncDestinationMapper,
-} from "../configuration/SyncDestination";
+} from "../sync/SyncDestination";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
