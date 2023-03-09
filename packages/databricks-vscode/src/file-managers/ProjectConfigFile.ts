@@ -8,7 +8,7 @@ import {Uri} from "vscode";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Config} from "@databricks/databricks-sdk";
-import {AuthLoader} from "./auth/AuthLoader";
+import {AuthLoader} from "../configuration/auth/AuthLoader";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export interface ProjectConfig {

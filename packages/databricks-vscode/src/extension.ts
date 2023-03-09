@@ -1,7 +1,6 @@
 import {
     commands,
     debug,
-    Extension,
     ExtensionContext,
     extensions,
     window,
@@ -33,7 +32,6 @@ import {
     WorkspaceFsCommands,
     WorkspaceFsDataProvider,
 } from "./workspace-fs";
-import { AzureAccountExtensionApi } from "./azure-accounts.api";
 import { generateBundleSchema } from "./bundle/GenerateBundle";
 import { CustomWhenContext } from "./vscode-objs/CustomWhenContext";
 import { WorkspaceStateManager } from "./vscode-objs/WorkspaceState";
@@ -82,43 +80,6 @@ export async function activate(
     }
 
     const workspaceStateManager = new WorkspaceStateManager(context);
-
-    const azureAccountExtensionId = "ms-vscode.azure-account";
-    const extension: Extension<AzureAccountExtensionApi> | undefined =
-        extensions.getExtension<AzureAccountExtensionApi>(
-            azureAccountExtensionId
-        );
-    if (extension) {
-        // try {
-        //     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        //     if (
-        //         semver.lt(
-        //             extension.packageJSON.version,
-        //             minAccountExtensionVersion
-        //         )
-        //     ) {
-        //         return "needsUpdate";
-        //     }
-        // } catch {
-        //     // ignore and assume extension is up to date
-        // }
-
-        if (!extension.isActive) {
-            await extension.activate();
-        }
-
-        const azureAccount = extension.exports;
-
-        if (!(await azureAccount.waitForLogin())) {
-            await commands.executeCommand("azure-account.login");
-        }
-
-        console.log("Azure account extension activated", azureAccount);
-        console.log(
-            "sessions",
-            await azureAccount.sessions[0].credentials2.getToken()
-        );
-    }
 
     // Add the bricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.persistent = true;

@@ -669,11 +669,6 @@
         "generate-telemetry": "ts-node ./scripts/generateTelemetry.ts"
     },
     "dependencies": {
-        "@azure/arm-resources": "^5.1.0",
-        "@azure/arm-resources-subscriptions": "^2.0.2",
-        "@azure/core-auth": "^1.4.0",
-        "@azure/ms-rest-azure-env": "^2.0.0",
-        "@azure/ms-rest-nodeauth": "^3.1.1",
         "@databricks/databricks-sdk": "workspace:^",
         "@databricks/databricks-vscode-types": "workspace:^",
         "@vscode/debugadapter": "^1.59.0",
@@ -685,6 +680,11 @@
         "winston": "^3.8.2"
     },
     "devDependencies": {
+        "@azure/arm-resources": "^5.1.0",
+        "@azure/arm-resources-subscriptions": "^2.0.2",
+        "@azure/core-auth": "^1.4.0",
+        "@azure/ms-rest-azure-env": "^2.0.0",
+        "@azure/ms-rest-nodeauth": "^3.1.1",
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
         "@sinonjs/fake-timers": "^10.0.2",
         "@types/bcryptjs": "^2.4.2",

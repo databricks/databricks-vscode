@@ -295,6 +295,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 BRICKS_ROOT: workspacePath,
                 BRICKS_UPSTREAM: "databricks-vscode",
                 BRICKS_UPSTREAM_VERSION: this.packageMetadata.version,
+                BRICKS_CLI_PATH: this.cli.bricksPath,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
                 DATABRICKS_HOST: dbWorkspace.host.toString(),

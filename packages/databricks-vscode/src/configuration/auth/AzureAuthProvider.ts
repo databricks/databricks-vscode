@@ -14,7 +14,6 @@ import {AzureAccountExtensionApi, AzureSession} from "../../azure-accounts.api";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../../logger";
-import {CredentialsServer} from "./CredentialsServer";
 
 const azureDatabricksLoginAppID = "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d";
 
@@ -29,7 +28,6 @@ type AzureStepName = "activateExtension" | "tryLogin" | "setTenantId";
 export class AzureAuthProvider extends AuthProvider {
     private logger: NamedLogger;
     private azureAccount: AzureAccountExtensionApi | undefined;
-    private credentialsServer: CredentialsServer | undefined;
 
     private _tenantId?: string;
     private _appId?: string;
@@ -43,9 +41,7 @@ export class AzureAuthProvider extends AuthProvider {
         this.logger = NamedLogger.getOrCreate(Loggers.Extension);
     }
 
-    dispose() {
-        this.credentialsServer?.dispose();
-    }
+    dispose() {}
 
     get tenantId(): string | undefined {
         return this._tenantId;
@@ -69,13 +65,6 @@ export class AzureAuthProvider extends AuthProvider {
             authType: this.authType,
             tenantId: this.tenantId,
             appId: this.appId,
-        };
-    }
-
-    getEnvVars(): Record<string, string | undefined> {
-        return {
-            DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AUTH_TYPE: this.authType,
         };
     }
 
