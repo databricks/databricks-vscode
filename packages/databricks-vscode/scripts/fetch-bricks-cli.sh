@@ -5,7 +5,7 @@ BRICKS_VERSION=$(cat package.json | jq -r .bricks.version)
 
 BRICKS_ARCH=$1
 if [ -z "$BRICKS_ARCH" ]; then
-    BRICKS_ARCH="$(uname -s | awk '{print tolower($0)}')-$(uname -m)"
+    BRICKS_ARCH="$(uname -s | awk '{print tolower($0)}')_$(uname -m)"
 fi
 
 BRICKS_DIR=$(mktemp -d -t bricks-XXXXXXXXXX)
