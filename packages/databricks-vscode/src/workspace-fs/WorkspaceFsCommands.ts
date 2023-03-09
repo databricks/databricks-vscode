@@ -7,7 +7,7 @@ import {context, Context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {RemoteUri, REPO_NAME_SUFFIX} from "../configuration/SyncDestination";
+import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
 import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {createDirWizard} from "./createDirectoryWizard";

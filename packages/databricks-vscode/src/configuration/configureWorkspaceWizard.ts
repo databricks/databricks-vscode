@@ -4,7 +4,7 @@ import {MultiStepInput} from "../ui/wizard";
 import {normalizeHost} from "../utils/urlUtils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider, AuthType} from "./auth/AuthProvider";
-import {ProjectConfig} from "./ProjectConfigFile";
+import {ProjectConfig} from "../file-managers/ProjectConfigFile";
 
 interface AuthTypeQuickPickItem extends QuickPickItem {
     authType: AuthType | "new-profile" | "none";

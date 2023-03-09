@@ -5,10 +5,7 @@ import {Uri} from "vscode";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {
-    LocalUri,
-    SyncDestinationMapper,
-} from "../configuration/SyncDestination";
+import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";
 import {PackageMetaData} from "../utils/packageJsonUtils";
 import {LazyCustomSyncTerminal, SyncTask} from "./BricksTasks";
 import type {CliWrapper} from "./CliWrapper";

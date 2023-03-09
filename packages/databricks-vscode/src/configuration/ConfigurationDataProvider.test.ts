@@ -7,7 +7,7 @@ import {ConfigurationDataProvider} from "./ConfigurationDataProvider";
 import {ApiClient, Cluster} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "./ConnectionManager";
 import {resolveProviderResult} from "../test/utils";
-import {SyncDestinationMapper} from "./SyncDestination";
+import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 describe(__filename, () => {

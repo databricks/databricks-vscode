@@ -1,6 +1,6 @@
 import {execFile as execFileCb, spawn} from "child_process";
 import {ExtensionContext, window, commands} from "vscode";
-import {SyncDestinationMapper} from "../configuration/SyncDestination";
+import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
