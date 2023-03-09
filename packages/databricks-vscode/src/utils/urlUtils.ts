@@ -23,11 +23,25 @@ export function normalizeHost(host: string): URL {
     }
     if (
         !url.hostname.match(
-            /(\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com)$/
+            /(\.databricks\.azure\.us|\.databricks\.azure\.cn|\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com)$/
         )
     ) {
         throw new Error("Not a Databricks host");
     }
 
     return new URL(`https://${url.hostname}`);
+}
+
+export function isAzureHost(url: URL): boolean {
+    return !!url.hostname.match(
+        /(\.databricks\.azure\.us|\.databricks\.azure\.cn|\.azuredatabricks\.net)$/
+    );
+}
+
+export function isGcpHost(url: URL): boolean {
+    return !!url.hostname.match(/\.gcp\.databricks\.com$/);
+}
+
+export function isAwsHost(url: URL): boolean {
+    return !!url.hostname.match(/\.cloud\.databricks\.com$/);
 }
