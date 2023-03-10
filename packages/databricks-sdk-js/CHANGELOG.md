@@ -1,3 +1,11 @@
+# Release: v0.3.4
+
+## packages/databricks-sdk-js
+
+## <small>0.3.4 (2023-03-10)</small>
+
+-   Feature: Add support for authenticating against Azure China and Azure GovCloud using the `az` CLI
+
 # Release: v0.3.3
 
 ## packages/databricks-sdk-js

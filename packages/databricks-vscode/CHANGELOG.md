@@ -1,3 +1,13 @@
+# Release: v0.3.4
+
+## packages/databricks-vscode
+
+## <small>0.3.4 (2023-03-10)</small>
+
+-   Feature: Publish the extension also to [OpenVSIX](https://open-vsx.org/extension/databricks/sqltools-databricks-driver)
+-   Feature: Add support for connecting to Azure China and Azure GovCloud workspaces, closes [#526](https://github.com/databricks/databricks-vscode/issues/526)
+-   Fix: Make code synchronization more robust. Sync should no longer get stuck in `IN PROGRESS` state.
+
 # Release: v0.3.3
 
 ## packages/databricks-vscode
