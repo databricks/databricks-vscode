@@ -4,10 +4,9 @@
 
 ## <small>0.3.4 (2023-03-10)</small>
 
--   Add support for connecting to Azure China and Azure GovCloud workspaces (#544) ([dde81ab](https://github.com/databricks/databricks-vscode/commit/dde81ab)), closes [#544](https://github.com/databricks/databricks-vscode/issues/544)
--   Cleanup (#531) ([ced980f](https://github.com/databricks/databricks-vscode/commit/ced980f)), closes [#531](https://github.com/databricks/databricks-vscode/issues/531)
--   Fix naming bug in fetch script (#545) ([31ecef4](https://github.com/databricks/databricks-vscode/commit/31ecef4)), closes [#545](https://github.com/databricks/databricks-vscode/issues/545) [#506](https://github.com/databricks/databricks-vscode/issues/506)
--   Use structured output from sync command (#532) ([8d3a705](https://github.com/databricks/databricks-vscode/commit/8d3a705)), closes [#532](https://github.com/databricks/databricks-vscode/issues/532)
+-   Feature: Publish the extension also to [OpenVSIX](https://open-vsx.org/extension/databricks/sqltools-databricks-driver)
+-   Feature: Add support for connecting to Azure China and Azure GovCloud workspaces, closes [#526](https://github.com/databricks/databricks-vscode/issues/526)
+-   Fix: Make code synchronization more robust. Sync should no longer get stuck in `IN PROGRESS` state.
 
 # Release: v0.3.3
 
