@@ -1,3 +1,11 @@
+# Release: v0.3.4
+
+## packages/databricks-sdk-js
+
+## <small>0.3.4 (2023-03-10)</small>
+
+-   Add support for connecting to Azure China and Azure GovCloud workspaces (#544) ([dde81ab](https://github.com/databricks/databricks-vscode/commit/dde81ab)), closes [#544](https://github.com/databricks/databricks-vscode/issues/544)
+
 # Release: v0.3.3
 
 ## packages/databricks-sdk-js
