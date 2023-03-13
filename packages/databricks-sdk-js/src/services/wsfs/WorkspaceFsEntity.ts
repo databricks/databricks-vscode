@@ -101,7 +101,10 @@ export abstract class WorkspaceFsEntity {
         this._children = (
             await this._workspaceFsService.list({path: this.path})
         ).objects
-            ?.map((obj) => entityFromObjInfo(this.wsClient, obj))
+            ?.map(
+                (obj) =>
+                    entityFromObjInfo(this.wsClient, obj) as WorkspaceFsEntity
+            )
             .filter(objIsDefined);
     }
 
@@ -167,25 +170,9 @@ export abstract class WorkspaceFsEntity {
     get basename(): string {
         return posix.basename(this.path);
     }
-
-    protected abstract _mkdir(
-        path: string,
-        ctx?: Context
-    ): Promise<WorkspaceFsEntity | undefined>;
-
-    @withLogContext(ExposedLoggers.SDK)
-    async mkdir(
-        path: string,
-        @context ctx?: Context
-    ): Promise<WorkspaceFsEntity | undefined> {
-        return this._mkdir(path, ctx);
-    }
 }
 
-function entityFromObjInfo(
-    wsClient: WorkspaceClient,
-    details: ObjectInfo
-): WorkspaceFsEntity | undefined {
+function entityFromObjInfo(wsClient: WorkspaceClient, details: ObjectInfo) {
     switch (details.object_type) {
         case "DIRECTORY":
             return new WorkspaceFsDir(wsClient, details);

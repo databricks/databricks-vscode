@@ -125,7 +125,10 @@ export class ApiClient {
 
         if (payload) {
             if (method === "POST") {
-                options.body = JSON.stringify(payload);
+                options.body =
+                    typeof payload === "string"
+                        ? payload
+                        : JSON.stringify(payload);
             } else {
                 url.search = new URLSearchParams(payload).toString();
             }
@@ -175,7 +178,7 @@ export class ApiClient {
             },
         });
 
-        let responseText!: string;
+        let responseText: string;
         try {
             const responseBody = await response.arrayBuffer();
             responseText = new TextDecoder().decode(responseBody);
@@ -215,10 +218,11 @@ export class ApiClient {
 
         let responseJson: any;
         try {
-            responseJson = JSON.parse(responseText);
+            responseJson =
+                responseText.length === 0 ? {} : JSON.parse(responseText);
         } catch (e) {
             logAndReturnError(url, options, responseText, e, context);
-            throw new ApiClientResponseError(responseText, responseJson);
+            throw new ApiClientResponseError(responseText, e);
         }
 
         if ("error" in responseJson) {
