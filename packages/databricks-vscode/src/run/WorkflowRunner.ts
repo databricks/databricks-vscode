@@ -22,6 +22,7 @@ import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
 import Convert from "ansi-to-html";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {WsfsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWrapper";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();
@@ -129,21 +130,24 @@ export class WorkflowRunner implements Disposable {
         try {
             const notebookType = await isNotebook(program);
             if (notebookType) {
-                //add notebook wrapper
-                const wrappedFile = await new WsfsWorkflowWrapper(
-                    this.connectionManager,
-                    this.context
-                ).createNotebookWrapper(
-                    program,
-                    syncDestination.localToRemote(program),
-                    notebookType
-                );
+                let remoteFilePath: string =
+                    syncDestination.localToRemoteNotebook(program).path;
+                if (workspaceConfigs.enableFilesInWorkspace) {
+                    const wrappedFile = await new WsfsWorkflowWrapper(
+                        this.connectionManager,
+                        this.context
+                    ).createNotebookWrapper(
+                        program,
+                        syncDestination.localToRemote(program),
+                        notebookType
+                    );
+                    remoteFilePath = wrappedFile
+                        ? wrappedFile.path
+                        : remoteFilePath;
+                }
                 panel.showExportedRun(
                     await cluster.runNotebookAndWait({
-                        path: wrappedFile
-                            ? wrappedFile.path
-                            : syncDestination.localToRemoteNotebook(program)
-                                  .path,
+                        path: remoteFilePath,
                         parameters: {
                             // eslint-disable-next-line @typescript-eslint/naming-convention
                             DATABRICKS_SOURCE_FILE:
@@ -165,12 +169,14 @@ export class WorkflowRunner implements Disposable {
                 );
             } else {
                 const originalFile = syncDestination.localToRemote(program);
-                const wrappedFile = await new WsfsWorkflowWrapper(
-                    this.connectionManager,
-                    this.context
-                ).createPythonFileWrapper(originalFile);
+                const wrappedFile = workspaceConfigs.enableFilesInWorkspace
+                    ? await new WsfsWorkflowWrapper(
+                          this.connectionManager,
+                          this.context
+                      ).createPythonFileWrapper(originalFile)
+                    : undefined;
                 const response = await cluster.runPythonAndWait({
-                    path: wrappedFile.path,
+                    path: wrappedFile ? wrappedFile.path : originalFile.path,
                     args: (args ?? []).concat([
                         "--databricks-source-file",
                         originalFile.workspacePrefixPath,
