@@ -2,6 +2,7 @@ import {debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForAttachingSyncDest} from "./prompts";
 import {isNotebook} from "../utils";
+import {LocalUri} from "../sync/SyncDestination";
 
 /**
  * Run related commands
@@ -16,7 +17,7 @@ export class RunCommands {
         return async (resource: Uri) => {
             const targetResource = this.getTargetResource(resource);
             if (targetResource) {
-                if (await isNotebook(targetResource)) {
+                if (await isNotebook(new LocalUri(targetResource))) {
                     await window.showErrorMessage(
                         'Use "Run File as Workflow on Databricks" for running notebooks'
                     );

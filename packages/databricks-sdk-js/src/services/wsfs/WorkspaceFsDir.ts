@@ -101,11 +101,21 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
             throw e;
         }
 
-        const entity = await WorkspaceFsEntity.fromPath(
+        let entity = await WorkspaceFsEntity.fromPath(
             this.wsClient,
             validPath,
             ctx
         );
+
+        if (entity === undefined) {
+            //try to read notebook
+            entity = await WorkspaceFsEntity.fromPath(
+                this.wsClient,
+                validPath.replace(/^(\/.*)\.(py|ipynb|scala|r|sql)/g, "$1"),
+                ctx
+            );
+        }
+
         if (isFile(entity)) {
             return entity;
         }
