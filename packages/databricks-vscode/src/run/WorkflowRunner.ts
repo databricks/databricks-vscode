@@ -77,6 +77,7 @@ export class WorkflowRunner implements Disposable {
         cluster,
         syncDestination,
         token,
+        connectionManager,
     }: {
         program: LocalUri;
         parameters?: Record<string, string>;
@@ -84,6 +85,7 @@ export class WorkflowRunner implements Disposable {
         cluster: Cluster;
         syncDestination: SyncDestinationMapper;
         token?: CancellationToken;
+        connectionManager?: ConnectionManager;
     }) {
         const panel = await this.getPanelForUri(program.uri);
 
@@ -96,13 +98,23 @@ export class WorkflowRunner implements Disposable {
             });
         }
 
-        if (["STOPPED", "ERROR"].includes(this.codeSynchronizer.state)) {
+        if (
+            !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(
+                this.codeSynchronizer.state
+            )
+        ) {
             await commands.executeCommand("databricks.sync.start");
         }
 
         // We wait for sync to complete so that the local files are consistant
         // with the remote repo files
         await this.codeSynchronizer.waitForSyncComplete();
+        if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {
+            panel.showError({
+                message: `Can't sync ${program}. \nReason: ${this.codeSynchronizer.state}`,
+            });
+            return;
+        }
 
         panel.onDidReceiveMessage(async (e) => {
             switch (e.command) {

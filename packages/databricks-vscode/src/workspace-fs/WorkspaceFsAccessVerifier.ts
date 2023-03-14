@@ -1,0 +1,152 @@
+import {
+    Cluster,
+    WorkspaceFsEntity,
+    WorkspaceFsUtils,
+} from "@databricks/databricks-sdk";
+import {posix} from "path";
+import {commands, Disposable, window} from "vscode";
+import {ConnectionManager} from "../configuration/ConnectionManager";
+import {CodeSynchronizer} from "../sync";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+
+async function switchToRepos() {
+    await workspaceConfigs.setSyncDestinationType("repo");
+    commands.executeCommand("workbench.action.reloadWindow");
+}
+
+export class WorkspaceFsAccessVerifier implements Disposable {
+    private disposables: Disposable[] = [];
+    private currentCluster: Cluster | undefined;
+    private _isEnabled: boolean | undefined;
+
+    constructor(
+        private _connectionManager: ConnectionManager,
+        private _sync: CodeSynchronizer
+    ) {
+        this.disposables.push(
+            this._connectionManager.onDidChangeCluster(async (cluster) => {
+                if (this.currentCluster?.name === cluster?.name) {
+                    return;
+                }
+                this.currentCluster = cluster;
+                await this.verifyCluster(cluster);
+            }),
+            this._connectionManager.onDidChangeState(async (state) => {
+                if (state === "CONNECTED") {
+                    await this.isEnabled();
+                } else {
+                    this._isEnabled = undefined;
+                }
+            }),
+            this._sync.onDidChangeState(async (state) => {
+                if (
+                    workspaceConfigs.syncDestinationType === "repo" &&
+                    state === "FILES_IN_REPOS_DISABLED"
+                ) {
+                    await window.showErrorMessage(
+                        "Sync failed. Files in Repos is disabled for the current workspace. Please contact your system admin to enable it for your workspace."
+                    );
+                } else if (
+                    workspaceConfigs.syncDestinationType === "workspace" &&
+                    state === "FILES_IN_WORKSPACE_DISABLED"
+                ) {
+                    this._isEnabled = false;
+                    const selection = await window.showErrorMessage(
+                        "Sync failed. Files in Workspace is disabled for the current workspace.",
+                        "Switch to Repos",
+                        "Ignore"
+                    );
+
+                    if (selection === "Switch to Repos") {
+                        switchToRepos();
+                    }
+                }
+            })
+        );
+    }
+
+    async verifyCluster(cluster?: Cluster) {
+        if (
+            workspaceConfigs.syncDestinationType === "repo" ||
+            cluster === undefined
+        ) {
+            return;
+        }
+        const dbrVersionParts = cluster.dbrVersion;
+        if (
+            dbrVersionParts[0] < 11 ||
+            (dbrVersionParts[0] === 11 &&
+                dbrVersionParts[1] !== "x" &&
+                dbrVersionParts[1] < 2)
+        ) {
+            const message =
+                "Files in workspace is not supported on clusters with DBR < 11.2.";
+            const selection = await window.showErrorMessage(
+                message,
+                "Switch to Repos",
+                "Ignore"
+            );
+
+            if (selection === "Switch to Repos") {
+                switchToRepos();
+            }
+        }
+    }
+
+    async isEnabled() {
+        if (this._connectionManager.state === "DISCONNECTED") {
+            return false;
+        }
+        await this._connectionManager.waitForConnect();
+        const rootPath =
+            this._connectionManager.databricksWorkspace?.workspaceFsRoot;
+        if (this._isEnabled !== undefined) {
+            return this.isEnabled;
+        }
+        if (!rootPath || !this._connectionManager.workspaceClient) {
+            return false;
+        }
+
+        const rootDir = await WorkspaceFsEntity.fromPath(
+            this._connectionManager.workspaceClient,
+            rootPath.path
+        );
+
+        if (!WorkspaceFsUtils.isDirectory(rootDir)) {
+            return false;
+        }
+        try {
+            await rootDir?.createFile(
+                posix.join(rootPath.path, ".sentinal.tmp"),
+                ""
+            );
+        } catch (e: unknown) {
+            if (e instanceof Error) {
+                if (e.message.match(/.*Files in Workspace is disabled.*/)) {
+                    this._isEnabled = false;
+                    return this._isEnabled;
+                }
+            }
+        }
+
+        this._isEnabled = true;
+        return this._isEnabled;
+    }
+
+    async switchIfNotEnabled() {
+        if (!(await this.isEnabled())) {
+            const selection = await window.showErrorMessage(
+                "Files in workspace is not enabled for your workspace",
+                "Switch to Repos",
+                "Ignore"
+            );
+
+            if (selection === "Switch to Repos") {
+                switchToRepos();
+            }
+        }
+    }
+    dispose() {
+        this.disposables.forEach((i) => i.dispose());
+    }
+}

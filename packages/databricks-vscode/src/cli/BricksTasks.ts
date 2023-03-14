@@ -89,15 +89,31 @@ class CustomSyncTerminal implements Pseudoterminal {
 
     private syncProcess: ChildProcess | undefined;
     private bricksSyncParser: BricksSyncParser;
+    private state: SyncState = "STOPPED";
+    private syncStateCallback: (state: SyncState) => void;
 
     constructor(
         private cmd: string,
         private args: string[],
         private options: SpawnOptions,
-        private syncStateCallback: (state: SyncState) => void
+        syncStateCallback: (state: SyncState) => void
     ) {
+        this.syncStateCallback = (state: SyncState) => {
+            if (
+                ([
+                    "FILES_IN_REPOS_DISABLED",
+                    "FILES_IN_WORKSPACE_DISABLED",
+                ].includes(this.state) &&
+                    ["ERROR", "STOPPED"].includes(state)) ||
+                (this.state === "STOPPED" && state === "ERROR")
+            ) {
+                return;
+            }
+            this.state = state;
+            syncStateCallback(state);
+        };
         this.bricksSyncParser = new BricksSyncParser(
-            syncStateCallback,
+            this.syncStateCallback,
             this.writeEmitter
         );
     }

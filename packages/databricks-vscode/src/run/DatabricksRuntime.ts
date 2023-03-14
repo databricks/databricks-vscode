@@ -25,7 +25,9 @@ import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -92,7 +94,8 @@ export class DatabricksRuntime implements Disposable {
     constructor(
         private connection: ConnectionManager,
         private codeSynchronizer: CodeSynchronizer,
-        private context: ExtensionContext
+        private context: ExtensionContext,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {}
 
     /**
@@ -128,6 +131,10 @@ export class DatabricksRuntime implements Disposable {
                 );
             }
 
+            await this.wsfsAccessVerifier.verifyCluster(cluster);
+            if (workspaceConfigs.syncDestinationType === "workspace") {
+                await this.wsfsAccessVerifier.switchIfNotEnabled();
+            }
             const isClusterRunning = await promptForClusterStart(
                 cluster,
                 async () => {
@@ -178,7 +185,9 @@ export class DatabricksRuntime implements Disposable {
 
             this.disposables.push(
                 this.codeSynchronizer.onDidChangeState((state) => {
-                    if (state === "STOPPED") {
+                    if (
+                        !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(state)
+                    ) {
                         return this._onErrorEmitter.fire(
                             "Execution cancelled because sync was stopped"
                         );
@@ -186,7 +195,11 @@ export class DatabricksRuntime implements Disposable {
                 })
             );
 
-            if (["STOPPED", "ERROR"].includes(this.codeSynchronizer.state)) {
+            if (
+                !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(
+                    this.codeSynchronizer.state
+                )
+            ) {
                 await commands.executeCommand("databricks.sync.start");
             }
 
@@ -194,6 +207,17 @@ export class DatabricksRuntime implements Disposable {
             // with the remote repo files
             await this.cancellable(this.codeSynchronizer.waitForSyncComplete());
             if (this._runtimeState === "CANCELED") {
+                return;
+            }
+            if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {
+                this._onDidSendOutputEmitter.fire({
+                    type: "err",
+                    text: `Can't sync ${program}. Reason: ${this.codeSynchronizer.state}`,
+                    filePath: program,
+                    line: 0,
+                    column: 0,
+                });
+                this._onErrorEmitter.fire(`Error in running ${program}.`);
                 return;
             }
             await commands.executeCommand("workbench.panel.repl.view.focus");

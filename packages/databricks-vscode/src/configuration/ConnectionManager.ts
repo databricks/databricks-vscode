@@ -23,6 +23,7 @@ import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
@@ -148,8 +149,9 @@ export class ConnectionManager {
         }
 
         if (
-            !this._databricksWorkspace.isReposEnabled ||
-            !this._databricksWorkspace.isFilesInReposEnabled
+            workspaceConfigs.syncDestinationType === "repo" &&
+            (!this._databricksWorkspace.isReposEnabled ||
+                !this._databricksWorkspace.isFilesInReposEnabled)
         ) {
             let message = "";
             if (!this._databricksWorkspace.isReposEnabled) {

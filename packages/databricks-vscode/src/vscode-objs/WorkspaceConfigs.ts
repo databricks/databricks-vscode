@@ -1,4 +1,4 @@
-import {workspace} from "vscode";
+import {ConfigurationTarget, workspace} from "vscode";
 
 export const workspaceConfigs = {
     get maxFieldLength() {
@@ -43,15 +43,28 @@ export const workspaceConfigs = {
                 ?.get<boolean>("bricks.verboseMode") ?? false
         );
     },
-    get enableFilesInWorkspace() {
+
+    get syncDestinationType() {
         return (
-            (workspace
+            workspace
                 .getConfiguration("databricks")
-                ?.get<"repo" | "workspace">("sync.destinationType") ??
-                "repo") === "workspace"
+                ?.get<SyncDestinationType>("sync.destinationType") ?? "repo"
         );
     },
 
+    get enableFilesInWorkspace() {
+        return this.syncDestinationType === "workspace";
+    },
+
+    async setSyncDestinationType(destinationType: SyncDestinationType) {
+        await workspace
+            .getConfiguration("databricks")
+            ?.update(
+                "sync.destinationType",
+                destinationType,
+                ConfigurationTarget.Workspace
+            );
+    },
     get databrickscfgLocation() {
         const config = workspace
             .getConfiguration("databricks")
@@ -59,3 +72,5 @@ export const workspaceConfigs = {
         return config === "" || config === undefined ? undefined : config;
     },
 };
+
+export type SyncDestinationType = "repo" | "workspace";

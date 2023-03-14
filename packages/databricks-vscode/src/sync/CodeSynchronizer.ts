@@ -8,6 +8,8 @@ export type SyncState =
     | "IN_PROGRESS"
     | "WATCHING_FOR_CHANGES"
     | "STOPPED"
+    | "FILES_IN_REPOS_DISABLED"
+    | "FILES_IN_WORKSPACE_DISABLED"
     | "ERROR";
 
 export class CodeSynchronizer implements Disposable {
@@ -74,6 +76,15 @@ export class CodeSynchronizer implements Disposable {
             (state: SyncState) => {
                 this._state = state;
                 this._onDidChangeStateEmitter.fire(state);
+                if (
+                    [
+                        "ERROR",
+                        "FILE_IN_REPOS_DISABLED",
+                        "FILES_IN_WORKSPACE_DISABLED",
+                    ].includes(state)
+                ) {
+                    this.stop();
+                }
             }
         );
         await tasks.executeTask(task);
@@ -97,7 +108,14 @@ export class CodeSynchronizer implements Disposable {
         if (this._state !== "WATCHING_FOR_CHANGES") {
             return await new Promise((resolve) => {
                 const changeListener = this.onDidChangeState(() => {
-                    if (this._state === "WATCHING_FOR_CHANGES") {
+                    if (
+                        [
+                            "WATCHING_FOR_CHANGES",
+                            "FILES_IN_REPOS_DISABLED",
+                            "FILES_IN_WORKSPACE_DISABLED",
+                            "ERROR",
+                        ].includes(this.state)
+                    ) {
                         changeListener.dispose();
                         resolve();
                     }

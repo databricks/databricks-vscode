@@ -24,8 +24,10 @@ import {Subject} from "./Subject";
 import {WorkflowRunner} from "./WorkflowRunner";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
-import {isNotebook} from "../utils";
 import {LocalUri} from "../sync/SyncDestination";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
+import {isNotebook} from "../utils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -51,6 +53,7 @@ export class DatabricksWorkflowDebugAdapterFactory
 
     constructor(
         private connection: ConnectionManager,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier,
         context: ExtensionContext,
         codeSynchronizer: CodeSynchronizer
     ) {
@@ -69,7 +72,8 @@ export class DatabricksWorkflowDebugAdapterFactory
         return new DebugAdapterInlineImplementation(
             new DatabricksWorkflowDebugSession(
                 this.connection,
-                this.workflowRunner
+                this.workflowRunner,
+                this.wsfsAccessVerifier
             )
         );
     }
@@ -82,7 +86,8 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
 
     constructor(
         private connection: ConnectionManager,
-        private workflowRunner: WorkflowRunner
+        private workflowRunner: WorkflowRunner,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {
         super();
     }
@@ -186,6 +191,10 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         }
 
         await cluster.refresh();
+        await this.wsfsAccessVerifier.verifyCluster(cluster);
+        if (workspaceConfigs.syncDestinationType === "workspace") {
+            await this.wsfsAccessVerifier.switchIfNotEnabled();
+        }
         const isClusterRunning = await promptForClusterStart(
             cluster,
             async () => {
@@ -205,6 +214,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             cluster,
             syncDestination: syncDestination,
             token: this.token,
+            connectionManager: this.connection,
         });
     }
 
