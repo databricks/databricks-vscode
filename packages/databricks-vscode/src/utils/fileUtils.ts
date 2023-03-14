@@ -1,5 +1,5 @@
 import {TextDecoder} from "util";
-import {Uri, workspace} from "vscode";
+import {workspace} from "vscode";
 import {LocalUri} from "../sync/SyncDestination";
 
 export type NotebookType = "IPYNB" | "PY_DBNB" | "OTHER_DBNB";

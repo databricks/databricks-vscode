@@ -16,7 +16,6 @@ import {
     Disposable,
     ExtensionContext,
     ProviderResult,
-    Uri,
     window,
 } from "vscode";
 import {DebugProtocol} from "@vscode/debugprotocol";

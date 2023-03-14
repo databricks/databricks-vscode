@@ -1,7 +1,6 @@
 import assert from "assert";
 import fs from "fs/promises";
 import {withFile} from "tmp-promise";
-import {Uri} from "vscode";
 import {LocalUri} from "../sync/SyncDestination";
 import {isNotebook} from "./fileUtils";
 
