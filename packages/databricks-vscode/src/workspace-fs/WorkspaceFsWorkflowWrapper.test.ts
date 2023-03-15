@@ -33,6 +33,8 @@ describe(__filename, async () => {
         "python"
     );
 
+    console.log(resourceDir);
+
     beforeEach(async () => {
         mockWorkspaceService = mock(WorkspaceService);
         when(
