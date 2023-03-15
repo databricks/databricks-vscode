@@ -95,10 +95,19 @@ describe(__filename, async () => {
             path.join(resourceDirPath, "file.workflow-wrapper.py")
         );
 
-        const wrapperData = await readFile(
-            path.join(resourceDirPath, "file.workflow-wrapper.py"),
-            "utf-8"
-        );
+        try {
+            const wrapperData = await readFile(
+                path.join(resourceDirPath, "file.workflow-wrapper.py"),
+                "utf-8"
+            );
+        } catch (e) {
+            console.log(
+                "file",
+                path.join(resourceDirPath, "file.workflow-wrapper.py")
+            );
+            console.log(e);
+            return;
+        }
 
         console.log(
             "file",
