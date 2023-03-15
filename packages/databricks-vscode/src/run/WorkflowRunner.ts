@@ -21,7 +21,7 @@ import {isNotebook} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
 import Convert from "ansi-to-html";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {WsfsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWrapper";
+import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWrapper";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export class WorkflowRunner implements Disposable {
@@ -136,7 +136,7 @@ export class WorkflowRunner implements Disposable {
                     workspaceConfigs.enableFilesInWorkspace &&
                     syncDestination.remoteUri.type === "workspace"
                 ) {
-                    const wrappedFile = await new WsfsWorkflowWrapper(
+                    const wrappedFile = await new WorkspaceFsWorkflowWrapper(
                         this.connectionManager,
                         this.context
                     ).createNotebookWrapper(
@@ -175,7 +175,7 @@ export class WorkflowRunner implements Disposable {
                 const wrappedFile =
                     workspaceConfigs.enableFilesInWorkspace &&
                     syncDestination.remoteUri.type === "workspace"
-                        ? await new WsfsWorkflowWrapper(
+                        ? await new WorkspaceFsWorkflowWrapper(
                               this.connectionManager,
                               this.context
                           ).createPythonFileWrapper(originalFileUri)
