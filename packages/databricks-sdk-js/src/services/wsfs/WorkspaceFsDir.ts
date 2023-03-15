@@ -79,8 +79,6 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
         @context ctx?: Context
     ) {
         const validPath = this.getAbsoluteChildPath(path);
-        // eslint-disable-next-line no-console
-        console.log(validPath);
         if (!validPath) {
             const err = new Error(
                 `Can't create ${path} as child of ${this.path}: Invalid path`
