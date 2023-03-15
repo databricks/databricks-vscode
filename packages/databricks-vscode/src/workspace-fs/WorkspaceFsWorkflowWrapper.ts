@@ -76,7 +76,12 @@ export class WsfsWorkflowWrapper {
         const originalJson: {cells: any[] | undefined} = JSON.parse(data);
 
         const bootstrapPath = this.extensionContext.asAbsolutePath(
-            path.join("resources", "python", "notebook.workflow-wrapper.json")
+            path.join(
+                "resources",
+                "python",
+                "generated",
+                "notebook.workflow-wrapper.json"
+            )
         );
         const bootstrapJson = JSON.parse(
             await readFile(bootstrapPath, "utf-8")

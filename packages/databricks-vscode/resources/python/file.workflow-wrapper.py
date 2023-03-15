@@ -30,7 +30,6 @@ os.chdir(os.path.dirname(python_file))
 
 # update python path
 sys.path.append(project_root)
-sys.path.append(os.path.dirname(python_file))
 
 # provide spark globals
 user_ns = {

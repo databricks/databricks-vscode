@@ -132,7 +132,10 @@ export class WorkflowRunner implements Disposable {
             if (notebookType) {
                 let remoteFilePath: string =
                     syncDestination.localToRemoteNotebook(program).path;
-                if (workspaceConfigs.enableFilesInWorkspace) {
+                if (
+                    workspaceConfigs.enableFilesInWorkspace &&
+                    syncDestination.remoteUri.type === "workspace"
+                ) {
                     const wrappedFile = await new WsfsWorkflowWrapper(
                         this.connectionManager,
                         this.context
@@ -168,18 +171,20 @@ export class WorkflowRunner implements Disposable {
                     })
                 );
             } else {
-                const originalFile = syncDestination.localToRemote(program);
-                const wrappedFile = workspaceConfigs.enableFilesInWorkspace
-                    ? await new WsfsWorkflowWrapper(
-                          this.connectionManager,
-                          this.context
-                      ).createPythonFileWrapper(originalFile)
-                    : undefined;
+                const originalFileUri = syncDestination.localToRemote(program);
+                const wrappedFile =
+                    workspaceConfigs.enableFilesInWorkspace &&
+                    syncDestination.remoteUri.type === "workspace"
+                        ? await new WsfsWorkflowWrapper(
+                              this.connectionManager,
+                              this.context
+                          ).createPythonFileWrapper(originalFileUri)
+                        : undefined;
                 const response = await cluster.runPythonAndWait({
-                    path: wrappedFile ? wrappedFile.path : originalFile.path,
+                    path: wrappedFile ? wrappedFile.path : originalFileUri.path,
                     args: (args ?? []).concat([
                         "--databricks-source-file",
-                        originalFile.workspacePrefixPath,
+                        originalFileUri.workspacePrefixPath,
                         "--databricks-project-root",
                         syncDestination.remoteUri.workspacePrefixPath,
                     ]),

@@ -1,4 +1,5 @@
 import {workspace} from "vscode";
+import {SyncDestinationType} from "../sync/SyncDestination";
 
 export const workspaceConfigs = {
     get maxFieldLength() {
@@ -47,7 +48,7 @@ export const workspaceConfigs = {
         return (
             (workspace
                 .getConfiguration("databricks")
-                ?.get<"repo" | "workspace">("sync.destinationType") ??
+                ?.get<SyncDestinationType>("sync.destinationType") ??
                 "repo") === "workspace"
         );
     },
