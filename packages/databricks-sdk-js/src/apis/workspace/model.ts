@@ -46,7 +46,13 @@ export interface Export {
  * `SOURCE`. However it may be one of: `SOURCE`, `HTML`, `JUPYTER`, `DBC`. The
  * value is case sensitive.
  */
-export type ExportFormat = "DBC" | "HTML" | "JUPYTER" | "R_MARKDOWN" | "SOURCE";
+export type ExportFormat =
+    | "AUTO"
+    | "DBC"
+    | "HTML"
+    | "JUPYTER"
+    | "R_MARKDOWN"
+    | "SOURCE";
 
 export interface ExportResponse {
     /**

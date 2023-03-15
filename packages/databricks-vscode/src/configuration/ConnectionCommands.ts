@@ -1,4 +1,8 @@
-import {Cluster, WorkspaceFsEntity} from "@databricks/databricks-sdk";
+import {
+    Cluster,
+    WorkspaceFsEntity,
+    WorkspaceFsUtils,
+} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
     Disposable,
@@ -218,18 +222,19 @@ export class ConnectionCommands implements Disposable {
                 rootDirPath.path
             );
             if (!rootDir && workspaceConfigs.enableFilesInWorkspace) {
-                const created = await (
-                    await WorkspaceFsEntity.fromPath(wsClient, `/Users/${me}`)
-                )?.mkdir(rootDirPath.path);
-
-                if (!created) {
+                const meDir = await WorkspaceFsEntity.fromPath(
+                    wsClient,
+                    `/Users/${me}`
+                );
+                if (WorkspaceFsUtils.isDirectory(meDir)) {
+                    rootDir = await meDir.mkdir(rootDirPath.path);
+                }
+                if (!rootDir) {
                     window.showErrorMessage(
                         `Can't find or create ${rootDirPath}`
                     );
                     return;
                 }
-
-                rootDir = created;
             }
 
             type WorkspaceFsQuickPickItem = QuickPickItem & {
@@ -241,7 +246,7 @@ export class ConnectionCommands implements Disposable {
                     alwaysShow: true,
                     detail: workspaceConfigs.enableFilesInWorkspace
                         ? `Create a new folder under /Workspace/${me}/.ide as sync destination`
-                        : `Create a new Repo under /Repo/${me} as sync destination`,
+                        : `Create a new Repo under /Repos/${me} as sync destination`,
                 },
                 {
                     label: "Sync Destinations",
