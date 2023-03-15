@@ -25,10 +25,9 @@ describe(__filename, async () => {
     let mockConnectionManager: ConnectionManager;
     let mockExtensionContext: ExtensionContext;
     const testDirPath = "/Users/me/testdir";
+    const extensionRootDirPath = path.resolve(__dirname, "..", "..");
     const resourceDirPath = path.resolve(
-        __dirname,
-        "..",
-        "..",
+        extensionRootDirPath,
         "resources",
         "python"
     );
@@ -61,7 +60,7 @@ describe(__filename, async () => {
         mockExtensionContext = mock<ExtensionContext>();
         when(mockExtensionContext.asAbsolutePath(anything())).thenCall(
             (relativePath: string) => {
-                return path.normalize(relativePath);
+                return path.resolve(extensionRootDirPath, relativePath);
             }
         );
     });
@@ -90,38 +89,19 @@ describe(__filename, async () => {
             instance(mockExtensionContext)
         ).createPythonFileWrapper(new RemoteUri(originalFilePath));
 
-        console.log(
-            "file",
-            path.join(resourceDirPath, "file.workflow-wrapper.py")
+        const wrapperData = await readFile(
+            path.join(resourceDirPath, "file.workflow-wrapper.py"),
+            "utf-8"
         );
-
-        try {
-            const wrapperData = await readFile(
-                path.join(resourceDirPath, "file.workflow-wrapper.py"),
-                "utf-8"
-            );
-            console.log(
-                "file",
-                path.join(resourceDirPath, "file.workflow-wrapper.py")
-            );
-
-            verify(
-                mockWorkspaceService.import(
-                    objectContaining({
-                        content: Buffer.from(wrapperData).toString("base64"),
-                        path: wrappedFilePath,
-                    }),
-                    anything()
-                )
-            ).once();
-        } catch (e) {
-            console.log(
-                "file",
-                path.join(resourceDirPath, "file.workflow-wrapper.py")
-            );
-            console.log(e);
-            return;
-        }
+        verify(
+            mockWorkspaceService.import(
+                objectContaining({
+                    content: Buffer.from(wrapperData).toString("base64"),
+                    path: wrappedFilePath,
+                }),
+                anything()
+            )
+        ).once();
     });
 
     it("should create wrapper for databricks python notebook", async () => {
