@@ -77,7 +77,6 @@ export class WorkflowRunner implements Disposable {
         cluster,
         syncDestination,
         token,
-        connectionManager,
     }: {
         program: LocalUri;
         parameters?: Record<string, string>;
@@ -85,7 +84,6 @@ export class WorkflowRunner implements Disposable {
         cluster: Cluster;
         syncDestination: SyncDestinationMapper;
         token?: CancellationToken;
-        connectionManager?: ConnectionManager;
     }) {
         const panel = await this.getPanelForUri(program.uri);
 
