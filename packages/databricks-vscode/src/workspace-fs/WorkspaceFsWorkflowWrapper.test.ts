@@ -25,15 +25,13 @@ describe(__filename, async () => {
     let mockConnectionManager: ConnectionManager;
     let mockExtensionContext: ExtensionContext;
     const testDirPath = "/Users/me/testdir";
-    const resourceDir = path.resolve(
+    const resourceDirPath = path.resolve(
         __dirname,
         "..",
         "..",
         "resources",
         "python"
     );
-
-    console.log(resourceDir);
 
     beforeEach(async () => {
         mockWorkspaceService = mock(WorkspaceService);
@@ -92,14 +90,20 @@ describe(__filename, async () => {
             instance(mockExtensionContext)
         ).createPythonFileWrapper(new RemoteUri(originalFilePath));
 
-        console.log("file", path.join(resourceDir, "file.workflow-wrapper.py"));
+        console.log(
+            "file",
+            path.join(resourceDirPath, "file.workflow-wrapper.py")
+        );
 
         const wrapperData = await readFile(
-            path.join(resourceDir, "file.workflow-wrapper.py"),
+            path.join(resourceDirPath, "file.workflow-wrapper.py"),
             "utf-8"
         );
 
-        console.log("file", path.join(resourceDir, "file.workflow-wrapper.py"));
+        console.log(
+            "file",
+            path.join(resourceDirPath, "file.workflow-wrapper.py")
+        );
 
         verify(
             mockWorkspaceService.import(
@@ -166,7 +170,7 @@ describe(__filename, async () => {
             );
 
             const wrapperData = await readFile(
-                path.join(resourceDir, "notebook.workflow-wrapper.py"),
+                path.join(resourceDirPath, "notebook.workflow-wrapper.py"),
                 "utf-8"
             );
             const expected = comment
@@ -279,7 +283,7 @@ describe(__filename, async () => {
 
             const wrapperData = await readFile(
                 path.join(
-                    resourceDir,
+                    resourceDirPath,
                     "generated",
                     "notebook.workflow-wrapper.json"
                 ),
