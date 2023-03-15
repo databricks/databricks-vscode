@@ -154,11 +154,14 @@ export abstract class WorkspaceFsEntity {
             );
             return entity;
         } catch (e) {
-            if (e instanceof ApiClientResponseError) {
-                if (e.error_code === "RESOURCE_DOES_NOT_EXIST") {
-                    return undefined;
-                }
+            if (
+                e instanceof ApiClientResponseError &&
+                e.error_code === "RESOURCE_DOES_NOT_EXIST"
+            ) {
+                return undefined;
             }
+
+            throw e;
         }
     }
 

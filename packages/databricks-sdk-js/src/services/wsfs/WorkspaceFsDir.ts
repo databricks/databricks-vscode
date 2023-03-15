@@ -11,6 +11,8 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
     }
 
     public getAbsoluteChildPath(path: string) {
+        //Since this.path returns path value from details returned by the API,
+        //it is always absolute. So we can directly use it here.
         const resolved = posix.resolve(this.path, path);
         const relative = posix.relative(this.path, resolved);
 
@@ -89,15 +91,17 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
         }
 
         try {
-            await this._workspaceFsService.import({
-                path: validPath,
-                overwrite,
-                format: "AUTO",
-                content: Buffer.from(content).toString("base64"),
-            });
+            await this._workspaceFsService.import(
+                {
+                    path: validPath,
+                    overwrite,
+                    format: "AUTO",
+                    content: Buffer.from(content).toString("base64"),
+                },
+                ctx
+            );
         } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error(e);
+            ctx?.logger?.error("Error writing ${validPath} file", e);
             throw e;
         }
 

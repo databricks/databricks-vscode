@@ -6,7 +6,6 @@ import {
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {readFile} from "fs/promises";
 import path from "path";
-import * as os from "node:os";
 import posix from "path/posix";
 import {ExtensionContext} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -28,7 +27,7 @@ function getWrapperPath(remoteFilePath: RemoteUri, extraParts: string[]) {
         })
     );
 }
-export class WsfsWorkflowWrapper {
+export class WorkspaceFsWorkflowWrapper {
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly extensionContext: ExtensionContext
@@ -41,6 +40,7 @@ export class WsfsWorkflowWrapper {
         @context ctx?: Context
     ) {
         const dirpath = posix.dirname(remoteFilePath.path);
+
         if (!this.connectionManager.workspaceClient) {
             throw new Error(`Not logged in`);
         }
@@ -76,7 +76,12 @@ export class WsfsWorkflowWrapper {
         const originalJson: {cells: any[] | undefined} = JSON.parse(data);
 
         const bootstrapPath = this.extensionContext.asAbsolutePath(
-            path.join("resources", "python", "notebook.workflow-wrapper.json")
+            path.join(
+                "resources",
+                "python",
+                "generated",
+                "notebook.workflow-wrapper.json"
+            )
         );
         const bootstrapJson = JSON.parse(
             await readFile(bootstrapPath, "utf-8")
@@ -84,7 +89,15 @@ export class WsfsWorkflowWrapper {
         originalJson["cells"] = [bootstrapJson].concat(
             originalJson["cells"] ?? []
         );
-        this.createFile(remoteFilePath, JSON.stringify(originalJson), ctx);
+        this.createFile(
+            getWrapperPath(remoteFilePath, [
+                "databricks",
+                "notebook",
+                "workflow-wrapper",
+            ]),
+            JSON.stringify(originalJson),
+            ctx
+        );
     }
 
     @logging.withLogContext(Loggers.Extension)
@@ -96,17 +109,17 @@ export class WsfsWorkflowWrapper {
         const data = await readFile(localFilePath.path, "utf-8");
         //Since this function is called only when notebook is a databricks notebook
         //we can assume that first line will be #Databricks notebook source.
-        const originalCode = data.split(os.EOL).slice(1);
+        const originalCode = data.split(/\r?\n/).slice(1);
 
         const bootstrapPath = this.extensionContext.asAbsolutePath(
             path.join("resources", "python", "notebook.workflow-wrapper.py")
         );
         const bootstrapCode = (await readFile(bootstrapPath, "utf-8")).split(
-            os.EOL
+            /\r?\n/
         );
         const wrappedCode = ["# Databricks notebook source"]
             .concat(bootstrapCode)
-            .concat("# COMMAND ----------")
+            .concat(["# COMMAND ----------"])
             .concat(originalCode);
 
         return this.createFile(
@@ -115,7 +128,7 @@ export class WsfsWorkflowWrapper {
                 "notebook",
                 "workflow-wrapper",
             ]),
-            wrappedCode.join(os.EOL),
+            wrappedCode.join("\n"),
             ctx
         );
     }

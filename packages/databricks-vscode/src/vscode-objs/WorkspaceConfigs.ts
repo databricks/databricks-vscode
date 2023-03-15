@@ -1,4 +1,5 @@
 import {ConfigurationTarget, workspace} from "vscode";
+import {SyncDestinationType} from "../sync/SyncDestination";
 
 export const workspaceConfigs = {
     get maxFieldLength() {
@@ -72,5 +73,3 @@ export const workspaceConfigs = {
         return config === "" || config === undefined ? undefined : config;
     },
 };
-
-export type SyncDestinationType = "repo" | "workspace";
