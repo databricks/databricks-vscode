@@ -100,6 +100,20 @@ describe(__filename, async () => {
                 path.join(resourceDirPath, "file.workflow-wrapper.py"),
                 "utf-8"
             );
+            console.log(
+                "file",
+                path.join(resourceDirPath, "file.workflow-wrapper.py")
+            );
+
+            verify(
+                mockWorkspaceService.import(
+                    objectContaining({
+                        content: Buffer.from(wrapperData).toString("base64"),
+                        path: wrappedFilePath,
+                    }),
+                    anything()
+                )
+            ).once();
         } catch (e) {
             console.log(
                 "file",
@@ -108,21 +122,6 @@ describe(__filename, async () => {
             console.log(e);
             return;
         }
-
-        console.log(
-            "file",
-            path.join(resourceDirPath, "file.workflow-wrapper.py")
-        );
-
-        verify(
-            mockWorkspaceService.import(
-                objectContaining({
-                    content: Buffer.from(wrapperData).toString("base64"),
-                    path: wrappedFilePath,
-                }),
-                anything()
-            )
-        ).once();
     });
 
     it("should create wrapper for databricks python notebook", async () => {
