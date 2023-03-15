@@ -101,8 +101,7 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
                 ctx
             );
         } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error(e);
+            ctx?.logger?.error("Error writing ${validPath} file", e);
             throw e;
         }
 
