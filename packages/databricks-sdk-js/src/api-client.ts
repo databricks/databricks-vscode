@@ -125,7 +125,7 @@ export class ApiClient {
 
         if (payload) {
             if (method === "POST") {
-                options.body = payload;
+                options.body = JSON.stringify(payload);
             } else {
                 url.search = new URLSearchParams(payload).toString();
             }
