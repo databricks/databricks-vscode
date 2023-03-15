@@ -25,7 +25,13 @@ describe(__filename, async () => {
     let mockConnectionManager: ConnectionManager;
     let mockExtensionContext: ExtensionContext;
     const testDirPath = "/Users/me/testdir";
-    const resourceDir = path.join("resources", "python");
+    const resourceDir = path.resolve(
+        __dirname,
+        "..",
+        "..",
+        "resources",
+        "python"
+    );
 
     beforeEach(async () => {
         mockWorkspaceService = mock(WorkspaceService);
@@ -41,10 +47,6 @@ describe(__filename, async () => {
             object_type: "DIRECTORY",
             path: testDirPath,
         });
-
-        when(mockWorkspaceService.import(anything(), anything())).thenResolve(
-            {}
-        );
 
         const mockWorkspaceClient = mock(WorkspaceClient);
         when(mockWorkspaceClient.workspace).thenReturn(
