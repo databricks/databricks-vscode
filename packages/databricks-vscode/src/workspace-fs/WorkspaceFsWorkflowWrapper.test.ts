@@ -92,20 +92,14 @@ describe(__filename, async () => {
             instance(mockExtensionContext)
         ).createPythonFileWrapper(new RemoteUri(originalFilePath));
 
-        console.error(
-            "file",
-            path.join(resourceDir, "file.workflow-wrapper.py")
-        );
+        console.log("file", path.join(resourceDir, "file.workflow-wrapper.py"));
 
         const wrapperData = await readFile(
             path.join(resourceDir, "file.workflow-wrapper.py"),
             "utf-8"
         );
 
-        console.error(
-            "file",
-            path.join(resourceDir, "file.workflow-wrapper.py")
-        );
+        console.log("file", path.join(resourceDir, "file.workflow-wrapper.py"));
 
         verify(
             mockWorkspaceService.import(
