@@ -105,7 +105,7 @@ describe(__filename, async () => {
     });
 
     it("should create wrapper for databricks python notebook", async () => {
-        withFile(async (localFilePath) => {
+        await withFile(async (localFilePath) => {
             const originalFilePath = posix.join(testDirPath, "remoteFile.py");
             const wrappedFilePath = posix.join(
                 testDirPath,
@@ -124,9 +124,7 @@ describe(__filename, async () => {
                     anything()
                 )
             ).thenThrow(
-                new ApiClientResponseError("", {
-                    error_code: "RESOURCE_DOES_NOT_EXIST",
-                })
+                new ApiClientResponseError("", {}, "RESOURCE_DOES_NOT_EXIST")
             );
 
             when(
@@ -182,7 +180,7 @@ describe(__filename, async () => {
     });
 
     it("should create wrapper for databricks jupyter notebook", async () => {
-        withFile(async (localFilePath) => {
+        await withFile(async (localFilePath) => {
             const originalFilePath = posix.join(
                 testDirPath,
                 "remoteFile.ipynb"
@@ -204,9 +202,7 @@ describe(__filename, async () => {
                     anything()
                 )
             ).thenThrow(
-                new ApiClientResponseError("", {
-                    error_code: "RESOURCE_DOES_NOT_EXIST",
-                })
+                new ApiClientResponseError("", {}, "RESOURCE_DOES_NOT_EXIST")
             );
 
             when(
@@ -270,7 +266,7 @@ describe(__filename, async () => {
             ).createNotebookWrapper(
                 new LocalUri(localFilePath.path),
                 new RemoteUri(originalFilePath),
-                "PY_DBNB"
+                "IPYNB"
             );
 
             const wrapperData = await readFile(

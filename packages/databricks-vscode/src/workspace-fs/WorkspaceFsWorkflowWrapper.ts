@@ -89,7 +89,15 @@ export class WorkspaceFsWorkflowWrapper {
         originalJson["cells"] = [bootstrapJson].concat(
             originalJson["cells"] ?? []
         );
-        this.createFile(remoteFilePath, JSON.stringify(originalJson), ctx);
+        this.createFile(
+            getWrapperPath(remoteFilePath, [
+                "databricks",
+                "notebook",
+                "workflow-wrapper",
+            ]),
+            JSON.stringify(originalJson),
+            ctx
+        );
     }
 
     @logging.withLogContext(Loggers.Extension)
