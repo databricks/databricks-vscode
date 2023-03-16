@@ -171,6 +171,11 @@ class CustomSyncTerminal implements Pseudoterminal {
             );
         }
 
+        //When sync fails (due to any reason including Files in Repos/Workspace being disabled),
+        //the sync process could emit "close" before all "data" messages have been done processing.
+        //This can lead to a unknown ERROR state for sync, when in reality the state is actually
+        //known (it is FILES_IN_REPOS_DISABLED/FILES_IN_WORKSPACE_DISABLED). We use a reader-writer
+        //lock to make sure all "data" events have been processd before progressing with "close".
         const rwLock = new RWLock();
         this.syncProcess.stderr.on("data", async (data) => {
             await rwLock.readerEntry();
