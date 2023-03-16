@@ -79,7 +79,7 @@ export class CodeSynchronizer implements Disposable {
                 if (
                     [
                         "ERROR",
-                        "FILE_IN_REPOS_DISABLED",
+                        "FILES_IN_REPOS_DISABLED",
                         "FILES_IN_WORKSPACE_DISABLED",
                     ].includes(state)
                 ) {
