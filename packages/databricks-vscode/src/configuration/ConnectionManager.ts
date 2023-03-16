@@ -86,9 +86,9 @@ export class ConnectionManager {
         return this._workspaceClient;
     }
 
-    async login(interactive = false): Promise<void> {
+    async login(interactive = false, force = false): Promise<void> {
         try {
-            await this._login(interactive);
+            await this._login(interactive, force);
         } catch (e) {
             NamedLogger.getOrCreate("Extension").error("Login Error", e);
             if (interactive) {
@@ -98,8 +98,13 @@ export class ConnectionManager {
             await this.logout();
         }
     }
-    private async _login(interactive = false): Promise<void> {
-        await this.logout();
+    private async _login(interactive = false, force = false): Promise<void> {
+        if (force) {
+            await this.logout();
+        }
+        if (this.state !== "DISCONNECTED") {
+            return;
+        }
         this.updateState("CONNECTING");
 
         let projectConfigFile: ProjectConfigFile;
@@ -273,7 +278,7 @@ export class ConnectionManager {
             `connected to: ${config.authProvider.host}`
         );
 
-        await this.login(true);
+        await this.login(true, true);
     }
 
     private async writeConfigFile(config: ProjectConfig) {
