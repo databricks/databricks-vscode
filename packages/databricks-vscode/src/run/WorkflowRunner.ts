@@ -21,6 +21,8 @@ import {isNotebook} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
 import Convert from "ansi-to-html";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWrapper";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();
@@ -28,7 +30,8 @@ export class WorkflowRunner implements Disposable {
 
     constructor(
         private context: ExtensionContext,
-        private codeSynchronizer: CodeSynchronizer
+        private codeSynchronizer: CodeSynchronizer,
+        private readonly connectionManager: ConnectionManager
     ) {}
 
     dispose() {
@@ -74,17 +77,15 @@ export class WorkflowRunner implements Disposable {
         cluster,
         syncDestination,
         token,
-        connectionManager,
     }: {
-        program: Uri;
+        program: LocalUri;
         parameters?: Record<string, string>;
         args?: Array<string>;
         cluster: Cluster;
         syncDestination: SyncDestinationMapper;
         token?: CancellationToken;
-        connectionManager?: ConnectionManager;
     }) {
-        const panel = await this.getPanelForUri(program);
+        const panel = await this.getPanelForUri(program.uri);
 
         const cancellation = new CancellationTokenSource();
         panel.onDidDispose(() => cancellation.cancel());
@@ -108,10 +109,10 @@ export class WorkflowRunner implements Disposable {
                 case "refresh_results":
                     if (
                         e.args?.runId &&
-                        connectionManager?.workspaceClient?.apiClient
+                        this.connectionManager.workspaceClient?.apiClient
                     ) {
                         const run = await WorkflowRun.fromId(
-                            connectionManager?.workspaceClient?.apiClient,
+                            this.connectionManager.workspaceClient?.apiClient,
                             e.args?.runId
                         );
 
@@ -125,14 +126,41 @@ export class WorkflowRunner implements Disposable {
                     }
             }
         });
+
         try {
-            if (await isNotebook(program)) {
+            const notebookType = await isNotebook(program);
+            if (notebookType) {
+                let remoteFilePath: string =
+                    syncDestination.localToRemoteNotebook(program).path;
+                if (
+                    workspaceConfigs.enableFilesInWorkspace &&
+                    syncDestination.remoteUri.type === "workspace"
+                ) {
+                    const wrappedFile = await new WorkspaceFsWorkflowWrapper(
+                        this.connectionManager,
+                        this.context
+                    ).createNotebookWrapper(
+                        program,
+                        syncDestination.localToRemote(program),
+                        notebookType
+                    );
+                    remoteFilePath = wrappedFile
+                        ? wrappedFile.path
+                        : remoteFilePath;
+                }
                 panel.showExportedRun(
                     await cluster.runNotebookAndWait({
-                        path: syncDestination.localToRemoteNotebook(
-                            new LocalUri(program)
-                        ).path,
-                        parameters,
+                        path: remoteFilePath,
+                        parameters: {
+                            // eslint-disable-next-line @typescript-eslint/naming-convention
+                            DATABRICKS_SOURCE_FILE:
+                                syncDestination.localToRemote(program)
+                                    .workspacePrefixPath,
+                            // eslint-disable-next-line @typescript-eslint/naming-convention
+                            DATABRICKS_PROJECT_ROOT:
+                                syncDestination.remoteUri.workspacePrefixPath,
+                            ...parameters,
+                        },
                         onProgress: (
                             state: jobs.RunLifeCycleState,
                             run: WorkflowRun
@@ -143,10 +171,23 @@ export class WorkflowRunner implements Disposable {
                     })
                 );
             } else {
+                const originalFileUri = syncDestination.localToRemote(program);
+                const wrappedFile =
+                    workspaceConfigs.enableFilesInWorkspace &&
+                    syncDestination.remoteUri.type === "workspace"
+                        ? await new WorkspaceFsWorkflowWrapper(
+                              this.connectionManager,
+                              this.context
+                          ).createPythonFileWrapper(originalFileUri)
+                        : undefined;
                 const response = await cluster.runPythonAndWait({
-                    path: syncDestination.localToRemote(new LocalUri(program))
-                        .path,
-                    args,
+                    path: wrappedFile ? wrappedFile.path : originalFileUri.path,
+                    args: (args ?? []).concat([
+                        "--databricks-source-file",
+                        originalFileUri.workspacePrefixPath,
+                        "--databricks-project-root",
+                        syncDestination.remoteUri.workspacePrefixPath,
+                    ]),
                     onProgress: (
                         state: jobs.RunLifeCycleState,
                         run: WorkflowRun
@@ -155,6 +196,7 @@ export class WorkflowRunner implements Disposable {
                     },
                     token: cancellation.token,
                 });
+                //TODO: Respone logs will contain bootstrap code path in the error stack trace. Remove it.
                 panel.showStdoutResult(response.logs || "");
             }
         } catch (e: unknown) {

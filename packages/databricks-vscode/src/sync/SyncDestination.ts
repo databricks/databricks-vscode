@@ -10,6 +10,7 @@ import {Loggers} from "../logger";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export const REPO_NAME_SUFFIX = ".ide";
+export type SyncDestinationType = "repo" | "workspace";
 
 export abstract class DatabricksUri<T> {
     constructor(readonly uri: Uri) {}
@@ -105,6 +106,14 @@ export class RemoteUri extends DatabricksUri<RemoteUri> {
         return await (
             await WorkspaceFsEntity.fromPath(wsClient, this.uri.path)
         )?.url;
+    }
+
+    get type(): SyncDestinationType {
+        if (this.path.startsWith("/Repos")) {
+            return "repo";
+        } else {
+            return "workspace";
+        }
     }
 }
 

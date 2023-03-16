@@ -16,7 +16,6 @@ import {
     Disposable,
     ExtensionContext,
     ProviderResult,
-    Uri,
     window,
 } from "vscode";
 import {DebugProtocol} from "@vscode/debugprotocol";
@@ -26,6 +25,7 @@ import {WorkflowRunner} from "./WorkflowRunner";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {isNotebook} from "../utils";
+import {LocalUri} from "../sync/SyncDestination";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -54,7 +54,11 @@ export class DatabricksWorkflowDebugAdapterFactory
         context: ExtensionContext,
         codeSynchronizer: CodeSynchronizer
     ) {
-        this.workflowRunner = new WorkflowRunner(context, codeSynchronizer);
+        this.workflowRunner = new WorkflowRunner(
+            context,
+            codeSynchronizer,
+            connection
+        );
     }
 
     dispose() {
@@ -156,7 +160,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         args: Array<string>
     ): Promise<void> {
         if (
-            !(await isNotebook(Uri.file(program))) &&
+            !(await isNotebook(new LocalUri(program))) &&
             !program.endsWith(".py")
         ) {
             return this.onError("Only Python files can be run as a workflow");
@@ -195,13 +199,12 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         }
 
         await this.workflowRunner.run({
-            program: Uri.file(program),
+            program: new LocalUri(program),
             parameters,
             args,
             cluster,
             syncDestination: syncDestination,
             token: this.token,
-            connectionManager: this.connection,
         });
     }
 

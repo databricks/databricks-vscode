@@ -1,13 +1,16 @@
 import assert from "assert";
 import {randomUUID} from "crypto";
 import {posix} from "path";
+import path from "path/posix";
 import {IntegrationTestSetup} from "../../test/IntegrationTestSetup";
+import {isDirectory} from "./utils";
+import {WorkspaceFsDir} from "./WorkspaceFsDir";
 import {WorkspaceFsEntity} from "./WorkspaceFsEntity";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
     let testDirPath: string;
-    let rootDir: WorkspaceFsEntity;
+    let rootDir: WorkspaceFsDir;
 
     this.timeout(10 * 60 * 1000);
 
@@ -40,6 +43,7 @@ describe(__filename, function () {
             testDirPath
         );
         assert.ok(dir !== undefined);
+        assert.ok(isDirectory(dir));
         rootDir = dir;
     });
 
@@ -82,5 +86,19 @@ describe(__filename, function () {
         await assert.doesNotReject(
             async () => await dir.mkdir(`../${dirName}/a`)
         );
+    });
+
+    it("should create a file", async () => {
+        const file = await rootDir.createFile("test.txt", "some content");
+        assert.ok(file?.details.path === path.join(rootDir.path, "test.txt"));
+
+        const content = await integSetup.client.workspace.export({
+            path: file.details.path,
+            format: "AUTO",
+        });
+
+        assert.ok(content.content !== undefined);
+        const buff = Buffer.from(content.content, "base64");
+        assert.equal(buff.toString("utf-8"), "some content");
     });
 });
