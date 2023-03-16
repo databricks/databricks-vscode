@@ -90,6 +90,17 @@ export interface CronTrigger {
     timezone_id?: string;
 }
 
+export interface DataPlaneId {
+    /**
+     * The instance name of the data plane emitting an event.
+     */
+    instance?: string;
+    /**
+     * A sequence number, unique and increasing within the data plane instance.
+     */
+    seq_no?: any /* MISSING TYPE */;
+}
+
 /**
  * Delete a pipeline
  */
@@ -176,6 +187,22 @@ export interface EditPipeline {
      */
     trigger?: PipelineTrigger;
 }
+
+export interface ErrorDetail {
+    /**
+     * The exception thrown for this error, with its chain of cause.
+     */
+    exceptions?: Array<SerializedException>;
+    /**
+     * Whether this error is considered fatal, that is, unrecoverable.
+     */
+    fatal?: boolean;
+}
+
+/**
+ * The severity level of the event.
+ */
+export type EventLevel = "ERROR" | "INFO" | "METRICS" | "WARN";
 
 export interface Filters {
     /**
@@ -271,6 +298,62 @@ export interface GetUpdateResponse {
 }
 
 /**
+ * List pipeline events
+ */
+export interface ListPipelineEvents {
+    /**
+     * Criteria to select a subset of results, expressed using a SQL-like syntax.
+     * The supported filters are:
+     *
+     * 1. level='INFO' (or WARN or ERROR)
+     *
+     * 2. level in ('INFO', 'WARN')
+     *
+     * 3. id='[event-id]'
+     *
+     * 4. timestamp > 'TIMESTAMP' (or >=,<,<=,=)
+     *
+     * Composite expressions are supported, for example: level in ('ERROR',
+     * 'WARN') AND timestamp> '2021-07-22T06:37:33.083Z'
+     */
+    filter?: string;
+    /**
+     * Max number of entries to return in a single page. The system may return
+     * fewer than max_results events in a response, even if there are more events
+     * available.
+     */
+    max_results?: number;
+    /**
+     * A string indicating a sort order by timestamp for the results, for
+     * example, ["timestamp asc"]. The sort order can be ascending or descending.
+     * By default, events are returned in descending order by timestamp.
+     */
+    order_by?: Array<string>;
+    /**
+     * Page token returned by previous call. This field is mutually exclusive
+     * with all fields in this request except max_results. An error is returned
+     * if any fields other than max_results are set when this field is set.
+     */
+    page_token?: string;
+    pipeline_id: string;
+}
+
+export interface ListPipelineEventsResponse {
+    /**
+     * The list of events matching the request criteria.
+     */
+    events?: Array<PipelineEvent>;
+    /**
+     * If present, a token to fetch the next page of events.
+     */
+    next_page_token?: string;
+    /**
+     * If present, a token to fetch the previous page of events.
+     */
+    prev_page_token?: string;
+}
+
+/**
  * List pipelines
  */
 export interface ListPipelines {
@@ -352,11 +435,88 @@ export interface ListUpdatesResponse {
     updates?: Array<UpdateInfo>;
 }
 
+/**
+ * Maturity level for EventDetails.
+ */
+export type MaturityLevel = "DEPRECATED" | "EVOLVING" | "STABLE";
+
 export interface NotebookLibrary {
     /**
      * The absolute path of the notebook.
      */
     path?: string;
+}
+
+export interface Origin {
+    /**
+     * The id of a batch. Unique within a flow.
+     */
+    batch_id?: number;
+    /**
+     * The cloud provider, e.g., AWS or Azure.
+     */
+    cloud?: string;
+    /**
+     * The id of the cluster where an execution happens. Unique within a region.
+     */
+    cluster_id?: string;
+    /**
+     * The name of a dataset. Unique within a pipeline.
+     */
+    dataset_name?: string;
+    /**
+     * The id of the flow. Globally unique. Incremental queries will generally
+     * reuse the same id while complete queries will have a new id per update.
+     */
+    flow_id?: string;
+    /**
+     * The name of the flow. Not unique.
+     */
+    flow_name?: string;
+    /**
+     * The optional host name where the event was triggered
+     */
+    host?: string;
+    /**
+     * The id of a maintenance run. Globally unique.
+     */
+    maintenance_id?: string;
+    /**
+     * Materialization name.
+     */
+    materialization_name?: string;
+    /**
+     * The org id of the user. Unique within a cloud.
+     */
+    org_id?: number;
+    /**
+     * The id of the pipeline. Globally unique.
+     */
+    pipeline_id?: string;
+    /**
+     * The name of the pipeline. Not unique.
+     */
+    pipeline_name?: string;
+    /**
+     * The cloud region.
+     */
+    region?: string;
+    /**
+     * The id of the request that caused an update.
+     */
+    request_id?: string;
+    /**
+     * The id of a (delta) table. Globally unique.
+     */
+    table_id?: string;
+    /**
+     * The Unity Catalog id of the MV or ST being updated.
+     */
+    uc_resource_id?: string;
+    /**
+     * The id of an execution. Globally unique.
+     */
+    update_id?: string;
 }
 
 export interface PipelineCluster {
@@ -477,6 +637,45 @@ export interface PipelineCluster {
      * name `ubuntu` on port `2200`. Up to 10 keys can be specified.
      */
     ssh_public_keys?: Array<string>;
+}
+
+export interface PipelineEvent {
+    /**
+     * Information about an error captured by the event.
+     */
+    error?: ErrorDetail;
+    /**
+     * The event type. Should always correspond to the details
+     */
+    event_type?: string;
+    /**
+     * A time-based, globally unique id.
+     */
+    id?: string;
+    /**
+     * The severity level of the event.
+     */
+    level?: EventLevel;
+    /**
+     * Maturity level for event_type.
+     */
+    maturity_level?: MaturityLevel;
+    /**
+     * The display message associated with the event.
+     */
+    message?: string;
+    /**
+     * Describes where the event originates from.
+     */
+    origin?: Origin;
+    /**
+     * A sequencing object to identify and order events.
+     */
+    sequence?: Sequencing;
+    /**
+     * The time of the event.
+     */
+    timestamp?: string;
 }
 
 export interface PipelineLibrary {
@@ -631,6 +830,51 @@ export interface PipelineTrigger {
  */
 export interface Reset {
     pipeline_id: string;
+}
+
+export interface Sequencing {
+    /**
+     * A sequence number, unique and increasing within the control plane.
+     */
+    control_plane_seq_no?: number;
+    /**
+     * the ID assigned by the data plane.
+     */
+    data_plane_id?: DataPlaneId;
+}
+
+export interface SerializedException {
+    /**
+     * Runtime class of the exception
+     */
+    class_name?: string;
+    /**
+     * Exception message
+     */
+    message?: string;
+    /**
+     * Stack trace consisting of a list of stack frames
+     */
+    stack?: Array<StackFrame>;
+}
+
+export interface StackFrame {
+    /**
+     * Class from which the method call originated
+     */
+    declaring_class?: string;
+    /**
+     * File where the method is defined
+     */
+    file_name?: string;
+    /**
+     * Line from which the method was called
+     */
+    line_number?: number;
+    /**
+     * Name of the method which was called
+     */
+    method_name?: string;
 }
 
 export interface StartUpdate {
