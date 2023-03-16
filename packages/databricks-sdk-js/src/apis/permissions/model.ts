@@ -41,23 +41,12 @@ export interface AccessControlResponse {
     user_name?: string;
 }
 
-export interface CreateWorkspaceAssignments {
-    /**
-     * Array of permissions assignments to apply to a workspace.
-     */
-    permission_assignments: Array<PermissionAssignmentInput>;
-    /**
-     * The workspace ID for the account.
-     */
-    workspace_id: number;
-}
-
 /**
  * Delete permissions assignment
  */
 export interface DeleteWorkspaceAssignmentRequest {
     /**
-     * The ID of the service principal.
+     * The ID of the user, service principal, or group.
      */
     principal_id: number;
     /**
@@ -139,32 +128,13 @@ export interface PermissionAssignment {
      */
     error?: string;
     /**
-     * The permissions level of the service principal.
+     * The permissions level of the principal.
      */
     permissions?: Array<WorkspacePermission>;
     /**
-     * Information about the service principal assigned for the workspace.
+     * Information about the principal assigned to the workspace.
      */
     principal?: PrincipalOutput;
-}
-
-export interface PermissionAssignmentInput {
-    /**
-     * The group name for the service principal.
-     */
-    group_name?: string;
-    /**
-     * Array of permissions to apply to the workspace for the service principal.
-     */
-    permissions: Array<WorkspacePermission>;
-    /**
-     * The name of the service principal.
-     */
-    service_principal_name?: string;
-    /**
-     * The username of the owner of the service principal.
-     */
-    user_name?: string;
 }
 
 export interface PermissionAssignments {
@@ -221,11 +191,11 @@ export interface PermissionsRequest {
 
 export interface PrincipalOutput {
     /**
-     * The display name of the service principal.
+     * The display name of the principal.
      */
     display_name?: string;
     /**
-     * The group name for the service principal.
+     * The group name of the groupl. Present only if the principal is a group.
      */
     group_name?: string;
     /**
@@ -233,11 +203,12 @@ export interface PrincipalOutput {
      */
     principal_id?: number;
     /**
-     * The name of the service principal.
+     * The name of the service principal. Present only if the principal is a
+     * service principal.
      */
     service_principal_name?: string;
     /**
-     * The username of the owner of the service principal.
+     * The username of the user. Present only if the principal is a user.
      */
     user_name?: string;
 }
@@ -248,20 +219,13 @@ export interface UpdateWorkspaceAssignments {
      */
     permissions: Array<WorkspacePermission>;
     /**
-     * The ID of the service principal.
+     * The ID of the user, service principal, or group.
      */
     principal_id: number;
     /**
      * The workspace ID.
      */
     workspace_id: number;
-}
-
-export interface WorkspaceAssignmentsCreated {
-    /**
-     * Array of permissions assignments applied to a workspace.
-     */
-    permission_assignments?: Array<PermissionAssignment>;
 }
 
 export type WorkspacePermission = "ADMIN" | "UNKNOWN" | "USER";

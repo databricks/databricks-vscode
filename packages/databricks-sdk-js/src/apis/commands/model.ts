@@ -108,7 +108,7 @@ export interface Results {
     /**
      * The table schema
      */
-    schema?: Array<Array<any /* MISSING TYPE */>>;
+    schema?: Array<Record<string, any /* MISSING TYPE */>>;
     /**
      * The summary of the error
      */

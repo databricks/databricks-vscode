@@ -3,6 +3,170 @@
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
 
 // all definitions in this file are in alphabetical order
+export interface BaseJob {
+    /**
+     * The time at which this job was created in epoch milliseconds (milliseconds
+     * since 1/1/1970 UTC).
+     */
+    created_time?: number;
+    /**
+     * The creator user name. This field won’t be included in the response if
+     * the user has already been deleted.
+     */
+    creator_user_name?: string;
+    /**
+     * The canonical identifier for this job.
+     */
+    job_id?: number;
+    /**
+     * Settings for this job and all of its runs. These settings can be updated
+     * using the `resetJob` method.
+     */
+    settings?: JobSettings;
+}
+
+export interface BaseRun {
+    /**
+     * The sequence number of this run attempt for a triggered job run. The
+     * initial attempt of a run has an attempt_number of 0\. If the initial run
+     * attempt fails, and the job has a retry policy (`max_retries` \> 0),
+     * subsequent runs are created with an `original_attempt_run_id` of the
+     * original attempt’s ID and an incrementing `attempt_number`. Runs are
+     * retried only until they succeed, and the maximum `attempt_number` is the
+     * same as the `max_retries` value for the job.
+     */
+    attempt_number?: number;
+    /**
+     * The time in milliseconds it took to terminate the cluster and clean up any
+     * associated artifacts. The duration of a task run is the sum of the
+     * `setup_duration`, `execution_duration`, and the `cleanup_duration`. The
+     * `cleanup_duration` field is set to 0 for multitask job runs. The total
+     * duration of a multitask job run is the value of the `run_duration` field.
+     */
+    cleanup_duration?: number;
+    /**
+     * The cluster used for this run. If the run is specified to use a new
+     * cluster, this field is set once the Jobs service has requested a cluster
+     * for the run.
+     */
+    cluster_instance?: ClusterInstance;
+    /**
+     * A snapshot of the job’s cluster specification when this run was created.
+     */
+    cluster_spec?: ClusterSpec;
+    /**
+     * The continuous trigger that triggered this run.
+     */
+    continuous?: Continuous;
+    /**
+     * The creator user name. This field won’t be included in the response if
+     * the user has already been deleted.
+     */
+    creator_user_name?: string;
+    /**
+     * The time at which this run ended in epoch milliseconds (milliseconds since
+     * 1/1/1970 UTC). This field is set to 0 if the job is still running.
+     */
+    end_time?: number;
+    /**
+     * The time in milliseconds it took to execute the commands in the JAR or
+     * notebook until they completed, failed, timed out, were cancelled, or
+     * encountered an unexpected error. The duration of a task run is the sum of
+     * the `setup_duration`, `execution_duration`, and the `cleanup_duration`.
+     * The `execution_duration` field is set to 0 for multitask job runs. The
+     * total duration of a multitask job run is the value of the `run_duration`
+     * field.
+     */
+    execution_duration?: number;
+    /**
+     * An optional specification for a remote repository containing the notebooks
+     * used by this job's notebook tasks.
+     */
+    git_source?: GitSource;
+    /**
+     * A list of job cluster specifications that can be shared and reused by
+     * tasks of this job. Libraries cannot be declared in a shared job cluster.
+     * You must declare dependent libraries in task settings.
+     */
+    job_clusters?: Array<JobCluster>;
+    /**
+     * The canonical identifier of the job that contains this run.
+     */
+    job_id?: number;
+    /**
+     * A unique identifier for this job run. This is set to the same value as
+     * `run_id`.
+     */
+    number_in_job?: number;
+    /**
+     * If this run is a retry of a prior run attempt, this field contains the
+     * run_id of the original attempt; otherwise, it is the same as the run_id.
+     */
+    original_attempt_run_id?: number;
+    /**
+     * The parameters used for this run.
+     */
+    overriding_parameters?: RunParameters;
+    /**
+     * The time in milliseconds it took the job run and all of its repairs to
+     * finish.
+     */
+    run_duration?: number;
+    /**
+     * The canonical identifier of the run. This ID is unique across all runs of
+     * all jobs.
+     */
+    run_id?: number;
+    /**
+     * An optional name for the run. The maximum allowed length is 4096 bytes in
+     * UTF-8 encoding.
+     */
+    run_name?: string;
+    /**
+     * The URL to the detail page of the run.
+     */
+    run_page_url?: string;
+    /**
+     * This describes an enum
+     */
+    run_type?: RunType;
+    /**
+     * The cron schedule that triggered this run if it was triggered by the
+     * periodic scheduler.
+     */
+    schedule?: CronSchedule;
+    /**
+     * The time in milliseconds it took to set up the cluster. For runs that run
+     * on new clusters this is the cluster creation time, for runs that run on
+     * existing clusters this time should be very short. The duration of a task
+     * run is the sum of the `setup_duration`, `execution_duration`, and the
+     * `cleanup_duration`. The `setup_duration` field is set to 0 for multitask
+     * job runs. The total duration of a multitask job run is the value of the
+     * `run_duration` field.
+     */
+    setup_duration?: number;
+    /**
+     * The time at which this run was started in epoch milliseconds (milliseconds
+     * since 1/1/1970 UTC). This may not be the time when the job task starts
+     * executing, for example, if the job is scheduled to run on a new cluster,
+     * this is the time the cluster creation call is issued.
+     */
+    start_time?: number;
+    /**
+     * The result and lifecycle states of the run.
+     */
+    state?: RunState;
+    /**
+     * The list of tasks performed by the run. Each task has its own `run_id`
+     * which you can use to call `JobsGetOutput` to retrieve the run resutls.
+     */
+    tasks?: Array<RunTask>;
+    /**
+     * This describes an enum
+     */
+    trigger?: TriggerType;
+}
+
 export interface CancelAllRuns {
     /**
      * The canonical identifier of the job to cancel all runs of. This field is
@@ -62,11 +226,31 @@ export interface ClusterSpec {
     new_cluster?: any /* MISSING TYPE */;
 }
 
+export interface Continuous {
+    /**
+     * Indicate whether the continuous execution of the job is paused or not.
+     * Defaults to UNPAUSED.
+     */
+    pause_status?: ContinuousPauseStatus;
+}
+
+/**
+ * Indicate whether the continuous execution of the job is paused or not.
+ * Defaults to UNPAUSED.
+ */
+export type ContinuousPauseStatus = "PAUSED" | "UNPAUSED";
+
 export interface CreateJob {
     /**
      * List of permissions to set on the job.
      */
     access_control_list?: Array<any /* MISSING TYPE */>;
+    /**
+     * An optional continuous property for this job. The continuous property will
+     * ensure that there is always one run executing. Only one of `schedule` and
+     * `continuous` can be used.
+     */
+    continuous?: Continuous;
     /**
      * An optional set of email addresses that is notified when runs of this job
      * begin or complete as well as when this job is deleted. The default
@@ -135,6 +319,13 @@ export interface CreateJob {
      */
     timeout_seconds?: number;
     /**
+     * Trigger settings for the job. Can be used to trigger a run when new files
+     * arrive in an external location. The default behavior is that the job runs
+     * only when triggered by clicking “Run Now” in the Jobs UI or sending an
+     * API request to `runNow`.
+     */
+    trigger?: TriggerSettings;
+    /**
      * A collection of system notification IDs to notify when the run begins or
      * completes. The default behavior is to not send any system notifications.
      */
@@ -196,6 +387,13 @@ export interface DbtOutput {
 }
 
 export interface DbtTask {
+    /**
+     * Optional name of the catalog to use. The value is the top level in the
+     * 3-level namespace of Unity Catalog (catalog / schema / relation). The
+     * catalog value can only be specified if a warehouse_id is specified.
+     * Requires dbt-databricks >= 1.1.1.
+     */
+    catalog?: string;
     /**
      * A list of dbt commands to execute. All commands must start with `dbt`.
      * This parameter must not be empty. A maximum of up to 10 commands can be
@@ -261,6 +459,27 @@ export interface ExportRunOutput {
      * The exported content in HTML format (one for every view item).
      */
     views?: Array<ViewItem>;
+}
+
+export interface FileArrivalTriggerSettings {
+    /**
+     * If set, the trigger starts a run only after the specified amount of time
+     * passed since the last time the trigger fired. The minimum allowed value is
+     * 60 seconds
+     */
+    min_time_between_trigger_seconds?: number;
+    /**
+     * URL to be monitored for file arrivals. The path must point to the root or
+     * a subpath of the external location.
+     */
+    url?: string;
+    /**
+     * If set, the trigger starts a run only after no file activity has occurred
+     * for the specified amount of time. This makes it possible to wait for a
+     * batch of incoming files to arrive before triggering a run. The minimum
+     * allowed value is 60 seconds.
+     */
+    wait_after_last_change_seconds?: number;
 }
 
 /**
@@ -395,6 +614,10 @@ export interface Job {
      * using the `resetJob` method.
      */
     settings?: JobSettings;
+    /**
+     * History of the file arrival trigger associated with the job.
+     */
+    trigger_history?: TriggerHistory;
 }
 
 export interface JobCluster {
@@ -441,6 +664,12 @@ export interface JobEmailNotifications {
 }
 
 export interface JobSettings {
+    /**
+     * An optional continuous property for this job. The continuous property will
+     * ensure that there is always one run executing. Only one of `schedule` and
+     * `continuous` can be used.
+     */
+    continuous?: Continuous;
     /**
      * An optional set of email addresses that is notified when runs of this job
      * begin or complete as well as when this job is deleted. The default
@@ -508,6 +737,13 @@ export interface JobSettings {
      * is to have no timeout.
      */
     timeout_seconds?: number;
+    /**
+     * Trigger settings for the job. Can be used to trigger a run when new files
+     * arrive in an external location. The default behavior is that the job runs
+     * only when triggered by clicking “Run Now” in the Jobs UI or sending an
+     * API request to `runNow`.
+     */
+    trigger?: TriggerSettings;
     /**
      * A collection of system notification IDs to notify when the run begins or
      * completes. The default behavior is to not send any system notifications.
@@ -691,7 +927,7 @@ export interface ListJobsResponse {
     /**
      * The list of jobs.
      */
-    jobs?: Array<Job>;
+    jobs?: Array<BaseJob>;
 }
 
 /**
@@ -732,7 +968,7 @@ export interface ListRuns {
     offset?: number;
     /**
      * The type of runs to return. For a description of run types, see
-     * :method:getRun.
+     * :method:jobs/getRun.
      */
     run_type?: ListRunsRunType;
     /**
@@ -758,7 +994,7 @@ export interface ListRunsResponse {
     /**
      * A list of runs, from most recently started to least.
      */
-    runs?: Array<Run>;
+    runs?: Array<BaseRun>;
 }
 
 /**
@@ -766,11 +1002,11 @@ export interface ListRunsResponse {
  */
 export type ListRunsRunType =
     /**
-     * Normal job run. A run created with :method:runNow.
+     * Normal job run. A run created with :method:jobs/runNow.
      */
     | "JOB_RUN"
     /**
-     * Submit run. A run created with :method:submit.
+     * Submit run. A run created with :method:jobs/submit.
      */
     | "SUBMIT_RUN"
     /**
@@ -797,8 +1033,8 @@ export interface NotebookOutput {
 export interface NotebookTask {
     /**
      * Base parameters to be used for each run of this job. If the run is
-     * initiated by a call to :method:runNow with parameters specified, the two
-     * parameters maps are merged. If the same key is specified in
+     * initiated by a call to :method:jobs/runNow with parameters specified, the
+     * two parameters maps are merged. If the same key is specified in
      * `base_parameters` and in `run-now`, the value from `run-now` is used.
      *
      * Use [Task parameter variables] to set parameters containing information
@@ -1085,6 +1321,10 @@ export interface Run {
      */
     cluster_spec?: ClusterSpec;
     /**
+     * The continuous trigger that triggered this run.
+     */
+    continuous?: Continuous;
+    /**
      * The creator user name. This field won’t be included in the response if
      * the user has already been deleted.
      */
@@ -1192,7 +1432,7 @@ export interface Run {
      */
     tasks?: Array<RunTask>;
     /**
-     * The type of trigger that fired this run.
+     * This describes an enum
      */
     trigger?: TriggerType;
 }
@@ -1391,10 +1631,10 @@ export interface RunOutput {
     error_trace?: string;
     /**
      * The output from tasks that write to standard streams (stdout/stderr) such
-     * as :schema:sparkjartask, :schema:sparkpythontask, :schema:pythonwheeltask.
+     * as spark_jar_task, spark_python_task, python_wheel_task.
      *
-     * It's not supported for the :schema:notebooktask, :schema:pipelinetask or
-     * :schema:sparksubmittask.
+     * It's not supported for the notebook_task, pipeline_task or
+     * spark_submit_task.
      *
      * Databricks restricts this API to return the last 5 MB of these logs.
      */
@@ -1779,11 +2019,11 @@ export interface RunTask {
  */
 export type RunType =
     /**
-     * Normal job run. A run created with :method:runNow.
+     * Normal job run. A run created with :method:jobs/runNow.
      */
     | "JOB_RUN"
     /**
-     * Submit run. A run created with :method:submit.
+     * Submit run. A run created with :method:jobs/submit.
      */
     | "SUBMIT_RUN"
     /**
@@ -1795,7 +2035,7 @@ export type RunType =
 export interface SparkJarTask {
     /**
      * Deprecated since 04/2016\\. Provide a `jar` through the `libraries` field
-     * instead. For an example, see :method:create.
+     * instead. For an example, see :method:jobs/create.
      */
     jar_uri?: string;
     /**
@@ -1844,6 +2084,14 @@ export interface SparkSubmitTask {
 
 export interface SqlAlertOutput {
     /**
+     * The state of the SQL alert.
+     *
+     * * UNKNOWN: alert yet to be evaluated * OK: alert evaluated and did not
+     * fulfill trigger conditions * TRIGGERED: alert evaluated and fulfilled
+     * trigger conditions
+     */
+    alert_state?: SqlAlertState;
+    /**
      * The link to find the output results.
      */
     output_link?: string;
@@ -1855,14 +2103,27 @@ export interface SqlAlertOutput {
     /**
      * Information about SQL statements executed in the run.
      */
-    sql_statements?: SqlStatementOutput;
+    sql_statements?: Array<SqlStatementOutput>;
     /**
      * The canonical identifier of the SQL warehouse.
      */
     warehouse_id?: string;
 }
 
+/**
+ * The state of the SQL alert.
+ *
+ * * UNKNOWN: alert yet to be evaluated * OK: alert evaluated and did not fulfill
+ * trigger conditions * TRIGGERED: alert evaluated and fulfilled trigger
+ * conditions
+ */
+export type SqlAlertState = "OK" | "TRIGGERED" | "UNKNOWN";
+
 export interface SqlDashboardOutput {
+    /**
+     * The canonical identifier of the SQL warehouse.
+     */
+    warehouse_id?: string;
     /**
      * Widgets executed in the run. Only SQL query based widgets are listed.
      */
@@ -1945,7 +2206,7 @@ export interface SqlQueryOutput {
     /**
      * Information about SQL statements executed in the run.
      */
-    sql_statements?: SqlStatementOutput;
+    sql_statements?: Array<SqlStatementOutput>;
     /**
      * The canonical identifier of the SQL warehouse.
      */
@@ -1989,13 +2250,34 @@ export interface SqlTaskAlert {
      * The canonical identifier of the SQL alert.
      */
     alert_id: string;
+    /**
+     * If true, the alert notifications are not sent to subscribers.
+     */
+    pause_subscriptions?: boolean;
+    /**
+     * If specified, alert notifications are sent to subscribers.
+     */
+    subscriptions?: Array<SqlTaskSubscription>;
 }
 
 export interface SqlTaskDashboard {
     /**
+     * Subject of the email sent to subscribers of this task.
+     */
+    custom_subject?: string;
+    /**
      * The canonical identifier of the SQL dashboard.
      */
     dashboard_id: string;
+    /**
+     * If true, the dashboard snapshot is not taken, and emails are not sent to
+     * subscribers.
+     */
+    pause_subscriptions?: boolean;
+    /**
+     * If specified, dashboard snapshots are sent to subscriptions.
+     */
+    subscriptions?: Array<SqlTaskSubscription>;
 }
 
 export interface SqlTaskQuery {
@@ -2003,6 +2285,17 @@ export interface SqlTaskQuery {
      * The canonical identifier of the SQL query.
      */
     query_id: string;
+}
+
+export interface SqlTaskSubscription {
+    /**
+     * The canonical identifier of the destination to receive email notification.
+     */
+    destination_id?: string;
+    /**
+     * The user name to receive the subscription email.
+     */
+    user_name?: string;
 }
 
 export interface SubmitRun {
@@ -2060,10 +2353,62 @@ export interface TaskDependenciesItem {
     task_key?: string;
 }
 
+export interface TriggerEvaluation {
+    /**
+     * Human-readable description of the the trigger evaluation result. Explains
+     * why the trigger evaluation triggered or did not trigger a run, or failed.
+     */
+    description?: string;
+    /**
+     * The ID of the run that was triggered by the trigger evaluation. Only
+     * returned if a run was triggered.
+     */
+    run_id?: number;
+    /**
+     * Timestamp at which the trigger was evaluated.
+     */
+    timestamp?: number;
+}
+
+export interface TriggerHistory {
+    /**
+     * The last time the trigger failed to evaluate.
+     */
+    last_failed?: TriggerEvaluation;
+    /**
+     * The last time the trigger was evaluated but did not trigger a run.
+     */
+    last_not_triggered?: TriggerEvaluation;
+    /**
+     * The last time the run was triggered due to a file arrival.
+     */
+    last_triggered?: TriggerEvaluation;
+}
+
+export interface TriggerSettings {
+    /**
+     * File arrival trigger settings.
+     */
+    file_arrival?: FileArrivalTriggerSettings;
+    /**
+     * Whether this trigger is paused or not.
+     */
+    pause_status?: TriggerSettingsPauseStatus;
+}
+
+/**
+ * Whether this trigger is paused or not.
+ */
+export type TriggerSettingsPauseStatus = "PAUSED" | "UNPAUSED";
+
 /**
  * This describes an enum
  */
 export type TriggerType =
+    /**
+     * Indicates a run that is triggered by a file arrival.
+     */
+    | "FILE_ARRIVAL"
     /**
      * One time triggers that fire a single run. This occurs you triggered a single
      * run on demand through the UI or the API.
