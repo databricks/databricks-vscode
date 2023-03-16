@@ -16,12 +16,22 @@ export class ProjectConfigFileWatcher implements Disposable {
         this.disposables.push(
             fileSystemWatcher,
             fileSystemWatcher.onDidCreate(async () => {
-                if (connectionManager.state !== "CONNECTED") {
-                    await connectionManager.login();
+                switch (this.connectionManager.state) {
+                    case "DISCONNECTED":
+                        await this.connectionManager.login();
+                        break;
+                    case "CONNECTING":
+                        await this.connectionManager.waitForConnect();
+                        break;
+                    case "CONNECTED":
+                        return;
                 }
             }, this),
             fileSystemWatcher.onDidChange(async () => {
                 const configFile = await ProjectConfigFile.load(rootPath);
+                if (this.connectionManager.state === "CONNECTING") {
+                    await this.connectionManager.waitForConnect();
+                }
                 if (
                     configFile.host.toString() !==
                         connectionManager.databricksWorkspace?.host.toString() ||
@@ -29,7 +39,7 @@ export class ProjectConfigFileWatcher implements Disposable {
                         connectionManager.databricksWorkspace?.authProvider
                             .authType
                 ) {
-                    await connectionManager.login();
+                    await connectionManager.login(false, true);
                 }
                 if (connectionManager.cluster?.id !== configFile.clusterId) {
                     if (configFile.clusterId) {
