@@ -11,6 +11,7 @@ import * as clusters from "./apis/clusters";
 import * as commands from "./apis/commands";
 import * as dbfs from "./apis/dbfs";
 import * as deployment from "./apis/deployment";
+import * as endpoints from "./apis/endpoints";
 import * as gitcredentials from "./apis/gitcredentials";
 import * as globalinitscripts from "./apis/globalinitscripts";
 import * as instancepools from "./apis/instancepools";
@@ -18,6 +19,7 @@ import * as ipaccesslists from "./apis/ipaccesslists";
 import * as jobs from "./apis/jobs";
 import * as libraries from "./apis/libraries";
 import * as mlflow from "./apis/mlflow";
+import * as oauth2 from "./apis/oauth2";
 import * as permissions from "./apis/permissions";
 import * as pipelines from "./apis/pipelines";
 import * as repos from "./apis/repos";
@@ -56,6 +58,17 @@ export class AccountClient {
     readonly credentials: deployment.CredentialsService;
 
     /**
+     * These APIs enable administrators to manage custom oauth app integrations,
+     * which is required for adding/using Custom OAuth App Integration like Tableau
+     * Cloud for Databricks in AWS cloud.
+     *
+     * **Note:** You can only add/use the OAuth custom application integrations when
+     * OAuth enrollment status is enabled. For more details see
+     * :method:OAuthEnrollment/create
+     */
+    readonly customAppIntegration: oauth2.CustomAppIntegrationService;
+
+    /**
      * These APIs manage encryption key configurations for this workspace (optional).
      * A key configuration encapsulates the AWS KMS key information and some
      * information about how the key configuration can be used. There are two
@@ -71,7 +84,7 @@ export class AccountClient {
      * version of the platform. Updating a running workspace with workspace storage
      * encryption requires that the workspace is on the E2 version of the platform.
      * If you have an older workspace, it might not be on the E2 version of the
-     * platform. If you are not sure, contact your Databricks reprsentative.
+     * platform. If you are not sure, contact your Databricks representative.
      */
     readonly encryptionKeys: deployment.EncryptionKeysService;
 
@@ -151,10 +164,19 @@ export class AccountClient {
     readonly logDelivery: billing.LogDeliveryService;
 
     /**
+     * These APIs manage metastore assignments to a workspace.
+     */
+    readonly accountMetastoreAssignments: unitycatalog.AccountMetastoreAssignmentsService;
+
+    /**
+     * These APIs manage Unity Catalog metastores for an account. A metastore
+     * contains catalogs that can be associated with workspaces
+     */
+    readonly accountMetastores: unitycatalog.AccountMetastoresService;
+
+    /**
      * These APIs manage network configurations for customer-managed VPCs (optional).
-     * A network configuration encapsulates the IDs for AWS VPCs, subnets, and
-     * security groups. Its ID is used when creating a new workspace if you use
-     * customer-managed VPCs.
+     * Its ID is used when creating a new workspace if you use customer-managed VPCs.
      */
     readonly networks: deployment.NetworksService;
 
@@ -170,6 +192,17 @@ export class AccountClient {
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
      */
     readonly privateAccess: deployment.PrivateAccessService;
+
+    /**
+     * These APIs enable administrators to manage published oauth app integrations,
+     * which is required for adding/using Published OAuth App Integration like
+     * Tableau Cloud for Databricks in AWS cloud.
+     *
+     * **Note:** You can only add/use the OAuth published application integrations
+     * when OAuth enrollment status is enabled. For more details see
+     * :method:OAuthEnrollment/create
+     */
+    readonly publishedAppIntegration: oauth2.PublishedAppIntegrationService;
 
     /**
      * Identities for use with jobs, automated tools, and systems such as scripts,
@@ -190,6 +223,11 @@ export class AccountClient {
      * workspace.
      */
     readonly storage: deployment.StorageService;
+
+    /**
+     * These APIs manage storage credentials for a particular metastore.
+     */
+    readonly accountStorageCredentials: unitycatalog.AccountStorageCredentialsService;
 
     /**
      * User identities recognized by Databricks and represented by email addresses.
@@ -221,7 +259,8 @@ export class AccountClient {
     readonly vpcEndpoints: deployment.VpcEndpointsService;
 
     /**
-     * Databricks Workspace Assignment REST API
+     * The Workspace Permission Assignment API allows you to manage workspace
+     * permissions for principals in your account.
      */
     readonly workspaceAssignment: permissions.WorkspaceAssignmentService;
 
@@ -254,19 +293,31 @@ export class AccountClient {
         this.billableUsage = new billing.BillableUsageService(this.apiClient);
         this.budgets = new billing.BudgetsService(this.apiClient);
         this.credentials = new deployment.CredentialsService(this.apiClient);
+        this.customAppIntegration = new oauth2.CustomAppIntegrationService(
+            this.apiClient
+        );
         this.encryptionKeys = new deployment.EncryptionKeysService(
             this.apiClient
         );
         this.groups = new scim.AccountGroupsService(this.apiClient);
         this.logDelivery = new billing.LogDeliveryService(this.apiClient);
+        this.accountMetastoreAssignments =
+            new unitycatalog.AccountMetastoreAssignmentsService(this.apiClient);
+        this.accountMetastores = new unitycatalog.AccountMetastoresService(
+            this.apiClient
+        );
         this.networks = new deployment.NetworksService(this.apiClient);
         this.privateAccess = new deployment.PrivateAccessService(
             this.apiClient
         );
+        this.publishedAppIntegration =
+            new oauth2.PublishedAppIntegrationService(this.apiClient);
         this.servicePrincipals = new scim.AccountServicePrincipalsService(
             this.apiClient
         );
         this.storage = new deployment.StorageService(this.apiClient);
+        this.accountStorageCredentials =
+            new unitycatalog.AccountStorageCredentialsService(this.apiClient);
         this.users = new scim.AccountUsersService(this.apiClient);
         this.vpcEndpoints = new deployment.VpcEndpointsService(this.apiClient);
         this.workspaceAssignment = new permissions.WorkspaceAssignmentService(
