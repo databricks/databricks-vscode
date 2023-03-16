@@ -112,7 +112,24 @@ export class BricksSyncParser {
             }
             NamedLogger.getOrCreate(Loggers.Bricks).log(currentLogLevel, line);
             this.writeEmitter.fire(line.trim() + "\r\n");
+            if (this.matchForWsfsErrors(line)) {
+                return;
+            }
         }
+    }
+
+    private matchForWsfsErrors(line: string) {
+        if (line.match(/^Error: .*Files in Workspace is disabled.*/) !== null) {
+            this.syncStateCallback("FILES_IN_WORKSPACE_DISABLED");
+            return true;
+        }
+
+        if (line.match(/^Error: .*Files in Repos is disabled.*/) !== null) {
+            this.syncStateCallback("FILES_IN_REPOS_DISABLED");
+            return true;
+        }
+
+        return false;
     }
 
     // This function processes the JSON output from bricks sync and parses it
@@ -133,16 +150,7 @@ export class BricksSyncParser {
                 );
             }
 
-            if (
-                line.match(/^Error: .*Files in Workspace is disabled.*/) !==
-                null
-            ) {
-                this.syncStateCallback("FILES_IN_WORKSPACE_DISABLED");
-                return;
-            }
-
-            if (line.match(/^Error: .*Files in Repos is disabled.*/) !== null) {
-                this.syncStateCallback("FILES_IN_REPOS_DISABLED");
+            if (this.matchForWsfsErrors(line)) {
                 return;
             }
         }

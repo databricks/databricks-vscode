@@ -19,6 +19,7 @@ import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {PackageMetaData} from "../utils/packageJsonUtils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {RWLock} from "./RWLock";
 
 export const TASK_SYNC_TYPE = {
     syncFull: "sync-full",
@@ -170,20 +171,27 @@ class CustomSyncTerminal implements Pseudoterminal {
             );
         }
 
-        this.syncProcess.stderr.on("data", (data) => {
+        const rwLock = new RWLock();
+        this.syncProcess.stderr.on("data", async (data) => {
+            await rwLock.readerEntry();
             this.bricksSyncParser.processStderr(data.toString());
+            await rwLock.readerExit();
         });
 
-        this.syncProcess.stdout.on("data", (data) => {
+        this.syncProcess.stdout.on("data", async (data) => {
+            await rwLock.readerEntry();
             this.bricksSyncParser.processStdout(data.toString());
+            await rwLock.readerExit();
         });
 
-        this.syncProcess.on("close", (code) => {
+        this.syncProcess.on("close", async (code) => {
+            await rwLock.writerEntry();
             if (code !== 0) {
                 this.syncStateCallback("ERROR");
                 // terminate the vscode terminal task
                 this.closeEmitter.fire();
             }
+            await rwLock.writerExit();
         });
     }
 }

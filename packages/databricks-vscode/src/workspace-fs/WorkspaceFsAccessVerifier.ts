@@ -32,7 +32,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             }),
             this._connectionManager.onDidChangeState(async (state) => {
                 if (state === "CONNECTED") {
-                    await this.isEnabledForWorkspace();
+                    await this.switchIfNotEnabled();
                 } else {
                     this._isEnabled = undefined;
                 }
