@@ -121,7 +121,11 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             );
         } catch (e: unknown) {
             if (e instanceof Error) {
-                if (e.message.match(/.*Files in Workspace is disabled.*/)) {
+                if (
+                    e.message.match(
+                        /.*(Files in Workspace is disabled|FEATURE_DISABLED).*/
+                    )
+                ) {
                     this._isEnabled = false;
                     return this._isEnabled;
                 }
@@ -133,7 +137,10 @@ export class WorkspaceFsAccessVerifier implements Disposable {
     }
 
     async switchIfNotEnabled() {
-        if (!(await this.isEnabledForWorkspace())) {
+        if (
+            workspaceConfigs.enableFilesInWorkspace &&
+            !(await this.isEnabledForWorkspace())
+        ) {
             const selection = await window.showErrorMessage(
                 "Files in workspace is not enabled for your workspace",
                 "Switch to Repos",
