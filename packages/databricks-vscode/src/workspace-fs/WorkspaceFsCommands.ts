@@ -12,15 +12,44 @@ import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
+import path from "node:path";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
 export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
     constructor(
         private _workspaceFolder: Uri,
+        private readonly _workspaceState: WorkspaceStateManager,
         private _connectionManager: ConnectionManager,
         private _workspaceFsDataProvider: WorkspaceFsDataProvider
-    ) {}
+    ) {
+        this.disposables.push(
+            this._connectionManager.onDidChangeState(async (state) => {
+                if (
+                    state !== "CONNECTED" ||
+                    !workspaceConfigs.enableFilesInWorkspace ||
+                    this._connectionManager.syncDestinationMapper !== undefined
+                ) {
+                    return;
+                }
+
+                const root = await this.getValidRoot(
+                    this._connectionManager.databricksWorkspace?.currentFsRoot
+                        .path
+                );
+
+                const element = await root?.mkdir(
+                    `${path.basename(
+                        this._workspaceFolder.fsPath
+                    )}-${this._workspaceState.fixedUUID.slice(0, 8)}`
+                );
+                if (element) {
+                    this.attachSyncDestination(element);
+                }
+            })
+        );
+    }
 
     async attachSyncDestination(element: WorkspaceFsEntity) {
         await this._connectionManager.attachSyncDestination(

@@ -30,6 +30,7 @@ import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
+import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
 
 export async function activate(
     context: ExtensionContext
@@ -81,8 +82,11 @@ export async function activate(
         metadata: packageMetadata,
     });
 
+    const workspaceStateManager = new WorkspaceStateManager(context);
+
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
+        workspaceStateManager,
         workspace.workspaceFolders[0].uri.fsPath
     );
     context.subscriptions.push(
@@ -111,6 +115,7 @@ export async function activate(
     );
     const workspaceFsCommands = new WorkspaceFsCommands(
         workspace.workspaceFolders[0].uri,
+        workspaceStateManager,
         connectionManager,
         workspaceFsDataProvider
     );
