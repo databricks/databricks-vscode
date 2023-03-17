@@ -12,6 +12,7 @@ import {
     ConfigurationTarget,
 } from "vscode";
 import {Loggers} from "../logger";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
 type Resource = Uri | undefined;
 
@@ -65,6 +66,7 @@ export class ConfigureAutocomplete implements Disposable {
 
     constructor(
         private readonly context: ExtensionContext,
+        private readonly workspaceState: WorkspaceStateManager,
         private readonly workspaceFolder: string
     ) {
         this.configure();
@@ -113,12 +115,7 @@ export class ConfigureAutocomplete implements Disposable {
     }
 
     private async configure(force = false) {
-        if (
-            !force &&
-            this.context.workspaceState.get<boolean>(
-                "databricks.autocompletion.skipConfigure"
-            )
-        ) {
+        if (!force && this.workspaceState.skipAutocompleteConfigure) {
             return;
         }
 
@@ -181,10 +178,7 @@ export class ConfigureAutocomplete implements Disposable {
         }
 
         if (choice === "Never for this workspace") {
-            this.context.workspaceState.update(
-                "databricks.autocompletion.skipConfigure",
-                true
-            );
+            this.workspaceState.skipAutocompleteConfigure = true;
             return;
         }
 
