@@ -1,3 +1,12 @@
+# Release: v0.3.5
+
+## packages/databricks-sdk-js
+
+## <small>0.3.5 (2023-03-17)</small>
+
+-   Update OpenAPI (#568) ([a944ed0](https://github.com/databricks/databricks-vscode/commit/a944ed0)), closes [#568](https://github.com/databricks/databricks-vscode/issues/568)
+-   Wrapper for workflow runs from files in workspace (#556) ([5616198](https://github.com/databricks/databricks-vscode/commit/5616198)), closes [#556](https://github.com/databricks/databricks-vscode/issues/556)
+
 # Release: v0.3.4
 
 ## packages/databricks-sdk-js

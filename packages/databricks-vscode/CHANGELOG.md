@@ -1,3 +1,15 @@
+# Release: v0.3.5
+
+## packages/databricks-vscode
+
+## <small>0.3.5 (2023-03-17)</small>
+
+-   Add prompts to switch to repos when Files in Workspace is not supported (#376) ([646601a](https://github.com/databricks/databricks-vscode/commit/646601a)), closes [#376](https://github.com/databricks/databricks-vscode/issues/376)
+-   bump bricks to v0.0.27 (#561) ([a9b74bd](https://github.com/databricks/databricks-vscode/commit/a9b74bd)), closes [#561](https://github.com/databricks/databricks-vscode/issues/561) [#555](https://github.com/databricks/databricks-vscode/issues/555) [#468](https://github.com/databricks/databricks-vscode/issues/468)
+-   Prevent relogin when project.json is updated on first login (#565) ([1f391e2](https://github.com/databricks/databricks-vscode/commit/1f391e2)), closes [#565](https://github.com/databricks/databricks-vscode/issues/565)
+-   Provide default sync destination if not set (#569) ([0a641d4](https://github.com/databricks/databricks-vscode/commit/0a641d4)), closes [#569](https://github.com/databricks/databricks-vscode/issues/569)
+-   Wrapper for workflow runs from files in workspace (#556) ([5616198](https://github.com/databricks/databricks-vscode/commit/5616198)), closes [#556](https://github.com/databricks/databricks-vscode/issues/556)
+
 # Release: v0.3.4
 
 ## packages/databricks-vscode
