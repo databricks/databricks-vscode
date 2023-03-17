@@ -182,6 +182,25 @@ export class PipelinesService {
     }
 
     /**
+     * List pipeline events.
+     *
+     * Retrieves events for a pipeline.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async listPipelineEvents(
+        request: model.ListPipelineEvents,
+        @context context?: Context
+    ): Promise<model.ListPipelineEventsResponse> {
+        const path = `/api/2.0/pipelines/${request.pipeline_id}/events`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.ListPipelineEventsResponse;
+    }
+
+    /**
      * List pipelines.
      *
      * Lists pipelines defined in the Delta Live Tables system.

@@ -119,41 +119,23 @@ export class WorkspaceAssignmentError extends ApiError {
 }
 
 /**
- * Databricks Workspace Assignment REST API
+ * The Workspace Permission Assignment API allows you to manage workspace
+ * permissions for principals in your account.
  */
 export class WorkspaceAssignmentService {
     constructor(readonly client: ApiClient) {}
     /**
-     * Create permission assignments.
-     *
-     * Create new permission assignments for the specified account and workspace.
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async create(
-        request: model.CreateWorkspaceAssignments,
-        @context context?: Context
-    ): Promise<model.WorkspaceAssignmentsCreated> {
-        const path = `/api/2.0/preview/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments`;
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.WorkspaceAssignmentsCreated;
-    }
-
-    /**
      * Delete permissions assignment.
      *
-     * Deletes the workspace permissions assignment for a given account and
-     * workspace using the specified service principal.
+     * Deletes the workspace permissions assignment in a given account and
+     * workspace for the specified principal.
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
         request: model.DeleteWorkspaceAssignmentRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/preview/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments/principals/${request.principal_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments/principals/${request.principal_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -173,7 +155,7 @@ export class WorkspaceAssignmentService {
         request: model.GetWorkspaceAssignmentRequest,
         @context context?: Context
     ): Promise<model.WorkspacePermissions> {
-        const path = `/api/2.0/preview/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments/permissions`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments/permissions`;
         return (await this.client.request(
             path,
             "GET",
@@ -193,7 +175,7 @@ export class WorkspaceAssignmentService {
         request: model.ListWorkspaceAssignmentRequest,
         @context context?: Context
     ): Promise<model.PermissionAssignments> {
-        const path = `/api/2.0/preview/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments`;
         return (await this.client.request(
             path,
             "GET",
@@ -203,17 +185,17 @@ export class WorkspaceAssignmentService {
     }
 
     /**
-     * Update permissions assignment.
+     * Create or update permissions assignment.
      *
-     * Updates the workspace permissions assignment for a given account and
-     * workspace using the specified service principal.
+     * Creates or updates the workspace permissions assignment in a given account
+     * and workspace for the specified principal.
      */
     @withLogContext(ExposedLoggers.SDK)
     async update(
         request: model.UpdateWorkspaceAssignments,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/preview/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments/principals/${request.principal_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments/principals/${request.principal_id}`;
         return (await this.client.request(
             path,
             "PUT",

@@ -6,7 +6,7 @@
 /**
  * The delta sharing authentication type.
  */
-export type AuthenticationType = "DATABRICKS" | "TOKEN" | "UNKNOWN";
+export type AuthenticationType = "DATABRICKS" | "TOKEN";
 
 export interface AwsIamRole {
     /**
@@ -52,30 +52,39 @@ export interface CatalogInfo {
      */
     comment?: string;
     /**
-     * Time at which this Catalog was created, in epoch milliseconds.
+     * Time at which this catalog was created, in epoch milliseconds.
      */
     created_at?: number;
     /**
-     * Username of Catalog creator.
+     * Username of catalog creator.
      */
     created_by?: string;
+    effective_auto_maintenance_flag?: EffectiveAutoMaintenanceFlag;
     /**
-     * Unique identifier of parent Metastore.
+     * Whether auto maintenance should be enabled for this object and objects
+     * under it.
+     */
+    enable_auto_maintenance?: EnableAutoMaintenance;
+    /**
+     * Unique identifier of parent metastore.
      */
     metastore_id?: string;
     /**
-     * Name of Catalog.
+     * Name of catalog.
      */
     name?: string;
     /**
-     * Username of current owner of Catalog.
+     * Username of current owner of catalog.
      */
     owner?: string;
+    /**
+     * A map of key-value properties attached to the securable.
+     */
     properties?: Record<string, string>;
     /**
      * The name of delta sharing provider.
      *
-     * A Delta Sharing Catalog is a catalog that is based on a Delta share on a
+     * A Delta Sharing catalog is a catalog that is based on a Delta share on a
      * remote sharing server.
      */
     provider_name?: string;
@@ -84,19 +93,19 @@ export interface CatalogInfo {
      */
     share_name?: string;
     /**
-     * Storage Location URL (full path) for managed tables within Catalog.
+     * Storage Location URL (full path) for managed tables within catalog.
      */
     storage_location?: string;
     /**
-     * Storage root URL for managed tables within Catalog.
+     * Storage root URL for managed tables within catalog.
      */
     storage_root?: string;
     /**
-     * Time at which this Catalog was last modified, in epoch milliseconds.
+     * Time at which this catalog was last modified, in epoch milliseconds.
      */
     updated_at?: number;
     /**
-     * Username of user who last modified Catalog.
+     * Username of user who last modified catalog.
      */
     updated_by?: string;
 }
@@ -111,58 +120,70 @@ export type CatalogType =
 
 export interface ColumnInfo {
     /**
-     * [Create,Update:OPT] User-provided free-form text description.
+     * User-provided free-form text description.
      */
     comment?: string;
+    mask?: ColumnMask;
     /**
-     * [Create:REQ Update:OPT] Name of Column.
+     * Name of Column.
      */
     name?: string;
     /**
-     * [Create,Update:OPT] Whether field may be Null (default: True).
+     * Whether field may be Null (default: true).
      */
     nullable?: boolean;
     /**
-     * [Create,Update:OPT] Partition index for column.
+     * Partition index for column.
      */
     partition_index?: number;
     /**
-     * [Create:REQ Update:OPT] Ordinal position of column (starting at position
-     * 0).
+     * Ordinal position of column (starting at position 0).
      */
     position?: number;
     /**
-     * [Create: OPT, Update: OPT] Format of IntervalType.
+     * Format of IntervalType.
      */
     type_interval_type?: string;
     /**
-     * [Create:OPT Update:OPT] Full data type spec, JSON-serialized.
+     * Full data type specification, JSON-serialized.
      */
     type_json?: string;
     /**
-     * [Create: REQ Update: OPT] Name of type (INT, STRUCT, MAP, etc.)
+     * Name of type (INT, STRUCT, MAP, etc.).
      */
-    type_name?: ColumnInfoTypeName;
+    type_name?: ColumnTypeName;
     /**
-     * [Create: OPT, Update: OPT] Digits of precision; required on Create for
-     * DecimalTypes.
+     * Digits of precision; required for DecimalTypes.
      */
     type_precision?: number;
     /**
-     * [Create: OPT, Update: OPT] Digits to right of decimal; Required on Create
-     * for DecimalTypes.
+     * Digits to right of decimal; Required for DecimalTypes.
      */
     type_scale?: number;
     /**
-     * [Create:REQ Update:OPT] Full data type spec, SQL/catalogString text.
+     * Full data type specification as SQL/catalogString text.
      */
     type_text?: string;
 }
 
+export interface ColumnMask {
+    /**
+     * The full name of the column maks SQL UDF.
+     */
+    function_name?: string;
+    /**
+     * The list of additional table columns to be passed as input to the column
+     * mask function. The first arg of the mask function should be of the type of
+     * the column being masked and the types of the rest of the args should match
+     * the types of columns in 'using_column_names'.
+     */
+    using_column_names?: Array<string>;
+}
+
 /**
- * [Create: REQ Update: OPT] Name of type (INT, STRUCT, MAP, etc.)
+ * Name of type (INT, STRUCT, MAP, etc.).
  */
-export type ColumnInfoTypeName =
+export type ColumnTypeName =
     | "ARRAY"
     | "BINARY"
     | "BOOLEAN"
@@ -180,6 +201,7 @@ export type ColumnInfoTypeName =
     | "SHORT"
     | "STRING"
     | "STRUCT"
+    | "TABLE_TYPE"
     | "TIMESTAMP"
     | "USER_DEFINED_TYPE";
 
@@ -189,14 +211,17 @@ export interface CreateCatalog {
      */
     comment?: string;
     /**
-     * Name of Catalog.
+     * Name of catalog.
      */
     name: string;
+    /**
+     * A map of key-value properties attached to the securable.
+     */
     properties?: Record<string, string>;
     /**
      * The name of delta sharing provider.
      *
-     * A Delta Sharing Catalog is a catalog that is based on a Delta share on a
+     * A Delta Sharing catalog is a catalog that is based on a Delta share on a
      * remote sharing server.
      */
     provider_name?: string;
@@ -205,7 +230,7 @@ export interface CreateCatalog {
      */
     share_name?: string;
     /**
-     * Storage root URL for managed tables within Catalog.
+     * Storage root URL for managed tables within catalog.
      */
     storage_root?: string;
 }
@@ -216,11 +241,11 @@ export interface CreateExternalLocation {
      */
     comment?: string;
     /**
-     * Current name of the Storage Credential this location uses.
+     * Name of the storage credential used with this location.
      */
     credential_name: string;
     /**
-     * Name of the External Location.
+     * Name of the external location.
      */
     name: string;
     /**
@@ -233,33 +258,156 @@ export interface CreateExternalLocation {
      */
     skip_validation?: boolean;
     /**
-     * Path URL of the External Location.
+     * Path URL of the external location.
      */
     url: string;
 }
 
-export interface CreateMetastore {
+export interface CreateFunction {
     /**
-     * Name of Metastore.
+     * Name of parent catalog.
+     */
+    catalog_name: string;
+    /**
+     * User-provided free-form text description.
+     */
+    comment?: string;
+    /**
+     * Scalar function return data type.
+     */
+    data_type: ColumnTypeName;
+    /**
+     * External function language.
+     */
+    external_language?: string;
+    /**
+     * External function name.
+     */
+    external_name?: string;
+    /**
+     * Pretty printed function data type.
+     */
+    full_data_type: string;
+    /**
+     * The array of __FunctionParameterInfo__ definitions of the function's
+     * parameters.
+     */
+    input_params: Array<FunctionParameterInfo>;
+    /**
+     * Whether the function is deterministic.
+     */
+    is_deterministic: boolean;
+    /**
+     * Function null call.
+     */
+    is_null_call: boolean;
+    /**
+     * Name of function, relative to parent schema.
      */
     name: string;
     /**
-     * Storage root URL for Metastore
+     * Function parameter style. **S** is the value for SQL.
+     */
+    parameter_style: CreateFunctionParameterStyle;
+    /**
+     * A map of key-value properties attached to the securable.
+     */
+    properties?: Record<string, string>;
+    /**
+     * Table function return parameters.
+     */
+    return_params: Array<FunctionParameterInfo>;
+    /**
+     * Function language. When **EXTERNAL** is used, the language of the routine
+     * function should be specified in the __external_language__ field, and the
+     * __return_params__ of the function cannot be used (as **TABLE** return type
+     * is not supported), and the __sql_data_access__ field must be **NO_SQL**.
+     */
+    routine_body: CreateFunctionRoutineBody;
+    /**
+     * Function body.
+     */
+    routine_definition: string;
+    /**
+     * Function dependencies.
+     */
+    routine_dependencies: Array<Dependency>;
+    /**
+     * Name of parent schema relative to its parent catalog.
+     */
+    schema_name: string;
+    /**
+     * Function security type.
+     */
+    security_type: CreateFunctionSecurityType;
+    /**
+     * Specific name of the function; Reserved for future use.
+     */
+    specific_name: string;
+    /**
+     * Function SQL data access.
+     */
+    sql_data_access: CreateFunctionSqlDataAccess;
+    /**
+     * List of schemes whose objects can be referenced without qualification.
+     */
+    sql_path?: string;
+}
+
+/**
+ * Function parameter style. **S** is the value for SQL.
+ */
+export type CreateFunctionParameterStyle = "S";
+
+/**
+ * Function language. When **EXTERNAL** is used, the language of the routine
+ * function should be specified in the __external_language__ field, and the
+ * __return_params__ of the function cannot be used (as **TABLE** return type is
+ * not supported), and the __sql_data_access__ field must be **NO_SQL**.
+ */
+export type CreateFunctionRoutineBody = "EXTERNAL" | "SQL";
+
+/**
+ * Function security type.
+ */
+export type CreateFunctionSecurityType = "DEFINER";
+
+/**
+ * Function SQL data access.
+ */
+export type CreateFunctionSqlDataAccess =
+    | "CONTAINS_SQL"
+    | "NO_SQL"
+    | "READS_SQL_DATA";
+
+export interface CreateMetastore {
+    /**
+     * The user-specified name of the metastore.
+     */
+    name: string;
+    /**
+     * Cloud region which the metastore serves (e.g., `us-west-2`, `westus`). If
+     * this field is omitted, the region of the workspace receiving the request
+     * will be used.
+     */
+    region?: string;
+    /**
+     * The storage root URL for metastore
      */
     storage_root: string;
 }
 
 export interface CreateMetastoreAssignment {
     /**
-     * The name of the default catalog in the Metastore.
+     * The name of the default catalog in the metastore.
      */
     default_catalog_name: string;
     /**
-     * The ID of the Metastore.
+     * The unique ID of the metastore.
      */
     metastore_id: string;
     /**
-     * A workspace ID.
+     * Workspace ID.
      */
     workspace_id: number;
 }
@@ -278,12 +426,8 @@ export interface CreateProvider {
      */
     name: string;
     /**
-     * Username of Provider owner.
-     */
-    owner?: string;
-    /**
-     * This field is required when the authentication_type is `TOKEN` or not
-     * provided.
+     * This field is required when the __authentication_type__ is **TOKEN** or
+     * not provided.
      */
     recipient_profile_str?: string;
 }
@@ -298,9 +442,11 @@ export interface CreateRecipient {
      */
     comment?: string;
     /**
-     * The global Unity Catalog metastore id provided by the data recipient.\n
-     * This field is only present when the authentication type is `DATABRICKS`.\n
-     * The identifier is of format <cloud>:<region>:<metastore-uuid>.
+     * The global Unity Catalog metastore id provided by the data recipient.
+     *
+     * This field is required when the __authentication_type__ is **DATABRICKS**.
+     *
+     * The identifier is of format __cloud__:__region__:__metastore-uuid__.
      */
     data_recipient_global_metastore_id?: any /* MISSING TYPE */;
     /**
@@ -312,15 +458,23 @@ export interface CreateRecipient {
      */
     name: string;
     /**
+     * Username of the recipient owner.
+     */
+    owner?: string;
+    /**
+     * Recipient properties as map of string key-value pairs.
+     */
+    properties_kvpairs?: any /* MISSING TYPE */;
+    /**
      * The one-time sharing code provided by the data recipient. This field is
-     * only present when the authentication type is `DATABRICKS`.
+     * required when the __authentication_type__ is **DATABRICKS**.
      */
     sharing_code?: string;
 }
 
 export interface CreateSchema {
     /**
-     * Name of parent Catalog.
+     * Name of parent catalog.
      */
     catalog_name: string;
     /**
@@ -328,10 +482,17 @@ export interface CreateSchema {
      */
     comment?: string;
     /**
-     * Name of Schema, relative to parent Catalog.
+     * Name of schema, relative to parent catalog.
      */
     name: string;
+    /**
+     * A map of key-value properties attached to the securable.
+     */
     properties?: Record<string, string>;
+    /**
+     * Storage root URL for managed tables within schema.
+     */
+    storage_root?: string;
 }
 
 export interface CreateShare {
@@ -340,7 +501,7 @@ export interface CreateShare {
      */
     comment?: string;
     /**
-     * Name of the Share.
+     * Name of the share.
      */
     name: string;
 }
@@ -363,14 +524,35 @@ export interface CreateStorageCredential {
      */
     gcp_service_account_key?: GcpServiceAccountKey;
     /**
-     * The credential name. The name MUST be unique within the Metastore.
+     * Databricks Unity Catalog metastore ID
+     */
+    metastore_id: string;
+    /**
+     * The credential name. The name must be unique within the metastore.
      */
     name: string;
     /**
-     * Optional. Supplying true to this argument skips validation of the created
-     * set of credentials.
+     * Whether the storage credential is only usable for read operations.
+     */
+    read_only?: boolean;
+    /**
+     * Supplying true to this argument skips validation of the created
+     * credential.
      */
     skip_validation?: boolean;
+}
+
+export interface CreateTableConstraint {
+    /**
+     * A table constraint, as defined by *one* of the following fields being set:
+     * __primary_key_constraint__, __foreign_key_constraint__,
+     * __named_table_constraint__.
+     */
+    constraint: TableConstraint;
+    /**
+     * The full name of the table referenced by the constraint.
+     */
+    full_name_arg: string;
 }
 
 /**
@@ -388,15 +570,39 @@ export type DataSourceFormat =
     | "UNITY_CATALOG";
 
 /**
+ * Delete a metastore assignment
+ */
+export interface DeleteAccountMetastoreAssignmentRequest {
+    /**
+     * Databricks Unity Catalog metastore ID
+     */
+    metastore_id: string;
+    /**
+     * Workspace ID.
+     */
+    workspace_id: number;
+}
+
+/**
+ * Delete a metastore
+ */
+export interface DeleteAccountMetastoreRequest {
+    /**
+     * Databricks Unity Catalog metastore ID
+     */
+    metastore_id: string;
+}
+
+/**
  * Delete a catalog
  */
 export interface DeleteCatalogRequest {
     /**
-     * Force deletion even if the catalog is notempty.
+     * Force deletion even if the catalog is not empty.
      */
     force?: boolean;
     /**
-     * Required. The name of the catalog.
+     * The name of the catalog.
      */
     name: string;
 }
@@ -410,13 +616,28 @@ export interface DeleteExternalLocationRequest {
      */
     force?: boolean;
     /**
-     * Required. Name of the storage credential.
+     * Name of the external location.
      */
     name: string;
 }
 
 /**
- * Delete a Metastore
+ * Delete a function
+ */
+export interface DeleteFunctionRequest {
+    /**
+     * Force deletion even if the function is notempty.
+     */
+    force?: boolean;
+    /**
+     * The fully-qualified name of the function (of the form
+     * __catalog_name__.__schema_name__.__function__name__).
+     */
+    name: string;
+}
+
+/**
+ * Delete a metastore
  */
 export interface DeleteMetastoreRequest {
     /**
@@ -424,7 +645,7 @@ export interface DeleteMetastoreRequest {
      */
     force?: boolean;
     /**
-     * Required. Unique ID of the Metastore (from URL).
+     * Unique ID of the metastore.
      */
     id: string;
 }
@@ -434,7 +655,7 @@ export interface DeleteMetastoreRequest {
  */
 export interface DeleteProviderRequest {
     /**
-     * Required. Name of the provider.
+     * Name of the provider.
      */
     name: string;
 }
@@ -444,7 +665,7 @@ export interface DeleteProviderRequest {
  */
 export interface DeleteRecipientRequest {
     /**
-     * Required. Name of the recipient.
+     * Name of the recipient.
      */
     name: string;
 }
@@ -454,7 +675,7 @@ export interface DeleteRecipientRequest {
  */
 export interface DeleteSchemaRequest {
     /**
-     * Required. Full name of the schema (from URL).
+     * Full name of the schema.
      */
     full_name: string;
 }
@@ -479,9 +700,30 @@ export interface DeleteStorageCredentialRequest {
      */
     force?: boolean;
     /**
-     * Required. Name of the storage credential.
+     * Name of the storage credential.
      */
     name: string;
+}
+
+/**
+ * Delete a table constraint
+ */
+export interface DeleteTableConstraintRequest {
+    /**
+     * If true, try deleting all child constraints of the current constraint.
+     *
+     * If false, reject this operation if the current constraint has any child
+     * constraints.
+     */
+    cascade: boolean;
+    /**
+     * The name of the constraint to delete.
+     */
+    constraint_name: string;
+    /**
+     * Full name of the table referenced by the constraint.
+     */
+    full_name: string;
 }
 
 /**
@@ -489,10 +731,98 @@ export interface DeleteStorageCredentialRequest {
  */
 export interface DeleteTableRequest {
     /**
-     * Required. Full name of the Table (from URL).
+     * Full name of the table.
      */
     full_name: string;
 }
+
+/**
+ * A dependency of a SQL object. Either the __table__ field or the __function__
+ * field must be defined.
+ */
+export interface Dependency {
+    /**
+     * A function that is dependent on a SQL object.
+     */
+    function?: FunctionDependency;
+    /**
+     * A table that is dependent on a SQL object.
+     */
+    table?: TableDependency;
+}
+
+export interface EffectiveAutoMaintenanceFlag {
+    /**
+     * The name of the object from which the flag was inherited. If there was no
+     * inheritance, this field is left blank.
+     */
+    inherited_from_name?: string;
+    /**
+     * The type of the object from which the flag was inherited. If there was no
+     * inheritance, this field is left blank.
+     */
+    inherited_from_type?: EffectiveAutoMaintenanceFlagInheritedFromType;
+    /**
+     * Whether auto maintenance should be enabled for this object and objects
+     * under it.
+     */
+    value: EnableAutoMaintenance;
+}
+
+/**
+ * The type of the object from which the flag was inherited. If there was no
+ * inheritance, this field is left blank.
+ */
+export type EffectiveAutoMaintenanceFlagInheritedFromType =
+    | "CATALOG"
+    | "SCHEMA";
+
+export interface EffectivePermissionsList {
+    /**
+     * The privileges conveyed to each principal (either directly or via
+     * inheritance)
+     */
+    privilege_assignments?: Array<EffectivePrivilegeAssignment>;
+}
+
+export interface EffectivePrivilege {
+    /**
+     * The full name of the object that conveys this privilege via inheritance.
+     *
+     * This field is omitted when privilege is not inherited (it's assigned to
+     * the securable itself).
+     */
+    inherited_from_name?: string;
+    /**
+     * The type of the object that conveys this privilege via inheritance.
+     *
+     * This field is omitted when privilege is not inherited (it's assigned to
+     * the securable itself).
+     */
+    inherited_from_type?: SecurableType;
+    /**
+     * The privilege assigned to the principal.
+     */
+    privilege?: Privilege;
+}
+
+export interface EffectivePrivilegeAssignment {
+    /**
+     * The principal (user email address or group name).
+     */
+    principal?: string;
+    /**
+     * The privileges conveyed to the principal (either directly or via
+     * inheritance).
+     */
+    privileges?: Array<EffectivePrivilege>;
+}
+
+/**
+ * Whether auto maintenance should be enabled for this object and objects under
+ * it.
+ */
+export type EnableAutoMaintenance = "DISABLE" | "ENABLE" | "INHERIT";
 
 export interface ExternalLocationInfo {
     /**
@@ -500,31 +830,31 @@ export interface ExternalLocationInfo {
      */
     comment?: string;
     /**
-     * Time at which this External Location was created, in epoch milliseconds.
+     * Time at which this external location was created, in epoch milliseconds.
      */
     created_at?: number;
     /**
-     * Username of External Location creator.
+     * Username of external location creator.
      */
     created_by?: string;
     /**
-     * Unique ID of the location's Storage Credential.
+     * Unique ID of the location's storage credential.
      */
     credential_id?: string;
     /**
-     * Current name of the Storage Credential this location uses.
+     * Name of the storage credential used with this location.
      */
     credential_name?: string;
     /**
-     * Unique identifier of Metastore hosting the External Location.
+     * Unique identifier of metastore hosting the external location.
      */
     metastore_id?: string;
     /**
-     * Name of the External Location.
+     * Name of the external location.
      */
     name?: string;
     /**
-     * The owner of the External Location.
+     * The owner of the external location.
      */
     owner?: string;
     /**
@@ -532,19 +862,260 @@ export interface ExternalLocationInfo {
      */
     read_only?: boolean;
     /**
-     * Time at which External Location this was last modified, in epoch
+     * Time at which external location this was last modified, in epoch
      * milliseconds.
      */
     updated_at?: number;
     /**
-     * Username of user who last modified the External Location.
+     * Username of user who last modified the external location.
      */
     updated_by?: string;
     /**
-     * Path URL of the External Location.
+     * Path URL of the external location.
      */
     url?: string;
 }
+
+export interface ForeignKeyConstraint {
+    /**
+     * Column names for this constraint.
+     */
+    child_columns: Array<string>;
+    /**
+     * The name of the constraint.
+     */
+    name: string;
+    /**
+     * Column names for this constraint.
+     */
+    parent_columns: Array<string>;
+    /**
+     * The full name of the parent constraint.
+     */
+    parent_table: string;
+}
+
+/**
+ * A function that is dependent on a SQL object.
+ */
+export interface FunctionDependency {
+    /**
+     * Full name of the dependent function, in the form of
+     * __catalog_name__.__schema_name__.__function_name__.
+     */
+    function_full_name: string;
+}
+
+export interface FunctionInfo {
+    /**
+     * Name of parent catalog.
+     */
+    catalog_name?: string;
+    /**
+     * User-provided free-form text description.
+     */
+    comment?: string;
+    /**
+     * Time at which this function was created, in epoch milliseconds.
+     */
+    created_at?: number;
+    /**
+     * Username of function creator.
+     */
+    created_by?: string;
+    /**
+     * Scalar function return data type.
+     */
+    data_type?: ColumnTypeName;
+    /**
+     * External function language.
+     */
+    external_language?: string;
+    /**
+     * External function name.
+     */
+    external_name?: string;
+    /**
+     * Pretty printed function data type.
+     */
+    full_data_type?: string;
+    /**
+     * Full name of function, in form of
+     * __catalog_name__.__schema_name__.__function__name__
+     */
+    full_name?: string;
+    /**
+     * Id of Function, relative to parent schema.
+     */
+    function_id?: string;
+    /**
+     * The array of __FunctionParameterInfo__ definitions of the function's
+     * parameters.
+     */
+    input_params?: Array<FunctionParameterInfo>;
+    /**
+     * Whether the function is deterministic.
+     */
+    is_deterministic?: boolean;
+    /**
+     * Function null call.
+     */
+    is_null_call?: boolean;
+    /**
+     * Unique identifier of parent metastore.
+     */
+    metastore_id?: string;
+    /**
+     * Name of function, relative to parent schema.
+     */
+    name?: string;
+    /**
+     * Username of current owner of function.
+     */
+    owner?: string;
+    /**
+     * Function parameter style. **S** is the value for SQL.
+     */
+    parameter_style?: FunctionInfoParameterStyle;
+    /**
+     * A map of key-value properties attached to the securable.
+     */
+    properties?: Record<string, string>;
+    /**
+     * Table function return parameters.
+     */
+    return_params?: Array<FunctionParameterInfo>;
+    /**
+     * Function language. When **EXTERNAL** is used, the language of the routine
+     * function should be specified in the __external_language__ field, and the
+     * __return_params__ of the function cannot be used (as **TABLE** return type
+     * is not supported), and the __sql_data_access__ field must be **NO_SQL**.
+     */
+    routine_body?: FunctionInfoRoutineBody;
+    /**
+     * Function body.
+     */
+    routine_definition?: string;
+    /**
+     * Function dependencies.
+     */
+    routine_dependencies?: Array<Dependency>;
+    /**
+     * Name of parent schema relative to its parent catalog.
+     */
+    schema_name?: string;
+    /**
+     * Function security type.
+     */
+    security_type?: FunctionInfoSecurityType;
+    /**
+     * Specific name of the function; Reserved for future use.
+     */
+    specific_name?: string;
+    /**
+     * Function SQL data access.
+     */
+    sql_data_access?: FunctionInfoSqlDataAccess;
+    /**
+     * List of schemes whose objects can be referenced without qualification.
+     */
+    sql_path?: string;
+    /**
+     * Time at which this function was created, in epoch milliseconds.
+     */
+    updated_at?: number;
+    /**
+     * Username of user who last modified function.
+     */
+    updated_by?: string;
+}
+
+/**
+ * Function parameter style. **S** is the value for SQL.
+ */
+export type FunctionInfoParameterStyle = "S";
+
+/**
+ * Function language. When **EXTERNAL** is used, the language of the routine
+ * function should be specified in the __external_language__ field, and the
+ * __return_params__ of the function cannot be used (as **TABLE** return type is
+ * not supported), and the __sql_data_access__ field must be **NO_SQL**.
+ */
+export type FunctionInfoRoutineBody = "EXTERNAL" | "SQL";
+
+/**
+ * Function security type.
+ */
+export type FunctionInfoSecurityType = "DEFINER";
+
+/**
+ * Function SQL data access.
+ */
+export type FunctionInfoSqlDataAccess =
+    | "CONTAINS_SQL"
+    | "NO_SQL"
+    | "READS_SQL_DATA";
+
+export interface FunctionParameterInfo {
+    /**
+     * User-provided free-form text description.
+     */
+    comment?: string;
+    /**
+     * Name of parameter.
+     */
+    name: string;
+    /**
+     * Default value of the parameter.
+     */
+    parameter_default?: string;
+    /**
+     * The mode of the function parameter.
+     */
+    parameter_mode?: FunctionParameterMode;
+    /**
+     * The type of function parameter.
+     */
+    parameter_type?: FunctionParameterType;
+    /**
+     * Ordinal position of column (starting at position 0).
+     */
+    position: number;
+    /**
+     * Format of IntervalType.
+     */
+    type_interval_type?: string;
+    /**
+     * Full data type spec, JSON-serialized.
+     */
+    type_json?: string;
+    /**
+     * Name of type (INT, STRUCT, MAP, etc.).
+     */
+    type_name: ColumnTypeName;
+    /**
+     * Digits of precision; required on Create for DecimalTypes.
+     */
+    type_precision?: number;
+    /**
+     * Digits to right of decimal; Required on Create for DecimalTypes.
+     */
+    type_scale?: number;
+    /**
+     * Full data type spec, SQL/catalogString text.
+     */
+    type_text: string;
+}
+
+/**
+ * The mode of the function parameter.
+ */
+export type FunctionParameterMode = "IN";
+
+/**
+ * The type of function parameter.
+ */
+export type FunctionParameterType = "COLUMN" | "PARAM";
 
 export interface GcpServiceAccountKey {
     /**
@@ -562,11 +1133,45 @@ export interface GcpServiceAccountKey {
 }
 
 /**
+ * Gets the metastore assignment for a workspace
+ */
+export interface GetAccountMetastoreAssignmentRequest {
+    /**
+     * Workspace ID.
+     */
+    workspace_id: number;
+}
+
+/**
+ * Get a metastore
+ */
+export interface GetAccountMetastoreRequest {
+    /**
+     * Databricks Unity Catalog metastore ID
+     */
+    metastore_id: string;
+}
+
+/**
+ * Gets the named storage credential
+ */
+export interface GetAccountStorageCredentialRequest {
+    /**
+     * Databricks Unity Catalog metastore ID
+     */
+    metastore_id: string;
+    /**
+     * Name of the storage credential.
+     */
+    name: string;
+}
+
+/**
  * Get a share activation URL
  */
 export interface GetActivationUrlInfoRequest {
     /**
-     * Required. The one time activation url. It also accepts activation token.
+     * The one time activation url. It also accepts activation token.
      */
     activation_url: string;
 }
@@ -576,9 +1181,28 @@ export interface GetActivationUrlInfoRequest {
  */
 export interface GetCatalogRequest {
     /**
-     * Required. The name of the catalog.
+     * The name of the catalog.
      */
     name: string;
+}
+
+/**
+ * Get effective permissions
+ */
+export interface GetEffectiveRequest {
+    /**
+     * Full name of securable.
+     */
+    full_name: string;
+    /**
+     * If provided, only the effective permissions for the specified principal
+     * (user or group) are returned.
+     */
+    principal?: string;
+    /**
+     * Type of securable.
+     */
+    securable_type: SecurableType;
 }
 
 /**
@@ -586,7 +1210,18 @@ export interface GetCatalogRequest {
  */
 export interface GetExternalLocationRequest {
     /**
-     * Required. Name of the storage credential.
+     * Name of the external location.
+     */
+    name: string;
+}
+
+/**
+ * Get a function
+ */
+export interface GetFunctionRequest {
+    /**
+     * The fully-qualified name of the function (of the form
+     * __catalog_name__.__schema_name__.__function__name__).
      */
     name: string;
 }
@@ -596,44 +1231,45 @@ export interface GetExternalLocationRequest {
  */
 export interface GetGrantRequest {
     /**
-     * Required. Unique identifier (full name) of Securable (from URL).
+     * Full name of securable.
      */
     full_name: string;
     /**
-     * Optional. List permissions granted to this principal.
+     * If provided, only the permissions for the specified principal (user or
+     * group) are returned.
      */
     principal?: string;
     /**
-     * Required. Type of Securable (from URL).
+     * Type of securable.
      */
-    securable_type: string;
+    securable_type: SecurableType;
 }
 
 /**
- * Get a Metastore
+ * Get a metastore
  */
 export interface GetMetastoreRequest {
     /**
-     * Required. Unique ID of the Metastore (from URL).
+     * Unique ID of the metastore.
      */
     id: string;
 }
 
 export interface GetMetastoreSummaryResponse {
     /**
-     * Cloud vendor of the Metastore home shard (e.g., `aws`, `azure`, `gcp`).
+     * Cloud vendor of the metastore home shard (e.g., `aws`, `azure`, `gcp`).
      */
     cloud?: string;
     /**
-     * Time at which this Metastore was created, in epoch milliseconds.
+     * Time at which this metastore was created, in epoch milliseconds.
      */
     created_at?: number;
     /**
-     * Username of Metastore creator.
+     * Username of metastore creator.
      */
     created_by?: string;
     /**
-     * Unique identifier of the Metastore's (Default) Data Access Configuration.
+     * Unique identifier of the metastore's (Default) Data Access Configuration.
      */
     default_data_access_config_id?: string;
     /**
@@ -646,7 +1282,7 @@ export interface GetMetastoreSummaryResponse {
      */
     delta_sharing_recipient_token_lifetime_in_seconds?: number;
     /**
-     * The scope of Delta Sharing enabled for the Metastore
+     * The scope of Delta Sharing enabled for the metastore.
      */
     delta_sharing_scope?: GetMetastoreSummaryResponseDeltaSharingScope;
     /**
@@ -655,11 +1291,11 @@ export interface GetMetastoreSummaryResponse {
      */
     global_metastore_id?: string;
     /**
-     * The unique ID (UUID) of the Metastore.
+     * Unique identifier of metastore.
      */
     metastore_id?: string;
     /**
-     * The user-specified name of the Metastore.
+     * The user-specified name of the metastore.
      */
     name?: string;
     /**
@@ -668,15 +1304,15 @@ export interface GetMetastoreSummaryResponse {
     owner?: string;
     /**
      * Privilege model version of the metastore, of the form `major.minor` (e.g.,
-     * `1.0`)
+     * `1.0`).
      */
     privilege_model_version?: string;
     /**
-     * Cloud region of the Metastore home shard (e.g., `us-west-2`, `westus`).
+     * Cloud region which the metastore serves (e.g., `us-west-2`, `westus`).
      */
     region?: string;
     /**
-     * The storage root URL for the Metastore.
+     * The storage root URL for metastore
      */
     storage_root?: string;
     /**
@@ -688,32 +1324,28 @@ export interface GetMetastoreSummaryResponse {
      */
     storage_root_credential_name?: string;
     /**
-     * Time at which this Metastore was last modified, in epoch milliseconds.
+     * Time at which the metastore was last modified, in epoch milliseconds.
      */
     updated_at?: number;
     /**
-     * Username of user who last modified the External Location.
+     * Username of user who last modified the metastore.
      */
     updated_by?: string;
 }
 
 /**
- * The scope of Delta Sharing enabled for the Metastore
+ * The scope of Delta Sharing enabled for the metastore.
  */
 export type GetMetastoreSummaryResponseDeltaSharingScope =
     | "INTERNAL"
     | "INTERNAL_AND_EXTERNAL";
-
-export interface GetPermissionsResponse {
-    privilege_assignments?: Array<PrivilegeAssignment>;
-}
 
 /**
  * Get a provider
  */
 export interface GetProviderRequest {
     /**
-     * Required. Name of the provider.
+     * Name of the provider.
      */
     name: string;
 }
@@ -723,7 +1355,7 @@ export interface GetProviderRequest {
  */
 export interface GetRecipientRequest {
     /**
-     * Required. Name of the recipient.
+     * Name of the recipient.
      */
     name: string;
 }
@@ -740,17 +1372,9 @@ export interface GetRecipientSharePermissionsResponse {
  */
 export interface GetSchemaRequest {
     /**
-     * Required. Full name of the schema (from URL).
+     * Full name of the schema.
      */
     full_name: string;
-}
-
-export interface GetSharePermissionsResponse {
-    /**
-     * Note to self (acain): Unfortunately, neither json_inline nor json_map work
-     * here.
-     */
-    privilege_assignments?: Array<PrivilegeAssignment>;
 }
 
 /**
@@ -772,7 +1396,7 @@ export interface GetShareRequest {
  */
 export interface GetStorageCredentialRequest {
     /**
-     * Required. Name of the storage credential.
+     * Name of the storage credential.
      */
     name: string;
 }
@@ -782,9 +1406,13 @@ export interface GetStorageCredentialRequest {
  */
 export interface GetTableRequest {
     /**
-     * Required. Full name of the Table (from URL).
+     * Full name of the table.
      */
     full_name: string;
+    /**
+     * Whether delta metadata should be included in the response.
+     */
+    include_delta_metadata?: boolean;
 }
 
 export interface IpAccessList {
@@ -792,6 +1420,26 @@ export interface IpAccessList {
      * Allowed IP Addresses in CIDR notation. Limit of 100.
      */
     allowed_ip_addresses?: Array<string>;
+}
+
+/**
+ * Get all workspaces assigned to a metastore
+ */
+export interface ListAccountMetastoreAssignmentsRequest {
+    /**
+     * Databricks Unity Catalog metastore ID
+     */
+    metastore_id: string;
+}
+
+/**
+ * Get all storage credentials assigned to a metastore
+ */
+export interface ListAccountStorageCredentialsRequest {
+    /**
+     * Databricks Unity Catalog metastore ID
+     */
+    metastore_id: string;
 }
 
 export interface ListCatalogsResponse {
@@ -808,9 +1456,30 @@ export interface ListExternalLocationsResponse {
     external_locations?: Array<ExternalLocationInfo>;
 }
 
+/**
+ * List functions
+ */
+export interface ListFunctionsRequest {
+    /**
+     * Name of parent catalog for functions of interest.
+     */
+    catalog_name: string;
+    /**
+     * Parent schema of functions.
+     */
+    schema_name: string;
+}
+
+export interface ListFunctionsResponse {
+    /**
+     * An array of function information objects.
+     */
+    schemas?: Array<FunctionInfo>;
+}
+
 export interface ListMetastoresResponse {
     /**
-     * An array of Metastore information objects.
+     * An array of metastore information objects.
      */
     metastores?: Array<MetastoreInfo>;
 }
@@ -863,9 +1532,9 @@ export interface ListRecipientsResponse {
  */
 export interface ListSchemasRequest {
     /**
-     * Optional. Parent catalog for schemas of interest.
+     * Parent catalog for schemas of interest.
      */
-    catalog_name?: string;
+    catalog_name: string;
 }
 
 export interface ListSchemasResponse {
@@ -876,11 +1545,11 @@ export interface ListSchemasResponse {
 }
 
 /**
- * List shares
+ * List shares by Provider
  */
 export interface ListSharesRequest {
     /**
-     * Required. Name of the provider in which to list shares.
+     * Name of the provider in which to list shares.
      */
     name: string;
 }
@@ -892,18 +1561,41 @@ export interface ListSharesResponse {
     shares?: Array<ShareInfo>;
 }
 
-export interface ListStorageCredentialsResponse {
-    storage_credentials?: Array<StorageCredentialInfo>;
+/**
+ * List table summaries
+ */
+export interface ListSummariesRequest {
+    /**
+     * Name of parent catalog for tables of interest.
+     */
+    catalog_name: string;
+    /**
+     * Maximum number of tables to return (page length). Defaults to 10000.
+     */
+    max_results?: number;
+    /**
+     * Opaque token to send for the next page of results (pagination).
+     */
+    page_token?: string;
+    /**
+     * A sql LIKE pattern (% and _) for schema names. All schemas will be
+     * returned if not set or empty.
+     */
+    schema_name_pattern?: string;
+    /**
+     * A sql LIKE pattern (% and _) for table names. All tables will be returned
+     * if not set or empty.
+     */
+    table_name_pattern?: string;
 }
 
 export interface ListTableSummariesResponse {
     /**
-     * Optional. Opaque token for pagination. Empty if there's no more page.
+     * Opaque token for pagination. Omitted if there are no more results.
      */
     next_page_token?: string;
     /**
-     * Only name, catalog_name, schema_name, full_name and table_type will be
-     * set.
+     * List of table summaries.
      */
     tables?: Array<TableSummary>;
 }
@@ -913,14 +1605,17 @@ export interface ListTableSummariesResponse {
  */
 export interface ListTablesRequest {
     /**
-     * Required. Name of parent catalog for tables of interest.
+     * Name of parent catalog for tables of interest.
      */
-    catalog_name?: string;
+    catalog_name: string;
     /**
-     * Required (for now -- may be optional for wildcard search in future).
+     * Whether delta metadata should be included in the response.
+     */
+    include_delta_metadata?: boolean;
+    /**
      * Parent schema of tables.
      */
-    schema_name?: string;
+    schema_name: string;
 }
 
 export interface ListTablesResponse {
@@ -930,33 +1625,62 @@ export interface ListTablesResponse {
     tables?: Array<TableInfo>;
 }
 
+export interface MetastoreAssignment {
+    /**
+     * The name of the default catalog in the metastore.
+     */
+    default_catalog_name?: string;
+    /**
+     * The unique ID of the metastore.
+     */
+    metastore_id: string;
+    /**
+     * The unique ID of the Databricks workspace.
+     */
+    workspace_id: string;
+}
+
 export interface MetastoreInfo {
     /**
-     * Time at which this Metastore was created, in epoch milliseconds.
+     * Cloud vendor of the metastore home shard (e.g., `aws`, `azure`, `gcp`).
+     */
+    cloud?: string;
+    /**
+     * Time at which this metastore was created, in epoch milliseconds.
      */
     created_at?: number;
     /**
-     * Username of Metastore creator.
+     * Username of metastore creator.
      */
     created_by?: string;
     /**
-     * Unique identifier of (Default) Data Access Configuration
+     * Unique identifier of the metastore's (Default) Data Access Configuration.
      */
     default_data_access_config_id?: string;
     /**
-     * Whether Delta Sharing is enabled on this metastore.
+     * The organization name of a Delta Sharing entity, to be used in
+     * Databricks-to-Databricks Delta Sharing as the official name.
      */
-    delta_sharing_enabled?: boolean;
+    delta_sharing_organization_name?: string;
     /**
-     * The lifetime of delta sharing recipient token in seconds
+     * The lifetime of delta sharing recipient token in seconds.
      */
     delta_sharing_recipient_token_lifetime_in_seconds?: number;
     /**
-     * Unique identifier of Metastore.
+     * The scope of Delta Sharing enabled for the metastore.
+     */
+    delta_sharing_scope?: MetastoreInfoDeltaSharingScope;
+    /**
+     * Globally unique metastore ID across clouds and regions, of the form
+     * `cloud:region:metastore_id`.
+     */
+    global_metastore_id?: string;
+    /**
+     * Unique identifier of metastore.
      */
     metastore_id?: string;
     /**
-     * Name of Metastore.
+     * The user-specified name of the metastore.
      */
     name?: string;
     /**
@@ -964,26 +1688,48 @@ export interface MetastoreInfo {
      */
     owner?: string;
     /**
-     * The region this metastore has an afinity to. This is used by
-     * accounts-manager. Ignored by Unity Catalog.
+     * Privilege model version of the metastore, of the form `major.minor` (e.g.,
+     * `1.0`).
+     */
+    privilege_model_version?: string;
+    /**
+     * Cloud region which the metastore serves (e.g., `us-west-2`, `westus`).
      */
     region?: string;
     /**
-     * Storage root URL for Metastore
+     * The storage root URL for metastore
      */
     storage_root?: string;
     /**
-     * UUID of storage credential to access storage_root
+     * UUID of storage credential to access the metastore storage_root.
      */
     storage_root_credential_id?: string;
     /**
-     * Time at which the Metastore was last modified, in epoch milliseconds.
+     * Name of the storage credential to access the metastore storage_root.
+     */
+    storage_root_credential_name?: string;
+    /**
+     * Time at which the metastore was last modified, in epoch milliseconds.
      */
     updated_at?: number;
     /**
-     * Username of user who last modified the Metastore.
+     * Username of user who last modified the metastore.
      */
     updated_by?: string;
+}
+
+/**
+ * The scope of Delta Sharing enabled for the metastore.
+ */
+export type MetastoreInfoDeltaSharingScope =
+    | "INTERNAL"
+    | "INTERNAL_AND_EXTERNAL";
+
+export interface NamedTableConstraint {
+    /**
+     * The name of the constraint.
+     */
+    name: string;
 }
 
 export interface Partition {
@@ -1036,6 +1782,24 @@ export interface PermissionsChange {
     remove?: Array<Privilege>;
 }
 
+export interface PermissionsList {
+    /**
+     * The privileges assigned to each principal
+     */
+    privilege_assignments?: Array<PrivilegeAssignment>;
+}
+
+export interface PrimaryKeyConstraint {
+    /**
+     * Column names for this constraint.
+     */
+    child_columns: Array<string>;
+    /**
+     * The name of the constraint.
+     */
+    name: string;
+}
+
 export type Privilege =
     | "ALL_PRIVILEGES"
     | "CREATE"
@@ -1085,8 +1849,8 @@ export interface ProviderInfo {
      */
     authentication_type?: AuthenticationType;
     /**
-     * Cloud vendor of the provider's UC Metastore. This field is only present
-     * when the authentication_type is `DATABRICKS`.
+     * Cloud vendor of the provider's UC metastore. This field is only present
+     * when the __authentication_type__ is **DATABRICKS**.
      */
     cloud?: string;
     /**
@@ -1103,13 +1867,13 @@ export interface ProviderInfo {
     created_by?: string;
     /**
      * The global UC metastore id of the data provider. This field is only
-     * present when the authentication type is `DATABRICKS`. The identifier is of
-     * format <cloud>:<region>:<metastore-uuid>.
+     * present when the __authentication_type__ is **DATABRICKS**. The identifier
+     * is of format <cloud>:<region>:<metastore-uuid>.
      */
     data_provider_global_metastore_id?: string;
     /**
-     * UUID of the provider's UC Metastore. This field is only present when the
-     * authentication type is `DATABRICKS`.
+     * UUID of the provider's UC metastore. This field is only present when the
+     * __authentication_type__ is **DATABRICKS**.
      */
     metastore_id?: string;
     /**
@@ -1126,13 +1890,13 @@ export interface ProviderInfo {
      */
     recipient_profile?: RecipientProfile;
     /**
-     * This field is required when the authentication_type is `TOKEN` or not
+     * This field is only present when the authentication_type is `TOKEN` or not
      * provided.
      */
     recipient_profile_str?: string;
     /**
-     * Cloud region of the provider's UC Metastore. This field is only present
-     * when the authentication type is `DATABRICKS`.
+     * Cloud region of the provider's UC metastore. This field is only present
+     * when the __authentication_type__ is **DATABRICKS**.
      */
     region?: string;
     /**
@@ -1169,7 +1933,7 @@ export interface RecipientInfo {
     authentication_type?: AuthenticationType;
     /**
      * Cloud vendor of the recipient's Unity Catalog Metstore. This field is only
-     * present when the authentication type is `DATABRICKS`.
+     * present when the __authentication_type__ is **DATABRICKS**`.
      */
     cloud?: string;
     /**
@@ -1185,9 +1949,12 @@ export interface RecipientInfo {
      */
     created_by?: string;
     /**
-     * The global Unity Catalog metastore id provided by the data recipient.\n
-     * This field is only present when the authentication type is `DATABRICKS`.\n
-     * The identifier is of format <cloud>:<region>:<metastore-uuid>.
+     * The global Unity Catalog metastore id provided by the data recipient.
+     *
+     * This field is only present when the __authentication_type__ is
+     * **DATABRICKS**.
+     *
+     * The identifier is of format __cloud__:__region__:__metastore-uuid__.
      */
     data_recipient_global_metastore_id?: any /* MISSING TYPE */;
     /**
@@ -1195,8 +1962,8 @@ export interface RecipientInfo {
      */
     ip_access_list?: IpAccessList;
     /**
-     * Unique identifier of recipient's Unity Catalog Metastore. This field is
-     * only present when the authentication type is `DATABRICKS`
+     * Unique identifier of recipient's Unity Catalog metastore. This field is
+     * only present when the __authentication_type__ is **DATABRICKS**
      */
     metastore_id?: string;
     /**
@@ -1204,17 +1971,25 @@ export interface RecipientInfo {
      */
     name?: string;
     /**
+     * Username of the recipient owner.
+     */
+    owner?: string;
+    /**
+     * Recipient properties as map of string key-value pairs.
+     */
+    properties_kvpairs?: any /* MISSING TYPE */;
+    /**
      * Cloud region of the recipient's Unity Catalog Metstore. This field is only
-     * present when the authentication type is `DATABRICKS`.
+     * present when the __authentication_type__ is **DATABRICKS**.
      */
     region?: string;
     /**
      * The one-time sharing code provided by the data recipient. This field is
-     * only present when the authentication type is `DATABRICKS`.
+     * only present when the __authentication_type__ is **DATABRICKS**.
      */
     sharing_code?: string;
     /**
-     * This field is only present when the authentication type is `TOKEN`.
+     * This field is only present when the __authentication_type__ is **TOKEN**.
      */
     tokens?: Array<RecipientTokenInfo>;
     /**
@@ -1279,7 +2054,7 @@ export interface RecipientTokenInfo {
  */
 export interface RetrieveTokenRequest {
     /**
-     * Required. The one time activation url. It also accepts activation token.
+     * The one time activation url. It also accepts activation token.
      */
     activation_url: string;
 }
@@ -1305,50 +2080,64 @@ export interface RetrieveTokenResponse {
 
 export interface RotateRecipientToken {
     /**
-     * Required. This will set the expiration_time of existing token only to a
-     * smaller timestamp, it cannot extend the expiration_time. Use 0 to expire
-     * the existing token immediately, negative number will return an error.
+     * The expiration time of the bearer token in ISO 8601 format. This will set
+     * the expiration_time of existing token only to a smaller timestamp, it
+     * cannot extend the expiration_time. Use 0 to expire the existing token
+     * immediately, negative number will return an error.
      */
-    existing_token_expire_in_seconds?: number;
+    existing_token_expire_in_seconds: number;
     /**
-     * Required. The name of the recipient.
+     * The name of the recipient.
      */
     name: string;
 }
 
 export interface SchemaInfo {
     /**
-     * Name of parent Catalog.
+     * Name of parent catalog.
      */
     catalog_name?: string;
+    /**
+     * The type of the parent catalog.
+     */
+    catalog_type?: string;
     /**
      * User-provided free-form text description.
      */
     comment?: string;
     /**
-     * Time at which this Schema was created, in epoch milliseconds.
+     * Time at which this schema was created, in epoch milliseconds.
      */
     created_at?: number;
     /**
-     * Username of Schema creator.
+     * Username of schema creator.
      */
     created_by?: string;
+    effective_auto_maintenance_flag?: EffectiveAutoMaintenanceFlag;
     /**
-     * Full name of Schema, in form of <catalog_name>.<schema_name>.
+     * Whether auto maintenance should be enabled for this object and objects
+     * under it.
+     */
+    enable_auto_maintenance?: EnableAutoMaintenance;
+    /**
+     * Full name of schema, in form of __catalog_name__.__schema_name__.
      */
     full_name?: string;
     /**
-     * Unique identifier of parent Metastore.
+     * Unique identifier of parent metastore.
      */
     metastore_id?: string;
     /**
-     * Name of Schema, relative to parent Catalog.
+     * Name of schema, relative to parent catalog.
      */
     name?: string;
     /**
-     * Username of current owner of Schema.
+     * Username of current owner of schema.
      */
     owner?: string;
+    /**
+     * A map of key-value properties attached to the securable.
+     */
     properties?: Record<string, string>;
     /**
      * Storage location for managed tables within schema.
@@ -1359,14 +2148,34 @@ export interface SchemaInfo {
      */
     storage_root?: string;
     /**
-     * Time at which this Schema was created, in epoch milliseconds.
+     * Time at which this schema was created, in epoch milliseconds.
      */
     updated_at?: number;
     /**
-     * Username of user who last modified Schema.
+     * Username of user who last modified schema.
      */
     updated_by?: string;
 }
+
+/**
+ * A map of key-value properties attached to the securable.
+ */
+export type SecurablePropertiesMap = Record<string, string>;
+
+/**
+ * The type of Unity Catalog securable
+ */
+export type SecurableType =
+    | "CATALOG"
+    | "EXTERNAL_LOCATION"
+    | "FUNCTION"
+    | "METASTORE"
+    | "PROVIDER"
+    | "RECIPIENT"
+    | "SCHEMA"
+    | "SHARE"
+    | "STORAGE_CREDENTIAL"
+    | "TABLE";
 
 export interface ShareInfo {
     /**
@@ -1374,37 +2183,41 @@ export interface ShareInfo {
      */
     comment?: string;
     /**
-     * Time at which this Share was created, in epoch milliseconds.
+     * Time at which this share was created, in epoch milliseconds.
      */
     created_at?: number;
     /**
-     * Username of Share creator.
+     * Username of share creator.
      */
     created_by?: string;
     /**
-     * Name of the Share.
+     * Name of the share.
      */
     name?: string;
     /**
-     * A list of shared data objects within the Share.
+     * A list of shared data objects within the share.
      */
     objects?: Array<SharedDataObject>;
     /**
-     * Username of current owner of Share.
+     * Username of current owner of share.
      */
     owner?: string;
     /**
-     * Array of shared data object updates.
+     * Time at which this share was updated, in epoch milliseconds.
      */
-    updates?: Array<SharedDataObjectUpdate>;
+    updated_at?: number;
+    /**
+     * Username of share updater.
+     */
+    updated_by?: string;
 }
 
 /**
- * Get share permissions
+ * Get recipient share permissions
  */
 export interface SharePermissionsRequest {
     /**
-     * Required. The name of the Recipient.
+     * The name of the Recipient.
      */
     name: string;
 }
@@ -1422,7 +2235,7 @@ export interface ShareToPrivilegeAssignment {
 
 export interface SharedDataObject {
     /**
-     * The time when this data object is added to the Share, in epoch
+     * The time when this data object is added to the share, in epoch
      * milliseconds.
      */
     added_at?: number;
@@ -1456,8 +2269,8 @@ export interface SharedDataObject {
     partitions?: Array<Partition>;
     /**
      * A user-provided new name for the data object within the share. If this new
-     * name is not not provided, the object's original name will be used as the
-     * `shared_as` name. The `shared_as` name must be unique within a Share. For
+     * name is not provided, the object's original name will be used as the
+     * `shared_as` name. The `shared_as` name must be unique within a share. For
      * tables, the new name must follow the format of `<schema>.<table>`.
      */
     shared_as?: string;
@@ -1528,18 +2341,21 @@ export interface StorageCredentialInfo {
      */
     id?: string;
     /**
-     * Unique identifier of parent Metastore.
+     * Unique identifier of parent metastore.
      */
     metastore_id?: string;
     /**
-     * The credential name. The name MUST be unique within the Metastore.
+     * The credential name. The name must be unique within the metastore.
      */
     name?: string;
     /**
-     * Optional. Supplying true to this argument skips validation of the created
-     * set of credentials.
+     * Username of current owner of credential.
      */
-    skip_validation?: boolean;
+    owner?: string;
+    /**
+     * Whether the storage credential is only usable for read operations.
+     */
+    read_only?: boolean;
     /**
      * Time at which this credential was last modified, in epoch milliseconds.
      */
@@ -1548,17 +2364,49 @@ export interface StorageCredentialInfo {
      * Username of user who last modified the credential.
      */
     updated_by?: string;
+    /**
+     * Whether this credential is the current metastore's root storage
+     * credential.
+     */
+    used_for_managed_storage?: boolean;
+}
+
+/**
+ * A table constraint, as defined by *one* of the following fields being set:
+ * __primary_key_constraint__, __foreign_key_constraint__,
+ * __named_table_constraint__.
+ */
+export interface TableConstraint {
+    foreign_key_constraint?: ForeignKeyConstraint;
+    named_table_constraint?: NamedTableConstraint;
+    primary_key_constraint?: PrimaryKeyConstraint;
+}
+
+export interface TableConstraintList {
+    /**
+     * List of table constraints.
+     */
+    table_constraints?: Array<TableConstraint>;
+}
+
+/**
+ * A table that is dependent on a SQL object.
+ */
+export interface TableDependency {
+    /**
+     * Full name of the dependent table, in the form of
+     * __catalog_name__.__schema_name__.__table_name__.
+     */
+    table_full_name: string;
 }
 
 export interface TableInfo {
     /**
-     * Name of parent Catalog.
+     * Name of parent catalog.
      */
     catalog_name?: string;
     /**
-     * This name ('columns') is what the client actually sees as the field name
-     * in messages that include PropertiesKVPairs using 'json_inline' (e.g.,
-     * TableInfo).
+     * The array of __ColumnInfo__ definitions of the table's columns.
      */
     columns?: Array<ColumnInfo>;
     /**
@@ -1566,15 +2414,15 @@ export interface TableInfo {
      */
     comment?: string;
     /**
-     * Time at which this Table was created, in epoch milliseconds.
+     * Time at which this table was created, in epoch milliseconds.
      */
     created_at?: number;
     /**
-     * Username of Table creator.
+     * Username of table creator.
      */
     created_by?: string;
     /**
-     * Unique ID of the data_access_configuration to use.
+     * Unique ID of the Data Access Configuration to use with the table data.
      */
     data_access_configuration_id?: string;
     /**
@@ -1582,24 +2430,44 @@ export interface TableInfo {
      */
     data_source_format?: DataSourceFormat;
     /**
-     * Full name of Table, in form of <catalog_name>.<schema_name>.<table_name>
+     * Time at which this table was deleted, in epoch milliseconds. Field is
+     * omitted if table is not deleted.
+     */
+    deleted_at?: number;
+    /**
+     * Information pertaining to current state of the delta table.
+     */
+    delta_runtime_properties_kvpairs?: any /* MISSING TYPE */;
+    effective_auto_maintenance_flag?: EffectiveAutoMaintenanceFlag;
+    /**
+     * Whether auto maintenance should be enabled for this object and objects
+     * under it.
+     */
+    enable_auto_maintenance?: EnableAutoMaintenance;
+    /**
+     * Full name of table, in form of
+     * __catalog_name__.__schema_name__.__table_name__
      */
     full_name?: string;
     /**
-     * Unique identifier of parent Metastore.
+     * Unique identifier of parent metastore.
      */
     metastore_id?: string;
     /**
-     * Name of Table, relative to parent Schema.
+     * Name of table, relative to parent schema.
      */
     name?: string;
     /**
-     * Username of current owner of Table.
+     * Username of current owner of table.
      */
     owner?: string;
-    properties?: Record<string, string>;
     /**
-     * Name of parent Schema relative to its parent Catalog.
+     * A map of key-value properties attached to the securable.
+     */
+    properties?: Record<string, string>;
+    row_filter?: TableRowFilter;
+    /**
+     * Name of parent schema relative to its parent catalog.
      */
     schema_name?: string;
     /**
@@ -1607,59 +2475,54 @@ export interface TableInfo {
      */
     sql_path?: string;
     /**
-     * Name of the storage credential this table used
+     * Name of the storage credential, when a storage credential is configured
+     * for use with this table.
      */
     storage_credential_name?: string;
     /**
-     * Storage root URL for table (for MANAGED, EXTERNAL tables)
+     * Storage root URL for table (for **MANAGED**, **EXTERNAL** tables)
      */
     storage_location?: string;
+    table_constraints?: TableConstraintList;
     /**
-     * Name of Table, relative to parent Schema.
+     * Name of table, relative to parent schema.
      */
     table_id?: string;
     table_type?: TableType;
     /**
-     * Time at which this Table was last modified, in epoch milliseconds.
+     * Time at which this table was last modified, in epoch milliseconds.
      */
     updated_at?: number;
     /**
-     * Username of user who last modified the Table.
+     * Username of user who last modified the table.
      */
     updated_by?: string;
     /**
-     * View definition SQL (when table_type == "VIEW")
+     * View definition SQL (when __table_type__ is **VIEW**,
+     * **MATERIALIZED_VIEW**, or **STREAMING_TABLE**)
      */
     view_definition?: string;
+    /**
+     * View dependencies (when table_type == **VIEW** or **MATERIALIZED_VIEW**,
+     * **STREAMING_TABLE**) - when DependencyList is None, the dependency is not
+     * provided; - when DependencyList is an empty list, the dependency is
+     * provided but is empty; - when DependencyList is not an empty list,
+     * dependencies are provided and recorded.
+     */
+    view_dependencies?: Array<Dependency>;
 }
 
-/**
- * List table summaries
- */
-export interface TableSummariesRequest {
+export interface TableRowFilter {
     /**
-     * Required. Name of parent catalog for tables of interest.
+     * The list of table columns to be passed as input to the row filter
+     * function. The column types should match the types of the filter function
+     * arguments.
      */
-    catalog_name?: string;
+    input_column_names: Array<string>;
     /**
-     * Optional. Maximum number of tables to return (page length). Defaults to
-     * 10000.
+     * The full name of the row filter SQL UDF.
      */
-    max_results?: number;
-    /**
-     * Optional. Opaque token to send for the next page of results (pagination).
-     */
-    page_token?: string;
-    /**
-     * Optional. A sql LIKE pattern (% and _) for schema names. All schemas will
-     * be returned if not set or empty.
-     */
-    schema_name_pattern?: string;
-    /**
-     * Optional. A sql LIKE pattern (% and _) for table names. All tables will be
-     * returned if not set or empty.
-     */
-    table_name_pattern?: string;
+    name: string;
 }
 
 export interface TableSummary {
@@ -1682,7 +2545,7 @@ export type TableType =
  */
 export interface UnassignRequest {
     /**
-     * Query for the ID of the Metastore to delete.
+     * Query for the ID of the metastore to delete.
      */
     metastore_id: string;
     /**
@@ -1697,13 +2560,16 @@ export interface UpdateCatalog {
      */
     comment?: string;
     /**
-     * Name of Catalog.
+     * Name of catalog.
      */
     name?: string;
     /**
-     * Username of current owner of Catalog.
+     * Username of current owner of catalog.
      */
     owner?: string;
+    /**
+     * A map of key-value properties attached to the securable.
+     */
     properties?: Record<string, string>;
 }
 
@@ -1713,7 +2579,7 @@ export interface UpdateExternalLocation {
      */
     comment?: string;
     /**
-     * Current name of the Storage Credential this location uses.
+     * Name of the storage credential used with this location.
      */
     credential_name?: string;
     /**
@@ -1722,11 +2588,11 @@ export interface UpdateExternalLocation {
      */
     force?: boolean;
     /**
-     * Name of the External Location.
+     * Name of the external location.
      */
     name?: string;
     /**
-     * The owner of the External Location.
+     * The owner of the external location.
      */
     owner?: string;
     /**
@@ -1734,35 +2600,47 @@ export interface UpdateExternalLocation {
      */
     read_only?: boolean;
     /**
-     * Skips validation of the storage credential associated with the external
-     * location.
-     */
-    skip_validation?: boolean;
-    /**
-     * Path URL of the External Location.
+     * Path URL of the external location.
      */
     url?: string;
 }
 
+export interface UpdateFunction {
+    /**
+     * The fully-qualified name of the function (of the form
+     * __catalog_name__.__schema_name__.__function__name__).
+     */
+    name: string;
+    /**
+     * Username of current owner of function.
+     */
+    owner?: string;
+}
+
 export interface UpdateMetastore {
     /**
-     * Unique identifier of (Default) Data Access Configuration
+     * The organization name of a Delta Sharing entity, to be used in
+     * Databricks-to-Databricks Delta Sharing as the official name.
      */
-    default_data_access_config_id?: string;
+    delta_sharing_organization_name?: string;
     /**
-     * Whether Delta Sharing is enabled on this metastore.
-     */
-    delta_sharing_enabled?: boolean;
-    /**
-     * The lifetime of delta sharing recipient token in seconds
+     * The lifetime of delta sharing recipient token in seconds.
      */
     delta_sharing_recipient_token_lifetime_in_seconds?: number;
     /**
-     * Required. Unique ID of the Metastore (from URL).
+     * The scope of Delta Sharing enabled for the metastore.
+     */
+    delta_sharing_scope?: UpdateMetastoreDeltaSharingScope;
+    /**
+     * Unique ID of the metastore.
      */
     id: string;
     /**
-     * Name of Metastore.
+     * Databricks Unity Catalog metastore ID
+     */
+    metastore_id: string;
+    /**
+     * The user-specified name of the metastore.
      */
     name?: string;
     /**
@@ -1770,25 +2648,37 @@ export interface UpdateMetastore {
      */
     owner?: string;
     /**
-     * UUID of storage credential to access storage_root
+     * Privilege model version of the metastore, of the form `major.minor` (e.g.,
+     * `1.0`).
+     */
+    privilege_model_version?: string;
+    /**
+     * UUID of storage credential to access the metastore storage_root.
      */
     storage_root_credential_id?: string;
 }
 
 export interface UpdateMetastoreAssignment {
     /**
-     * The name of the default catalog for the Metastore.
+     * The name of the default catalog for the metastore.
      */
     default_catalog_name?: string;
     /**
-     * The unique ID of the Metastore.
+     * The unique ID of the metastore.
      */
     metastore_id?: string;
     /**
-     * A workspace ID.
+     * Workspace ID.
      */
     workspace_id: number;
 }
+
+/**
+ * The scope of Delta Sharing enabled for the metastore.
+ */
+export type UpdateMetastoreDeltaSharingScope =
+    | "INTERNAL"
+    | "INTERNAL_AND_EXTERNAL";
 
 export interface UpdatePermissions {
     /**
@@ -1796,17 +2686,13 @@ export interface UpdatePermissions {
      */
     changes?: Array<PermissionsChange>;
     /**
-     * Required. Unique identifier (full name) of Securable (from URL).
+     * Full name of securable.
      */
     full_name: string;
     /**
-     * Optional. List permissions granted to this principal.
+     * Type of securable.
      */
-    principal?: string;
-    /**
-     * Required. Type of Securable (from URL).
-     */
-    securable_type: string;
+    securable_type: SecurableType;
 }
 
 export interface UpdateProvider {
@@ -1823,8 +2709,8 @@ export interface UpdateProvider {
      */
     owner?: string;
     /**
-     * This field is required when the authentication_type is `TOKEN` or not
-     * provided.
+     * This field is required when the __authentication_type__ is **TOKEN** or
+     * not provided.
      */
     recipient_profile_str?: string;
 }
@@ -1842,34 +2728,41 @@ export interface UpdateRecipient {
      * Name of Recipient.
      */
     name?: string;
+    /**
+     * Username of the recipient owner.
+     */
+    owner?: string;
+    /**
+     * Recipient properties as map of string key-value pairs.
+     *
+     * When provided in update request, the specified properties will override
+     * the existing properties. To add and remove properties, one would need to
+     * perform a read-modify-write.
+     */
+    properties_kvpairs?: any /* MISSING TYPE */;
 }
 
 export interface UpdateSchema {
-    /**
-     * Name of parent Catalog.
-     */
-    catalog_name?: string;
     /**
      * User-provided free-form text description.
      */
     comment?: string;
     /**
-     * Required. Full name of the schema (from URL).
+     * Full name of the schema.
      */
     full_name: string;
     /**
-     * Name of Schema, relative to parent Catalog.
+     * Name of schema, relative to parent catalog.
      */
     name?: string;
     /**
-     * Username of current owner of Schema.
+     * Username of current owner of schema.
      */
     owner?: string;
-    properties?: Record<string, string>;
     /**
-     * Storage root URL for managed tables within schema.
+     * A map of key-value properties attached to the securable.
      */
-    storage_root?: string;
+    properties?: Record<string, string>;
 }
 
 export interface UpdateShare {
@@ -1878,11 +2771,11 @@ export interface UpdateShare {
      */
     comment?: string;
     /**
-     * Name of the Share.
+     * Name of the share.
      */
     name?: string;
     /**
-     * Username of current owner of Share.
+     * Username of current owner of share.
      */
     owner?: string;
     /**
@@ -1897,7 +2790,7 @@ export interface UpdateSharePermissions {
      */
     changes?: Array<PermissionsChange>;
     /**
-     * Required. The name of the share.
+     * The name of the share.
      */
     name: string;
 }
@@ -1916,17 +2809,98 @@ export interface UpdateStorageCredential {
      */
     comment?: string;
     /**
+     * Force update even if there are dependent external locations or external
+     * tables.
+     */
+    force?: boolean;
+    /**
      * The GCP service account key configuration.
      */
     gcp_service_account_key?: GcpServiceAccountKey;
     /**
-     * The credential name. The name MUST be unique within the Metastore.
+     * The credential name. The name must be unique within the metastore.
      */
     name?: string;
     /**
      * Username of current owner of credential.
      */
     owner?: string;
+    /**
+     * Whether the storage credential is only usable for read operations.
+     */
+    read_only?: boolean;
+    /**
+     * Supplying true to this argument skips validation of the updated
+     * credential.
+     */
+    skip_validation?: boolean;
 }
+
+export interface ValidateStorageCredential {
+    /**
+     * The AWS IAM role configuration.
+     */
+    aws_iam_role?: AwsIamRole;
+    /**
+     * The Azure service principal configuration.
+     */
+    azure_service_principal?: AzureServicePrincipal;
+    /**
+     * The name of an existing external location to validate.
+     */
+    external_location_name?: string;
+    /**
+     * The GCP service account key configuration.
+     */
+    gcp_service_account_key?: GcpServiceAccountKey;
+    /**
+     * Whether the storage credential is only usable for read operations.
+     */
+    read_only?: boolean;
+    /**
+     * The name of the storage credential to validate.
+     */
+    storage_credential_name?: any /* MISSING TYPE */;
+    /**
+     * The external location url to validate.
+     */
+    url?: string;
+}
+
+export interface ValidateStorageCredentialResponse {
+    /**
+     * Whether the tested location is a directory in cloud storage.
+     */
+    isDir?: boolean;
+    /**
+     * The results of the validation check.
+     */
+    results?: Array<ValidationResult>;
+}
+
+export interface ValidationResult {
+    /**
+     * Error message would exist when the result does not equal to **PASS**.
+     */
+    message?: string;
+    /**
+     * The operation tested.
+     */
+    operation?: ValidationResultOperation;
+    /**
+     * The results of the tested operation.
+     */
+    result?: ValidationResultResult;
+}
+
+/**
+ * The operation tested.
+ */
+export type ValidationResultOperation = "DELETE" | "LIST" | "READ" | "WRITE";
+
+/**
+ * The results of the tested operation.
+ */
+export type ValidationResultResult = "FAIL" | "PASS" | "SKIP";
 
 export interface EmptyResponse {}
