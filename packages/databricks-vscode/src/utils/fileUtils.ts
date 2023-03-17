@@ -30,5 +30,4 @@ export async function isNotebook(
     ) {
         return ext === "py" ? "PY_DBNB" : "OTHER_DBNB";
     }
-    return;
 }

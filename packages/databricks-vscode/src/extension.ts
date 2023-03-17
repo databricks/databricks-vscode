@@ -27,7 +27,11 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
-import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
+import {
+    WorkspaceFsAccessVerifier,
+    WorkspaceFsCommands,
+    WorkspaceFsDataProvider,
+} from "./workspace-fs";
 import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
@@ -209,15 +213,23 @@ export async function activate(
         )
     );
 
+    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
+        connectionManager,
+        synchronizer
+    );
+    context.subscriptions.push(wsfsAccessVerifier);
+
     // Run/debug group
     const runCommands = new RunCommands(connectionManager);
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
         synchronizer,
-        context
+        context,
+        wsfsAccessVerifier
     );
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,
+        wsfsAccessVerifier,
         context,
         synchronizer
     );
