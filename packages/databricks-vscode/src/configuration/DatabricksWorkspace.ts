@@ -30,13 +30,13 @@ export class DatabricksWorkspace {
             : this.repoRoot;
     }
 
-    private get workspaceFsRoot(): RemoteUri {
+    get workspaceFsRoot(): RemoteUri {
         return new RemoteUri(
             Uri.from({scheme: "wsfs", path: `/Users/${this.userName}/.ide`})
         );
     }
 
-    private get repoRoot(): RemoteUri {
+    get repoRoot(): RemoteUri {
         return new RemoteUri(
             Uri.from({scheme: "wsfs", path: `/Repos/${this.userName}`})
         );

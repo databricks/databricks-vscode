@@ -19,6 +19,7 @@ import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {PackageMetaData} from "../utils/packageJsonUtils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {RWLock} from "./RWLock";
 
 export const TASK_SYNC_TYPE = {
     syncFull: "sync-full",
@@ -89,15 +90,31 @@ class CustomSyncTerminal implements Pseudoterminal {
 
     private syncProcess: ChildProcess | undefined;
     private bricksSyncParser: BricksSyncParser;
+    private state: SyncState = "STOPPED";
+    private syncStateCallback: (state: SyncState) => void;
 
     constructor(
         private cmd: string,
         private args: string[],
         private options: SpawnOptions,
-        private syncStateCallback: (state: SyncState) => void
+        syncStateCallback: (state: SyncState) => void
     ) {
+        this.syncStateCallback = (state: SyncState) => {
+            if (
+                ([
+                    "FILES_IN_REPOS_DISABLED",
+                    "FILES_IN_WORKSPACE_DISABLED",
+                ].includes(this.state) &&
+                    ["ERROR", "STOPPED"].includes(state)) ||
+                (this.state === "STOPPED" && state === "ERROR")
+            ) {
+                return;
+            }
+            this.state = state;
+            syncStateCallback(state);
+        };
         this.bricksSyncParser = new BricksSyncParser(
-            syncStateCallback,
+            this.syncStateCallback,
             this.writeEmitter
         );
     }
@@ -154,20 +171,32 @@ class CustomSyncTerminal implements Pseudoterminal {
             );
         }
 
-        this.syncProcess.stderr.on("data", (data) => {
+        //When sync fails (due to any reason including Files in Repos/Workspace being disabled),
+        //the sync process could emit "close" before all "data" messages have been done processing.
+        //This can lead to a unknown ERROR state for sync, when in reality the state is actually
+        //known (it is FILES_IN_REPOS_DISABLED/FILES_IN_WORKSPACE_DISABLED). We use a reader-writer
+        //lock to make sure all "data" events have been processd before progressing with "close".
+        const rwLock = new RWLock();
+        this.syncProcess.stderr.on("data", async (data) => {
+            await rwLock.readerEntry();
             this.bricksSyncParser.processStderr(data.toString());
+            await rwLock.readerExit();
         });
 
-        this.syncProcess.stdout.on("data", (data) => {
+        this.syncProcess.stdout.on("data", async (data) => {
+            await rwLock.readerEntry();
             this.bricksSyncParser.processStdout(data.toString());
+            await rwLock.readerExit();
         });
 
-        this.syncProcess.on("close", (code) => {
+        this.syncProcess.on("close", async (code) => {
+            await rwLock.writerEntry();
             if (code !== 0) {
                 this.syncStateCallback("ERROR");
                 // terminate the vscode terminal task
                 this.closeEmitter.fire();
             }
+            await rwLock.writerExit();
         });
     }
 }
