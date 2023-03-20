@@ -1,3 +1,15 @@
+# Release: v0.3.5
+
+## packages/databricks-vscode
+
+## <small>0.3.5 (2023-03-17)</small>
+
+-   Fix: Fix for syncing issues with files having " ", "+" and "#" characters in the file name, closes [#555](https://github.com/databricks/databricks-vscode/issues/555) reported by [@AndreiCalin24](https://github.com/AndreiCalin24) and [#468](https://github.com/databricks/databricks-vscode/issues/468) reported by [@arturomf94](https://github.com/arturomf94)
+-   Fix: Prevent relogin when project.json is updated after first login.
+-   Feature: (Experimental) Add prompts to switch to repos when Files in Workspace is not supported.
+-   Feature: (Experimental) Provide default sync destination if not set.
+-   Feature: (Experimental) Add transparent wrapper for workflow runs when running using files in workspace.
+
 # Release: v0.3.4
 
 ## packages/databricks-vscode
