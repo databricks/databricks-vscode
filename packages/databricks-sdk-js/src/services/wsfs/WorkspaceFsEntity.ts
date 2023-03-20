@@ -155,8 +155,8 @@ export abstract class WorkspaceFsEntity {
             return entity;
         } catch (e) {
             if (
-                e instanceof ApiClientResponseError &&
-                e.error_code === "RESOURCE_DOES_NOT_EXIST"
+                e instanceof Error &&
+                e.message.includes("RESOURCE_DOES_NOT_EXIST")
             ) {
                 return undefined;
             }

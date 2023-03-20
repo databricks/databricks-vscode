@@ -124,7 +124,11 @@ describe(__filename, async () => {
                     anything()
                 )
             ).thenThrow(
-                new ApiClientResponseError("", {}, "RESOURCE_DOES_NOT_EXIST")
+                new ApiClientResponseError(
+                    "RESOURCE_DOES_NOT_EXIST",
+                    {},
+                    "RESOURCE_DOES_NOT_EXIST"
+                )
             );
 
             when(
@@ -202,7 +206,11 @@ describe(__filename, async () => {
                     anything()
                 )
             ).thenThrow(
-                new ApiClientResponseError("", {}, "RESOURCE_DOES_NOT_EXIST")
+                new ApiClientResponseError(
+                    "RESOURCE_DOES_NOT_EXIST",
+                    {},
+                    "RESOURCE_DOES_NOT_EXIST"
+                )
             );
 
             when(
