@@ -1,4 +1,9 @@
-import {WorkspaceClient, Cluster} from "@databricks/databricks-sdk";
+import {
+    WorkspaceClient,
+    Cluster,
+    WorkspaceFsEntity,
+    WorkspaceFsUtils,
+} from "@databricks/databricks-sdk";
 import {
     env,
     EventEmitter,
@@ -200,7 +205,41 @@ export class ConnectionManager {
             this.updateSyncDestination(undefined);
         }
 
+        if (this.databricksWorkspace) {
+            await this.createRootDirectory(
+                workspaceClient,
+                this.databricksWorkspace.currentFsRoot,
+                this.databricksWorkspace.userName
+            );
+        }
+
         this.updateState("CONNECTED");
+    }
+
+    async createRootDirectory(
+        wsClient: WorkspaceClient,
+        rootDirPath: RemoteUri,
+        me: string
+    ) {
+        let rootDir = await WorkspaceFsEntity.fromPath(
+            wsClient,
+            rootDirPath.path
+        );
+        if (!rootDir && workspaceConfigs.enableFilesInWorkspace) {
+            const meDir = await WorkspaceFsEntity.fromPath(
+                wsClient,
+                `/Users/${me}`
+            );
+            if (WorkspaceFsUtils.isDirectory(meDir)) {
+                rootDir = await meDir.mkdir(rootDirPath.path);
+            }
+            if (!rootDir) {
+                window.showErrorMessage(
+                    `Can't find or create ${rootDirPath.path}`
+                );
+                return;
+            }
+        }
     }
 
     async logout() {

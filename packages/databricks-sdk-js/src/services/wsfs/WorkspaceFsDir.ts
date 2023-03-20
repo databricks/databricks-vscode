@@ -45,8 +45,8 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
             await this._workspaceFsService.mkdirs({path: validPath});
         } catch (e: unknown) {
             let err: any = e;
-            if (e instanceof ApiClientResponseError) {
-                if (e.error_code === "RESOURCE_ALREADY_EXISTS") {
+            if (e instanceof Error) {
+                if (e.message.includes("RESOURCE_ALREADY_EXISTS")) {
                     err = new Error(
                         `Can't create ${path} as child of ${this.path}: A file with same path exists`
                     );

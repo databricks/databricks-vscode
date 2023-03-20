@@ -217,25 +217,10 @@ export class ConnectionCommands implements Disposable {
                 return;
             }
 
-            let rootDir = await WorkspaceFsEntity.fromPath(
+            const rootDir = await WorkspaceFsEntity.fromPath(
                 wsClient,
                 rootDirPath.path
             );
-            if (!rootDir && workspaceConfigs.enableFilesInWorkspace) {
-                const meDir = await WorkspaceFsEntity.fromPath(
-                    wsClient,
-                    `/Users/${me}`
-                );
-                if (WorkspaceFsUtils.isDirectory(meDir)) {
-                    rootDir = await meDir.mkdir(rootDirPath.path);
-                }
-                if (!rootDir) {
-                    window.showErrorMessage(
-                        `Can't find or create ${rootDirPath}`
-                    );
-                    return;
-                }
-            }
 
             type WorkspaceFsQuickPickItem = QuickPickItem & {
                 path?: string;
