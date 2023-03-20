@@ -1,5 +1,4 @@
 import {posix} from "path";
-import {ApiClientResponseError} from "../../api-client";
 import {Context, context} from "../../context";
 import {WorkspaceFsEntity} from ".";
 import {ExposedLoggers, withLogContext} from "../../logging";
