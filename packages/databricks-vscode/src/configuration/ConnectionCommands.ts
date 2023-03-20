@@ -1,8 +1,4 @@
-import {
-    Cluster,
-    WorkspaceFsEntity,
-    WorkspaceFsUtils,
-} from "@databricks/databricks-sdk";
+import {Cluster, WorkspaceFsEntity} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
     Disposable,
