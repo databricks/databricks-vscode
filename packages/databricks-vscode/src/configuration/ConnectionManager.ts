@@ -28,6 +28,7 @@ import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
