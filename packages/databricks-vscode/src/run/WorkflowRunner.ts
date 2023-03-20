@@ -96,13 +96,23 @@ export class WorkflowRunner implements Disposable {
             });
         }
 
-        if (["STOPPED", "ERROR"].includes(this.codeSynchronizer.state)) {
+        if (
+            !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(
+                this.codeSynchronizer.state
+            )
+        ) {
             await commands.executeCommand("databricks.sync.start");
         }
 
         // We wait for sync to complete so that the local files are consistant
         // with the remote repo files
         await this.codeSynchronizer.waitForSyncComplete();
+        if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {
+            panel.showError({
+                message: `Can't sync ${program}. \nReason: ${this.codeSynchronizer.state}`,
+            });
+            return;
+        }
 
         panel.onDidReceiveMessage(async (e) => {
             switch (e.command) {

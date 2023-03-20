@@ -159,8 +159,9 @@ export class ConnectionManager {
         }
 
         if (
-            !this._databricksWorkspace.isReposEnabled ||
-            !this._databricksWorkspace.isFilesInReposEnabled
+            workspaceConfigs.syncDestinationType === "repo" &&
+            (!this._databricksWorkspace.isReposEnabled ||
+                !this._databricksWorkspace.isFilesInReposEnabled)
         ) {
             let message = "";
             if (!this._databricksWorkspace.isReposEnabled) {

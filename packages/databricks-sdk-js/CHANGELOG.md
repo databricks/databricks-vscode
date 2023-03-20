@@ -1,3 +1,12 @@
+# Release: v0.3.5
+
+## packages/databricks-sdk-js
+
+## <small>0.3.5 (2023-03-17)</small>
+
+-   Feature: Updated SDK to use latest OpenAPI spec, which adds support for SQL execution and model serving APIs.
+-   Feature: Added support for file creation to Workspace service.
+
 # Release: v0.3.4
 
 ## packages/databricks-sdk-js

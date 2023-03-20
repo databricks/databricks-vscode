@@ -33,6 +33,11 @@ export interface Alert {
      * Alert configuration options.
      */
     options?: AlertOptions;
+    /**
+     * The identifier of the parent folder containing the alert. Available for
+     * alerts in workspace.
+     */
+    parent?: string;
     query?: Query;
     /**
      * Number of seconds after being triggered before the alert rearms itself and
@@ -77,7 +82,7 @@ export interface AlertOptions {
     custom_subject?: string;
     /**
      * Whether or not the alert is muted. If an alert is muted, it will not
-     * notify users and alert destinations when triggered.
+     * notify users and notification destinations when triggered.
      */
     muted?: boolean;
     /**
@@ -85,11 +90,6 @@ export interface AlertOptions {
      * `!=`
      */
     op: string;
-    /**
-     * Number of failures encountered during alert refresh. This counter is used
-     * for sending aggregated alert failure email notifications.
-     */
-    schedule_failures?: number;
     /**
      * Value used to compare in alert evaluation.
      */
@@ -102,6 +102,13 @@ export interface AlertOptions {
  * and did not fulfill trigger conditions).
  */
 export type AlertState = "ok" | "triggered" | "unknown";
+
+/**
+ * Cancel statement execution
+ */
+export interface CancelExecutionRequest {
+    statement_id: string;
+}
 
 export interface Channel {
     dbsql_version?: string;
@@ -133,6 +140,120 @@ export type ChannelName =
     | "CHANNEL_NAME_UNSPECIFIED";
 
 /**
+ * Describes metadata for a particular chunk, within a result set; this structure
+ * is used both within a manifest, and when fetching individual chunk data or
+ * links.
+ */
+export interface ChunkInfo {
+    /**
+     * Number of bytes in the result chunk.
+     */
+    byte_count?: number;
+    /**
+     * Position within the sequence of result set chunks.
+     */
+    chunk_index?: number;
+    /**
+     * When fetching, gives `chunk_index` for the _next_ chunk; if absent,
+     * indicates there are no more chunks.
+     */
+    next_chunk_index?: number;
+    /**
+     * When fetching, gives `internal_link` for the _next_ chunk; if absent,
+     * indicates there are no more chunks.
+     */
+    next_chunk_internal_link?: string;
+    /**
+     * Number of rows within the result chunk.
+     */
+    row_count?: number;
+    /**
+     * Starting row offset within the result set.
+     */
+    row_offset?: number;
+}
+
+export interface ColumnInfo {
+    /**
+     * Name of Column.
+     */
+    name?: string;
+    /**
+     * Ordinal position of column (starting at position 0).
+     */
+    position?: number;
+    /**
+     * Format of interval type.
+     */
+    type_interval_type?: string;
+    /**
+     * Name of type (INT, STRUCT, MAP, and so on)
+     */
+    type_name?: ColumnInfoTypeName;
+    /**
+     * Digits of precision.
+     */
+    type_precision?: number;
+    /**
+     * Digits to right of decimal.
+     */
+    type_scale?: number;
+    /**
+     * Full data type spec, SQL/catalogString text.
+     */
+    type_text?: string;
+}
+
+/**
+ * Name of type (INT, STRUCT, MAP, and so on)
+ */
+export type ColumnInfoTypeName =
+    | "ARRAY"
+    | "BINARY"
+    | "BOOLEAN"
+    | "BYTE"
+    | "CHAR"
+    | "DATE"
+    | "DECIMAL"
+    | "DOUBLE"
+    | "FLOAT"
+    | "INT"
+    | "INTERVAL"
+    | "LONG"
+    | "MAP"
+    | "NULL"
+    | "SHORT"
+    | "STRING"
+    | "STRUCT"
+    | "TIMESTAMP"
+    | "USER_DEFINED_TYPE";
+
+export interface CreateAlert {
+    /**
+     * Name of the alert.
+     */
+    name: string;
+    /**
+     * Alert configuration options.
+     */
+    options: AlertOptions;
+    /**
+     * The identifier of the workspace folder containing the alert. The default
+     * is ther user's home folder.
+     */
+    parent?: string;
+    /**
+     * ID of the query evaluated by the alert.
+     */
+    query_id: string;
+    /**
+     * Number of seconds after being triggered before the alert rearms itself and
+     * can be triggered again. If `null`, alert will never be triggered again.
+     */
+    rearm?: number;
+}
+
+/**
  * Create a dashboard object
  */
 export interface CreateDashboardRequest {
@@ -155,6 +276,11 @@ export interface CreateDashboardRequest {
      * the dashboard page.
      */
     name?: string;
+    /**
+     * The identifier of the workspace folder containing the dashboard. The
+     * default is the user's home folder.
+     */
+    parent?: string;
     tags?: Array<string>;
     /**
      * An array of widget objects. A complete description of widget objects can
@@ -163,36 +289,6 @@ export interface CreateDashboardRequest {
      * recommend creating new widgets via this API.
      */
     widgets?: Array<Widget>;
-}
-
-export interface CreateRefreshSchedule {
-    alert_id: string;
-    /**
-     * Cron string representing the refresh schedule.
-     */
-    cron: string;
-    /**
-     * ID of the SQL warehouse to refresh with. If `null`, query's SQL warehouse
-     * will be used to refresh.
-     */
-    data_source_id?: string;
-}
-
-export interface CreateSubscription {
-    /**
-     * ID of the alert.
-     */
-    alert_id: string;
-    /**
-     * ID of the alert subscriber (if subscribing an alert destination). Alert
-     * destinations can be configured by admins through the UI. See
-     * [here](/sql/admin/alert-destinations.html).
-     */
-    destination_id?: string;
-    /**
-     * ID of the alert subscriber (if subscribing a user).
-     */
-    user_id?: number;
 }
 
 export interface CreateWarehouseRequest {
@@ -334,6 +430,11 @@ export interface Dashboard {
     name?: string;
     options?: DashboardOptions;
     /**
+     * The identifier of the parent folder containing the dashboard. Available
+     * for dashboards in workspace.
+     */
+    parent?: string;
+    /**
      * This describes an enum
      */
     permission_tier?: PermissionLevel;
@@ -432,14 +533,6 @@ export interface DeleteQueryRequest {
 }
 
 /**
- * Delete a refresh schedule
- */
-export interface DeleteScheduleRequest {
-    alert_id: string;
-    schedule_id: string;
-}
-
-/**
  * Delete a warehouse
  */
 export interface DeleteWarehouseRequest {
@@ -450,37 +543,32 @@ export interface DeleteWarehouseRequest {
 }
 
 /**
- * Alert destination subscribed to the alert, if it exists. Alert destinations
- * can be configured by admins through the UI. See [here].
+ * The fetch disposition provides two modes of fetching results: `INLINE` and
+ * `EXTERNAL_LINKS`.
  *
- * [here]: https://docs.databricks.com/sql/admin/alert-destinations.html
+ * Statements executed with `INLINE` disposition will return result data inline,
+ * in `JSON_ARRAY` format, in a series of chunks. If a given statement produces a
+ * result set with a size larger than 16 MiB, that statement execution is
+ * aborted, and no result set will be available.
+ *
+ * **NOTE** Byte limits are computed based upon internal representations of the
+ * result set data, and may not match the sizes visible in JSON responses.
+ *
+ * Statements executed with `EXTERNAL_LINKS` disposition will return result data
+ * as external links: URLs that point to cloud storage internal to the workspace.
+ * Using `EXTERNAL_LINKS` disposition allows statements to generate arbitrarily
+ * sized result sets for fetching up to 100 GiB. The resulting links have two
+ * important properties:
+ *
+ * 1. They point to resources _external_ to the Databricks compute; therefore any
+ * associated authentication information (typically a personal access token,
+ * OAuth token, or similar) _must be removed_ when fetching from these links.
+ *
+ * 2. These are presigned URLs with a specific expiration, indicated in the
+ * response. The behavior when attempting to use an expired link is cloud
+ * specific.
  */
-export interface Destination {
-    /**
-     * ID of the alert destination.
-     */
-    id?: string;
-    /**
-     * Name of the alert destination.
-     */
-    name?: string;
-    /**
-     * Type of the alert destination.
-     */
-    type?: DestinationType;
-}
-
-/**
- * Type of the alert destination.
- */
-export type DestinationType =
-    | "email"
-    | "hangouts_chat"
-    | "mattermost"
-    | "microsoft_teams"
-    | "pagerduty"
-    | "slack"
-    | "webhook";
+export type Disposition = "EXTERNAL_LINKS" | "INLINE";
 
 export interface EditAlert {
     alert_id: string;
@@ -533,8 +621,7 @@ export interface EditWarehouseRequest {
     /**
      * Configures whether the endpoint should use Databricks Compute (aka Nephos)
      *
-     * Deprecated: Use enable_serverless_compute TODO(SC-79930): Remove the field
-     * once clients are updated
+     * Deprecated: Use enable_serverless_compute
      */
     enable_databricks_compute?: boolean;
     /**
@@ -658,8 +745,7 @@ export interface EndpointInfo {
     /**
      * Configures whether the endpoint should use Databricks Compute (aka Nephos)
      *
-     * Deprecated: Use enable_serverless_compute TODO(SC-79930): Remove the field
-     * once clients are updated
+     * Deprecated: Use enable_serverless_compute
      */
     enable_databricks_compute?: boolean;
     /**
@@ -758,6 +844,203 @@ export interface EndpointTags {
     custom_tags?: Array<EndpointTagPair>;
 }
 
+export interface ExecuteStatementRequest {
+    /**
+     * Applies the given byte limit to the statement's result size. Byte counts
+     * are based on internal representations and may not match measurable sizes
+     * in the requested `format`.
+     */
+    byte_limit?: number;
+    /**
+     * Sets default catalog for statement execution, similar to [`USE CATALOG`]
+     * in SQL.
+     *
+     * [`USE CATALOG`]: https://docs.databricks.com/sql/language-manual/sql-ref-syntax-ddl-use-catalog.html
+     */
+    catalog?: string;
+    /**
+     * The fetch disposition provides two modes of fetching results: `INLINE` and
+     * `EXTERNAL_LINKS`.
+     *
+     * Statements executed with `INLINE` disposition will return result data
+     * inline, in `JSON_ARRAY` format, in a series of chunks. If a given
+     * statement produces a result set with a size larger than 16 MiB, that
+     * statement execution is aborted, and no result set will be available.
+     *
+     * **NOTE** Byte limits are computed based upon internal representations of
+     * the result set data, and may not match the sizes visible in JSON
+     * responses.
+     *
+     * Statements executed with `EXTERNAL_LINKS` disposition will return result
+     * data as external links: URLs that point to cloud storage internal to the
+     * workspace. Using `EXTERNAL_LINKS` disposition allows statements to
+     * generate arbitrarily sized result sets for fetching up to 100 GiB. The
+     * resulting links have two important properties:
+     *
+     * 1. They point to resources _external_ to the Databricks compute; therefore
+     * any associated authentication information (typically a personal access
+     * token, OAuth token, or similar) _must be removed_ when fetching from these
+     * links.
+     *
+     * 2. These are presigned URLs with a specific expiration, indicated in the
+     * response. The behavior when attempting to use an expired link is cloud
+     * specific.
+     */
+    disposition?: Disposition;
+    /**
+     * Statement execution supports two result formats: `JSON_ARRAY` (default),
+     * and `ARROW_STREAM`.
+     *
+     * **NOTE**
+     *
+     * Currently `JSON_ARRAY` is only available for requests with
+     * `disposition=INLINE`, and `ARROW_STREAM` is only available for requests
+     * with `disposition=EXTERNAL_LINKS`.
+     *
+     * When specifying `format=JSON_ARRAY`, result data will be formatted as an
+     * array of arrays of values, where each value is either the *string
+     * representation* of a value, or `null`. For example, the output of `SELECT
+     * concat('id-', id) AS strId, id AS intId FROM range(3)` would look like
+     * this:
+     *
+     * ``` [ [ "id-1", "1" ], [ "id-2", "2" ], [ "id-3", "3" ], ] ```
+     *
+     * `INLINE` `JSON_ARRAY` data can be found within
+     * `StatementResponse.result.chunk.data_array` or
+     * `ResultData.chunk.data_array`.
+     *
+     * When specifying `format=ARROW_STREAM`, results fetched through
+     * `external_links` will be chunks of result data, formatted as Apache Arrow
+     * Stream. See [Apache Arrow Streaming Format] for more details.
+     *
+     * [Apache Arrow Streaming Format]: https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format
+     */
+    format?: Format;
+    /**
+     * When in synchronous mode with `wait_timeout > 0s` it determines the action
+     * taken when the timeout is reached:
+     *
+     * `CONTINUE` → the statement execution continues asynchronously and the
+     * call returns a statement ID immediately.
+     *
+     * `CANCEL` → the statement execution is canceled and the call returns
+     * immediately with a `CANCELED` state.
+     */
+    on_wait_timeout?: TimeoutAction;
+    /**
+     * Sets default schema for statement execution, similar to [`USE SCHEMA`] in
+     * SQL.
+     *
+     * [`USE SCHEMA`]: https://docs.databricks.com/sql/language-manual/sql-ref-syntax-ddl-use-schema.html
+     */
+    schema?: string;
+    /**
+     * SQL statement to execute
+     */
+    statement?: string;
+    /**
+     * The time in seconds the API service will wait for the statement's result
+     * set as `Ns`, where `N` can be set to 0 or to a value between 5 and 50.
+     * When set to '0s' the statement will execute in asynchronous mode."
+     */
+    wait_timeout?: string;
+    /**
+     * Warehouse upon which to execute a statement. See also [What are SQL
+     * warehouses?](/sql/admin/warehouse-type.html)
+     */
+    warehouse_id?: string;
+}
+
+export interface ExecuteStatementResponse {
+    /**
+     * The result manifest provides schema and metadata for the result set.
+     */
+    manifest?: ResultManifest;
+    /**
+     * Result data chunks are delivered in either the `chunk` field when using
+     * `INLINE` disposition, or in the `external_link` field when using
+     * `EXTERNAL_LINKS` disposition. Exactly one of these will be set.
+     */
+    result?: ResultData;
+    /**
+     * Statement ID is returned upon successfully submitting a SQL statement, and
+     * is a required reference for all subsequent calls.
+     */
+    statement_id?: string;
+    /**
+     * Status response includes execution state and if relevant, error
+     * information.
+     */
+    status?: StatementStatus;
+}
+
+export interface ExternalLink {
+    /**
+     * Number of bytes in the result chunk.
+     */
+    byte_count?: number;
+    /**
+     * Position within the sequence of result set chunks.
+     */
+    chunk_index?: number;
+    /**
+     * Indicates date-time that the given external link will expire and become
+     * invalid, after which point a new `external_link` must be requested.
+     */
+    expiration?: string;
+    /**
+     * Pre-signed URL pointing to a chunk of result data, hosted by an external
+     * service, with a short expiration time (< 1 hour).
+     */
+    external_link?: string;
+    /**
+     * When fetching, gives `chunk_index` for the _next_ chunk; if absent,
+     * indicates there are no more chunks.
+     */
+    next_chunk_index?: number;
+    /**
+     * When fetching, gives `internal_link` for the _next_ chunk; if absent,
+     * indicates there are no more chunks.
+     */
+    next_chunk_internal_link?: string;
+    /**
+     * Number of rows within the result chunk.
+     */
+    row_count?: number;
+    /**
+     * Starting row offset within the result set.
+     */
+    row_offset?: number;
+}
+
+/**
+ * Statement execution supports two result formats: `JSON_ARRAY` (default), and
+ * `ARROW_STREAM`.
+ *
+ * **NOTE**
+ *
+ * Currently `JSON_ARRAY` is only available for requests with
+ * `disposition=INLINE`, and `ARROW_STREAM` is only available for requests with
+ * `disposition=EXTERNAL_LINKS`.
+ *
+ * When specifying `format=JSON_ARRAY`, result data will be formatted as an array
+ * of arrays of values, where each value is either the *string representation* of
+ * a value, or `null`. For example, the output of `SELECT concat('id-', id) AS
+ * strId, id AS intId FROM range(3)` would look like this:
+ *
+ * ``` [ [ "id-1", "1" ], [ "id-2", "2" ], [ "id-3", "3" ], ] ```
+ *
+ * `INLINE` `JSON_ARRAY` data can be found within
+ * `StatementResponse.result.chunk.data_array` or `ResultData.chunk.data_array`.
+ *
+ * When specifying `format=ARROW_STREAM`, results fetched through
+ * `external_links` will be chunks of result data, formatted as Apache Arrow
+ * Stream. See [Apache Arrow Streaming Format] for more details.
+ *
+ * [Apache Arrow Streaming Format]: https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format
+ */
+export type Format = "ARROW_STREAM" | "JSON_ARRAY";
+
 /**
  * Get an alert
  */
@@ -806,10 +1089,41 @@ export interface GetResponse {
 }
 
 /**
- * Get an alert's subscriptions
+ * Get status, manifest, and result first chunk
  */
-export interface GetSubscriptionsRequest {
-    alert_id: string;
+export interface GetStatementRequest {
+    statement_id: string;
+}
+
+export interface GetStatementResponse {
+    /**
+     * The result manifest provides schema and metadata for the result set.
+     */
+    manifest?: ResultManifest;
+    /**
+     * Result data chunks are delivered in either the `chunk` field when using
+     * `INLINE` disposition, or in the `external_link` field when using
+     * `EXTERNAL_LINKS` disposition. Exactly one of these will be set.
+     */
+    result?: ResultData;
+    /**
+     * Statement ID is returned upon successfully submitting a SQL statement, and
+     * is a required reference for all subsequent calls.
+     */
+    statement_id?: string;
+    /**
+     * Status response includes execution state and if relevant, error
+     * information.
+     */
+    status?: StatementStatus;
+}
+
+/**
+ * Get result chunk by index
+ */
+export interface GetStatementResultChunkNRequest {
+    chunk_index: number;
+    statement_id: string;
 }
 
 /**
@@ -852,8 +1166,7 @@ export interface GetWarehouseResponse {
     /**
      * Configures whether the endpoint should use Databricks Compute (aka Nephos)
      *
-     * Deprecated: Use enable_serverless_compute TODO(SC-79930): Remove the field
-     * once clients are updated
+     * Deprecated: Use enable_serverless_compute
      */
     enable_databricks_compute?: boolean;
     /**
@@ -960,8 +1273,7 @@ export interface GetWorkspaceWarehouseConfigResponse {
     /**
      * Enable Serverless compute for SQL Endpoints
      *
-     * Deprecated: Use enable_serverless_compute TODO(SC-79930): Remove the field
-     * once clients are updated
+     * Deprecated: Use enable_serverless_compute
      */
     enable_databricks_compute?: boolean;
     /**
@@ -1044,10 +1356,6 @@ export interface ListQueriesRequest {
      *
      * - `created_at`: The timestamp the query was created.
      *
-     * - `schedule`: The refresh interval for each query. For example: "Every 5
-     * Hours" or "Every 5 Minutes". "Never" is treated as the highest value for
-     * sorting.
-     *
      * - `runtime`: The time it took to run this query. This is blank for
      * parameterized queries. A blank value is treated as the highest value for
      * sorting.
@@ -1122,13 +1430,6 @@ export interface ListResponse {
      * List of dashboards returned.
      */
     results?: Array<Dashboard>;
-}
-
-/**
- * Get refresh schedules
- */
-export interface ListSchedulesRequest {
-    alert_id: string;
 }
 
 /**
@@ -1296,6 +1597,11 @@ export interface Query {
     name?: string;
     options?: QueryOptions;
     /**
+     * The identifier of the parent folder containing the query. Available for
+     * queries in workspace.
+     */
+    parent?: string;
+    /**
      * This describes an enum
      */
     permission_tier?: PermissionLevel;
@@ -1307,7 +1613,6 @@ export interface Query {
      * A SHA-256 hash of the query text along with the authenticated user ID.
      */
     query_hash?: string;
-    schedule?: QueryInterval;
     tags?: Array<string>;
     /**
      * The timestamp at which this query was last updated.
@@ -1319,6 +1624,33 @@ export interface Query {
      */
     user_id?: number;
     visualizations?: Array<Visualization>;
+}
+
+export interface QueryEditContent {
+    /**
+     * The ID of the data source / SQL warehouse where this query will run.
+     */
+    data_source_id?: string;
+    /**
+     * General description that can convey additional information about this
+     * query such as usage notes.
+     */
+    description?: string;
+    /**
+     * The name or title of this query to display in list views.
+     */
+    name?: string;
+    /**
+     * Exclusively used for storing a list parameter definitions. A parameter is
+     * an object with `title`, `name`, `type`, and `value` properties. The
+     * `value` field here is the default value. It can be overridden at runtime.
+     */
+    options?: any /* MISSING TYPE */;
+    /**
+     * The text of the query.
+     */
+    query?: string;
+    query_id: string;
 }
 
 /**
@@ -1430,25 +1762,6 @@ export interface QueryInfo {
     warehouse_id?: string;
 }
 
-export interface QueryInterval {
-    /**
-     * For weekly runs, the day of the week to start the run.
-     */
-    day_of_week?: string;
-    /**
-     * Integer number of seconds between runs.
-     */
-    interval?: number;
-    /**
-     * For daily, weekly, and monthly runs, the time of day to start the run.
-     */
-    time?: string;
-    /**
-     * A date after which this schedule no longer applies.
-     */
-    until?: string;
-}
-
 export interface QueryList {
     /**
      * The total number of queries.
@@ -1481,7 +1794,8 @@ export interface QueryMetrics {
      */
     execution_time_ms?: number;
     /**
-     * Total amount of data sent over the network, in bytes.
+     * Total amount of data sent over the network between executor nodes during
+     * shuffle, in bytes.
      */
     network_sent_bytes?: number;
     /**
@@ -1597,17 +1911,14 @@ export interface QueryPostContent {
      */
     options?: any /* MISSING TYPE */;
     /**
+     * The identifier of the workspace folder containing the query. The default
+     * is the user's home folder.
+     */
+    parent?: string;
+    /**
      * The text of the query.
      */
     query?: string;
-    query_id: string;
-    /**
-     * JSON object that describes the scheduled execution frequency. A schedule
-     * object includes `interval`, `time`, `day_of_week`, and `until` fields. If
-     * a scheduled is supplied, then only `interval` is required. All other field
-     * can be `null`.
-     */
-    schedule?: QueryInterval;
 }
 
 /**
@@ -1662,22 +1973,6 @@ export type QueryStatus =
      */
     | "RUNNING";
 
-export interface RefreshSchedule {
-    /**
-     * Cron string representing the refresh schedule.
-     */
-    cron?: string;
-    /**
-     * ID of the SQL warehouse to refresh with. If `null`, query's SQL warehouse
-     * will be used to refresh.
-     */
-    data_source_id?: string;
-    /**
-     * ID of the refresh schedule.
-     */
-    id?: string;
-}
-
 export interface RepeatedEndpointConfPairs {
     /**
      * Deprecated: Use configuration_pairs
@@ -1699,6 +1994,133 @@ export interface RestoreDashboardRequest {
 export interface RestoreQueryRequest {
     query_id: string;
 }
+
+/**
+ * Result data chunks are delivered in either the `chunk` field when using
+ * `INLINE` disposition, or in the `external_link` field when using
+ * `EXTERNAL_LINKS` disposition. Exactly one of these will be set.
+ */
+export interface ResultData {
+    /**
+     * Number of bytes in the result chunk.
+     */
+    byte_count?: number;
+    /**
+     * Position within the sequence of result set chunks.
+     */
+    chunk_index?: number;
+    /**
+     * `JSON_ARRAY` format is an array of arrays of values, where each non-null
+     * value is formatted as a string. Null values are encoded as JSON `null`.
+     */
+    data_array?: Array<Array<string>>;
+    external_links?: Array<ExternalLink>;
+    /**
+     * When fetching, gives `chunk_index` for the _next_ chunk; if absent,
+     * indicates there are no more chunks.
+     */
+    next_chunk_index?: number;
+    /**
+     * When fetching, gives `internal_link` for the _next_ chunk; if absent,
+     * indicates there are no more chunks.
+     */
+    next_chunk_internal_link?: string;
+    /**
+     * Number of rows within the result chunk.
+     */
+    row_count?: number;
+    /**
+     * Starting row offset within the result set.
+     */
+    row_offset?: number;
+}
+
+/**
+ * The result manifest provides schema and metadata for the result set.
+ */
+export interface ResultManifest {
+    /**
+     * Array of result set chunk metadata.
+     */
+    chunks?: Array<ChunkInfo>;
+    /**
+     * Statement execution supports two result formats: `JSON_ARRAY` (default),
+     * and `ARROW_STREAM`.
+     *
+     * **NOTE**
+     *
+     * Currently `JSON_ARRAY` is only available for requests with
+     * `disposition=INLINE`, and `ARROW_STREAM` is only available for requests
+     * with `disposition=EXTERNAL_LINKS`.
+     *
+     * When specifying `format=JSON_ARRAY`, result data will be formatted as an
+     * array of arrays of values, where each value is either the *string
+     * representation* of a value, or `null`. For example, the output of `SELECT
+     * concat('id-', id) AS strId, id AS intId FROM range(3)` would look like
+     * this:
+     *
+     * ``` [ [ "id-1", "1" ], [ "id-2", "2" ], [ "id-3", "3" ], ] ```
+     *
+     * `INLINE` `JSON_ARRAY` data can be found within
+     * `StatementResponse.result.chunk.data_array` or
+     * `ResultData.chunk.data_array`.
+     *
+     * When specifying `format=ARROW_STREAM`, results fetched through
+     * `external_links` will be chunks of result data, formatted as Apache Arrow
+     * Stream. See [Apache Arrow Streaming Format] for more details.
+     *
+     * [Apache Arrow Streaming Format]: https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format
+     */
+    format?: Format;
+    /**
+     * Schema is an ordered list of column descriptions.
+     */
+    schema?: ResultSchema;
+    /**
+     * Total number of bytes in the result set.
+     */
+    total_byte_count?: number;
+    /**
+     * Total number of chunks that the result set has been divided into.
+     */
+    total_chunk_count?: number;
+    /**
+     * Total number of rows in the result set.
+     */
+    total_row_count?: number;
+}
+
+/**
+ * Schema is an ordered list of column descriptions.
+ */
+export interface ResultSchema {
+    column_count?: number;
+    columns?: Array<ColumnInfo>;
+}
+
+export interface ServiceError {
+    error_code?: ServiceErrorCode;
+    /**
+     * Brief summary of error condition.
+     */
+    message?: string;
+}
+
+export type ServiceErrorCode =
+    | "ABORTED"
+    | "ALREADY_EXISTS"
+    | "BAD_REQUEST"
+    | "CANCELLED"
+    | "DEADLINE_EXCEEDED"
+    | "INTERNAL_ERROR"
+    | "IO_ERROR"
+    | "NOT_FOUND"
+    | "RESOURCE_EXHAUSTED"
+    | "SERVICE_UNDER_MAINTENANCE"
+    | "TEMPORARILY_UNAVAILABLE"
+    | "UNAUTHENTICATED"
+    | "UNKNOWN"
+    | "WORKSPACE_TEMPORARILY_UNAVAILABLE";
 
 /**
  * Set object ACL
@@ -1745,8 +2167,7 @@ export interface SetWorkspaceWarehouseConfigRequest {
     /**
      * Enable Serverless compute for SQL Endpoints
      *
-     * Deprecated: Use enable_serverless_compute TODO(SC-79930): Remove the field
-     * once clients are updated
+     * Deprecated: Use enable_serverless_compute
      */
     enable_databricks_compute?: boolean;
     /**
@@ -1827,6 +2248,39 @@ export type State =
     | "STOPPING";
 
 /**
+ * Statement execution state: - `PENDING`: waiting for warehouse - `RUNNING`:
+ * running - `SUCCEEDED`: execution was successful, result data available for
+ * fetch - `FAILED`: execution failed; reason for failure described in
+ * accomanying error message - `CANCELED`: user canceled; can come from explicit
+ * cancel call, or timeout with `on_wait_timeout=CANCEL` - `CLOSED`: execution
+ * successful, and statement closed; result no longer available for fetch
+ */
+export type StatementState =
+    | "CANCELED"
+    | "CLOSED"
+    | "FAILED"
+    | "PENDING"
+    | "RUNNING"
+    | "SUCCEEDED";
+
+/**
+ * Status response includes execution state and if relevant, error information.
+ */
+export interface StatementStatus {
+    error?: ServiceError;
+    /**
+     * Statement execution state: - `PENDING`: waiting for warehouse - `RUNNING`:
+     * running - `SUCCEEDED`: execution was successful, result data available for
+     * fetch - `FAILED`: execution failed; reason for failure described in
+     * accomanying error message - `CANCELED`: user canceled; can come from
+     * explicit cancel call, or timeout with `on_wait_timeout=CANCEL` - `CLOSED`:
+     * execution successful, and statement closed; result no longer available for
+     * fetch
+     */
+    state?: StatementState;
+}
+
+/**
  * Health status of the endpoint.
  */
 export type Status = "DEGRADED" | "FAILED" | "HEALTHY" | "STATUS_UNSPECIFIED";
@@ -1839,25 +2293,6 @@ export interface StopRequest {
      * Required. Id of the SQL warehouse.
      */
     id: string;
-}
-
-export interface Subscription {
-    /**
-     * ID of the alert.
-     */
-    alert_id?: string;
-    /**
-     * Alert destination subscribed to the alert, if it exists. Alert
-     * destinations can be configured by admins through the UI. See [here].
-     *
-     * [here]: https://docs.databricks.com/sql/admin/alert-destinations.html
-     */
-    destination?: Destination;
-    /**
-     * ID of the alert subscription.
-     */
-    id?: string;
-    user?: User;
 }
 
 export interface Success {
@@ -1991,6 +2426,18 @@ export interface TimeRange {
     start_time_ms?: number;
 }
 
+/**
+ * When in synchronous mode with `wait_timeout > 0s` it determines the action
+ * taken when the timeout is reached:
+ *
+ * `CONTINUE` → the statement execution continues asynchronously and the call
+ * returns a statement ID immediately.
+ *
+ * `CANCEL` → the statement execution is canceled and the call returns
+ * immediately with a `CANCELED` state.
+ */
+export type TimeoutAction = "CANCEL" | "CONTINUE";
+
 export interface TransferOwnershipObjectId {
     /**
      * Email address for the new owner, who must exist in the workspace.
@@ -2014,14 +2461,6 @@ export interface TransferOwnershipRequest {
      * The type of object on which to change ownership.
      */
     objectType: OwnableObjectType;
-}
-
-/**
- * Unsubscribe to an alert
- */
-export interface UnsubscribeRequest {
-    alert_id: string;
-    subscription_id: string;
 }
 
 export interface User {

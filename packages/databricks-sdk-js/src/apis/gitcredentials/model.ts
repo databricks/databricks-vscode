@@ -6,7 +6,8 @@
 export interface CreateCredentials {
     /**
      * Git provider. This field is case-insensitive. The available Git providers
-     * are awsCodeCommit, azureDevOpsServices,
+     * are gitHub, bitbucketCloud, gitLab, azureDevOpsServices, gitHubEnterprise,
+     * bitbucketServer, gitLabEnterpriseEdition and awsCodeCommit.
      */
     git_provider: string;
     /**
@@ -27,7 +28,8 @@ export interface CreateCredentialsResponse {
     credential_id?: number;
     /**
      * Git provider. This field is case-insensitive. The available Git providers
-     * are awsCodeCommit, azureDevOpsServices,
+     * are gitHub, bitbucketCloud, gitLab, azureDevOpsServices, gitHubEnterprise,
+     * bitbucketServer, gitLabEnterpriseEdition and awsCodeCommit.
      */
     git_provider?: string;
     /**
@@ -43,7 +45,8 @@ export interface CredentialInfo {
     credential_id?: number;
     /**
      * Git provider. This field is case-insensitive. The available Git providers
-     * are awsCodeCommit, azureDevOpsServices,
+     * are gitHub, bitbucketCloud, gitLab, azureDevOpsServices, gitHubEnterprise,
+     * bitbucketServer, gitLabEnterpriseEdition and awsCodeCommit.
      */
     git_provider?: string;
     /**
@@ -83,7 +86,8 @@ export interface UpdateCredentials {
     credential_id: number;
     /**
      * Git provider. This field is case-insensitive. The available Git providers
-     * are awsCodeCommit, azureDevOpsServices,
+     * are gitHub, bitbucketCloud, gitLab, azureDevOpsServices, gitHubEnterprise,
+     * bitbucketServer, gitLabEnterpriseEdition and awsCodeCommit.
      */
     git_provider?: string;
     /**

@@ -13,6 +13,7 @@ import {
 } from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import path from "node:path";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 
 describe(__filename, () => {
     let disposables: Array<Disposable>;
@@ -74,10 +75,17 @@ describe(__filename, () => {
             Uri.file(path.join(__dirname, "..", ".."))
         );
 
+        const mockWsfsAccessVerfier = mock<WorkspaceFsAccessVerifier>();
+        when(mockWsfsAccessVerfier.verifyCluster(anything())).thenResolve();
+
+        const mockCodeSynchronizer = mock<CodeSynchronizer>();
+        when(mockCodeSynchronizer.state).thenReturn("WATCHING_FOR_CHANGES");
+
         runtime = new DatabricksRuntime(
             connectionManager,
-            mock(CodeSynchronizer),
-            instance(extensionContextMock)
+            instance(mockCodeSynchronizer),
+            instance(extensionContextMock),
+            instance(mockWsfsAccessVerfier)
         );
     });
 
