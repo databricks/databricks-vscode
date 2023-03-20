@@ -207,7 +207,10 @@ export class ConnectionManager {
             this.updateSyncDestination(undefined);
         }
 
-        if (this.databricksWorkspace) {
+        if (
+            this.databricksWorkspace &&
+            workspaceConfigs.enableFilesInWorkspace
+        ) {
             await this.createRootDirectory(
                 workspaceClient,
                 this.databricksWorkspace.currentFsRoot,
@@ -227,7 +230,7 @@ export class ConnectionManager {
             wsClient,
             rootDirPath.path
         );
-        if (!rootDir && workspaceConfigs.enableFilesInWorkspace) {
+        if (!rootDir) {
             const meDir = await WorkspaceFsEntity.fromPath(
                 wsClient,
                 `/Users/${me}`
