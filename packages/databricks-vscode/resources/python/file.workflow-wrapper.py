@@ -8,7 +8,7 @@ databricks_arg_idx = []
 for i, arg in enumerate(sys.argv):
     if i == 0:
         continue
-    if sys.argv[i-1] == "--databricks-python-source":
+    if sys.argv[i-1] == "--databricks-source-file":
         python_file = arg
     elif sys.argv[i-1] == "--databricks-project-root":
         project_root = arg
