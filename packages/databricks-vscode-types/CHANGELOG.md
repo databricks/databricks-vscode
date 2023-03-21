@@ -4,12 +4,6 @@
 
 ## <small>0.3.7 (2023-03-21)</small>
 
-# Release: v0.3.6
-
-## packages/databricks-vscode-types
-
-## <small>0.3.6 (2023-03-21)</small>
-
 # Release: v0.3.5
 
 ## packages/databricks-vscode-types
