@@ -13,6 +13,25 @@ async function switchToRepos() {
     commands.executeCommand("workbench.action.reloadWindow");
 }
 
+async function switchToWorkspace() {
+    await workspaceConfigs.setSyncDestinationType("workspace");
+    commands.executeCommand("workbench.action.reloadWindow");
+}
+
+async function dbrBelowThreshold(cluster: Cluster) {
+    const dbrVersionParts = cluster.dbrVersion!;
+    if (
+        dbrVersionParts[0] < 11 ||
+        (dbrVersionParts[0] === 11 &&
+            dbrVersionParts[1] !== "x" &&
+            dbrVersionParts[1] < 2)
+    ) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 export class WorkspaceFsAccessVerifier implements Disposable {
     private disposables: Disposable[] = [];
     private currentCluster: Cluster | undefined;
@@ -24,11 +43,18 @@ export class WorkspaceFsAccessVerifier implements Disposable {
     ) {
         this.disposables.push(
             this._connectionManager.onDidChangeCluster(async (cluster) => {
-                if (this.currentCluster?.name === cluster?.name) {
+                if (
+                    this.currentCluster?.name === cluster?.name ||
+                    cluster === undefined
+                ) {
                     return;
                 }
                 this.currentCluster = cluster;
-                await this.verifyCluster(cluster);
+                if (await dbrBelowThreshold(cluster)) {
+                    await this.verifyCluster(cluster);
+                } else {
+                    await this.switchToWorkspacePrompt(cluster);
+                }
             }),
             this._connectionManager.onDidChangeState(async (state) => {
                 if (state === "CONNECTED") {
@@ -64,6 +90,28 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         );
     }
 
+    async switchToWorkspacePrompt(cluster?: Cluster) {
+        if (
+            workspaceConfigs.syncDestinationType === "workspace" ||
+            cluster === undefined
+        ) {
+            return;
+        }
+        if (await !dbrBelowThreshold(cluster)) {
+            const message =
+                "Please switch to Workspace for better experience. Repos will be deprecated soon";
+            const selection = await window.showErrorMessage(
+                message,
+                "Switch to Workspace",
+                "Ignore"
+            );
+
+            if (selection === "Switch to Workspace") {
+                switchToWorkspace();
+            }
+        }
+    }
+
     async verifyCluster(cluster?: Cluster) {
         if (
             workspaceConfigs.syncDestinationType === "repo" ||
@@ -71,13 +119,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         ) {
             return;
         }
-        const dbrVersionParts = cluster.dbrVersion;
-        if (
-            dbrVersionParts[0] < 11 ||
-            (dbrVersionParts[0] === 11 &&
-                dbrVersionParts[1] !== "x" &&
-                dbrVersionParts[1] < 2)
-        ) {
+        if (await dbrBelowThreshold(cluster)) {
             const message =
                 "Files in workspace is not supported on clusters with DBR < 11.2.";
             const selection = await window.showErrorMessage(
