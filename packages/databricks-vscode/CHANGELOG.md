@@ -6,7 +6,7 @@
 
 -   Fix: (Experimental) Show only directories in sync destination quickpick.
 -   Fix: (Experimental) Fix creation of .ide if it doesn't exists.
--   Fix: Fix PATH delimiter on Windows, [#576](https://github.com/databricks/databricks-vscode/issues/576)
+-   Fix: Fix PATH delimiter on Windows, closes [#576](https://github.com/databricks/databricks-vscode/issues/576)
 
 # Release: v0.3.5
 
