@@ -4,7 +4,7 @@
 
 ## <small>0.3.6 (2023-03-21)</small>
 
--   Fix creation of .ide if it doesn't exists (#585) ([bb39878](https://github.com/databricks/databricks-vscode/commit/bb39878)), closes [#585](https://github.com/databricks/databricks-vscode/issues/585)
+-   Fix: Fix error handling for api client errors.
 
 # Release: v0.3.5
 
