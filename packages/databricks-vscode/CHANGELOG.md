@@ -1,3 +1,12 @@
+# Release: v0.3.6
+
+## packages/databricks-vscode
+
+## <small>0.3.6 (2023-03-21)</small>
+
+-   Fix: (Experimental) Fix creation of .ide if it doesn't exists.
+-   Fix: Fix PATH delimiter on Windows, closes [#588](https://github.com/databricks/databricks-vscode/issues/588) and [#576](https://github.com/databricks/databricks-vscode/issues/576)
+
 # Release: v0.3.5
 
 ## packages/databricks-vscode

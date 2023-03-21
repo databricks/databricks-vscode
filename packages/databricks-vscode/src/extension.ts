@@ -35,6 +35,7 @@ import {
 import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
+import path from "node:path";
 
 export async function activate(
     context: ExtensionContext
@@ -73,7 +74,7 @@ export async function activate(
     context.environmentVariableCollection.persistent = true;
     context.environmentVariableCollection.prepend(
         "PATH",
-        `${context.asAbsolutePath("./bin")}:`
+        `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
 
     const loggerManager = new LoggerManager(context);
