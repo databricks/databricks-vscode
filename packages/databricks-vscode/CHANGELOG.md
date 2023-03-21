@@ -4,8 +4,8 @@
 
 ## <small>0.3.6 (2023-03-21)</small>
 
--   Fix creation of .ide if it doesn't exists (#585) ([bb39878](https://github.com/databricks/databricks-vscode/commit/bb39878)), closes [#585](https://github.com/databricks/databricks-vscode/issues/585)
--   Fix PATH delimiter on Windows (#588) ([3d53657](https://github.com/databricks/databricks-vscode/commit/3d53657)), closes [#588](https://github.com/databricks/databricks-vscode/issues/588) [#576](https://github.com/databricks/databricks-vscode/issues/576)
+-   Fix: (Experimental) Fix creation of .ide if it doesn't exists.
+-   Fix: Fix PATH delimiter on Windows, closes [#588](https://github.com/databricks/databricks-vscode/issues/588) and [#576](https://github.com/databricks/databricks-vscode/issues/576)
 
 # Release: v0.3.5
 
