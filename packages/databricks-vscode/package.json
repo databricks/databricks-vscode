@@ -597,7 +597,7 @@
                     },
                     "databricks.sync.destinationType": {
                         "type": "string",
-                        "default": "repo",
+                        "default": "workspace",
                         "enum": [
                             "workspace",
                             "repo"
