@@ -26,7 +26,7 @@ async function dbrBelowThreshold(cluster: Cluster) {
             dbrVersionParts[1] !== "x" &&
             dbrVersionParts[1] < 2)
     ) {
-        return true;
+        return false;
     } else {
         return false;
     }
@@ -97,18 +97,16 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         ) {
             return;
         }
-        if (await !dbrBelowThreshold(cluster)) {
-            const message =
-                "Please switch to Workspace for better experience. Repos will be deprecated soon";
-            const selection = await window.showErrorMessage(
-                message,
-                "Switch to Workspace",
-                "Ignore"
-            );
+        const message =
+            "Please switch to Workspace for better experience. Repos will be deprecated soon";
+        const selection = await window.showErrorMessage(
+            message,
+            "Switch to Workspace",
+            "Ignore"
+        );
 
-            if (selection === "Switch to Workspace") {
-                switchToWorkspace();
-            }
+        if (selection === "Switch to Workspace") {
+            switchToWorkspace();
         }
     }
 
@@ -119,18 +117,16 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         ) {
             return;
         }
-        if (await dbrBelowThreshold(cluster)) {
-            const message =
-                "Files in workspace is not supported on clusters with DBR < 11.2.";
-            const selection = await window.showErrorMessage(
-                message,
-                "Switch to Repos",
-                "Ignore"
-            );
+        const message =
+            "Files in workspace is not supported on clusters with DBR < 11.2.";
+        const selection = await window.showErrorMessage(
+            message,
+            "Switch to Repos",
+            "Ignore"
+        );
 
-            if (selection === "Switch to Repos") {
-                switchToRepos();
-            }
+        if (selection === "Switch to Repos") {
+            switchToRepos();
         }
     }
 
