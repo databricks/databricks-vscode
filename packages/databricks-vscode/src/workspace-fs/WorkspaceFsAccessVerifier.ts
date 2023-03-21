@@ -26,7 +26,7 @@ async function dbrBelowThreshold(cluster: Cluster) {
             dbrVersionParts[1] !== "x" &&
             dbrVersionParts[1] < 2)
     ) {
-        return false;
+        return true;
     } else {
         return false;
     }
