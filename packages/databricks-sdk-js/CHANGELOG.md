@@ -1,3 +1,11 @@
+# Release: v0.3.7
+
+## packages/databricks-sdk-js
+
+## <small>0.3.7 (2023-03-21)</small>
+
+-   Fix creation of .ide if it doesn't exists (#585) ([bb39878](https://github.com/databricks/databricks-vscode/commit/bb39878)), closes [#585](https://github.com/databricks/databricks-vscode/issues/585)
+
 # Release: v0.3.6
 
 ## packages/databricks-sdk-js
