@@ -43,18 +43,11 @@ export class WorkspaceFsAccessVerifier implements Disposable {
     ) {
         this.disposables.push(
             this._connectionManager.onDidChangeCluster(async (cluster) => {
-                if (
-                    this.currentCluster?.name === cluster?.name ||
-                    cluster === undefined
-                ) {
+                if (this.currentCluster?.name === cluster?.name) {
                     return;
                 }
                 this.currentCluster = cluster;
-                if (await dbrBelowThreshold(cluster)) {
-                    await this.verifyCluster(cluster);
-                } else {
-                    await this.switchToWorkspacePrompt(cluster);
-                }
+                await this.verifyCluster(cluster);
             }),
             this._connectionManager.onDidChangeState(async (state) => {
                 if (state === "CONNECTED") {
@@ -90,43 +83,39 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         );
     }
 
-    async switchToWorkspacePrompt(cluster?: Cluster) {
-        if (
-            workspaceConfigs.syncDestinationType === "workspace" ||
-            cluster === undefined
-        ) {
-            return;
-        }
-        const message =
-            "Please switch to Workspace for better experience. Repos will be deprecated soon";
-        const selection = await window.showErrorMessage(
-            message,
-            "Switch to Workspace",
-            "Ignore"
-        );
-
-        if (selection === "Switch to Workspace") {
-            switchToWorkspace();
-        }
-    }
-
     async verifyCluster(cluster?: Cluster) {
-        if (
-            workspaceConfigs.syncDestinationType === "repo" ||
-            cluster === undefined
-        ) {
+        if (cluster === undefined) {
             return;
         }
-        const message =
-            "Files in workspace is not supported on clusters with DBR < 11.2.";
-        const selection = await window.showErrorMessage(
-            message,
-            "Switch to Repos",
-            "Ignore"
-        );
+        if (await dbrBelowThreshold(cluster)) {
+            if (workspaceConfigs.syncDestinationType === "repo") {
+                return;
+            }
+            const message =
+                "Files in workspace is not supported on clusters with DBR < 11.2.";
+            const selection = await window.showErrorMessage(
+                message,
+                "Switch to Repos",
+                "Ignore"
+            );
+            if (selection === "Switch to Repos") {
+                switchToRepos();
+            }
+        } else {
+            if (workspaceConfigs.syncDestinationType === "workspace") {
+                return;
+            }
+            const message =
+                "Please switch to Workspace for better experience. Repos will be deprecated soon";
+            const selection = await window.showErrorMessage(
+                message,
+                "Switch to Workspace",
+                "Ignore"
+            );
 
-        if (selection === "Switch to Repos") {
-            switchToRepos();
+            if (selection === "Switch to Workspace") {
+                switchToWorkspace();
+            }
         }
     }
 
