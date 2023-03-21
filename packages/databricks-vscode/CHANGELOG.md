@@ -4,9 +4,9 @@
 
 ## <small>0.3.7 (2023-03-21)</small>
 
--   Filter for only directories in sync destination quickpick (#596) ([952879b](https://github.com/databricks/databricks-vscode/commit/952879b)), closes [#596](https://github.com/databricks/databricks-vscode/issues/596)
--   Fix creation of .ide if it doesn't exists (#585) ([bb39878](https://github.com/databricks/databricks-vscode/commit/bb39878)), closes [#585](https://github.com/databricks/databricks-vscode/issues/585)
--   Fix PATH delimiter on Windows (#588) ([3d53657](https://github.com/databricks/databricks-vscode/commit/3d53657)), closes [#588](https://github.com/databricks/databricks-vscode/issues/588) [#576](https://github.com/databricks/databricks-vscode/issues/576)
+-   Fix: (Experimental) Filter for only directories in sync destination quickpick.
+-   Fix: (Experimental) Fix creation of .ide if it doesn't exists.
+-   Fix: Fix PATH delimiter on Windows, [#576](https://github.com/databricks/databricks-vscode/issues/576)
 
 # Release: v0.3.6
 
