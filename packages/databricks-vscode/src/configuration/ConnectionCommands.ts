@@ -260,13 +260,17 @@ export class ConnectionCommands implements Disposable {
             input.items = children;
             if (workspaceConfigs.enableFilesInWorkspace) {
                 children.push(
-                    ...((await rootDir?.children) ?? []).map((entity) => {
-                        return {
-                            label: entity.basename,
-                            detail: entity.path,
-                            path: entity.path,
-                        };
-                    })
+                    ...((await rootDir?.children) ?? [])
+                        .filter((entity) =>
+                            WorkspaceFsUtils.isDirectory(entity)
+                        )
+                        .map((entity) => {
+                            return {
+                                label: entity.basename,
+                                detail: entity.path,
+                                path: entity.path,
+                            };
+                        })
                 );
             } else {
                 const repos = (await rootDir?.children) ?? [];
