@@ -107,7 +107,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
                 return;
             }
             const message =
-                "Please switch to Workspace for better experience. Repos will be deprecated soon";
+                "Please switch to workspace for better experience, repos has been deprecated";
             const selection = await window.showErrorMessage(
                 message,
                 "Switch to Workspace",
