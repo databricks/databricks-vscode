@@ -597,10 +597,10 @@
                     },
                     "databricks.sync.destinationType": {
                         "type": "string",
-                        "default": "repo",
+                        "default": "repo [deprecated]",
                         "enum": [
                             "workspace",
-                            "repo"
+                            "repo [deprecated]"
                         ],
                         "description": "Use a folder in Workspace or a Databricks Repo as sync destination (Reload for changes to take effect).",
                         "enumDescriptions": [

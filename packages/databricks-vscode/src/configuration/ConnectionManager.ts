@@ -159,7 +159,7 @@ export class ConnectionManager {
         }
 
         if (
-            workspaceConfigs.syncDestinationType === "repo" &&
+            workspaceConfigs.syncDestinationType === "repo [deprecated]" &&
             (!this._databricksWorkspace.isReposEnabled ||
                 !this._databricksWorkspace.isFilesInReposEnabled)
         ) {

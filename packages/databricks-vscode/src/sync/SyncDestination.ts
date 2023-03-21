@@ -10,7 +10,7 @@ import {Loggers} from "../logger";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export const REPO_NAME_SUFFIX = ".ide";
-export type SyncDestinationType = "repo" | "workspace";
+export type SyncDestinationType = "repo [deprecated]" | "workspace";
 
 export abstract class DatabricksUri<T> {
     constructor(readonly uri: Uri) {}
@@ -110,7 +110,7 @@ export class RemoteUri extends DatabricksUri<RemoteUri> {
 
     get type(): SyncDestinationType {
         if (this.path.startsWith("/Repos")) {
-            return "repo";
+            return "repo [deprecated]";
         } else {
             return "workspace";
         }

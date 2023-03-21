@@ -9,7 +9,7 @@ import {CodeSynchronizer} from "../sync";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 async function switchToRepos() {
-    await workspaceConfigs.setSyncDestinationType("repo");
+    await workspaceConfigs.setSyncDestinationType("repo [deprecated]");
     commands.executeCommand("workbench.action.reloadWindow");
 }
 
@@ -58,7 +58,8 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             }),
             this._sync.onDidChangeState(async (state) => {
                 if (
-                    workspaceConfigs.syncDestinationType === "repo" &&
+                    workspaceConfigs.syncDestinationType ===
+                        "repo [deprecated]" &&
                     state === "FILES_IN_REPOS_DISABLED"
                 ) {
                     await window.showErrorMessage(
@@ -88,7 +89,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             return;
         }
         if (await dbrBelowThreshold(cluster)) {
-            if (workspaceConfigs.syncDestinationType === "repo") {
+            if (workspaceConfigs.syncDestinationType === "repo [deprecated]") {
                 return;
             }
             const message =
