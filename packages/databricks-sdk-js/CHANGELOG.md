@@ -1,8 +1,8 @@
-# Release: v0.3.6
+# Release: v0.3.7
 
 ## packages/databricks-sdk-js
 
-## <small>0.3.6 (2023-03-21)</small>
+## <small>0.3.7 (2023-03-21)</small>
 
 -   Fix: Fix error handling for api client errors.
 
