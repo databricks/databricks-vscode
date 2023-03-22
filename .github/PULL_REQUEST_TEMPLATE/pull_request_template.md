@@ -9,6 +9,6 @@
 ## Ticket
 
 <!--
-Internal ticket -- Jira ticket number only (no links), example: DECO-613
+Internal ticket -- Jira ticket number only (no links), example: DECO-TicketNumber
 Public ticket (eg: github issue) -- Link to the public ticket
 -->
