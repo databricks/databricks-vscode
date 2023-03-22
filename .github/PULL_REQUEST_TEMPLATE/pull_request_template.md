@@ -4,8 +4,8 @@
 ## Tests
 <!-- How is this tested? -->
 
-## Ticket / Issue
+## Public Tickets
 <!--
-Internal ticket -- Jira ticket number only (no links), example: DECO-TicketNumber
-Public ticket (eg: github issue) -- Link to the public ticket
+Link to public tickets (if any). Please don't mention internal tickets. 
 -->
+NA
