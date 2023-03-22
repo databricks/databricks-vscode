@@ -6,9 +6,9 @@
 
 <!-- How is this tested? -->
 
-## Jira Ticket
+## Ticket
 
 <!--
-For linking Jira ticket with PR. This will show up on the ticket.
-Not to be added in PR title as these will need to be removed in the change logs.
+Internal ticket -- Jira ticket number only (no links), example: DECO-613
+Public ticket (eg: github issue) -- Link to the public ticket
 -->
