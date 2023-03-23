@@ -6,7 +6,7 @@
 | [Marketplace](https://marketplace.visualstudio.com/items?itemName=databricks.databricks) | [![Marketplace Version](https://img.shields.io/vscode-marketplace/v/databricks.databricks.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/d/databricks.databricks.svg)](https://marketplace.visualstudio.com/items?itemName=databricks.databricks)                                                                                            |
 
 ## Introduction
-
+Testing the PR template
 This repository contains the source code for Databricks extensions for VSCode.
 
 Currently, we have the following packages:
