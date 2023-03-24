@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class AccountGroupsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -33,14 +34,9 @@ export class AccountGroupsError extends ApiError {
  */
 export class AccountGroupsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a new group.
-     *
-     * Creates a group in the Databricks Account with a unique name, using the
-     * supplied group details.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.Group,
         @context context?: Context
     ): Promise<model.Group> {
@@ -54,12 +50,21 @@ export class AccountGroupsService {
     }
 
     /**
-     * Delete a group.
+     * Create a new group.
      *
-     * Deletes a group from the Databricks Account.
+     * Creates a group in the Databricks Account with a unique name, using the
+     * supplied group details.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.Group,
+        @context context?: Context
+    ): Promise<model.Group> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteGroupRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -73,12 +78,20 @@ export class AccountGroupsService {
     }
 
     /**
-     * Get group details.
+     * Delete a group.
      *
-     * Gets the information for a specific group in the Databricks Account.
+     * Deletes a group from the Databricks Account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteGroupRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetGroupRequest,
         @context context?: Context
     ): Promise<model.Group> {
@@ -92,12 +105,20 @@ export class AccountGroupsService {
     }
 
     /**
-     * List group details.
+     * Get group details.
      *
-     * Gets all details of the groups associated with the Databricks Account.
+     * Gets the information for a specific group in the Databricks Account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetGroupRequest,
+        @context context?: Context
+    ): Promise<model.Group> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListGroupsRequest,
         @context context?: Context
     ): Promise<model.ListGroupsResponse> {
@@ -111,6 +132,33 @@ export class AccountGroupsService {
     }
 
     /**
+     * List group details.
+     *
+     * Gets all details of the groups associated with the Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListGroupsRequest,
+        @context context?: Context
+    ): Promise<model.ListGroupsResponse> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _patch(
+        request: model.PartialUpdate,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Update group details.
      *
      * Partially updates the details of a group.
@@ -120,10 +168,18 @@ export class AccountGroupsService {
         request: model.PartialUpdate,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._patch(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.Group,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
-            "PATCH",
+            "PUT",
             request,
             context
         )) as model.EmptyResponse;
@@ -139,13 +195,7 @@ export class AccountGroupsService {
         request: model.Group,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -170,13 +220,9 @@ export class AccountServicePrincipalsError extends ApiError {
  */
 export class AccountServicePrincipalsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a service principal.
-     *
-     * Creates a new service principal in the Databricks Account.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.ServicePrincipal,
         @context context?: Context
     ): Promise<model.ServicePrincipal> {
@@ -190,12 +236,20 @@ export class AccountServicePrincipalsService {
     }
 
     /**
-     * Delete a service principal.
+     * Create a service principal.
      *
-     * Delete a single service principal in the Databricks Account.
+     * Creates a new service principal in the Databricks Account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.ServicePrincipal,
+        @context context?: Context
+    ): Promise<model.ServicePrincipal> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteServicePrincipalRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -209,13 +263,20 @@ export class AccountServicePrincipalsService {
     }
 
     /**
-     * Get service principal details.
+     * Delete a service principal.
      *
-     * Gets the details for a single service principal define in the Databricks
-     * Account.
+     * Delete a single service principal in the Databricks Account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteServicePrincipalRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetServicePrincipalRequest,
         @context context?: Context
     ): Promise<model.ServicePrincipal> {
@@ -229,12 +290,21 @@ export class AccountServicePrincipalsService {
     }
 
     /**
-     * List service principals.
+     * Get service principal details.
      *
-     * Gets the set of service principals associated with a Databricks Account.
+     * Gets the details for a single service principal define in the Databricks
+     * Account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetServicePrincipalRequest,
+        @context context?: Context
+    ): Promise<model.ServicePrincipal> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListServicePrincipalsRequest,
         @context context?: Context
     ): Promise<model.ListServicePrincipalResponse> {
@@ -248,6 +318,33 @@ export class AccountServicePrincipalsService {
     }
 
     /**
+     * List service principals.
+     *
+     * Gets the set of service principals associated with a Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListServicePrincipalsRequest,
+        @context context?: Context
+    ): Promise<model.ListServicePrincipalResponse> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _patch(
+        request: model.PartialUpdate,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Update service principal details.
      *
      * Partially updates the details of a single service principal in the
@@ -258,10 +355,18 @@ export class AccountServicePrincipalsService {
         request: model.PartialUpdate,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._patch(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.ServicePrincipal,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
-            "PATCH",
+            "PUT",
             request,
             context
         )) as model.EmptyResponse;
@@ -279,13 +384,7 @@ export class AccountServicePrincipalsService {
         request: model.ServicePrincipal,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -315,14 +414,9 @@ export class AccountUsersError extends ApiError {
  */
 export class AccountUsersService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a new user.
-     *
-     * Creates a new user in the Databricks Account. This new user will also be
-     * added to the Databricks account.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.User,
         @context context?: Context
     ): Promise<model.User> {
@@ -336,13 +430,21 @@ export class AccountUsersService {
     }
 
     /**
-     * Delete a user.
+     * Create a new user.
      *
-     * Deletes a user. Deleting a user from a Databricks Account also removes
-     * objects associated with the user.
+     * Creates a new user in the Databricks Account. This new user will also be
+     * added to the Databricks account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.User,
+        @context context?: Context
+    ): Promise<model.User> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteUserRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -356,12 +458,21 @@ export class AccountUsersService {
     }
 
     /**
-     * Get user details.
+     * Delete a user.
      *
-     * Gets information for a specific user in Databricks Account.
+     * Deletes a user. Deleting a user from a Databricks Account also removes
+     * objects associated with the user.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteUserRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetUserRequest,
         @context context?: Context
     ): Promise<model.User> {
@@ -375,12 +486,20 @@ export class AccountUsersService {
     }
 
     /**
-     * List users.
+     * Get user details.
      *
-     * Gets details for all the users associated with a Databricks Account.
+     * Gets information for a specific user in Databricks Account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetUserRequest,
+        @context context?: Context
+    ): Promise<model.User> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListUsersRequest,
         @context context?: Context
     ): Promise<model.ListUsersResponse> {
@@ -394,6 +513,33 @@ export class AccountUsersService {
     }
 
     /**
+     * List users.
+     *
+     * Gets details for all the users associated with a Databricks Account.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListUsersRequest,
+        @context context?: Context
+    ): Promise<model.ListUsersResponse> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _patch(
+        request: model.PartialUpdate,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Update user details.
      *
      * Partially updates a user resource by applying the supplied operations on
@@ -404,10 +550,18 @@ export class AccountUsersService {
         request: model.PartialUpdate,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._patch(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.User,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
-            "PATCH",
+            "PUT",
             request,
             context
         )) as model.EmptyResponse;
@@ -423,13 +577,7 @@ export class AccountUsersService {
         request: model.User,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -450,13 +598,9 @@ export class CurrentUserError extends ApiError {
  */
 export class CurrentUserService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Get current user info.
-     *
-     * Get details about the current method caller's identity.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async me(@context context?: Context): Promise<model.User> {
+    private async _me(@context context?: Context): Promise<model.User> {
         const path = "/api/2.0/preview/scim/v2/Me";
         return (await this.client.request(
             path,
@@ -464,6 +608,16 @@ export class CurrentUserService {
             undefined,
             context
         )) as model.User;
+    }
+
+    /**
+     * Get current user info.
+     *
+     * Get details about the current method caller's identity.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async me(@context context?: Context): Promise<model.User> {
+        return await this._me(context);
     }
 }
 
@@ -489,14 +643,9 @@ export class GroupsError extends ApiError {
  */
 export class GroupsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a new group.
-     *
-     * Creates a group in the Databricks Workspace with a unique name, using the
-     * supplied group details.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.Group,
         @context context?: Context
     ): Promise<model.Group> {
@@ -510,12 +659,21 @@ export class GroupsService {
     }
 
     /**
-     * Delete a group.
+     * Create a new group.
      *
-     * Deletes a group from the Databricks Workspace.
+     * Creates a group in the Databricks Workspace with a unique name, using the
+     * supplied group details.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.Group,
+        @context context?: Context
+    ): Promise<model.Group> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteGroupRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -529,12 +687,20 @@ export class GroupsService {
     }
 
     /**
-     * Get group details.
+     * Delete a group.
      *
-     * Gets the information for a specific group in the Databricks Workspace.
+     * Deletes a group from the Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteGroupRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetGroupRequest,
         @context context?: Context
     ): Promise<model.Group> {
@@ -548,12 +714,20 @@ export class GroupsService {
     }
 
     /**
-     * List group details.
+     * Get group details.
      *
-     * Gets all details of the groups associated with the Databricks Workspace.
+     * Gets the information for a specific group in the Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetGroupRequest,
+        @context context?: Context
+    ): Promise<model.Group> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListGroupsRequest,
         @context context?: Context
     ): Promise<model.ListGroupsResponse> {
@@ -567,6 +741,33 @@ export class GroupsService {
     }
 
     /**
+     * List group details.
+     *
+     * Gets all details of the groups associated with the Databricks Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListGroupsRequest,
+        @context context?: Context
+    ): Promise<model.ListGroupsResponse> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _patch(
+        request: model.PartialUpdate,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Update group details.
      *
      * Partially updates the details of a group.
@@ -576,10 +777,18 @@ export class GroupsService {
         request: model.PartialUpdate,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._patch(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.Group,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
-            "PATCH",
+            "PUT",
             request,
             context
         )) as model.EmptyResponse;
@@ -595,13 +804,7 @@ export class GroupsService {
         request: model.Group,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/preview/scim/v2/Groups/${request.id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -626,13 +829,9 @@ export class ServicePrincipalsError extends ApiError {
  */
 export class ServicePrincipalsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a service principal.
-     *
-     * Creates a new service principal in the Databricks Workspace.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.ServicePrincipal,
         @context context?: Context
     ): Promise<model.ServicePrincipal> {
@@ -646,12 +845,20 @@ export class ServicePrincipalsService {
     }
 
     /**
-     * Delete a service principal.
+     * Create a service principal.
      *
-     * Delete a single service principal in the Databricks Workspace.
+     * Creates a new service principal in the Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.ServicePrincipal,
+        @context context?: Context
+    ): Promise<model.ServicePrincipal> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteServicePrincipalRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -665,13 +872,20 @@ export class ServicePrincipalsService {
     }
 
     /**
-     * Get service principal details.
+     * Delete a service principal.
      *
-     * Gets the details for a single service principal define in the Databricks
-     * Workspace.
+     * Delete a single service principal in the Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteServicePrincipalRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetServicePrincipalRequest,
         @context context?: Context
     ): Promise<model.ServicePrincipal> {
@@ -685,12 +899,21 @@ export class ServicePrincipalsService {
     }
 
     /**
-     * List service principals.
+     * Get service principal details.
      *
-     * Gets the set of service principals associated with a Databricks Workspace.
+     * Gets the details for a single service principal define in the Databricks
+     * Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetServicePrincipalRequest,
+        @context context?: Context
+    ): Promise<model.ServicePrincipal> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListServicePrincipalsRequest,
         @context context?: Context
     ): Promise<model.ListServicePrincipalResponse> {
@@ -704,6 +927,33 @@ export class ServicePrincipalsService {
     }
 
     /**
+     * List service principals.
+     *
+     * Gets the set of service principals associated with a Databricks Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListServicePrincipalsRequest,
+        @context context?: Context
+    ): Promise<model.ListServicePrincipalResponse> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _patch(
+        request: model.PartialUpdate,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Update service principal details.
      *
      * Partially updates the details of a single service principal in the
@@ -714,10 +964,18 @@ export class ServicePrincipalsService {
         request: model.PartialUpdate,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._patch(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.ServicePrincipal,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
-            "PATCH",
+            "PUT",
             request,
             context
         )) as model.EmptyResponse;
@@ -735,13 +993,7 @@ export class ServicePrincipalsService {
         request: model.ServicePrincipal,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/preview/scim/v2/ServicePrincipals/${request.id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -771,14 +1023,9 @@ export class UsersError extends ApiError {
  */
 export class UsersService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a new user.
-     *
-     * Creates a new user in the Databricks Workspace. This new user will also be
-     * added to the Databricks account.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.User,
         @context context?: Context
     ): Promise<model.User> {
@@ -792,13 +1039,21 @@ export class UsersService {
     }
 
     /**
-     * Delete a user.
+     * Create a new user.
      *
-     * Deletes a user. Deleting a user from a Databricks Workspace also removes
-     * objects associated with the user.
+     * Creates a new user in the Databricks Workspace. This new user will also be
+     * added to the Databricks account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.User,
+        @context context?: Context
+    ): Promise<model.User> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteUserRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -812,12 +1067,21 @@ export class UsersService {
     }
 
     /**
-     * Get user details.
+     * Delete a user.
      *
-     * Gets information for a specific user in Databricks Workspace.
+     * Deletes a user. Deleting a user from a Databricks Workspace also removes
+     * objects associated with the user.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteUserRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetUserRequest,
         @context context?: Context
     ): Promise<model.User> {
@@ -831,12 +1095,20 @@ export class UsersService {
     }
 
     /**
-     * List users.
+     * Get user details.
      *
-     * Gets details for all the users associated with a Databricks Workspace.
+     * Gets information for a specific user in Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetUserRequest,
+        @context context?: Context
+    ): Promise<model.User> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListUsersRequest,
         @context context?: Context
     ): Promise<model.ListUsersResponse> {
@@ -850,6 +1122,33 @@ export class UsersService {
     }
 
     /**
+     * List users.
+     *
+     * Gets details for all the users associated with a Databricks Workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListUsersRequest,
+        @context context?: Context
+    ): Promise<model.ListUsersResponse> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _patch(
+        request: model.PartialUpdate,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Update user details.
      *
      * Partially updates a user resource by applying the supplied operations on
@@ -860,10 +1159,18 @@ export class UsersService {
         request: model.PartialUpdate,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._patch(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.User,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
-            "PATCH",
+            "PUT",
             request,
             context
         )) as model.EmptyResponse;
@@ -879,12 +1186,6 @@ export class UsersService {
         request: model.User,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/preview/scim/v2/Users/${request.id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
