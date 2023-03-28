@@ -15,6 +15,71 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@azure/abort-controller@npm:^1.0.0":
+  version: 1.1.0
+  resolution: "@azure/abort-controller@npm:1.1.0"
+  dependencies:
+    tslib: ^2.2.0
+  checksum: 0f45e504d4aea799486867179afe7589255f6c111951279958e9d0aa5faebb2c96b8f88e3e3c958ce07b02bcba0b0cddb1bbec94705f573a48ecdb93eec1a92a
+  languageName: node
+  linkType: hard
+
+"@azure/core-auth@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "@azure/core-auth@npm:1.4.0"
+  dependencies:
+    "@azure/abort-controller": ^1.0.0
+    tslib: ^2.2.0
+  checksum: 1c76c296fe911ad39fc780b033c25a92c41c5a15f011b816d42c13584f627a4dd153dfb4334900ec93eb5b006e14bdda37e8412a7697c5a9636a0abaccffad39
+  languageName: node
+  linkType: hard
+
+"@azure/core-rest-pipeline@npm:^1.10.0":
+  version: 1.10.2
+  resolution: "@azure/core-rest-pipeline@npm:1.10.2"
+  dependencies:
+    "@azure/abort-controller": ^1.0.0
+    "@azure/core-auth": ^1.4.0
+    "@azure/core-tracing": ^1.0.1
+    "@azure/core-util": ^1.0.0
+    "@azure/logger": ^1.0.0
+    form-data: ^4.0.0
+    http-proxy-agent: ^5.0.0
+    https-proxy-agent: ^5.0.0
+    tslib: ^2.2.0
+    uuid: ^8.3.0
+  checksum: 2f8af40fedf06d4c6f4bb9a337a6c6bbb93baa0585e57c8a10044c0ee811e6b4a7fcf053a7e620decaa39ee2d7de6c053ab7d825566c0a5eda37c814a55fac49
+  languageName: node
+  linkType: hard
+
+"@azure/core-tracing@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "@azure/core-tracing@npm:1.0.1"
+  dependencies:
+    tslib: ^2.2.0
+  checksum: ae4309f8ab0b52c37f699594d58ee095782649f538bd6a0ee03e3fea042f55df7ad95c2e6dec22f5b8c3907e4bcf98d6ca98faaf480d446b73d41bbc1519d891
+  languageName: node
+  linkType: hard
+
+"@azure/core-util@npm:^1.0.0":
+  version: 1.2.0
+  resolution: "@azure/core-util@npm:1.2.0"
+  dependencies:
+    "@azure/abort-controller": ^1.0.0
+    tslib: ^2.2.0
+  checksum: 58c7e3c9e9fda27242c1ab1dbfcf11eab52cc3e6459a2509fa5572a3faebf3f24c6bf9d92883cd80974119fc1e2c16c7bd2c71f20cfbe670405515c73fdb4093
+  languageName: node
+  linkType: hard
+
+"@azure/logger@npm:^1.0.0":
+  version: 1.0.4
+  resolution: "@azure/logger@npm:1.0.4"
+  dependencies:
+    tslib: ^2.2.0
+  checksum: 2c243d4c667bbc5cd3e60d4473d0f1169fcef2498a02138398af15547fe1b2870197bcb4c487327451488e4d71dee05244771d51328f03611e193b99fb9aa9af
+  languageName: node
+  linkType: hard
+
 "@babel/code-frame@npm:^7.0.0, @babel/code-frame@npm:^7.12.13, @babel/code-frame@npm:^7.18.6":
   version: 7.18.6
   resolution: "@babel/code-frame@npm:7.18.6"
@@ -315,6 +380,7 @@ __metadata:
   dependencies:
     "@typescript-eslint/eslint-plugin": ^5.48.1
     "@typescript-eslint/parser": ^5.48.1
+    "@vscode/extension-telemetry": ^0.7.7
     conventional-changelog-cli: ^2.2.2
     eslint: ^8.31.0
     eslint-config-prettier: ^8.6.0
@@ -800,6 +866,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@microsoft/1ds-core-js@npm:3.2.9, @microsoft/1ds-core-js@npm:^3.2.9":
+  version: 3.2.9
+  resolution: "@microsoft/1ds-core-js@npm:3.2.9"
+  dependencies:
+    "@microsoft/applicationinsights-core-js": 2.8.10
+    "@microsoft/applicationinsights-shims": ^2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  checksum: a48ceee255ac22a571cb612d11d61eacab95e9932ba0361b3b3e205c0ceda4c262e9c4b602732627050de0b9663ef9cc2f22ef281b9a615844b4f4146157a034
+  languageName: node
+  linkType: hard
+
 "@microsoft/1ds-post-js@npm:^3.2.3":
   version: 3.2.8
   resolution: "@microsoft/1ds-post-js@npm:3.2.8"
@@ -808,6 +885,68 @@ __metadata:
     "@microsoft/applicationinsights-shims": ^2.0.2
     "@microsoft/dynamicproto-js": ^1.1.7
   checksum: 0e2d07876eb7390f091231795c15893011a0ca587b3363034f8938c6174d122491502dc9e1b9bde127d25028e1e48ab7253cf2970cab795a208718f3e355a197
+  languageName: node
+  linkType: hard
+
+"@microsoft/1ds-post-js@npm:^3.2.9":
+  version: 3.2.9
+  resolution: "@microsoft/1ds-post-js@npm:3.2.9"
+  dependencies:
+    "@microsoft/1ds-core-js": 3.2.9
+    "@microsoft/applicationinsights-shims": ^2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  checksum: ad4429a22712efbe78e23049b01581de2fe3cd676d4faa6a422c9ba156165b3cb9fe6a0c9472b39b4e0c34235fe39eb1d3b5d1d556e26fa0e090fea3c6566f7f
+  languageName: node
+  linkType: hard
+
+"@microsoft/applicationinsights-channel-js@npm:2.8.11":
+  version: 2.8.11
+  resolution: "@microsoft/applicationinsights-channel-js@npm:2.8.11"
+  dependencies:
+    "@microsoft/applicationinsights-common": 2.8.11
+    "@microsoft/applicationinsights-core-js": 2.8.11
+    "@microsoft/applicationinsights-shims": 2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  peerDependencies:
+    tslib: "*"
+  checksum: 31d2ffc2e2c10c7a4fc852fe47a40caad0e9e13e3682dfb996a6439ff20c62d5e282d9bdf48886917b6fe5178765e29f1bcaa85fa5d53a485b161d3697534007
+  languageName: node
+  linkType: hard
+
+"@microsoft/applicationinsights-common@npm:2.8.11":
+  version: 2.8.11
+  resolution: "@microsoft/applicationinsights-common@npm:2.8.11"
+  dependencies:
+    "@microsoft/applicationinsights-core-js": 2.8.11
+    "@microsoft/applicationinsights-shims": 2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  peerDependencies:
+    tslib: "*"
+  checksum: aa2792def72467adceec37716baecf473e29df23611994f960a99881b2976e3a48e4a4198cb500899ece078530cea7861a05b0d8844ea5e5139db63f6aa02a59
+  languageName: node
+  linkType: hard
+
+"@microsoft/applicationinsights-core-js@npm:2.8.10":
+  version: 2.8.10
+  resolution: "@microsoft/applicationinsights-core-js@npm:2.8.10"
+  dependencies:
+    "@microsoft/applicationinsights-shims": 2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  peerDependencies:
+    tslib: "*"
+  checksum: 572d14c9e1fef231117cad077d13edf720b65c4a6475e1f6ff7511143b8e7b7e86602f9ba39ebc170b923fe24986da577cc51ab7d0547d4b741c5e817d9f4f6d
+  languageName: node
+  linkType: hard
+
+"@microsoft/applicationinsights-core-js@npm:2.8.11":
+  version: 2.8.11
+  resolution: "@microsoft/applicationinsights-core-js@npm:2.8.11"
+  dependencies:
+    "@microsoft/applicationinsights-shims": 2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  peerDependencies:
+    tslib: "*"
+  checksum: 4ce1633b777f94fdcc42b849dfdd60c2e631ffb426efd34305f09c173c2e1c431b6f9f10691ca5bb830ede46bee7583f33b139a617e13ee098fe967e701541d9
   languageName: node
   linkType: hard
 
@@ -827,6 +966,28 @@ __metadata:
   version: 2.0.2
   resolution: "@microsoft/applicationinsights-shims@npm:2.0.2"
   checksum: 838e1b6620a12b475db9d39213d5ad64f4b63f9293c62e1ff55a9422a2ec3516ec69d98acb592274fcbbcd6508e1a00b6631c4e68dea8372d18f24a62b805c2f
+  languageName: node
+  linkType: hard
+
+"@microsoft/applicationinsights-web-basic@npm:^2.8.11":
+  version: 2.8.11
+  resolution: "@microsoft/applicationinsights-web-basic@npm:2.8.11"
+  dependencies:
+    "@microsoft/applicationinsights-channel-js": 2.8.11
+    "@microsoft/applicationinsights-common": 2.8.11
+    "@microsoft/applicationinsights-core-js": 2.8.11
+    "@microsoft/applicationinsights-shims": 2.0.2
+    "@microsoft/dynamicproto-js": ^1.1.7
+  peerDependencies:
+    tslib: "*"
+  checksum: 7aa3d8d18960605921f73c736863c9568b552487ea5972c4df4a52f5959467ad3b2b744f62016d6f7fd323f85a6d63b1ffa706a56774a423dc4a724896fdd52d
+  languageName: node
+  linkType: hard
+
+"@microsoft/applicationinsights-web-snippet@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "@microsoft/applicationinsights-web-snippet@npm:1.0.1"
+  checksum: e4e723031ce8fd9b21e0b52467ddc13f8f30e0ce3ec54b9f9f0946f9e2826050b97803f60322be3676218e77fff7234679cc488ee122e689f487bb2073cd95b4
   languageName: node
   linkType: hard
 
@@ -921,6 +1082,56 @@ __metadata:
     mkdirp: ^1.0.4
     rimraf: ^3.0.2
   checksum: 52dc02259d98da517fae4cb3a0a3850227bdae4939dda1980b788a7670636ca2b4a01b58df03dd5f65c1e3cb70c50fa8ce5762b582b3f499ec30ee5ce1fd9380
+  languageName: node
+  linkType: hard
+
+"@opentelemetry/api@npm:^1.0.4":
+  version: 1.4.1
+  resolution: "@opentelemetry/api@npm:1.4.1"
+  checksum: e783c40d1a518abf9c4c5d65223237c1392cd9a6c53ac6e2c3ef0c05ff7266e3dfc4fd9874316dae0dcb7a97950878deb513bcbadfaad653d48f0215f2a0911b
+  languageName: node
+  linkType: hard
+
+"@opentelemetry/core@npm:1.10.1, @opentelemetry/core@npm:^1.0.1":
+  version: 1.10.1
+  resolution: "@opentelemetry/core@npm:1.10.1"
+  dependencies:
+    "@opentelemetry/semantic-conventions": 1.10.1
+  peerDependencies:
+    "@opentelemetry/api": ">=1.0.0 <1.5.0"
+  checksum: 31e3c803e9b5e72e1284da4a9672f95661978da166a16ce9329f4eb99373e253051910bd3053c9a4e8cc40de046139d2218f323ed64347528df9f55e69ed2c0b
+  languageName: node
+  linkType: hard
+
+"@opentelemetry/resources@npm:1.10.1":
+  version: 1.10.1
+  resolution: "@opentelemetry/resources@npm:1.10.1"
+  dependencies:
+    "@opentelemetry/core": 1.10.1
+    "@opentelemetry/semantic-conventions": 1.10.1
+  peerDependencies:
+    "@opentelemetry/api": ">=1.0.0 <1.5.0"
+  checksum: bb18faa79d14e01e99a91ac46be9e319c03d9277c8c6dee0d1e1eb4ce3c8dea31016555a4b5b87524e08e72101ae1ba8bb1d1006766604b3d00c062b1ae69d53
+  languageName: node
+  linkType: hard
+
+"@opentelemetry/sdk-trace-base@npm:^1.0.1":
+  version: 1.10.1
+  resolution: "@opentelemetry/sdk-trace-base@npm:1.10.1"
+  dependencies:
+    "@opentelemetry/core": 1.10.1
+    "@opentelemetry/resources": 1.10.1
+    "@opentelemetry/semantic-conventions": 1.10.1
+  peerDependencies:
+    "@opentelemetry/api": ">=1.0.0 <1.5.0"
+  checksum: 3c04db0eba764af5129985ad7d7bdfb8b9f4787754c3715854914519259ff5858bba9630e0b7a1dc3489d147d9fa58b29a7682f4fc5321f4fb25607e876ba036
+  languageName: node
+  linkType: hard
+
+"@opentelemetry/semantic-conventions@npm:1.10.1, @opentelemetry/semantic-conventions@npm:^1.0.1":
+  version: 1.10.1
+  resolution: "@opentelemetry/semantic-conventions@npm:1.10.1"
+  checksum: 3a4b2a7affab945e6dcbb0430b3b6d1a31d02ce9d7152ecb1e3cfa709ed5439c7014621277ccdbde0bebd38a6e8951c2df593253f0d953bc6af22965fad188d5
   languageName: node
   linkType: hard
 
@@ -1552,6 +1763,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@vscode/extension-telemetry@npm:^0.7.7":
+  version: 0.7.7
+  resolution: "@vscode/extension-telemetry@npm:0.7.7"
+  dependencies:
+    "@microsoft/1ds-core-js": ^3.2.9
+    "@microsoft/1ds-post-js": ^3.2.9
+    "@microsoft/applicationinsights-web-basic": ^2.8.11
+    applicationinsights: 2.5.0
+  checksum: 2d330858252871ad8f7670f5719eac8327d8e90ae81f9a66b02f159d27e95922a10e0a7bbfaff2193562e682783c27518694393f47fe35c87ba80a4d5b8608a0
+  languageName: node
+  linkType: hard
+
 "@vscode/test-electron@npm:^2.2.0":
   version: 2.2.1
   resolution: "@vscode/test-electron@npm:2.2.1"
@@ -2040,6 +2263,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"applicationinsights@npm:2.5.0":
+  version: 2.5.0
+  resolution: "applicationinsights@npm:2.5.0"
+  dependencies:
+    "@azure/core-auth": ^1.4.0
+    "@azure/core-rest-pipeline": ^1.10.0
+    "@microsoft/applicationinsights-web-snippet": ^1.0.1
+    "@opentelemetry/api": ^1.0.4
+    "@opentelemetry/core": ^1.0.1
+    "@opentelemetry/sdk-trace-base": ^1.0.1
+    "@opentelemetry/semantic-conventions": ^1.0.1
+    cls-hooked: ^4.2.2
+    continuation-local-storage: ^3.2.1
+    diagnostic-channel: 1.1.0
+    diagnostic-channel-publishers: 1.0.5
+  peerDependencies:
+    applicationinsights-native-metrics: "*"
+  peerDependenciesMeta:
+    applicationinsights-native-metrics:
+      optional: true
+  checksum: 992cc49a659598cfb76313dda4449902ef14f7d54d0f7b7530ad247535dd613f063c097f0b13735bb22c42c15d37ff727fa642f013916cd707b251825921f955
+  languageName: node
+  linkType: hard
+
 "aproba@npm:^1.0.3 || ^2.0.0":
   version: 2.0.0
   resolution: "aproba@npm:2.0.0"
@@ -2173,10 +2420,36 @@ __metadata:
   languageName: node
   linkType: hard
 
+"async-hook-jl@npm:^1.7.6":
+  version: 1.7.6
+  resolution: "async-hook-jl@npm:1.7.6"
+  dependencies:
+    stack-chain: ^1.3.7
+  checksum: f84421c83ad5bc4e54a3a6ad7be4fb911840a17c01e5ee3f8e4e9cd077a42c7bc206dbc6b36d52eaca5fa37f16a15f83d63135976cf3e17d5bdc2824f6002705
+  languageName: node
+  linkType: hard
+
+"async-listener@npm:^0.6.0":
+  version: 0.6.10
+  resolution: "async-listener@npm:0.6.10"
+  dependencies:
+    semver: ^5.3.0
+    shimmer: ^1.1.0
+  checksum: f64cb835ad1a07d4ee800df6c1532f2a4f99e1c2a11da8e83c1bd4452bc01729a85552377bc120f144abc17be6c0bd0f740ebedfdf4b79ebd18844a51e307326
+  languageName: node
+  linkType: hard
+
 "async@npm:^3.2.3":
   version: 3.2.4
   resolution: "async@npm:3.2.4"
   checksum: 43d07459a4e1d09b84a20772414aa684ff4de085cbcaec6eea3c7a8f8150e8c62aa6cd4e699fe8ee93c3a5b324e777d34642531875a0817a35697522c1b02e89
+  languageName: node
+  linkType: hard
+
+"asynckit@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "asynckit@npm:0.4.0"
+  checksum: 7b78c451df768adba04e2d02e63e2d0bf3b07adcd6e42b4cf665cb7ce899bedd344c69a1dcbce355b5f972d597b25aaa1c1742b52cffd9caccb22f348114f6be
   languageName: node
   linkType: hard
 
@@ -2804,6 +3077,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cls-hooked@npm:^4.2.2":
+  version: 4.2.2
+  resolution: "cls-hooked@npm:4.2.2"
+  dependencies:
+    async-hook-jl: ^1.7.6
+    emitter-listener: ^1.0.1
+    semver: ^5.4.1
+  checksum: 3a8a4e30b03a81ec275eb9c079c49d4497013e7fa36259e86c9b6aff7990e85eebbc97552ed8a035c19403f0b825000df9bada5c1c0ac7cf1b2506c3a903df60
+  languageName: node
+  linkType: hard
+
 "color-convert@npm:^1.9.0, color-convert@npm:^1.9.3":
   version: 1.9.3
   resolution: "color-convert@npm:1.9.3"
@@ -2872,6 +3156,15 @@ __metadata:
     color: ^3.1.3
     text-hex: 1.0.x
   checksum: bb3934ef3c417e961e6d03d7ca60ea6e175947029bfadfcdb65109b01881a1c0ecf9c2b0b59abcd0ee4a0d7c1eae93beed01b0e65848936472270a0b341ebce8
+  languageName: node
+  linkType: hard
+
+"combined-stream@npm:^1.0.8":
+  version: 1.0.8
+  resolution: "combined-stream@npm:1.0.8"
+  dependencies:
+    delayed-stream: ~1.0.0
+  checksum: 49fa4aeb4916567e33ea81d088f6584749fc90c7abec76fd516bf1c5aa5c79f3584b5ba3de6b86d26ddd64bae5329c4c7479343250cfe71c75bb366eae53bb7c
   languageName: node
   linkType: hard
 
@@ -2945,6 +3238,16 @@ __metadata:
   version: 1.0.4
   resolution: "content-type@npm:1.0.4"
   checksum: 3d93585fda985d1554eca5ebd251994327608d2e200978fdbfba21c0c679914d5faf266d17027de44b34a72c7b0745b18584ecccaa7e1fdfb6a68ac7114f12e0
+  languageName: node
+  linkType: hard
+
+"continuation-local-storage@npm:^3.2.1":
+  version: 3.2.1
+  resolution: "continuation-local-storage@npm:3.2.1"
+  dependencies:
+    async-listener: ^0.6.0
+    emitter-listener: ^1.1.1
+  checksum: 5ac1dcf354563a7121fc1653676ed8dda93565c469698dd7454c3485d9e2c3ca61347d754d02179d13d9e51665d23fffe6bf9e53e89a1865a0c5530384258c2f
   languageName: node
   linkType: hard
 
@@ -3577,6 +3880,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"delayed-stream@npm:~1.0.0":
+  version: 1.0.0
+  resolution: "delayed-stream@npm:1.0.0"
+  checksum: 46fe6e83e2cb1d85ba50bd52803c68be9bd953282fa7096f51fc29edd5d67ff84ff753c51966061e5ba7cb5e47ef6d36a91924eddb7f3f3483b1c560f77a0020
+  languageName: node
+  linkType: hard
+
 "delegates@npm:^1.0.0":
   version: 1.0.0
   resolution: "delegates@npm:1.0.0"
@@ -3637,6 +3947,24 @@ __metadata:
     ua-parser-js: ^1.0.1
     uuid: ^9.0.0
   checksum: 6824107ba60c0e14d2629e4ffb38bd5e6498d99519753c6ab913c4a76867e55de75ba37b3790b93a648b62b91e00b6d0243f85ce1190947dace02e749e2e9881
+  languageName: node
+  linkType: hard
+
+"diagnostic-channel-publishers@npm:1.0.5":
+  version: 1.0.5
+  resolution: "diagnostic-channel-publishers@npm:1.0.5"
+  peerDependencies:
+    diagnostic-channel: "*"
+  checksum: dd8c80b6826f11aa9c4db0b092d6eb72693e527b88f4c7f8f5d6a7f52e0b2e1ed2f635f640cf87ca6f6f9edb9126f908dc553725d85445143fdae1f73eb9ab53
+  languageName: node
+  linkType: hard
+
+"diagnostic-channel@npm:1.1.0":
+  version: 1.1.0
+  resolution: "diagnostic-channel@npm:1.1.0"
+  dependencies:
+    semver: ^5.3.0
+  checksum: 4298b83d556d45fd411279ca6fb8b05bf73552a8a46ae8d72b2624e3ce3131ce40aedddd8f37633485944776299e4b7dec4e9e267246ff0f97654a36f4272656
   languageName: node
   linkType: hard
 
@@ -3820,6 +4148,15 @@ __metadata:
   version: 1.4.284
   resolution: "electron-to-chromium@npm:1.4.284"
   checksum: be496e9dca6509dbdbb54dc32146fc99f8eb716d28a7ee8ccd3eba0066561df36fc51418d8bd7cf5a5891810bf56c0def3418e74248f51ea4a843d423603d10a
+  languageName: node
+  linkType: hard
+
+"emitter-listener@npm:^1.0.1, emitter-listener@npm:^1.1.1":
+  version: 1.1.2
+  resolution: "emitter-listener@npm:1.1.2"
+  dependencies:
+    shimmer: ^1.2.0
+  checksum: 05166bad42a27e51a765ebac3b7d26ac111564fc2d36443cd819f95ef88ea1b9ba6f2895becbcea36f8009890a2a8cb7c36eb9e776d4978e370bd33cb0a181e8
   languageName: node
   linkType: hard
 
@@ -4690,6 +5027,17 @@ __metadata:
     cross-spawn: ^7.0.0
     signal-exit: ^3.0.2
   checksum: f77ec9aff621abd6b754cb59e690743e7639328301fbea6ff09df27d2befaf7dd5b77cec51c32323d73a81a7d91caaf9413990d305cbe3d873eec4fe58960956
+  languageName: node
+  linkType: hard
+
+"form-data@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "form-data@npm:4.0.0"
+  dependencies:
+    asynckit: ^0.4.0
+    combined-stream: ^1.0.8
+    mime-types: ^2.1.12
+  checksum: 01135bf8675f9d5c61ff18e2e2932f719ca4de964e3be90ef4c36aacfc7b9cb2fceb5eca0b7e0190e3383fe51c5b37f4cb80b62ca06a99aaabfcfd6ac7c9328c
   languageName: node
   linkType: hard
 
@@ -6752,10 +7100,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mime-db@npm:^1.28.0":
+"mime-db@npm:1.52.0, mime-db@npm:^1.28.0":
   version: 1.52.0
   resolution: "mime-db@npm:1.52.0"
   checksum: 0d99a03585f8b39d68182803b12ac601d9c01abfa28ec56204fa330bc9f3d1c5e14beb049bafadb3dbdf646dfb94b87e24d4ec7b31b7279ef906a8ea9b6a513f
+  languageName: node
+  linkType: hard
+
+"mime-types@npm:^2.1.12":
+  version: 2.1.35
+  resolution: "mime-types@npm:2.1.35"
+  dependencies:
+    mime-db: 1.52.0
+  checksum: 89a5b7f1def9f3af5dad6496c5ed50191ae4331cc5389d7c521c8ad28d5fdad2d06fd81baf38fed813dc4e46bb55c8145bb0ff406330818c9cf712fb2e9b3836
   languageName: node
   linkType: hard
 
@@ -8535,7 +8892,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:2 || 3 || 4 || 5, semver@npm:^5.1.0, semver@npm:^5.5.0, semver@npm:^5.6.0":
+"semver@npm:2 || 3 || 4 || 5, semver@npm:^5.1.0, semver@npm:^5.3.0, semver@npm:^5.4.1, semver@npm:^5.5.0, semver@npm:^5.6.0":
   version: 5.7.1
   resolution: "semver@npm:5.7.1"
   bin:
@@ -8660,6 +9017,13 @@ __metadata:
   version: 3.0.0
   resolution: "shebang-regex@npm:3.0.0"
   checksum: 1a2bcae50de99034fcd92ad4212d8e01eedf52c7ec7830eedcf886622804fe36884278f2be8be0ea5fde3fd1c23911643a4e0f726c8685b61871c8908af01222
+  languageName: node
+  linkType: hard
+
+"shimmer@npm:^1.1.0, shimmer@npm:^1.2.0":
+  version: 1.2.1
+  resolution: "shimmer@npm:1.2.1"
+  checksum: aa0d6252ad1c682a4fdfda69e541be987f7a265ac7b00b1208e5e48cc68dc55f293955346ea4c71a169b7324b82c70f8400b3d3d2d60b2a7519f0a3522423250
   languageName: node
   linkType: hard
 
@@ -8883,6 +9247,13 @@ __metadata:
   dependencies:
     minipass: ^3.1.1
   checksum: fb58f5e46b6923ae67b87ad5ef1c5ab6d427a17db0bead84570c2df3cd50b4ceb880ebdba2d60726588272890bae842a744e1ecce5bd2a2a582fccd5068309eb
+  languageName: node
+  linkType: hard
+
+"stack-chain@npm:^1.3.7":
+  version: 1.3.7
+  resolution: "stack-chain@npm:1.3.7"
+  checksum: c2428e794a60e1f8e3b66898657d10b81ea18eefd0842d65f18bad6f53fbca597075079bbda8df5b409aebb82d2055bf9c4a8d439df18c554756ead197fc2260
   languageName: node
   linkType: hard
 
@@ -9487,6 +9858,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tslib@npm:^2.2.0":
+  version: 2.5.0
+  resolution: "tslib@npm:2.5.0"
+  checksum: ae3ed5f9ce29932d049908ebfdf21b3a003a85653a9a140d614da6b767a93ef94f460e52c3d787f0e4f383546981713f165037dc2274df212ea9f8a4541004e1
+  languageName: node
+  linkType: hard
+
 "tsutils@npm:^3.21.0":
   version: 3.21.0
   resolution: "tsutils@npm:3.21.0"
@@ -9766,7 +10144,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uuid@npm:^8.3.2":
+"uuid@npm:^8.3.0, uuid@npm:^8.3.2":
   version: 8.3.2
   resolution: "uuid@npm:8.3.2"
   bin:

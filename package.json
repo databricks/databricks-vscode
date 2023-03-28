@@ -43,5 +43,8 @@
     },
     "resolutions": {
         "json5": "2.2.2"
+    },
+    "dependencies": {
+        "@vscode/extension-telemetry": "^0.7.7"
     }
 }
