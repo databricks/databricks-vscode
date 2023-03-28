@@ -88,12 +88,7 @@ export async function activate(
     NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,
     });
-    const reporter = new TelemetryReporter(
-        packageMetadata.packageName,
-        packageMetadata.version,
-        "dc4ec136-d862-4379-8d5f-b1746222d7f5",
-        false
-    )
+    const reporter = new TelemetryReporter("dc4ec136-d862-4379-8d5f-b1746222d7f5");
     function registerCommand(
         command: string,
         callback: (...args: any[]) => any,
