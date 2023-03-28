@@ -337,15 +337,18 @@ export class ConnectionManager {
         skipWrite = false
     ): Promise<void> {
         try {
-            if (this.cluster === cluster) {
-                return;
-            }
-
             if (typeof cluster === "string") {
                 cluster = await Cluster.fromClusterId(
                     this._workspaceClient!.apiClient,
                     cluster
                 );
+            }
+
+            if (
+                JSON.stringify(this.cluster?.details) ===
+                JSON.stringify(cluster.details)
+            ) {
+                return;
             }
 
             if (!skipWrite) {
@@ -520,13 +523,13 @@ export class ConnectionManager {
     }
 
     async waitForConnect(): Promise<void> {
-        if (this._state === "CONNECTED") {
-            return;
-        } else if (this._state === "CONNECTING") {
+        if (this._state === "CONNECTING" || this._state === "DISCONNECTED") {
             return await new Promise((resolve) => {
-                const changeListener = this.onDidChangeState(() => {
-                    changeListener.dispose();
-                    resolve();
+                const changeListener = this.onDidChangeState((e) => {
+                    if (e === "CONNECTED") {
+                        changeListener.dispose();
+                        resolve();
+                    }
                 }, this);
             });
         }
