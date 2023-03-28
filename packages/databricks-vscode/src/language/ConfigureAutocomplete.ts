@@ -3,53 +3,14 @@ import {appendFile, mkdir, readdir, readFile} from "fs/promises";
 import path from "path";
 import {
     ExtensionContext,
-    extensions,
-    Uri,
     window,
-    Event,
     Disposable,
     workspace,
     ConfigurationTarget,
 } from "vscode";
 import {Loggers} from "../logger";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
-
-type Resource = Uri | undefined;
-
-// Refer https://github.com/microsoft/vscode-python/blob/main/src/client/apiTypes.ts
-interface IPythonExtension {
-    /**
-     * Return internal settings within the extension which are stored in VSCode storage
-     */
-    settings: {
-        /**
-         * An event that is emitted when execution details (for a resource) change. For instance, when interpreter configuration changes.
-         */
-        readonly onDidChangeExecutionDetails: Event<Uri | undefined>;
-        /**
-         * Returns all the details the consumer needs to execute code within the selected environment,
-         * corresponding to the specified resource taking into account any workspace-specific settings
-         * for the workspace to which this resource belongs.
-         * @param {Resource} [resource] A resource for which the setting is asked for.
-         * * When no resource is provided, the setting scoped to the first workspace folder is returned.
-         * * If no folder is present, it returns the global setting.
-         * @returns {({ execCommand: string[] | undefined })}
-         */
-        getExecutionDetails(resource?: Resource): {
-            /**
-             * E.g of execution commands returned could be,
-             * * `['<path to the interpreter set in settings>']`
-             * * `['<path to the interpreter selected by the extension when setting is not set>']`
-             * * `['conda', 'run', 'python']` which is used to run from within Conda environments.
-             * or something similar for some other Python environments.
-             *
-             * @type {(string[] | undefined)} When return value is `undefined`, it means no interpreter is set.
-             * Otherwise, join the items returned using space to construct the full execution command.
-             */
-            execCommand: string[] | undefined;
-        };
-    };
-}
+import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 
 const importString = "from databricks.sdk.runtime import *";
 
@@ -67,7 +28,8 @@ export class ConfigureAutocomplete implements Disposable {
     constructor(
         private readonly context: ExtensionContext,
         private readonly workspaceState: WorkspaceStateManager,
-        private readonly workspaceFolder: string
+        private readonly workspaceFolder: string,
+        private readonly pythonExtension: MsPythonExtensionWrapper
     ) {
         this.configure();
     }
@@ -119,16 +81,6 @@ export class ConfigureAutocomplete implements Disposable {
             return;
         }
 
-        const pythonExtension = extensions.getExtension("ms-python.python");
-        if (pythonExtension === undefined) {
-            window.showWarningMessage(
-                "VSCode Extension for Databricks requires Microsoft Python extension for providing autocompletion. Autocompletion will be disabled now."
-            );
-            return;
-        }
-        if (!pythonExtension.isActive) {
-            await pythonExtension.activate();
-        }
         /* 
             We hook into the python extension, so that whenever user changes python interpreter (or environment),
             we prompt them to go through the configuration steps again. For now this only involves installing pyspark. 
@@ -136,7 +88,7 @@ export class ConfigureAutocomplete implements Disposable {
         */
         if (!this._onPythonChangeEventListenerAdded) {
             this.disposables.push(
-                pythonExtension.exports.settings.onDidChangeExecutionDetails(
+                this.pythonExtension.onDidChangePythonExecutable(
                     () => this.configure(true),
                     this
                 )
@@ -146,11 +98,7 @@ export class ConfigureAutocomplete implements Disposable {
 
         const steps = [
             {
-                fn: async (dryRun = false) =>
-                    await this.installPyspark(
-                        pythonExtension.exports as IPythonExtension,
-                        dryRun
-                    ),
+                fn: async (dryRun = false) => await this.installPyspark(dryRun),
             },
             {
                 fn: async () => this.updateExtraPaths(),
@@ -190,15 +138,10 @@ export class ConfigureAutocomplete implements Disposable {
         }
     }
 
-    private async installPyspark(
-        pythonExtension: IPythonExtension,
-        dryRun = false
-    ): Promise<StepResult> {
-        const execCommandParts = pythonExtension.settings.getExecutionDetails(
-            workspace.workspaceFolders?.[0].uri
-        ).execCommand;
+    private async installPyspark(dryRun = false): Promise<StepResult> {
+        const executable = await this.pythonExtension.getPythonExecutable();
 
-        if (execCommandParts === undefined) {
+        if (executable === undefined) {
             return "Skip";
         }
 
@@ -220,9 +163,13 @@ export class ConfigureAutocomplete implements Disposable {
         }
 
         //TODO: Make sure that pyspark is not updated if it is already installed
-        const execCommand = execCommandParts
-            .concat(["-m", "pip", "install", "pyspark"])
-            .join(" ");
+        const execCommand = [
+            executable,
+            "-m",
+            "pip",
+            "install",
+            "pyspark",
+        ].join(" ");
 
         const terminal = window.createTerminal("pip");
         this.disposables.push(terminal);

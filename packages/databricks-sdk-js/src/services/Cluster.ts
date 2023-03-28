@@ -125,11 +125,22 @@ export class Cluster {
         this.clusterDetails = details;
     }
 
+    get accessMode() {
+        //TODO: deprecate data_security_mode once access_mode is available everywhere
+        return (
+            (this.details as any).access_mode ?? this.details.data_security_mode
+        );
+    }
+
+    isUc() {
+        return ["SINGLE_USER", "SHARED", "USER_ISOLATION"].includes(
+            this.accessMode
+        );
+    }
+
     isSingleUser() {
-        const modeProperty =
-            //TODO: deprecate data_security_mode once access_mode is available everywhere
-            (this.details as any).access_mode ??
-            this.details.data_security_mode;
+        const modeProperty = this.accessMode;
+
         return (
             modeProperty !== undefined &&
             [
