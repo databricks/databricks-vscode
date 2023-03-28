@@ -17,14 +17,20 @@ import {BricksSyncParser} from "./BricksSyncParser";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {PackageMetaData} from "../utils/packageJsonUtils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {RWLock} from "./RWLock";
 
-enum TaskSyncType {
-    syncFull = "sync-full",
-    sync = "sync",
-}
+export const TASK_SYNC_TYPE = {
+    syncFull: "sync-full",
+    sync: "sync",
+} as const;
+
+type TaskSyncType = (typeof TASK_SYNC_TYPE)[keyof typeof TASK_SYNC_TYPE];
+
 const cliToTaskSyncType = new Map<SyncType, TaskSyncType>([
-    ["full", TaskSyncType.syncFull],
-    ["incremental", TaskSyncType.sync],
+    ["full", TASK_SYNC_TYPE.syncFull],
+    ["incremental", TASK_SYNC_TYPE.sync],
 ]);
 
 export class SyncTask extends Task {
@@ -32,6 +38,7 @@ export class SyncTask extends Task {
         connection: ConnectionManager,
         cli: CliWrapper,
         syncType: SyncType,
+        packageMetadata: PackageMetaData,
         syncStateCallback: (state: SyncState) => void
     ) {
         super(
@@ -47,6 +54,7 @@ export class SyncTask extends Task {
                     connection,
                     cli,
                     syncType,
+                    packageMetadata,
                     syncStateCallback
                 );
             })
@@ -63,7 +71,7 @@ export class SyncTask extends Task {
     static killAll() {
         window.terminals.forEach((terminal) => {
             if (
-                Object.values(TaskSyncType)
+                Object.values(TASK_SYNC_TYPE)
                     .map((e) => e as string)
                     .includes(terminal.name)
             ) {
@@ -77,17 +85,36 @@ class CustomSyncTerminal implements Pseudoterminal {
     private writeEmitter = new EventEmitter<string>();
     onDidWrite: Event<string> = this.writeEmitter.event;
 
+    private closeEmitter = new EventEmitter<void>();
+    onDidClose: Event<void> = this.closeEmitter.event;
+
     private syncProcess: ChildProcess | undefined;
     private bricksSyncParser: BricksSyncParser;
+    private state: SyncState = "STOPPED";
+    private syncStateCallback: (state: SyncState) => void;
 
     constructor(
         private cmd: string,
         private args: string[],
         private options: SpawnOptions,
-        private syncStateCallback: (state: SyncState) => void
+        syncStateCallback: (state: SyncState) => void
     ) {
+        this.syncStateCallback = (state: SyncState) => {
+            if (
+                ([
+                    "FILES_IN_REPOS_DISABLED",
+                    "FILES_IN_WORKSPACE_DISABLED",
+                ].includes(this.state) &&
+                    ["ERROR", "STOPPED"].includes(state)) ||
+                (this.state === "STOPPED" && state === "ERROR")
+            ) {
+                return;
+            }
+            this.state = state;
+            syncStateCallback(state);
+        };
         this.bricksSyncParser = new BricksSyncParser(
-            syncStateCallback,
+            this.syncStateCallback,
             this.writeEmitter
         );
     }
@@ -144,14 +171,32 @@ class CustomSyncTerminal implements Pseudoterminal {
             );
         }
 
-        this.syncProcess.stderr.on("data", (data) => {
-            this.bricksSyncParser.process(data.toString());
+        //When sync fails (due to any reason including Files in Repos/Workspace being disabled),
+        //the sync process could emit "close" before all "data" messages have been done processing.
+        //This can lead to a unknown ERROR state for sync, when in reality the state is actually
+        //known (it is FILES_IN_REPOS_DISABLED/FILES_IN_WORKSPACE_DISABLED). We use a reader-writer
+        //lock to make sure all "data" events have been processd before progressing with "close".
+        const rwLock = new RWLock();
+        this.syncProcess.stderr.on("data", async (data) => {
+            await rwLock.readerEntry();
+            this.bricksSyncParser.processStderr(data.toString());
+            await rwLock.readerExit();
         });
 
-        // TODO(filed: Oct 2022): Old versions of bricks print the sync logs to stdout.
-        // we can remove this pipe once we move to a new version of bricks cli
-        this.syncProcess.stdout.on("data", (data) => {
-            this.bricksSyncParser.process(data.toString());
+        this.syncProcess.stdout.on("data", async (data) => {
+            await rwLock.readerEntry();
+            this.bricksSyncParser.processStdout(data.toString());
+            await rwLock.readerExit();
+        });
+
+        this.syncProcess.on("close", async (code) => {
+            await rwLock.writerEntry();
+            if (code !== 0) {
+                this.syncStateCallback("ERROR");
+                // terminate the vscode terminal task
+                this.closeEmitter.fire();
+            }
+            await rwLock.writerExit();
         });
     }
 }
@@ -159,7 +204,7 @@ class CustomSyncTerminal implements Pseudoterminal {
 /**
  * Wrapper around the CustomSyncTerminal class that lazily evaluates the process
  * and args properties. This is necessary because the process and args properties
- * re not known up front can only be computed dynamically at runtime.
+ * are not known up front and can only be computed dynamically at runtime.
  *
  * A Custom implmentation of the terminal is needed to run bricks sync as a CustomExecution
  * vscode task, which allows us to parse the stdout/stderr bricks sync logs and compute
@@ -173,6 +218,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         private connection: ConnectionManager,
         private cli: CliWrapper,
         private syncType: SyncType,
+        private packageMetadata: PackageMetaData,
         syncStateCallback: (state: SyncState) => void
     ) {
         super("", [], {}, syncStateCallback);
@@ -213,7 +259,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
     @withLogContext(Loggers.Extension)
     getProcessOptions(@context ctx?: Context): SpawnOptions {
         const workspacePath =
-            this.connection.syncDestination?.vscodeWorkspacePath.fsPath;
+            this.connection.syncDestinationMapper?.localUri.path;
         if (!workspacePath) {
             throw this.showErrorAndKillThis(
                 "Can't start sync: No workspace opened!",
@@ -229,14 +275,34 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
             );
         }
 
+        // Pass through proxy settings to child process.
+        const proxySettings: {[key: string]: string | undefined} = {
+            /* eslint-disable @typescript-eslint/naming-convention */
+            HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy,
+            HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy,
+            /* eslint-enable @typescript-eslint/naming-convention */
+        };
+
+        // Remove undefined keys.
+        Object.keys(proxySettings).forEach((key) => {
+            if (proxySettings[key] === undefined) {
+                delete proxySettings[key];
+            }
+        });
+
         return {
             cwd: workspacePath,
             env: {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 BRICKS_ROOT: workspacePath,
-                DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
+                BRICKS_UPSTREAM: "databricks-vscode",
+                BRICKS_UPSTREAM_VERSION: this.packageMetadata.version,
+                DATABRICKS_CONFIG_FILE:
+                    workspaceConfigs.databrickscfgLocation ??
+                    process.env.DATABRICKS_CONFIG_FILE,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
+                ...proxySettings,
                 ...dbWorkspace.authProvider.getEnvVars(),
                 /* eslint-enable @typescript-eslint/naming-convention */
             },
@@ -248,7 +314,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         if (this.command) {
             return this.command;
         }
-        const syncDestination = this.connection.syncDestination;
+        const syncDestination = this.connection.syncDestinationMapper;
 
         if (!syncDestination) {
             throw this.showErrorAndKillThis(

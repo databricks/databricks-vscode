@@ -1,12 +1,15 @@
 import {Disposable, Event, EventEmitter, TaskExecution, tasks} from "vscode";
-import {SyncTask} from "../cli/BricksTasks";
+import {SyncTask, TASK_SYNC_TYPE} from "../cli/BricksTasks";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {PackageMetaData} from "../utils/packageJsonUtils";
 
 export type SyncState =
     | "IN_PROGRESS"
     | "WATCHING_FOR_CHANGES"
     | "STOPPED"
+    | "FILES_IN_REPOS_DISABLED"
+    | "FILES_IN_WORKSPACE_DISABLED"
     | "ERROR";
 
 export class CodeSynchronizer implements Disposable {
@@ -25,7 +28,8 @@ export class CodeSynchronizer implements Disposable {
 
     constructor(
         private connection: ConnectionManager,
-        private cli: CliWrapper
+        private cli: CliWrapper,
+        private packageMetadata: PackageMetaData
     ) {
         this.disposables.push(
             this.connection.onDidChangeState(() => {
@@ -36,14 +40,20 @@ export class CodeSynchronizer implements Disposable {
             }),
             tasks.onDidStartTask((e) => {
                 const {type, task} = e.execution.task.definition;
-                if (type === "databricks" && task === "sync") {
+                if (
+                    type === "databricks" &&
+                    Object.values(TASK_SYNC_TYPE).includes(task)
+                ) {
                     this.currentTaskExecution = e.execution;
                     this._onDidChangeStateEmitter.fire(this.state);
                 }
             }),
             tasks.onDidEndTask((e) => {
                 const {type, task} = e.execution.task.definition;
-                if (type === "databricks" && task === "sync") {
+                if (
+                    type === "databricks" &&
+                    Object.values(TASK_SYNC_TYPE).includes(task)
+                ) {
                     this.currentTaskExecution = undefined;
                     this._onDidChangeStateEmitter.fire(this.state);
                 }
@@ -62,9 +72,19 @@ export class CodeSynchronizer implements Disposable {
             this.connection,
             this.cli,
             syncType,
+            this.packageMetadata,
             (state: SyncState) => {
                 this._state = state;
                 this._onDidChangeStateEmitter.fire(state);
+                if (
+                    [
+                        "ERROR",
+                        "FILES_IN_REPOS_DISABLED",
+                        "FILES_IN_WORKSPACE_DISABLED",
+                    ].includes(state)
+                ) {
+                    this.stop();
+                }
             }
         );
         await tasks.executeTask(task);
@@ -83,12 +103,19 @@ export class CodeSynchronizer implements Disposable {
 
     // This function waits for sync to reach WATCHING_FOR_CHANGES which is a
     // necessary condition to execute local code on databricks. This state denotes
-    // all local changes have been synced to remote workspace repo
+    // all local changes have been synced to remote workspace
     async waitForSyncComplete(): Promise<void> {
         if (this._state !== "WATCHING_FOR_CHANGES") {
             return await new Promise((resolve) => {
                 const changeListener = this.onDidChangeState(() => {
-                    if (this._state === "WATCHING_FOR_CHANGES") {
+                    if (
+                        [
+                            "WATCHING_FOR_CHANGES",
+                            "FILES_IN_REPOS_DISABLED",
+                            "FILES_IN_WORKSPACE_DISABLED",
+                            "ERROR",
+                        ].includes(this.state)
+                    ) {
                         changeListener.dispose();
                         resolve();
                     }

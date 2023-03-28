@@ -1,10 +1,14 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
+import {
+    AuthProvider,
+    ProfileAuthProvider,
+} from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Config} from "@databricks/databricks-sdk";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export interface ProjectConfig {
     authProvider: AuthProvider;
@@ -53,8 +57,8 @@ export class ProjectConfigFile {
         try {
             const originalConfig = await ProjectConfigFile.load(this.rootPath);
             if (
-                JSON.stringify(originalConfig, null, 2) ===
-                JSON.stringify(this, null, 2)
+                JSON.stringify(originalConfig.toJSON(), null, 2) ===
+                JSON.stringify(this.toJSON(), null, 2)
             ) {
                 return;
             }
@@ -73,7 +77,9 @@ export class ProjectConfigFile {
     static async importOldConfig(config: any): Promise<ProfileAuthProvider> {
         const sdkConfig = new Config({
             profile: config.profile,
-            configFile: process.env.DATABRICKS_CONFIG_FILE,
+            configFile:
+                workspaceConfigs.databrickscfgLocation ??
+                process.env.DATABRICKS_CONFIG_FILE,
             env: {},
         });
 
@@ -125,7 +131,13 @@ export class ProjectConfigFile {
             {
                 authProvider: authProvider!,
                 clusterId: config.clusterId,
-                workspacePath: config.workspacePath,
+                workspacePath:
+                    config.workspacePath !== undefined
+                        ? Uri.from({
+                              scheme: "wsfs",
+                              path: config.workspacePath,
+                          })
+                        : undefined,
             },
             rootPath
         );

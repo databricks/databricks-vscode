@@ -5,7 +5,8 @@ import {Uri} from "vscode";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {SyncDestination} from "../configuration/SyncDestination";
+import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";
+import {PackageMetaData} from "../utils/packageJsonUtils";
 import {LazyCustomSyncTerminal, SyncTask} from "./BricksTasks";
 import type {CliWrapper} from "./CliWrapper";
 
@@ -23,6 +24,9 @@ describe(__filename, () => {
             instance(connection),
             instance(cli),
             "incremental",
+            {
+                version: "1.0.0",
+            } as PackageMetaData,
             () => {}
         );
 
@@ -32,45 +36,99 @@ describe(__filename, () => {
         assert.deepEqual(task.problemMatchers, ["$bricks-sync"]);
     });
 
-    it("should create pseudo terminal with correct environment variables", () => {
-        const mockDbWorkspace = mock(DatabricksWorkspace);
-        when(mockDbWorkspace.authProvider).thenReturn(
-            new ProfileAuthProvider(
-                new URL("https://000000000000.00.azuredatabricks.net/"),
-                "profile"
-            )
-        );
+    describe("pseudo terminal", () => {
+        let env: NodeJS.ProcessEnv;
 
-        const mockSyncDestination = mock(SyncDestination);
-        when(mockSyncDestination.vscodeWorkspacePath).thenReturn(
-            Uri.file("/path/to/local/workspace")
-        );
+        beforeEach(() => {
+            // Save environment.
+            env = process.env;
 
-        when(connection.databricksWorkspace).thenReturn(
-            instance(mockDbWorkspace)
-        );
-        when(connection.syncDestination).thenReturn(
-            instance(mockSyncDestination)
-        );
+            // Create copy so it is safe to mutate it in tests.
+            process.env = {
+                ...env,
+            };
+        });
 
-        const terminal = new LazyCustomSyncTerminal(
-            instance(connection),
-            instance(cli),
-            "full",
-            () => {}
-        );
+        afterEach(() => {
+            // Restore original environment.
+            process.env = env;
+        });
 
-        assert.deepEqual(terminal.getProcessOptions(), {
-            cwd: Uri.file("/path/to/local/workspace").fsPath,
-            env: {
-                /* eslint-disable @typescript-eslint/naming-convention */
-                BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
-                DATABRICKS_CONFIG_PROFILE: "profile",
-                DATABRICKS_CONFIG_FILE: undefined,
-                HOME: process.env.HOME,
-                PATH: process.env.PATH,
-                /* eslint-enable @typescript-eslint/naming-convention */
-            },
+        let terminal: LazyCustomSyncTerminal;
+
+        beforeEach(() => {
+            const mockDbWorkspace = mock(DatabricksWorkspace);
+            when(mockDbWorkspace.authProvider).thenReturn(
+                new ProfileAuthProvider(
+                    new URL("https://000000000000.00.azuredatabricks.net/"),
+                    "profile"
+                )
+            );
+
+            const mockSyncDestination = mock(SyncDestinationMapper);
+            when(mockSyncDestination.localUri).thenReturn(
+                new LocalUri(Uri.file("/path/to/local/workspace"))
+            );
+
+            when(connection.databricksWorkspace).thenReturn(
+                instance(mockDbWorkspace)
+            );
+
+            when(connection.syncDestinationMapper).thenReturn(
+                instance(mockSyncDestination)
+            );
+
+            terminal = new LazyCustomSyncTerminal(
+                instance(connection),
+                instance(cli),
+                "full",
+                {
+                    version: "1.0.0",
+                } as PackageMetaData,
+                () => {}
+            );
+        });
+
+        it("should receive correct environment variables", () => {
+            delete process.env["HTTP_PROXY"];
+            delete process.env["HTTPS_PROXY"];
+
+            assert.deepEqual(terminal.getProcessOptions(), {
+                cwd: Uri.file("/path/to/local/workspace").fsPath,
+                env: {
+                    /* eslint-disable @typescript-eslint/naming-convention */
+                    BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
+                    BRICKS_UPSTREAM: "databricks-vscode",
+                    BRICKS_UPSTREAM_VERSION: "1.0.0",
+                    DATABRICKS_CONFIG_PROFILE: "profile",
+                    DATABRICKS_CONFIG_FILE: undefined,
+                    HOME: process.env.HOME,
+                    PATH: process.env.PATH,
+                    /* eslint-enable @typescript-eslint/naming-convention */
+                },
+            });
+        });
+
+        it("should pass through proxy variables if set", () => {
+            process.env.HTTP_PROXY = "http_proxy";
+            process.env.HTTPS_PROXY = "https_proxy";
+
+            assert.deepEqual(terminal.getProcessOptions(), {
+                cwd: Uri.file("/path/to/local/workspace").fsPath,
+                env: {
+                    /* eslint-disable @typescript-eslint/naming-convention */
+                    BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
+                    BRICKS_UPSTREAM: "databricks-vscode",
+                    BRICKS_UPSTREAM_VERSION: "1.0.0",
+                    DATABRICKS_CONFIG_PROFILE: "profile",
+                    DATABRICKS_CONFIG_FILE: undefined,
+                    HOME: process.env.HOME,
+                    PATH: process.env.PATH,
+                    HTTP_PROXY: "http_proxy",
+                    HTTPS_PROXY: "https_proxy",
+                    /* eslint-enable @typescript-eslint/naming-convention */
+                },
+            });
         });
     });
 });

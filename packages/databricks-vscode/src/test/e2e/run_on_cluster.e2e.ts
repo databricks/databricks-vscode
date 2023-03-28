@@ -2,9 +2,9 @@ import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
+    dismissNotifications,
     getViewSection,
     startSyncIfStopped,
-    waitForPythonExtension,
     waitForSyncComplete,
     waitForTreeItems,
 } from "./utils";
@@ -21,7 +21,9 @@ describe("Run python on cluster", async function () {
         assert(process.env.WORKSPACE_PATH);
         projectDir = process.env.WORKSPACE_PATH;
 
-        await fs.mkdir(path.join(projectDir, ".databricks"));
+        await fs.mkdir(path.join(projectDir, ".databricks"), {
+            recursive: true,
+        });
 
         await fs.writeFile(
             path.join(projectDir, ".databricks", "project.json"),
@@ -33,15 +35,20 @@ describe("Run python on cluster", async function () {
                 workspacePath: process.env["TEST_REPO_PATH"],
             })
         );
+        await fs.mkdir(path.join(projectDir, "nested"), {recursive: true});
         await fs.writeFile(
-            path.join(projectDir, "hello.py"),
-            `spark.sql('SELECT "hello world"').show()`
+            path.join(projectDir, "nested", "hello.py"),
+            [`from lib import func`, "func(spark)"].join("\n")
         );
-    });
 
-    it("should install vscode python extension", async function () {
-        this.retries(1);
-        await waitForPythonExtension();
+        await fs.writeFile(
+            path.join(projectDir, "lib.py"),
+            [
+                "def func(spark):",
+                `\tspark.sql('SELECT "hello world"').show()`,
+            ].join("\n")
+        );
+        await dismissNotifications();
     });
 
     it("should connect to Databricks", async () => {
@@ -51,6 +58,9 @@ describe("Run python on cluster", async function () {
     });
 
     it("should start syncing", async () => {
+        await (
+            await driver.getWorkbench()
+        ).executeCommand("Databricks: Start synchronization (full sync)");
         await startSyncIfStopped();
         await waitForSyncComplete();
     });
@@ -62,10 +72,10 @@ describe("Run python on cluster", async function () {
 
         // open file
         const input = await workbench.openCommandPrompt();
-        await sleep(200);
+        await sleep(1000);
         await input.setText("hello.py");
         await input.confirm();
-        await sleep(500);
+        await sleep(1000);
 
         // run file
         await workbench.executeQuickPick("Databricks: Run File on Databricks");

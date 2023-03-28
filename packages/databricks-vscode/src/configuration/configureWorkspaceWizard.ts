@@ -1,15 +1,15 @@
-import {
-    ConfigFileError,
-    isConfigFileParsingError,
-    loadConfigFile,
-    Profile,
-    Profiles,
-} from "./auth/configFile";
 import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
+import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
 import {MultiStepInput} from "../ui/wizard";
-import {normalizeHost} from "../utils/urlUtils";
+import {
+    isAwsHost,
+    isAzureHost,
+    isGcpHost,
+    normalizeHost,
+} from "../utils/urlUtils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider, AuthType} from "./auth/AuthProvider";
-import {ProjectConfig} from "./ProjectConfigFile";
+import {ProjectConfig} from "../file-managers/ProjectConfigFile";
 
 interface AuthTypeQuickPickItem extends QuickPickItem {
     authType: AuthType | "new-profile" | "none";
@@ -24,6 +24,7 @@ interface State {
 }
 
 export async function configureWorkspaceWizard(
+    cliWrapper: CliWrapper,
     host?: string
 ): Promise<ProjectConfig | undefined> {
     const title = "Configure Databricks Workspace";
@@ -37,16 +38,42 @@ export async function configureWorkspaceWizard(
     }
 
     async function inputHost(input: MultiStepInput, state: Partial<State>) {
-        const host = await input.showInputBox({
+        const items: Array<QuickPickItem> = [];
+
+        if (state.host) {
+            items.push({
+                label: state.host.toString(),
+                detail: "Currently selected host",
+            });
+        }
+
+        if (process.env.DATABRICKS_HOST) {
+            items.push({
+                label: process.env.DATABRICKS_HOST,
+                detail: "DATABRICKS_HOST environment variable",
+            });
+        }
+
+        const profiles = await listProfiles(cliWrapper);
+        items.push(
+            ...profiles.map((profile) => {
+                return {
+                    label: profile.host!.toString(),
+                    detail: `Profile: ${profile.name}`,
+                };
+            })
+        );
+
+        const host = await input.showQuickAutoComplete({
             title,
             step: 1,
             totalSteps: 2,
-            value: typeof state.host === "string" ? state.host : "",
             prompt: "Databricks Host (should begin with https://)",
             validate: validateDatabricksHost,
             shouldResume: async () => {
                 return false;
             },
+            items,
         });
 
         state.host = normalizeHost(host);
@@ -58,7 +85,7 @@ export async function configureWorkspaceWizard(
         state: Partial<State>
     ) {
         const items: Array<AuthTypeQuickPickItem> = [];
-        let profiles: Profiles = {};
+        let profiles: Array<ConfigEntry> = [];
 
         for (const authMethod of authMethodsForHostname(state.host!)) {
             switch (authMethod) {
@@ -70,21 +97,6 @@ export async function configureWorkspaceWizard(
                     });
                     break;
 
-                // Disabled PAT until we can figure out how we want to deal with the secret on disk
-                // case "pat":
-                //     items.push({
-                //         label: "PAT",
-                //         kind: QuickPickItemKind.Separator,
-                //         authType: "none",
-                //     });
-
-                //     items.push({
-                //         label: "Personal Access Token",
-                //         detail: "Authenticate using a personal access token",
-                //         authType: "pat",
-                //     });
-                //     break;
-
                 case "profile":
                     items.push({
                         label: "Databricks CLI Profiles",
@@ -92,31 +104,24 @@ export async function configureWorkspaceWizard(
                         authType: "none",
                     });
 
-                    try {
-                        profiles = await loadConfigFile();
-                    } catch (e) {
-                        if (!(e instanceof ConfigFileError)) {
-                            throw e;
-                        }
-                    }
+                    profiles = await listProfiles(cliWrapper);
 
                     items.push(
-                        ...Object.keys(profiles)
-                            .filter(
-                                (label) =>
-                                    !isConfigFileParsingError(profiles[label])
-                            )
-                            .filter(
-                                (label) =>
-                                    (profiles[label] as Profile).host
-                                        .hostname === state.host!.hostname
-                            )
-                            .map((label) => ({
-                                label,
-                                detail: `Authenticate using the ${label} profile`,
-                                authType: "profile" as const,
-                                profile: label,
-                            }))
+                        ...profiles
+                            .filter((profile) => {
+                                return (
+                                    profile.host?.hostname ===
+                                    state.host!.hostname
+                                );
+                            })
+                            .map((profile) => {
+                                return {
+                                    label: profile.name,
+                                    detail: `Authenticate using the ${profile.name} profile`,
+                                    authType: "profile" as const,
+                                    profile: profile.name,
+                                };
+                            })
                     );
 
                     items.push({
@@ -154,10 +159,6 @@ export async function configureWorkspaceWizard(
                 state.authType = pick.authType;
                 break;
 
-            case "pat":
-                state.authType = pick.authType;
-                return (input: MultiStepInput) => inputToken(input, state);
-
             case "profile":
                 state.authType = pick.authType;
                 state.profile = pick.profile;
@@ -170,26 +171,6 @@ export async function configureWorkspaceWizard(
         }
     }
 
-    async function inputToken(input: MultiStepInput, state: Partial<State>) {
-        state.token = await input.showInputBox({
-            title,
-            step: 4,
-            totalSteps: 4,
-            value: typeof state.token === "string" ? state.token : "",
-            prompt: "Databricks personal access token (PAT)",
-            validate: async (s) => {
-                if (!s.length) {
-                    return "Invalid access token";
-                }
-            },
-            shouldResume: shouldResume,
-        });
-    }
-    async function shouldResume(): Promise<boolean> {
-        // Could show a notification with the option to resume.
-        return true;
-    }
-
     const state = await collectInputs();
     if (!state.host || !state.authType) {
         return;
@@ -198,6 +179,23 @@ export async function configureWorkspaceWizard(
     return {
         authProvider: AuthProvider.fromJSON(state),
     };
+}
+
+async function listProfiles(cliWrapper: CliWrapper) {
+    const profiles = (
+        await cliWrapper.listProfiles(workspaceConfigs.databrickscfgLocation)
+    ).filter((profile) => {
+        try {
+            normalizeHost(profile.host!.toString());
+            return true;
+        } catch (e) {
+            return false;
+        }
+    });
+
+    return profiles.filter((profile) => {
+        return ["pat", "basic", "azure-cli"].includes(profile.authType);
+    });
 }
 
 async function validateDatabricksHost(
@@ -211,17 +209,17 @@ async function validateDatabricksHost(
 }
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
-    if (host.hostname.endsWith(".azuredatabricks.net")) {
-        return ["azure-cli", "pat", "profile"];
+    if (isAzureHost(host)) {
+        return ["azure-cli", "profile"];
     }
 
-    if (host.hostname.endsWith(".gcp.databricks.com")) {
-        return ["google-id", "pat", "profile"];
+    if (isGcpHost(host)) {
+        return ["google-id", "profile"];
     }
 
-    if (host.hostname.endsWith(".cloud.databricks.com")) {
-        return ["oauth-u2m", "pat", "profile"];
+    if (isAwsHost(host)) {
+        return ["oauth-u2m", "profile"];
     }
 
-    return ["pat", "profile"];
+    return ["profile"];
 }

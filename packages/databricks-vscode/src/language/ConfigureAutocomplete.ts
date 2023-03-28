@@ -12,6 +12,7 @@ import {
     ConfigurationTarget,
 } from "vscode";
 import {Loggers} from "../logger";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
 type Resource = Uri | undefined;
 
@@ -52,7 +53,7 @@ interface IPythonExtension {
 
 const importString = "from databricks.sdk.runtime import *";
 
-type StepResult = "Skip" | "Cancel" | "Error" | undefined;
+type StepResult = "Skip" | "Cancel" | "Error" | "Silent" | undefined;
 
 interface Step {
     fn: (dryRun: boolean) => Promise<StepResult>;
@@ -65,6 +66,7 @@ export class ConfigureAutocomplete implements Disposable {
 
     constructor(
         private readonly context: ExtensionContext,
+        private readonly workspaceState: WorkspaceStateManager,
         private readonly workspaceFolder: string
     ) {
         this.configure();
@@ -113,6 +115,10 @@ export class ConfigureAutocomplete implements Disposable {
     }
 
     private async configure(force = false) {
+        if (!force && this.workspaceState.skipAutocompleteConfigure) {
+            return;
+        }
+
         const pythonExtension = extensions.getExtension("ms-python.python");
         if (pythonExtension === undefined) {
             window.showWarningMessage(
@@ -147,8 +153,7 @@ export class ConfigureAutocomplete implements Disposable {
                     ),
             },
             {
-                fn: async (dryRun = false) => this.updateExtraPaths(dryRun),
-                required: true,
+                fn: async () => this.updateExtraPaths(),
             },
             {
                 fn: async (dryRun = false) => this.addBuiltinsFile(dryRun),
@@ -162,12 +167,18 @@ export class ConfigureAutocomplete implements Disposable {
         }
 
         const choice = await window.showInformationMessage(
-            "To allow autocompletion for Databricks specific globals (like dbutils), we need to install pyspark and add (or modify) __builtins__.pyi file to your project",
-            "Continue",
-            "Cancel"
+            "Do you want to configure autocompletion for Databricks specific globals (dbutils etc)?",
+            "Configure",
+            "Cancel",
+            "Never for this workspace"
         );
 
         if (choice === "Cancel" || choice === undefined) {
+            return;
+        }
+
+        if (choice === "Never for this workspace") {
+            this.workspaceState.skipAutocompleteConfigure = true;
             return;
         }
 
@@ -219,8 +230,8 @@ export class ConfigureAutocomplete implements Disposable {
         terminal.show();
     }
 
-    private async updateExtraPaths(dryRun = false): Promise<StepResult> {
-        const extraPaths =
+    private async updateExtraPaths(): Promise<StepResult> {
+        let extraPaths =
             workspace
                 .getConfiguration("python")
                 .get<Array<string>>("analysis.extraPaths") ?? [];
@@ -228,11 +239,13 @@ export class ConfigureAutocomplete implements Disposable {
             path.join("resources", "python", "stubs")
         );
         if (extraPaths.includes(stubPath)) {
-            return "Skip";
-        }
-        if (dryRun) {
             return;
         }
+        extraPaths = extraPaths.filter(
+            (value) =>
+                !value.endsWith(path.join("resources", "python", "stubs")) &&
+                value.includes("databricks")
+        );
         extraPaths.push(stubPath);
         workspace
             .getConfiguration("python")

@@ -65,9 +65,7 @@ export class ClusterListDataProvider
                 return [];
             }
         } else {
-            return (() => {
-                return this.model.roots;
-            })();
+            return this.model.roots;
         }
     }
 
@@ -102,6 +100,7 @@ export class ClusterListDataProvider
             label: element.name,
             iconPath: icon,
             id: element.id,
+            contextValue: "cluster",
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }
@@ -116,56 +115,52 @@ export class ClusterListDataProvider
     ): Promise<Array<TreeItem>> {
         const children: TreeItem[] = [
             {
-                label: "Cluster ID:",
+                label: "Cluster ID",
                 description: element.id,
             },
-            {
-                label: "URL:",
-                description: await element.url,
-                contextValue: "databricks-link",
-            },
         ];
-        if (element.cores) {
+
+        children.push({
+            label: "Driver",
+            description: element.details.driver_node_type_id,
+        });
+
+        if (element.details.autoscale) {
             children.push({
-                label: "Cores:",
-                description: element.cores + "",
+                label: "Worker",
+                description: `${element.details.node_type_id}, ${element.details.autoscale.min_workers}-${element.details.autoscale.max_workers} workers`,
+            });
+        } else if (element.details.num_workers || 0 > 0) {
+            children.push({
+                label: "Worker",
+                description: `${element.details.node_type_id}, ${element.details.num_workers} workers`,
+            });
+        } else {
+            children.push({
+                label: "Worker",
+                description: `None (single node cluster)`,
             });
         }
-        if (element.memoryMb) {
-            children.push({
-                label: "Memory:",
-                description: formatSize(element.memoryMb),
-            });
+
+        let stateDescription: string = element.state;
+        if (element.stateMessage && element.state !== "RUNNING") {
+            stateDescription = `${element.state} - ${element.stateMessage}`;
         }
+
         children.push(
             {
-                label: "Databricks Runtime:",
+                label: "Databricks Runtime",
                 description: element.dbrVersion.join("."),
             },
             {
-                label: "State:",
-                description: element.state,
+                label: "State",
+                description: stateDescription,
             },
             {
-                label: "Creator:",
+                label: "Creator",
                 description: element.creator,
             }
         );
-
-        if (element.stateMessage && element.state !== "RUNNING") {
-            children.push({
-                label: "State message:",
-                description: element.stateMessage,
-            });
-        }
-
-        function formatSize(sizeInMB: number): string {
-            if (sizeInMB > 1024) {
-                return Math.round(sizeInMB / 1024).toString() + " GB";
-            } else {
-                return `${sizeInMB} MB`;
-            }
-        }
 
         return children;
     }

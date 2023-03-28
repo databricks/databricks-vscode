@@ -16,7 +16,6 @@ import {
     Disposable,
     ExtensionContext,
     ProviderResult,
-    Uri,
     window,
 } from "vscode";
 import {DebugProtocol} from "@vscode/debugprotocol";
@@ -25,6 +24,10 @@ import {Subject} from "./Subject";
 import {WorkflowRunner} from "./WorkflowRunner";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import {LocalUri} from "../sync/SyncDestination";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
+import {isNotebook} from "../utils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -50,10 +53,15 @@ export class DatabricksWorkflowDebugAdapterFactory
 
     constructor(
         private connection: ConnectionManager,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier,
         context: ExtensionContext,
         codeSynchronizer: CodeSynchronizer
     ) {
-        this.workflowRunner = new WorkflowRunner(context, codeSynchronizer);
+        this.workflowRunner = new WorkflowRunner(
+            context,
+            codeSynchronizer,
+            connection
+        );
     }
 
     dispose() {
@@ -64,7 +72,8 @@ export class DatabricksWorkflowDebugAdapterFactory
         return new DebugAdapterInlineImplementation(
             new DatabricksWorkflowDebugSession(
                 this.connection,
-                this.workflowRunner
+                this.workflowRunner,
+                this.wsfsAccessVerifier
             )
         );
     }
@@ -77,7 +86,8 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
 
     constructor(
         private connection: ConnectionManager,
-        private workflowRunner: WorkflowRunner
+        private workflowRunner: WorkflowRunner,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {
         super();
     }
@@ -154,6 +164,13 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         parameters: Record<string, string>,
         args: Array<string>
     ): Promise<void> {
+        if (
+            !(await isNotebook(new LocalUri(program))) &&
+            !program.endsWith(".py")
+        ) {
+            return this.onError("Only Python files can be run as a workflow");
+        }
+
         if (this.connection.state === "CONNECTING") {
             await this.connection.waitForConnect();
         }
@@ -166,7 +183,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
                 "You must attach to a cluster to run on Databricks"
             );
         }
-        const syncDestination = this.connection.syncDestination;
+        const syncDestination = this.connection.syncDestinationMapper;
         if (!syncDestination) {
             return this.onError(
                 "You must configure code synchronization to run on Databricks"
@@ -174,6 +191,10 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         }
 
         await cluster.refresh();
+        await this.wsfsAccessVerifier.verifyCluster(cluster);
+        if (workspaceConfigs.syncDestinationType === "workspace") {
+            await this.wsfsAccessVerifier.switchIfNotEnabled();
+        }
         const isClusterRunning = await promptForClusterStart(
             cluster,
             async () => {
@@ -187,7 +208,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         }
 
         await this.workflowRunner.run({
-            program: Uri.file(program),
+            program: new LocalUri(program),
             parameters,
             args,
             cluster,

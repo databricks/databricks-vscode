@@ -14,13 +14,20 @@ import {
     Uri,
 } from "vscode";
 
-import {SyncDestination} from "../configuration/SyncDestination";
+import {
+    LocalUri,
+    RemoteUri,
+    SyncDestinationMapper,
+} from "../sync/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
+import {Time, TimeUnits} from "@databricks/databricks-sdk";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -32,6 +39,13 @@ export interface OutputEvent {
 
 type EnvVars = Record<string, string>;
 
+export type RuntimeState =
+    | "STOPPED"
+    | "CREATE_CONTEXT"
+    | "SYNCING"
+    | "EXECUTING"
+    | "CANCELED"
+    | "FINISHED";
 export class DatabricksRuntime implements Disposable {
     private _onDidEndEmitter: EventEmitter<void> = new EventEmitter<void>();
     readonly onDidEnd: Event<void> = this._onDidEndEmitter.event;
@@ -44,15 +58,44 @@ export class DatabricksRuntime implements Disposable {
     readonly onDidSendOutput: Event<OutputEvent> =
         this._onDidSendOutputEmitter.event;
 
+    private _onDidChangeStateEmitter: EventEmitter<RuntimeState> =
+        new EventEmitter<RuntimeState>();
+    readonly onDidChangeState: Event<RuntimeState> =
+        this._onDidChangeStateEmitter.event;
+
+    private _runtimeState: RuntimeState = "STOPPED";
+    public get state() {
+        return this._runtimeState;
+    }
+    private set state(newState: RuntimeState) {
+        this._runtimeState = newState;
+        if (this.state === "CANCELED") {
+            this._onDidEndEmitter.fire();
+        }
+        this._onDidChangeStateEmitter.fire(newState);
+    }
+
     private tokenSource = new CancellationTokenSource();
     private token = this.tokenSource.token;
+    private async cancellable<T>(p: Promise<T>) {
+        return await Promise.race([
+            p,
+            new Promise<undefined>((resolve) =>
+                this.token.onCancellationRequested(() => {
+                    this.state = "CANCELED";
+                    resolve(undefined);
+                })
+            ),
+        ]);
+    }
 
     private disposables: Disposable[] = [];
 
     constructor(
         private connection: ConnectionManager,
         private codeSynchronizer: CodeSynchronizer,
-        private context: ExtensionContext
+        private context: ExtensionContext,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {}
 
     /**
@@ -78,7 +121,7 @@ export class DatabricksRuntime implements Disposable {
         try {
             if (this.connection.state === "CONNECTING") {
                 log("Connecting to cluster ...");
-                await this.connection.waitForConnect();
+                await this.cancellable(this.connection.waitForConnect());
             }
 
             const cluster = this.connection.cluster;
@@ -88,6 +131,10 @@ export class DatabricksRuntime implements Disposable {
                 );
             }
 
+            await this.wsfsAccessVerifier.verifyCluster(cluster);
+            if (workspaceConfigs.syncDestinationType === "workspace") {
+                await this.wsfsAccessVerifier.switchIfNotEnabled();
+            }
             const isClusterRunning = await promptForClusterStart(
                 cluster,
                 async () => {
@@ -109,7 +156,7 @@ export class DatabricksRuntime implements Disposable {
                 return;
             }
 
-            const syncDestination = this.connection.syncDestination;
+            const syncDestination = this.connection.syncDestinationMapper;
             if (!syncDestination) {
                 return this._onErrorEmitter.fire(
                     "You must configure code synchronization to run on Databricks"
@@ -117,24 +164,30 @@ export class DatabricksRuntime implements Disposable {
             }
 
             log(`Creating execution context on cluster ${cluster.id} ...`);
+            this.state = "CREATE_CONTEXT";
 
-            const executionContext = await cluster.createExecutionContext(
-                "python"
+            const executionContext = await this.cancellable(
+                cluster.createExecutionContext("python")
             );
 
+            if (executionContext === undefined) {
+                return;
+            }
             this.token.onCancellationRequested(async () => {
+                this.state = "CANCELED";
                 await executionContext.destroy();
             });
 
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
-            log(
-                `Synchronizing code to ${syncDestination.relativeRepoPath} ...`
-            );
+            log(`Synchronizing code to ${syncDestination.remoteUri.path} ...`);
+            this.state = "SYNCING";
 
             this.disposables.push(
                 this.codeSynchronizer.onDidChangeState((state) => {
-                    if (state === "STOPPED") {
+                    if (
+                        !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(state)
+                    ) {
                         return this._onErrorEmitter.fire(
                             "Execution cancelled because sync was stopped"
                         );
@@ -142,20 +195,40 @@ export class DatabricksRuntime implements Disposable {
                 })
             );
 
-            if (this.codeSynchronizer.state === "STOPPED") {
+            if (
+                !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(
+                    this.codeSynchronizer.state
+                )
+            ) {
                 await commands.executeCommand("databricks.sync.start");
             }
 
             // We wait for sync to complete so that the local files are consistant
             // with the remote repo files
-            await this.codeSynchronizer.waitForSyncComplete();
+            await this.cancellable(this.codeSynchronizer.waitForSyncComplete());
+            if (this._runtimeState === "CANCELED") {
+                return;
+            }
+            if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {
+                this._onDidSendOutputEmitter.fire({
+                    type: "err",
+                    text: `Can't sync ${program}. Reason: ${this.codeSynchronizer.state}`,
+                    filePath: program,
+                    line: 0,
+                    column: 0,
+                });
+                this._onErrorEmitter.fire(`Error in running ${program}.`);
+                return;
+            }
+            await commands.executeCommand("workbench.panel.repl.view.focus");
 
             log(
-                `Running ${syncDestination.getRelativePath(
-                    Uri.file(program)
+                `Running ${syncDestination.localUri.relativePath(
+                    new LocalUri(program)
                 )} ...\n`
             );
 
+            this.state = "EXECUTING";
             const response = await executionContext.execute(
                 await this.compileCommandString(
                     program,
@@ -164,7 +237,8 @@ export class DatabricksRuntime implements Disposable {
                     envVars
                 ),
                 undefined,
-                this.token
+                this.token,
+                new Time(240, TimeUnits.hours)
             );
             const result = response.result;
 
@@ -183,11 +257,8 @@ export class DatabricksRuntime implements Disposable {
                     try {
                         if (frame.file) {
                             localFile = syncDestination.remoteToLocal(
-                                Uri.from({
-                                    scheme: "wsfs",
-                                    path: path.normalize(frame.file),
-                                })
-                            ).fsPath;
+                                new RemoteUri(path.posix.normalize(frame.file))
+                            ).path;
 
                             frame.text = frame.text.replace(
                                 frame.file,
@@ -215,7 +286,7 @@ export class DatabricksRuntime implements Disposable {
             }
 
             log(`Done (took ${Date.now() - start}ms)`);
-
+            this.state = "FINISHED";
             await executionContext.destroy();
         } catch (e) {
             if (e instanceof Error) {
@@ -236,7 +307,7 @@ export class DatabricksRuntime implements Disposable {
     private async compileCommandString(
         program: string,
         args: Array<string>,
-        syncDestination: SyncDestination,
+        syncDestination: SyncDestinationMapper,
         envVars: EnvVars
     ): Promise<string> {
         const bootstrapPath = Uri.joinPath(
@@ -247,7 +318,8 @@ export class DatabricksRuntime implements Disposable {
         );
 
         const argv = [
-            syncDestination.localToRemote(Uri.file(program)),
+            syncDestination.localToRemote(new LocalUri(Uri.file(program)))
+                .workspacePrefixPath,
             ...args,
         ];
 
@@ -264,11 +336,14 @@ export class DatabricksRuntime implements Disposable {
 
         bootstrap = bootstrap.replace(
             '"PYTHON_FILE"',
-            `"${syncDestination.localToRemote(Uri.file(program))}"`
+            `"${
+                syncDestination.localToRemote(new LocalUri(Uri.file(program)))
+                    .workspacePrefixPath
+            }"`
         );
         bootstrap = bootstrap.replace(
             '"REPO_PATH"',
-            `"${syncDestination.path.path}"`
+            `"${syncDestination.remoteUri.workspacePrefixPath}"`
         );
         bootstrap = bootstrap.replace(
             "args = []",

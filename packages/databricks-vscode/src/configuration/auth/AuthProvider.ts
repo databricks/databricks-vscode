@@ -5,6 +5,7 @@ import {
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
 import {normalizeHost} from "../../utils/urlUtils";
+import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../../package.json")
@@ -12,12 +13,7 @@ const extensionVersion = require("../../../package.json")
 
 import {AzureCliCheck} from "../AzureCliCheck";
 
-export type AuthType =
-    | "azure-cli"
-    | "google-id"
-    | "oauth-u2m"
-    | "profile"
-    | "pat";
+export type AuthType = "azure-cli" | "google-id" | "oauth-u2m" | "profile";
 
 export abstract class AuthProvider {
     constructor(
@@ -71,7 +67,11 @@ export abstract class AuthProvider {
 
         switch (json.authType as AuthType) {
             case "azure-cli":
-                return new AzureCliAuthProvider(host);
+                return new AzureCliAuthProvider(
+                    host,
+                    json.tenantId,
+                    json.appId
+                );
 
             case "profile":
                 if (!json.profile) {
@@ -79,50 +79,9 @@ export abstract class AuthProvider {
                 }
                 return new ProfileAuthProvider(host, json.profile);
 
-            case "pat":
-                if (!json.token) {
-                    throw new Error("Missing token");
-                }
-                return new TokenAuthProvider(host, json.token);
-
             default:
                 throw new Error(`Unknown auth type: ${json.authType}`);
         }
-    }
-}
-
-export class TokenAuthProvider extends AuthProvider {
-    constructor(host: URL, private readonly token: string) {
-        super(host, "pat");
-    }
-
-    describe(): string {
-        return "Personal Access Token";
-    }
-
-    toJSON(): Record<string, unknown> {
-        return {
-            host: this.host.toString(),
-            authType: this.authType,
-            token: this.token,
-        };
-    }
-
-    getEnvVars(): Record<string, string | undefined> {
-        return {
-            DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AUTH_TYPE: this.authType,
-            DATABRICKS_TOKEN: this.token,
-        };
-    }
-
-    getSdkConfig(): Config {
-        return new Config({
-            authType: "pat",
-            token: this.token,
-            host: this.host.toString(),
-            env: {},
-        });
     }
 }
 
@@ -146,22 +105,40 @@ export class ProfileAuthProvider extends AuthProvider {
     getEnvVars(): Record<string, string | undefined> {
         return {
             DATABRICKS_CONFIG_PROFILE: this.profile,
-            DATABRICKS_CONFIG_FILE: process.env.DATABRICKS_CONFIG_FILE,
+            DATABRICKS_CONFIG_FILE:
+                workspaceConfigs.databrickscfgLocation ??
+                process.env.DATABRICKS_CONFIG_FILE,
         };
     }
 
     getSdkConfig(): Config {
         return new Config({
             profile: this.profile,
-            configFile: process.env.DATABRICKS_CONFIG_FILE,
+            configFile:
+                workspaceConfigs.databrickscfgLocation ??
+                process.env.DATABRICKS_CONFIG_FILE,
             env: {},
         });
     }
 }
 
 export class AzureCliAuthProvider extends AuthProvider {
-    constructor(host: URL) {
+    private _tenantId?: string;
+    private _appId?: string;
+
+    constructor(host: URL, tenantId?: string, appId?: string) {
         super(host, "azure-cli");
+
+        this._tenantId = tenantId;
+        this._appId = appId;
+    }
+
+    get tenantId(): string | undefined {
+        return this._tenantId;
+    }
+
+    get appId(): string | undefined {
+        return this._appId;
     }
 
     describe(): string {
@@ -172,6 +149,8 @@ export class AzureCliAuthProvider extends AuthProvider {
         return {
             host: this.host.toString(),
             authType: this.authType,
+            tenantId: this.tenantId,
+            appId: this.appId,
         };
     }
 
@@ -186,11 +165,16 @@ export class AzureCliAuthProvider extends AuthProvider {
         return new Config({
             host: this.host.toString(),
             authType: "azure-cli",
+            azureLoginAppId: this.appId,
             env: {},
         });
     }
 
     async check(silent: boolean): Promise<boolean> {
-        return await new AzureCliCheck(this).check(silent);
+        const cliCheck = new AzureCliCheck(this);
+        const result = await cliCheck.check(silent);
+        this._tenantId = cliCheck.tenantId;
+        this._appId = cliCheck.azureLoginAppId;
+        return result;
     }
 }

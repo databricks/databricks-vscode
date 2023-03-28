@@ -1,3 +1,150 @@
+# Release: v0.3.7
+
+## packages/databricks-vscode
+
+## <small>0.3.7 (2023-03-21)</small>
+
+-   Fix: (Experimental) Show only directories in sync destination quickpick.
+-   Fix: (Experimental) Fix creation of .ide if it doesn't exists.
+-   Fix: Fix PATH delimiter on Windows, closes [#576](https://github.com/databricks/databricks-vscode/issues/576)
+
+# Release: v0.3.5
+
+## packages/databricks-vscode
+
+## <small>0.3.5 (2023-03-17)</small>
+
+-   Fix: Fix for syncing issues with files having " ", "+" and "#" characters in the file name, closes [#555](https://github.com/databricks/databricks-vscode/issues/555) reported by [@AndreiCalin24](https://github.com/AndreiCalin24) and [#468](https://github.com/databricks/databricks-vscode/issues/468) reported by [@arturomf94](https://github.com/arturomf94)
+-   Fix: Prevent relogin when project.json is updated after first login.
+-   Feature: (Experimental) Add prompts to switch to repos when Files in Workspace is not supported.
+-   Feature: (Experimental) Provide default sync destination if not set.
+-   Feature: (Experimental) Add transparent wrapper for workflow runs when running using files in workspace.
+
+# Release: v0.3.4
+
+## packages/databricks-vscode
+
+## <small>0.3.4 (2023-03-10)</small>
+
+-   Feature: Publish the extension also to [OpenVSIX](https://open-vsx.org/extension/databricks/sqltools-databricks-driver)
+-   Feature: Add support for connecting to Azure China and Azure GovCloud workspaces, closes [#526](https://github.com/databricks/databricks-vscode/issues/526)
+-   Fix: Make code synchronization more robust. Sync should no longer get stuck in `IN PROGRESS` state.
+
+# Release: v0.3.3
+
+## packages/databricks-vscode
+
+## <small>0.3.3 (2023-03-06)</small>
+
+-   Feature: Add refresh button to refresh results of a Workflow run, closes [#520](https://github.com/databricks/databricks-vscode/issues/470) reported by [@virtualdvid](https://github.com/virtualdvid)
+-   Feature: Add `databricks.overrideDatabricksConfigFile` VS Code setting to override the location of `.databrickscfg` file, closes [#518](https://github.com/databricks/databricks-vscode/issues/518)
+-   Fix: jump-to-error links were not displayed when `Run File on Databricks` runs failed
+-   Fix: sync was hanging when moving files
+-   Fix: Files with certain special charecters (such as #-hash) in their names were not synced correctly.
+
+# Release: v0.3.2
+
+## packages/databricks-vscode
+
+## <small>0.3.2 (2023-02-24)</small>
+
+-   Fix: Support HTTP proxies when the proxy environment variable is lower case, closes [#476](https://github.com/databricks/databricks-vscode/issues/476) reported by [@wibbico](https://github.com/wibbico)
+-   Fix: Increase timeouts to support uploading large files
+
+# Release: v0.3.1
+
+## packages/databricks-vscode
+
+## <small>0.3.1 (2023-02-23)</small>
+
+-   Feature: Add an option to silence the autocomplete dialog, closes [#497](https://github.com/databricks/databricks-vscode/issues/497)
+-   Fix: Support `.databrickscfg` profiles that contain a dot, closes [#447](https://github.com/databricks/databricks-vscode/issues/447) reported by [@tahaum](https://github.com/tahaum)
+-   Fix: Remove API timeout limit for execution context runs, closes [#482](https://github.com/databricks/databricks-vscode/issues/482) reported by [@sebrahimi1988](https://github.com/sebrahimi1988)
+-   Fix: Show errors when parsing of host in `.databrickscfg` fails, closes [#479](https://github.com/databricks/databricks-vscode/issues/479)
+-   Fix: Show error state in the UI when sync process fails
+-   Minor: Rename title of the extension
+
+# Release: v0.3.0
+
+## packages/databricks-vscode
+
+## 0.3.0 (2023-02-20)
+
+-   ⚠️ Minor breaking change: This releases introduces a minor breaking change in the sync destination selection UI. The extension no longer lists Repos that have been created outside of the IDE. This prevents users from accidentally overwriting code in existing Repos. Existing sync destinations will continue to work but going forward users can only select Repos that have been created from the IDE
+-   Feature: Improve code completion for `dbutils`
+-   Fix: Allow creation of repos even if `/Repos/me` doesn't exist
+-   Fix: Improve AAD login and prevent infinite loops when trying to use AAD
+
+# Release: v0.2.4
+
+## packages/databricks-vscode
+
+## <small>0.2.4 (2023-02-16)</small>
+
+-   Fix: Ignore symlinked folders when syncing code to Databricks, closes [#455](https://github.com/databricks/databricks-vscode/issues/455)
+-   Fix: Improve handling of notebooks during sync
+-   Fix: Fix Windows support for sync destination, closes [#458](https://github.com/databricks/databricks-vscode/issues/458)
+
+# Release: v0.2.3
+
+## packages/databricks-vscode
+
+## <small>0.2.3 (2023-02-15)</small>
+
+-   Fix: Add support for syncing files with spaces in their file names
+
+# Release: v0.2.2
+
+## packages/databricks-vscode
+
+## <small>0.2.2 (2023-02-14)</small>
+
+-   Minor: Fix image links in README.md
+
+# Release: v0.2.1
+
+## packages/databricks-vscode
+
+## <small>0.2.1 (2023-02-14)</small>
+
+-   Minor: Doc updates after extension was made public
+
+# Release: v0.2.0
+
+## packages/databricks-vscode
+
+## 0.2.0 (2023-02-13)
+
+-   Feature: Allow creation of Repos directly from the IDE
+-   Feature: Add `bricks` CLI to the PATH of VS Code terminals
+-   Feature: Watch `.gitignore` files for changes while sync is running
+-   Breaking change: Rename extension from `databricks-vscode` to `databricks` so it can be published to the VS Code marketplace.
+
+# Release: v0.0.11
+
+## packages/databricks-vscode
+
+## <small>0.0.11 (2023-01-30)</small>
+
+-   Feature: Allow running Scala, R and SQL notebooks as workflow
+-   Feature: List hostnames from `~/.databrickscfg` when selecting a host
+-   Feature: Take into account `.gitignore` rules defined in parent directories for file syncronization.
+-   Feature: Make `az login` work on Github CodeSpaces
+-   Experimental feature: Add support for synchronizing to a workspace folder (Files in Workspace)
+-   Fix: Don't show error when config file doesn't exist
+-   Fix: Support `az login` when user doesn't have a subscription
+-   Fix: Gracefully handle adding a profile when `~/.databrickscfg` doesn't exist
+-   Fix: Running the "full sync" command now resets the synchronization state
+-   UI tweaks: Clean up and unify items in the side panel
+
+# Release: v0.0.10
+
+## packages/databricks-vscode
+
+## <small>0.0.10 (2023-01-16)</small>
+
+-   Update to use the latest JavaScript SDK for Databricks
+
 # Release: v0.0.9
 
 ## packages/databricks-vscode

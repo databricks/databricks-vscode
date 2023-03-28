@@ -1,7 +1,12 @@
-import {Cluster, Repo} from "@databricks/databricks-sdk";
+import {
+    Cluster,
+    WorkspaceFsEntity,
+    WorkspaceFsUtils,
+} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
     Disposable,
+    FileSystemError,
     QuickPickItem,
     QuickPickItemKind,
     ThemeIcon,
@@ -13,6 +18,10 @@ import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {WorkspaceFsCommands} from "../workspace-fs";
+import path from "node:path";
+import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -49,6 +58,7 @@ export interface ClusterItem extends QuickPickItem {
 export class ConnectionCommands implements Disposable {
     private disposables: Disposable[] = [];
     constructor(
+        private wsfsCommands: WorkspaceFsCommands,
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel
     ) {}
@@ -70,9 +80,27 @@ export class ConnectionCommands implements Disposable {
 
     openDatabricksConfigFileCommand() {
         return async () => {
-            const doc = await workspace.openTextDocument(
-                Uri.joinPath(Uri.file(homedir()), ".databrickscfg")
-            );
+            let filePath =
+                workspaceConfigs.databrickscfgLocation ??
+                process.env.DATABRICKS_CONFIG_FILE ??
+                path.join(homedir(), ".databrickscfg");
+
+            if (filePath.startsWith("~/")) {
+                filePath = path.join(homedir(), filePath.slice(2));
+            }
+            const uri = Uri.file(path.normalize(filePath));
+
+            try {
+                await workspace.fs.stat(uri);
+            } catch (e) {
+                if (e instanceof FileSystemError && e.code === "FileNotFound") {
+                    await workspace.fs.writeFile(uri, Buffer.from(""));
+                } else {
+                    throw e;
+                }
+            }
+
+            const doc = await workspace.openTextDocument(uri);
             await window.showTextDocument(doc);
         };
     }
@@ -180,78 +208,119 @@ export class ConnectionCommands implements Disposable {
 
     attachSyncDestinationCommand() {
         return async () => {
-            const apiClient = this.connectionManager.workspaceClient?.apiClient;
+            const wsClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
-            if (!apiClient || !me) {
+            const rootDirPath =
+                this.connectionManager.databricksWorkspace?.currentFsRoot;
+            if (!wsClient || !me || !rootDirPath) {
                 // TODO
                 return;
             }
 
-            const quickPick = window.createQuickPick<WorkspaceItem>();
+            const rootDir = await WorkspaceFsEntity.fromPath(
+                wsClient,
+                rootDirPath.path
+            );
 
-            quickPick.busy = true;
-            quickPick.canSelectMany = false;
-            const items: WorkspaceItem[] = [
+            type WorkspaceFsQuickPickItem = QuickPickItem & {
+                path?: string;
+            };
+            const children: WorkspaceFsQuickPickItem[] = [
                 {
-                    label: "Create New Repo",
-                    detail: `Open Databricks in the browser and create a new repo under /Repo/${me}`,
-                    alwaysShow: false,
+                    label: "Create New Sync Destination",
+                    alwaysShow: true,
+                    detail: workspaceConfigs.enableFilesInWorkspace
+                        ? `Create a new folder under /Workspace/${me}/.ide as sync destination`
+                        : `Create a new Repo under /Repos/${me} as sync destination`,
                 },
                 {
-                    label: "",
+                    label: "Sync Destinations",
                     kind: QuickPickItemKind.Separator,
                 },
             ];
-            quickPick.items = items;
 
-            quickPick.show();
+            const input = window.createQuickPick();
+            input.busy = true;
+            input.show();
+            input.items = children;
+            if (workspaceConfigs.enableFilesInWorkspace) {
+                children.push(
+                    ...((await rootDir?.children) ?? [])
+                        .filter((entity) =>
+                            WorkspaceFsUtils.isDirectory(entity)
+                        )
+                        .map((entity) => {
+                            return {
+                                label: entity.basename,
+                                detail: entity.path,
+                                path: entity.path,
+                            };
+                        })
+                );
+            } else {
+                const repos = (await rootDir?.children) ?? [];
 
-            const repos = await Repo.list(apiClient, {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                path_prefix: `/Repos/${me}`,
-            });
+                children.push(
+                    ...repos
+                        .filter((entity) => {
+                            return entity.basename.endsWith(REPO_NAME_SUFFIX);
+                        })
+                        .map((entity) => {
+                            return {
+                                label: entity.basename.slice(
+                                    0,
+                                    -REPO_NAME_SUFFIX.length
+                                ),
+                                detail: entity.path,
+                                path: entity.path,
+                            };
+                        })
+                );
+            }
+            input.items = children;
+            input.busy = false;
 
-            quickPick.items = items.concat(
-                ...repos!.map((r) => ({
-                    label: r.path.split("/").pop() || "",
-                    detail: r.path,
-                    path: r.path,
-                    id: r.id,
-                }))
-            );
-            quickPick.busy = false;
-
-            await new Promise<void>((resolve) => {
-                quickPick.onDidAccept(async () => {
-                    if (
-                        quickPick.selectedItems[0].label === "Create New Repo"
-                    ) {
-                        await UrlUtils.openExternal(
-                            `${
-                                (
-                                    await this.connectionManager.workspaceClient
-                                        ?.apiClient.host
-                                )?.href ?? ""
-                            }#folder/${this.connectionManager.repoRootId ?? ""}`
+            const disposables = [
+                input,
+                input.onDidAccept(async () => {
+                    const fn = async () => {
+                        const selection = input
+                            .selectedItems[0] as WorkspaceFsQuickPickItem;
+                        if (
+                            selection.label !== "Create New Sync Destination" &&
+                            selection.path
+                        ) {
+                            this.connectionManager.attachSyncDestination(
+                                new RemoteUri(selection.path)
+                            );
+                            return;
+                        }
+                        const created = await this.wsfsCommands.createFolder(
+                            rootDir
                         );
-                    } else {
-                        const repoPath = quickPick.selectedItems[0].path;
-                        await this.connectionManager.attachSyncDestination(
-                            Uri.from({
-                                scheme: "wsfs",
-                                path: repoPath,
-                            })
+                        if (created === undefined) {
+                            return;
+                        }
+                        this.connectionManager.attachSyncDestination(
+                            new RemoteUri(created.path)
                         );
-                        quickPick.dispose();
-                        resolve();
+                    };
+                    try {
+                        await fn();
+                    } catch (e: unknown) {
+                        if (e instanceof Error) {
+                            window.showErrorMessage(
+                                `Error while creating a new directory: ${e.message}`
+                            );
+                        }
+                    } finally {
+                        disposables.forEach((i) => i.dispose());
                     }
-                });
-
-                quickPick.onDidHide(() => {
-                    quickPick.dispose();
-                    resolve();
-                });
-            });
+                }),
+                input.onDidHide(() => {
+                    disposables.forEach((i) => i.dispose());
+                }),
+            ];
         };
     }
 

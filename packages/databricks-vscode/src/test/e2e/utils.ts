@@ -8,7 +8,11 @@ import {
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-const ViewSectionTypes = ["CLUSTERS", "CONFIGURATION"] as const;
+const ViewSectionTypes = [
+    "CLUSTERS",
+    "CONFIGURATION",
+    "WORKSPACE EXPLORER",
+] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
 
 export async function findViewSection(name: ViewSectionType) {
@@ -31,10 +35,13 @@ export async function findViewSection(name: ViewSectionType) {
             timeoutMsg: `Can't find view control "${name}"`,
         }
     );
-    const view = await (await control?.openView())
-        ?.getContent()
-        ?.getSection(name);
-    return view;
+    const views =
+        (await (await control?.openView())?.getContent()?.getSections()) ?? [];
+    for (const v of views) {
+        if ((await v.getTitle()).toUpperCase() === name) {
+            return v;
+        }
+    }
 }
 
 export async function getViewSection(
@@ -96,51 +103,9 @@ export async function waitForTreeItems(
     }
 }
 
-export async function waitForPythonExtension() {
-    const section = await getViewSection("CONFIGURATION");
-    assert(section);
-    const welcome = await section.findWelcomeContent();
-    assert(welcome);
-    sleep(5000);
-
+export async function dismissNotifications() {
     const workbench = await browser.getWorkbench();
-    browser.waitUntil(
-        async () => {
-            const notifs = await workbench.getNotifications();
-            let found = false;
-            for (const n of notifs) {
-                if (
-                    (await n.getActions()).find(
-                        (btn) => btn.getTitle() === "Install and Reload"
-                    ) !== undefined
-                ) {
-                    await n.takeAction("Install and Reload");
-                    found = true;
-                }
-            }
-
-            return found;
-        },
-        {
-            timeout: 10 * 1000,
-        }
-    );
-
-    await browser.waitUntil(
-        async () =>
-            (
-                await (
-                    await workbench.getEditorView().getActiveTab()
-                )?.getTitle()
-            )?.includes("README.quickstart.md") === true,
-        {
-            timeout: 1.5 * 60 * 1000,
-            timeoutMsg:
-                "Timeout when installing python extension and reloading",
-        }
-    );
-
-    sleep(1000);
+    await sleep(1000);
     const notifs = await workbench.getNotifications();
     try {
         for (const n of notifs) {
@@ -154,7 +119,7 @@ export async function waitForSyncComplete() {
         async () => {
             const repoConfigItem = await getViewSubSection(
                 "CONFIGURATION",
-                "Repo"
+                "Sync Destination"
             );
             if (repoConfigItem === undefined) {
                 return false;
@@ -163,7 +128,7 @@ export async function waitForSyncComplete() {
 
             let status: TreeItem | undefined = undefined;
             for (const i of await repoConfigItem.getChildren()) {
-                if ((await i.getLabel()).includes("State:")) {
+                if ((await i.getLabel()).includes("State")) {
                     status = i;
                     break;
                 }
@@ -191,7 +156,7 @@ export async function startSyncIfStopped() {
         async () => {
             const repoConfigItem = await getViewSubSection(
                 "CONFIGURATION",
-                "Repo"
+                "Sync Destination"
             );
             if (repoConfigItem === undefined) {
                 return false;
@@ -200,7 +165,7 @@ export async function startSyncIfStopped() {
 
             let status: TreeItem | undefined = undefined;
             for (const i of await repoConfigItem.getChildren()) {
-                if ((await i.getLabel()).includes("State:")) {
+                if ((await i.getLabel()).includes("State")) {
                     status = i;
                     break;
                 }

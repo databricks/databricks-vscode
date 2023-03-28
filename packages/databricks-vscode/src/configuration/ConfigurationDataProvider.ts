@@ -8,20 +8,27 @@ import {
     TreeItem,
     TreeItemCollapsibleState,
 } from "vscode";
+
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
+
+export type ConfigurationTreeItem = TreeItem & {
+    url?: string;
+};
 
 /**
  * Data provider for the cluster tree view
  */
 export class ConfigurationDataProvider
-    implements TreeDataProvider<TreeItem>, Disposable
+    implements TreeDataProvider<ConfigurationTreeItem>, Disposable
 {
-    private _onDidChangeTreeData: EventEmitter<TreeItem | undefined | void> =
-        new EventEmitter<TreeItem | undefined | void>();
-    readonly onDidChangeTreeData: Event<TreeItem | undefined | void> =
-        this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: EventEmitter<
+        ConfigurationTreeItem | undefined | void
+    > = new EventEmitter<ConfigurationTreeItem | undefined | void>();
+    readonly onDidChangeTreeData: Event<
+        ConfigurationTreeItem | undefined | void
+    > = this._onDidChangeTreeData.event;
 
     private disposables: Array<Disposable> = [];
 
@@ -51,13 +58,13 @@ export class ConfigurationDataProvider
         this.disposables.forEach((d) => d.dispose());
     }
 
-    getTreeItem(element: TreeItem): TreeItem | Thenable<TreeItem> {
+    getTreeItem(element: ConfigurationTreeItem): TreeItem | Thenable<TreeItem> {
         return element;
     }
 
     async getChildren(
-        element?: TreeItem | undefined
-    ): Promise<Array<TreeItem>> {
+        element?: ConfigurationTreeItem | undefined
+    ): Promise<Array<ConfigurationTreeItem>> {
         switch (this.connectionManager.state) {
             case "CONNECTED":
                 break;
@@ -69,16 +76,17 @@ export class ConfigurationDataProvider
         }
 
         const cluster = this.connectionManager.cluster;
-        const syncDestination = this.connectionManager.syncDestination;
+        const syncDestination = this.connectionManager.syncDestinationMapper;
 
         if (!element) {
-            const children: Array<TreeItem> = [];
+            const children: Array<ConfigurationTreeItem> = [];
             children.push({
                 label: `Workspace`,
                 iconPath: new ThemeIcon("account"),
                 id: "WORKSPACE",
                 collapsibleState: TreeItemCollapsibleState.Expanded,
                 contextValue: "workspace",
+                url: this.connectionManager.databricksWorkspace?.host?.toString(),
             });
 
             if (cluster) {
@@ -112,6 +120,7 @@ export class ConfigurationDataProvider
                     id: "CLUSTER",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
                     contextValue,
+                    url: (await cluster.url).toString(),
                 });
             } else {
                 children.push({
@@ -122,15 +131,20 @@ export class ConfigurationDataProvider
                     contextValue: "clusterDetached",
                 });
             }
-
             if (syncDestination) {
+                const url = this.connectionManager.workspaceClient
+                    ? await syncDestination.remoteUri.getUrl(
+                          this.connectionManager.workspaceClient
+                      )
+                    : undefined;
                 // TODO: Add another icon over here for in_progress state
                 // DECO-220
                 children.push({
-                    label: `Repo`,
-                    iconPath: new ThemeIcon("repo"),
-                    id: "REPO",
+                    label: `Sync Destination`,
+                    iconPath: new ThemeIcon("file-directory"),
+                    id: "SYNC-DESTINATION",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
+                    url: url,
                     contextValue:
                         this.sync.state === "WATCHING_FOR_CHANGES" ||
                         this.sync.state === "IN_PROGRESS"
@@ -139,9 +153,9 @@ export class ConfigurationDataProvider
                 });
             } else {
                 children.push({
-                    label: `Repo - "None attached"`,
-                    iconPath: new ThemeIcon("repo"),
-                    id: "REPO",
+                    label: `Sync Destination - "None attached"`,
+                    iconPath: new ThemeIcon("file-directory"),
+                    id: "SYNC-DESTINATION",
                     collapsibleState: TreeItemCollapsibleState.Expanded,
                     contextValue: "syncDetached",
                 });
@@ -231,7 +245,7 @@ export class ConfigurationDataProvider
 
             return [
                 {
-                    label: "Name:",
+                    label: "Name",
                     description: cluster.name,
                     iconPath: clusterItem.iconPath,
                     collapsibleState: TreeItemCollapsibleState.None,
@@ -243,11 +257,11 @@ export class ConfigurationDataProvider
             ];
         }
 
-        if (element.id === "REPO" && syncDestination) {
+        if (element.id === "SYNC-DESTINATION" && syncDestination) {
             const children: Array<TreeItem> = [
                 {
-                    label: `Name:`,
-                    description: syncDestination.name,
+                    label: `Name`,
+                    description: syncDestination.remoteUri.name,
                     iconPath:
                         this.sync.state === "WATCHING_FOR_CHANGES" ||
                         this.sync.state === "IN_PROGRESS"
@@ -258,12 +272,12 @@ export class ConfigurationDataProvider
             ];
 
             if (
-                syncDestination.name !== syncDestination.vscodeWorkspacePathName
+                syncDestination.remoteUri.name !== syncDestination.localUri.name
             ) {
                 children.push({
-                    label: "The remote repo name does not match the current vscode workspace name",
+                    label: "The remote sync destination name does not match the current vscode workspace name",
                     tooltip:
-                        "If syncing to repo with a different name is the intended behaviour, this warning can be ignored",
+                        "If syncing to directory with a different name is the intended behaviour, this warning can be ignored",
                     iconPath: new ThemeIcon(
                         "warning",
                         new ThemeColor("problemsWarningIcon.foreground")
@@ -272,18 +286,13 @@ export class ConfigurationDataProvider
             }
             children.push(
                 {
-                    label: `URL:`,
-                    description: await syncDestination.repo.url,
-                    contextValue: "databricks-link",
-                },
-                {
-                    label: `State:`,
+                    label: `State`,
                     description: this.sync.state,
                     collapsibleState: TreeItemCollapsibleState.None,
                 },
                 {
-                    label: `Path:`,
-                    description: syncDestination.path.path,
+                    label: `Path`,
+                    description: syncDestination.remoteUri.path,
                     collapsibleState: TreeItemCollapsibleState.None,
                 }
             );

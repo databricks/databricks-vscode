@@ -5,7 +5,7 @@ import {ProjectConfig, ProjectConfigFile} from "./ProjectConfigFile";
 import * as assert from "assert";
 import path from "path";
 import * as os from "os";
-import {ProfileAuthProvider} from "./auth/AuthProvider";
+import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
 
 describe(__filename, () => {
@@ -64,7 +64,10 @@ describe(__filename, () => {
             authType: config.authType,
             profile: config.profile,
         });
-        assert.equal(actual.workspacePath, config.workspacePath);
+        assert.deepEqual(
+            actual.workspacePath,
+            Uri.from({scheme: "wsfs", path: config.workspacePath})
+        );
         assert.equal(actual.clusterId, config.clusterId);
     });
 
@@ -107,7 +110,10 @@ token = testToken`,
             authType: "profile",
             profile: config.profile,
         });
-        assert.equal(actual.workspacePath, config.workspacePath);
+        assert.deepEqual(
+            actual.workspacePath,
+            Uri.from({scheme: "wsfs", path: config.workspacePath})
+        );
         assert.equal(actual.clusterId, config.clusterId);
     });
 });

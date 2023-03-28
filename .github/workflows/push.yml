@@ -45,8 +45,6 @@ jobs:
             - run: yarn run package:cli:fetch
               working-directory: packages/databricks-vscode
               env:
-                  # TODO: Remove this once the bricks repo is public
-                  GH_TOKEN: ${{ secrets.DECO_GITHUB_TOKEN }}
                   BRICKS_ARCH: darwin_amd64
 
             - name: Building packages
@@ -55,7 +53,8 @@ jobs:
             - run: mkdir -p packages/databricks-vscode/artifacts
 
             - name: Build VSIX
-              run: yarn workspace databricks-vscode package -o artifacts -t darwin-x64
+              run: yarn package -o artifacts -t darwin-x64
+              working-directory: packages/databricks-vscode
 
             - name: Upload artifacts
               uses: actions/upload-artifact@v3

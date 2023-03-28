@@ -1,10 +1,10 @@
 {
-    "name": "databricks-vscode",
-    "displayName": "Databricks for Visual Studio Code",
+    "name": "databricks",
+    "displayName": "Databricks",
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "0.0.9",
+    "version": "0.3.7",
     "engines": {
         "vscode": "^1.74.1"
     },
@@ -38,11 +38,15 @@
     },
     "activationEvents": [
         "onCommand:databricks.*",
+        "onTaskType:databricks",
         "onView:configurationView",
         "onView:clusterView",
-        "onTaskType:databricks",
         "onDebugResolve:databricks",
-        "onDebugResolve:databricks-workflow"
+        "onDebugResolve:databricks-workflow",
+        "workspaceContains:**/databricks.yml",
+        "workspaceContains:**/bundle.yml",
+        "workspaceContains:**/databricks.yaml",
+        "workspaceContains:**/bundle.yaml"
     ],
     "main": "out/extension.js",
     "types": "out/extension.d.ts",
@@ -51,81 +55,96 @@
             {
                 "command": "databricks.connection.logout",
                 "title": "Logout",
-                "category": "Databricks"
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.connection.configureWorkspace",
                 "icon": "$(gear)",
                 "title": "Configure workspace",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.connection.openDatabricksConfigFile",
                 "title": "Open Databricks configuration file",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.connection.attachCluster",
                 "title": "Attach cluster",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(plug)"
             },
             {
                 "command": "databricks.connection.attachClusterQuickPick",
                 "title": "Configure cluster",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachCluster",
                 "title": "Detach cluster",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(debug-disconnect)"
             },
             {
                 "command": "databricks.sync.start",
                 "title": "Start synchronization",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.startFull",
                 "title": "Start synchronization (full sync)",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.stop",
                 "title": "Stop synchronization",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(sync-ignored)"
             },
             {
                 "command": "databricks.cluster.filterByAll",
-                "title": "All"
+                "title": "All",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.cluster.filterByRunning",
-                "title": "Running"
+                "title": "Running",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.cluster.filterByMe",
-                "title": "Created by me"
+                "title": "Created by me",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.cluster.refresh",
                 "icon": "$(refresh)",
-                "title": "Refresh"
+                "title": "Refresh",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
                 "command": "databricks.connection.attachSyncDestination",
                 "title": "Configure sync destination",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachSyncDestination",
                 "title": "Detach sync destination",
                 "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(debug-disconnect)"
             },
             {
@@ -160,17 +179,43 @@
             {
                 "command": "databricks.cluster.start",
                 "title": "Start Cluster",
-                "icon": "$(debug-start)"
+                "icon": "$(debug-start)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.cluster.stop",
                 "title": "Stop Cluster",
-                "icon": "$(debug-stop)"
+                "icon": "$(debug-stop)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
             },
             {
                 "command": "databricks.utils.openExternal",
                 "title": "Open link externally",
-                "icon": "$(link)"
+                "icon": "$(link)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.attachSyncDestination",
+                "title": "Attach folder as sync destination",
+                "icon": "$(plug)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.refresh",
+                "title": "Refresh workspace filesystem view",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.createFolder",
+                "title": "Create Folder",
+                "icon": "$(new-folder)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -187,6 +232,11 @@
                 {
                     "id": "configurationView",
                     "name": "Configuration"
+                },
+                {
+                    "id": "workspaceFsView",
+                    "name": "Workspace explorer",
+                    "when": "config.databricks.sync.destinationType == workspace"
                 },
                 {
                     "id": "clusterView",
@@ -226,6 +276,16 @@
                     "command": "databricks.cluster.refresh",
                     "when": "view == clusterView",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.wsfs.refresh",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
                 }
             ],
             "databricks.cluster.filter": [
@@ -241,29 +301,39 @@
             ],
             "view/item/context": [
                 {
+                    "command": "databricks.utils.openExternal",
+                    "when": "view == configurationView && viewItem == workspace || view == configurationView && viewItem =~ /^.*cluster.*$/ || view == configurationView && viewItem =~ /^sync.*$/",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.utils.openExternal",
+                    "when": "view == clusterView && viewItem == cluster",
+                    "group": "inline@1"
+                },
+                {
                     "command": "databricks.connection.attachCluster",
                     "when": "view == clusterView",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.configureWorkspace",
                     "when": "view == configurationView && viewItem == workspace",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.attachClusterQuickPick",
                     "when": "view == configurationView && viewItem == clusterDetached || view == configurationView && viewItem =~ /^databricks.cluster.*$/",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.attachSyncDestination",
                     "when": "view == configurationView && viewItem == syncDetached",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.attachSyncDestination",
                     "when": "view == configurationView && viewItem == syncStopped || view == configurationView && viewItem == syncRunning",
-                    "group": "inline@1"
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.sync.start",
@@ -286,9 +356,12 @@
                     "group": "inline@0"
                 },
                 {
-                    "command": "databricks.utils.openExternal",
-                    "when": "view == configurationView && viewItem =~ /^.*databricks-link.*$/ || view == clusterView && viewItem =~ /^.*databricks-link.*$/",
-                    "group": "inline@0"
+                    "command": "databricks.wsfs.attachSyncDestination",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace || view == workspaceFsView && viewItem =~ /^wsfs.repo.*$/ && config.databricks.sync.destinationType == repo"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace"
                 }
             ],
             "editor/title/run": [
@@ -299,7 +372,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "resourceLangId == python || resourceExtname == .ipynb",
+                    "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb",
                     "group": "navigation@1"
                 }
             ],
@@ -311,6 +384,22 @@
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder",
+                    "when": "config.databricks.sync.destinationType == workspace"
+                },
+                {
+                    "command": "databricks.wsfs.refresh",
+                    "when": "config.databricks.sync.destinationType == workspace"
+                },
+                {
+                    "command": "databricks.wsfs.attachSyncDestination",
+                    "when": "config.databricks.sync.destinationType == workspace"
+                },
+                {
+                    "command": "databricks.utils.openExternal",
+                    "when": "false"
                 }
             ],
             "explorer/context": [
@@ -413,7 +502,10 @@
             {
                 "type": "databricks-workflow",
                 "languages": [
-                    "python"
+                    "python",
+                    "sql",
+                    "r",
+                    "scala"
                 ],
                 "label": "Databricks Workflow",
                 "configurationAttributes": {
@@ -502,6 +594,24 @@
                         "type": "boolean",
                         "default": false,
                         "description": "Enable verbose logging for bricks CLI (sync mode)."
+                    },
+                    "databricks.sync.destinationType": {
+                        "type": "string",
+                        "default": "repo",
+                        "enum": [
+                            "workspace",
+                            "repo"
+                        ],
+                        "description": "Use a folder in Workspace or a Databricks Repo as sync destination (Reload for changes to take effect).",
+                        "enumDescriptions": [
+                            "Use a folder in Workspace as sync destination",
+                            "Use a Repo as sync destination"
+                        ]
+                    },
+                    "databricks.overrideDatabricksConfigFile": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Override location of .databrickscfg file (default: DATABRICKS_CONFIG_FILE environment variable or ~/.databrickscfg)"
                     }
                 }
             }
@@ -514,20 +624,31 @@
         "dependencies": false,
         "useYarn": false
     },
+    "bricks": {
+        "version": "0.0.27"
+    },
     "scripts": {
-        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:copy-webview-toolkit",
-        "package": "vsce package",
-        "package:cli:fetch": "BRICKS_VERSION=v0.0.15 && bash ./scripts/fetch-bricks-cli.sh ${BRICKS_VERSION} ${BRICKS_ARCH:-}",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:copy-webview-toolkit",
+        "package": "vsce package --baseContentUrl https://github.com/databricks/databricks-vscode/blob/${TAG:-main}/packages/databricks-vscode --baseImagesUrl https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-main}/packages/databricks-vscode",
+        "package:linux:x64": "./scripts/package-vsix.sh linux-x64",
+        "package:linux:arm64": "./scripts/package-vsix.sh linux-arm64",
+        "package:darwin:x64": "./scripts/package-vsix.sh darwin-x64",
+        "package:darwin:arm64": "./scripts/package-vsix.sh darwin-arm64",
+        "package:win32:x64": "./scripts/package-vsix.sh win32-x64",
+        "package:win32:arm64": "./scripts/package-vsix.sh win32-arm64",
+        "package:all": "yarn run package:linux:x64 && yarn run package:linux:arm64 && yarn run package:darwin:x64 && yarn run package:darwin:arm64 && yarn run package:win32:x64 && yarn run package:win32:arm64",
+        "package:cli:fetch": "bash ./scripts/fetch-bricks-cli.sh ${BRICKS_ARCH:-}",
         "package:cli:link": "rm -f ./bin/bricks && ln -s ../../../../bricks/bricks bin",
+        "package:wrappers:write": "ts-node ./scripts/writeIpynbWrapper.ts -s ./resources/python/notebook.workflow-wrapper.py -o ./resources/python/generated/notebook.workflow-wrapper.json",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
-        "build": "tsc --build",
-        "watch": "yarn run package:copy-webview-toolkit && tsc --build --watch",
+        "build": "yarn run package:wrappers:write && tsc --build --force",
+        "watch": "yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && tsc --build --watch --force",
         "fix": "eslint src --ext ts --fix && prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",
-        "test:integ:prepare": "yarn run package && rm -rf extension && mkdir -p extension && unzip databricks*.vsix -d extension",
+        "test:integ:prepare": "yarn run package",
         "test:integ:run": "wdio run src/test/e2e/wdio.conf.ts",
         "test:integ": "yarn run test:integ:prepare && yarn run test:integ:run",
         "test:cov": "nyc yarn run test:unit",
@@ -539,11 +660,9 @@
     "dependencies": {
         "@databricks/databricks-sdk": "workspace:^",
         "@databricks/databricks-vscode-types": "workspace:^",
-        "@vscode/debugadapter": "^1.58.0",
-        "@vscode/extension-telemetry": "0.6.2",
+        "@vscode/debugadapter": "^1.59.0",
         "@vscode/webview-ui-toolkit": "^1.2.1",
         "ansi-to-html": "^0.7.2",
-        "ini": "^3.0.1",
         "triple-beam": "^1.3.0",
         "winston": "^3.8.2"
     },
@@ -551,41 +670,40 @@
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
         "@sinonjs/fake-timers": "^10.0.2",
         "@types/fs-extra": "^11.0.1",
-        "@types/glob": "^8.0.0",
-        "@types/ini": "^1.3.31",
+        "@types/glob": "^8.0.1",
         "@types/mocha": "^10.0.1",
         "@types/mock-require": "^2.0.1",
-        "@types/node": "^18.11.18",
+        "@types/node": "^18.13.0",
         "@types/sinonjs__fake-timers": "^8.1.2",
         "@types/tmp": "^0.2.3",
         "@types/triple-beam": "^1.3.2",
-        "@types/vscode": "^1.74.0",
-        "@types/yargs": "^17.0.19",
-        "@typescript-eslint/eslint-plugin": "^5.48.1",
-        "@typescript-eslint/parser": "^5.48.1",
-        "@vscode/test-electron": "^2.2.2",
-        "@wdio/cli": "^7.29.1",
-        "@wdio/local-runner": "^7.29.1",
+        "@types/vscode": "^1.69.1",
+        "@types/yargs": "^17.0.22",
+        "@typescript-eslint/eslint-plugin": "^5.52.0",
+        "@typescript-eslint/parser": "^5.52.0",
+        "@vscode/test-electron": "^2.2.3",
+        "@wdio/cli": "^7.30.1",
+        "@wdio/local-runner": "^7.30.1",
         "@wdio/mocha-framework": "^7.26.0",
         "@wdio/spec-reporter": "^7.29.1",
         "@wdio/types": "^7.26.0",
-        "esbuild": "^0.16.16",
-        "eslint": "^8.31.0",
+        "esbuild": "^0.17.8",
+        "eslint": "^8.34.0",
         "fs-extra": "^11.1.0",
-        "glob": "^8.0.3",
+        "glob": "^8.1.0",
         "mocha": "^10.2.0",
         "mock-require": "^3.0.3",
         "nyc": "^15.1.0",
-        "prettier": "^2.8.2",
+        "prettier": "^2.8.4",
         "tmp-promise": "^3.0.3",
         "ts-mockito": "^2.6.1",
         "ts-node": "^10.9.1",
-        "typescript": "^4.9.4",
+        "typescript": "^4.9.5",
         "vsce": "^2.15.0",
-        "wdio-video-reporter": "^3.4.0",
+        "wdio-video-reporter": "^3.5.0",
         "wdio-vscode-service": "^4.2.1",
         "winston": "^3.8.2",
-        "yargs": "^17.6.2"
+        "yargs": "^17.7.0"
     },
     "nyc": {
         "extends": "@istanbuljs/nyc-config-typescript",

@@ -154,7 +154,7 @@ export class WorkspaceService {
      * the input path, this call returns an error `RESOURCE_ALREADY_EXISTS`.
      *
      * Note that if this operation fails it may have succeeded in creating some
-     * of the necessary\nparrent directories.
+     * of the necessary parrent directories.
      */
     @withLogContext(ExposedLoggers.SDK)
     async mkdirs(

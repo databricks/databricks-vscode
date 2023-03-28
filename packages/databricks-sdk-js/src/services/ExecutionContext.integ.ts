@@ -6,6 +6,7 @@ import assert from "assert";
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
 import {mock, when, instance} from "ts-mockito";
 import {TokenFixture} from "../test/fixtures/TokenFixtures";
+import {DEFAULT_MAX_TIMEOUT} from "../retries/retries";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
@@ -56,7 +57,8 @@ describe(__filename, function () {
         const {cmd, result} = await context.execute(
             "while True: pass",
             undefined,
-            instance(token)
+            instance(token),
+            DEFAULT_MAX_TIMEOUT
         );
         // The API surfaces an exception when a command is cancelled
         // The cancellation itself proceeds as expected, but the status

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as https from "node:https";
 import {TextDecoder} from "node:util";
-import {fetch} from "./fetch";
+import fetch from "node-fetch-commonjs";
 import {ExposedLoggers, Utils, withLogContext} from "./logging";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "./context";
@@ -22,7 +22,11 @@ export class HttpError extends Error {
 }
 
 export class ApiClientResponseError extends Error {
-    constructor(readonly message: string, readonly response: any) {
+    constructor(
+        readonly message: string,
+        readonly response: any,
+        readonly error_code?: string
+    ) {
         super(message);
     }
 }
@@ -127,9 +131,7 @@ export class ApiClient {
             }
         }
 
-        const response = await retry<
-            Awaited<Awaited<ReturnType<typeof fetch>>["response"]>
-        >({
+        const response = await retry<Awaited<ReturnType<typeof fetch>>>({
             timeout: new Time(
                 this.config.retryTimeoutSeconds || 300,
                 TimeUnits.seconds
@@ -137,10 +139,13 @@ export class ApiClient {
             fn: async () => {
                 let response;
                 try {
-                    const {abort, response: responsePromise} = await fetch(
-                        url.toString(),
-                        options
-                    );
+                    const controller = new AbortController();
+                    const signal = controller.signal;
+                    const abort = controller.abort;
+                    const responsePromise = await fetch(url.toString(), {
+                        signal,
+                        ...options,
+                    });
                     if (context?.cancellationToken?.onCancellationRequested) {
                         context?.cancellationToken?.onCancellationRequested(
                             abort
@@ -170,7 +175,7 @@ export class ApiClient {
             },
         });
 
-        let responseText!: string;
+        let responseText: string;
         try {
             const responseBody = await response.arrayBuffer();
             responseText = new TextDecoder().decode(responseBody);
@@ -210,10 +215,11 @@ export class ApiClient {
 
         let responseJson: any;
         try {
-            responseJson = JSON.parse(responseText);
+            responseJson =
+                responseText.length === 0 ? {} : JSON.parse(responseText);
         } catch (e) {
             logAndReturnError(url, options, responseText, e, context);
-            throw new ApiClientResponseError(responseText, responseJson);
+            throw new ApiClientResponseError(responseText, e);
         }
 
         if ("error" in responseJson) {
@@ -234,7 +240,11 @@ export class ApiClient {
                 url,
                 options,
                 responseJson,
-                new HttpError(message, responseJson.error_code),
+                new ApiClientResponseError(
+                    message,
+                    responseJson,
+                    responseJson.error_code
+                ),
                 context
             );
         }

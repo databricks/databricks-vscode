@@ -7,14 +7,14 @@ import {ConfigurationDataProvider} from "./ConfigurationDataProvider";
 import {ApiClient, Cluster} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "./ConnectionManager";
 import {resolveProviderResult} from "../test/utils";
-import {SyncDestination} from "./SyncDestination";
+import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 
 describe(__filename, () => {
     let connectionManagerMock: ConnectionManager;
     let disposables: Array<Disposable>;
     let onChangeClusterListener: (e: Cluster) => void;
-    let onChangeSyncDestinationListener: (e: SyncDestination) => void;
+    let onChangeSyncDestinationListener: (e: SyncDestinationMapper) => void;
     let sync: CodeSynchronizer;
 
     beforeEach(() => {
@@ -87,7 +87,7 @@ describe(__filename, () => {
         );
 
         assert(!called);
-        onChangeSyncDestinationListener(instance(mock(SyncDestination)));
+        onChangeSyncDestinationListener(instance(mock(SyncDestinationMapper)));
         assert(called);
     });
 
@@ -102,7 +102,11 @@ describe(__filename, () => {
     });
 
     it("should return cluster children", async () => {
-        const cluster = new Cluster(instance(mock(ApiClient)), {
+        const mockApiClient = mock(ApiClient);
+        when(mockApiClient.host).thenResolve(
+            new URL("https://www.example.com")
+        );
+        const cluster = new Cluster(instance(mockApiClient), {
             cluster_id: "cluster-id-2",
             cluster_name: "cluster-name-2",
             cluster_source: "UI",
@@ -129,6 +133,7 @@ describe(__filename, () => {
                 },
                 id: "WORKSPACE",
                 label: "Workspace",
+                url: undefined,
             },
             {
                 collapsibleState: 2,
@@ -139,16 +144,17 @@ describe(__filename, () => {
                 },
                 id: "CLUSTER",
                 label: "Cluster",
+                url: "https://www.example.com/#setting/clusters/cluster-id-2/configuration",
             },
             {
                 collapsibleState: 2,
                 contextValue: "syncDetached",
                 iconPath: {
                     color: undefined,
-                    id: "repo",
+                    id: "file-directory",
                 },
-                id: "REPO",
-                label: 'Repo - "None attached"',
+                id: "SYNC-DESTINATION",
+                label: 'Sync Destination - "None attached"',
             },
         ]);
     });

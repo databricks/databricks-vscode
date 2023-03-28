@@ -1,11 +1,7 @@
 import assert from "node:assert";
 import path from "node:path";
 import * as fs from "fs/promises";
-import {
-    getViewSection,
-    waitForPythonExtension,
-    waitForTreeItems,
-} from "./utils";
+import {dismissNotifications, getViewSection, waitForTreeItems} from "./utils";
 import {
     CustomTreeSection,
     InputBox,
@@ -41,11 +37,7 @@ describe("Configure Databricks Extension", async function () {
         host = process.env.DATABRICKS_HOST;
 
         workbench = await browser.getWorkbench();
-    });
-
-    it("should install vscode python extension", async function () {
-        this.retries(1);
-        await waitForPythonExtension();
+        await dismissNotifications();
     });
 
     it("should open VSCode", async function () {
@@ -54,10 +46,38 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should dismiss notifications", async function () {
+        //Collect all notifications
+        sleep(2000);
         const notifications = await workbench.getNotifications();
         for (const n of notifications) {
             await n.dismiss();
         }
+    });
+
+    it("should wait for quickstart", async () => {
+        const section = await getViewSection("CONFIGURATION");
+        assert(section);
+        const welcome = await section.findWelcomeContent();
+        assert(welcome);
+        await browser.waitUntil(
+            async () => {
+                return (
+                    (
+                        await (
+                            await workbench.getEditorView().getEditorGroup(0)
+                        ).getOpenTabs()
+                    ).findIndex(async (value) => {
+                        return (await value.getTitle()).includes(
+                            "DATABRICKS.quickstart.md"
+                        );
+                    }) !== -1
+                );
+            },
+            {timeout: 5000}
+        );
+
+        //Wait for quickstart text to be visible.
+        sleep(2000);
     });
 
     it("should open databricks panel and login", async function () {
@@ -68,16 +88,30 @@ describe("Configure Databricks Extension", async function () {
         const buttons = await welcome.getButtons();
         assert(buttons);
         assert(buttons.length > 0);
-        await (await buttons[0].elem).click();
 
-        let input = await new InputBox(workbench.locatorMap).wait();
-        await sleep(200);
+        let input: InputBox | undefined;
+        await browser.waitUntil(
+            async () => {
+                await (await buttons[0].elem).click();
+
+                input = await new InputBox(workbench.locatorMap).wait();
+                return input !== undefined;
+            },
+            {timeout: 3000, interval: 500}
+        );
+
+        assert(input !== undefined);
+        while (await input.hasProgress()) {
+            await sleep(500);
+        }
 
         await input.confirm();
-        await sleep(200);
+        await sleep(1000);
 
         input = await new InputBox(workbench.locatorMap).wait();
-        await sleep(200);
+        while (await input.hasProgress()) {
+            await sleep(500);
+        }
 
         await input.selectQuickPick("DEFAULT");
 
@@ -117,7 +151,13 @@ describe("Configure Databricks Extension", async function () {
         const buttons = await (
             clusterConfigItem as TreeItem
         ).getActionButtons();
-        await buttons[0].elem.click();
+
+        const configureButton = buttons.filter((b) => {
+            return b.getLabel() === "Configure cluster";
+        })[0];
+        assert(configureButton);
+
+        await configureButton.elem.click();
 
         const input = await new InputBox(workbench.locatorMap).wait();
         await sleep(200);
@@ -139,7 +179,7 @@ describe("Configure Databricks Extension", async function () {
             clusterProps[await i.getLabel()] = (await i.getDescription()) || "";
         }
 
-        const testClusterId = clusterProps["Cluster ID:"];
+        const testClusterId = clusterProps["Cluster ID"];
         assert.equal(testClusterId, clusterId);
     });
 

@@ -1,0 +1,65 @@
+name: Publish to VS Code Marketplace
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Release tag"
+                required: true
+                type: string
+
+    release:
+        types: [published]
+
+jobs:
+    publish-to-vscode:
+        runs-on: ubuntu-latest
+        environment: Production
+
+        steps:
+            - name: Use Node.js 16.x
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 16.x
+
+            - name: download release
+              run: |
+                  set x
+                  echo Version: ${{ github.event.inputs.version }}
+                  echo REF: ${{ github.ref }}
+                  TAG=${{ github.event.inputs.version }}
+                  if [[ ! -z "${{ github.event.inputs.version }}" ]]; then
+                    TAG=${{ github.event.inputs.version }}
+                  elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+                    TAG=$(echo ${{ github.ref }} | sed -e "s|^refs/tags/||")
+                  else
+                    exit 1
+                  fi
+                  echo Tag: $TAG
+                  gh release download $TAG -R databricks/databricks-vscode
+                  ls -lR
+                  echo "TAG=$TAG" >> $GITHUB_ENV
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Install vcse
+              run: npm install -g @vscode/vsce
+
+            - name: Publish to VS Code Marketplace
+              run: |
+                  vsce -V
+                  vsce publish -p ${{ secrets.VSCE_TOKEN }} --packagePath databricks-*.vsix
+
+              env:
+                  VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+
+            - name: Install ovsx
+              run: npm install -g ovsx
+
+            - name: Publish to Open VSIX
+              run: |
+                  ovsx verify-pat databricks
+                  ovsx publish --packagePath databricks-*.vsix
+
+              env:
+                  OVSX_PAT: ${{ secrets.OVSX_PAT }}

@@ -15,11 +15,14 @@ import {
     ViewColumn,
     window,
 } from "vscode";
-import {SyncDestination} from "../configuration/SyncDestination";
+import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {isNotebook} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
 import Convert from "ansi-to-html";
+import {ConnectionManager} from "../configuration/ConnectionManager";
+import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWrapper";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();
@@ -27,7 +30,8 @@ export class WorkflowRunner implements Disposable {
 
     constructor(
         private context: ExtensionContext,
-        private codeSynchronizer: CodeSynchronizer
+        private codeSynchronizer: CodeSynchronizer,
+        private readonly connectionManager: ConnectionManager
     ) {}
 
     dispose() {
@@ -74,14 +78,14 @@ export class WorkflowRunner implements Disposable {
         syncDestination,
         token,
     }: {
-        program: Uri;
+        program: LocalUri;
         parameters?: Record<string, string>;
         args?: Array<string>;
         cluster: Cluster;
-        syncDestination: SyncDestination;
+        syncDestination: SyncDestinationMapper;
         token?: CancellationToken;
     }) {
-        const panel = await this.getPanelForUri(program);
+        const panel = await this.getPanelForUri(program.uri);
 
         const cancellation = new CancellationTokenSource();
         panel.onDidDispose(() => cancellation.cancel());
@@ -92,34 +96,108 @@ export class WorkflowRunner implements Disposable {
             });
         }
 
-        if (this.codeSynchronizer.state === "STOPPED") {
+        if (
+            !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(
+                this.codeSynchronizer.state
+            )
+        ) {
             await commands.executeCommand("databricks.sync.start");
         }
 
         // We wait for sync to complete so that the local files are consistant
         // with the remote repo files
         await this.codeSynchronizer.waitForSyncComplete();
+        if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {
+            panel.showError({
+                message: `Can't sync ${program}. \nReason: ${this.codeSynchronizer.state}`,
+            });
+            return;
+        }
+
+        panel.onDidReceiveMessage(async (e) => {
+            switch (e.command) {
+                case "refresh_results":
+                    if (
+                        e.args?.runId &&
+                        this.connectionManager.workspaceClient?.apiClient
+                    ) {
+                        const run = await WorkflowRun.fromId(
+                            this.connectionManager.workspaceClient?.apiClient,
+                            e.args?.runId
+                        );
+
+                        if (await isNotebook(program)) {
+                            panel.showExportedRun(await run.export());
+                        } else {
+                            panel.showStdoutResult(
+                                (await run.getOutput()).logs || ""
+                            );
+                        }
+                    }
+            }
+        });
 
         try {
-            if (await isNotebook(program)) {
-                const response = await cluster.runNotebookAndWait({
-                    path: syncDestination.localToRemoteNotebook(program),
-                    parameters,
-                    onProgress: (
-                        state: jobs.RunLifeCycleState,
-                        run: WorkflowRun
-                    ) => {
-                        panel.updateState(cluster, state, run);
-                    },
-                    token: cancellation.token,
-                });
-                const htmlContent = response.views![0].content;
-                panel.showHtmlResult(htmlContent || "");
+            const notebookType = await isNotebook(program);
+            if (notebookType) {
+                let remoteFilePath: string =
+                    syncDestination.localToRemoteNotebook(program).path;
+                if (
+                    workspaceConfigs.enableFilesInWorkspace &&
+                    syncDestination.remoteUri.type === "workspace"
+                ) {
+                    const wrappedFile = await new WorkspaceFsWorkflowWrapper(
+                        this.connectionManager,
+                        this.context
+                    ).createNotebookWrapper(
+                        program,
+                        syncDestination.localToRemote(program),
+                        notebookType
+                    );
+                    remoteFilePath = wrappedFile
+                        ? wrappedFile.path
+                        : remoteFilePath;
+                }
+                panel.showExportedRun(
+                    await cluster.runNotebookAndWait({
+                        path: remoteFilePath,
+                        parameters: {
+                            // eslint-disable-next-line @typescript-eslint/naming-convention
+                            DATABRICKS_SOURCE_FILE:
+                                syncDestination.localToRemote(program)
+                                    .workspacePrefixPath,
+                            // eslint-disable-next-line @typescript-eslint/naming-convention
+                            DATABRICKS_PROJECT_ROOT:
+                                syncDestination.remoteUri.workspacePrefixPath,
+                            ...parameters,
+                        },
+                        onProgress: (
+                            state: jobs.RunLifeCycleState,
+                            run: WorkflowRun
+                        ) => {
+                            panel.updateState(cluster, state, run);
+                        },
+                        token: cancellation.token,
+                    })
+                );
             } else {
+                const originalFileUri = syncDestination.localToRemote(program);
+                const wrappedFile =
+                    workspaceConfigs.enableFilesInWorkspace &&
+                    syncDestination.remoteUri.type === "workspace"
+                        ? await new WorkspaceFsWorkflowWrapper(
+                              this.connectionManager,
+                              this.context
+                          ).createPythonFileWrapper(originalFileUri)
+                        : undefined;
                 const response = await cluster.runPythonAndWait({
-                    path:
-                        syncDestination.localToRemoteNotebook(program) + ".py",
-                    args,
+                    path: wrappedFile ? wrappedFile.path : originalFileUri.path,
+                    args: (args ?? []).concat([
+                        "--databricks-source-file",
+                        originalFileUri.workspacePrefixPath,
+                        "--databricks-project-root",
+                        syncDestination.remoteUri.workspacePrefixPath,
+                    ]),
                     onProgress: (
                         state: jobs.RunLifeCycleState,
                         run: WorkflowRun
@@ -128,6 +206,7 @@ export class WorkflowRunner implements Disposable {
                     },
                     token: cancellation.token,
                 });
+                //TODO: Respone logs will contain bootstrap code path in the error stack trace. Remove it.
                 panel.showStdoutResult(response.logs || "");
             }
         } catch (e: unknown) {

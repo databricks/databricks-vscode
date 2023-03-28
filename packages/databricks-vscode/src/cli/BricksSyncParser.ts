@@ -10,126 +10,99 @@ const bricksLogLevelToSdk = new Map<string, LEVELS>([
     ["ERROR", LEVELS.error],
 ]);
 
+type EventBase = {
+    timestamp: string;
+    seq: number;
+    type: string;
+};
+
+type EventChanges = {
+    put: Array<string>;
+    delete: Array<string>;
+};
+
+type EventStart = EventBase &
+    EventChanges & {
+        type: "start";
+    };
+
+type EventComplete = EventBase &
+    EventChanges & {
+        type: "complete";
+    };
+
+type EventProgress = EventBase & {
+    type: "progress";
+
+    action: "put" | "delete";
+    path: string;
+    progress: number;
+};
+
+type Event = EventStart | EventComplete | EventProgress;
+
 export class BricksSyncParser {
-    private filesBeingUploaded = new Set<string>();
-    private filesBeingDeleted = new Set<string>();
-    private firstSyncDone = false;
+    private state: SyncState = "STOPPED";
 
     constructor(
         private syncStateCallback: (state: SyncState) => void,
         private writeEmitter: EventEmitter<string>
     ) {}
 
-    // Assumes we recieve a single line of bricks logs
-    // A value bricks action looks like this
-    // const s1 = "Action: PUT: g, .gitignore, DELETE: f"
-    // A hacky way to solve this, lets move to structed logs from bricks later
-    private parseForActionsInitiated(line: string) {
-        const indexOfAction = line.indexOf("Action:");
-        // The log line is not relevant for actions
-        if (indexOfAction === -1) {
-            return;
+    private changeSize(ec: EventChanges): number {
+        let size = 0;
+        if (ec.put) {
+            size += ec.put.length;
         }
+        if (ec.delete) {
+            size += ec.delete.length;
+        }
+        return size;
+    }
 
-        const tokenizedLine = line.substring(indexOfAction).split(" ");
-        let isPut = false;
-        let isDelete = false;
-        for (let i = 1; i < tokenizedLine.length; i++) {
-            switch (tokenizedLine[i]) {
-                case "PUT:": {
-                    isPut = true;
-                    isDelete = false;
-                    break;
-                }
-                case "DELETE:": {
-                    isDelete = true;
-                    isPut = false;
-                    break;
-                }
-                default: {
-                    // trim the trailing , if it exists
-                    const filePath = tokenizedLine[i].replace(/,$/, "");
-                    if (isPut) {
-                        this.filesBeingUploaded.add(filePath);
-                    } else if (isDelete) {
-                        this.filesBeingDeleted.add(filePath);
-                    } else {
-                        throw new Error(
-                            "[BricksSyncParser] unexpected logs recieved"
-                        );
-                    }
-                }
+    private processLine(line: string) {
+        const event = JSON.parse(line) as Event;
+        switch (event.type) {
+            case "start": {
+                this.state = "IN_PROGRESS";
+                this.writeEmitter.fire(
+                    "Starting synchronization (" +
+                        this.changeSize(event) +
+                        " files)\r\n"
+                );
+                break;
             }
+            case "progress": {
+                let action = "";
+                switch (event.action) {
+                    case "put":
+                        action = "Uploaded";
+                        break;
+                    case "delete":
+                        action = "Deleted";
+                        break;
+                }
+                if (event.progress === 1.0) {
+                    this.writeEmitter.fire(action + " " + event.path + "\r\n");
+                }
+                break;
+            }
+            case "complete":
+                this.state = "WATCHING_FOR_CHANGES";
+                this.writeEmitter.fire("Completed synchronization\r\n");
+                break;
         }
     }
 
-    // We expect a single line of logs for all files being put/delete
-    private parseForUploadCompleted(line: string) {
-        const indexOfUploaded = line.indexOf("Uploaded");
-        if (indexOfUploaded === -1) {
-            return;
-        }
-
-        const tokenizedLine = line.substring(indexOfUploaded).split(" ");
-        if (tokenizedLine.length !== 2) {
-            throw new Error("[BricksSyncParser] unexpected logs recieved");
-        }
-        const filePath = tokenizedLine[1];
-        if (!this.filesBeingUploaded.has(filePath)) {
-            throw new Error(
-                "[BricksSyncParser] untracked file uploaded. All upload complete " +
-                    "logs should be preceded with a uploaded initialted log. file: " +
-                    filePath +
-                    ". log recieved: `" +
-                    line +
-                    "`"
-            );
-        }
-        this.filesBeingUploaded.delete(filePath);
-    }
-
-    private parseForDeleteCompleted(line: string) {
-        const indexOfDeleted = line.indexOf("Deleted");
-        if (indexOfDeleted === -1) {
-            return;
-        }
-
-        const tokenizedLine = line.substring(indexOfDeleted).split(" ");
-        if (tokenizedLine.length !== 2) {
-            throw new Error("[BricksSyncParser] unexpected logs recieved");
-        }
-        const filePath = tokenizedLine[1];
-        if (!this.filesBeingDeleted.has(filePath)) {
-            throw new Error(
-                "[BricksSyncParser] untracked file deleted. All delete complete " +
-                    "logs should be preceded with a delete initialted log. file: " +
-                    filePath +
-                    ". log recieved: `" +
-                    line +
-                    "`"
-            );
-        }
-        this.filesBeingDeleted.delete(filePath);
-    }
-
-    // We block on execing any commands on vscode until we get a message from
-    // bricks cli that the initial sync is done
-    private parseForFirstSync(line: string) {
-        const indexOfSyncComplete = line.indexOf("Initial Sync Complete");
-        if (indexOfSyncComplete !== -1) {
-            this.firstSyncDone = true;
-        }
-    }
-
-    // This function processes the stderr logs from bricks sync and parses it
-    // to compute the sync state ie determine whether the remote files match
-    // what we have stored locally.
-    // TODO: Use structed logging to compute the sync state here
-    public process(data: string) {
+    public processStderr(data: string) {
         const logLines = data.split("\n");
         let currentLogLevel: LEVELS = LEVELS.info;
         for (let i = 0; i < logLines.length; i++) {
-            const line = logLines[i];
+            const line = logLines[i].trim();
+            if (line.length === 0) {
+                continue;
+            }
+
             const typeMatch = line.match(
                 /[0-9]+(?:\/[0-9]+)+ [0-9]+(?::[0-9]+)+ \[(.+)\]/
             );
@@ -137,38 +110,51 @@ export class BricksSyncParser {
                 currentLogLevel =
                     bricksLogLevelToSdk.get(typeMatch[1]) ?? currentLogLevel;
             }
-
             NamedLogger.getOrCreate(Loggers.Bricks).log(currentLogLevel, line);
-
-            this.parseForActionsInitiated(line);
-            this.parseForUploadCompleted(line);
-            this.parseForDeleteCompleted(line);
-
-            if (!this.firstSyncDone) {
-                this.parseForFirstSync(line);
-            }
-
-            // this.writeEmitter.fire writes to the pseudoterminal for the
-            // bricks sync process
-            this.writeEmitter.fire(line.trim());
-
-            // When vscode flush prints the logs from events fired here,
-            // it automatically adds a new line. Since we can reasonably expect
-            // with a high probablity that all logs in one call of this process(data) func will
-            // be flushed together, we do not add a new line at the last event
-            // to keep the new line spacing consistant
-            if (i !== logLines.length - 1) {
-                this.writeEmitter.fire("\n\r");
+            this.writeEmitter.fire(line.trim() + "\r\n");
+            if (this.matchForWsfsErrors(line)) {
+                return;
             }
         }
-        if (
-            this.filesBeingDeleted.size === 0 &&
-            this.filesBeingUploaded.size === 0 &&
-            this.firstSyncDone
-        ) {
-            this.syncStateCallback("WATCHING_FOR_CHANGES");
-        } else {
-            this.syncStateCallback("IN_PROGRESS");
+    }
+
+    private matchForWsfsErrors(line: string) {
+        if (line.match(/^Error: .*Files in Workspace is disabled.*/) !== null) {
+            this.syncStateCallback("FILES_IN_WORKSPACE_DISABLED");
+            return true;
         }
+
+        if (line.match(/^Error: .*Files in Repos is disabled.*/) !== null) {
+            this.syncStateCallback("FILES_IN_REPOS_DISABLED");
+            return true;
+        }
+
+        return false;
+    }
+
+    // This function processes the JSON output from bricks sync and parses it
+    // to figure out if a synchronization step is in progress or has completed.
+    public processStdout(data: string) {
+        const logLines = data.split("\n");
+        for (let i = 0; i < logLines.length; i++) {
+            const line = logLines[i].trim();
+            if (line.length === 0) {
+                continue;
+            }
+
+            try {
+                this.processLine(line);
+            } catch (error: any) {
+                NamedLogger.getOrCreate(Loggers.Extension).error(
+                    "Error parsing JSON line from bricks sync stdout: " + error
+                );
+            }
+
+            if (this.matchForWsfsErrors(line)) {
+                return;
+            }
+        }
+
+        this.syncStateCallback(this.state);
     }
 }

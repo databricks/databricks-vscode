@@ -3,17 +3,17 @@
 import assert from "assert";
 import {mock, when, instance, anything, verify, capture} from "ts-mockito";
 import {Disposable, ExtensionContext, Uri} from "vscode";
-import {
-    Cluster,
-    Command,
-    ExecutionContext,
-    Repo,
-} from "@databricks/databricks-sdk";
+import {Cluster, Command, ExecutionContext} from "@databricks/databricks-sdk";
 import {DatabricksRuntime, OutputEvent} from "./DatabricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {SyncDestination} from "../configuration/SyncDestination";
+import {
+    LocalUri,
+    RemoteUri,
+    SyncDestinationMapper,
+} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import path from "node:path";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 
 describe(__filename, () => {
     let disposables: Array<Disposable>;
@@ -29,7 +29,12 @@ describe(__filename, () => {
 
         executionContextMock = mock(ExecutionContext);
         when(
-            executionContextMock.execute(anything(), anything(), anything())
+            executionContextMock.execute(
+                anything(),
+                anything(),
+                anything(),
+                anything()
+            )
         ).thenResolve({
             cmd: mock(Command),
             result: {
@@ -53,15 +58,13 @@ describe(__filename, () => {
             instance<Cluster>(cluster)
         );
 
-        const syncDestination = new SyncDestination(
-            instance(mock(Repo)),
-            Uri.from({
-                scheme: "wsfs",
-                path: "/Workspace/Repos/fabian@databricks.com/test",
-            }),
-            Uri.file("/Desktop/workspaces")
+        const syncDestination = new SyncDestinationMapper(
+            new LocalUri("/Desktop/workspaces"),
+            new RemoteUri("/Repos/fabian@databricks.com/test")
         );
-        when(connectionManagerMock.syncDestination).thenReturn(syncDestination);
+        when(connectionManagerMock.syncDestinationMapper).thenReturn(
+            syncDestination
+        );
 
         const connectionManager = instance<ConnectionManager>(
             connectionManagerMock
@@ -72,10 +75,17 @@ describe(__filename, () => {
             Uri.file(path.join(__dirname, "..", ".."))
         );
 
+        const mockWsfsAccessVerfier = mock<WorkspaceFsAccessVerifier>();
+        when(mockWsfsAccessVerfier.verifyCluster(anything())).thenResolve();
+
+        const mockCodeSynchronizer = mock<CodeSynchronizer>();
+        when(mockCodeSynchronizer.state).thenReturn("WATCHING_FOR_CHANGES");
+
         runtime = new DatabricksRuntime(
             connectionManager,
-            mock(CodeSynchronizer),
-            instance(extensionContextMock)
+            instance(mockCodeSynchronizer),
+            instance(extensionContextMock),
+            instance(mockWsfsAccessVerfier)
         );
     });
 
@@ -104,7 +114,7 @@ describe(__filename, () => {
             outputs[1].text.includes("Creating execution context on cluster")
         );
         assert(outputs[2].text.includes("Synchronizing code to"));
-        assert(outputs[3].text.includes("Running /hello.py"));
+        assert(outputs[3].text.includes("Running hello.py"));
         assert.equal(outputs[4].text, "43");
         assert(outputs[5].text.includes("Done"));
     });
@@ -125,7 +135,12 @@ describe(__filename, () => {
 
     it("should handle failed executions", async () => {
         when(
-            executionContextMock.execute(anything(), anything(), anything())
+            executionContextMock.execute(
+                anything(),
+                anything(),
+                anything(),
+                anything()
+            )
         ).thenResolve({
             cmd: mock(Command),
             result: {

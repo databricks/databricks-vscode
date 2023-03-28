@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import {Disposable, Uri, WebviewPanel} from "vscode";
 
 export class WorkflowOutputPanel {
+    private disposables: Disposable[] = [];
     constructor(
         private panel: WebviewPanel,
         private readonly webviewContent: string
@@ -25,6 +26,8 @@ export class WorkflowOutputPanel {
     reset() {
         this.panel.webview.html =
             this.webviewContent + `<!-- ${Date.now()} -->`;
+
+        this.disposables.forEach((i) => i.dispose());
     }
 
     focus() {
@@ -36,6 +39,7 @@ export class WorkflowOutputPanel {
     }
 
     dispose() {
+        this.disposables.forEach((i) => i.dispose());
         this.panel.dispose();
     }
 
@@ -43,7 +47,12 @@ export class WorkflowOutputPanel {
         this.panel.webview.html = htmlContent;
     }
 
-    showHtmlResult(htmlContent: string) {
+    showExportedRun(run: jobs.ExportRunOutput) {
+        const htmlContent = run.views![0].content;
+        this.showHtmlResult(htmlContent || "");
+    }
+
+    private showHtmlResult(htmlContent: string) {
         this.panel.webview.postMessage({
             fn: "setOutputHtml",
             args: [htmlContent],
@@ -119,7 +128,9 @@ export class WorkflowOutputPanel {
                         ? new Date(task.end_time).toLocaleString()
                         : "-",
                     duration: task.start_time
-                        ? Date.now() - task.start_time
+                        ? (task.end_time && task.end_time > task.start_time
+                              ? task.end_time
+                              : Date.now()) - task.start_time
                         : -1,
                     status: state,
                 },
@@ -154,5 +165,11 @@ export class WorkflowOutputPanel {
         );
 
         return html;
+    }
+
+    onDidReceiveMessage(fn: (e: any) => void, thisArgs?: any) {
+        this.disposables.push(
+            this.panel.webview.onDidReceiveMessage(fn, thisArgs ?? this)
+        );
     }
 }

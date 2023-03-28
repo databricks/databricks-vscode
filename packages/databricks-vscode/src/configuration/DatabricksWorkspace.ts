@@ -9,7 +9,9 @@ import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider} from "./auth/AuthProvider";
+import {RemoteUri} from "../sync/SyncDestination";
 
 export class DatabricksWorkspace {
     constructor(
@@ -17,6 +19,28 @@ export class DatabricksWorkspace {
         private me: scim.User,
         private wsConf: WorkspaceConfProps
     ) {}
+
+    /**
+     * The current root for sync destination folders. Return a Workspace path or a Repo path
+     * depending on whether files in workspace is enabled for VSCode UI.
+     */
+    get currentFsRoot(): RemoteUri {
+        return workspaceConfigs.enableFilesInWorkspace
+            ? this.workspaceFsRoot
+            : this.repoRoot;
+    }
+
+    get workspaceFsRoot(): RemoteUri {
+        return new RemoteUri(
+            Uri.from({scheme: "wsfs", path: `/Users/${this.userName}/.ide`})
+        );
+    }
+
+    get repoRoot(): RemoteUri {
+        return new RemoteUri(
+            Uri.from({scheme: "wsfs", path: `/Repos/${this.userName}`})
+        );
+    }
 
     get host(): Uri {
         return Uri.parse(this._authProvider.host.toString());

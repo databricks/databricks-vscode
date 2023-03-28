@@ -21,6 +21,7 @@ import {
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {DatabricksRuntime} from "./DatabricksRuntime";
 import {Subject} from "./Subject";
 
@@ -47,7 +48,8 @@ export class DatabricksDebugAdapterFactory
     constructor(
         private connection: ConnectionManager,
         private codeSynchroniser: CodeSynchronizer,
-        private context: ExtensionContext
+        private context: ExtensionContext,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {}
 
     dispose() {}
@@ -57,7 +59,8 @@ export class DatabricksDebugAdapterFactory
             new DatabricksDebugSession(
                 this.connection,
                 this.codeSynchroniser,
-                this.context
+                this.context,
+                this.wsfsAccessVerifier
             )
         );
     }
@@ -71,14 +74,16 @@ export class DatabricksDebugSession extends LoggingDebugSession {
     constructor(
         connection: ConnectionManager,
         codeSynchronizer: CodeSynchronizer,
-        context: ExtensionContext
+        context: ExtensionContext,
+        wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {
         super();
 
         this.runtime = new DatabricksRuntime(
             connection,
             codeSynchronizer,
-            context
+            context,
+            wsfsAccessVerifier
         );
 
         this.disposables.push(
@@ -223,6 +228,11 @@ export class DatabricksDebugSession extends LoggingDebugSession {
     }
 
     protected async disconnectRequest(): Promise<void> {
+        if (this.runtime.state !== "FINISHED") {
+            this.sendEvent(new OutputEvent("Execution terminated", "stderr"));
+            this.sendEvent(new TerminatedEvent());
+            this.sendEvent(new ExitedEvent(1));
+        }
         await this.runtime.disconnect();
     }
 

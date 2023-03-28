@@ -32,11 +32,11 @@ export interface AwsKeyInfo {
 /**
  * The general workspace configurations that are specific to cloud providers.
  */
-export interface CloudResourceBucket {
+export interface CloudResourceContainer {
     /**
      * The general workspace configurations that are specific to Google Cloud.
      */
-    gcp?: GcpProjectContainer;
+    gcp?: CustomerFacingGcpCloudResourceContainer;
 }
 
 export interface CreateAwsKeyInfo {
@@ -58,12 +58,23 @@ export interface CreateAwsKeyInfo {
     reuse_key_for_cluster_volumes?: boolean;
 }
 
+export interface CreateCredentialAwsCredentials {
+    sts_role?: CreateCredentialStsRole;
+}
+
 export interface CreateCredentialRequest {
-    aws_credentials: AwsCredentials;
+    aws_credentials: CreateCredentialAwsCredentials;
     /**
      * The human-readable name of the credential configuration object.
      */
     credentials_name: string;
+}
+
+export interface CreateCredentialStsRole {
+    /**
+     * The Amazon Resource Name (ARN) of the cross account role.
+     */
+    role_arn?: string;
 }
 
 export interface CreateCustomerManagedKeyRequest {
@@ -72,57 +83,6 @@ export interface CreateCustomerManagedKeyRequest {
      * The cases that the key can be used for.
      */
     use_cases: Array<KeyUseCase>;
-}
-
-/**
- * The network configurations for the workspace. If you provide a network
- * configuration ID for a new workspace, Databricks deploys the new workspace
- * into that associated customer-managed VPC. If omitted, by default Databricks
- * creates a new Databricks-managed VPC for the workspace in your Google account
- * and manages its lifecycle.
- *
- * All the IP range configurations must be mutually exclusive. An attempt to
- * create a workspace fails if Databricks detects an IP range overlap.
- *
- * Specify custom IP ranges in CIDR format. The IP ranges for these fields must
- * not overlap, and all IP addresses must be entirely within the following
- * ranges: `10.0.0.0/8`, `100.64.0.0/10`, `172.16.0.0/12`, `192.168.0.0/16`, and
- * `240.0.0.0/4`.
- *
- * The sizes of these IP ranges affect the maximum number of nodes for the
- * workspace.
- *
- * **Important**: Confirm the IP ranges used by your Databricks workspace before
- * creating the workspace. You cannot change them after your workspace is
- * deployed. If the IP address ranges for your Databricks are too small, IP
- * exhaustion can occur, causing your Databricks jobs to fail. To determine the
- * address range sizes that you need, Databricks provides a calculator as a
- * Microsoft Excel spreadsheet. See [calculate subnet sizes for a new workspace].
- *
- * [calculate subnet sizes for a new workspace]: https://docs.gcp.databricks.com/administration-guide/cloud-configurations/gcp/network-sizing.html
- */
-export interface CreateGcpNetwork {
-    /**
-     * The common network configuration fields that can be used by both
-     * Databricks-managed VPCs and customer-managed VPCs.
-     */
-    gcp_common_network_config?: GcpCommonNetworkConfig;
-    /**
-     * The network settings for the workspace. The configurations are only for
-     * Databricks-managed VPCs. It is ignored if you specify a customer-managed
-     * VPC in the `network_id` field.
-     */
-    gcp_managed_network_config?: GcpManagedNetworkConfig;
-    /**
-     * The network configuration ID that is attached to the workspace. If you
-     * provide a network configuration ID for a new workspace, Databricks
-     * validates the network resources and deploys the new workspace into your
-     * associated customer-managed VPC that is specified in this network
-     * configuration. If omitted, by default Databricks creates a new
-     * Databricks-managed VPC for the workspace in your Google account and
-     * manages its lifecycle.
-     */
-    network_id?: string;
 }
 
 export interface CreateNetworkRequest {
@@ -198,7 +158,7 @@ export interface CreateWorkspaceRequest {
     /**
      * The general workspace configurations that are specific to cloud providers.
      */
-    cloud_resource_bucket?: CloudResourceBucket;
+    cloud_resource_container?: CloudResourceContainer;
     /**
      * ID of the workspace's credential configuration object.
      */
@@ -252,41 +212,6 @@ export interface CreateWorkspaceRequest {
      * contain `MANAGED_SERVICES`.
      */
     managed_services_customer_managed_key_id?: string;
-    /**
-     * The network configurations for the workspace. If you provide a network
-     * configuration ID for a new workspace, Databricks deploys the new workspace
-     * into that associated customer-managed VPC. If omitted, by default
-     * Databricks creates a new Databricks-managed VPC for the workspace in your
-     * Google account and manages its lifecycle.
-     *
-     * All the IP range configurations must be mutually exclusive. An attempt to
-     * create a workspace fails if Databricks detects an IP range overlap.
-     *
-     * Specify custom IP ranges in CIDR format. The IP ranges for these fields
-     * must not overlap, and all IP addresses must be entirely within the
-     * following ranges: `10.0.0.0/8`, `100.64.0.0/10`, `172.16.0.0/12`,
-     * `192.168.0.0/16`, and `240.0.0.0/4`.
-     *
-     * The sizes of these IP ranges affect the maximum number of nodes for the
-     * workspace.
-     *
-     * **Important**: Confirm the IP ranges used by your Databricks workspace
-     * before creating the workspace. You cannot change them after your workspace
-     * is deployed. If the IP address ranges for your Databricks are too small,
-     * IP exhaustion can occur, causing your Databricks jobs to fail. To
-     * determine the address range sizes that you need, Databricks provides a
-     * calculator as a Microsoft Excel spreadsheet. See [calculate subnet sizes
-     * for a new workspace].
-     *
-     * [calculate subnet sizes for a new workspace]: https://docs.gcp.databricks.com/administration-guide/cloud-configurations/gcp/network-sizing.html
-     */
-    network?: CreateGcpNetwork;
-    /**
-     * The ID of the workspace's network configuration object. To use [AWS
-     * PrivateLink] (Public Preview), this field is required.
-     *
-     * [AWS PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
-     */
     network_id?: string;
     /**
      * The pricing tier of the workspace. For pricing tier information, see [AWS
@@ -297,10 +222,9 @@ export interface CreateWorkspaceRequest {
     pricing_tier?: PricingTier;
     /**
      * ID of the workspace's private access settings object. Only used for
-     * PrivateLink (Public Preview). This ID must be specified for customers
-     * using [AWS PrivateLink] for either front-end (user-to-workspace
-     * connection), back-end (data plane to control plane connection), or both
-     * connection types.
+     * PrivateLink. This ID must be specified for customers using [AWS
+     * PrivateLink] for either front-end (user-to-workspace connection), back-end
+     * (data plane to control plane connection), or both connection types.
      *
      * Before configuring PrivateLink, read the [Databricks article about
      * PrivateLink].
@@ -346,6 +270,17 @@ export interface Credential {
     credentials_name?: string;
 }
 
+/**
+ * The general workspace configurations that are specific to Google Cloud.
+ */
+export interface CustomerFacingGcpCloudResourceContainer {
+    /**
+     * The Google Cloud project ID, which the workspace uses to instantiate cloud
+     * resources for your workspace.
+     */
+    project_id?: string;
+}
+
 export interface CustomerManagedKey {
     /**
      * The Databricks account ID that holds the customer-managed key.
@@ -387,7 +322,7 @@ export interface DeleteEncryptionKeyRequest {
 }
 
 /**
- * Delete network configuration
+ * Delete a network configuration
  */
 export interface DeleteNetworkRequest {
     /**
@@ -427,7 +362,7 @@ export interface DeleteVpcEndpointRequest {
 }
 
 /**
- * Delete workspace
+ * Delete a workspace
  */
 export interface DeleteWorkspaceRequest {
     /**
@@ -464,31 +399,28 @@ export type ErrorType =
     | "vpc";
 
 /**
- * The common network configuration fields that can be used by both
- * Databricks-managed VPCs and customer-managed VPCs.
- */
-export interface GcpCommonNetworkConfig {
-    /**
-     * The IP range from which to allocate GKE cluster master resources. This
-     * field will be ignored if GKE private cluster is not enabled.
-     *
-     * It must be exactly as big as `/28`.
-     */
-    gke_cluster_master_ip_range?: string;
-    /**
-     * Specifies the network connectivity types for the GKE nodes and the GKE
-     * master network. Set to `PRIVATE_NODE_PUBLIC_MASTER` for a private GKE
-     * cluster for the workspace. The GKE nodes will not have public IPs. Set to
-     * `PUBLIC_NODE_PUBLIC_MASTER` for a public GKE cluster. The nodes of a
-     * public GKE cluster have public IP addresses.
-     */
-    gke_connectivity_type?: GkeConnectivityType;
-}
-
-/**
  * The network settings for the workspace. The configurations are only for
  * Databricks-managed VPCs. It is ignored if you specify a customer-managed VPC
- * in the `network_id` field.
+ * in the `network_id` field.", All the IP range configurations must be mutually
+ * exclusive. An attempt to create a workspace fails if Databricks detects an IP
+ * range overlap.
+ *
+ * Specify custom IP ranges in CIDR format. The IP ranges for these fields must
+ * not overlap, and all IP addresses must be entirely within the following
+ * ranges: `10.0.0.0/8`, `100.64.0.0/10`, `172.16.0.0/12`, `192.168.0.0/16`, and
+ * `240.0.0.0/4`.
+ *
+ * The sizes of these IP ranges affect the maximum number of nodes for the
+ * workspace.
+ *
+ * **Important**: Confirm the IP ranges used by your Databricks workspace before
+ * creating the workspace. You cannot change them after your workspace is
+ * deployed. If the IP address ranges for your Databricks are too small, IP
+ * exhaustion can occur, causing your Databricks jobs to fail. To determine the
+ * address range sizes that you need, Databricks provides a calculator as a
+ * Microsoft Excel spreadsheet. See [calculate subnet sizes for a new workspace].
+ *
+ * [calculate subnet sizes for a new workspace]: https://docs.gcp.databricks.com/administration-guide/cloud-configurations/gcp/network-sizing.html
  */
 export interface GcpManagedNetworkConfig {
     /**
@@ -506,14 +438,6 @@ export interface GcpManagedNetworkConfig {
      * and no smaller than `/29`.
      */
     subnet_cidr?: string;
-}
-
-export interface GcpNetwork {
-    /**
-     * The network configuration ID that is attached to the workspace. This field
-     * is available only if the network is a customer-managed network.
-     */
-    network_id?: string;
 }
 
 /**
@@ -540,7 +464,7 @@ export interface GcpNetworkInfo {
     /**
      * The ID of the subnet associated with this network.
      */
-    subnet_id?: string;
+    subnet_id: string;
     /**
      * The Google Cloud region of the workspace data plane (for example,
      * `us-east4`).
@@ -551,17 +475,6 @@ export interface GcpNetworkInfo {
      * multiple network configurations.
      */
     vpc_id: string;
-}
-
-/**
- * The general workspace configurations that are specific to Google Cloud.
- */
-export interface GcpProjectContainer {
-    /**
-     * The Google Cloud project ID, which the workspace uses to instantiate cloud
-     * resources for your workspace.
-     */
-    project_id?: string;
 }
 
 /**
@@ -625,7 +538,7 @@ export interface GetVpcEndpointRequest {
 }
 
 /**
- * Get workspace
+ * Get a workspace
  */
 export interface GetWorkspaceRequest {
     /**
@@ -635,13 +548,40 @@ export interface GetWorkspaceRequest {
 }
 
 /**
- * Specifies the network connectivity types for the GKE nodes and the GKE master
- * network. Set to `PRIVATE_NODE_PUBLIC_MASTER` for a private GKE cluster for the
- * workspace. The GKE nodes will not have public IPs. Set to
- * `PUBLIC_NODE_PUBLIC_MASTER` for a public GKE cluster. The nodes of a public
- * GKE cluster have public IP addresses.
+ * The configurations for the GKE cluster of a Databricks workspace.
  */
-export type GkeConnectivityType =
+export interface GkeConfig {
+    /**
+     * Specifies the network connectivity types for the GKE nodes and the GKE
+     * master network.
+     *
+     * Set to `PRIVATE_NODE_PUBLIC_MASTER` for a private GKE cluster for the
+     * workspace. The GKE nodes will not have public IPs.
+     *
+     * Set to `PUBLIC_NODE_PUBLIC_MASTER` for a public GKE cluster. The nodes of
+     * a public GKE cluster have public IP addresses.
+     */
+    connectivity_type?: GkeConfigConnectivityType;
+    /**
+     * The IP range from which to allocate GKE cluster master resources. This
+     * field will be ignored if GKE private cluster is not enabled.
+     *
+     * It must be exactly as big as `/28`.
+     */
+    master_ip_range?: string;
+}
+
+/**
+ * Specifies the network connectivity types for the GKE nodes and the GKE master
+ * network.
+ *
+ * Set to `PRIVATE_NODE_PUBLIC_MASTER` for a private GKE cluster for the
+ * workspace. The GKE nodes will not have public IPs.
+ *
+ * Set to `PUBLIC_NODE_PUBLIC_MASTER` for a public GKE cluster. The nodes of a
+ * public GKE cluster have public IP addresses.
+ */
+export type GkeConfigConnectivityType =
     | "PRIVATE_NODE_PUBLIC_MASTER"
     | "PUBLIC_NODE_PUBLIC_MASTER";
 
@@ -791,13 +731,12 @@ export type PricingTier =
 /**
  * The private access level controls which VPC endpoints can connect to the UI or
  * API of any workspace that attaches this private access settings object. *
- * `ANY` (deprecated): Any VPC endpoint can connect to your workspace. *
  * `ACCOUNT` level access (the default) allows only VPC endpoints that are
  * registered in your Databricks account connect to your workspace. * `ENDPOINT`
  * level access allows only specified VPC endpoints connect to your workspace.
  * For details, see `allowed_vpc_endpoint_ids`.
  */
-export type PrivateAccessLevel = "ACCOUNT" | "ANY" | "ENDPOINT";
+export type PrivateAccessLevel = "ACCOUNT" | "ENDPOINT";
 
 export interface PrivateAccessSettings {
     /**
@@ -824,11 +763,10 @@ export interface PrivateAccessSettings {
     /**
      * The private access level controls which VPC endpoints can connect to the
      * UI or API of any workspace that attaches this private access settings
-     * object. * `ANY` (deprecated): Any VPC endpoint can connect to your
-     * workspace. * `ACCOUNT` level access (the default) allows only VPC
-     * endpoints that are registered in your Databricks account connect to your
-     * workspace. * `ENDPOINT` level access allows only specified VPC endpoints
-     * connect to your workspace. For details, see `allowed_vpc_endpoint_ids`.
+     * object. * `ACCOUNT` level access (the default) allows only VPC endpoints
+     * that are registered in your Databricks account connect to your workspace.
+     * * `ENDPOINT` level access allows only specified VPC endpoints connect to
+     * your workspace. For details, see `allowed_vpc_endpoint_ids`.
      */
     private_access_level?: PrivateAccessLevel;
     /**
@@ -916,14 +854,9 @@ export interface UpdateWorkspaceRequest {
     managed_services_customer_managed_key_id?: string;
     /**
      * The ID of the workspace's network configuration object. Used only if you
-     * already use a customer-managed VPC. This change is supported only if you
-     * specified a network configuration ID when the workspace was created. In
-     * other words, you cannot switch from a Databricks-managed VPC to a
-     * customer-managed VPC. This parameter is available for updating both failed
-     * and running workspaces. **Note**: You cannot use a network configuration
-     * update in this API to add support for PrivateLink (Public Preview). To add
-     * PrivateLink to an existing workspace, contact your Databricks
-     * representative.
+     * already use a customer-managed VPC. For failed workspaces only, you can
+     * switch from a Databricks-managed VPC to a customer-managed VPC by updating
+     * the workspace to add a network configuration ID.
      */
     network_id?: string;
     /**
@@ -963,11 +896,10 @@ export interface UpsertPrivateAccessSettingsRequest {
     /**
      * The private access level controls which VPC endpoints can connect to the
      * UI or API of any workspace that attaches this private access settings
-     * object. * `ANY` (deprecated): Any VPC endpoint can connect to your
-     * workspace. * `ACCOUNT` level access (the default) allows only VPC
-     * endpoints that are registered in your Databricks account connect to your
-     * workspace. * `ENDPOINT` level access allows only specified VPC endpoints
-     * connect to your workspace. For details, see `allowed_vpc_endpoint_ids`.
+     * object. * `ACCOUNT` level access (the default) allows only VPC endpoints
+     * that are registered in your Databricks account connect to your workspace.
+     * * `ENDPOINT` level access allows only specified VPC endpoints connect to
+     * your workspace. For details, see `allowed_vpc_endpoint_ids`.
      */
     private_access_level?: PrivateAccessLevel;
     /**
@@ -1098,7 +1030,7 @@ export interface Workspace {
     /**
      * The general workspace configurations that are specific to cloud providers.
      */
-    cloud_resource_bucket?: CloudResourceBucket;
+    cloud_resource_container?: CloudResourceContainer;
     /**
      * Time in epoch milliseconds when the workspace was created.
      */
@@ -1117,6 +1049,36 @@ export interface Workspace {
      */
     deployment_name?: string;
     /**
+     * The network settings for the workspace. The configurations are only for
+     * Databricks-managed VPCs. It is ignored if you specify a customer-managed
+     * VPC in the `network_id` field.", All the IP range configurations must be
+     * mutually exclusive. An attempt to create a workspace fails if Databricks
+     * detects an IP range overlap.
+     *
+     * Specify custom IP ranges in CIDR format. The IP ranges for these fields
+     * must not overlap, and all IP addresses must be entirely within the
+     * following ranges: `10.0.0.0/8`, `100.64.0.0/10`, `172.16.0.0/12`,
+     * `192.168.0.0/16`, and `240.0.0.0/4`.
+     *
+     * The sizes of these IP ranges affect the maximum number of nodes for the
+     * workspace.
+     *
+     * **Important**: Confirm the IP ranges used by your Databricks workspace
+     * before creating the workspace. You cannot change them after your workspace
+     * is deployed. If the IP address ranges for your Databricks are too small,
+     * IP exhaustion can occur, causing your Databricks jobs to fail. To
+     * determine the address range sizes that you need, Databricks provides a
+     * calculator as a Microsoft Excel spreadsheet. See [calculate subnet sizes
+     * for a new workspace].
+     *
+     * [calculate subnet sizes for a new workspace]: https://docs.gcp.databricks.com/administration-guide/cloud-configurations/gcp/network-sizing.html
+     */
+    gcp_managed_network_config?: GcpManagedNetworkConfig;
+    /**
+     * The configurations for the GKE cluster of a Databricks workspace.
+     */
+    gke_config?: GkeConfig;
+    /**
      * The Google Cloud region of the workspace data plane in your Google account
      * (for example, `us-east4`).
      */
@@ -1125,7 +1087,11 @@ export interface Workspace {
      * ID of the key configuration for encrypting managed services.
      */
     managed_services_customer_managed_key_id?: string;
-    network?: GcpNetwork;
+    /**
+     * The network configuration ID that is attached to the workspace. This field
+     * is available only if the network is a customer-managed network.
+     */
+    network_id?: string;
     /**
      * The pricing tier of the workspace. For pricing tier information, see [AWS
      * Pricing].
@@ -1135,10 +1101,9 @@ export interface Workspace {
     pricing_tier?: PricingTier;
     /**
      * ID of the workspace's private access settings object. Only used for
-     * PrivateLink (Public Preview). You must specify this ID if you are using
-     * [AWS PrivateLink] for either front-end (user-to-workspace connection),
-     * back-end (data plane to control plane connection), or both connection
-     * types.
+     * PrivateLink. You must specify this ID if you are using [AWS PrivateLink]
+     * for either front-end (user-to-workspace connection), back-end (data plane
+     * to control plane connection), or both connection types.
      *
      * Before configuring PrivateLink, read the [Databricks article about
      * PrivateLink].
@@ -1156,7 +1121,7 @@ export interface Workspace {
      */
     storage_customer_managed_key_id?: string;
     /**
-     * Workspace ID.
+     * A unique integer ID for the workspace
      */
     workspace_id?: number;
     /**

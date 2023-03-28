@@ -1,0 +1,16 @@
+{
+    "name": "dummy-test",
+    "displayName": "dummy-test",
+    "description": "A dummy extension to run integration tests",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.69.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "*"
+    ],
+    "main": "./src/extension.js"
+}

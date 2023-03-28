@@ -1,4 +1,11 @@
-import {commands, debug, ExtensionContext, window, workspace} from "vscode";
+import {
+    commands,
+    debug,
+    ExtensionContext,
+    extensions,
+    window,
+    workspace,
+} from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -11,20 +18,40 @@ import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
-import {ProjectConfigFileWatcher} from "./configuration/ProjectConfigFileWatcher";
+import {ProjectConfigFileWatcher} from "./file-managers/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {LoggerManager, Loggers} from "./logger";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
-import {workspaceConfigs} from "./WorkspaceConfigs";
+import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
+import {
+    WorkspaceFsAccessVerifier,
+    WorkspaceFsCommands,
+    WorkspaceFsDataProvider,
+} from "./workspace-fs";
+import {generateBundleSchema} from "./bundle/GenerateBundle";
+import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
+import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
+import path from "node:path";
 import TelemetryReporter from "@vscode/extension-telemetry";
 
 export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
+    CustomWhenContext.setActivated(false);
+
+    if (extensions.getExtension("databricks.databricks-vscode") !== undefined) {
+        await commands.executeCommand(
+            "workbench.extensions.uninstallExtension",
+            "databricks.databricks-vscode"
+        );
+
+        await commands.executeCommand("workbench.action.reloadWindow");
+    }
+
     if (!(await PackageJsonUtils.checkArchCompat(context))) {
         return undefined;
     }
@@ -44,18 +71,29 @@ export async function activate(
         return undefined;
     }
 
-    // create telemetry reporter on extension activation
-    const pkg = await PackageJsonUtils.getMetadata(context);
-    const reporter = new TelemetryReporter(
-        pkg.packageName,
-        pkg.version,
-        "dc4ec136-d862-4379-8d5f-b1746222d7f5",
-        false
+    // Add the bricks binary to the PATH environment variable in terminals
+    context.environmentVariableCollection.persistent = true;
+    context.environmentVariableCollection.prepend(
+        "PATH",
+        `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
 
-    // ensure it gets properly disposed. Upon disposal the events will be flushed
-    context.subscriptions.push(reporter);
 
+    const loggerManager = new LoggerManager(context);
+    if (workspaceConfigs.loggingEnabled) {
+        loggerManager.initLoggers();
+    }
+
+    const packageMetadata = await PackageJsonUtils.getMetadata(context);
+    NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
+        metadata: packageMetadata,
+    });
+    const reporter = new TelemetryReporter(
+        packageMetadata.packageName,
+        packageMetadata.version,
+        "dc4ec136-d862-4379-8d5f-b1746222d7f5",
+        false
+    )
     function registerCommand(
         command: string,
         callback: (...args: any[]) => any,
@@ -71,17 +109,11 @@ export async function activate(
         );
     }
 
-    const loggerManager = new LoggerManager(context);
-    if (workspaceConfigs.loggingEnabled) {
-        loggerManager.initLoggers();
-    }
-
-    NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
-        metadata: await PackageJsonUtils.getMetadata(context),
-    });
+    const workspaceStateManager = new WorkspaceStateManager(context);
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
+        workspaceStateManager,
         workspace.workspaceFolders[0].uri.fsPath
     );
     context.subscriptions.push(
@@ -105,10 +137,47 @@ export async function activate(
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
 
-    const synchronizer = new CodeSynchronizer(connectionManager, cli);
+    const workspaceFsDataProvider = new WorkspaceFsDataProvider(
+        connectionManager
+    );
+    const workspaceFsCommands = new WorkspaceFsCommands(
+        workspace.workspaceFolders[0].uri,
+        workspaceStateManager,
+        connectionManager,
+        workspaceFsDataProvider
+    );
+
+    context.subscriptions.push(
+        window.registerTreeDataProvider(
+            "workspaceFsView",
+            workspaceFsDataProvider
+        ),
+        commands.registerCommand(
+            "databricks.wsfs.attachSyncDestination",
+            workspaceFsCommands.attachSyncDestination,
+            workspaceFsCommands
+        ),
+        commands.registerCommand(
+            "databricks.wsfs.refresh",
+            workspaceFsCommands.refresh,
+            workspaceFsCommands
+        ),
+        commands.registerCommand(
+            "databricks.wsfs.createFolder",
+            workspaceFsCommands.createFolder,
+            workspaceFsCommands
+        )
+    );
+
+    const synchronizer = new CodeSynchronizer(
+        connectionManager,
+        cli,
+        packageMetadata
+    );
     const clusterModel = new ClusterModel(connectionManager);
 
     const connectionCommands = new ConnectionCommands(
+        workspaceFsCommands,
         connectionManager,
         clusterModel
     );
@@ -167,15 +236,23 @@ export async function activate(
         )
     );
 
+    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
+        connectionManager,
+        synchronizer
+    );
+    context.subscriptions.push(wsfsAccessVerifier);
+
     // Run/debug group
-    const runCommands = new RunCommands(connectionManager, synchronizer);
+    const runCommands = new RunCommands(connectionManager);
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
         synchronizer,
-        context
+        context,
+        wsfsAccessVerifier
     );
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,
+        wsfsAccessVerifier,
         context,
         synchronizer
     );
@@ -282,7 +359,7 @@ export async function activate(
         NamedLogger.getOrCreate("Extension").error("Quick Start error", e);
     });
 
-    //utils
+    // Utils
     const utilCommands = new UtilsCommands.UtilsCommands();
     context.subscriptions.push(
         registerCommand(
@@ -292,14 +369,26 @@ export async function activate(
         )
     );
 
+    // generate a json schema for bundle root and load a custom provider into
+    // redhat.vscode-yaml extension to validate bundle config files with this schema
+    generateBundleSchema(cli).catch((e) => {
+        NamedLogger.getOrCreate("Extension").error(
+            "Failed to load bundle schema: ",
+            e
+        );
+    });
+
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate("Extension").error("Login error", e);
     });
 
+    CustomWhenContext.setActivated(true);
     return {
         connectionManager: connectionManager,
     };
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+    CustomWhenContext.setActivated(false);
+}

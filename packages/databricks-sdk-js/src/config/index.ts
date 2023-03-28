@@ -1,3 +1,4 @@
+export * as ExecUtils from "./execUtils";
 export * from "./Config";
 export * from "./ConfigAttributes";
 export * from "./KnownConfigLoader";
