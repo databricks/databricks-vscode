@@ -4,12 +4,13 @@ import {DisabledFeature} from "./DisabledFeature";
 export type FeatureEnableAction = () => Promise<void>;
 export interface FeatureState {
     avaliable: boolean;
+    featureFlag?: boolean;
     reason?: string;
     action?: FeatureEnableAction;
 }
 
 export type FeatureId = "debugging.dbconnect";
-export const disabledFeatures: FeatureId[] = ["debugging.dbconnect"];
+export const disabledFeatures: FeatureId[] = [];
 export interface Feature {
     check: () => Promise<void>;
     onDidChangeState: Event<FeatureState>;

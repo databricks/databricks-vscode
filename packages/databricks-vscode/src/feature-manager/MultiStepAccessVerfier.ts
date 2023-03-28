@@ -42,6 +42,13 @@ export abstract class MultiStepAccessVerifier implements Disposable, Feature {
         return false;
     }
 
+    rejectFf() {
+        this.onDidChangeStateEmitter.fire({
+            avaliable: false,
+            featureFlag: false,
+        });
+    }
+
     accept() {
         this.onDidChangeStateEmitter.fire({
             avaliable: true,

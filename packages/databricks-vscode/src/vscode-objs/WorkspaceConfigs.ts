@@ -72,4 +72,8 @@ export const workspaceConfigs = {
             ?.get<string>("overrideDatabricksConfigFile");
         return config === "" || config === undefined ? undefined : config;
     },
+
+    get userEnvFilePath() {
+        return ".env";
+    },
 };

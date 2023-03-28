@@ -6,6 +6,6 @@ export class DisabledFeature extends MultiStepAccessVerifier {
     }
 
     async check() {
-        this.reject();
+        this.rejectFf();
     }
 }

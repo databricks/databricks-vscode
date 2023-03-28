@@ -39,6 +39,7 @@ import path from "node:path";
 import {FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
+import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
 
 export async function activate(
     context: ExtensionContext
@@ -385,6 +386,7 @@ export async function activate(
         "debugging.dbconnect",
         dbConnectAccessVerifier
     );
+    featureManager.isEnabled("debugging.dbconnect");
     context.subscriptions.push(
         dbConnectAccessVerifier,
         featureManager.onDidChangeState(
@@ -403,6 +405,11 @@ export async function activate(
                     await state.action();
                 }
             }
+        ),
+        new DatabricksEnvFileManager(
+            workspace.workspaceFolders[0].uri,
+            featureManager,
+            connectionManager
         )
     );
 
