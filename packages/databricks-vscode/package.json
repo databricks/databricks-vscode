@@ -216,12 +216,6 @@
                 "icon": "$(new-folder)",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
-            },
-            {
-                "command": "databricks.test.pipFreeze",
-                "title": "Pip Freeze",
-                "enablement": "databricks.context.activated",
-                "category": "Databricks"
             }
         ],
         "viewsContainers": {
