@@ -47,7 +47,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
                     return;
                 }
                 this.currentCluster = cluster;
-                await this.verifyCluster(cluster);
+                this.verifyCluster(cluster);
             }),
             this._connectionManager.onDidChangeState(async (state) => {
                 if (state === "CONNECTED") {
@@ -103,7 +103,10 @@ export class WorkspaceFsAccessVerifier implements Disposable {
                 switchToRepos();
             }
         } else {
-            if (workspaceConfigs.syncDestinationType === "workspace") {
+            if (
+                workspaceConfigs.syncDestinationType === "workspace" ||
+                !(await this.isEnabledForWorkspace())
+            ) {
                 return;
             }
             const message =

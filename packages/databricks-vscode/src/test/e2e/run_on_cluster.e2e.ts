@@ -85,6 +85,7 @@ describe("Run python on cluster", async function () {
             .openDebugConsoleView();
 
         while (true) {
+            await dismissNotifications();
             await sleep(2000);
             const text = await (await debugOutput.elem).getHTML();
             if (text && text.includes("hello world")) {
