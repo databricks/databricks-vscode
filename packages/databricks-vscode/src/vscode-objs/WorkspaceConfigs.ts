@@ -46,6 +46,7 @@ export const workspaceConfigs = {
     },
 
     get syncDestinationType() {
+        // todo if else
         return (
             workspace
                 .getConfiguration("databricks")

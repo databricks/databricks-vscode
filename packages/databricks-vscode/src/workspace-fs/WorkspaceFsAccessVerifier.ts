@@ -7,6 +7,7 @@ import {commands, Disposable, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CodeSynchronizer} from "../sync";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
 async function switchToRepos() {
     await workspaceConfigs.setSyncDestinationType("repo [deprecated]");
@@ -39,6 +40,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
 
     constructor(
         private _connectionManager: ConnectionManager,
+        private readonly workspaceState: WorkspaceStateManager,
         private _sync: CodeSynchronizer
     ) {
         this.disposables.push(
@@ -105,7 +107,8 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         } else {
             if (
                 workspaceConfigs.syncDestinationType === "workspace" ||
-                !(await this.isEnabledForWorkspace())
+                !(await this.isEnabledForWorkspace()) ||
+                this.workspaceState.skipSwitchToWorkspace
             ) {
                 return;
             }
@@ -114,8 +117,14 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             const selection = await window.showErrorMessage(
                 message,
                 "Switch to Workspace",
-                "Ignore"
+                "Ignore",
+                "Ignore for this workspace"
             );
+
+            if (selection === "Ignore for this workspace") {
+                this.workspaceState.skipSwitchToWorkspace = true;
+                return;
+            }
 
             if (selection === "Switch to Workspace") {
                 switchToWorkspace();

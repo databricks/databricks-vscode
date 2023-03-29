@@ -215,6 +215,7 @@ export async function activate(
 
     const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
         connectionManager,
+        workspaceStateManager,
         synchronizer
     );
     context.subscriptions.push(wsfsAccessVerifier);

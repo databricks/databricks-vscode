@@ -4,6 +4,20 @@ import {ExtensionContext} from "vscode";
 export class WorkspaceStateManager {
     constructor(private context: ExtensionContext) {}
 
+    get skipSwitchToWorkspace() {
+        return this.context.workspaceState.get(
+            "databricks.switch.to.workspace",
+            false
+        );
+    }
+
+    set skipSwitchToWorkspace(value: boolean) {
+        this.context.workspaceState.update(
+            "databricks.switch.to.workspace",
+            true
+        );
+    }
+
     get skipAutocompleteConfigure() {
         return this.context.workspaceState.get(
             "databricks.autocompletion.skipConfigure",
