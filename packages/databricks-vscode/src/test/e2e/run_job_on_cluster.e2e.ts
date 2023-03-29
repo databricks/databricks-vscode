@@ -15,6 +15,7 @@ describe("Run job on cluster", async function () {
     let projectDir: string;
     this.timeout(2 * 60 * 1000);
 
+    // tanmaytodo after also + integ for workspace for new file
     before(async () => {
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
         assert(process.env.TEST_REPO_PATH);
@@ -22,6 +23,10 @@ describe("Run job on cluster", async function () {
         projectDir = process.env.WORKSPACE_PATH;
 
         await fs.mkdir(path.join(projectDir, ".databricks"), {
+            recursive: true,
+        });
+
+        await fs.mkdir(path.join(projectDir, ".vscode"), {
             recursive: true,
         });
         await fs.writeFile(
