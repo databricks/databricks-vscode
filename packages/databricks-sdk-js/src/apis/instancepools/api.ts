@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class InstancePoolsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -44,13 +45,9 @@ export class InstancePoolsError extends ApiError {
  */
 export class InstancePoolsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a new instance pool.
-     *
-     * Creates a new instance pool using idle and ready-to-use cloud instances.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateInstancePool,
         @context context?: Context
     ): Promise<model.CreateInstancePoolResponse> {
@@ -64,6 +61,33 @@ export class InstancePoolsService {
     }
 
     /**
+     * Create a new instance pool.
+     *
+     * Creates a new instance pool using idle and ready-to-use cloud instances.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateInstancePool,
+        @context context?: Context
+    ): Promise<model.CreateInstancePoolResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteInstancePool,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/instance-pools/delete";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Delete an instance pool.
      *
      * Deletes the instance pool permanently. The idle instances in the pool are
@@ -74,7 +98,15 @@ export class InstancePoolsService {
         request: model.DeleteInstancePool,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/instance-pools/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _edit(
+        request: model.EditInstancePool,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/instance-pools/edit";
         return (await this.client.request(
             path,
             "POST",
@@ -93,22 +125,11 @@ export class InstancePoolsService {
         request: model.EditInstancePool,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/instance-pools/edit";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._edit(request, context);
     }
 
-    /**
-     * Get instance pool information.
-     *
-     * Retrieve the information for an instance pool based on its identifier.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.GetInstancePool> {
@@ -122,12 +143,22 @@ export class InstancePoolsService {
     }
 
     /**
-     * List instance pool info.
+     * Get instance pool information.
      *
-     * Gets a list of instance pools with their statistics.
+     * Retrieve the information for an instance pool based on its identifier.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.ListInstancePools> {
+    async get(
+        request: model.Get,
+        @context context?: Context
+    ): Promise<model.GetInstancePool> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<model.ListInstancePools> {
         const path = "/api/2.0/instance-pools/list";
         return (await this.client.request(
             path,
@@ -135,5 +166,15 @@ export class InstancePoolsService {
             undefined,
             context
         )) as model.ListInstancePools;
+    }
+
+    /**
+     * List instance pool info.
+     *
+     * Gets a list of instance pools with their statistics.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(@context context?: Context): Promise<model.ListInstancePools> {
+        return await this._list(context);
     }
 }
