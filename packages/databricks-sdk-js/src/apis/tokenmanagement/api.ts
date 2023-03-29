@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class TokenManagementRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -29,13 +30,9 @@ export class TokenManagementError extends ApiError {
  */
 export class TokenManagementService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create on-behalf token.
-     *
-     * Creates a token on behalf of a service principal.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async createOboToken(
+    private async _createOboToken(
         request: model.CreateOboTokenRequest,
         @context context?: Context
     ): Promise<model.CreateOboTokenResponse> {
@@ -49,12 +46,20 @@ export class TokenManagementService {
     }
 
     /**
-     * Delete a token.
+     * Create on-behalf token.
      *
-     * Deletes a token, specified by its ID.
+     * Creates a token on behalf of a service principal.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async createOboToken(
+        request: model.CreateOboTokenRequest,
+        @context context?: Context
+    ): Promise<model.CreateOboTokenResponse> {
+        return await this._createOboToken(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.Delete,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -68,12 +73,20 @@ export class TokenManagementService {
     }
 
     /**
-     * Get token info.
+     * Delete a token.
      *
-     * Gets information about a token, specified by its ID.
+     * Deletes a token, specified by its ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.Delete,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.TokenInfo> {
@@ -87,12 +100,20 @@ export class TokenManagementService {
     }
 
     /**
-     * List all tokens.
+     * Get token info.
      *
-     * Lists all tokens associated with the specified workspace or user.
+     * Gets information about a token, specified by its ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.Get,
+        @context context?: Context
+    ): Promise<model.TokenInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.List,
         @context context?: Context
     ): Promise<model.ListTokensResponse> {
@@ -103,5 +124,18 @@ export class TokenManagementService {
             request,
             context
         )) as model.ListTokensResponse;
+    }
+
+    /**
+     * List all tokens.
+     *
+     * Lists all tokens associated with the specified workspace or user.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.List,
+        @context context?: Context
+    ): Promise<model.ListTokensResponse> {
+        return await this._list(request, context);
     }
 }

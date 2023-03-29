@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class JobsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -43,6 +44,21 @@ export class JobsError extends ApiError {
  */
 export class JobsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _cancelAllRuns(
+        request: model.CancelAllRuns,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.1/jobs/runs/cancel-all";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
     /**
      * Cancel all runs of a job.
      *
@@ -54,7 +70,15 @@ export class JobsService {
         request: model.CancelAllRuns,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.1/jobs/runs/cancel-all";
+        return await this._cancelAllRuns(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _cancelRun(
+        request: model.CancelRun,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.1/jobs/runs/cancel";
         return (await this.client.request(
             path,
             "POST",
@@ -71,89 +95,70 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async cancelRun(
-        request: model.CancelRun,
-        @context context?: Context
-    ): Promise<model.EmptyResponse> {
-        const path = "/api/2.1/jobs/runs/cancel";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
-    }
-
-    /**
-     * cancelRun and wait to reach TERMINATED or SKIPPED state
-     *  or fail on reaching INTERNAL_ERROR state
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async cancelRunAndWait(
         cancelRun: model.CancelRun,
-        options?: {
-            timeout?: Time;
-            onProgress?: (newPollResponse: model.Run) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.Run> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.Run>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.cancelRun(cancelRun, context);
+        await this._cancelRun(cancelRun, context);
 
-        return await retry<model.Run>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.getRun(
-                    {
-                        run_id: cancelRun.run_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Jobs.cancelRunAndWait: cancelled");
-                    throw new JobsError("cancelRunAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state!.life_cycle_state;
-                const statusMessage = pollResponse.state!.state_message;
-                switch (status) {
-                    case "TERMINATED":
-                    case "SKIPPED": {
-                        return pollResponse;
-                    }
-                    case "INTERNAL_ERROR": {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.Run>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.getRun(
+                        {
+                            run_id: cancelRun.run_id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Jobs.cancelRunAndWait: ${errorMessage}`
+                            "Jobs.cancelRunAndWait: cancelled"
                         );
-                        throw new JobsError("cancelRunAndWait", errorMessage);
+                        throw new JobsError("cancelRunAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Jobs.cancelRunAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new JobsRetriableError(
-                            "cancelRunAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state!.life_cycle_state;
+                    const statusMessage = pollResponse.state!.state_message;
+                    switch (status) {
+                        case "TERMINATED":
+                        case "SKIPPED": {
+                            return pollResponse;
+                        }
+                        case "INTERNAL_ERROR": {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.cancelRunAndWait: ${errorMessage}`
+                            );
+                            throw new JobsError(
+                                "cancelRunAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.cancelRunAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new JobsRetriableError(
+                                "cancelRunAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Create a new job.
-     *
-     * Create a new job.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateJob,
         @context context?: Context
     ): Promise<model.CreateResponse> {
@@ -167,6 +172,33 @@ export class JobsService {
     }
 
     /**
+     * Create a new job.
+     *
+     * Create a new job.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateJob,
+        @context context?: Context
+    ): Promise<model.CreateResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteJob,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.1/jobs/delete";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Delete a job.
      *
      * Deletes a job.
@@ -176,7 +208,15 @@ export class JobsService {
         request: model.DeleteJob,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.1/jobs/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _deleteRun(
+        request: model.DeleteRun,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.1/jobs/runs/delete";
         return (await this.client.request(
             path,
             "POST",
@@ -195,22 +235,11 @@ export class JobsService {
         request: model.DeleteRun,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.1/jobs/runs/delete";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._deleteRun(request, context);
     }
 
-    /**
-     * Export and retrieve a job run.
-     *
-     * Export and retrieve the job run task.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async exportRun(
+    private async _exportRun(
         request: model.ExportRun,
         @context context?: Context
     ): Promise<model.ExportRunOutput> {
@@ -224,12 +253,20 @@ export class JobsService {
     }
 
     /**
-     * Get a single job.
+     * Export and retrieve a job run.
      *
-     * Retrieves the details for a single job.
+     * Export and retrieve the job run task.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async exportRun(
+        request: model.ExportRun,
+        @context context?: Context
+    ): Promise<model.ExportRunOutput> {
+        return await this._exportRun(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.Job> {
@@ -243,12 +280,20 @@ export class JobsService {
     }
 
     /**
-     * Get a single job run.
+     * Get a single job.
      *
-     * Retrieve the metadata of a run.
+     * Retrieves the details for a single job.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getRun(
+    async get(
+        request: model.Get,
+        @context context?: Context
+    ): Promise<model.Job> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getRun(
         request: model.GetRun,
         @context context?: Context
     ): Promise<model.Run> {
@@ -262,67 +307,81 @@ export class JobsService {
     }
 
     /**
-     * getRun and wait to reach TERMINATED or SKIPPED state
-     *  or fail on reaching INTERNAL_ERROR state
+     * Get a single job run.
+     *
+     * Retrieve the metadata of a run.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getRunAndWait(
+    async getRun(
         getRun: model.GetRun,
-        options?: {
-            timeout?: Time;
-            onProgress?: (newPollResponse: model.Run) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.Run> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.Run, model.Run>> {
         const cancellationToken = context?.cancellationToken;
 
-        const run = await this.getRun(getRun, context);
+        const run = await this._getRun(getRun, context);
 
-        return await retry<model.Run>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.getRun(
-                    {
-                        run_id: run.run_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Jobs.getRunAndWait: cancelled");
-                    throw new JobsError("getRunAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state!.life_cycle_state;
-                const statusMessage = pollResponse.state!.state_message;
-                switch (status) {
-                    case "TERMINATED":
-                    case "SKIPPED": {
-                        return pollResponse;
+        return asWaiter(run, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.Run>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.getRun(
+                        {
+                            run_id: run.run_id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
+                        context?.logger?.error("Jobs.getRunAndWait: cancelled");
+                        throw new JobsError("getRunAndWait", "cancelled");
                     }
-                    case "INTERNAL_ERROR": {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Jobs.getRunAndWait: ${errorMessage}`
-                        );
-                        throw new JobsError("getRunAndWait", errorMessage);
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state!.life_cycle_state;
+                    const statusMessage = pollResponse.state!.state_message;
+                    switch (status) {
+                        case "TERMINATED":
+                        case "SKIPPED": {
+                            return pollResponse;
+                        }
+                        case "INTERNAL_ERROR": {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.getRunAndWait: ${errorMessage}`
+                            );
+                            throw new JobsError("getRunAndWait", errorMessage);
+                        }
+                        default: {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.getRunAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new JobsRetriableError(
+                                "getRunAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                    default: {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Jobs.getRunAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new JobsRetriableError(
-                            "getRunAndWait",
-                            errorMessage
-                        );
-                    }
-                }
-            },
+                },
+            });
         });
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getRunOutput(
+        request: model.GetRunOutput,
+        @context context?: Context
+    ): Promise<model.RunOutput> {
+        const path = "/api/2.1/jobs/runs/get-output";
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.RunOutput;
     }
 
     /**
@@ -344,22 +403,11 @@ export class JobsService {
         request: model.GetRunOutput,
         @context context?: Context
     ): Promise<model.RunOutput> {
-        const path = "/api/2.1/jobs/runs/get-output";
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.RunOutput;
+        return await this._getRunOutput(request, context);
     }
 
-    /**
-     * List all jobs.
-     *
-     * Retrieves a list of jobs.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    private async _list(
         request: model.List,
         @context context?: Context
     ): Promise<model.ListJobsResponse> {
@@ -373,12 +421,20 @@ export class JobsService {
     }
 
     /**
-     * List runs for a job.
+     * List all jobs.
      *
-     * List runs in descending order by start time.
+     * Retrieves a list of jobs.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listRuns(
+    async list(
+        request: model.List,
+        @context context?: Context
+    ): Promise<model.ListJobsResponse> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listRuns(
         request: model.ListRuns,
         @context context?: Context
     ): Promise<model.ListRunsResponse> {
@@ -392,14 +448,20 @@ export class JobsService {
     }
 
     /**
-     * Repair a job run.
+     * List runs for a job.
      *
-     * Re-run one or more tasks. Tasks are re-run as part of the original job
-     * run. They use the current job and task settings, and can be viewed in the
-     * history for the original job run.
+     * List runs in descending order by start time.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async repairRun(
+    async listRuns(
+        request: model.ListRuns,
+        @context context?: Context
+    ): Promise<model.ListRunsResponse> {
+        return await this._listRuns(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _repairRun(
         request: model.RepairRun,
         @context context?: Context
     ): Promise<model.RepairRunResponse> {
@@ -413,77 +475,78 @@ export class JobsService {
     }
 
     /**
-     * repairRun and wait to reach TERMINATED or SKIPPED state
-     *  or fail on reaching INTERNAL_ERROR state
+     * Repair a job run.
+     *
+     * Re-run one or more tasks. Tasks are re-run as part of the original job
+     * run. They use the current job and task settings, and can be viewed in the
+     * history for the original job run.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async repairRunAndWait(
+    async repairRun(
         repairRun: model.RepairRun,
-        options?: {
-            timeout?: Time;
-            onProgress?: (newPollResponse: model.Run) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.Run> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.RepairRunResponse, model.Run>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.repairRun(repairRun, context);
+        const repairRunResponse = await this._repairRun(repairRun, context);
 
-        return await retry<model.Run>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.getRun(
-                    {
-                        run_id: repairRun.run_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Jobs.repairRunAndWait: cancelled");
-                    throw new JobsError("repairRunAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state!.life_cycle_state;
-                const statusMessage = pollResponse.state!.state_message;
-                switch (status) {
-                    case "TERMINATED":
-                    case "SKIPPED": {
-                        return pollResponse;
-                    }
-                    case "INTERNAL_ERROR": {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+        return asWaiter(repairRunResponse, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.Run>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.getRun(
+                        {
+                            run_id: repairRun.run_id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Jobs.repairRunAndWait: ${errorMessage}`
+                            "Jobs.repairRunAndWait: cancelled"
                         );
-                        throw new JobsError("repairRunAndWait", errorMessage);
+                        throw new JobsError("repairRunAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Jobs.repairRunAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new JobsRetriableError(
-                            "repairRunAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state!.life_cycle_state;
+                    const statusMessage = pollResponse.state!.state_message;
+                    switch (status) {
+                        case "TERMINATED":
+                        case "SKIPPED": {
+                            return pollResponse;
+                        }
+                        case "INTERNAL_ERROR": {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.repairRunAndWait: ${errorMessage}`
+                            );
+                            throw new JobsError(
+                                "repairRunAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.repairRunAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new JobsRetriableError(
+                                "repairRunAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Overwrites all settings for a job.
-     *
-     * Overwrites all the settings for a specific job. Use the Update endpoint to
-     * update job settings partially.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async reset(
+    private async _reset(
         request: model.ResetJob,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -497,12 +560,21 @@ export class JobsService {
     }
 
     /**
-     * Trigger a new job run.
+     * Overwrites all settings for a job.
      *
-     * Run a job and return the `run_id` of the triggered run.
+     * Overwrites all the settings for a specific job. Use the Update endpoint to
+     * update job settings partially.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async runNow(
+    async reset(
+        request: model.ResetJob,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._reset(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _runNow(
         request: model.RunNow,
         @context context?: Context
     ): Promise<model.RunNowResponse> {
@@ -516,79 +588,71 @@ export class JobsService {
     }
 
     /**
-     * runNow and wait to reach TERMINATED or SKIPPED state
-     *  or fail on reaching INTERNAL_ERROR state
+     * Trigger a new job run.
+     *
+     * Run a job and return the `run_id` of the triggered run.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async runNowAndWait(
+    async runNow(
         runNow: model.RunNow,
-        options?: {
-            timeout?: Time;
-            onProgress?: (newPollResponse: model.Run) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.Run> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.RunNowResponse, model.Run>> {
         const cancellationToken = context?.cancellationToken;
 
-        const runNowResponse = await this.runNow(runNow, context);
+        const runNowResponse = await this._runNow(runNow, context);
 
-        return await retry<model.Run>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.getRun(
-                    {
-                        run_id: runNowResponse.run_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Jobs.runNowAndWait: cancelled");
-                    throw new JobsError("runNowAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state!.life_cycle_state;
-                const statusMessage = pollResponse.state!.state_message;
-                switch (status) {
-                    case "TERMINATED":
-                    case "SKIPPED": {
-                        return pollResponse;
+        return asWaiter(runNowResponse, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.Run>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.getRun(
+                        {
+                            run_id: runNowResponse.run_id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
+                        context?.logger?.error("Jobs.runNowAndWait: cancelled");
+                        throw new JobsError("runNowAndWait", "cancelled");
                     }
-                    case "INTERNAL_ERROR": {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Jobs.runNowAndWait: ${errorMessage}`
-                        );
-                        throw new JobsError("runNowAndWait", errorMessage);
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state!.life_cycle_state;
+                    const statusMessage = pollResponse.state!.state_message;
+                    switch (status) {
+                        case "TERMINATED":
+                        case "SKIPPED": {
+                            return pollResponse;
+                        }
+                        case "INTERNAL_ERROR": {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.runNowAndWait: ${errorMessage}`
+                            );
+                            throw new JobsError("runNowAndWait", errorMessage);
+                        }
+                        default: {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.runNowAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new JobsRetriableError(
+                                "runNowAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                    default: {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Jobs.runNowAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new JobsRetriableError(
-                            "runNowAndWait",
-                            errorMessage
-                        );
-                    }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Create and trigger a one-time run.
-     *
-     * Submit a one-time run. This endpoint allows you to submit a workload
-     * directly without creating a job. Runs submitted using this endpoint
-     * don’t display in the UI. Use the `jobs/runs/get` API to check the run
-     * state after the job is submitted.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async submit(
+    private async _submit(
         request: model.SubmitRun,
         @context context?: Context
     ): Promise<model.SubmitRunResponse> {
@@ -602,67 +666,84 @@ export class JobsService {
     }
 
     /**
-     * submit and wait to reach TERMINATED or SKIPPED state
-     *  or fail on reaching INTERNAL_ERROR state
+     * Create and trigger a one-time run.
+     *
+     * Submit a one-time run. This endpoint allows you to submit a workload
+     * directly without creating a job. Runs submitted using this endpoint
+     * don’t display in the UI. Use the `jobs/runs/get` API to check the run
+     * state after the job is submitted.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async submitAndWait(
+    async submit(
         submitRun: model.SubmitRun,
-        options?: {
-            timeout?: Time;
-            onProgress?: (newPollResponse: model.Run) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.Run> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.SubmitRunResponse, model.Run>> {
         const cancellationToken = context?.cancellationToken;
 
-        const submitRunResponse = await this.submit(submitRun, context);
+        const submitRunResponse = await this._submit(submitRun, context);
 
-        return await retry<model.Run>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.getRun(
-                    {
-                        run_id: submitRunResponse.run_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Jobs.submitAndWait: cancelled");
-                    throw new JobsError("submitAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state!.life_cycle_state;
-                const statusMessage = pollResponse.state!.state_message;
-                switch (status) {
-                    case "TERMINATED":
-                    case "SKIPPED": {
-                        return pollResponse;
+        return asWaiter(submitRunResponse, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.Run>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.getRun(
+                        {
+                            run_id: submitRunResponse.run_id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
+                        context?.logger?.error("Jobs.submitAndWait: cancelled");
+                        throw new JobsError("submitAndWait", "cancelled");
                     }
-                    case "INTERNAL_ERROR": {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Jobs.submitAndWait: ${errorMessage}`
-                        );
-                        throw new JobsError("submitAndWait", errorMessage);
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state!.life_cycle_state;
+                    const statusMessage = pollResponse.state!.state_message;
+                    switch (status) {
+                        case "TERMINATED":
+                        case "SKIPPED": {
+                            return pollResponse;
+                        }
+                        case "INTERNAL_ERROR": {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.submitAndWait: ${errorMessage}`
+                            );
+                            throw new JobsError("submitAndWait", errorMessage);
+                        }
+                        default: {
+                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Jobs.submitAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new JobsRetriableError(
+                                "submitAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                    default: {
-                        const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Jobs.submitAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new JobsRetriableError(
-                            "submitAndWait",
-                            errorMessage
-                        );
-                    }
-                }
-            },
+                },
+            });
         });
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateJob,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.1/jobs/update";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -676,12 +757,6 @@ export class JobsService {
         request: model.UpdateJob,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.1/jobs/update";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }

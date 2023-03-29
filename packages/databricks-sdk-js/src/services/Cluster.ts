@@ -269,20 +269,21 @@ export class Cluster {
         token?: CancellationToken,
         onProgress?: (newPollResponse: ClusterInfo) => Promise<void>
     ) {
-        this.details = await this.clusterApi.deleteAndWait(
-            {
-                cluster_id: this.id,
-            },
-            {
-                onProgress: async (clusterInfo) => {
-                    this.details = clusterInfo;
-                    if (onProgress) {
-                        await onProgress(clusterInfo);
-                    }
+        this.details = await (
+            await this.clusterApi.delete(
+                {
+                    cluster_id: this.id,
                 },
+                new Context({cancellationToken: token})
+            )
+        ).wait({
+            onProgress: async (clusterInfo) => {
+                this.details = clusterInfo;
+                if (onProgress) {
+                    await onProgress(clusterInfo);
+                }
             },
-            new Context({cancellationToken: token})
-        );
+        });
     }
 
     async createExecutionContext(
