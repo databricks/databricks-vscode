@@ -22,7 +22,7 @@ export function getAttributesFromDecorators(
 export function attribute(options: {
     name?: string;
     env?: string;
-    auth?: "pat" | "basic" | "azure" | "google";
+    auth?: "pat" | "basic" | "azure" | "google" | "local-metadata-service";
     sensitive?: boolean;
 }) {
     return (target: any, propertyKey: AttributeName) => {

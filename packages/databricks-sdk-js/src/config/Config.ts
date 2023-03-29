@@ -54,7 +54,14 @@ export type RequestVisitor = (headers: Headers) => Promise<void>;
 type PublicInterface<T> = {[K in keyof T]: T[K]};
 export type ConfigOptions = Partial<PublicInterface<Config>>;
 
-export type AuthType = "default" | "pat" | "basic" | "azure-cli" | "google-id";
+export type AuthType =
+    | "default"
+    | "pat"
+    | "basic"
+    | "azure-cli"
+    | "google-id"
+    | "local-metadata-service";
+
 export type AttributeName = keyof Omit<
     ConfigOptions,
     "credentials" | "logger" | "env" | "loaders"
@@ -70,6 +77,14 @@ export class Config {
     /** Databricks host (either of workspace endpoint or Accounts API endpoint) */
     @attribute({name: "host", env: "DATABRICKS_HOST"})
     public host?: string;
+
+    /** URL of the local metadata service that provides authentication credentials. */
+    @attribute({
+        name: "local_metadata_service_url",
+        env: "DATABRICKS_LOCAL_METADATA_SERVICE_URL",
+        auth: "local-metadata-service",
+    })
+    public localMetadataServiceUrl?: string;
 
     /** Databricks Account ID for Accounts API. This field is used in dependencies. */
     @attribute({name: "account_id", env: "DATABRICKS_ACCOUNT_ID"})
@@ -236,7 +251,7 @@ export class Config {
     }
 
     async getHost(): Promise<URL> {
-        this.ensureResolved();
+        await this.ensureResolved();
         return new URL(this.host!);
     }
 
