@@ -408,6 +408,7 @@ export async function activate(
             }
         )
     );
+    dbConnectAccessVerifier.check();
 
     context.subscriptions.push(
         commands.registerCommand(
