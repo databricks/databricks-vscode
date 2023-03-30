@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class CommandExecutionRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -28,15 +29,9 @@ export class CommandExecutionError extends ApiError {
  */
 export class CommandExecutionService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Cancel a command.
-     *
-     * Cancels a currently running command within an execution context.
-     *
-     * The command ID is obtained from a prior successful call to __execute__.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async cancel(
+    private async _cancel(
         request: model.CancelCommand,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -50,78 +45,92 @@ export class CommandExecutionService {
     }
 
     /**
-     * cancel and wait to reach Cancelled state
-     *  or fail on reaching Error state
+     * Cancel a command.
+     *
+     * Cancels a currently running command within an execution context.
+     *
+     * The command ID is obtained from a prior successful call to __execute__.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async cancelAndWait(
+    async cancel(
         cancelCommand: model.CancelCommand,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.CommandStatusResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.CommandStatusResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.CommandStatusResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.cancel(cancelCommand, context);
+        await this._cancel(cancelCommand, context);
 
-        return await retry<model.CommandStatusResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.commandStatus(
-                    {
-                        clusterId: cancelCommand.clusterId!,
-                        commandId: cancelCommand.commandId!,
-                        contextId: cancelCommand.contextId!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "CommandExecution.cancelAndWait: cancelled"
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.CommandStatusResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.commandStatus(
+                        {
+                            clusterId: cancelCommand.clusterId!,
+                            commandId: cancelCommand.commandId!,
+                            contextId: cancelCommand.contextId!,
+                        },
+                        context
                     );
-                    throw new CommandExecutionError(
-                        "cancelAndWait",
-                        "cancelled"
-                    );
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.status;
-                const statusMessage = pollResponse.results!.cause;
-                switch (status) {
-                    case "Cancelled": {
-                        return pollResponse;
-                    }
-                    case "Error": {
-                        const errorMessage = `failed to reach Cancelled state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `CommandExecution.cancelAndWait: ${errorMessage}`
+                            "CommandExecution.cancelAndWait: cancelled"
                         );
                         throw new CommandExecutionError(
                             "cancelAndWait",
-                            errorMessage
+                            "cancelled"
                         );
                     }
-                    default: {
-                        const errorMessage = `failed to reach Cancelled state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `CommandExecution.cancelAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new CommandExecutionRetriableError(
-                            "cancelAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.status;
+                    const statusMessage = pollResponse.results!.cause;
+                    switch (status) {
+                        case "Cancelled": {
+                            return pollResponse;
+                        }
+                        case "Error": {
+                            const errorMessage = `failed to reach Cancelled state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `CommandExecution.cancelAndWait: ${errorMessage}`
+                            );
+                            throw new CommandExecutionError(
+                                "cancelAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach Cancelled state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `CommandExecution.cancelAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new CommandExecutionRetriableError(
+                                "cancelAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _commandStatus(
+        request: model.CommandStatusRequest,
+        @context context?: Context
+    ): Promise<model.CommandStatusResponse> {
+        const path = "/api/1.2/commands/status";
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.CommandStatusResponse;
     }
 
     /**
@@ -137,22 +146,11 @@ export class CommandExecutionService {
         request: model.CommandStatusRequest,
         @context context?: Context
     ): Promise<model.CommandStatusResponse> {
-        const path = "/api/1.2/commands/status";
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.CommandStatusResponse;
+        return await this._commandStatus(request, context);
     }
 
-    /**
-     * Get status.
-     *
-     * Gets the status for an execution context.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async contextStatus(
+    private async _contextStatus(
         request: model.ContextStatusRequest,
         @context context?: Context
     ): Promise<model.ContextStatusResponse> {
@@ -166,14 +164,20 @@ export class CommandExecutionService {
     }
 
     /**
-     * Create an execution context.
+     * Get status.
      *
-     * Creates an execution context for running cluster commands.
-     *
-     * If successful, this method returns the ID of the new execution context.
+     * Gets the status for an execution context.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    async contextStatus(
+        request: model.ContextStatusRequest,
+        @context context?: Context
+    ): Promise<model.ContextStatusResponse> {
+        return await this._contextStatus(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
         request: model.CreateContext,
         @context context?: Context
     ): Promise<model.Created> {
@@ -187,86 +191,81 @@ export class CommandExecutionService {
     }
 
     /**
-     * create and wait to reach Running state
-     *  or fail on reaching Error state
+     * Create an execution context.
+     *
+     * Creates an execution context for running cluster commands.
+     *
+     * If successful, this method returns the ID of the new execution context.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async createAndWait(
+    async create(
         createContext: model.CreateContext,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.ContextStatusResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.ContextStatusResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.Created, model.ContextStatusResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        const created = await this.create(createContext, context);
+        const created = await this._create(createContext, context);
 
-        return await retry<model.ContextStatusResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.contextStatus(
-                    {
-                        clusterId: createContext.clusterId!,
-                        contextId: created.id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "CommandExecution.createAndWait: cancelled"
+        return asWaiter(created, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.ContextStatusResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.contextStatus(
+                        {
+                            clusterId: createContext.clusterId!,
+                            contextId: created.id!,
+                        },
+                        context
                     );
-                    throw new CommandExecutionError(
-                        "createAndWait",
-                        "cancelled"
-                    );
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.status;
-                const statusMessage = pollResponse;
-                switch (status) {
-                    case "Running": {
-                        return pollResponse;
-                    }
-                    case "Error": {
-                        const errorMessage = `failed to reach Running state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `CommandExecution.createAndWait: ${errorMessage}`
+                            "CommandExecution.createAndWait: cancelled"
                         );
                         throw new CommandExecutionError(
                             "createAndWait",
-                            errorMessage
+                            "cancelled"
                         );
                     }
-                    default: {
-                        const errorMessage = `failed to reach Running state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `CommandExecution.createAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new CommandExecutionRetriableError(
-                            "createAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.status;
+                    const statusMessage = pollResponse;
+                    switch (status) {
+                        case "Running": {
+                            return pollResponse;
+                        }
+                        case "Error": {
+                            const errorMessage = `failed to reach Running state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `CommandExecution.createAndWait: ${errorMessage}`
+                            );
+                            throw new CommandExecutionError(
+                                "createAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach Running state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `CommandExecution.createAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new CommandExecutionRetriableError(
+                                "createAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Delete an execution context.
-     *
-     * Deletes an execution context.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async destroy(
+    private async _destroy(
         request: model.DestroyContext,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -280,16 +279,20 @@ export class CommandExecutionService {
     }
 
     /**
-     * Run a command.
+     * Delete an execution context.
      *
-     * Runs a cluster command in the given execution context, using the provided
-     * language.
-     *
-     * If successful, it returns an ID for tracking the status of the command's
-     * execution.
+     * Deletes an execution context.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async execute(
+    async destroy(
+        request: model.DestroyContext,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._destroy(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _execute(
         request: model.Command,
         @context context?: Context
     ): Promise<model.Created> {
@@ -303,79 +306,81 @@ export class CommandExecutionService {
     }
 
     /**
-     * execute and wait to reach Finished or Error state
-     *  or fail on reaching Cancelled or Cancelling state
+     * Run a command.
+     *
+     * Runs a cluster command in the given execution context, using the provided
+     * language.
+     *
+     * If successful, it returns an ID for tracking the status of the command's
+     * execution.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async executeAndWait(
+    async execute(
         command: model.Command,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.CommandStatusResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.CommandStatusResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.Created, model.CommandStatusResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        const created = await this.execute(command, context);
+        const created = await this._execute(command, context);
 
-        return await retry<model.CommandStatusResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.commandStatus(
-                    {
-                        clusterId: command.clusterId!,
-                        commandId: created.id!,
-                        contextId: command.contextId!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "CommandExecution.executeAndWait: cancelled"
+        return asWaiter(created, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.CommandStatusResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.commandStatus(
+                        {
+                            clusterId: command.clusterId!,
+                            commandId: created.id!,
+                            contextId: command.contextId!,
+                        },
+                        context
                     );
-                    throw new CommandExecutionError(
-                        "executeAndWait",
-                        "cancelled"
-                    );
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.status;
-                const statusMessage = pollResponse;
-                switch (status) {
-                    case "Finished":
-                    case "Error": {
-                        return pollResponse;
-                    }
-                    case "Cancelled":
-                    case "Cancelling": {
-                        const errorMessage = `failed to reach Finished or Error state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `CommandExecution.executeAndWait: ${errorMessage}`
+                            "CommandExecution.executeAndWait: cancelled"
                         );
                         throw new CommandExecutionError(
                             "executeAndWait",
-                            errorMessage
+                            "cancelled"
                         );
                     }
-                    default: {
-                        const errorMessage = `failed to reach Finished or Error state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `CommandExecution.executeAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new CommandExecutionRetriableError(
-                            "executeAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.status;
+                    const statusMessage = pollResponse;
+                    switch (status) {
+                        case "Finished":
+                        case "Error": {
+                            return pollResponse;
+                        }
+                        case "Cancelled":
+                        case "Cancelling": {
+                            const errorMessage = `failed to reach Finished or Error state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `CommandExecution.executeAndWait: ${errorMessage}`
+                            );
+                            throw new CommandExecutionError(
+                                "executeAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach Finished or Error state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `CommandExecution.executeAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new CommandExecutionRetriableError(
+                                "executeAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 }
