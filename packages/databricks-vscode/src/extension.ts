@@ -36,6 +36,9 @@ import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
 import path from "node:path";
+import {FeatureManager} from "./feature-manager/FeatureManager";
+import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
+import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 
 export async function activate(
     context: ExtensionContext
@@ -87,12 +90,29 @@ export async function activate(
         metadata: packageMetadata,
     });
 
+    const pythonExtension = extensions.getExtension("ms-python.python");
+    if (pythonExtension === undefined) {
+        window.showWarningMessage(
+            "VSCode Extension for Databricks requires Microsoft Python."
+        );
+        return;
+    }
+    if (!pythonExtension.isActive) {
+        await pythonExtension.activate();
+    }
+
+    const pythonExtensionWrapper = new MsPythonExtensionWrapper(
+        pythonExtension,
+        workspace.workspaceFolders[0].uri
+    );
+
     const workspaceStateManager = new WorkspaceStateManager(context);
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
         workspaceStateManager,
-        workspace.workspaceFolders[0].uri.fsPath
+        workspace.workspaceFolders[0].uri.fsPath,
+        pythonExtensionWrapper
     );
     context.subscriptions.push(
         configureAutocomplete,
@@ -356,8 +376,49 @@ export async function activate(
         );
     });
 
+    const featureManager = new FeatureManager<"debugging.dbconnect">([
+        "debugging.dbconnect",
+    ]);
+    const dbConnectAccessVerifier = new DbConnectAccessVerifier(
+        connectionManager,
+        pythonExtensionWrapper,
+        workspaceStateManager
+    );
+    featureManager.registerFeature(
+        "debugging.dbconnect",
+        dbConnectAccessVerifier
+    );
+    context.subscriptions.push(
+        dbConnectAccessVerifier,
+        featureManager.onDidChangeState(
+            "debugging.dbconnect",
+            async (state) => {
+                if (state.avaliable) {
+                    window.showInformationMessage("Db Connect is enabled");
+                    return;
+                }
+                if (state.reason) {
+                    window.showErrorMessage(
+                        `DB Connect is disabled because ${state.reason}`
+                    );
+                }
+                if (state.action) {
+                    await state.action();
+                }
+            }
+        )
+    );
+    featureManager.isEnabled("debugging.dbconnect");
+
+    context.subscriptions.push(
+        commands.registerCommand(
+            "databricks.test.pipFreeze",
+            dbConnectAccessVerifier.checkDbConnectInstall,
+            dbConnectAccessVerifier
+        )
+    );
     connectionManager.login(false).catch((e) => {
-        NamedLogger.getOrCreate("Extension").error("Login error", e);
+        NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);
     });
 
     CustomWhenContext.setActivated(true);
