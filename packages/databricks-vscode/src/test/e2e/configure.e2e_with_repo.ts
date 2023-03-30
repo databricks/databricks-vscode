@@ -213,4 +213,10 @@ describe("Configure Databricks Extension", async function () {
             clusterId,
         });
     });
+
+    after(async () => {
+        await fs.rm(path.join(projectDir, ".vscode"), {
+            force: true,
+        });
+    });
 });

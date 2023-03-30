@@ -32,7 +32,7 @@ describe("Run job on cluster", async function () {
             path.join(projectDir, ".vscode", "settings.json"),
             JSON.stringify({
                 // eslint-disable-next-line @typescript-eslint/naming-convention
-                "databricks.sync.destinationType": "workspace",
+                "databricks.sync.destinationType": "repo",
             })
         );
 
@@ -195,11 +195,5 @@ describe("Run job on cluster", async function () {
         );
 
         webView.close();
-    });
-
-    after(async () => {
-        await fs.rm(path.join(projectDir, ".vscode"), {
-            force: true,
-        });
     });
 });

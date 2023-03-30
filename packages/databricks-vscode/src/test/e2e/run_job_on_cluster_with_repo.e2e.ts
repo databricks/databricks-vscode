@@ -15,7 +15,6 @@ describe("Run job on cluster", async function () {
     let projectDir: string;
     this.timeout(2 * 60 * 1000);
 
-    // tanmaytodo after also + integ for workspace for new file
     before(async () => {
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
         assert(process.env.TEST_REPO_PATH);
@@ -196,5 +195,11 @@ describe("Run job on cluster", async function () {
         );
 
         webView.close();
+    });
+
+    after(async () => {
+        await fs.rm(path.join(projectDir, ".vscode"), {
+            force: true,
+        });
     });
 });
