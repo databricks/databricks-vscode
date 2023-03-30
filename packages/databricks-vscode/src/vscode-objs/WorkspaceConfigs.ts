@@ -52,7 +52,7 @@ export const workspaceConfigs = {
                 ?.get<SyncDestinationType>("sync.destinationType") ??
             "repo [deprecated]";
 
-        if (syncDestinationTypeShown === "repo") {
+        if (syncDestinationTypeShown === "repo [deprecated]") {
             return "repo";
         } else {
             return syncDestinationTypeShown;
