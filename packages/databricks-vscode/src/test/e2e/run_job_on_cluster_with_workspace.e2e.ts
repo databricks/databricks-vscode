@@ -9,7 +9,6 @@ import {
     waitForTreeItems,
 } from "./utils";
 import {sleep} from "wdio-vscode-service";
-import {workspace} from "@databricks/databricks-sdk";
 
 describe("Run job on cluster", async function () {
     let projectDir: string;
