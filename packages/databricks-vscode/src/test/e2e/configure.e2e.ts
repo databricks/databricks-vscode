@@ -36,17 +36,6 @@ describe("Configure Databricks Extension", async function () {
         projectDir = process.env.WORKSPACE_PATH;
         host = process.env.DATABRICKS_HOST;
 
-        await fs.mkdir(path.join(projectDir, ".vscode"), {
-            recursive: true,
-        });
-        await fs.writeFile(
-            path.join(projectDir, ".vscode", "settings.json"),
-            JSON.stringify({
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                "databricks.sync.destinationType": "repo",
-            })
-        );
-
         workbench = await browser.getWorkbench();
         await dismissNotifications();
     });
