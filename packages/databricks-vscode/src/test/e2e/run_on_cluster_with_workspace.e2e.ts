@@ -107,8 +107,10 @@ describe("Run python on cluster", async function () {
     });
 
     after(async () => {
-        await fs.rm(path.join(projectDir, ".vscode"), {
-            force: true,
-        });
+        try {
+            await fs.rm(path.join(projectDir, ".vscode"), {
+                force: true,
+            });
+        } catch {}
     });
 });
