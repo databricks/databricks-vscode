@@ -21,16 +21,12 @@ async function switchToWorkspace() {
 
 async function dbrBelowThreshold(cluster: Cluster) {
     const dbrVersionParts = cluster.dbrVersion!;
-    if (
+    return (
         dbrVersionParts[0] < 11 ||
         (dbrVersionParts[0] === 11 &&
             dbrVersionParts[1] !== "x" &&
             dbrVersionParts[1] < 2)
-    ) {
-        return true;
-    } else {
-        return false;
-    }
+    )
 }
 
 export class WorkspaceFsAccessVerifier implements Disposable {
