@@ -30,12 +30,13 @@ describe("Run job on cluster", async function () {
             recursive: true,
         });
         await fs.writeFile(
-            path.join(projectDir, ".vscode", "file.py"),
+            path.join(projectDir, ".vscode", "settings.json"),
             JSON.stringify({
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 "databricks.sync.destinationType": "workspace",
             })
         );
+
         await fs.writeFile(
             path.join(projectDir, ".databricks", "project.json"),
             JSON.stringify({
