@@ -14,7 +14,7 @@ export class WorkspaceStateManager {
     set skipSwitchToWorkspace(value: boolean) {
         this.context.workspaceState.update(
             "databricks.switch.to.workspace",
-            true
+            value
         );
     }
 
