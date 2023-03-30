@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class WorkspaceRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -31,6 +32,21 @@ export class WorkspaceError extends ApiError {
  */
 export class WorkspaceService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.Delete,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/workspace/delete";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
     /**
      * Delete a workspace object.
      *
@@ -48,13 +64,21 @@ export class WorkspaceService {
         request: model.Delete,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/workspace/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _export(
+        request: model.Export,
+        @context context?: Context
+    ): Promise<model.ExportResponse> {
+        const path = "/api/2.0/workspace/export";
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.ExportResponse;
     }
 
     /**
@@ -74,13 +98,21 @@ export class WorkspaceService {
         request: model.Export,
         @context context?: Context
     ): Promise<model.ExportResponse> {
-        const path = "/api/2.0/workspace/export";
+        return await this._export(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getStatus(
+        request: model.GetStatus,
+        @context context?: Context
+    ): Promise<model.ObjectInfo> {
+        const path = "/api/2.0/workspace/get-status";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ExportResponse;
+        )) as model.ObjectInfo;
     }
 
     /**
@@ -94,13 +126,21 @@ export class WorkspaceService {
         request: model.GetStatus,
         @context context?: Context
     ): Promise<model.ObjectInfo> {
-        const path = "/api/2.0/workspace/get-status";
+        return await this._getStatus(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _import(
+        request: model.Import,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/workspace/import";
         return (await this.client.request(
             path,
-            "GET",
+            "POST",
             request,
             context
-        )) as model.ObjectInfo;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -116,13 +156,21 @@ export class WorkspaceService {
         request: model.Import,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/workspace/import";
+        return await this._import(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.List,
+        @context context?: Context
+    ): Promise<model.ListResponse> {
+        const path = "/api/2.0/workspace/list";
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.ListResponse;
     }
 
     /**
@@ -137,13 +185,21 @@ export class WorkspaceService {
         request: model.List,
         @context context?: Context
     ): Promise<model.ListResponse> {
-        const path = "/api/2.0/workspace/list";
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _mkdirs(
+        request: model.Mkdirs,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/workspace/mkdirs";
         return (await this.client.request(
             path,
-            "GET",
+            "POST",
             request,
             context
-        )) as model.ListResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -161,12 +217,6 @@ export class WorkspaceService {
         request: model.Mkdirs,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/workspace/mkdirs";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._mkdirs(request, context);
     }
 }

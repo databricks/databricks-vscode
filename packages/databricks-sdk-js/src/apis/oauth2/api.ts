@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class CustomAppIntegrationRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -33,15 +34,9 @@ export class CustomAppIntegrationError extends ApiError {
  */
 export class CustomAppIntegrationService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create Custom OAuth App Integration.
-     *
-     * Create Custom OAuth App Integration.
-     *
-     * You can retrieve the custom oauth app integration via :method:get.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateCustomAppIntegration,
         @context context?: Context
     ): Promise<model.CreateCustomAppIntegrationOutput> {
@@ -55,13 +50,22 @@ export class CustomAppIntegrationService {
     }
 
     /**
-     * Delete Custom OAuth App Integration.
+     * Create Custom OAuth App Integration.
      *
-     * Delete an existing Custom OAuth App Integration. You can retrieve the
-     * custom oauth app integration via :method:get.
+     * Create Custom OAuth App Integration.
+     *
+     * You can retrieve the custom oauth app integration via :method:get.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateCustomAppIntegration,
+        @context context?: Context
+    ): Promise<model.CreateCustomAppIntegrationOutput> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteCustomAppIntegrationRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -75,12 +79,21 @@ export class CustomAppIntegrationService {
     }
 
     /**
-     * Get OAuth Custom App Integration.
+     * Delete Custom OAuth App Integration.
      *
-     * Gets the Custom OAuth App Integration for the given integration id.
+     * Delete an existing Custom OAuth App Integration. You can retrieve the
+     * custom oauth app integration via :method:get.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteCustomAppIntegrationRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetCustomAppIntegrationRequest,
         @context context?: Context
     ): Promise<model.GetCustomAppIntegrationOutput> {
@@ -94,13 +107,20 @@ export class CustomAppIntegrationService {
     }
 
     /**
-     * Updates Custom OAuth App Integration.
+     * Get OAuth Custom App Integration.
      *
-     * Updates an existing custom OAuth App Integration. You can retrieve the
-     * custom oauth app integration via :method:get.
+     * Gets the Custom OAuth App Integration for the given integration id.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async get(
+        request: model.GetCustomAppIntegrationRequest,
+        @context context?: Context
+    ): Promise<model.GetCustomAppIntegrationOutput> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateCustomAppIntegration,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -111,6 +131,20 @@ export class CustomAppIntegrationService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Updates Custom OAuth App Integration.
+     *
+     * Updates an existing custom OAuth App Integration. You can retrieve the
+     * custom oauth app integration via :method:get.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateCustomAppIntegration,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._update(request, context);
     }
 }
 
@@ -136,15 +170,9 @@ export class PublishedAppIntegrationError extends ApiError {
  */
 export class PublishedAppIntegrationService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create Published OAuth App Integration.
-     *
-     * Create Published OAuth App Integration.
-     *
-     * You can retrieve the published oauth app integration via :method:get.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreatePublishedAppIntegration,
         @context context?: Context
     ): Promise<model.CreatePublishedAppIntegrationOutput> {
@@ -158,13 +186,22 @@ export class PublishedAppIntegrationService {
     }
 
     /**
-     * Delete Published OAuth App Integration.
+     * Create Published OAuth App Integration.
      *
-     * Delete an existing Published OAuth App Integration. You can retrieve the
-     * published oauth app integration via :method:get.
+     * Create Published OAuth App Integration.
+     *
+     * You can retrieve the published oauth app integration via :method:get.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreatePublishedAppIntegration,
+        @context context?: Context
+    ): Promise<model.CreatePublishedAppIntegrationOutput> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeletePublishedAppIntegrationRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -178,12 +215,21 @@ export class PublishedAppIntegrationService {
     }
 
     /**
-     * Get OAuth Published App Integration.
+     * Delete Published OAuth App Integration.
      *
-     * Gets the Published OAuth App Integration for the given integration id.
+     * Delete an existing Published OAuth App Integration. You can retrieve the
+     * published oauth app integration via :method:get.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeletePublishedAppIntegrationRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetPublishedAppIntegrationRequest,
         @context context?: Context
     ): Promise<model.GetPublishedAppIntegrationOutput> {
@@ -197,13 +243,20 @@ export class PublishedAppIntegrationService {
     }
 
     /**
-     * Updates Published OAuth App Integration.
+     * Get OAuth Published App Integration.
      *
-     * Updates an existing published OAuth App Integration. You can retrieve the
-     * published oauth app integration via :method:get.
+     * Gets the Published OAuth App Integration for the given integration id.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async get(
+        request: model.GetPublishedAppIntegrationRequest,
+        @context context?: Context
+    ): Promise<model.GetPublishedAppIntegrationOutput> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdatePublishedAppIntegration,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -214,5 +267,19 @@ export class PublishedAppIntegrationService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Updates Published OAuth App Integration.
+     *
+     * Updates an existing published OAuth App Integration. You can retrieve the
+     * published oauth app integration via :method:get.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdatePublishedAppIntegration,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._update(request, context);
     }
 }

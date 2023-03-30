@@ -16,18 +16,22 @@ describe(__filename, function () {
     it("should execute python with low level API", async () => {
         const commandsApi = integSetup.client.commands;
 
-        const context = await commandsApi.createAndWait({
-            clusterId: integSetup.cluster.id,
-            language: "python",
-        });
+        const context = await (
+            await commandsApi.create({
+                clusterId: integSetup.cluster.id,
+                language: "python",
+            })
+        ).wait();
         //console.log("Execution context", context);
 
-        const status = await commandsApi.executeAndWait({
-            clusterId: integSetup.cluster.id,
-            contextId: context.id,
-            language: "python",
-            command: "print('juhu')",
-        });
+        const status = await (
+            await commandsApi.execute({
+                clusterId: integSetup.cluster.id,
+                contextId: context.id,
+                language: "python",
+                command: "print('juhu')",
+            })
+        ).wait();
 
         // console.log("Status", status);
 
