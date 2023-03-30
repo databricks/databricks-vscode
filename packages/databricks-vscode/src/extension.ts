@@ -408,7 +408,7 @@ export async function activate(
             }
         )
     );
-    dbConnectAccessVerifier.check();
+    featureManager.isEnabled("debugging.dbconnect");
 
     context.subscriptions.push(
         commands.registerCommand(
