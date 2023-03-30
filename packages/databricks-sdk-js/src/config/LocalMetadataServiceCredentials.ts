@@ -102,7 +102,7 @@ export class LocalMetadataServiceCredentials implements CredentialProvider {
             }
 
             config.logger.info(
-                `Refreshed access token for ${url} from local credentials server, which expires on ${serverResponse.expires_in}`
+                `Refreshed access token from local credentials server, which expires on ${serverResponse.expires_in}`
             );
 
             return new Token({
