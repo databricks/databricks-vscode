@@ -148,7 +148,7 @@ describe("Run job on cluster", async function () {
         await workbench.executeQuickPick(
             "Databricks: Run File as Workflow on Databricks"
         );
-        // notification generated here
+
         await dismissNotifications();
         const webView = await workbench.getWebviewByTitle(/Databricks Job Run/);
         await webView.open();
