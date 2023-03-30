@@ -129,9 +129,6 @@ export interface ChannelInfo {
     name?: ChannelName;
 }
 
-/**
- * Name of the channel
- */
 export type ChannelName =
     | "CHANNEL_NAME_CURRENT"
     | "CHANNEL_NAME_CUSTOM"

@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class PipelinesRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -40,15 +41,9 @@ export class PipelinesError extends ApiError {
  */
 export class PipelinesService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a pipeline.
-     *
-     * Creates a new data processing pipeline based on the requested
-     * configuration. If successful, this method returns the ID of the new
-     * pipeline.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreatePipeline,
         @context context?: Context
     ): Promise<model.CreatePipelineResponse> {
@@ -62,12 +57,22 @@ export class PipelinesService {
     }
 
     /**
-     * Delete a pipeline.
+     * Create a pipeline.
      *
-     * Deletes a pipeline.
+     * Creates a new data processing pipeline based on the requested
+     * configuration. If successful, this method returns the ID of the new
+     * pipeline.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreatePipeline,
+        @context context?: Context
+    ): Promise<model.CreatePipelineResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.Delete,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -81,10 +86,20 @@ export class PipelinesService {
     }
 
     /**
-     * Get a pipeline.
+     * Delete a pipeline.
+     *
+     * Deletes a pipeline.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.Delete,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.GetPipelineResponse> {
@@ -98,77 +113,73 @@ export class PipelinesService {
     }
 
     /**
-     * get and wait to reach RUNNING state
-     *  or fail on reaching FAILED state
+     * Get a pipeline.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getAndWait(
+    async get(
         get: model.Get,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.GetPipelineResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.GetPipelineResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.GetPipelineResponse, model.GetPipelineResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        const getPipelineResponse = await this.get(get, context);
+        const getPipelineResponse = await this._get(get, context);
 
-        return await retry<model.GetPipelineResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        pipeline_id: getPipelineResponse.pipeline_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Pipelines.getAndWait: cancelled");
-                    throw new PipelinesError("getAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state;
-                const statusMessage = pollResponse.cause;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "FAILED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+        return asWaiter(getPipelineResponse, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.GetPipelineResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            pipeline_id: getPipelineResponse.pipeline_id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Pipelines.getAndWait: ${errorMessage}`
+                            "Pipelines.getAndWait: cancelled"
                         );
-                        throw new PipelinesError("getAndWait", errorMessage);
+                        throw new PipelinesError("getAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Pipelines.getAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new PipelinesRetriableError(
-                            "getAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state;
+                    const statusMessage = pollResponse.cause;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "FAILED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Pipelines.getAndWait: ${errorMessage}`
+                            );
+                            throw new PipelinesError(
+                                "getAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Pipelines.getAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new PipelinesRetriableError(
+                                "getAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Get a pipeline update.
-     *
-     * Gets an update from an active pipeline.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async getUpdate(
+    private async _getUpdate(
         request: model.GetUpdate,
         @context context?: Context
     ): Promise<model.GetUpdateResponse> {
@@ -182,12 +193,20 @@ export class PipelinesService {
     }
 
     /**
-     * List pipeline events.
+     * Get a pipeline update.
      *
-     * Retrieves events for a pipeline.
+     * Gets an update from an active pipeline.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listPipelineEvents(
+    async getUpdate(
+        request: model.GetUpdate,
+        @context context?: Context
+    ): Promise<model.GetUpdateResponse> {
+        return await this._getUpdate(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listPipelineEvents(
         request: model.ListPipelineEvents,
         @context context?: Context
     ): Promise<model.ListPipelineEventsResponse> {
@@ -201,12 +220,20 @@ export class PipelinesService {
     }
 
     /**
-     * List pipelines.
+     * List pipeline events.
      *
-     * Lists pipelines defined in the Delta Live Tables system.
+     * Retrieves events for a pipeline.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listPipelines(
+    async listPipelineEvents(
+        request: model.ListPipelineEvents,
+        @context context?: Context
+    ): Promise<model.ListPipelineEventsResponse> {
+        return await this._listPipelineEvents(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listPipelines(
         request: model.ListPipelines,
         @context context?: Context
     ): Promise<model.ListPipelinesResponse> {
@@ -220,12 +247,20 @@ export class PipelinesService {
     }
 
     /**
-     * List pipeline updates.
+     * List pipelines.
      *
-     * List updates for an active pipeline.
+     * Lists pipelines defined in the Delta Live Tables system.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listUpdates(
+    async listPipelines(
+        request: model.ListPipelines,
+        @context context?: Context
+    ): Promise<model.ListPipelinesResponse> {
+        return await this._listPipelines(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listUpdates(
         request: model.ListUpdates,
         @context context?: Context
     ): Promise<model.ListUpdatesResponse> {
@@ -239,12 +274,20 @@ export class PipelinesService {
     }
 
     /**
-     * Reset a pipeline.
+     * List pipeline updates.
      *
-     * Resets a pipeline.
+     * List updates for an active pipeline.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async reset(
+    async listUpdates(
+        request: model.ListUpdates,
+        @context context?: Context
+    ): Promise<model.ListUpdatesResponse> {
+        return await this._listUpdates(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _reset(
         request: model.Reset,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -258,77 +301,75 @@ export class PipelinesService {
     }
 
     /**
-     * reset and wait to reach RUNNING state
-     *  or fail on reaching FAILED state
+     * Reset a pipeline.
+     *
+     * Resets a pipeline.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async resetAndWait(
+    async reset(
         reset: model.Reset,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.GetPipelineResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.GetPipelineResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.GetPipelineResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.reset(reset, context);
+        await this._reset(reset, context);
 
-        return await retry<model.GetPipelineResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        pipeline_id: reset.pipeline_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Pipelines.resetAndWait: cancelled");
-                    throw new PipelinesError("resetAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state;
-                const statusMessage = pollResponse.cause;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "FAILED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.GetPipelineResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            pipeline_id: reset.pipeline_id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Pipelines.resetAndWait: ${errorMessage}`
+                            "Pipelines.resetAndWait: cancelled"
                         );
-                        throw new PipelinesError("resetAndWait", errorMessage);
+                        throw new PipelinesError("resetAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Pipelines.resetAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new PipelinesRetriableError(
-                            "resetAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state;
+                    const statusMessage = pollResponse.cause;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "FAILED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Pipelines.resetAndWait: ${errorMessage}`
+                            );
+                            throw new PipelinesError(
+                                "resetAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Pipelines.resetAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new PipelinesRetriableError(
+                                "resetAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Queue a pipeline update.
-     *
-     * Starts or queues a pipeline update.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async startUpdate(
+    private async _startUpdate(
         request: model.StartUpdate,
         @context context?: Context
     ): Promise<model.StartUpdateResponse> {
@@ -342,12 +383,20 @@ export class PipelinesService {
     }
 
     /**
-     * Stop a pipeline.
+     * Queue a pipeline update.
      *
-     * Stops a pipeline.
+     * Starts or queues a pipeline update.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async stop(
+    async startUpdate(
+        request: model.StartUpdate,
+        @context context?: Context
+    ): Promise<model.StartUpdateResponse> {
+        return await this._startUpdate(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _stop(
         request: model.Stop,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -361,68 +410,85 @@ export class PipelinesService {
     }
 
     /**
-     * stop and wait to reach IDLE state
-     *  or fail on reaching FAILED state
+     * Stop a pipeline.
+     *
+     * Stops a pipeline.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async stopAndWait(
+    async stop(
         stop: model.Stop,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.GetPipelineResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.GetPipelineResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.GetPipelineResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.stop(stop, context);
+        await this._stop(stop, context);
 
-        return await retry<model.GetPipelineResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        pipeline_id: stop.pipeline_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Pipelines.stopAndWait: cancelled");
-                    throw new PipelinesError("stopAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state;
-                const statusMessage = pollResponse.cause;
-                switch (status) {
-                    case "IDLE": {
-                        return pollResponse;
-                    }
-                    case "FAILED": {
-                        const errorMessage = `failed to reach IDLE state, got ${status}: ${statusMessage}`;
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.GetPipelineResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            pipeline_id: stop.pipeline_id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Pipelines.stopAndWait: ${errorMessage}`
+                            "Pipelines.stopAndWait: cancelled"
                         );
-                        throw new PipelinesError("stopAndWait", errorMessage);
+                        throw new PipelinesError("stopAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach IDLE state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Pipelines.stopAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new PipelinesRetriableError(
-                            "stopAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state;
+                    const statusMessage = pollResponse.cause;
+                    switch (status) {
+                        case "IDLE": {
+                            return pollResponse;
+                        }
+                        case "FAILED": {
+                            const errorMessage = `failed to reach IDLE state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Pipelines.stopAndWait: ${errorMessage}`
+                            );
+                            throw new PipelinesError(
+                                "stopAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach IDLE state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Pipelines.stopAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new PipelinesRetriableError(
+                                "stopAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.EditPipeline,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/pipelines/${request.pipeline_id}`;
+        return (await this.client.request(
+            path,
+            "PUT",
+            request,
+            context
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -435,12 +501,6 @@ export class PipelinesService {
         request: model.EditPipeline,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/pipelines/${request.pipeline_id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }

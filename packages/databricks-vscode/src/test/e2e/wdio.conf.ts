@@ -12,7 +12,7 @@ import {initialiseCustomCommands} from "./customCommands";
 import {execFile, ExecFileOptions} from "node:child_process";
 import {mkdirSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {version, name} from "../../../package.json";
+import {version, name, engines} from "../../../package.json";
 import {sleep} from "wdio-vscode-service";
 
 const WORKSPACE_PATH = path.resolve(__dirname, "workspace");
@@ -103,7 +103,7 @@ export const config: Options.Testrunner = {
         return [
             {
                 "browserName": "vscode",
-                "browserVersion": "1.71.1",
+                "browserVersion": engines.vscode.replace("^", ""),
                 "wdio:vscodeOptions": {
                     extensionPath: path.resolve(
                         __dirname,
