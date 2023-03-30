@@ -36,6 +36,7 @@ import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
 import path from "node:path";
+import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManager";
 import {FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
@@ -132,8 +133,13 @@ export async function activate(
     );
 
     const cli = new CliWrapper(context);
+
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
+    const metadataServiceManager = new MetadataServiceManager(
+        connectionManager
+    );
+    await metadataServiceManager.listen();
 
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(
         connectionManager
@@ -146,6 +152,7 @@ export async function activate(
     );
 
     context.subscriptions.push(
+        metadataServiceManager,
         window.registerTreeDataProvider(
             "workspaceFsView",
             workspaceFsDataProvider

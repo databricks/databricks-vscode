@@ -11,9 +11,23 @@ export class MetadataService implements Disposable {
         | undefined;
 
     private magic!: string;
+    private _apiClient: ApiClient | undefined;
 
-    constructor(public apiClient?: ApiClient) {
+    constructor(apiClient?: ApiClient) {
         this.updateMagic();
+        this._apiClient = apiClient;
+    }
+
+    async setApiClient(apiClient: ApiClient | undefined) {
+        const oldHost = await this._apiClient?.config.getHost();
+        const newHost = await apiClient?.config.getHost();
+        if (oldHost !== newHost) {
+            this.updateMagic();
+        }
+
+        console.log(`Metadata Service URL: ${this.url}`);
+
+        this._apiClient = apiClient;
     }
 
     get url(): string {
@@ -37,16 +51,20 @@ export class MetadataService implements Disposable {
     listen(): Promise<void> {
         this.server = http.createServer((req, res) => {
             (async () => {
-                if (req.url === `/${this.magic}` && this.apiClient) {
+                if (
+                    req.url === `/${this.magic}` &&
+                    this._apiClient &&
+                    req.headers["metadata"] === "true"
+                ) {
                     const headers: Record<string, string> = {};
-                    await this.apiClient.config.authenticate(headers);
+                    await this._apiClient.config.authenticate(headers);
 
                     const auth = headers["Authorization"].split(" ");
 
                     res.writeHead(200, {"Content-Type": "text/json"});
                     res.end(
                         JSON.stringify({
-                            host: await this.apiClient.config.host,
+                            host: await this._apiClient.config.host,
                             token_type: auth[0],
                             access_token: auth[1],
                             expires_on: Math.floor(Date.now() / 1000) + 15, // valid for 15 seconds

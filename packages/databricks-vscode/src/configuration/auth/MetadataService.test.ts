@@ -30,18 +30,20 @@ describe(__filename, function () {
     });
 
     it("should return credentials when apiClient is configured", async () => {
-        metadataService.apiClient = new ApiClient(
-            new Config({
-                host: "https://test.com",
-                credentials: {
-                    name: "pat",
-                    async configure(): Promise<RequestVisitor> {
-                        return async (headers: Headers) => {
-                            headers["Authorization"] = `Bearer XXXX`;
-                        };
+        await metadataService.setApiClient(
+            new ApiClient(
+                new Config({
+                    host: "https://test.com",
+                    credentials: {
+                        name: "pat",
+                        async configure(): Promise<RequestVisitor> {
+                            return async (headers: Headers) => {
+                                headers["Authorization"] = `Bearer XXXX`;
+                            };
+                        },
                     },
-                },
-            })
+                })
+            )
         );
         const response = (await got(metadataService.url).json()) as any;
         assert.equal(response.host, "https://test.com");
@@ -59,18 +61,20 @@ describe(__filename, function () {
     });
 
     it("should work together with the SDK", async () => {
-        metadataService.apiClient = new ApiClient(
-            new Config({
-                host: "https://test.com",
-                credentials: {
-                    name: "pat",
-                    async configure(): Promise<RequestVisitor> {
-                        return async (headers: Headers) => {
-                            headers["Authorization"] = `Bearer XXXX`;
-                        };
+        await metadataService.setApiClient(
+            new ApiClient(
+                new Config({
+                    host: "https://test.com",
+                    credentials: {
+                        name: "pat",
+                        async configure(): Promise<RequestVisitor> {
+                            return async (headers: Headers) => {
+                                headers["Authorization"] = `Bearer XXXX`;
+                            };
+                        },
                     },
-                },
-            })
+                })
+            )
         );
 
         const config = new Config({
