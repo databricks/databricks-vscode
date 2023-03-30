@@ -25,6 +25,9 @@ describe(__filename, function () {
     it("should return 404 when no apiClient is configured", async () => {
         const response = await got(metadataService.url, {
             throwHttpErrors: false,
+            headers: {
+                Metadata: "true",
+            },
         });
         assert.equal(response.statusCode, 404);
     });
@@ -45,7 +48,11 @@ describe(__filename, function () {
                 })
             )
         );
-        const response = (await got(metadataService.url).json()) as any;
+        const response = (await got(metadataService.url, {
+            headers: {
+                Metadata: "true",
+            },
+        }).json()) as any;
         assert.equal(response.host, "https://test.com");
         assert.equal(response.token_type, "Bearer");
         assert.equal(response.access_token, "XXXX");
@@ -56,6 +63,9 @@ describe(__filename, function () {
         metadataService.updateMagic();
         const response = await got(url, {
             throwHttpErrors: false,
+            headers: {
+                Metadata: "true",
+            },
         });
         assert.equal(response.statusCode, 404);
     });
@@ -78,6 +88,7 @@ describe(__filename, function () {
         );
 
         const config = new Config({
+            authType: "local-metadata-service",
             localMetadataServiceUrl: metadataService.url,
         });
 

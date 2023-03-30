@@ -70,9 +70,9 @@ export class MetadataService implements Disposable {
                     );
                 } else {
                     res.writeHead(404, {"Content-Type": "text/json"});
-                    res.end(JSON.stringify({"not-found": true}));
+                    res.end(JSON.stringify({not_found: true}));
                 }
-            })().catch((e) => {
+            })().catch(() => {
                 res.writeHead(500, {"Content-Type": "text/json"});
                 res.end(JSON.stringify({error: true}));
             });

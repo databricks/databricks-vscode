@@ -18,7 +18,6 @@ import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {PackageMetaData} from "../utils/packageJsonUtils";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {RWLock} from "./RWLock";
 
 export const TASK_SYNC_TYPE = {

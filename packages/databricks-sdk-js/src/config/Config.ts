@@ -83,7 +83,7 @@ export class Config {
         name: "local_metadata_service_url",
         env: "DATABRICKS_LOCAL_METADATA_SERVICE_URL",
         auth: "local-metadata-service",
-        sensitive: true
+        sensitive: true,
     })
     public localMetadataServiceUrl?: string;
 
