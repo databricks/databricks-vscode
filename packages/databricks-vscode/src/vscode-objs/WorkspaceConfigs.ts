@@ -46,13 +46,17 @@ export const workspaceConfigs = {
     },
 
     get syncDestinationType() {
-        // tanmaytodo if else
-        return (
+        const syncDestinationTypeShown =
             workspace
                 .getConfiguration("databricks")
                 ?.get<SyncDestinationType>("sync.destinationType") ??
-            "repo [deprecated]"
-        );
+            "repo [deprecated]";
+
+        if (syncDestinationTypeShown === "repo") {
+            return "repo";
+        } else {
+            return syncDestinationTypeShown;
+        }
     },
 
     get enableFilesInWorkspace() {
