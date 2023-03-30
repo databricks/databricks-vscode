@@ -42,6 +42,7 @@ describe(__filename, () => {
         const lmsCredentials = new LocalMetadataServiceCredentials();
         const config = new Config({
             host: "https://test.com",
+            authType: "local-metadata-service",
             localMetadataServiceUrl: `http://localhost:${
                 (server.address() as AddressInfo).port
             }`,
@@ -57,6 +58,7 @@ describe(__filename, () => {
     it("should not take host from metadata if not configured in config", async () => {
         const lmsCredentials = new LocalMetadataServiceCredentials();
         const config = new Config({
+            authType: "local-metadata-service",
             localMetadataServiceUrl: `http://localhost:${
                 (server.address() as AddressInfo).port
             }`,
