@@ -31,7 +31,7 @@ describe("Run job on cluster", async function () {
             path.join(projectDir, ".vscode", "settings.json"),
             JSON.stringify({
                 // eslint-disable-next-line @typescript-eslint/naming-convention
-                "databricks.sync.destinationType": "repo",
+                "databricks.sync.destinationType": "repo [deprecated]",
             })
         );
 
