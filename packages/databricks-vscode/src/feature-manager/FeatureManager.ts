@@ -62,7 +62,7 @@ export class FeatureManager<T extends string> implements Disposable {
                     eventEmitter.fire(e);
                     this.stateCache.set(id, e);
                 }
-            })
+            }, this)
         );
         this.features.set(id, {
             feature,
@@ -99,10 +99,14 @@ export class FeatureManager<T extends string> implements Disposable {
         }
 
         const state = await new Promise<FeatureState>((resolve, reject) => {
-            const changeListener = this.onDidChangeState(id, (state) => {
-                changeListener.dispose();
-                resolve(state);
-            });
+            const changeListener = this.onDidChangeState(
+                id,
+                (state) => {
+                    changeListener.dispose();
+                    resolve(state);
+                },
+                this
+            );
             feature.feature.check().catch((e) => {
                 changeListener.dispose();
                 reject(e);

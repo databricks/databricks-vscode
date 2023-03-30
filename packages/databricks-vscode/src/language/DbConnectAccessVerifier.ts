@@ -28,7 +28,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                     checkClusterHasUc: () => this.checkClusterHasUc(cluster),
                 };
                 this.runSteps(steps);
-            }),
+            }, this),
             this.connectionManager.onDidChangeState((e) => {
                 if (e !== "CONNECTED") {
                     return;
@@ -36,12 +36,12 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                 this.runSteps({
                     checkWorkspaceHasUc: () => this.checkWorkspaceHasUc(),
                 });
-            }),
+            }, this),
             this.pythonExtension.onDidChangePythonExecutable(() => {
                 this.runSteps({
                     checkDbConnectInstall: () => this.checkDbConnectInstall(),
                 });
-            })
+            }, this)
         );
     }
 
@@ -130,6 +130,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                     await this.pythonExtension.installPackageInEnvironment(
                         "pyspark"
                     );
+                    this.checkDbConnectInstall();
                 } catch (e: unknown) {
                     if (e instanceof Error) {
                         window.showErrorMessage(e.message);
@@ -167,7 +168,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             return this.rejectStep(
                 "checkDbConnectInstall",
                 "Dbconnect package not installed in the current environment",
-                this.showDbConnectInstallPrompt
+                () => this.showDbConnectInstallPrompt()
             );
         } catch (e: unknown) {
             if (e instanceof Error) {
