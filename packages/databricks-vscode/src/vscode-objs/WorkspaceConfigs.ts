@@ -64,11 +64,14 @@ export const workspaceConfigs = {
     },
 
     async setSyncDestinationType(destinationType: SyncDestinationType) {
+        const destinationTypeShown =
+            destinationType === "repo" ? "repo [deprecated]" : "workspace";
+
         await workspace
             .getConfiguration("databricks")
             ?.update(
                 "sync.destinationType",
-                destinationType,
+                destinationTypeShown,
                 ConfigurationTarget.Workspace
             );
     },
