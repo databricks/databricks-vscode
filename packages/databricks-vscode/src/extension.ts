@@ -376,10 +376,13 @@ export async function activate(
         );
     });
 
-    const featureManager = new FeatureManager();
+    const featureManager = new FeatureManager<"debugging.dbconnect">([
+        "debugging.dbconnect",
+    ]);
     const dbConnectAccessVerifier = new DbConnectAccessVerifier(
         connectionManager,
-        pythonExtensionWrapper
+        pythonExtensionWrapper,
+        workspaceStateManager
     );
     featureManager.registerFeature(
         "debugging.dbconnect",

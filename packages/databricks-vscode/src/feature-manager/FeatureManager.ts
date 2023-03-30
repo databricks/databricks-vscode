@@ -2,24 +2,37 @@ import {Event, EventEmitter, Disposable} from "vscode";
 import {DisabledFeature} from "./DisabledFeature";
 
 export type FeatureEnableAction = () => Promise<void>;
+
+/**
+ * The state of a feature.
+ * *available*: If feature is enabled.
+ * *reason*: If feature is disabled, this is the human readable reason for feature being disabled.
+ * *action*: If feature is disabled, this optionally contains the function which tries to solve the issue
+ * and enable the feature.
+ */
 export interface FeatureState {
     avaliable: boolean;
     reason?: string;
     action?: FeatureEnableAction;
 }
 
-export type FeatureId = "debugging.dbconnect";
-export const disabledFeatures: FeatureId[] = ["debugging.dbconnect"];
 export interface Feature {
     check: () => Promise<void>;
     onDidChangeState: Event<FeatureState>;
 }
 
-export class FeatureManager implements Disposable {
+/**
+ * This class acts as the single source of truth for detecting if features are available
+ * and if features are enabled. The values are cached where possible.
+ * *Available feature*: Features for which all conditions (python package, workspace config, cluster dbr etc)
+ * are satified.
+ * *Disabled features*: Features which are disabled by feature flags. Their availability checks are not performed.
+ */
+export class FeatureManager<T extends string> implements Disposable {
     private disposables: Disposable[] = [];
 
     private features: Map<
-        FeatureId,
+        T,
         {
             feature: Feature;
             onDidChangeStateEmitter: EventEmitter<FeatureState>;
@@ -27,15 +40,14 @@ export class FeatureManager implements Disposable {
         }
     > = new Map();
 
-    private stateCache: Map<FeatureId, FeatureState> = new Map();
+    private stateCache: Map<T, FeatureState> = new Map();
+    constructor(private readonly disabledFeatures: T[]) {}
 
-    constructor() {}
-
-    registerFeature(id: FeatureId, feature: Feature) {
+    registerFeature(id: T, feature: Feature) {
         if (this.features.has(id)) {
             return;
         }
-        if (disabledFeatures.includes(id)) {
+        if (this.disabledFeatures.includes(id)) {
             feature = new DisabledFeature();
         }
         const eventEmitter = new EventEmitter<FeatureState>();
@@ -59,11 +71,7 @@ export class FeatureManager implements Disposable {
         });
     }
 
-    onDidChangeState(
-        id: FeatureId,
-        f: (state: FeatureState) => any,
-        thisArgs?: any
-    ) {
+    onDidChangeState(id: T, f: (state: FeatureState) => any, thisArgs?: any) {
         const feature = this.features.get(id);
         if (feature) {
             return feature.onDidChangeState(f, thisArgs);
@@ -71,7 +79,12 @@ export class FeatureManager implements Disposable {
         return new Disposable(() => {});
     }
 
-    async isEnabled(id: FeatureId, force = false): Promise<FeatureState> {
+    /**
+     * @param id feature id
+     * @param force force refresh cached value
+     * @returns Promise<{@link FeatureState}>
+     */
+    async isEnabled(id: T, force = false): Promise<FeatureState> {
         const feature = this.features.get(id);
         if (!feature) {
             return {
