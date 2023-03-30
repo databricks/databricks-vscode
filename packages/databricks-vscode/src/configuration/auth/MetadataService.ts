@@ -25,8 +25,6 @@ export class MetadataService implements Disposable {
             this.updateMagic();
         }
 
-        console.log(`Metadata Service URL: ${this.url}`);
-
         this._apiClient = apiClient;
     }
 

@@ -3,7 +3,7 @@ import {ConnectionManager} from "../ConnectionManager";
 import {MetadataService} from "./MetadataService";
 
 export class MetadataServiceManager implements Disposable {
-    private metadataSerivce: MetadataService;
+    readonly metadataSerivce: MetadataService;
     private disposables: Disposable[] = [];
 
     constructor(private readonly connctionManager: ConnectionManager) {
@@ -16,8 +16,8 @@ export class MetadataServiceManager implements Disposable {
     }
 
     async listen() {
-        this.updateApiClient();
         await this.metadataSerivce.listen();
+        await this.updateApiClient();
     }
 
     private async updateApiClient() {
@@ -26,6 +26,7 @@ export class MetadataServiceManager implements Disposable {
                 this.connctionManager.workspaceClient?.apiClient
             );
         }
+        this.connctionManager.metadataServiceUrl = this.metadataSerivce.url;
     }
 
     dispose() {

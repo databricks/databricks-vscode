@@ -60,6 +60,8 @@ export class ConnectionManager {
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
 
+    public metadataServiceUrl?: string;
+
     constructor(private cli: CliWrapper) {}
 
     get state(): ConnectionState {
