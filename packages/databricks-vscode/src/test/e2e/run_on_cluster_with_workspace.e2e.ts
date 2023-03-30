@@ -9,6 +9,7 @@ import {
     waitForTreeItems,
 } from "./utils";
 import {sleep} from "wdio-vscode-service";
+import {Workbench} from "wdio-vscode-service/dist/locators/1.37.0";
 
 describe("Run python on cluster", async function () {
     let projectDir: string;
@@ -35,6 +36,10 @@ describe("Run python on cluster", async function () {
                 "databricks.sync.destinationType": "workspace",
             })
         );
+
+        await (
+            await driver.getWorkbench()
+        ).executeCommand("Developer: Reload Window");
 
         await fs.writeFile(
             path.join(projectDir, ".databricks", "project.json"),
@@ -109,6 +114,7 @@ describe("Run python on cluster", async function () {
     after(async () => {
         try {
             await fs.rm(path.join(projectDir, ".vscode"), {
+                recursive: true,
                 force: true,
             });
         } catch {}

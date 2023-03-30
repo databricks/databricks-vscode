@@ -15,7 +15,7 @@ import {tmpdir} from "node:os";
 import {version, name, engines} from "../../../package.json";
 import {sleep} from "wdio-vscode-service";
 
-const WORKSPACE_PATH = path.resolve(__dirname, "workspace");
+const WORKSPACE_PATH = path.resolve(tmpdir(), "workspace");
 const REPO_NAME = "vscode-integ-test";
 const EXTENSION_DIR = path.resolve(tmpdir(), "extension-test", "extension");
 const VSIX_PATH = path.resolve(
