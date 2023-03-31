@@ -26,5 +26,5 @@ jobs:
 
             - uses: actions/upload-artifact@v3
               with:
-                  name: databricks-${{ matrix.arch.vsix_arch }}
+                  name: databricks
                   path: "packages/databricks-vscode/*.vsix"

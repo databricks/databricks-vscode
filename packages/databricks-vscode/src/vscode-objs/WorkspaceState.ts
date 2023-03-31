@@ -28,7 +28,39 @@ export class WorkspaceStateManager {
     set skipAutocompleteConfigure(value: boolean) {
         this.context.workspaceState.update(
             "databricks.autocompletion.skipConfigure",
-            true
+            value
+        );
+    }
+
+    get skipDbConnectInstall() {
+        return this.context.workspaceState.get(
+            "databricks.debugging.skipDbConnectInstall",
+            false
+        );
+    }
+
+    set skipDbConnectInstall(value: boolean) {
+        this.context.workspaceState.update(
+            "databricks.debugging.skipDbConnectInstall",
+            value
+        );
+    }
+
+    get skippedEnvsForDbConnect() {
+        return this.context.workspaceState.get<string[]>(
+            "databricks.debugging.skipDbConnectInstallForEnvs",
+            []
+        );
+    }
+
+    skipDbConnectInstallForEnv(value: string) {
+        const currentEnvs = this.skippedEnvsForDbConnect;
+        if (!currentEnvs.includes(value)) {
+            currentEnvs.push(value);
+        }
+        this.context.workspaceState.update(
+            "databricks.debugging.skipDbConnectInstallForEnvs",
+            currentEnvs
         );
     }
 
