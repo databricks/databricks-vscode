@@ -119,10 +119,11 @@ export async function activate(
                 const start = performance.now();
                 const res = callback.call(thisArg, ...args);
                 const end = performance.now();
-                recordEvent(
-                    Events.COMMAND_EXECUTION,
-                    { commandName: command },
-                    { duration: end - start });
+                recordEvent({
+                    eventName: Events.COMMAND_EXECUTION,
+                    properties: { commandName: command },
+                    metrics: { duration: end - start }
+                });
                 return res
             },
             thisArg
