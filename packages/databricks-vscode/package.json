@@ -6,7 +6,7 @@
     "license": "LicenseRef-LICENSE",
     "version": "0.3.7",
     "engines": {
-        "vscode": "^1.69.1"
+        "vscode": "^1.76.0"
     },
     "categories": [
         "Data Science",
@@ -214,6 +214,12 @@
                 "command": "databricks.wsfs.createFolder",
                 "title": "Create Folder",
                 "icon": "$(new-folder)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.debugging.checkForDbConnect",
+                "title": "Enable DB Connect",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             }
@@ -612,6 +618,26 @@
                         "type": "string",
                         "default": "",
                         "description": "Override location of .databrickscfg file (default: DATABRICKS_CONFIG_FILE environment variable or ~/.databrickscfg)"
+                    },
+                    "databricks.python.envFile": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Similar to python.envFile. Absolute path to a file containing environment variable definitions."
+                    },
+                    "databricks.experiments.optInto": {
+                        "type": "array",
+                        "default": [],
+                        "items": {
+                            "enum": [
+                                "debugging.dbconnect"
+                            ],
+                            "enumDescriptions": [
+                                "Interactive debugging using dbconnect V2."
+                            ],
+                            "type": "string"
+                        },
+                        "uniqueItems": true,
+                        "description": "Opt into experimental features."
                     }
                 }
             }

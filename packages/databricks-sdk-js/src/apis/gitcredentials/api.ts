@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class GitCredentialsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -32,16 +33,9 @@ export class GitCredentialsError extends ApiError {
  */
 export class GitCredentialsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a credential entry.
-     *
-     * Creates a Git credential entry for the user. Only one Git credential per
-     * user is supported, so any attempts to create credentials if an entry
-     * already exists will fail. Use the PATCH endpoint to update existing
-     * credentials, or the DELETE endpoint to delete existing credentials.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateCredentials,
         @context context?: Context
     ): Promise<model.CreateCredentialsResponse> {
@@ -55,12 +49,23 @@ export class GitCredentialsService {
     }
 
     /**
-     * Delete a credential.
+     * Create a credential entry.
      *
-     * Deletes the specified Git credential.
+     * Creates a Git credential entry for the user. Only one Git credential per
+     * user is supported, so any attempts to create credentials if an entry
+     * already exists will fail. Use the PATCH endpoint to update existing
+     * credentials, or the DELETE endpoint to delete existing credentials.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateCredentials,
+        @context context?: Context
+    ): Promise<model.CreateCredentialsResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.Delete,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -74,12 +79,20 @@ export class GitCredentialsService {
     }
 
     /**
-     * Get a credential entry.
+     * Delete a credential.
      *
-     * Gets the Git credential with the specified credential ID.
+     * Deletes the specified Git credential.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.Delete,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.CredentialInfo> {
@@ -93,13 +106,20 @@ export class GitCredentialsService {
     }
 
     /**
-     * Get Git credentials.
+     * Get a credential entry.
      *
-     * Lists the calling user's Git credentials. One credential per user is
-     * supported.
+     * Gets the Git credential with the specified credential ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.Get,
+        @context context?: Context
+    ): Promise<model.CredentialInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         @context context?: Context
     ): Promise<model.GetCredentialsResponse> {
         const path = "/api/2.0/git-credentials";
@@ -112,12 +132,20 @@ export class GitCredentialsService {
     }
 
     /**
-     * Update a credential.
+     * Get Git credentials.
      *
-     * Updates the specified Git credential.
+     * Lists the calling user's Git credentials. One credential per user is
+     * supported.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async list(
+        @context context?: Context
+    ): Promise<model.GetCredentialsResponse> {
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateCredentials,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -128,5 +156,18 @@ export class GitCredentialsService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Update a credential.
+     *
+     * Updates the specified Git credential.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateCredentials,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._update(request, context);
     }
 }

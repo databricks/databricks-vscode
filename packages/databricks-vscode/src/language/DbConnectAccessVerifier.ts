@@ -1,5 +1,6 @@
 import {Cluster} from "@databricks/databricks-sdk";
-import {window} from "vscode";
+import {window, ExtensionContext} from "vscode";
+import * as path from "node:path";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {MultiStepAccessVerifier} from "../feature-manager/MultiStepAccessVerfier";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
@@ -9,7 +10,8 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly workspaceState: WorkspaceStateManager
+        private readonly workspaceState: WorkspaceStateManager,
+        private readonly context: ExtensionContext
     ) {
         super([
             "checkClusterVersion",
@@ -28,7 +30,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                     checkClusterHasUc: () => this.checkClusterHasUc(cluster),
                 };
                 this.runSteps(steps);
-            }),
+            }, this),
             this.connectionManager.onDidChangeState((e) => {
                 if (e !== "CONNECTED") {
                     return;
@@ -36,12 +38,12 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                 this.runSteps({
                     checkWorkspaceHasUc: () => this.checkWorkspaceHasUc(),
                 });
-            }),
+            }, this),
             this.pythonExtension.onDidChangePythonExecutable(() => {
                 this.runSteps({
                     checkDbConnectInstall: () => this.checkDbConnectInstall(),
                 });
-            })
+            }, this)
         );
     }
 
@@ -49,7 +51,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         if (cluster === undefined) {
             return this.rejectStep(
                 "checkClusterVersion",
-                "No cluster attached"
+                "no cluster attached"
             );
         }
         await this.connectionManager.waitForConnect();
@@ -63,20 +65,23 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         }
         return this.rejectStep(
             "checkClusterVersion",
-            `Cluster dbr is less than 13.0.0`
+            `cluster dbr is less than 13.0.0`
         );
     }
 
     async checkClusterHasUc(cluster?: Cluster) {
         if (cluster === undefined) {
-            return this.rejectStep("checkClusterHasUc", "No cluster attached");
+            return this.rejectStep(
+                "checkClusterHasUc",
+                "no cluster is attached"
+            );
         }
         this.connectionManager.waitForConnect();
 
-        if (cluster.isUc()) {
+        if (!cluster.isUc()) {
             return this.rejectStep(
                 "checkClusterHasUc",
-                `Cluster doesn't have UC enabled (access mode should be "Single User" or "Shared")`
+                `cluster doesn't have UC enabled (access mode should be "Single User" or "Shared")`
             );
         }
         return this.acceptStep("checkClusterHasUc");
@@ -90,7 +95,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             if (!catalogList?.catalogs?.length) {
                 return this.rejectStep(
                     "checkWorkspaceHasUc",
-                    "Can't find any catalogs with read permissions"
+                    "no catalogues with read permission were found"
                 );
             }
         } catch (e: unknown) {
@@ -113,6 +118,14 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             return;
         }
 
+        const wheelPath = this.context.asAbsolutePath(
+            path.join(
+                "resources",
+                "python",
+                "databricks_connect-13.0.0-py2.py3-none-any.whl"
+            )
+        );
+
         const choice = await window.showInformationMessage(
             "Do you want to install dbconnectV2 in the current environment?",
             "Yes",
@@ -128,8 +141,9 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                         "pyspark"
                     );
                     await this.pythonExtension.installPackageInEnvironment(
-                        "pyspark"
+                        wheelPath
                     );
+                    this.checkDbConnectInstall();
                 } catch (e: unknown) {
                     if (e instanceof Error) {
                         window.showErrorMessage(e.message);
@@ -154,20 +168,20 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         if (!executable) {
             return this.rejectStep(
                 "checkDbConnectInstall",
-                "No python executable found"
+                "no python executable found."
             );
         }
         try {
             const exists = await this.pythonExtension.findPackageInEnvironment(
-                "pyspark"
+                "databricks-connect"
             );
             if (exists) {
                 return this.acceptStep("checkDbConnectInstall");
             }
             return this.rejectStep(
                 "checkDbConnectInstall",
-                "Dbconnect package not installed in the current environment",
-                this.showDbConnectInstallPrompt
+                "dbconnect package is not installed in the current environment",
+                () => this.showDbConnectInstallPrompt()
             );
         } catch (e: unknown) {
             if (e instanceof Error) {

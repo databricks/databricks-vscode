@@ -30,7 +30,7 @@ describe(__filename, async () => {
         const testVerifier = new TestAccessVerifier();
         const fm = new FeatureManager<"test">([]);
         const spyTestVerifier = spy(testVerifier);
-        fm.registerFeature("test", testVerifier);
+        fm.registerFeature("test", () => testVerifier);
 
         assert.ok(!(await fm.isEnabled("test")).avaliable);
         assert.ok(!(await fm.isEnabled("test")).avaliable);
@@ -43,7 +43,7 @@ describe(__filename, async () => {
         const testVerifier = new TestAccessVerifier();
         const fm = new FeatureManager<"test">([]);
         const spyTestVerifier = spy(testVerifier);
-        fm.registerFeature("test", testVerifier);
+        fm.registerFeature("test", () => testVerifier);
 
         //check value is picked from cache
         assert.ok(!(await fm.isEnabled("test")).avaliable);
@@ -72,7 +72,7 @@ describe(__filename, async () => {
         const testVerifier = new TestAccessVerifier();
         const fm = new FeatureManager<"test">(["test"]);
         const spyTestVerifier = spy(testVerifier);
-        fm.registerFeature("test", testVerifier);
+        fm.registerFeature("test", () => testVerifier);
 
         assert.ok(!(await fm.isEnabled("test")).avaliable);
         assert.ok(!(await fm.isEnabled("test")).avaliable);

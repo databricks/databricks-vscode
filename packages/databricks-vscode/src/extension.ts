@@ -39,6 +39,7 @@ import path from "node:path";
 import {FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
+import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
 
 export async function activate(
     context: ExtensionContext
@@ -379,22 +380,25 @@ export async function activate(
     const featureManager = new FeatureManager<"debugging.dbconnect">([
         "debugging.dbconnect",
     ]);
-    const dbConnectAccessVerifier = new DbConnectAccessVerifier(
-        connectionManager,
-        pythonExtensionWrapper,
-        workspaceStateManager
-    );
     featureManager.registerFeature(
         "debugging.dbconnect",
-        dbConnectAccessVerifier
+        () =>
+            new DbConnectAccessVerifier(
+                connectionManager,
+                pythonExtensionWrapper,
+                workspaceStateManager,
+                context
+            )
     );
     context.subscriptions.push(
-        dbConnectAccessVerifier,
         featureManager.onDidChangeState(
             "debugging.dbconnect",
             async (state) => {
                 if (state.avaliable) {
                     window.showInformationMessage("Db Connect is enabled");
+                    return;
+                }
+                if (state.isDisabledByFf) {
                     return;
                 }
                 if (state.reason) {
@@ -406,16 +410,21 @@ export async function activate(
                     await state.action();
                 }
             }
+        ),
+        new DatabricksEnvFileManager(
+            workspace.workspaceFolders[0].uri,
+            featureManager,
+            connectionManager
+        )
+    );
+    featureManager.isEnabled("debugging.dbconnect");
+
+    context.subscriptions.push(
+        commands.registerCommand("databricks.debugging.checkForDbConnect", () =>
+            featureManager.isEnabled("debugging.dbconnect", true)
         )
     );
 
-    context.subscriptions.push(
-        commands.registerCommand(
-            "databricks.test.pipFreeze",
-            dbConnectAccessVerifier.checkDbConnectInstall,
-            dbConnectAccessVerifier
-        )
-    );
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);
     });

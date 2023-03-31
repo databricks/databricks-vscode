@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class BillableUsageRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -28,6 +29,21 @@ export class BillableUsageError extends ApiError {
  */
 export class BillableUsageService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _download(
+        request: model.DownloadRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/usage/download`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
     /**
      * Return billable usage logs.
      *
@@ -42,13 +58,7 @@ export class BillableUsageService {
         request: model.DownloadRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/usage/download`;
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._download(request, context);
     }
 }
 
@@ -69,13 +79,9 @@ export class BudgetsError extends ApiError {
  */
 export class BudgetsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a new budget.
-     *
-     * Creates a new budget in the specified account.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.WrappedBudget,
         @context context?: Context
     ): Promise<model.WrappedBudgetWithStatus> {
@@ -89,12 +95,20 @@ export class BudgetsService {
     }
 
     /**
-     * Delete budget.
+     * Create a new budget.
      *
-     * Deletes the budget specified by its UUID.
+     * Creates a new budget in the specified account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.WrappedBudget,
+        @context context?: Context
+    ): Promise<model.WrappedBudgetWithStatus> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteBudgetRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -108,13 +122,20 @@ export class BudgetsService {
     }
 
     /**
-     * Get budget and its status.
+     * Delete budget.
      *
-     * Gets the budget specified by its UUID, including noncumulative status for
-     * each day that the budget is configured to include.
+     * Deletes the budget specified by its UUID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteBudgetRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetBudgetRequest,
         @context context?: Context
     ): Promise<model.WrappedBudgetWithStatus> {
@@ -128,13 +149,21 @@ export class BudgetsService {
     }
 
     /**
-     * Get all budgets.
+     * Get budget and its status.
      *
-     * Gets all budgets associated with this account, including noncumulative
-     * status for each day that the budget is configured to include.
+     * Gets the budget specified by its UUID, including noncumulative status for
+     * each day that the budget is configured to include.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.BudgetList> {
+    async get(
+        request: model.GetBudgetRequest,
+        @context context?: Context
+    ): Promise<model.WrappedBudgetWithStatus> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(@context context?: Context): Promise<model.BudgetList> {
         const path = `/api/2.0/accounts/${this.client.accountId}/budget`;
         return (await this.client.request(
             path,
@@ -142,6 +171,31 @@ export class BudgetsService {
             undefined,
             context
         )) as model.BudgetList;
+    }
+
+    /**
+     * Get all budgets.
+     *
+     * Gets all budgets associated with this account, including noncumulative
+     * status for each day that the budget is configured to include.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(@context context?: Context): Promise<model.BudgetList> {
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.WrappedBudget,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/budget/${request.budget_id}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -155,13 +209,7 @@ export class BudgetsService {
         request: model.WrappedBudget,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/budget/${request.budget_id}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -240,6 +288,21 @@ export class LogDeliveryError extends ApiError {
  */
 export class LogDeliveryService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.WrappedCreateLogDeliveryConfiguration,
+        @context context?: Context
+    ): Promise<model.WrappedLogDeliveryConfiguration> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.WrappedLogDeliveryConfiguration;
+    }
+
     /**
      * Create a new log delivery configuration.
      *
@@ -276,10 +339,18 @@ export class LogDeliveryService {
         request: model.WrappedCreateLogDeliveryConfiguration,
         @context context?: Context
     ): Promise<model.WrappedLogDeliveryConfiguration> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetLogDeliveryRequest,
+        @context context?: Context
+    ): Promise<model.WrappedLogDeliveryConfiguration> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery/${request.log_delivery_configuration_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
         )) as model.WrappedLogDeliveryConfiguration;
@@ -296,13 +367,21 @@ export class LogDeliveryService {
         request: model.GetLogDeliveryRequest,
         @context context?: Context
     ): Promise<model.WrappedLogDeliveryConfiguration> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery/${request.log_delivery_configuration_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListLogDeliveryRequest,
+        @context context?: Context
+    ): Promise<model.WrappedLogDeliveryConfigurations> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.WrappedLogDeliveryConfiguration;
+        )) as model.WrappedLogDeliveryConfigurations;
     }
 
     /**
@@ -316,13 +395,21 @@ export class LogDeliveryService {
         request: model.ListLogDeliveryRequest,
         @context context?: Context
     ): Promise<model.WrappedLogDeliveryConfigurations> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery`;
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _patchStatus(
+        request: model.UpdateLogDeliveryConfigurationStatusRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery/${request.log_delivery_configuration_id}`;
         return (await this.client.request(
             path,
-            "GET",
+            "PATCH",
             request,
             context
-        )) as model.WrappedLogDeliveryConfigurations;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -340,12 +427,6 @@ export class LogDeliveryService {
         request: model.UpdateLogDeliveryConfigurationStatusRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery/${request.log_delivery_configuration_id}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._patchStatus(request, context);
     }
 }
