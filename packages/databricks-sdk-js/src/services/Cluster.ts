@@ -16,6 +16,7 @@ import {
     ClusterInfo,
     ClusterSource,
     ClustersService,
+    DataSecurityMode,
     State,
 } from "../apis/clusters";
 import {Context, context} from "../context";
@@ -125,11 +126,26 @@ export class Cluster {
         this.clusterDetails = details;
     }
 
+    get accessMode():
+        | DataSecurityMode
+        | "SHARED"
+        | "LEGACY_SINGLE_USER_PASSTHROUGH"
+        | "LEGACY_SINGLE_USER_STANDARD" {
+        //TODO: deprecate data_security_mode once access_mode is available everywhere
+        return (
+            (this.details as any).access_mode ?? this.details.data_security_mode
+        );
+    }
+
+    isUc() {
+        return ["SINGLE_USER", "SHARED", "USER_ISOLATION"].includes(
+            this.accessMode
+        );
+    }
+
     isSingleUser() {
-        const modeProperty =
-            //TODO: deprecate data_security_mode once access_mode is available everywhere
-            (this.details as any).access_mode ??
-            this.details.data_security_mode;
+        const modeProperty = this.accessMode;
+
         return (
             modeProperty !== undefined &&
             [
@@ -269,20 +285,21 @@ export class Cluster {
         token?: CancellationToken,
         onProgress?: (newPollResponse: ClusterInfo) => Promise<void>
     ) {
-        this.details = await this.clusterApi.deleteAndWait(
-            {
-                cluster_id: this.id,
-            },
-            {
-                onProgress: async (clusterInfo) => {
-                    this.details = clusterInfo;
-                    if (onProgress) {
-                        await onProgress(clusterInfo);
-                    }
+        this.details = await (
+            await this.clusterApi.delete(
+                {
+                    cluster_id: this.id,
                 },
+                new Context({cancellationToken: token})
+            )
+        ).wait({
+            onProgress: async (clusterInfo) => {
+                this.details = clusterInfo;
+                if (onProgress) {
+                    await onProgress(clusterInfo);
+                }
             },
-            new Context({cancellationToken: token})
-        );
+        });
     }
 
     async createExecutionContext(

@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class GlobalInitScriptsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -35,13 +36,9 @@ export class GlobalInitScriptsError extends ApiError {
  */
 export class GlobalInitScriptsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create init script.
-     *
-     * Creates a new global init script in this workspace.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.GlobalInitScriptCreateRequest,
         @context context?: Context
     ): Promise<model.CreateResponse> {
@@ -55,12 +52,20 @@ export class GlobalInitScriptsService {
     }
 
     /**
-     * Delete init script.
+     * Create init script.
      *
-     * Deletes a global init script.
+     * Creates a new global init script in this workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.GlobalInitScriptCreateRequest,
+        @context context?: Context
+    ): Promise<model.CreateResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.Delete,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -74,12 +79,20 @@ export class GlobalInitScriptsService {
     }
 
     /**
-     * Get an init script.
+     * Delete init script.
      *
-     * Gets all the details of a script, including its Base64-encoded contents.
+     * Deletes a global init script.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.Delete,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.GlobalInitScriptDetailsWithContent> {
@@ -90,6 +103,32 @@ export class GlobalInitScriptsService {
             request,
             context
         )) as model.GlobalInitScriptDetailsWithContent;
+    }
+
+    /**
+     * Get an init script.
+     *
+     * Gets all the details of a script, including its Base64-encoded contents.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.Get,
+        @context context?: Context
+    ): Promise<model.GlobalInitScriptDetailsWithContent> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<model.ListGlobalInitScriptsResponse> {
+        const path = "/api/2.0/global-init-scripts";
+        return (await this.client.request(
+            path,
+            "GET",
+            undefined,
+            context
+        )) as model.ListGlobalInitScriptsResponse;
     }
 
     /**
@@ -104,13 +143,21 @@ export class GlobalInitScriptsService {
     async list(
         @context context?: Context
     ): Promise<model.ListGlobalInitScriptsResponse> {
-        const path = "/api/2.0/global-init-scripts";
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.GlobalInitScriptUpdateRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/global-init-scripts/${request.script_id}`;
         return (await this.client.request(
             path,
-            "GET",
-            undefined,
+            "PATCH",
+            request,
             context
-        )) as model.ListGlobalInitScriptsResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -124,12 +171,6 @@ export class GlobalInitScriptsService {
         request: model.GlobalInitScriptUpdateRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/global-init-scripts/${request.script_id}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }

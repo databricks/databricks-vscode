@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class CredentialsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -31,6 +32,21 @@ export class CredentialsError extends ApiError {
  */
 export class CredentialsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateCredentialRequest,
+        @context context?: Context
+    ): Promise<model.Credential> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/credentials`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.Credential;
+    }
+
     /**
      * Create credential configuration.
      *
@@ -54,13 +70,21 @@ export class CredentialsService {
         request: model.CreateCredentialRequest,
         @context context?: Context
     ): Promise<model.Credential> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/credentials`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteCredentialRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/credentials/${request.credentials_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.Credential;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -75,23 +99,11 @@ export class CredentialsService {
         request: model.DeleteCredentialRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/credentials/${request.credentials_id}`;
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._delete(request, context);
     }
 
-    /**
-     * Get credential configuration.
-     *
-     * Gets a Databricks credential configuration object for an account, both
-     * specified by ID.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetCredentialRequest,
         @context context?: Context
     ): Promise<model.Credential> {
@@ -105,13 +117,23 @@ export class CredentialsService {
     }
 
     /**
-     * Get all credential configurations.
+     * Get credential configuration.
      *
-     * Gets all Databricks credential configurations associated with an account
+     * Gets a Databricks credential configuration object for an account, both
      * specified by ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<Array<model.Credential>> {
+    async get(
+        request: model.GetCredentialRequest,
+        @context context?: Context
+    ): Promise<model.Credential> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.Credential>> {
         const path = `/api/2.0/accounts/${this.client.accountId}/credentials`;
         return (await this.client.request(
             path,
@@ -119,6 +141,17 @@ export class CredentialsService {
             undefined,
             context
         )) as Array<model.Credential>;
+    }
+
+    /**
+     * Get all credential configurations.
+     *
+     * Gets all Databricks credential configurations associated with an account
+     * specified by ID.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(@context context?: Context): Promise<Array<model.Credential>> {
+        return await this._list(context);
     }
 }
 
@@ -153,6 +186,21 @@ export class EncryptionKeysError extends ApiError {
  */
 export class EncryptionKeysService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateCustomerManagedKeyRequest,
+        @context context?: Context
+    ): Promise<model.CustomerManagedKey> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.CustomerManagedKey;
+    }
+
     /**
      * Create encryption key configuration.
      *
@@ -178,13 +226,21 @@ export class EncryptionKeysService {
         request: model.CreateCustomerManagedKeyRequest,
         @context context?: Context
     ): Promise<model.CustomerManagedKey> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteEncryptionKeyRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.CustomerManagedKey;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -198,13 +254,21 @@ export class EncryptionKeysService {
         request: model.DeleteEncryptionKeyRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetEncryptionKeyRequest,
+        @context context?: Context
+    ): Promise<model.CustomerManagedKey> {
         const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.CustomerManagedKey;
     }
 
     /**
@@ -231,13 +295,20 @@ export class EncryptionKeysService {
         request: model.GetEncryptionKeyRequest,
         @context context?: Context
     ): Promise<model.CustomerManagedKey> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.CustomerManagedKey>> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.CustomerManagedKey;
+        )) as Array<model.CustomerManagedKey>;
     }
 
     /**
@@ -261,13 +332,7 @@ export class EncryptionKeysService {
     async list(
         @context context?: Context
     ): Promise<Array<model.CustomerManagedKey>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys`;
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as Array<model.CustomerManagedKey>;
+        return await this._list(context);
     }
 }
 
@@ -288,6 +353,21 @@ export class NetworksError extends ApiError {
  */
 export class NetworksService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateNetworkRequest,
+        @context context?: Context
+    ): Promise<model.Network> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/networks`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.Network;
+    }
+
     /**
      * Create network configuration.
      *
@@ -300,13 +380,21 @@ export class NetworksService {
         request: model.CreateNetworkRequest,
         @context context?: Context
     ): Promise<model.Network> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/networks`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteNetworkRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/networks/${request.network_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.Network;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -324,23 +412,11 @@ export class NetworksService {
         request: model.DeleteNetworkRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/networks/${request.network_id}`;
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._delete(request, context);
     }
 
-    /**
-     * Get a network configuration.
-     *
-     * Gets a Databricks network configuration, which represents a cloud VPC and
-     * its resources.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetNetworkRequest,
         @context context?: Context
     ): Promise<model.Network> {
@@ -354,6 +430,33 @@ export class NetworksService {
     }
 
     /**
+     * Get a network configuration.
+     *
+     * Gets a Databricks network configuration, which represents a cloud VPC and
+     * its resources.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetNetworkRequest,
+        @context context?: Context
+    ): Promise<model.Network> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.Network>> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/networks`;
+        return (await this.client.request(
+            path,
+            "GET",
+            undefined,
+            context
+        )) as Array<model.Network>;
+    }
+
+    /**
      * Get all network configurations.
      *
      * Gets a list of all Databricks network configurations for an account,
@@ -364,13 +467,7 @@ export class NetworksService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(@context context?: Context): Promise<Array<model.Network>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/networks`;
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as Array<model.Network>;
+        return await this._list(context);
     }
 }
 
@@ -398,6 +495,21 @@ export class PrivateAccessError extends ApiError {
  */
 export class PrivateAccessService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.UpsertPrivateAccessSettingsRequest,
+        @context context?: Context
+    ): Promise<model.PrivateAccessSettings> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.PrivateAccessSettings;
+    }
+
     /**
      * Create private access settings.
      *
@@ -422,13 +534,21 @@ export class PrivateAccessService {
         request: model.UpsertPrivateAccessSettingsRequest,
         @context context?: Context
     ): Promise<model.PrivateAccessSettings> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeletePrivateAccesRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.PrivateAccessSettings;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -448,13 +568,21 @@ export class PrivateAccessService {
         request: model.DeletePrivateAccesRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetPrivateAccesRequest,
+        @context context?: Context
+    ): Promise<model.PrivateAccessSettings> {
         const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.PrivateAccessSettings;
     }
 
     /**
@@ -474,13 +602,20 @@ export class PrivateAccessService {
         request: model.GetPrivateAccesRequest,
         @context context?: Context
     ): Promise<model.PrivateAccessSettings> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.PrivateAccessSettings>> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.PrivateAccessSettings;
+        )) as Array<model.PrivateAccessSettings>;
     }
 
     /**
@@ -493,13 +628,21 @@ export class PrivateAccessService {
     async list(
         @context context?: Context
     ): Promise<Array<model.PrivateAccessSettings>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings`;
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _replace(
+        request: model.UpsertPrivateAccessSettingsRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
         return (await this.client.request(
             path,
-            "GET",
-            undefined,
+            "PUT",
+            request,
             context
-        )) as Array<model.PrivateAccessSettings>;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -533,13 +676,7 @@ export class PrivateAccessService {
         request: model.UpsertPrivateAccessSettingsRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._replace(request, context);
     }
 }
 
@@ -564,6 +701,21 @@ export class StorageError extends ApiError {
  */
 export class StorageService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateStorageConfigurationRequest,
+        @context context?: Context
+    ): Promise<model.StorageConfiguration> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.StorageConfiguration;
+    }
+
     /**
      * Create new storage configuration.
      *
@@ -583,23 +735,11 @@ export class StorageService {
         request: model.CreateStorageConfigurationRequest,
         @context context?: Context
     ): Promise<model.StorageConfiguration> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations`;
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.StorageConfiguration;
+        return await this._create(request, context);
     }
 
-    /**
-     * Delete storage configuration.
-     *
-     * Deletes a Databricks storage configuration. You cannot delete a storage
-     * configuration that is associated with any workspace.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    private async _delete(
         request: model.DeleteStorageRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -613,13 +753,21 @@ export class StorageService {
     }
 
     /**
-     * Get storage configuration.
+     * Delete storage configuration.
      *
-     * Gets a Databricks storage configuration for an account, both specified by
-     * ID.
+     * Deletes a Databricks storage configuration. You cannot delete a storage
+     * configuration that is associated with any workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteStorageRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetStorageRequest,
         @context context?: Context
     ): Promise<model.StorageConfiguration> {
@@ -633,13 +781,21 @@ export class StorageService {
     }
 
     /**
-     * Get all storage configurations.
+     * Get storage configuration.
      *
-     * Gets a list of all Databricks storage configurations for your account,
-     * specified by ID.
+     * Gets a Databricks storage configuration for an account, both specified by
+     * ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetStorageRequest,
+        @context context?: Context
+    ): Promise<model.StorageConfiguration> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         @context context?: Context
     ): Promise<Array<model.StorageConfiguration>> {
         const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations`;
@@ -649,6 +805,19 @@ export class StorageService {
             undefined,
             context
         )) as Array<model.StorageConfiguration>;
+    }
+
+    /**
+     * Get all storage configurations.
+     *
+     * Gets a list of all Databricks storage configurations for your account,
+     * specified by ID.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        @context context?: Context
+    ): Promise<Array<model.StorageConfiguration>> {
+        return await this._list(context);
     }
 }
 
@@ -677,6 +846,21 @@ export class VpcEndpointsError extends ApiError {
  */
 export class VpcEndpointsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateVpcEndpointRequest,
+        @context context?: Context
+    ): Promise<model.VpcEndpoint> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.VpcEndpoint;
+    }
+
     /**
      * Create VPC endpoint configuration.
      *
@@ -700,13 +884,21 @@ export class VpcEndpointsService {
         request: model.CreateVpcEndpointRequest,
         @context context?: Context
     ): Promise<model.VpcEndpoint> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteVpcEndpointRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.VpcEndpoint;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -732,13 +924,21 @@ export class VpcEndpointsService {
         request: model.DeleteVpcEndpointRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetVpcEndpointRequest,
+        @context context?: Context
+    ): Promise<model.VpcEndpoint> {
         const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.VpcEndpoint;
     }
 
     /**
@@ -756,13 +956,20 @@ export class VpcEndpointsService {
         request: model.GetVpcEndpointRequest,
         @context context?: Context
     ): Promise<model.VpcEndpoint> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.VpcEndpoint>> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.VpcEndpoint;
+        )) as Array<model.VpcEndpoint>;
     }
 
     /**
@@ -777,13 +984,7 @@ export class VpcEndpointsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(@context context?: Context): Promise<Array<model.VpcEndpoint>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints`;
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as Array<model.VpcEndpoint>;
+        return await this._list(context);
     }
 }
 
@@ -810,6 +1011,21 @@ export class WorkspacesError extends ApiError {
  */
 export class WorkspacesService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateWorkspaceRequest,
+        @context context?: Context
+    ): Promise<model.Workspace> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.Workspace;
+    }
+
     /**
      * Create a new workspace.
      *
@@ -825,85 +1041,80 @@ export class WorkspacesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
-        request: model.CreateWorkspaceRequest,
-        @context context?: Context
-    ): Promise<model.Workspace> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces`;
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.Workspace;
-    }
-
-    /**
-     * create and wait to reach RUNNING state
-     *  or fail on reaching BANNED or FAILED state
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async createAndWait(
         createWorkspaceRequest: model.CreateWorkspaceRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (newPollResponse: model.Workspace) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.Workspace> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.Workspace, model.Workspace>> {
         const cancellationToken = context?.cancellationToken;
 
-        const workspace = await this.create(createWorkspaceRequest, context);
+        const workspace = await this._create(createWorkspaceRequest, context);
 
-        return await retry<model.Workspace>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        workspace_id: workspace.workspace_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "Workspaces.createAndWait: cancelled"
+        return asWaiter(workspace, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.Workspace>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            workspace_id: workspace.workspace_id!,
+                        },
+                        context
                     );
-                    throw new WorkspacesError("createAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.workspace_status;
-                const statusMessage = pollResponse.workspace_status_message;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "BANNED":
-                    case "FAILED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Workspaces.createAndWait: ${errorMessage}`
+                            "Workspaces.createAndWait: cancelled"
                         );
-                        throw new WorkspacesError(
-                            "createAndWait",
-                            errorMessage
-                        );
+                        throw new WorkspacesError("createAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Workspaces.createAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new WorkspacesRetriableError(
-                            "createAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.workspace_status;
+                    const statusMessage = pollResponse.workspace_status_message;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "BANNED":
+                        case "FAILED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Workspaces.createAndWait: ${errorMessage}`
+                            );
+                            throw new WorkspacesError(
+                                "createAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Workspaces.createAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WorkspacesRetriableError(
+                                "createAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteWorkspaceRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -923,13 +1134,21 @@ export class WorkspacesService {
         request: model.DeleteWorkspaceRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetWorkspaceRequest,
+        @context context?: Context
+    ): Promise<model.Workspace> {
         const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.Workspace;
     }
 
     /**
@@ -956,13 +1175,20 @@ export class WorkspacesService {
         request: model.GetWorkspaceRequest,
         @context context?: Context
     ): Promise<model.Workspace> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.Workspace>> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.Workspace;
+        )) as Array<model.Workspace>;
     }
 
     /**
@@ -976,13 +1202,21 @@ export class WorkspacesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(@context context?: Context): Promise<Array<model.Workspace>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces`;
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateWorkspaceRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
         return (await this.client.request(
             path,
-            "GET",
-            undefined,
+            "PATCH",
+            request,
             context
-        )) as Array<model.Workspace>;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1106,84 +1340,65 @@ export class WorkspacesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async update(
-        request: model.UpdateWorkspaceRequest,
-        @context context?: Context
-    ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
-    }
-
-    /**
-     * update and wait to reach RUNNING state
-     *  or fail on reaching BANNED or FAILED state
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async updateAndWait(
         updateWorkspaceRequest: model.UpdateWorkspaceRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (newPollResponse: model.Workspace) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.Workspace> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.Workspace>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.update(updateWorkspaceRequest, context);
+        await this._update(updateWorkspaceRequest, context);
 
-        return await retry<model.Workspace>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        workspace_id: updateWorkspaceRequest.workspace_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "Workspaces.updateAndWait: cancelled"
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.Workspace>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            workspace_id: updateWorkspaceRequest.workspace_id!,
+                        },
+                        context
                     );
-                    throw new WorkspacesError("updateAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.workspace_status;
-                const statusMessage = pollResponse.workspace_status_message;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "BANNED":
-                    case "FAILED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Workspaces.updateAndWait: ${errorMessage}`
+                            "Workspaces.updateAndWait: cancelled"
                         );
-                        throw new WorkspacesError(
-                            "updateAndWait",
-                            errorMessage
-                        );
+                        throw new WorkspacesError("updateAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Workspaces.updateAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new WorkspacesRetriableError(
-                            "updateAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.workspace_status;
+                    const statusMessage = pollResponse.workspace_status_message;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "BANNED":
+                        case "FAILED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Workspaces.updateAndWait: ${errorMessage}`
+                            );
+                            throw new WorkspacesError(
+                                "updateAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Workspaces.updateAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WorkspacesRetriableError(
+                                "updateAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 }

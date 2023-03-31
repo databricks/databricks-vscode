@@ -23,10 +23,12 @@ export class ExecutionContext {
         language: Language = "python"
     ): Promise<ExecutionContext> {
         const context = new ExecutionContext(client, cluster, language);
-        const response = await context.executionContextApi.createAndWait({
-            clusterId: context.cluster.id,
-            language: context.language,
-        });
+        const response = await (
+            await context.executionContextApi.create({
+                clusterId: context.cluster.id,
+                language: context.language,
+            })
+        ).wait();
 
         context.id = response.id;
         return context;
