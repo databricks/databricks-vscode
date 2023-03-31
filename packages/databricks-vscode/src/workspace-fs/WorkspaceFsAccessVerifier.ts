@@ -26,7 +26,7 @@ async function dbrBelowThreshold(cluster: Cluster) {
         (dbrVersionParts[0] === 11 &&
             dbrVersionParts[1] !== "x" &&
             dbrVersionParts[1] < 2)
-    )
+    );
 }
 
 export class WorkspaceFsAccessVerifier implements Disposable {

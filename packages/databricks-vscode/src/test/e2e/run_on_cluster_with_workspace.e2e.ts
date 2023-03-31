@@ -9,7 +9,6 @@ import {
     waitForTreeItems,
 } from "./utils";
 import {sleep} from "wdio-vscode-service";
-import {Workbench} from "wdio-vscode-service/dist/locators/1.37.0";
 
 describe("Run python on cluster", async function () {
     let projectDir: string;
