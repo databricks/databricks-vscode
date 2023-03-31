@@ -6,6 +6,7 @@ import {promisify} from "node:util";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import { Cloud } from "../utils/constants";
 
 const execFile = promisify(execFileCb);
 
@@ -18,7 +19,7 @@ export interface ConfigEntry {
     name: string;
     host?: URL;
     accountId?: string;
-    cloud: "aws" | "azure" | "gcp";
+    cloud: Cloud;
     authType: string;
     valid: boolean;
 }

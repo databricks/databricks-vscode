@@ -13,6 +13,7 @@ const extensionVersion = require("../../../package.json")
 
 import {AzureCliCheck} from "../AzureCliCheck";
 
+// TODO: Resolve this with SDK's AuthType.
 export type AuthType = "azure-cli" | "google-id" | "oauth-u2m" | "profile";
 
 export abstract class AuthProvider {

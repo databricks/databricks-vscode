@@ -36,7 +36,8 @@ import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
 import path from "node:path";
-import TelemetryReporter from "@vscode/extension-telemetry";
+import { recordEvent, updateUserMetadata } from "./telemetry";
+import { Events } from "./telemetry/constants";
 
 export async function activate(
     context: ExtensionContext
@@ -88,7 +89,6 @@ export async function activate(
     NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,
     });
-    const reporter = new TelemetryReporter("dc4ec136-d862-4379-8d5f-b1746222d7f5");
     function registerCommand(
         command: string,
         callback: (...args: any[]) => any,
@@ -97,8 +97,14 @@ export async function activate(
         return commands.registerCommand(
             command,
             (...args) => {
-                reporter.sendTelemetryEvent(`command-${command}`);
-                return callback.call(thisArg, ...args);
+                const start = performance.now();
+                const res = callback.call(thisArg, ...args);
+                const end = performance.now();
+                recordEvent(
+                    Events.COMMAND_EXECUTION,
+                    { commandName: command },
+                    { duration: end - start });
+                return res
             },
             thisArg
         );
@@ -131,6 +137,7 @@ export async function activate(
     const cli = new CliWrapper(context);
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
+    connectionManager.onDidChangeDatabricksWorkspace(updateUserMetadata)
 
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(
         connectionManager
@@ -147,17 +154,17 @@ export async function activate(
             "workspaceFsView",
             workspaceFsDataProvider
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.wsfs.attachSyncDestination",
             workspaceFsCommands.attachSyncDestination,
             workspaceFsCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.wsfs.refresh",
             workspaceFsCommands.refresh,
             workspaceFsCommands
         ),
-        commands.registerCommand(
+        registerCommand(
             "databricks.wsfs.createFolder",
             workspaceFsCommands.createFolder,
             workspaceFsCommands

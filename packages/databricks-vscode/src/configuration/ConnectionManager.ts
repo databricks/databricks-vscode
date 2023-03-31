@@ -54,11 +54,14 @@ export class ConnectionManager {
     private readonly onDidChangeSyncDestinationEmitter: EventEmitter<
         SyncDestinationMapper | undefined
     > = new EventEmitter();
+    private readonly onDidChangeDatabricksWorkspaceEmitter: EventEmitter<DatabricksWorkspace | undefined> =
+        new EventEmitter()
 
     public readonly onDidChangeState = this.onDidChangeStateEmitter.event;
     public readonly onDidChangeCluster = this.onDidChangeClusterEmitter.event;
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
+    public readonly onDidChangeDatabricksWorkspace = this.onDidChangeDatabricksWorkspaceEmitter.event;
 
     constructor(private cli: CliWrapper) {}
 
@@ -144,10 +147,10 @@ export class ConnectionManager {
 
             await workspaceClient.config.authenticate({});
 
-            this._databricksWorkspace = await DatabricksWorkspace.load(
+            this.updateDatabricksWorkspace(await DatabricksWorkspace.load(
                 workspaceClient,
                 projectConfigFile.authProvider
-            );
+            ));
         } catch (e: any) {
             const message = `Can't login to Databricks: ${e.message}`;
             NamedLogger.getOrCreate("Extension").error(message, e);
@@ -160,14 +163,14 @@ export class ConnectionManager {
 
         if (
             workspaceConfigs.syncDestinationType === "repo" &&
-            (!this._databricksWorkspace.isReposEnabled ||
-                !this._databricksWorkspace.isFilesInReposEnabled)
+            (!this._databricksWorkspace?.isReposEnabled ||
+                !this._databricksWorkspace?.isFilesInReposEnabled)
         ) {
             let message = "";
-            if (!this._databricksWorkspace.isReposEnabled) {
+            if (!this._databricksWorkspace?.isReposEnabled) {
                 message =
                     "Repos are not enabled for this workspace. Please enable it in the Databricks UI.";
-            } else if (!this._databricksWorkspace.isFilesInReposEnabled) {
+            } else if (!this._databricksWorkspace?.isFilesInReposEnabled) {
                 message =
                     "Files in Repos is not enabled for this workspace. Please enable it in the Databricks UI.";
             }
@@ -256,7 +259,7 @@ export class ConnectionManager {
 
         this._projectConfigFile = undefined;
         this._workspaceClient = undefined;
-        this._databricksWorkspace = undefined;
+        this.updateDatabricksWorkspace(undefined);
         this.updateCluster(undefined);
         this.updateSyncDestination(undefined);
         this.updateState("DISCONNECTED");
@@ -475,7 +478,7 @@ export class ConnectionManager {
 
     private updateState(newState: ConnectionState) {
         if (newState === "DISCONNECTED") {
-            this._databricksWorkspace = undefined;
+            this.updateDatabricksWorkspace(undefined);
         }
         if (this._state !== newState) {
             this._state = newState;
@@ -504,6 +507,15 @@ export class ConnectionManager {
             this.onDidChangeSyncDestinationEmitter.fire(
                 this._syncDestinationMapper
             );
+        }
+    }
+
+    private updateDatabricksWorkspace(
+        newDatabricksWorkspace: DatabricksWorkspace | undefined
+    ) {
+        if (this._databricksWorkspace !== newDatabricksWorkspace) {
+            this._databricksWorkspace = newDatabricksWorkspace;
+            this.onDidChangeDatabricksWorkspaceEmitter.fire(this._databricksWorkspace)
         }
     }
 
