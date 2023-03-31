@@ -9,12 +9,12 @@ import {CodeSynchronizer} from "../sync";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
-async function switchToRepos() {
+export async function switchToRepos() {
     await workspaceConfigs.setSyncDestinationType("repo");
     commands.executeCommand("workbench.action.reloadWindow");
 }
 
-async function switchToWorkspace() {
+export async function switchToWorkspace() {
     await workspaceConfigs.setSyncDestinationType("workspace");
     commands.executeCommand("workbench.action.reloadWindow");
 }

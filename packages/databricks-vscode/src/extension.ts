@@ -131,11 +131,6 @@ export async function activate(
             workspaceFsDataProvider
         ),
         commands.registerCommand(
-            "databricks.wsfs.attachSyncDestination",
-            workspaceFsCommands.attachSyncDestination,
-            workspaceFsCommands
-        ),
-        commands.registerCommand(
             "databricks.wsfs.refresh",
             workspaceFsCommands.refresh,
             workspaceFsCommands
