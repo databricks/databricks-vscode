@@ -14,7 +14,10 @@ type DurationMeasurement = {
     duration: number
 }
 
-// eventName should be a string singleton for every case of the union.
+// Every event must define a name, a set of properties, and a set of metrics.
+// Property keys must be strings, and property values will be converted to string.
+// Metric keys must be strings, and metric values must be numbers.
+// New event definitions can be added to this union type.
 export type EventType = {
     eventName: Events.COMMAND_EXECUTION,
     properties: {

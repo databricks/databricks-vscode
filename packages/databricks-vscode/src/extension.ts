@@ -39,8 +39,8 @@ import path from "node:path";
 import {FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
-import { recordEvent, updateUserMetadata } from "./telemetry";
-import { Events } from "./telemetry/constants";
+import { updateUserMetadata } from "./telemetry";
+import { registerCommand } from "./utils/commandRegistration";
 
 export async function activate(
     context: ExtensionContext
@@ -108,34 +108,6 @@ export async function activate(
         pythonExtension,
         workspace.workspaceFolders[0].uri
     );
-    function registerCommand(
-        command: string,
-        callback: (...args: any[]) => any,
-        thisArg?: any
-    ) {
-        return commands.registerCommand(
-            command,
-            (...args) => {
-                const start = performance.now();
-                let success: boolean = true;
-                try {
-                    return callback.call(thisArg, ...args);
-                } catch (e: any) {
-                    success = false;
-                    throw e;
-                } finally {
-                    const end = performance.now();
-                    recordEvent({
-                        eventName: Events.COMMAND_EXECUTION,
-                        properties: { command, success },
-                        metrics: { duration: end - start }
-                    });
-                }
-            },
-            thisArg
-        );
-    }
-
     const workspaceStateManager = new WorkspaceStateManager(context);
 
     const configureAutocomplete = new ConfigureAutocomplete(

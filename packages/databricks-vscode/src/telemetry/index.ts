@@ -5,12 +5,14 @@ import { DEV_APP_INSIGHTS_CONFIGURATION_STRING, PROD_APP_INSIGHTS_CONFIGURATION_
 import crypto from "crypto";
 import { AuthType } from "../configuration/auth/AuthProvider";
 import { Cloud } from "../utils/constants";
-import { NamedLogger } from "@databricks/databricks-sdk/dist/logging";
+import { ExposedLoggers, NamedLogger, withLogContext } from "@databricks/databricks-sdk/dist/logging";
 import { Loggers } from "../logger";
 
 let telemetryReporter: TelemetryReporter | undefined;
 
 let userMetadata: Record<string, string> | undefined;
+
+export { Events } from "./constants";
 
 export function updateUserMetadata(databricksWorkspace: DatabricksWorkspace | undefined) {
     if (databricksWorkspace === undefined) {
@@ -43,6 +45,14 @@ function getTelemetryReporter(): TelemetryReporter {
     return telemetryReporter;
 }
 
+export function setTelemetryReporter(r: TelemetryReporter) {
+    if (!isDevExtension()) {
+        throw new Error('TelemetryRecorder cannot be manually set in production');
+    }
+    telemetryReporter = r;
+}
+
+/** Record an event with associated properties and metrics. */
 export function recordEvent<E extends EventType>({ eventName, properties, metrics }: E) {
     const r = getTelemetryReporter();
     // prefix properties & metrics with user/event
@@ -57,9 +67,6 @@ export function recordEvent<E extends EventType>({ eventName, properties, metric
     addKeys(properties, finalProperties, "event");
     addKeys(userMetadata, finalProperties, "user");
     addKeys(metrics, finalMetrics, "event");
-
-    // Print the logged metadata here
-
 
     r.sendTelemetryEvent(eventName, finalProperties, finalMetrics);
 }
