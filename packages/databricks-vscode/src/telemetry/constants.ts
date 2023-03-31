@@ -18,7 +18,8 @@ type DurationMeasurement = {
 export type EventType = {
     eventName: Events.COMMAND_EXECUTION,
     properties: {
-        commandName: string,
+        command: string,
+        success: boolean,
     },
     metrics: DurationMeasurement,
 }

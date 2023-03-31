@@ -117,14 +117,20 @@ export async function activate(
             command,
             (...args) => {
                 const start = performance.now();
-                const res = callback.call(thisArg, ...args);
-                const end = performance.now();
-                recordEvent({
-                    eventName: Events.COMMAND_EXECUTION,
-                    properties: { commandName: command },
-                    metrics: { duration: end - start }
-                });
-                return res
+                let success: boolean = true;
+                try {
+                    return callback.call(thisArg, ...args);
+                } catch (e: any) {
+                    success = false;
+                    throw e;
+                } finally {
+                    const end = performance.now();
+                    recordEvent({
+                        eventName: Events.COMMAND_EXECUTION,
+                        properties: { command, success },
+                        metrics: { duration: end - start }
+                    });
+                }
             },
             thisArg
         );
