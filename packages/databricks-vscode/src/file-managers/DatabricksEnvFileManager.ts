@@ -8,6 +8,7 @@ import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {SystemVariables} from "../vscode-objs/SystemVariables";
 
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
@@ -25,19 +26,22 @@ export class DatabricksEnvFileManager implements Disposable {
             ".databricks.env"
         );
 
-        this.userEnvPath = Uri.file(
-            workspaceConfigs.userEnvFile
-                ? workspaceConfigs.userEnvFile
-                : !workspaceConfigs.msPythonEnvFile ||
-                  workspaceConfigs.msPythonEnvFile.includes(
-                      this.databricksEnvPath.fsPath
-                  )
-                ? path.resolve(this.workspacePath.fsPath, ".env")
-                : workspaceConfigs.msPythonEnvFile
-        );
+        const unresolvedUserEnvFile = workspaceConfigs.userEnvFile
+            ? workspaceConfigs.userEnvFile
+            : !workspaceConfigs.msPythonEnvFile ||
+              workspaceConfigs.msPythonEnvFile.includes(
+                  this.databricksEnvPath.fsPath
+              )
+            ? "${workspacePath}/.env"
+            : workspaceConfigs.msPythonEnvFile;
 
         workspaceConfigs.msPythonEnvFile = this.databricksEnvPath.fsPath;
-        workspaceConfigs.userEnvFile = this.userEnvPath.fsPath;
+        workspaceConfigs.userEnvFile = unresolvedUserEnvFile;
+
+        const systemVariableResolver = new SystemVariables(workspacePath);
+        this.userEnvPath = Uri.file(
+            systemVariableResolver.resolve(unresolvedUserEnvFile)
+        );
 
         const userEnvFileWatcher = workspace.createFileSystemWatcher(
             this.userEnvPath.fsPath
@@ -48,13 +52,17 @@ export class DatabricksEnvFileManager implements Disposable {
             userEnvFileWatcher.onDidChange(this.writeFile, this),
             userEnvFileWatcher.onDidDelete(this.writeFile, this),
             userEnvFileWatcher.onDidCreate(this.writeFile, this),
-            featureManager.onDidChangeState("debugging.dbconnect", (state) => {
-                if (!state.avaliable) {
-                    this.deleteFile();
-                    return;
-                }
-                this.writeFile();
-            }),
+            featureManager.onDidChangeState(
+                "debugging.dbconnect",
+                (state) => {
+                    if (!state.avaliable) {
+                        this.deleteFile();
+                        return;
+                    }
+                    this.writeFile();
+                },
+                this
+            ),
             this.connectionManager.onDidChangeCluster(async (cluster) => {
                 if (
                     !cluster ||
@@ -69,7 +77,7 @@ export class DatabricksEnvFileManager implements Disposable {
                     return;
                 }
                 this.writeFile();
-            }),
+            }, this),
             this.connectionManager.onDidChangeState(async () => {
                 if (
                     this.connectionManager.state !== "CONNECTED" ||
@@ -83,7 +91,7 @@ export class DatabricksEnvFileManager implements Disposable {
                     return;
                 }
                 this.writeFile();
-            })
+            }, this)
         );
     }
 

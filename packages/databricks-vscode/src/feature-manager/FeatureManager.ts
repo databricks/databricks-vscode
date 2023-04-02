@@ -16,6 +16,7 @@ export interface FeatureState {
     reason?: string;
     action?: FeatureEnableAction;
     isDisabledByFf?: boolean;
+    dirty?: boolean;
 }
 
 export interface Feature extends Disposable {
@@ -100,8 +101,11 @@ export class FeatureManager<T = FeatureId> implements Disposable {
         }
 
         const cachedState = this.stateCache.get(id);
-        if (cachedState && !force) {
-            return cachedState;
+        if (cachedState) {
+            if (!force) {
+                return cachedState;
+            }
+            cachedState.dirty = true;
         }
 
         const state = await new Promise<FeatureState>((resolve, reject) => {
