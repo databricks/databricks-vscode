@@ -18,11 +18,11 @@ export function registerCommand(
                 throw e;
             } finally {
                 const end = performance.now();
-                recordEvent({
-                    eventName: Events.COMMAND_EXECUTION,
-                    properties: { command, success },
-                    metrics: { duration: end - start }
-                });
+                recordEvent(
+                    Events.COMMAND_EXECUTION,
+                    { command, success },
+                    { duration: end - start }
+                );
             }
         },
         thisArg
