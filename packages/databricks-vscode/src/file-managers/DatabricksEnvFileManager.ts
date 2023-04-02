@@ -1,9 +1,8 @@
-import {Disposable, Uri, workspace} from "vscode";
+import {Disposable, Uri, workspace, ExtensionContext} from "vscode";
 import {writeFile, rm, readFile} from "fs/promises";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import os from "node:os";
-import * as path from "node:path";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
@@ -16,9 +15,10 @@ export class DatabricksEnvFileManager implements Disposable {
     private readonly userEnvPath: Uri;
 
     constructor(
-        private readonly workspacePath: Uri,
+        workspacePath: Uri,
         private readonly featureManager: FeatureManager,
-        private readonly connectionManager: ConnectionManager
+        private readonly connectionManager: ConnectionManager,
+        private readonly extensionContext: ExtensionContext
     ) {
         this.databricksEnvPath = Uri.joinPath(
             workspacePath,
@@ -56,10 +56,12 @@ export class DatabricksEnvFileManager implements Disposable {
                 "debugging.dbconnect",
                 (state) => {
                     if (!state.avaliable) {
+                        this.clearTerminalEnv();
                         this.deleteFile();
                         return;
                     }
                     this.writeFile();
+                    this.emitToTerminal();
                 },
                 this
             ),
@@ -73,10 +75,12 @@ export class DatabricksEnvFileManager implements Disposable {
                         )
                     ).avaliable
                 ) {
+                    this.clearTerminalEnv();
                     this.deleteFile();
                     return;
                 }
                 this.writeFile();
+                this.emitToTerminal();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
                 if (
@@ -87,10 +91,12 @@ export class DatabricksEnvFileManager implements Disposable {
                         )
                     ).avaliable
                 ) {
+                    this.clearTerminalEnv();
                     this.deleteFile();
                     return;
                 }
                 this.writeFile();
+                this.emitToTerminal();
             }, this)
         );
     }
@@ -103,7 +109,9 @@ export class DatabricksEnvFileManager implements Disposable {
         return headers["Authorization"]?.split(" ")[1];
     }
 
-    async writeFile() {
+    async getDatabrickseEnvVars(): Promise<
+        Record<string, string | undefined> | undefined
+    > {
         await this.connectionManager.waitForConnect();
         const cluster = this.connectionManager.cluster;
         const host = this.connectionManager.databricksWorkspace?.host.authority;
@@ -112,15 +120,23 @@ export class DatabricksEnvFileManager implements Disposable {
             return;
         }
         /* eslint-disable @typescript-eslint/naming-convention */
-        const metaData: Record<string, string | undefined> = {
-            CLUSTER_ID: cluster.id,
+        return {
+            DATABRICKS_CLUSTER_ID: cluster.id,
             SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id}`,
-        };
-        const authEnvVars: Record<string, string | undefined> = {
             DATABRICKS_HOST: host,
             DATABRICKS_TOKEN: pat,
         };
         /* eslint-enable @typescript-eslint/naming-convention */
+    }
+    async writeFile() {
+        await this.connectionManager.waitForConnect();
+        const cluster = this.connectionManager.cluster;
+        const host = this.connectionManager.databricksWorkspace?.host.authority;
+        const pat = await this.getPatToken();
+        if (!cluster || !pat || !host) {
+            return;
+        }
+        const databricksEnvVars = await this.getDatabrickseEnvVars();
         const userEnvVars = (await readFile(this.userEnvPath.fsPath, "utf-8"))
             .split(/\r?\n/)
             .map((value) => {
@@ -136,8 +152,7 @@ export class DatabricksEnvFileManager implements Disposable {
             }, {});
 
         const data = Object.entries({
-            ...metaData,
-            ...authEnvVars,
+            ...databricksEnvVars,
             ...userEnvVars,
         }).map(([key, value]) => `${key}="${value}"`);
         await writeFile(
@@ -145,6 +160,26 @@ export class DatabricksEnvFileManager implements Disposable {
             data.join(os.EOL),
             "utf-8"
         );
+    }
+
+    async emitToTerminal() {
+        const databricksEnvVars = await this.getDatabrickseEnvVars();
+        if (!databricksEnvVars) {
+            return;
+        }
+        Object.entries(databricksEnvVars).forEach(([key, value]) => {
+            if (value === undefined) {
+                return;
+            }
+            this.extensionContext.environmentVariableCollection.replace(
+                key,
+                value
+            );
+        });
+    }
+
+    async clearTerminalEnv() {
+        this.extensionContext.environmentVariableCollection.clear();
     }
 
     @withLogContext(Loggers.Extension)

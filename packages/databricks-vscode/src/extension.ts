@@ -414,7 +414,8 @@ export async function activate(
         new DatabricksEnvFileManager(
             workspace.workspaceFolders[0].uri,
             featureManager,
-            connectionManager
+            connectionManager,
+            context
         )
     );
     featureManager.isEnabled("debugging.dbconnect");

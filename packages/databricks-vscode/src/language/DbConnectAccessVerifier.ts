@@ -13,21 +13,14 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         private readonly workspaceState: WorkspaceStateManager,
         private readonly context: ExtensionContext
     ) {
-        super([
-            "checkClusterVersion",
-            "checkClusterHasUc",
-            "checkWorkspaceHasUc",
-            "checkDbConnectInstall",
-        ]);
+        super(["checkCluster", "checkWorkspaceHasUc", "checkDbConnectInstall"]);
         this.disposables.push(
             this.connectionManager.onDidChangeCluster((cluster) => {
                 if (this.connectionManager.state !== "CONNECTED") {
                     return;
                 }
                 const steps = {
-                    checkClusterVersion: () =>
-                        this.checkClusterVersion(cluster),
-                    checkClusterHasUc: () => this.checkClusterHasUc(cluster),
+                    checkCluster: () => this.checkCluster(cluster),
                 };
                 this.runSteps(steps);
             }, this),
@@ -47,26 +40,29 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         );
     }
 
-    async checkClusterVersion(cluster?: Cluster) {
+    async checkCluster(cluster?: Cluster) {
         if (cluster === undefined) {
-            return this.rejectStep(
-                "checkClusterVersion",
-                "no cluster attached"
-            );
+            return this.rejectStep("checkCluster", "no cluster attached");
         }
         await this.connectionManager.waitForConnect();
 
         const dbrVersionParts = cluster?.dbrVersion;
         if (
-            dbrVersionParts &&
-            (dbrVersionParts[0] === "x" || dbrVersionParts[0] >= 13)
+            !dbrVersionParts ||
+            (dbrVersionParts[0] !== "x" && dbrVersionParts[0] < 13)
         ) {
-            return this.acceptStep("checkClusterVersion");
+            return this.rejectStep(
+                "checkCluster",
+                `cluster dbr is less than 13.0.0`
+            );
         }
-        return this.rejectStep(
-            "checkClusterVersion",
-            `cluster dbr is less than 13.0.0`
-        );
+        if (!cluster.isUc()) {
+            return this.rejectStep(
+                "checkCluster",
+                `cluster doesn't have UC enabled (access mode should be "Single User" or "Shared")`
+            );
+        }
+        return this.acceptStep("checkCluster");
     }
 
     async checkClusterHasUc(cluster?: Cluster) {
@@ -77,14 +73,6 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             );
         }
         this.connectionManager.waitForConnect();
-
-        if (!cluster.isUc()) {
-            return this.rejectStep(
-                "checkClusterHasUc",
-                `cluster doesn't have UC enabled (access mode should be "Single User" or "Shared")`
-            );
-        }
-        return this.acceptStep("checkClusterHasUc");
     }
 
     async checkWorkspaceHasUc() {
@@ -195,10 +183,8 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
     override async check() {
         await this.connectionManager.waitForConnect();
         const steps = {
-            checkClusterVersion: () =>
-                this.checkClusterVersion(this.connectionManager.cluster),
-            checkClusterHasUc: () =>
-                this.checkClusterHasUc(this.connectionManager.cluster),
+            checkCluster: () =>
+                this.checkCluster(this.connectionManager.cluster),
             checkWorkspaceHasUc: () => this.checkWorkspaceHasUc(),
             checkDbConnectInstall: () => this.checkDbConnectInstall(),
         };
