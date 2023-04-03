@@ -1,15 +1,14 @@
-import TelemetryReporter, { TelemetryEventMeasurements, TelemetryEventProperties } from "@vscode/extension-telemetry";
+import TelemetryReporter from "@vscode/extension-telemetry";
 import { DatabricksWorkspace } from "../configuration/DatabricksWorkspace";
 import { isDevExtension } from "../utils/developmentUtils";
-import { DEV_APP_INSIGHTS_CONFIGURATION_STRING, PROD_APP_INSIGHTS_CONFIGURATION_STRING } from "./constants";
+import { DEV_APP_INSIGHTS_CONFIGURATION_STRING, EventType, EventTypes, PROD_APP_INSIGHTS_CONFIGURATION_STRING } from "./constants";
 import crypto from "crypto";
-import { Command } from "@databricks/databricks-sdk";
+
+export { Events, EventTypes } from "./constants";
 
 let telemetryReporter: TelemetryReporter | undefined;
 
 let userMetadata: Record<string, string> | undefined;
-
-export { Events } from "./constants";
 
 export function updateUserMetadata(databricksWorkspace: DatabricksWorkspace | undefined) {
     if (databricksWorkspace === undefined) {
@@ -20,8 +19,7 @@ export function updateUserMetadata(databricksWorkspace: DatabricksWorkspace | un
     hash.update(databricksWorkspace.userName);
     userMetadata = {
         hashedUserId: hash.digest('hex'),
-        workspaceId: "123", // TODO: get the workspace Id
-        cloud: "aws", // TODO: get the cloud
+        host: databricksWorkspace.host.authority,
         authType: databricksWorkspace.authProvider.authType,
     };
 }
@@ -50,57 +48,7 @@ export function setTelemetryReporter(r: TelemetryReporter) {
 }
 
 
-/** The list of all events which can be monitored. */
-enum Events {
-    COMMAND_EXECUTION = "commandExecution",
-}
 
-/** Documentation about all of the properties and metrics of the event. */
-type EventDescription<T> = { [K in keyof T]?: { comment?: string } }
-
-/**
- * The type of an event definition.
- * 
- * The type parameter describes the set of properties and metrics which are expected when recording this
- * event. Values inhabiting this type are documentation about the event and its parameters: comments
- * explaining the event being collected and the interpretation of each parameter.
- */
-type EventType<P extends Record<string, unknown>> = {
-    comment?: string
-} & EventDescription<P>;
-
-/** A metric which measures the duration of an event. */
-type DurationMeasurement = {
-    duration: number
-}
-
-/** Returns a common description which applies to all durations measured with the metric system. */
-function getDurationProperty(): EventDescription<DurationMeasurement> {
-    return {
-        duration: {
-            comment: "The duration of the event, in milliseconds",
-        }
-    }
-}
-
-/**
- * All events recordable by this module must reside in this class.
- */
-class EventTypes {
-    [Events.COMMAND_EXECUTION]: EventType<{
-        command: string,
-        success: boolean,
-    } & DurationMeasurement> = {
-        comment: "Execution of a command",
-        command: {
-            comment: "The command that was executed",
-        },
-        success: {
-            comment: "true if the command succeeded, false otherwise",
-        },
-        ...getDurationProperty()
-    }
-}
 
 /** All fields of T whose type is T1 */
 type PickType<T, T1> = { [K in keyof T as T[K] extends T1 ? K : never]: T[K] };

@@ -628,7 +628,7 @@
         "version": "0.0.27"
     },
     "scripts": {
-        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:copy-webview-toolkit",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
         "package": "vsce package --baseContentUrl https://github.com/databricks/databricks-vscode/blob/${TAG:-main}/packages/databricks-vscode --baseImagesUrl https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-main}/packages/databricks-vscode",
         "package:linux:x64": "./scripts/package-vsix.sh linux-x64",
         "package:linux:arm64": "./scripts/package-vsix.sh linux-arm64",
@@ -655,7 +655,8 @@
         "test": "yarn run test:lint && yarn run test:unit",
         "clean": "rm -rf node_modules out .vscode-test",
         "generate-notice": "../../scripts/generate_notice.sh",
-        "ts-node": "ts-node"
+        "ts-node": "ts-node",
+        "generate-telemetry": "ts-node ./scripts/generateTelemetry.ts"
     },
     "dependencies": {
         "@databricks/databricks-sdk": "workspace:^",

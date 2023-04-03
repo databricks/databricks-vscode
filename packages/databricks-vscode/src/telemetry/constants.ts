@@ -5,24 +5,52 @@ export const DEV_APP_INSIGHTS_CONFIGURATION_STRING = "InstrumentationKey=dc4ec13
 
 /** The list of all events which can be monitored. */
 export enum Events {
-    /** Execution of a command. */
     COMMAND_EXECUTION = "commandExecution",
 }
 
+/** Documentation about all of the properties and metrics of the event. */
+type EventDescription<T> = { [K in keyof T]?: { comment?: string } }
+
+/**
+ * The type of an event definition.
+ * 
+ * The type parameter describes the set of properties and metrics which are expected when recording this
+ * event. Values inhabiting this type are documentation about the event and its parameters: comments
+ * explaining the event being collected and the interpretation of each parameter.
+ */
+export type EventType<P extends Record<string, unknown>> = {
+    comment?: string
+} & EventDescription<P>;
+
+/** A metric which measures the duration of an event. */
 type DurationMeasurement = {
-    /** The duration of the measurement in milliseconds. */
     duration: number
 }
 
-// Every event must define a name, a set of properties, and a set of metrics.
-// Property keys must be strings, and property values will be converted to string.
-// Metric keys must be strings, and metric values must be numbers.
-// New event definitions can be added to this union type.
-export type EventType = {
-    eventName: Events.COMMAND_EXECUTION,
-    properties: {
+/** Returns a common description which applies to all durations measured with the metric system. */
+function getDurationProperty(): EventDescription<DurationMeasurement> {
+    return {
+        duration: {
+            comment: "The duration of the event, in milliseconds",
+        }
+    }
+}
+
+/**
+ * All events recordable by this module must reside in this class.
+ */
+export class EventTypes {
+    [Events.COMMAND_EXECUTION]: EventType<{
         command: string,
         success: boolean,
-    },
-    metrics: DurationMeasurement,
+    } & DurationMeasurement> = {
+        comment: "Execution of a command",
+        command: {
+            comment: "The command that was executed",
+        },
+        success: {
+            comment: "true if the command succeeded, false otherwise",
+        },
+        ...getDurationProperty()
+    }
 }
