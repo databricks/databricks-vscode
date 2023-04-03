@@ -297,8 +297,8 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 BRICKS_UPSTREAM_VERSION: this.packageMetadata.version,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
-                DATABRICKS_AUTH_TYPE: "local-metadata-service",
-                DATABRICKS_LOCAL_METADATA_SERVICE_URL:
+                DATABRICKS_AUTH_TYPE: "metadata-service",
+                DATABRICKS_METADATA_SERVICE_URL:
                     this.connection.metadataServiceUrl || "",
                 ...proxySettings,
                 /* eslint-enable @typescript-eslint/naming-convention */

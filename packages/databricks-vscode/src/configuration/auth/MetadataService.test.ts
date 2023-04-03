@@ -6,6 +6,8 @@ import {
     ApiClient,
     Config,
     Headers,
+    MetadataServiceVersion,
+    MetadataServiceVersionHeader,
     RequestVisitor,
 } from "@databricks/databricks-sdk";
 
@@ -50,12 +52,12 @@ describe(__filename, function () {
         );
         const response = (await got(metadataService.url, {
             headers: {
-                Metadata: "true",
+                [MetadataServiceVersionHeader]: MetadataServiceVersion,
             },
         }).json()) as any;
-        assert.equal(response.host, "https://test.com");
-        assert.equal(response.token_type, "Bearer");
-        assert.equal(response.access_token, "XXXX");
+        assert.equal(response.host, "https://test.com/");
+        assert.equal(response.token.token_type, "Bearer");
+        assert.equal(response.token.access_token, "XXXX");
     });
 
     it("should return 404 when magic is changed", async () => {
@@ -88,7 +90,8 @@ describe(__filename, function () {
         );
 
         const config = new Config({
-            authType: "local-metadata-service",
+            authType: "metadata-service",
+            host: "https://test.com",
             localMetadataServiceUrl: metadataService.url,
         });
 

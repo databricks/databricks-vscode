@@ -3,7 +3,12 @@ import * as http from "node:http";
 import * as crypto from "node:crypto";
 import {Disposable} from "vscode";
 import {AddressInfo} from "node:net";
-import {ApiClient} from "@databricks/databricks-sdk";
+import {
+    ApiClient,
+    MetadataServiceVersion,
+    MetadataServiceVersionHeader,
+    ServerResponse,
+} from "@databricks/databricks-sdk";
 
 export class MetadataService implements Disposable {
     private server:
@@ -52,22 +57,25 @@ export class MetadataService implements Disposable {
                 if (
                     req.url === `/${this.magic}` &&
                     this._apiClient &&
-                    req.headers["metadata"] === "true"
+                    req.headers[MetadataServiceVersionHeader.toLowerCase()] ===
+                        MetadataServiceVersion
                 ) {
                     const headers: Record<string, string> = {};
                     await this._apiClient.config.authenticate(headers);
 
-                    const auth = headers["Authorization"].split(" ");
-
                     res.writeHead(200, {"Content-Type": "text/json"});
-                    res.end(
-                        JSON.stringify({
-                            host: await this._apiClient.config.host,
-                            token_type: auth[0],
+
+                    const auth = headers["Authorization"].split(" ");
+                    const response: ServerResponse = {
+                        host: await (await this._apiClient.host).toString(),
+                        token: {
                             access_token: auth[1],
-                            expires_on: Math.floor(Date.now() / 1000) + 15, // valid for 15 seconds
-                        })
-                    );
+                            expiry: new Date(Date.now() + 15_000),
+                            token_type: auth[0],
+                        },
+                    };
+
+                    res.end(JSON.stringify(response));
                 } else {
                     res.writeHead(404, {"Content-Type": "text/json"});
                     res.end(JSON.stringify({not_found: true}));

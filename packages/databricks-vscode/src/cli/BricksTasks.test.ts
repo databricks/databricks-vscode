@@ -101,9 +101,8 @@ describe(__filename, () => {
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                     BRICKS_UPSTREAM: "databricks-vscode",
                     BRICKS_UPSTREAM_VERSION: "1.0.0",
-                    DATABRICKS_AUTH_TYPE: "local-metadata-service",
-                    DATABRICKS_LOCAL_METADATA_SERVICE_URL:
-                        "http://localhost:1234",
+                    DATABRICKS_AUTH_TYPE: "metadata-service",
+                    DATABRICKS_METADATA_SERVICE_URL: "http://localhost:1234",
                     HOME: process.env.HOME,
                     PATH: process.env.PATH,
                     /* eslint-enable @typescript-eslint/naming-convention */
@@ -122,9 +121,8 @@ describe(__filename, () => {
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                     BRICKS_UPSTREAM: "databricks-vscode",
                     BRICKS_UPSTREAM_VERSION: "1.0.0",
-                    DATABRICKS_AUTH_TYPE: "local-metadata-service",
-                    DATABRICKS_LOCAL_METADATA_SERVICE_URL:
-                        "http://localhost:1234",
+                    DATABRICKS_AUTH_TYPE: "metadata-service",
+                    DATABRICKS_METADATA_SERVICE_URL: "http://localhost:1234",
                     HOME: process.env.HOME,
                     PATH: process.env.PATH,
                     HTTP_PROXY: "http_proxy",

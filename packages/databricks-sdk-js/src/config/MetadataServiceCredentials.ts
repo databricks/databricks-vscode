@@ -10,29 +10,40 @@ import fetch from "node-fetch-commonjs";
 import {refreshableTokenProvider, Token} from "./Token";
 import {Provider} from "../types";
 
-interface ServerResponse {
+export const MetadataServiceVersion = "1";
+export const MetadataServiceVersionHeader = "X-Databricks-Metadata-Version";
+
+export interface ServerResponse {
     host?: string;
-    access_token?: string;
-    expires_in?: number;
-    token_type?: string;
+    token: {
+        access_token: string;
+        expiry: Date;
+        token_type: string;
+    };
 }
 
 /**
- * Credentials provider that fetches a token from a locally running HTTP server.
+ * Credentials provider that fetches a token from a locally running HTTP server
  *
  * The credentials provider will perform a GET request to the configured URL.
- * The header "Metadata: true" will be added to the request, which must be
- * verified by server to prevent SSRF attacks
+ *
+ * The MUST return 4xx response if the "X-Databricks-Metadata-Version" header
+ * is not set or set to a version that the server doesn't support.
+ *
+ * The server MUST guarantee stable sessions per URL path. That is, if the
+ * server returns a token for a Host on a given URL path, it MUST continue to return
+ * tokens for the same Host.
  *
  * The server is expected to return a JSON response with the following fields:
  *
  * host: URL of the Databricks host to connect to.
- * access_token: The requested access token.
- * token_type: The type of token, which is a "Bearer" access token.
- * expires_on: The timespan when the access token expires.
+ * token: object with the following fields
+ *   access_token: The requested access token.
+ *	 token_type: The type of token, which is a "Bearer" access token.
+ *	 expires_on: The timespan when the access token expires.
  */
-export class LocalMetadataServiceCredentials implements CredentialProvider {
-    public name: AuthType = "local-metadata-service";
+export class MetadataServiceCredentials implements CredentialProvider {
+    public name: AuthType = "metadata-service";
 
     async configure(config: Config): Promise<RequestVisitor | undefined> {
         if (!config.localMetadataServiceUrl) {
@@ -60,14 +71,12 @@ export class LocalMetadataServiceCredentials implements CredentialProvider {
             );
         }
 
-        let response: ServerResponse | undefined;
-        try {
-            response = await this.makeRequest(config, parsedMetadataServiceUrl);
-        } catch (error) {
-            return;
-        }
+        const response = await this.makeRequest(
+            config,
+            parsedMetadataServiceUrl
+        );
 
-        if (!response || !response.host || !response.access_token) {
+        if (!response) {
             return;
         }
 
@@ -75,6 +84,9 @@ export class LocalMetadataServiceCredentials implements CredentialProvider {
             config.host && (await (await config.getHost()).toString());
 
         if (configHost && configHost !== response.host) {
+            config.logger.debug(
+                `ignoring metadata service because it returned a token for a different host: ${configHost}`
+            );
             return;
         }
 
@@ -94,20 +106,15 @@ export class LocalMetadataServiceCredentials implements CredentialProvider {
                 );
             }
 
-            if (serverResponse.host !== config.host) {
-                throw new ConfigError(
-                    `host in token (${serverResponse.host}) doesn't match configured host (${config.host})`,
-                    config
-                );
-            }
-
             config.logger.info(
-                `Refreshed access token from local credentials server, which expires on ${serverResponse.expires_in}`
+                `Refreshed access token from local credentials server, which expires on ${serverResponse.token.expiry}`
             );
 
             return new Token({
-                accessToken: serverResponse.access_token || "",
-                expiry: serverResponse.expires_in || 0,
+                accessToken: serverResponse.token.access_token,
+                expiry: Math.floor(
+                    serverResponse.token.expiry.getTime() / 1000
+                ),
             });
         };
     }
@@ -120,7 +127,7 @@ export class LocalMetadataServiceCredentials implements CredentialProvider {
         try {
             const response = await fetch(url.toString(), {
                 headers: {
-                    Metadata: "true",
+                    [MetadataServiceVersionHeader]: MetadataServiceVersion,
                 },
             });
 
@@ -130,16 +137,27 @@ export class LocalMetadataServiceCredentials implements CredentialProvider {
 
             body = (await response.json()) as any;
         } catch (error) {
+            config.logger.error(
+                "Error fetching credentials from auth server",
+                error
+            );
+
             throw new ConfigError(
                 `error fetching auth server URL: ${url}`,
                 config
             );
         }
 
+        if (!body || !body.host || !body.token?.access_token) {
+            throw new ConfigError("token parse: invalid token", config);
+        }
+
         try {
-            if (body.host) {
-                const parsedHost = new URL(body.host);
-                body.host = parsedHost.toString();
+            const parsedHost = new URL(body.host);
+            body.host = parsedHost.toString();
+
+            if (body.token.expiry) {
+                body.token.expiry = new Date(body.token.expiry);
             }
         } catch (error) {
             throw new ConfigError(

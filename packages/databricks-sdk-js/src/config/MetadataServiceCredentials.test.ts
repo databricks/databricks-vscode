@@ -3,21 +3,37 @@ import * as http from "http";
 import assert from "node:assert";
 import {AddressInfo} from "node:net";
 import {Config} from "./Config";
-import {LocalMetadataServiceCredentials} from "./LocalMetadataServiceCredentials";
+import {
+    MetadataServiceCredentials,
+    MetadataServiceVersion,
+    MetadataServiceVersionHeader,
+    ServerResponse,
+} from "./MetadataServiceCredentials";
 
 describe(__filename, () => {
     let server: http.Server;
 
     beforeEach(async () => {
         server = http.createServer((req, res) => {
-            res.end(
-                JSON.stringify({
-                    host: "https://test.com",
+            if (
+                req.headers[
+                    MetadataServiceVersionHeader.toLocaleLowerCase()
+                ] !== MetadataServiceVersion
+            ) {
+                res.writeHead(400);
+                res.end();
+                return;
+            }
+
+            const response: ServerResponse = {
+                host: "https://test.com",
+                token: {
                     access_token: "XXXX",
-                    expires_on: Math.floor(Date.now() / 1000) + 30,
+                    expiry: new Date(Date.now() + 1_000),
                     token_type: "Bearer",
-                })
-            );
+                },
+            };
+            res.end(JSON.stringify(response));
         });
 
         await new Promise((resolve, reject) => {
@@ -39,10 +55,10 @@ describe(__filename, () => {
     });
 
     it("should authorize using local server", async () => {
-        const lmsCredentials = new LocalMetadataServiceCredentials();
+        const lmsCredentials = new MetadataServiceCredentials();
         const config = new Config({
             host: "https://test.com",
-            authType: "local-metadata-service",
+            authType: "metadata-service",
             localMetadataServiceUrl: `http://localhost:${
                 (server.address() as AddressInfo).port
             }`,
@@ -56,9 +72,9 @@ describe(__filename, () => {
     });
 
     it("should not take host from metadata if not configured in config", async () => {
-        const lmsCredentials = new LocalMetadataServiceCredentials();
+        const lmsCredentials = new MetadataServiceCredentials();
         const config = new Config({
-            authType: "local-metadata-service",
+            authType: "metadata-service",
             localMetadataServiceUrl: `http://localhost:${
                 (server.address() as AddressInfo).port
             }`,

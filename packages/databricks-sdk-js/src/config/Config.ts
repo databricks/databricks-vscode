@@ -60,7 +60,7 @@ export type AuthType =
     | "basic"
     | "azure-cli"
     | "google-id"
-    | "local-metadata-service";
+    | "metadata-service";
 
 export type AttributeName = keyof Omit<
     ConfigOptions,
@@ -80,9 +80,9 @@ export class Config {
 
     /** URL of the local metadata service that provides authentication credentials. */
     @attribute({
-        name: "local_metadata_service_url",
-        env: "DATABRICKS_LOCAL_METADATA_SERVICE_URL",
-        auth: "local-metadata-service",
+        name: "metadata_service_url",
+        env: "DATABRICKS_METADATA_SERVICE_URL",
+        auth: "metadata-service",
         sensitive: true,
     })
     public localMetadataServiceUrl?: string;
