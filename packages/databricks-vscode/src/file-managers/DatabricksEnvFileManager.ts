@@ -54,45 +54,21 @@ export class DatabricksEnvFileManager implements Disposable {
             userEnvFileWatcher.onDidCreate(this.writeFile, this),
             featureManager.onDidChangeState(
                 "debugging.dbconnect",
-                (state) => {
-                    if (!state.avaliable) {
-                        this.clearTerminalEnv();
-                        this.deleteFile();
-                        return;
-                    }
+                () => {
                     this.writeFile();
                     this.emitToTerminal();
                 },
                 this
             ),
             this.connectionManager.onDidChangeCluster(async (cluster) => {
-                if (
-                    !cluster ||
-                    this.connectionManager.state !== "CONNECTED" ||
-                    !(
-                        await this.featureManager.isEnabled(
-                            "debugging.dbconnect"
-                        )
-                    ).avaliable
-                ) {
-                    this.clearTerminalEnv();
-                    this.deleteFile();
+                if (!cluster || this.connectionManager.state !== "CONNECTED") {
                     return;
                 }
                 this.writeFile();
                 this.emitToTerminal();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
-                if (
-                    this.connectionManager.state !== "CONNECTED" ||
-                    !(
-                        await this.featureManager.isEnabled(
-                            "debugging.dbconnect"
-                        )
-                    ).avaliable
-                ) {
-                    this.clearTerminalEnv();
-                    this.deleteFile();
+                if (this.connectionManager.state !== "CONNECTED") {
                     return;
                 }
                 this.writeFile();
@@ -113,6 +89,12 @@ export class DatabricksEnvFileManager implements Disposable {
         Record<string, string | undefined> | undefined
     > {
         await this.connectionManager.waitForConnect();
+        if (
+            !(await this.featureManager.isEnabled("debugging.dbconnect"))
+                .avaliable
+        ) {
+            return;
+        }
         const cluster = this.connectionManager.cluster;
         const host = this.connectionManager.databricksWorkspace?.host.authority;
         const pat = await this.getPatToken();
@@ -129,13 +111,6 @@ export class DatabricksEnvFileManager implements Disposable {
         /* eslint-enable @typescript-eslint/naming-convention */
     }
     async writeFile() {
-        await this.connectionManager.waitForConnect();
-        const cluster = this.connectionManager.cluster;
-        const host = this.connectionManager.databricksWorkspace?.host.authority;
-        const pat = await this.getPatToken();
-        if (!cluster || !pat || !host) {
-            return;
-        }
         const databricksEnvVars = await this.getDatabrickseEnvVars();
         const userEnvVars = (await readFile(this.userEnvPath.fsPath, "utf-8"))
             .split(/\r?\n/)
@@ -182,17 +157,8 @@ export class DatabricksEnvFileManager implements Disposable {
         this.extensionContext.environmentVariableCollection.clear();
     }
 
-    @withLogContext(Loggers.Extension)
-    async deleteFile(@context ctx?: Context) {
-        try {
-            await rm(this.databricksEnvPath.fsPath);
-        } catch (e: unknown) {
-            ctx?.logger?.error("Can't delete .databricks.env file", e);
-        }
-    }
-
     dispose() {
-        this.deleteFile();
+        this.clearTerminalEnv();
         this.disposables.forEach((i) => i.dispose());
     }
 }
