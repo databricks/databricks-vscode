@@ -217,7 +217,7 @@
             },
             {
                 "command": "databricks.debugging.checkForDbConnect",
-                "title": "Enable DB Connect",
+                "title": "Enable DB Connect V2",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             }

@@ -115,7 +115,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         );
 
         const choice = await window.showInformationMessage(
-            "Do you want to install dbconnectV2 in the current environment?",
+            "Do you want to install databricks-connect in the current environment?",
             "Yes",
             "Ignore",
             "Ignore for environment",
@@ -168,7 +168,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             }
             return this.rejectStep(
                 "checkDbConnectInstall",
-                "dbconnect package is not installed in the current environment",
+                "databricks-connect package is not installed in the current environment",
                 () => this.showDbConnectInstallPrompt()
             );
         } catch (e: unknown) {

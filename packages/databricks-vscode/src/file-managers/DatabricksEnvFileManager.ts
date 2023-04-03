@@ -1,13 +1,14 @@
 import {Disposable, Uri, workspace, ExtensionContext} from "vscode";
-import {writeFile, rm, readFile} from "fs/promises";
+import {writeFile, readFile} from "fs/promises";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import os from "node:os";
-import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
-import {Loggers} from "../logger";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import * as path from "node:path";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {SystemVariables} from "../vscode-objs/SystemVariables";
+import {logging} from "@databricks/databricks-sdk";
+import {Loggers} from "../logger";
+import {Context, context} from "@databricks/databricks-sdk/dist/context";
 
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
@@ -20,10 +21,14 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly connectionManager: ConnectionManager,
         private readonly extensionContext: ExtensionContext
     ) {
-        this.databricksEnvPath = Uri.joinPath(
-            workspacePath,
+        const systemVariableResolver = new SystemVariables(workspacePath);
+        const unresolvedDatabricksEnvFile = path.join(
+            "${workspaceFolder}",
             ".databricks",
             ".databricks.env"
+        );
+        this.databricksEnvPath = Uri.file(
+            systemVariableResolver.resolve(unresolvedDatabricksEnvFile)
         );
 
         const unresolvedUserEnvFile = workspaceConfigs.userEnvFile
@@ -32,16 +37,14 @@ export class DatabricksEnvFileManager implements Disposable {
               workspaceConfigs.msPythonEnvFile.includes(
                   this.databricksEnvPath.fsPath
               )
-            ? "${workspacePath}/.env"
+            ? path.join("${workspaceFolder}", ".env")
             : workspaceConfigs.msPythonEnvFile;
-
-        workspaceConfigs.msPythonEnvFile = this.databricksEnvPath.fsPath;
-        workspaceConfigs.userEnvFile = unresolvedUserEnvFile;
-
-        const systemVariableResolver = new SystemVariables(workspacePath);
         this.userEnvPath = Uri.file(
             systemVariableResolver.resolve(unresolvedUserEnvFile)
         );
+
+        workspaceConfigs.msPythonEnvFile = unresolvedDatabricksEnvFile;
+        workspaceConfigs.userEnvFile = unresolvedUserEnvFile;
 
         const userEnvFileWatcher = workspace.createFileSystemWatcher(
             this.userEnvPath.fsPath
@@ -49,9 +52,9 @@ export class DatabricksEnvFileManager implements Disposable {
 
         this.disposables.push(
             userEnvFileWatcher,
-            userEnvFileWatcher.onDidChange(this.writeFile, this),
-            userEnvFileWatcher.onDidDelete(this.writeFile, this),
-            userEnvFileWatcher.onDidCreate(this.writeFile, this),
+            userEnvFileWatcher.onDidChange(() => this.writeFile(), this),
+            userEnvFileWatcher.onDidDelete(() => this.writeFile(), this),
+            userEnvFileWatcher.onDidCreate(() => this.writeFile(), this),
             featureManager.onDidChangeState(
                 "debugging.dbconnect",
                 () => {
@@ -110,22 +113,28 @@ export class DatabricksEnvFileManager implements Disposable {
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
-    async writeFile() {
-        const databricksEnvVars = await this.getDatabrickseEnvVars();
-        const userEnvVars = (await readFile(this.userEnvPath.fsPath, "utf-8"))
-            .split(/\r?\n/)
-            .map((value) => {
-                const splits = value.split("=");
-                return [splits[0], splits.slice(1).join("=")];
-            })
-            .filter(([key, value]) => key.length && value.length)
-            .reduce((prev: Record<string, string>, cur) => {
-                if (!Object.keys(prev).includes(cur[0])) {
-                    prev[cur[0]] = cur[1];
-                }
-                return prev;
-            }, {});
 
+    @logging.withLogContext(Loggers.Extension)
+    async writeFile(@context ctx?: Context) {
+        const databricksEnvVars = await this.getDatabrickseEnvVars();
+        let userEnvVars: Record<string, string | undefined> = {};
+        try {
+            userEnvVars = (await readFile(this.userEnvPath.fsPath, "utf-8"))
+                .split(/\r?\n/)
+                .map((value) => {
+                    const splits = value.split("=");
+                    return [splits[0], splits.slice(1).join("=")];
+                })
+                .filter(([key, value]) => key.length && value.length)
+                .reduce((prev: Record<string, string>, cur) => {
+                    if (!Object.keys(prev).includes(cur[0])) {
+                        prev[cur[0]] = cur[1];
+                    }
+                    return prev;
+                }, {});
+        } catch (e: unknown) {
+            ctx?.logger?.error("Can't load .env file", e);
+        }
         const data = Object.entries({
             ...databricksEnvVars,
             ...userEnvVars,

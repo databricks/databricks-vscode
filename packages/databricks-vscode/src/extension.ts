@@ -74,6 +74,8 @@ export async function activate(
         return undefined;
     }
 
+    const workspaceStateManager = new WorkspaceStateManager(context);
+
     // Add the bricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.persistent = true;
     context.environmentVariableCollection.prepend(
@@ -104,10 +106,9 @@ export async function activate(
 
     const pythonExtensionWrapper = new MsPythonExtensionWrapper(
         pythonExtension,
-        workspace.workspaceFolders[0].uri
+        workspace.workspaceFolders[0].uri,
+        workspaceStateManager
     );
-
-    const workspaceStateManager = new WorkspaceStateManager(context);
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
@@ -395,7 +396,7 @@ export async function activate(
             "debugging.dbconnect",
             async (state) => {
                 if (state.avaliable) {
-                    window.showInformationMessage("Db Connect is enabled");
+                    window.showInformationMessage("Db Connect V2 is enabled");
                     return;
                 }
                 if (state.isDisabledByFf) {
@@ -403,7 +404,7 @@ export async function activate(
                 }
                 if (state.reason) {
                     window.showErrorMessage(
-                        `DB Connect is disabled because ${state.reason}`
+                        `DB Connect V2 is disabled because ${state.reason}`
                     );
                 }
                 if (state.action) {
