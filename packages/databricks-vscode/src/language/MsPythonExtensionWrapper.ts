@@ -12,22 +12,28 @@ import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
 import * as os from "node:os";
 import * as path from "node:path";
 import {mkdtemp, readFile} from "fs/promises";
+import {Mutex} from "../locking";
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
     private readonly disposables: Disposable[] = [];
-
+    private readonly terminalMutex: Mutex = new Mutex();
     constructor(
-        private readonly pythonExtension: Extension<MsPythonExtensionApi>,
+        pythonExtension: Extension<MsPythonExtensionApi>,
         private readonly workspaceFolder: Uri,
         private readonly workspaceStateManager: WorkspaceStateManager
     ) {
         this.api = pythonExtension.exports as MsPythonExtensionApi;
-        this.onDidChangePythonExecutable(() => {
-            this.terminal.dispose();
+        this.onDidChangePythonExecutable(async () => {
+            try {
+                await this.terminalMutex.wait();
+                this.terminal.dispose();
+            } finally {
+                this.terminalMutex.signal();
+            }
         }, this);
     }
 
-    get terminal() {
+    private get terminal() {
         const terminalName = `databricks-${this.workspaceStateManager.fixedUUID.slice(
             0,
             8
@@ -90,7 +96,12 @@ export class MsPythonExtensionWrapper implements Disposable {
                 fsWatcher.onDidCreate(handleFileChange),
                 fsWatcher.onDidChange(handleFileChange)
             );
-            this.terminal.sendText(`${command}; echo $? > ${filePath}`);
+            this.terminalMutex
+                .wait()
+                .then(() =>
+                    this.terminal.sendText(`${command}; echo $? > ${filePath}`)
+                )
+                .finally(() => this.terminalMutex.signal());
         });
         disposables.forEach((i) => i.dispose());
         return exitCode;

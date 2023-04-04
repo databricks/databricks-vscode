@@ -406,12 +406,6 @@ export async function activate(
     );
     featureManager.isEnabled("debugging.dbconnect");
 
-    context.subscriptions.push(
-        commands.registerCommand("databricks.debugging.checkForDbConnect", () =>
-            featureManager.isEnabled("debugging.dbconnect", true)
-        )
-    );
-
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);
     });
