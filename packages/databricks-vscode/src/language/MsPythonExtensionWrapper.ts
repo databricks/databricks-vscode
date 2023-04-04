@@ -15,7 +15,6 @@ import * as path from "node:path";
 import {mkdtemp, readFile} from "fs/promises";
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
-    private _terminal: Terminal | undefined;
     private readonly disposables: Disposable[] = [];
 
     constructor(
@@ -24,6 +23,9 @@ export class MsPythonExtensionWrapper implements Disposable {
         private readonly workspaceStateManager: WorkspaceStateManager
     ) {
         this.api = pythonExtension.exports as MsPythonExtensionApi;
+        this.onDidChangePythonExecutable(() => {
+            this.terminal.dispose();
+        }, this);
     }
 
     get terminal() {
@@ -151,7 +153,5 @@ export class MsPythonExtensionWrapper implements Disposable {
         }
     }
 
-    dispose() {
-        this._terminal?.dispose();
-    }
+    dispose() {}
 }

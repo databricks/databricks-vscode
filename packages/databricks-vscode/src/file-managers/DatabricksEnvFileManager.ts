@@ -1,4 +1,13 @@
-import {Disposable, Uri, workspace, ExtensionContext} from "vscode";
+import {
+    Disposable,
+    Uri,
+    workspace,
+    ExtensionContext,
+    StatusBarItem,
+    window,
+    StatusBarAlignment,
+    ThemeColor,
+} from "vscode";
 import {writeFile, readFile} from "fs/promises";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -14,6 +23,7 @@ export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
     private readonly databricksEnvPath: Uri;
     private readonly userEnvPath: Uri;
+    private readonly statusBarButton: StatusBarItem;
 
     constructor(
         workspacePath: Uri,
@@ -50,34 +60,115 @@ export class DatabricksEnvFileManager implements Disposable {
             this.userEnvPath.fsPath
         );
 
+        this.statusBarButton = window.createStatusBarItem(
+            StatusBarAlignment.Left,
+            1000
+        );
+        this.disableStatusBarButton();
+
         this.disposables.push(
+            this.statusBarButton,
             userEnvFileWatcher,
             userEnvFileWatcher.onDidChange(() => this.writeFile(), this),
             userEnvFileWatcher.onDidDelete(() => this.writeFile(), this),
             userEnvFileWatcher.onDidCreate(() => this.writeFile(), this),
             featureManager.onDidChangeState(
                 "debugging.dbconnect",
-                () => {
+                (featureState) => {
+                    if (!featureState.avaliable) {
+                        this.clearTerminalEnv();
+                        this.disableStatusBarButton();
+                        return;
+                    }
                     this.writeFile();
                     this.emitToTerminal();
                 },
                 this
             ),
             this.connectionManager.onDidChangeCluster(async (cluster) => {
-                if (!cluster || this.connectionManager.state !== "CONNECTED") {
+                if (
+                    !cluster ||
+                    this.connectionManager.state !== "CONNECTED" ||
+                    !(
+                        await this.featureManager.isEnabled(
+                            "debugging.dbconnect"
+                        )
+                    ).avaliable
+                ) {
+                    this.clearTerminalEnv();
+                    this.disableStatusBarButton();
                     return;
                 }
                 this.writeFile();
                 this.emitToTerminal();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
-                if (this.connectionManager.state !== "CONNECTED") {
+                if (
+                    this.connectionManager.state !== "CONNECTED" ||
+                    !(
+                        await this.featureManager.isEnabled(
+                            "debugging.dbconnect"
+                        )
+                    ).avaliable
+                ) {
+                    this.clearTerminalEnv();
+                    this.disableStatusBarButton();
                     return;
                 }
                 this.writeFile();
                 this.emitToTerminal();
             }, this)
         );
+    }
+
+    private async disableStatusBarButton() {
+        const featureState = await this.featureManager.isEnabled(
+            "debugging.dbconnect"
+        );
+        this.statusBarButton.name = "DB Connect V2 Disabled";
+        this.statusBarButton.text = "DB Connect V2 Disabled";
+        this.statusBarButton.backgroundColor = new ThemeColor(
+            "statusBarItem.errorBackground"
+        );
+        this.statusBarButton.tooltip = featureState?.reason;
+        this.statusBarButton.command = {
+            title: "Call",
+            command: "databricks.call",
+            arguments: [
+                async () => {
+                    const featureState = await this.featureManager.isEnabled(
+                        "debugging.dbconnect",
+                        true
+                    );
+                    if (!featureState.avaliable) {
+                        if (featureState.action) {
+                            featureState.action();
+                        }
+                        if (featureState.reason) {
+                            window.showErrorMessage(featureState.reason);
+                        }
+                    }
+                },
+            ],
+        };
+        this.statusBarButton.show();
+    }
+
+    private enableStatusBarButton() {
+        this.statusBarButton.name = "DB Connect V2 Enabled";
+        this.statusBarButton.text = "DB Connect V2 Enabled";
+        this.statusBarButton.tooltip = "DB Connect V2 Enabled";
+        this.statusBarButton.backgroundColor = undefined;
+        this.statusBarButton.command = {
+            title: "Call",
+            command: "databricks.call",
+            arguments: [
+                () => {
+                    this.featureManager.isEnabled("debugging.dbconnect", true);
+                },
+            ],
+        };
+        this.statusBarButton.show();
     }
 
     async getPatToken() {
@@ -92,10 +183,12 @@ export class DatabricksEnvFileManager implements Disposable {
         Record<string, string | undefined> | undefined
     > {
         await this.connectionManager.waitForConnect();
-        if (
-            !(await this.featureManager.isEnabled("debugging.dbconnect"))
-                .avaliable
-        ) {
+        const featureState = await this.featureManager.isEnabled(
+            "debugging.dbconnect"
+        );
+
+        if (!featureState.avaliable) {
+            this.disableStatusBarButton();
             return;
         }
         const cluster = this.connectionManager.cluster;
@@ -144,6 +237,9 @@ export class DatabricksEnvFileManager implements Disposable {
             data.join(os.EOL),
             "utf-8"
         );
+        if (databricksEnvVars) {
+            this.enableStatusBarButton();
+        }
     }
 
     async emitToTerminal() {
