@@ -4,7 +4,6 @@ import {
     Event,
     window,
     Disposable,
-    Terminal,
     workspace,
     RelativePattern,
 } from "vscode";
