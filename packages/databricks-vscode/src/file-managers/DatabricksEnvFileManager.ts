@@ -125,6 +125,9 @@ export class DatabricksEnvFileManager implements Disposable {
         const featureState = await this.featureManager.isEnabled(
             "debugging.dbconnect"
         );
+        if (featureState.isDisabledByFf) {
+            return;
+        }
         this.statusBarButton.name = "DB Connect V2 Disabled";
         this.statusBarButton.text = "DB Connect V2 Disabled";
         this.statusBarButton.backgroundColor = new ThemeColor(
@@ -143,8 +146,7 @@ export class DatabricksEnvFileManager implements Disposable {
                     if (!featureState.avaliable) {
                         if (featureState.action) {
                             featureState.action();
-                        }
-                        if (featureState.reason) {
+                        } else if (featureState.reason) {
                             window.showErrorMessage(featureState.reason);
                         }
                     }
@@ -154,7 +156,13 @@ export class DatabricksEnvFileManager implements Disposable {
         this.statusBarButton.show();
     }
 
-    private enableStatusBarButton() {
+    private async enableStatusBarButton() {
+        const featureState = await this.featureManager.isEnabled(
+            "debugging.dbconnect"
+        );
+        if (featureState.isDisabledByFf) {
+            return;
+        }
         this.statusBarButton.name = "DB Connect V2 Enabled";
         this.statusBarButton.text = "DB Connect V2 Enabled";
         this.statusBarButton.tooltip = "DB Connect V2 Enabled";

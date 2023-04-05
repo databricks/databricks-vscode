@@ -34,7 +34,7 @@ export class MsPythonExtensionWrapper implements Disposable {
     }
 
     private get terminal() {
-        const terminalName = `databricks-${this.workspaceStateManager.fixedUUID.slice(
+        const terminalName = `databricks-pip-${this.workspaceStateManager.fixedUUID.slice(
             0,
             8
         )}`;
@@ -74,6 +74,12 @@ export class MsPythonExtensionWrapper implements Disposable {
             );
     }
 
+    get pythonEnvironment() {
+        return this.api.environments?.resolveEnvironment(
+            this.api.environments?.getActiveEnvironmentPath()
+        );
+    }
+
     private async executeInTerminalE(command: string) {
         const dir = await mkdtemp(path.join(os.tmpdir(), "databricks-vscode-"));
         const filePath = path.join(dir, "python-terminal-output.txt");
@@ -98,9 +104,10 @@ export class MsPythonExtensionWrapper implements Disposable {
             );
             this.terminalMutex
                 .wait()
-                .then(() =>
-                    this.terminal.sendText(`${command}; echo $? > ${filePath}`)
-                )
+                .then(() => {
+                    this.terminal.show();
+                    this.terminal.sendText(`${command}; echo $? > ${filePath}`);
+                })
                 .finally(() => this.terminalMutex.signal());
         });
         disposables.forEach((i) => i.dispose());

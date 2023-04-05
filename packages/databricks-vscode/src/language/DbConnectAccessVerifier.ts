@@ -1,10 +1,12 @@
-import {Cluster} from "@databricks/databricks-sdk";
-import {window, ExtensionContext} from "vscode";
+import {Cluster, logging} from "@databricks/databricks-sdk";
+import {window, ExtensionContext, commands} from "vscode";
 import * as path from "node:path";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {MultiStepAccessVerifier} from "../feature-manager/MultiStepAccessVerfier";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
+import {Loggers} from "../logger";
+import {Context, context} from "@databricks/databricks-sdk/dist/context";
 
 export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
     constructor(
@@ -40,9 +42,31 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         );
     }
 
+    promptForAttachingCluster(msg: string) {
+        return async () => {
+            const choice = await window.showInformationMessage(
+                msg,
+                "Attach Cluster",
+                "Ignore"
+            );
+            switch (choice) {
+                case "Attach Cluster":
+                    commands.executeCommand(
+                        "databricks.connection.attachClusterQuickPick"
+                    );
+            }
+        };
+    }
+
     async checkCluster(cluster?: Cluster) {
         if (cluster === undefined) {
-            return this.rejectStep("checkCluster", "no cluster attached");
+            return this.rejectStep(
+                "checkCluster",
+                "No cluster attached",
+                this.promptForAttachingCluster(
+                    "No cluster is attached. Please attach a cluster."
+                )
+            );
         }
         await this.connectionManager.waitForConnect();
 
@@ -53,29 +77,25 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         ) {
             return this.rejectStep(
                 "checkCluster",
-                `cluster dbr is less than 13.0.0`
+                `DB Connect V2 requires cluster DBR >= 13.0.0.`,
+                this.promptForAttachingCluster(
+                    `DB Connect V2 requires cluster DBR >= 13.0.0. Currently it is ${dbrVersionParts.join(
+                        "."
+                    )}. Please attach a new cluster.`
+                )
             );
         }
         if (!cluster.isUc()) {
             return this.rejectStep(
                 "checkCluster",
-                `cluster doesn't have UC enabled (access mode should be "Single User" or "Shared")`
+                `Cluster doesn't have UC enabled. Access mode should be "Single User" or "Shared"). Currently it is ${cluster.accessMode}`
             );
         }
         return this.acceptStep("checkCluster");
     }
 
-    async checkClusterHasUc(cluster?: Cluster) {
-        if (cluster === undefined) {
-            return this.rejectStep(
-                "checkClusterHasUc",
-                "no cluster is attached"
-            );
-        }
-        this.connectionManager.waitForConnect();
-    }
-
-    async checkWorkspaceHasUc() {
+    @logging.withLogContext(Loggers.Extension)
+    async checkWorkspaceHasUc(@context ctx?: Context) {
         this.connectionManager.waitForConnect();
         try {
             const catalogList =
@@ -83,11 +103,12 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             if (!catalogList?.catalogs?.length) {
                 return this.rejectStep(
                     "checkWorkspaceHasUc",
-                    "no catalogues with read permission were found"
+                    "No catalogues with read permission were found. Please enable UC for the workspace."
                 );
             }
         } catch (e: unknown) {
             if (e instanceof Error) {
+                ctx?.logger?.error("Error while searching for catalogues", e);
                 return this.rejectStep("checkWorkspaceHasUc", e.message);
             }
         }
@@ -156,7 +177,25 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         if (!executable) {
             return this.rejectStep(
                 "checkDbConnectInstall",
-                "no python executable found."
+                "No python executable found."
+            );
+        }
+        const env = await this.pythonExtension.pythonEnvironment;
+        if (
+            env &&
+            env.version &&
+            !(
+                env.version.major > 3 ||
+                (env.version.major === 3 && env.version.minor >= 9)
+            )
+        ) {
+            return this.rejectStep(
+                "checkDbConnectInstall",
+                `DB Connect V2 requires python >= 3.9.0. Current version is ${[
+                    env.version.major,
+                    env.version.minor,
+                    env.version.micro,
+                ].join(".")}`
             );
         }
         try {
