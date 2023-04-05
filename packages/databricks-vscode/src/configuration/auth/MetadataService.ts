@@ -10,6 +10,7 @@ import {
     MetadataServiceVersionHeader,
     ServerResponse,
 } from "@databricks/databricks-sdk";
+import {NamedLogger} from "@databricks/databricks-sdk/src/logging";
 
 export class MetadataService implements Disposable {
     private server:
@@ -19,7 +20,7 @@ export class MetadataService implements Disposable {
     private magic!: string;
     private _apiClient: ApiClient | undefined;
 
-    constructor(apiClient?: ApiClient) {
+    constructor(apiClient: ApiClient | undefined, private logger: NamedLogger) {
         this.updateMagic();
         this._apiClient = apiClient;
     }
@@ -72,9 +73,16 @@ export class MetadataService implements Disposable {
                         Array.isArray(requestHost) ||
                         new URL(requestHost).toString() !== host.toString()
                     ) {
+                        this.logger.warn(
+                            `Metadata service: Credentiuals don't match requested host ${requestHost}}`
+                        );
                         return notFound();
                     }
                 } catch (e) {
+                    this.logger.error(
+                        `Metadata service: Invalid host ${requestHost}}`,
+                        e
+                    );
                     return notFound();
                 }
 
@@ -82,6 +90,9 @@ export class MetadataService implements Disposable {
                     req.headers[MetadataServiceVersionHeader] !==
                     MetadataServiceVersion
                 ) {
+                    this.logger.warn(
+                        `Metadata service: Unsupported version requested: ${req.headers[MetadataServiceVersionHeader]}`
+                    );
                     res.writeHead(400, {"Content-Type": "text/json"});
                     res.end(JSON.stringify({bad_version: true}));
                 }
@@ -101,7 +112,12 @@ export class MetadataService implements Disposable {
                 };
 
                 res.end(JSON.stringify(response));
-            })().catch(() => {
+            })().catch((e) => {
+                this.logger.error(
+                    `Metadata service: Error processing request: ${e.message}`,
+                    e
+                );
+
                 res.writeHead(500, {"Content-Type": "text/json"});
                 res.end(JSON.stringify({error: true}));
             });

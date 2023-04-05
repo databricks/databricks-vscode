@@ -11,13 +11,17 @@ import {
     MetadataServiceVersionHeader,
     RequestVisitor,
 } from "@databricks/databricks-sdk";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 
 describe(__filename, function () {
     this.timeout(10_000);
     let metadataService: MetadataService;
 
     beforeEach(async () => {
-        metadataService = new MetadataService();
+        metadataService = new MetadataService(
+            undefined,
+            NamedLogger.getOrCreate("Extension")
+        );
         await metadataService.listen();
     });
 
