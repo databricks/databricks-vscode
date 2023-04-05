@@ -1,6 +1,5 @@
 /** The production application insights configuration string for Databricks. */
-export const PROD_APP_INSIGHTS_CONFIGURATION_STRING =
-    "InstrumentationKey=dc4ec136-d862-4379-8d5f-b1746222d7f5;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/";
+export const PROD_APP_INSIGHTS_CONFIGURATION_STRING = "";
 /** The application insights configuration string used while developing on the VS Code extension */
 export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
     "InstrumentationKey=1404ec6e-9499-48ce-8c67-9bb8b3440218;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
