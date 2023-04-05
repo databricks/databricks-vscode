@@ -11,7 +11,8 @@ import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
-import {AzureCliCheck} from "../AzureCliCheck";
+import {AzureCliCheck} from "./AzureCliCheck";
+import {BricksCliCheck} from "./BricksCliCheck";
 
 export type AuthType = "azure-cli" | "google-id" | "bricks-cli" | "profile";
 
@@ -119,7 +120,7 @@ export class ProfileAuthProvider extends AuthProvider {
 }
 
 export class BricksCliAuthProvider extends AuthProvider {
-    constructor(host: URL, private readonly bricksPath: string) {
+    constructor(host: URL, readonly bricksPath: string) {
         super(host, "bricks-cli");
     }
 
@@ -149,6 +150,11 @@ export class BricksCliAuthProvider extends AuthProvider {
             authType: "bricks-cli",
             bricksCliPath: this.bricksPath,
         });
+    }
+
+    async check(silent: boolean): Promise<boolean> {
+        const bricksCliCheck = new BricksCliCheck(this);
+        return bricksCliCheck.check(silent);
     }
 }
 
