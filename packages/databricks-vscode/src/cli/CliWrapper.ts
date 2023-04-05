@@ -68,7 +68,7 @@ export class CliWrapper {
             args.push("--full");
         }
         if (workspaceConfigs.bricksVerboseMode) {
-            args.push("-v");
+            args.push("--log-level", "debug", "--log-file", "stderr");
         }
         return {command, args};
     }
