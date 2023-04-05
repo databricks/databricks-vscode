@@ -6,6 +6,7 @@ import {
     ApiClient,
     Config,
     Headers,
+    MetadataServiceHostHeader,
     MetadataServiceVersion,
     MetadataServiceVersionHeader,
     RequestVisitor,
@@ -28,7 +29,8 @@ describe(__filename, function () {
         const response = await got(metadataService.url, {
             throwHttpErrors: false,
             headers: {
-                Metadata: "true",
+                [MetadataServiceHostHeader]: "https://test.com/",
+                [MetadataServiceVersionHeader]: MetadataServiceVersion,
             },
         });
         assert.equal(response.statusCode, 404);
@@ -52,12 +54,12 @@ describe(__filename, function () {
         );
         const response = (await got(metadataService.url, {
             headers: {
+                [MetadataServiceHostHeader]: "https://test.com/",
                 [MetadataServiceVersionHeader]: MetadataServiceVersion,
             },
         }).json()) as any;
-        assert.equal(response.host, "https://test.com/");
-        assert.equal(response.token.token_type, "Bearer");
-        assert.equal(response.token.access_token, "XXXX");
+        assert.equal(response.token_type, "Bearer");
+        assert.equal(response.access_token, "XXXX");
     });
 
     it("should return 404 when magic is changed", async () => {

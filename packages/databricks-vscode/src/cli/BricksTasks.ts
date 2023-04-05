@@ -297,6 +297,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 BRICKS_UPSTREAM_VERSION: this.packageMetadata.version,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
+                DATABRICKS_HOST: dbWorkspace.host.toString(),
                 DATABRICKS_AUTH_TYPE: "metadata-service",
                 DATABRICKS_METADATA_SERVICE_URL:
                     this.connection.metadataServiceUrl || "",

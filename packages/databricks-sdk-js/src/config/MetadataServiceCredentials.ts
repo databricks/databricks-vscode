@@ -11,15 +11,14 @@ import {refreshableTokenProvider, Token} from "./Token";
 import {Provider} from "../types";
 
 export const MetadataServiceVersion = "1";
-export const MetadataServiceVersionHeader = "X-Databricks-Metadata-Version";
+export const MetadataServiceVersionHeader = "x-databricks-metadata-version";
+export const MetadataServiceHostHeader = "x-databricks-host";
 
 export interface ServerResponse {
-    host?: string;
-    token: {
-        access_token: string;
-        expiry: Date;
-        token_type: string;
-    };
+    access_token: string;
+    /* epoch in seconds since 1970-01-01T00:00:00Z */
+    expires_on: number;
+    token_type: string;
 }
 
 /**
@@ -34,19 +33,20 @@ export interface ServerResponse {
  * server returns a token for a Host on a given URL path, it MUST continue to return
  * tokens for the same Host.
  *
+ * The server MUST return a 4xx response if the Host passed in the "X-Databricks-Host"
+ * header doesn't match the token.
+ *
  * The server is expected to return a JSON response with the following fields:
  *
- * host: URL of the Databricks host to connect to.
- * token: object with the following fields
- *   access_token: The requested access token.
- *	 token_type: The type of token, which is a "Bearer" access token.
- *	 expires_on: The timespan when the access token expires.
+ * - access_token: The requested access token.
+ * - token_type: The type of token, which is a "Bearer" access token.
+ * - expires_on: Unix timestamp in seconds when the access token expires.
  */
 export class MetadataServiceCredentials implements CredentialProvider {
     public name: AuthType = "metadata-service";
 
     async configure(config: Config): Promise<RequestVisitor | undefined> {
-        if (!config.localMetadataServiceUrl) {
+        if (!config.localMetadataServiceUrl || !config.host) {
             return;
         }
 
@@ -80,18 +80,6 @@ export class MetadataServiceCredentials implements CredentialProvider {
             return;
         }
 
-        const configHost =
-            config.host && (await (await config.getHost()).toString());
-
-        if (configHost && configHost !== response.host) {
-            config.logger.debug(
-                `ignoring metadata service because it returned a token for a different host: ${configHost}`
-            );
-            return;
-        }
-
-        config.host = response.host;
-
         const ts = this.getTokenSource(config, parsedMetadataServiceUrl);
         return refreshableTokenProvider(ts);
     }
@@ -107,14 +95,14 @@ export class MetadataServiceCredentials implements CredentialProvider {
             }
 
             config.logger.info(
-                `Refreshed access token from local credentials server, which expires on ${serverResponse.token.expiry}`
+                `Refreshed access token from local credentials server, which expires on ${new Date(
+                    serverResponse.expires_on * 1000
+                )}`
             );
 
             return new Token({
-                accessToken: serverResponse.token.access_token,
-                expiry: Math.floor(
-                    serverResponse.token.expiry.getTime() / 1000
-                ),
+                accessToken: serverResponse.access_token,
+                expiry: serverResponse.expires_on * 1000,
             });
         };
     }
@@ -128,6 +116,7 @@ export class MetadataServiceCredentials implements CredentialProvider {
             const response = await fetch(url.toString(), {
                 headers: {
                     [MetadataServiceVersionHeader]: MetadataServiceVersion,
+                    [MetadataServiceHostHeader]: config.host!,
                 },
             });
 
@@ -148,22 +137,8 @@ export class MetadataServiceCredentials implements CredentialProvider {
             );
         }
 
-        if (!body || !body.host || !body.token?.access_token) {
+        if (!body || !body.access_token) {
             throw new ConfigError("token parse: invalid token", config);
-        }
-
-        try {
-            const parsedHost = new URL(body.host);
-            body.host = parsedHost.toString();
-
-            if (body.token.expiry) {
-                body.token.expiry = new Date(body.token.expiry);
-            }
-        } catch (error) {
-            throw new ConfigError(
-                `invalid host in auth server response: ${body.host}`,
-                config
-            );
         }
 
         return body;

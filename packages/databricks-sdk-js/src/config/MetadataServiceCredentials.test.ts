@@ -5,6 +5,7 @@ import {AddressInfo} from "node:net";
 import {Config} from "./Config";
 import {
     MetadataServiceCredentials,
+    MetadataServiceHostHeader,
     MetadataServiceVersion,
     MetadataServiceVersionHeader,
     ServerResponse,
@@ -14,24 +15,29 @@ describe(__filename, () => {
     let server: http.Server;
 
     beforeEach(async () => {
+        let i = 0;
         server = http.createServer((req, res) => {
             if (
-                req.headers[
-                    MetadataServiceVersionHeader.toLocaleLowerCase()
-                ] !== MetadataServiceVersion
+                req.headers[MetadataServiceVersionHeader] !==
+                MetadataServiceVersion
             ) {
                 res.writeHead(400);
                 res.end();
                 return;
             }
 
+            if (req.headers[MetadataServiceHostHeader] !== "https://test.com") {
+                res.writeHead(404);
+                res.end();
+                return;
+            }
+
             const response: ServerResponse = {
-                host: "https://test.com",
-                token: {
-                    access_token: "XXXX",
-                    expiry: new Date(Date.now() + 1_000),
-                    token_type: "Bearer",
-                },
+                access_token: `XXXX-${i++}`,
+                expires_on: Math.floor(
+                    new Date(Date.now() + 1_000).getTime() / 1000
+                ),
+                token_type: "Bearer",
             };
             res.end(JSON.stringify(response));
         });
@@ -68,19 +74,41 @@ describe(__filename, () => {
         const headers: Record<string, string> = {};
         await visitor(headers);
 
-        assert.equal(headers["Authorization"], "Bearer XXXX");
+        assert.equal(headers["Authorization"], "Bearer XXXX-1");
     });
 
-    it("should not take host from metadata if not configured in config", async () => {
+    it("should check host", async () => {
         const lmsCredentials = new MetadataServiceCredentials();
         const config = new Config({
+            host: "https://test2.com",
             authType: "metadata-service",
             localMetadataServiceUrl: `http://localhost:${
                 (server.address() as AddressInfo).port
             }`,
         });
-        await lmsCredentials.configure(config);
+        const visitor = await lmsCredentials.configure(config);
+        assert.ok(!visitor);
+    });
 
-        assert.equal(config.host, "https://test.com/");
+    it("should refresh credentials", async () => {
+        const lmsCredentials = new MetadataServiceCredentials();
+        const config = new Config({
+            host: "https://test.com",
+            authType: "metadata-service",
+            localMetadataServiceUrl: `http://localhost:${
+                (server.address() as AddressInfo).port
+            }`,
+        });
+
+        const visitor = await lmsCredentials.configure(config);
+        assert.ok(visitor);
+
+        const headers: Record<string, string> = {};
+        await visitor(headers);
+        assert.equal(headers["Authorization"], "Bearer XXXX-1");
+
+        // expires immediately since expiery is lower than expiryDelta
+        await visitor(headers);
+        assert.equal(headers["Authorization"], "Bearer XXXX-2");
     });
 });

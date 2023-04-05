@@ -65,6 +65,9 @@ describe(__filename, () => {
                     "profile"
                 )
             );
+            when(mockDbWorkspace.host).thenReturn(
+                Uri.parse("https://000000000000.00.azuredatabricks.net/")
+            );
 
             const mockSyncDestination = mock(SyncDestinationMapper);
             when(mockSyncDestination.localUri).thenReturn(
@@ -101,6 +104,8 @@ describe(__filename, () => {
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                     BRICKS_UPSTREAM: "databricks-vscode",
                     BRICKS_UPSTREAM_VERSION: "1.0.0",
+                    DATABRICKS_HOST:
+                        "https://000000000000.00.azuredatabricks.net/",
                     DATABRICKS_AUTH_TYPE: "metadata-service",
                     DATABRICKS_METADATA_SERVICE_URL: "http://localhost:1234",
                     HOME: process.env.HOME,
@@ -121,6 +126,8 @@ describe(__filename, () => {
                     BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
                     BRICKS_UPSTREAM: "databricks-vscode",
                     BRICKS_UPSTREAM_VERSION: "1.0.0",
+                    DATABRICKS_HOST:
+                        "https://000000000000.00.azuredatabricks.net/",
                     DATABRICKS_AUTH_TYPE: "metadata-service",
                     DATABRICKS_METADATA_SERVICE_URL: "http://localhost:1234",
                     HOME: process.env.HOME,

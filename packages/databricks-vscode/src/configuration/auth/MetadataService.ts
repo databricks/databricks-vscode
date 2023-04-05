@@ -5,6 +5,7 @@ import {Disposable} from "vscode";
 import {AddressInfo} from "node:net";
 import {
     ApiClient,
+    MetadataServiceHostHeader,
     MetadataServiceVersion,
     MetadataServiceVersionHeader,
     ServerResponse,
@@ -54,32 +55,52 @@ export class MetadataService implements Disposable {
     listen(): Promise<void> {
         this.server = http.createServer((req, res) => {
             (async () => {
-                if (
-                    req.url === `/${this.magic}` &&
-                    this._apiClient &&
-                    req.headers[MetadataServiceVersionHeader.toLowerCase()] ===
-                        MetadataServiceVersion
-                ) {
-                    const headers: Record<string, string> = {};
-                    await this._apiClient.config.authenticate(headers);
-
-                    res.writeHead(200, {"Content-Type": "text/json"});
-
-                    const auth = headers["Authorization"].split(" ");
-                    const response: ServerResponse = {
-                        host: await (await this._apiClient.host).toString(),
-                        token: {
-                            access_token: auth[1],
-                            expiry: new Date(Date.now() + 15_000),
-                            token_type: auth[0],
-                        },
-                    };
-
-                    res.end(JSON.stringify(response));
-                } else {
+                function notFound() {
                     res.writeHead(404, {"Content-Type": "text/json"});
                     res.end(JSON.stringify({not_found: true}));
                 }
+
+                if (req.url !== `/${this.magic}` || !this._apiClient) {
+                    return notFound();
+                }
+
+                const requestHost = req.headers[MetadataServiceHostHeader];
+                try {
+                    const host = await this._apiClient.config.getHost();
+                    if (
+                        !requestHost ||
+                        Array.isArray(requestHost) ||
+                        new URL(requestHost).toString() !== host.toString()
+                    ) {
+                        return notFound();
+                    }
+                } catch (e) {
+                    return notFound();
+                }
+
+                if (
+                    req.headers[MetadataServiceVersionHeader] !==
+                    MetadataServiceVersion
+                ) {
+                    res.writeHead(400, {"Content-Type": "text/json"});
+                    res.end(JSON.stringify({bad_version: true}));
+                }
+
+                const headers: Record<string, string> = {};
+                await this._apiClient.config.authenticate(headers);
+
+                res.writeHead(200, {"Content-Type": "text/json"});
+
+                const auth = headers["Authorization"].split(" ");
+                const response: ServerResponse = {
+                    access_token: auth[1],
+                    expires_on: Math.floor(
+                        new Date(Date.now() + 15_000).getTime() / 1000
+                    ),
+                    token_type: auth[0],
+                };
+
+                res.end(JSON.stringify(response));
             })().catch(() => {
                 res.writeHead(500, {"Content-Type": "text/json"});
                 res.end(JSON.stringify({error: true}));
