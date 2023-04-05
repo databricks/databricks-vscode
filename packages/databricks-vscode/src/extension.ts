@@ -39,8 +39,8 @@ import path from "node:path";
 import {FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
-import { updateUserMetadata } from "./telemetry";
-import { registerCommand } from "./utils/commandRegistration";
+import {updateUserMetadata} from "./telemetry";
+import {registerCommand} from "./utils/commandRegistration";
 
 export async function activate(
     context: ExtensionContext
@@ -81,7 +81,6 @@ export async function activate(
         "PATH",
         `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
-
 
     const loggerManager = new LoggerManager(context);
     if (workspaceConfigs.loggingEnabled) {
@@ -136,7 +135,9 @@ export async function activate(
     const cli = new CliWrapper(context);
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
-    connectionManager.onDidChangeDatabricksWorkspace(updateUserMetadata)
+    context.subscriptions.push(
+        connectionManager.onDidChangeDatabricksWorkspace(updateUserMetadata)
+    );
 
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(
         connectionManager

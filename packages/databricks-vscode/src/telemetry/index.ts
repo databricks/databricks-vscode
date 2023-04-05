@@ -1,24 +1,61 @@
 import TelemetryReporter from "@vscode/extension-telemetry";
-import { DatabricksWorkspace } from "../configuration/DatabricksWorkspace";
-import { isDevExtension } from "../utils/developmentUtils";
-import { DEV_APP_INSIGHTS_CONFIGURATION_STRING, EventType, EventTypes, PROD_APP_INSIGHTS_CONFIGURATION_STRING } from "./constants";
+import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
+import {isDevExtension} from "../utils/developmentUtils";
+import {
+    DEV_APP_INSIGHTS_CONFIGURATION_STRING,
+    EventType,
+    EventTypes,
+    PROD_APP_INSIGHTS_CONFIGURATION_STRING,
+} from "./constants";
 import crypto from "crypto";
+import bcrypt from "bcrypt";
 
-export { Events, EventTypes } from "./constants";
+export {Events, EventTypes} from "./constants";
 
 let telemetryReporter: TelemetryReporter | undefined;
 
+/**
+ * A version number used for the telemetry metric schema. The version of the schema is always provided
+ * as a field in the properties parameter when recording metrics. As the schema changes, please add
+ * documentation here about the change to the schema. Bump the minor version when making forwards-
+ * compatible changes, like adding a new field. Bump the major version when making forwards-incompatible
+ * changes, like modifying the type of an existing field or removing a field.
+ *
+ * Version 1.0 schema:
+ * properties: {
+ *     "version": 1,
+ *     "user.hashedUserName": bcrypt hash of the user's username,
+ *     "user.host": the workspace hostname,
+ *     "user.authType": the auth type used by the user to authenticate,
+ *     "event.*": properties for the event,
+ * }
+ * metrics: {
+ *     "event.*": metrics for the event
+ * }
+ */
+const telemetryVersion = "1.0";
+
 let userMetadata: Record<string, string> | undefined;
 
-export function updateUserMetadata(databricksWorkspace: DatabricksWorkspace | undefined) {
+export async function updateUserMetadata(
+    databricksWorkspace: DatabricksWorkspace | undefined
+) {
     if (databricksWorkspace === undefined) {
         userMetadata = undefined;
         return;
     }
-    const hash = crypto.createHash('sha256');
-    hash.update(databricksWorkspace.userName);
+    const userName = databricksWorkspace.userName;
+    // Salt is the first 22 characters of the hash of the username, meant to guard against
+    // rainbow table attacks. 2^7 iterations takes ~13ms.
+    const salt = crypto
+        .createHash("sha256")
+        .update(userName)
+        .digest("hex")
+        .substring(0, 22);
+    const bcryptSalt = `$2b$07$${salt}`;
+    const hashedUserName = await bcrypt.hash(userName, bcryptSalt);
     userMetadata = {
-        hashedUserId: hash.digest('hex'),
+        hashedUserName: hashedUserName,
         host: databricksWorkspace.host.authority,
         authType: databricksWorkspace.authProvider.authType,
     };
@@ -31,96 +68,73 @@ function getTelemetryKey(): string {
     return PROD_APP_INSIGHTS_CONFIGURATION_STRING;
 }
 
-function getTelemetryReporter(): TelemetryReporter {
+function getTelemetryReporter(): TelemetryReporter | undefined {
     if (telemetryReporter) {
         return telemetryReporter;
     }
 
-    telemetryReporter = new TelemetryReporter(getTelemetryKey());
-    return telemetryReporter;
-}
-
-export function setTelemetryReporter(r: TelemetryReporter) {
-    if (!isDevExtension()) {
-        throw new Error('TelemetryRecorder cannot be manually set in production');
+    // If we cannot initialize the telemetry reporter, don't break the entire extension.
+    try {
+        return setTelemetryReporter(new TelemetryReporter(getTelemetryKey()));
+    } catch (e) {
+        return undefined;
     }
-    telemetryReporter = r;
 }
-
-
-
-
-/** All fields of T whose type is T1 */
-type PickType<T, T1> = { [K in keyof T as T[K] extends T1 ? K : never]: T[K] };
-
-/** All fields of T whose type is not T1 */
-type ExcludeType<T, T1> = { [K in keyof T as T[K] extends T1 ? never : K] : T[K] };
 
 /**
- * Record an event with associated properties and metrics.
- * 
- * The properties (i.e. attributes with a non-numeric value) and metrics (i.e. attributes with a numeric value)
- * are separated. This matches the interface exposed by Application Insights.
+ * Set the telemetryReporter.
+ *
+ * WARNING: this is exported for tests. Do not call this function in production code.
+ * @param r
  */
-export function recordEvent<ES extends EventTypes, E extends keyof ES>(
-    eventName: string,
-    properties?: ES[E] extends EventType<infer R> ? ExcludeType<R, number> : never,
-    metrics?: ES[E] extends EventType<infer R> ? PickType<R, number> : never,
-) {
-    const r = getTelemetryReporter();
-
-    // prefix properties & metrics with user/event
-    const finalProperties: Record<string, string> = {}
-    const finalMetrics: Record<string, number> = {}
-
-    function addKeys(source: Record<string, unknown> | undefined, target: Record<string, unknown>, prefix: string) {
-        if (source !== undefined) {
-            Object.keys(source).forEach((k) => target[prefix + "." + k] = source[k])
-        }
-    }
-
-    // Why does this typecheck? finalProperties: Record<string, string> is mutable and treated as a subtype of
-    // Record<string, unknown>. This means I could put an unknown value in finalProperties, even if it were not a string...
-    addKeys(properties, finalProperties, "event");
-    addKeys(userMetadata, finalProperties, "user");
-    addKeys(metrics, finalMetrics, "event");
-
-    r.sendTelemetryEvent(eventName, finalProperties, finalMetrics);
+export function setTelemetryReporter(r: TelemetryReporter): TelemetryReporter {
+    return (telemetryReporter = r);
 }
 
 /**
  * Record an event with associated properties and metrics.
- * 
+ *
  * The properties (i.e. attributes with a non-numeric value) and metrics (i.e. attributes with a numeric value)
  * are combined into a single object. This is separated by the telemetry library into separate objects for
  * consumption by the TelemetryReporter.
  */
-export function recordEvent2<ES extends EventTypes, E extends keyof ES>(
+export function recordEvent<ES extends EventTypes, E extends keyof ES>(
     eventName: string,
-    propsAndMetrics?: ES[E] extends EventType<infer R> ? R : never,
+    propsAndMetrics?: ES[E] extends EventType<infer R> ? R : never
 ) {
     const r = getTelemetryReporter();
+    // If telemetry reporter cannot be initialized, don't report the event.
+    if (!r) {
+        return;
+    }
 
     // prefix properties & metrics with user/event
-    const finalProperties: Record<string, string> = {}
-    const finalMetrics: Record<string, number> = {}
+    const finalProperties: Record<string, string> = {
+        version: telemetryVersion,
+    };
+    const finalMetrics: Record<string, number> = {};
 
-    function addKeys(source: Record<string, unknown> | undefined, prefix: string) {
+    function addKeys(
+        source: Record<string, unknown> | undefined,
+        prefix: string
+    ) {
         if (source !== undefined) {
             Object.keys(source).forEach((k) => {
                 const newKey = prefix + "." + k;
                 const v = source[k];
+                // eslint-disable-next-line
+                console.log(k, v);
                 // Numeric observations are added to metrics. All other observations are added to properties.
                 if (typeof v === "number") {
                     finalMetrics[newKey] = v;
                 } else if (typeof v === "string") {
                     finalProperties[newKey] = v;
                 } else if (typeof v === "object") {
-                    finalProperties[newKey] = JSON.stringify(v)
+                    finalProperties[newKey] = JSON.stringify(v);
                 } else {
                     finalProperties[newKey] = String(v);
                 }
-            })
+            });
         }
     }
     addKeys(propsAndMetrics, "event");

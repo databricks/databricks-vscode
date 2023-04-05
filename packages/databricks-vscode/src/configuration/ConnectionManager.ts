@@ -54,14 +54,16 @@ export class ConnectionManager {
     private readonly onDidChangeSyncDestinationEmitter: EventEmitter<
         SyncDestinationMapper | undefined
     > = new EventEmitter();
-    private readonly onDidChangeDatabricksWorkspaceEmitter: EventEmitter<DatabricksWorkspace | undefined> =
-        new EventEmitter()
+    private readonly onDidChangeDatabricksWorkspaceEmitter: EventEmitter<
+        DatabricksWorkspace | undefined
+    > = new EventEmitter();
 
     public readonly onDidChangeState = this.onDidChangeStateEmitter.event;
     public readonly onDidChangeCluster = this.onDidChangeClusterEmitter.event;
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
-    public readonly onDidChangeDatabricksWorkspace = this.onDidChangeDatabricksWorkspaceEmitter.event;
+    public readonly onDidChangeDatabricksWorkspace =
+        this.onDidChangeDatabricksWorkspaceEmitter.event;
 
     constructor(private cli: CliWrapper) {}
 
@@ -147,10 +149,12 @@ export class ConnectionManager {
 
             await workspaceClient.config.authenticate({});
 
-            this.updateDatabricksWorkspace(await DatabricksWorkspace.load(
-                workspaceClient,
-                projectConfigFile.authProvider
-            ));
+            this.updateDatabricksWorkspace(
+                await DatabricksWorkspace.load(
+                    workspaceClient,
+                    projectConfigFile.authProvider
+                )
+            );
         } catch (e: any) {
             const message = `Can't login to Databricks: ${e.message}`;
             NamedLogger.getOrCreate("Extension").error(message, e);
@@ -518,7 +522,9 @@ export class ConnectionManager {
     ) {
         if (this._databricksWorkspace !== newDatabricksWorkspace) {
             this._databricksWorkspace = newDatabricksWorkspace;
-            this.onDidChangeDatabricksWorkspaceEmitter.fire(this._databricksWorkspace)
+            this.onDidChangeDatabricksWorkspaceEmitter.fire(
+                this._databricksWorkspace
+            );
         }
     }
 

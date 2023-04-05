@@ -1,5 +1,5 @@
-import { commands } from "vscode";
-import { recordEvent, Events } from "../telemetry";
+import {commands} from "vscode";
+import {recordEvent, Events} from "../telemetry";
 
 export function registerCommand(
     command: string,
@@ -10,7 +10,7 @@ export function registerCommand(
         command,
         (...args) => {
             const start = performance.now();
-            let success: boolean = true;
+            let success = true;
             try {
                 return callback.call(thisArg, ...args);
             } catch (e: any) {
@@ -18,11 +18,11 @@ export function registerCommand(
                 throw e;
             } finally {
                 const end = performance.now();
-                recordEvent(
-                    Events.COMMAND_EXECUTION,
-                    { command, success },
-                    { duration: end - start }
-                );
+                recordEvent(Events.COMMAND_EXECUTION, {
+                    command,
+                    success,
+                    duration: end - start,
+                });
             }
         },
         thisArg
