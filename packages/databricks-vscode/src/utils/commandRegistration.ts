@@ -3,7 +3,7 @@ import {recordEvent, Events} from "../telemetry";
 
 /**
  * Wrapper function for commands.registerCommand adding instrumentation.
- * 
+ *
  * The arguments to this function should be exactly the same as would be passed to
  * commands.registerCommand, and the return value is also the same.
  */
