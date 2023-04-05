@@ -88,7 +88,12 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         if (!cluster.isUc()) {
             return this.rejectStep(
                 "checkCluster",
-                `Cluster doesn't have UC enabled. Access mode should be "Single User" or "Shared"). Currently it is ${cluster.accessMode}`
+                `Cluster doesn't have UC enabled.`,
+                this.promptForAttachingCluster(
+                    `Access mode should be "Single User" or "Shared"). Currently it is ${
+                        cluster.accessMode ?? "custom"
+                    }. Please attach a new cluster.`
+                )
             );
         }
         return this.acceptStep("checkCluster");

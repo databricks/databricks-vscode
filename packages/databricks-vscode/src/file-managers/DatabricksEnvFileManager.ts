@@ -7,6 +7,7 @@ import {
     window,
     StatusBarAlignment,
     ThemeColor,
+    EventEmitter,
 } from "vscode";
 import {writeFile, readFile} from "fs/promises";
 import {FeatureManager} from "../feature-manager/FeatureManager";
@@ -24,6 +25,10 @@ export class DatabricksEnvFileManager implements Disposable {
     private readonly databricksEnvPath: Uri;
     private readonly userEnvPath: Uri;
     private readonly statusBarButton: StatusBarItem;
+    private readonly onDidChangeEnvironmentVariablesEmitter =
+        new EventEmitter<void>();
+    public readonly onDidChangeEnvironmentVariables =
+        this.onDidChangeEnvironmentVariablesEmitter.event;
 
     constructor(
         workspacePath: Uri,
@@ -179,7 +184,7 @@ export class DatabricksEnvFileManager implements Disposable {
         this.statusBarButton.show();
     }
 
-    async getPatToken() {
+    private async getPatToken() {
         const headers: Record<string, string> = {};
         await this.connectionManager.workspaceClient?.apiClient.config.authenticate(
             headers
@@ -187,7 +192,7 @@ export class DatabricksEnvFileManager implements Disposable {
         return headers["Authorization"]?.split(" ")[1];
     }
 
-    async getDatabrickseEnvVars(): Promise<
+    private async getDatabrickseEnvVars(): Promise<
         Record<string, string | undefined> | undefined
     > {
         await this.connectionManager.waitForConnect();
@@ -240,6 +245,15 @@ export class DatabricksEnvFileManager implements Disposable {
             ...databricksEnvVars,
             ...userEnvVars,
         }).map(([key, value]) => `${key}="${value}"`);
+        try {
+            const oldData = await readFile(
+                this.databricksEnvPath.fsPath,
+                "utf-8"
+            );
+            if (oldData !== data.join(os.EOL)) {
+                this.onDidChangeEnvironmentVariablesEmitter.fire();
+            }
+        } catch {}
         await writeFile(
             this.databricksEnvPath.fsPath,
             data.join(os.EOL),

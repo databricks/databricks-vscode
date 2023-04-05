@@ -383,9 +383,7 @@ export async function activate(
         );
     });
 
-    const featureManager = new FeatureManager<"debugging.dbconnect">([
-        "debugging.dbconnect",
-    ]);
+    const featureManager = new FeatureManager<"debugging.dbconnect">([]);
     featureManager.registerFeature(
         "debugging.dbconnect",
         () =>
@@ -396,13 +394,21 @@ export async function activate(
                 context
             )
     );
+    const databricksEnvFileManager = new DatabricksEnvFileManager(
+        workspace.workspaceFolders[0].uri,
+        featureManager,
+        connectionManager,
+        context
+    );
     context.subscriptions.push(
-        new DatabricksEnvFileManager(
-            workspace.workspaceFolders[0].uri,
-            featureManager,
-            connectionManager,
-            context
-        )
+        databricksEnvFileManager,
+        databricksEnvFileManager.onDidChangeEnvironmentVariables(() => {
+            if (window.visibleNotebookEditors.length) {
+                window.showInformationMessage(
+                    "Environment variables have changed. Restart all jupyter kernels to pickup the latest environment variables."
+                );
+            }
+        })
     );
     featureManager.isEnabled("debugging.dbconnect");
 

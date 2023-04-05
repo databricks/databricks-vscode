@@ -149,32 +149,26 @@ export class ConfigureAutocomplete implements Disposable {
             return;
         }
         const choice = await window.showInformationMessage(
-            ["Install pyspark in local env?"].join("\n"),
-            "Install PySpark",
-            "Continue without PySpark",
-            "Cancel"
+            "Install databricks-connect in local env? You need databricks-connect for autocompletion and interactive debugging.",
+            "Install",
+            "Continue without installing"
         );
 
-        if (choice === "Cancel" || choice === undefined) {
+        if (choice === undefined) {
             return "Cancel";
         }
-        if (choice === "Continue without PySpark") {
+        if (choice === "Continue without installing") {
             return "Skip";
         }
 
-        //TODO: Make sure that pyspark is not updated if it is already installed
-        const execCommand = [
-            executable,
-            "-m",
-            "pip",
-            "install",
-            "pyspark",
-        ].join(" ");
-
-        const terminal = window.createTerminal("pip");
-        this.disposables.push(terminal);
-        terminal.sendText(execCommand);
-        terminal.show();
+        const wheelPath = this.context.asAbsolutePath(
+            path.join(
+                "resources",
+                "python",
+                "databricks_connect-13.0.0-py2.py3-none-any.whl"
+            )
+        );
+        await this.pythonExtension.installPackageInEnvironment(wheelPath);
     }
 
     private async updateExtraPaths(): Promise<StepResult> {
