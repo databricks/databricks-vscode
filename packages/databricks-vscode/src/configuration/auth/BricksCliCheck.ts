@@ -33,7 +33,14 @@ export class BricksCliCheck implements Disposable {
                 }
             },
             login: async () => {
-                await this.login();
+                try {
+                    await this.login();
+                } catch (e: any) {
+                    return {
+                        type: "error",
+                        error: e,
+                    };
+                }
                 return {type: "next", next: "tryLogin"};
             },
         };
@@ -84,7 +91,7 @@ export class BricksCliCheck implements Disposable {
         return true;
     }
 
-    private async login(): Promise<boolean> {
+    private async login(): Promise<void> {
         try {
             await ExecUtils.execFile(this.authProvider.bricksPath, [
                 "auth",
@@ -92,13 +99,10 @@ export class BricksCliCheck implements Disposable {
                 "--host",
                 this.authProvider.host.toString(),
             ]);
-            return true;
         } catch (e: any) {
-            window.showErrorMessage(
-                `Error while running "bricks auth login": ${e.message}`
+            throw new Error(
+                `Login failed with Bricks CLI failed: ${e.stderr || e.message}`
             );
-
-            return false;
         }
     }
 }

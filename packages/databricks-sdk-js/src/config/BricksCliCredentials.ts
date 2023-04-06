@@ -34,6 +34,12 @@ export class BricksCliCredentials implements CredentialProvider {
                         "Most likely Bricks CLI is not installed"
                     );
                     return;
+                } else if (
+                    e.message
+                        .toLowerCase()
+                        .indexOf("databricks OAuth is not") >= 0
+                ) {
+                    return;
                 }
                 throw e;
             }

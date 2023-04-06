@@ -136,14 +136,6 @@ export class BricksCliAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): Record<string, string | undefined> {
-        return {
-            BRICKS_CLI_PATH: this.bricksPath,
-            DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AUTH_TYPE: this.authType,
-        };
-    }
-
     getSdkConfig(): Config {
         return new Config({
             host: this.host.toString(),

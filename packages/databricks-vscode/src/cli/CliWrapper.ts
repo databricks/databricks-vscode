@@ -45,13 +45,6 @@ export class CliWrapper {
         return this.extensionContext.asAbsolutePath("./bin/bricks");
     }
 
-    getTestBricksCommand(): Command {
-        return {
-            command: this.bricksPath,
-            args: [],
-        };
-    }
-
     /**
      * Constructs the bricks sync command
      */
