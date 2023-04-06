@@ -7,6 +7,7 @@ import {
     ConfigError,
     AuthType,
 } from "./Config";
+import {MetadataServiceCredentials} from "./MetadataServiceCredentials";
 import {PatCredentials} from "./PatCredentials";
 
 export class DefaultCredentials implements CredentialProvider {
@@ -14,6 +15,7 @@ export class DefaultCredentials implements CredentialProvider {
 
     async configure(config: Config): Promise<RequestVisitor> {
         const defaultChain: Array<CredentialProvider> = [
+            new MetadataServiceCredentials(),
             new PatCredentials(),
             new BasicCredentials(),
             // new AzureClientSecretCredentials(),
