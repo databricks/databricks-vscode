@@ -123,8 +123,6 @@ export class Telemetry {
                 Object.keys(source).forEach((k) => {
                     const newKey = prefix + "." + k;
                     const v = source[k];
-                    // eslint-disable-next-line
-                    console.log(k, v);
                     // Numeric observations are added to metrics. All other observations are added to properties.
                     if (typeof v === "number") {
                         finalMetrics[newKey] = v;
