@@ -6,6 +6,7 @@ import {
     Disposable,
     workspace,
     RelativePattern,
+    Terminal,
 } from "vscode";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
@@ -17,6 +18,7 @@ export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
     private readonly disposables: Disposable[] = [];
     private readonly terminalMutex: Mutex = new Mutex();
+    private _terminal?: Terminal;
     constructor(
         pythonExtension: Extension<MsPythonExtensionApi>,
         private readonly workspaceFolder: Uri,
@@ -27,6 +29,7 @@ export class MsPythonExtensionWrapper implements Disposable {
             try {
                 await this.terminalMutex.wait();
                 this.terminal.dispose();
+                this._terminal = undefined;
             } finally {
                 this.terminalMutex.signal();
             }
@@ -34,18 +37,17 @@ export class MsPythonExtensionWrapper implements Disposable {
     }
 
     private get terminal() {
+        if (this._terminal) {
+            return this._terminal;
+        }
         const terminalName = `databricks-pip-${this.workspaceStateManager.fixedUUID.slice(
             0,
             8
         )}`;
-        let terminal = window.terminals.find(
-            (terminal) => terminal.name === terminalName
-        );
-        if (!terminal) {
-            terminal = window.createTerminal(terminalName);
-            this.disposables.push(terminal);
-        }
-        return terminal;
+
+        this._terminal = window.createTerminal(terminalName);
+        this.disposables.push(this._terminal);
+        return this._terminal;
     }
 
     async getPythonExecutable() {
@@ -85,7 +87,7 @@ export class MsPythonExtensionWrapper implements Disposable {
         const filePath = path.join(dir, "python-terminal-output.txt");
 
         const disposables: Disposable[] = [];
-        const exitCode = await new Promise<number | undefined>((resolve) => {
+        const exitCodePromise = new Promise<number | undefined>((resolve) => {
             const fsWatcher = workspace.createFileSystemWatcher(
                 new RelativePattern(dir, path.basename(filePath))
             );
@@ -102,16 +104,18 @@ export class MsPythonExtensionWrapper implements Disposable {
                 fsWatcher.onDidCreate(handleFileChange),
                 fsWatcher.onDidChange(handleFileChange)
             );
-            this.terminalMutex
-                .wait()
-                .then(() => {
-                    this.terminal.show();
-                    this.terminal.sendText(`${command}; echo $? > ${filePath}`);
-                })
-                .finally(() => this.terminalMutex.signal());
         });
-        disposables.forEach((i) => i.dispose());
-        return exitCode;
+
+        try {
+            await this.terminalMutex.wait();
+            this.terminal.show();
+            this.terminal.sendText(`${command}; echo $? > ${filePath}`);
+            const exitCode = await exitCodePromise;
+            return exitCode;
+        } finally {
+            disposables.forEach((i) => i.dispose());
+            this.terminalMutex.signal();
+        }
     }
 
     async findPackageInEnvironment(name: string) {

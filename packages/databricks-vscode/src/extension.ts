@@ -383,7 +383,9 @@ export async function activate(
         );
     });
 
-    const featureManager = new FeatureManager<"debugging.dbconnect">([]);
+    const featureManager = new FeatureManager<"debugging.dbconnect">([
+        "debugging.dbconnect",
+    ]);
     featureManager.registerFeature(
         "debugging.dbconnect",
         () =>
@@ -403,7 +405,7 @@ export async function activate(
     context.subscriptions.push(
         databricksEnvFileManager,
         databricksEnvFileManager.onDidChangeEnvironmentVariables(() => {
-            if (window.visibleNotebookEditors.length) {
+            if (workspace.notebookDocuments.length) {
                 window.showInformationMessage(
                     "Environment variables have changed. Restart all jupyter kernels to pickup the latest environment variables."
                 );
