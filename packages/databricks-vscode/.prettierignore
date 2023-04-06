@@ -6,3 +6,4 @@ package-lock.json
 .wdio-vscode-service/
 src/test/e2e/workspace/.databricks/
 extension/
+resources/python/generated/

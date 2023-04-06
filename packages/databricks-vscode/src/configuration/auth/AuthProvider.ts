@@ -34,7 +34,6 @@ export abstract class AuthProvider {
      */
     abstract describe(): string;
     abstract toJSON(): Record<string, unknown>;
-    abstract getEnvVars(): Record<string, string | undefined>;
 
     getWorkspaceClient(): WorkspaceClient {
         const config = this.getSdkConfig();
@@ -102,15 +101,6 @@ export class ProfileAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): Record<string, string | undefined> {
-        return {
-            DATABRICKS_CONFIG_PROFILE: this.profile,
-            DATABRICKS_CONFIG_FILE:
-                workspaceConfigs.databrickscfgLocation ??
-                process.env.DATABRICKS_CONFIG_FILE,
-        };
-    }
-
     getSdkConfig(): Config {
         return new Config({
             profile: this.profile,
@@ -151,13 +141,6 @@ export class AzureCliAuthProvider extends AuthProvider {
             authType: this.authType,
             tenantId: this.tenantId,
             appId: this.appId,
-        };
-    }
-
-    getEnvVars(): Record<string, string | undefined> {
-        return {
-            DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AUTH_TYPE: this.authType,
         };
     }
 
