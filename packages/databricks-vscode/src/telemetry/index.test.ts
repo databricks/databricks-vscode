@@ -2,7 +2,7 @@
 import TelemetryReporter from "@vscode/extension-telemetry";
 import assert from "assert";
 import {mock, instance, capture, when} from "ts-mockito";
-import {recordEvent, setTelemetryReporter, updateUserMetadata} from ".";
+import {Telemetry, updateUserMetadata} from ".";
 import {Events} from "./constants";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
@@ -10,12 +10,13 @@ import {Uri} from "vscode";
 
 describe(__filename, () => {
     let reporter: TelemetryReporter;
+    let telemetry: Telemetry;
     beforeEach(async () => {
         reporter = mock(TelemetryReporter);
-        setTelemetryReporter(instance(reporter));
+        telemetry = new Telemetry(instance(reporter));
     });
     it("should record expected properties and metrics", async () => {
-        recordEvent(Events.COMMAND_EXECUTION, {
+        telemetry.recordEvent(Events.COMMAND_EXECUTION, {
             command: "testCommand",
             success: true,
             duration: 100,
@@ -43,7 +44,7 @@ describe(__filename, () => {
         when(ws.host).thenReturn(Uri.parse("https://my.databricks.com"));
         await updateUserMetadata(instance(ws));
 
-        recordEvent(Events.COMMAND_EXECUTION, {
+        telemetry.recordEvent(Events.COMMAND_EXECUTION, {
             command: "testCommand",
             success: true,
             duration: 100,

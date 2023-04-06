@@ -655,9 +655,7 @@
         "test": "yarn run test:lint && yarn run test:unit",
         "clean": "rm -rf node_modules out .vscode-test",
         "generate-notice": "../../scripts/generate_notice.sh",
-        "ts-node": "ts-node",
-        "generate-telemetry": "ts-node ./scripts/generateTelemetry.ts",
-        "bcrypt-benchmark": "node ./scripts/bcrypt_benchmark.js"
+        "generate-telemetry": "ts-node ./scripts/generateTelemetry.ts"
     },
     "dependencies": {
         "@databricks/databricks-sdk": "workspace:^",

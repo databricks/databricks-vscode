@@ -75,70 +75,72 @@ function getTelemetryReporter(): TelemetryReporter | undefined {
 
     // If we cannot initialize the telemetry reporter, don't break the entire extension.
     try {
-        return setTelemetryReporter(new TelemetryReporter(getTelemetryKey()));
+        return new TelemetryReporter(getTelemetryKey());
     } catch (e) {
         return undefined;
     }
 }
 
-/**
- * Set the telemetryReporter.
- *
- * WARNING: this is exported for tests. Do not call this function in production code.
- * @param r
- */
-export function setTelemetryReporter(r: TelemetryReporter): TelemetryReporter {
-    return (telemetryReporter = r);
-}
+export class Telemetry {
+    private reporter?: TelemetryReporter;
 
-/**
- * Record an event with associated properties and metrics.
- *
- * The properties (i.e. attributes with a non-numeric value) and metrics (i.e. attributes with a numeric value)
- * are combined into a single object. This is separated by the telemetry library into separate objects for
- * consumption by the TelemetryReporter.
- */
-export function recordEvent<ES extends EventTypes, E extends keyof ES>(
-    eventName: string,
-    propsAndMetrics?: ES[E] extends EventType<infer R> ? R : never
-) {
-    const r = getTelemetryReporter();
-    // If telemetry reporter cannot be initialized, don't report the event.
-    if (!r) {
-        return;
+    constructor(reporter?: TelemetryReporter) {
+        this.reporter = reporter;
     }
 
-    // prefix properties & metrics with user/event
-    const finalProperties: Record<string, string> = {
-        version: telemetryVersion,
-    };
-    const finalMetrics: Record<string, number> = {};
+    static createDefault(): Telemetry {
+        const reporter = getTelemetryReporter();
+        return new Telemetry(reporter);
+    }
 
-    function addKeys(
-        source: Record<string, unknown> | undefined,
-        prefix: string
+    /**
+     * Record an event with associated properties and metrics.
+     *
+     * The properties (i.e. attributes with a non-numeric value) and metrics (i.e. attributes with a numeric value)
+     * are combined into a single object. This is separated by the telemetry library into separate objects for
+     * consumption by the TelemetryReporter.
+     */
+    recordEvent<ES extends EventTypes, E extends keyof ES>(
+        eventName: string,
+        propsAndMetrics?: ES[E] extends EventType<infer R> ? R : never
     ) {
-        if (source !== undefined) {
-            Object.keys(source).forEach((k) => {
-                const newKey = prefix + "." + k;
-                const v = source[k];
-                // eslint-disable-next-line
-                console.log(k, v);
-                // Numeric observations are added to metrics. All other observations are added to properties.
-                if (typeof v === "number") {
-                    finalMetrics[newKey] = v;
-                } else if (typeof v === "string") {
-                    finalProperties[newKey] = v;
-                } else if (typeof v === "object") {
-                    finalProperties[newKey] = JSON.stringify(v);
-                } else {
-                    finalProperties[newKey] = String(v);
-                }
-            });
+        // If telemetry reporter cannot be initialized, don't report the event.
+        if (!this.reporter) {
+            return;
         }
-    }
-    addKeys(propsAndMetrics, "event");
-    addKeys(userMetadata, "user");
 
-    r.sendTelemetryEvent(eventName, finalProperties, finalMetrics);
+        // prefix properties & metrics with user/event
+        const finalProperties: Record<string, string> = {
+            version: telemetryVersion,
+        };
+        const finalMetrics: Record<string, number> = {};
+
+        function addKeys(
+            source: Record<string, unknown> | undefined,
+            prefix: string
+        ) {
+            if (source !== undefined) {
+                Object.keys(source).forEach((k) => {
+                    const newKey = prefix + "." + k;
+                    const v = source[k];
+                    // eslint-disable-next-line
+                    console.log(k, v);
+                    // Numeric observations are added to metrics. All other observations are added to properties.
+                    if (typeof v === "number") {
+                        finalMetrics[newKey] = v;
+                    } else if (typeof v === "string") {
+                        finalProperties[newKey] = v;
+                    } else if (typeof v === "object") {
+                        finalProperties[newKey] = JSON.stringify(v);
+                    } else {
+                        finalProperties[newKey] = String(v);
+                    }
+                });
+            }
+        }
+        addKeys(propsAndMetrics, "event");
+        addKeys(userMetadata, "user");
+
+        this.reporter.sendTelemetryEvent(eventName, finalProperties, finalMetrics);
+    }
 }

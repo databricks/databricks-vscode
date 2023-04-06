@@ -2,7 +2,7 @@
 export const PROD_APP_INSIGHTS_CONFIGURATION_STRING = "";
 /** The application insights configuration string used while developing on the VS Code extension */
 export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
-    "InstrumentationKey=1404ec6e-9499-48ce-8c67-9bb8b3440218;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
+    "InstrumentationKey=ae4b0735-b53b-409a-97d2-d77b6ec584a2;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
 
 /** The list of all events which can be monitored. */
 /* eslint-disable @typescript-eslint/naming-convention */

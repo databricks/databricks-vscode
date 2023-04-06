@@ -36,6 +36,6 @@ In order to use this extension you need access to a Databricks workspace:
 
 ### Telemetry
 
-The VSCode extension for Databricks collects pseudonymized telemetry about the behavior and performance of the extension. At any time, you can see the telemetry collected by this extension by running `code --telemetry` from the command line. Telemetry collection is optional and can be disabled at any time by setting the `telemetry.telemetryLevel` setting to `off`.
+The VSCode extension for Databricks collects anonymized telemetry about the behavior and performance of the extension. At any time, you can see the telemetry collected by this extension by running `code --telemetry` from the command line. Telemetry collection is optional and can be disabled at any time by setting the `telemetry.telemetryLevel` setting to `off`.
 
 **Happy Coding!**
