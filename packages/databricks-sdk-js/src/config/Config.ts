@@ -86,7 +86,7 @@ export class Config {
         auth: "metadata-service",
         sensitive: true,
     })
-    public localMetadataServiceUrl?: string;
+    public metadataServiceUrl?: string;
 
     /** Databricks Account ID for Accounts API. This field is used in dependencies. */
     @attribute({name: "account_id", env: "DATABRICKS_ACCOUNT_ID"})

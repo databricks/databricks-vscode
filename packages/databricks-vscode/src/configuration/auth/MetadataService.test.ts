@@ -104,7 +104,7 @@ describe(__filename, function () {
         const config = new Config({
             authType: "metadata-service",
             host: "https://test.com",
-            localMetadataServiceUrl: metadataService.url,
+            metadataServiceUrl: metadataService.url,
         });
 
         const apiClient = new ApiClient(config);

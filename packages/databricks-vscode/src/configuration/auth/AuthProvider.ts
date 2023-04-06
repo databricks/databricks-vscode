@@ -98,7 +98,7 @@ export class BricksCliAuthProvider extends AuthProvider {
         };
     }
 
-    getSdkConfig(): Config {
+    async getSdkConfig(): Promise<Config> {
         return new Config({
             host: this.host.toString(),
             authType: "bricks-cli",
@@ -109,119 +109,5 @@ export class BricksCliAuthProvider extends AuthProvider {
     async check(silent: boolean): Promise<boolean> {
         const bricksCliCheck = new BricksCliCheck(this);
         return bricksCliCheck.check(silent);
-    }
-}
-
-export class AzureCliAuthProvider extends AuthProvider {
-    private _tenantId?: string;
-    private _appId?: string;
-
-    constructor(host: URL, tenantId?: string, appId?: string) {
-        super(host, "azure-cli");
-
-        this._tenantId = tenantId;
-        this._appId = appId;
-    }
-
-    get tenantId(): string | undefined {
-        return this._tenantId;
-    }
-
-    get appId(): string | undefined {
-        return this._appId;
-    }
-
-    describe(): string {
-        return "Azure CLI";
-    }
-
-    toJSON(): Record<string, unknown> {
-        return {
-            host: this.host.toString(),
-            authType: this.authType,
-            tenantId: this.tenantId,
-            appId: this.appId,
-        };
-    }
-
-    async getSdkConfig(): Promise<Config> {
-        const creds = await this.getCredentials();
-
-        return new Config({
-            host: this.host.toString(),
-            token: creds!.accessToken,
-            env: {},
-        });
-    }
-
-    private async getCredentials() {
-        const azureAccountExtensionId = "ms-vscode.azure-account";
-        const extension: Extension<AzureAccountExtensionApi> | undefined =
-            extensions.getExtension<AzureAccountExtensionApi>(
-                azureAccountExtensionId
-            );
-        if (!extension) {
-            throw new Error(
-                `Azure Account extension is not installed. Please install it from the marketplace.`
-            );
-        }
-        if (!extension.isActive) {
-            await extension.activate();
-        }
-
-        const azureAccount = extension.exports;
-
-        if (!(await azureAccount.waitForLogin())) {
-            await commands.executeCommand("azure-account.login");
-        }
-
-        const session = azureAccount.sessions[0];
-        const token = await this.acquireToken(
-            session,
-            "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d"
-        );
-
-        return token;
-    }
-
-    async acquireToken(
-        session: AzureSession,
-        resource: string
-    ): Promise<Token> {
-        return new Promise<Token>((resolve, reject) => {
-            const credentials: any = (<any>session).credentials;
-            // patch for https://github.com/AzureAD/azure-activedirectory-library-for-nodejs/issues/128
-            (session.credentials2.authContext as any)._authority.aadApiVersion =
-                "";
-            session.credentials2.authContext.acquireToken(
-                resource,
-                credentials!.username,
-                credentials!.clientId,
-                function (err: any, result: any) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve({
-                            session,
-                            accessToken: result.accessToken,
-                            refreshToken: result.refreshToken,
-                        });
-                    }
-                }
-            );
-        });
-    }
-
-    async check(silent: boolean): Promise<boolean> {
-        // const cliCheck = new AzureCliCheck(this);
-        // const result = await cliCheck.check(silent);
-        // this._tenantId = cliCheck.tenantId;
-        try {
-            await this.getCredentials();
-        } catch (e) {
-            return false;
-        }
-
-        return true;
     }
 }

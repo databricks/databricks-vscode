@@ -23,7 +23,12 @@ interface Token {
     refreshToken: string;
 }
 
-type AzureStepName = "activateExtension" | "tryLogin" | "setTenantId";
+type AzureCloud = "AzureCloud" | "AzureChinaCloud" | "AzureUSGovernment";
+type AzureStepName =
+    | "activateExtension"
+    | "tryLogin"
+    | "setCloud"
+    | "setTenantId";
 
 export class AzureAuthProvider extends AuthProvider {
     private logger: NamedLogger;
@@ -87,6 +92,16 @@ export class AzureAuthProvider extends AuthProvider {
         });
     }
 
+    private getAzureCloud(url: URL): AzureCloud {
+        if (url.hostname.endsWith("azure.cn")) {
+            return "AzureChinaCloud";
+        } else if (url.hostname.endsWith("azure.us")) {
+            return "AzureUSGovernment";
+        } else {
+            return "AzureCloud";
+        }
+    }
+
     async check(silent: boolean): Promise<boolean> {
         let loginAttempts = 0;
 
@@ -95,7 +110,7 @@ export class AzureAuthProvider extends AuthProvider {
                 if (await this.activateExtension()) {
                     return {
                         type: "next",
-                        next: "tryLogin",
+                        next: "setCloud",
                     };
                 } else {
                     return {
@@ -103,6 +118,13 @@ export class AzureAuthProvider extends AuthProvider {
                         error: new Error("Can't find Azure Account extension"),
                     };
                 }
+            },
+            setCloud: async () => {
+                await this.setCloud();
+                return {
+                    type: "next",
+                    next: "tryLogin",
+                };
             },
             tryLogin: async () => {
                 loginAttempts += 1;
@@ -179,6 +201,8 @@ export class AzureAuthProvider extends AuthProvider {
     }
 
     private async setTenantId(): Promise<void> {
+        //await commands.executeCommand("azure-account.logout", true);
+
         const config: WorkspaceConfiguration =
             workspace.getConfiguration("azure");
 
@@ -205,6 +229,21 @@ export class AzureAuthProvider extends AuthProvider {
         }
 
         this.azureAccount = extension.exports;
+        return true;
+    }
+
+    private async setCloud(): Promise<boolean> {
+        const cloud = this.getAzureCloud(this.host);
+
+        const config: WorkspaceConfiguration =
+            workspace.getConfiguration("azure");
+        if (config.get("cloud") !== cloud) {
+            await commands.executeCommand("azure-account.logout", true);
+            //await commands.executeCommand("azure-account.selectCloud", cloud);
+            await config.update("cloud", cloud, ConfigurationTarget.Workspace);
+            await commands.executeCommand("azure-account.login");
+            return false;
+        }
         return true;
     }
 

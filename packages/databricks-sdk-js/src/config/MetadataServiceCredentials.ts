@@ -46,16 +46,16 @@ export class MetadataServiceCredentials implements CredentialProvider {
     public name: AuthType = "metadata-service";
 
     async configure(config: Config): Promise<RequestVisitor | undefined> {
-        if (!config.localMetadataServiceUrl || !config.host) {
+        if (!config.metadataServiceUrl || !config.host) {
             return;
         }
 
         let parsedMetadataServiceUrl: URL;
         try {
-            parsedMetadataServiceUrl = new URL(config.localMetadataServiceUrl);
+            parsedMetadataServiceUrl = new URL(config.metadataServiceUrl);
         } catch (error) {
             throw new ConfigError(
-                `invalid auth server URL: ${config.localMetadataServiceUrl}`,
+                `invalid auth server URL: ${config.metadataServiceUrl}`,
                 config
             );
         }
@@ -66,7 +66,7 @@ export class MetadataServiceCredentials implements CredentialProvider {
             parsedMetadataServiceUrl.hostname !== "127.0.0.1"
         ) {
             throw new ConfigError(
-                `invalid auth server URL: ${config.localMetadataServiceUrl}`,
+                `invalid auth server URL: ${config.metadataServiceUrl}`,
                 config
             );
         }

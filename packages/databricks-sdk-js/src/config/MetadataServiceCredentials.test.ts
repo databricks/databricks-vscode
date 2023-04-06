@@ -65,7 +65,7 @@ describe(__filename, () => {
         const config = new Config({
             host: "https://test.com",
             authType: "metadata-service",
-            localMetadataServiceUrl: `http://localhost:${
+            metadataServiceUrl: `http://localhost:${
                 (server.address() as AddressInfo).port
             }`,
         });
@@ -82,7 +82,7 @@ describe(__filename, () => {
         const config = new Config({
             host: "https://test2.com",
             authType: "metadata-service",
-            localMetadataServiceUrl: `http://localhost:${
+            metadataServiceUrl: `http://localhost:${
                 (server.address() as AddressInfo).port
             }`,
         });
@@ -95,7 +95,7 @@ describe(__filename, () => {
         const config = new Config({
             host: "https://test.com",
             authType: "metadata-service",
-            localMetadataServiceUrl: `http://localhost:${
+            metadataServiceUrl: `http://localhost:${
                 (server.address() as AddressInfo).port
             }`,
         });

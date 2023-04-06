@@ -192,7 +192,7 @@ export async function configureWorkspaceWizard(
     }
 
     return {
-        authProvider: AuthLoader.fromJSON(state),
+        authProvider: AuthLoader.fromJSON(state, cliWrapper.bricksPath),
     };
 }
 
@@ -209,7 +209,9 @@ async function listProfiles(cliWrapper: CliWrapper) {
     });
 
     return profiles.filter((profile) => {
-        return ["pat", "basic", "azure-cli"].includes(profile.authType);
+        return ["pat", "basic", "azure-cli", "bricks-cli"].includes(
+            profile.authType
+        );
     });
 }
 

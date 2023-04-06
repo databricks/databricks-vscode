@@ -1,9 +1,17 @@
 import {normalizeHost} from "../../utils/urlUtils";
-import {AuthType, AuthProvider, ProfileAuthProvider} from "./AuthProvider";
+import {
+    AuthType,
+    AuthProvider,
+    ProfileAuthProvider,
+    BricksCliAuthProvider,
+} from "./AuthProvider";
 import {AzureAuthProvider} from "./AzureAuthProvider";
 
 export class AuthLoader {
-    static fromJSON(json: Record<string, any>): AuthProvider {
+    static fromJSON(
+        json: Record<string, any>,
+        bricksPath: string
+    ): AuthProvider {
         const host =
             json.host instanceof URL
                 ? json.host
@@ -19,6 +27,9 @@ export class AuthLoader {
         switch (json.authType as AuthType) {
             case "azure-cli":
                 return new AzureAuthProvider(host, json.tenantId, json.appId);
+
+            case "bricks-cli":
+                return new BricksCliAuthProvider(host, bricksPath);
 
             case "profile":
                 if (!json.profile) {
