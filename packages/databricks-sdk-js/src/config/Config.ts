@@ -60,7 +60,8 @@ export type AuthType =
     | "basic"
     | "azure-cli"
     | "google-id"
-    | "metadata-service";
+    | "metadata-service"
+    | "bricks-cli";
 
 export type AttributeName = keyof Omit<
     ConfigOptions,
@@ -192,6 +193,13 @@ export class Config {
         auth: "azure",
     })
     public azureLoginAppId?: string;
+
+    /** Path to the 'bricks' CLI */
+    @attribute({
+        name: "bricks_cli_path",
+        env: "BRICKS_CLI_PATH",
+    })
+    public bricksCliPath?: string;
 
     // When multiple auth attributes are available in the environment, use the auth type
     // specified by this argument. This argument also holds currently selected auth.

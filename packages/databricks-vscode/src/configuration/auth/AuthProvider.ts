@@ -11,9 +11,10 @@ import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
-import {AzureCliCheck} from "../AzureCliCheck";
+import {AzureCliCheck} from "./AzureCliCheck";
+import {BricksCliCheck} from "./BricksCliCheck";
 
-export type AuthType = "azure-cli" | "google-id" | "oauth-u2m" | "profile";
+export type AuthType = "azure-cli" | "google-id" | "bricks-cli" | "profile";
 
 export abstract class AuthProvider {
     constructor(
@@ -51,7 +52,10 @@ export abstract class AuthProvider {
 
     protected abstract getSdkConfig(): Config;
 
-    static fromJSON(json: Record<string, any>): AuthProvider {
+    static fromJSON(
+        json: Record<string, any>,
+        bricksPath: string
+    ): AuthProvider {
         const host =
             json.host instanceof URL
                 ? json.host
@@ -71,6 +75,9 @@ export abstract class AuthProvider {
                     json.tenantId,
                     json.appId
                 );
+
+            case "bricks-cli":
+                return new BricksCliAuthProvider(host, bricksPath);
 
             case "profile":
                 if (!json.profile) {
@@ -109,6 +116,37 @@ export class ProfileAuthProvider extends AuthProvider {
                 process.env.DATABRICKS_CONFIG_FILE,
             env: {},
         });
+    }
+}
+
+export class BricksCliAuthProvider extends AuthProvider {
+    constructor(host: URL, readonly bricksPath: string) {
+        super(host, "bricks-cli");
+    }
+
+    describe(): string {
+        return "OAuth U2M";
+    }
+
+    toJSON(): Record<string, unknown> {
+        return {
+            host: this.host.toString(),
+            authType: this.authType,
+            bricksPath: this.bricksPath,
+        };
+    }
+
+    getSdkConfig(): Config {
+        return new Config({
+            host: this.host.toString(),
+            authType: "bricks-cli",
+            bricksCliPath: this.bricksPath,
+        });
+    }
+
+    async check(silent: boolean): Promise<boolean> {
+        const bricksCliCheck = new BricksCliCheck(this);
+        return bricksCliCheck.check(silent);
     }
 }
 

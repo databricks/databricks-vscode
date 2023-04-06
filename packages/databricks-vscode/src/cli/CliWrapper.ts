@@ -41,11 +41,8 @@ function getValidHost(host: string) {
 export class CliWrapper {
     constructor(private extensionContext: ExtensionContext) {}
 
-    getTestBricksCommand(): Command {
-        return {
-            command: this.extensionContext.asAbsolutePath("./bin/bricks"),
-            args: [],
-        };
+    get bricksPath(): string {
+        return this.extensionContext.asAbsolutePath("./bin/bricks");
     }
 
     /**
@@ -55,7 +52,6 @@ export class CliWrapper {
         syncDestination: SyncDestinationMapper,
         syncType: SyncType
     ): Command {
-        const command = this.extensionContext.asAbsolutePath("./bin/bricks");
         const args = [
             "sync",
             ".",
@@ -70,12 +66,12 @@ export class CliWrapper {
         if (workspaceConfigs.bricksVerboseMode) {
             args.push("--log-level", "debug", "--log-file", "stderr");
         }
-        return {command, args};
+        return {command: this.bricksPath, args};
     }
 
     private getListProfilesCommand(): Command {
         return {
-            command: this.extensionContext.asAbsolutePath("./bin/bricks"),
+            command: this.bricksPath,
             args: ["auth", "profiles", "--skip-validate"],
         };
     }
@@ -136,16 +132,13 @@ export class CliWrapper {
 
     public async getBundleSchema(): Promise<string> {
         const execFile = promisify(execFileCb);
-        const {stdout} = await execFile(
-            this.extensionContext.asAbsolutePath("./bin/bricks"),
-            ["bundle", "schema"]
-        );
+        const {stdout} = await execFile(this.bricksPath, ["bundle", "schema"]);
         return stdout;
     }
 
     getAddProfileCommand(profile: string, host: URL): Command {
         return {
-            command: this.extensionContext.asAbsolutePath("./bin/bricks"),
+            command: this.bricksPath,
             args: [
                 "configure",
                 "--no-interactive",
