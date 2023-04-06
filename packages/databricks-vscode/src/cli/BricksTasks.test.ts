@@ -2,7 +2,7 @@ import "@databricks/databricks-sdk";
 import * as assert from "assert";
 import {instance, mock, when} from "ts-mockito";
 import {Uri} from "vscode";
-import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
+import {ProfileAuthProvider} from "../configuration/auth/ProfileAuthProvider";
 import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";

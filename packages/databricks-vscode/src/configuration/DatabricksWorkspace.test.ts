@@ -2,7 +2,7 @@
 import {scim} from "@databricks/databricks-sdk";
 import assert from "assert";
 import {Uri} from "vscode";
-import {ProfileAuthProvider} from "./auth/AuthProvider";
+import {ProfileAuthProvider} from "./auth/ProfileAuthProvider";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 
 describe(__filename, () => {

@@ -1,11 +1,8 @@
 import {normalizeHost} from "../../utils/urlUtils";
-import {
-    AuthType,
-    AuthProvider,
-    ProfileAuthProvider,
-    BricksCliAuthProvider,
-} from "./AuthProvider";
+import {AuthType, AuthProvider} from "./AuthProvider";
 import {AzureAuthProvider} from "./AzureAuthProvider";
+import {BricksCliAuthProvider} from "./BricksCliAuthProvider";
+import {ProfileAuthProvider} from "./ProfileAuthProvider";
 
 export class AuthLoader {
     static fromJSON(

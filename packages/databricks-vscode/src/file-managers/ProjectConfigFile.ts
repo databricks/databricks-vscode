@@ -1,15 +1,13 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import {
-    AuthProvider,
-    ProfileAuthProvider,
-} from "../configuration/auth/AuthProvider";
+import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Config} from "@databricks/databricks-sdk";
 import {AuthLoader} from "../configuration/auth/AuthLoader";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {ProfileAuthProvider} from "../configuration/auth/ProfileAuthProvider";
 
 export interface ProjectConfig {
     authProvider: AuthProvider;

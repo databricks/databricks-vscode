@@ -1,10 +1,11 @@
 import {
+    Config,
     ExecUtils,
     ProductVersion,
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
 import {Disposable, window} from "vscode";
-import {BricksCliAuthProvider} from "./AuthProvider";
+import {AuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -13,14 +14,36 @@ const extensionVersion = require("../../../package.json")
 
 type StepName = "tryLogin" | "login";
 
-export class BricksCliCheck implements Disposable {
+export class BricksCliAuthProvider extends AuthProvider {
     private disposables: Disposable[] = [];
 
-    constructor(private authProvider: BricksCliAuthProvider) {}
+    constructor(host: URL, private readonly bricksPath: string) {
+        super(host, "bricks-cli");
+    }
 
     dispose() {
         this.disposables.forEach((i) => i.dispose());
         this.disposables = [];
+    }
+
+    describe(): string {
+        return "OAuth U2M";
+    }
+
+    toJSON(): Record<string, unknown> {
+        return {
+            host: this.host.toString(),
+            authType: this.authType,
+            bricksPath: this.bricksPath,
+        };
+    }
+
+    async getSdkConfig(): Promise<Config> {
+        return new Config({
+            host: this.host.toString(),
+            authType: "bricks-cli",
+            bricksCliPath: this.bricksPath,
+        });
     }
 
     async check(silent: boolean): Promise<boolean> {
@@ -72,9 +95,9 @@ export class BricksCliCheck implements Disposable {
     private async tryLogin(): Promise<boolean> {
         const workspaceClient = new WorkspaceClient(
             {
-                host: this.authProvider.host.toString(),
+                host: this.host.toString(),
                 authType: "bricks-cli",
-                bricksCliPath: this.authProvider.bricksPath,
+                bricksCliPath: this.bricksPath,
             },
             {
                 product: "databricks-vscode",
@@ -93,11 +116,11 @@ export class BricksCliCheck implements Disposable {
 
     private async login(): Promise<void> {
         try {
-            await ExecUtils.execFile(this.authProvider.bricksPath, [
+            await ExecUtils.execFile(this.bricksPath, [
                 "auth",
                 "login",
                 "--host",
-                this.authProvider.host.toString(),
+                this.host.toString(),
             ]);
         } catch (e: any) {
             throw new Error(
