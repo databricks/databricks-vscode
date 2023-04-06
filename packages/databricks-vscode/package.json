@@ -660,7 +660,6 @@
     "dependencies": {
         "@databricks/databricks-sdk": "workspace:^",
         "@databricks/databricks-vscode-types": "workspace:^",
-        "@types/bcryptjs": "^2.4.2",
         "@vscode/debugadapter": "^1.59.0",
         "@vscode/extension-telemetry": "^0.7.7",
         "@vscode/webview-ui-toolkit": "^1.2.1",
@@ -672,6 +671,7 @@
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
         "@sinonjs/fake-timers": "^10.0.2",
+        "@types/bcryptjs": "^2.4.2",
         "@types/fs-extra": "^11.0.1",
         "@types/glob": "^8.0.1",
         "@types/mocha": "^10.0.1",
