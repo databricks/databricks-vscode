@@ -1,6 +1,7 @@
 import {Event, EventEmitter, Disposable} from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {DisabledFeature} from "./DisabledFeature";
+import {EnabledFeature} from "./EnabledFeature";
 
 export type FeatureEnableAction = () => Promise<void>;
 export type FeatureId = "debugging.dbconnect";
@@ -46,7 +47,10 @@ export class FeatureManager<T = FeatureId> implements Disposable {
     private stateCache: Map<T, FeatureState> = new Map();
     constructor(private readonly disabledFeatures: (T | FeatureId)[]) {}
 
-    registerFeature(id: T, featureFactory: () => Feature) {
+    registerFeature(
+        id: T,
+        featureFactory: () => Feature = () => new EnabledFeature()
+    ) {
         if (this.features.has(id)) {
             return;
         }
