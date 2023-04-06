@@ -54,7 +54,15 @@ export type RequestVisitor = (headers: Headers) => Promise<void>;
 type PublicInterface<T> = {[K in keyof T]: T[K]};
 export type ConfigOptions = Partial<PublicInterface<Config>>;
 
-export type AuthType = "default" | "pat" | "basic" | "azure-cli" | "google-id";
+export type AuthType =
+    | "default"
+    | "pat"
+    | "basic"
+    | "azure-cli"
+    | "google-id"
+    | "metadata-service"
+    | "bricks-cli";
+
 export type AttributeName = keyof Omit<
     ConfigOptions,
     "credentials" | "logger" | "env" | "loaders"
@@ -70,6 +78,15 @@ export class Config {
     /** Databricks host (either of workspace endpoint or Accounts API endpoint) */
     @attribute({name: "host", env: "DATABRICKS_HOST"})
     public host?: string;
+
+    /** URL of the local metadata service that provides authentication credentials. */
+    @attribute({
+        name: "metadata_service_url",
+        env: "DATABRICKS_METADATA_SERVICE_URL",
+        auth: "metadata-service",
+        sensitive: true,
+    })
+    public localMetadataServiceUrl?: string;
 
     /** Databricks Account ID for Accounts API. This field is used in dependencies. */
     @attribute({name: "account_id", env: "DATABRICKS_ACCOUNT_ID"})
@@ -177,6 +194,13 @@ export class Config {
     })
     public azureLoginAppId?: string;
 
+    /** Path to the 'bricks' CLI */
+    @attribute({
+        name: "bricks_cli_path",
+        env: "BRICKS_CLI_PATH",
+    })
+    public bricksCliPath?: string;
+
     // When multiple auth attributes are available in the environment, use the auth type
     // specified by this argument. This argument also holds currently selected auth.
     @attribute({
@@ -236,7 +260,7 @@ export class Config {
     }
 
     async getHost(): Promise<URL> {
-        this.ensureResolved();
+        await this.ensureResolved();
         return new URL(this.host!);
     }
 

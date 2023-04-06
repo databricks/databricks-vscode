@@ -18,7 +18,6 @@ import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {PackageMetaData} from "../utils/packageJsonUtils";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {RWLock} from "./RWLock";
 
 export const TASK_SYNC_TYPE = {
@@ -212,7 +211,6 @@ class CustomSyncTerminal implements Pseudoterminal {
  */
 export class LazyCustomSyncTerminal extends CustomSyncTerminal {
     private command?: Command;
-    private killThis = false;
 
     constructor(
         private connection: ConnectionManager,
@@ -297,13 +295,13 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 BRICKS_ROOT: workspacePath,
                 BRICKS_UPSTREAM: "databricks-vscode",
                 BRICKS_UPSTREAM_VERSION: this.packageMetadata.version,
-                DATABRICKS_CONFIG_FILE:
-                    workspaceConfigs.databrickscfgLocation ??
-                    process.env.DATABRICKS_CONFIG_FILE,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
+                DATABRICKS_HOST: dbWorkspace.host.toString(),
+                DATABRICKS_AUTH_TYPE: "metadata-service",
+                DATABRICKS_METADATA_SERVICE_URL:
+                    this.connection.metadataServiceUrl || "",
                 ...proxySettings,
-                ...dbWorkspace.authProvider.getEnvVars(),
                 /* eslint-enable @typescript-eslint/naming-convention */
             },
         } as SpawnOptions;
