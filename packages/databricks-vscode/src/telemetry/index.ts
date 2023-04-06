@@ -8,7 +8,7 @@ import {
     PROD_APP_INSIGHTS_CONFIGURATION_STRING,
 } from "./constants";
 import crypto from "crypto";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export {Events, EventTypes} from "./constants";
 
