@@ -1,5 +1,5 @@
-import { Events, Telemetry } from ".";
-import { commands, Disposable } from "vscode";
+import {Events, Telemetry} from ".";
+import {commands, Disposable} from "vscode";
 
 declare module "." {
     interface Telemetry {
@@ -17,7 +17,7 @@ declare module "." {
     }
 }
 
-Telemetry.prototype.registerCommand = function(
+Telemetry.prototype.registerCommand = function (
     command: string,
     callback: (...args: any[]) => any,
     thisArg?: any
@@ -43,4 +43,4 @@ Telemetry.prototype.registerCommand = function(
         },
         thisArg
     );
-}
+};

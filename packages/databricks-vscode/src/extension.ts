@@ -138,7 +138,9 @@ export async function activate(
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
     context.subscriptions.push(
-        connectionManager.onDidChangeState(async () => updateUserMetadata(connectionManager.databricksWorkspace))
+        connectionManager.onDidChangeState(async () =>
+            updateUserMetadata(connectionManager.databricksWorkspace)
+        )
     );
 
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(

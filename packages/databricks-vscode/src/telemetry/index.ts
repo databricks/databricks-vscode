@@ -141,6 +141,10 @@ export class Telemetry {
         addKeys(propsAndMetrics, "event");
         addKeys(userMetadata, "user");
 
-        this.reporter.sendTelemetryEvent(eventName, finalProperties, finalMetrics);
+        this.reporter.sendTelemetryEvent(
+            eventName,
+            finalProperties,
+            finalMetrics
+        );
     }
 }
