@@ -165,10 +165,13 @@ export class IpAccessListsService {
      * Gets all IP access lists for the specified workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         @context context?: Context
-    ): Promise<model.GetIpAccessListResponse> {
-        return await this._list(context);
+    ): AsyncIterable<model.IpAccessListInfo> {
+        const response = (await this._list(context)).ip_access_lists;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

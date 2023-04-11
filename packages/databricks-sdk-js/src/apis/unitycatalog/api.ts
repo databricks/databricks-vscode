@@ -567,10 +567,11 @@ export class CatalogsService {
      * elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
-        @context context?: Context
-    ): Promise<model.ListCatalogsResponse> {
-        return await this._list(context);
+    async *list(@context context?: Context): AsyncIterable<model.CatalogInfo> {
+        const response = (await this._list(context)).catalogs;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -741,10 +742,13 @@ export class ExternalLocationsService {
      * the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         @context context?: Context
-    ): Promise<model.ListExternalLocationsResponse> {
-        return await this._list(context);
+    ): AsyncIterable<model.ExternalLocationInfo> {
+        const response = (await this._list(context)).external_locations;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1260,10 +1264,13 @@ export class MetastoresService {
      * of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         @context context?: Context
-    ): Promise<model.ListMetastoresResponse> {
-        return await this._list(context);
+    ): AsyncIterable<model.MetastoreInfo> {
+        const response = (await this._list(context)).metastores;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1506,11 +1513,14 @@ export class ProvidersService {
      * guarantee of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListProvidersRequest,
         @context context?: Context
-    ): Promise<model.ListProvidersResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.ProviderInfo> {
+        const response = (await this._list(request, context)).providers;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1773,11 +1783,14 @@ export class RecipientsService {
      * no guarantee of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListRecipientsRequest,
         @context context?: Context
-    ): Promise<model.ListRecipientsResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.RecipientInfo> {
+        const response = (await this._list(request, context)).recipients;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -2000,11 +2013,14 @@ export class SchemasService {
      * the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListSchemasRequest,
         @context context?: Context
-    ): Promise<model.ListSchemasResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.SchemaInfo> {
+        const response = (await this._list(request, context)).schemas;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -2162,8 +2178,11 @@ export class SharesService {
      * specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.ListSharesResponse> {
-        return await this._list(context);
+    async *list(@context context?: Context): AsyncIterable<model.ShareInfo> {
+        const response = (await this._list(context)).shares;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -2698,11 +2717,14 @@ export class TablesService {
      * There is no guarantee of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListTablesRequest,
         @context context?: Context
-    ): Promise<model.ListTablesResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.TableInfo> {
+        const response = (await this._list(request, context)).tables;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

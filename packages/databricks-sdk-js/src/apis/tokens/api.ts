@@ -109,7 +109,12 @@ export class TokensService {
      * Lists all the valid tokens for a user-workspace pair.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.ListTokensResponse> {
-        return await this._list(context);
+    async *list(
+        @context context?: Context
+    ): AsyncIterable<model.PublicTokenInfo> {
+        const response = (await this._list(context)).token_infos;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 }

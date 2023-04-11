@@ -77,25 +77,36 @@ export class ClusterLoader implements Disposable {
             this.cleanup();
             return;
         }
-        const allClusters = sortClusters(
-            (await Cluster.list(apiClient))
-                .filter((c) => ["UI", "API"].includes(c.source))
-                .filter(
-                    (c) =>
-                        !workspaceConfigs.onlyShowAccessibleClusters ||
-                        !c.isSingleUser() ||
-                        c.isValidSingleUser(
-                            this.connectionManager.databricksWorkspace?.userName
-                        )
+
+        const clusters: Array<Cluster> = [];
+        for await (const c of Cluster.list(apiClient)) {
+            if (!["UI", "API"].includes(c.source)) {
+                continue;
+            }
+
+            if (
+                workspaceConfigs.onlyShowAccessibleClusters &&
+                c.isSingleUser() &&
+                !c.isValidSingleUser(
+                    this.connectionManager.databricksWorkspace?.userName
                 )
-                .filter(
-                    (c) =>
-                        !workspaceConfigs.onlyShowAccessibleClusters ||
-                        this.connectionManager.databricksWorkspace?.supportFilesInReposForCluster(
-                            c
-                        )
+            ) {
+                continue;
+            }
+
+            if (
+                workspaceConfigs.onlyShowAccessibleClusters &&
+                !this.connectionManager.databricksWorkspace?.supportFilesInReposForCluster(
+                    c
                 )
-        );
+            ) {
+                continue;
+            }
+
+            clusters.push(c);
+        }
+
+        const allClusters = sortClusters(clusters);
 
         if (workspaceConfigs.onlyShowAccessibleClusters) {
             // TODO: Find exact rate limit and update this.

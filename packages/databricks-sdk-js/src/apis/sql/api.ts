@@ -290,11 +290,41 @@ export class DashboardsService {
      * Fetch a paginated list of dashboard objects.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListDashboardsRequest,
         @context context?: Context
-    ): Promise<model.ListResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.Dashboard> {
+        // deduplicate items that may have been added during iteration
+        const seen: Record<string, boolean> = {};
+        request.page = 1; // start iterating from the first page
+
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.results || response.results.length === 0) {
+                break;
+            }
+
+            for (const v of response.results) {
+                const id = v.id;
+                if (id) {
+                    if (seen[id]) {
+                        // item was added during iteration
+                        continue;
+                    }
+                    seen[id] = true;
+                }
+                yield v;
+            }
+
+            request.page += 1;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -624,11 +654,41 @@ export class QueriesService {
      * term.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListQueriesRequest,
         @context context?: Context
-    ): Promise<model.QueryList> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.Query> {
+        // deduplicate items that may have been added during iteration
+        const seen: Record<string, boolean> = {};
+        request.page = 1; // start iterating from the first page
+
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.results || response.results.length === 0) {
+                break;
+            }
+
+            for (const v of response.results) {
+                const id = v.id;
+                if (id) {
+                    if (seen[id]) {
+                        // item was added during iteration
+                        continue;
+                    }
+                    seen[id] = true;
+                }
+                yield v;
+            }
+
+            request.page += 1;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -728,11 +788,32 @@ export class QueryHistoryService {
      * You can filter by user ID, warehouse ID, status, and time range.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListQueryHistoryRequest,
         @context context?: Context
-    ): Promise<model.ListQueriesResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.QueryInfo> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.res || response.res.length === 0) {
+                break;
+            }
+
+            for (const v of response.res) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 }
 
@@ -1449,11 +1530,14 @@ export class WarehousesService {
      * Lists all SQL warehouses that a user has manager permissions on.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListWarehousesRequest,
         @context context?: Context
-    ): Promise<model.ListWarehousesResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.EndpointInfo> {
+        const response = (await this._list(request, context)).warehouses;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

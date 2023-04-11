@@ -86,8 +86,12 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         this.connectionManager.waitForConnect();
         try {
             const catalogList =
-                await this.connectionManager.workspaceClient?.catalogs.list();
-            if (!catalogList?.catalogs?.length) {
+                this.connectionManager.workspaceClient?.catalogs.list();
+            const catalogListIter = catalogList
+                ? catalogList[Symbol.asyncIterator]()
+                : undefined;
+
+            if (!(await catalogListIter?.next())) {
                 return this.rejectStep(
                     "checkWorkspaceHasUc",
                     "Can't find any catalogs with read permissions"
