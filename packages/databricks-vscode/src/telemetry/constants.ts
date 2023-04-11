@@ -1,3 +1,5 @@
+import {AuthType} from "../configuration/auth/AuthProvider";
+
 /** The production application insights configuration string for Databricks. */
 export const PROD_APP_INSIGHTS_CONFIGURATION_STRING = "";
 /** The application insights configuration string used while developing on the VS Code extension */
@@ -57,3 +59,41 @@ export class EventTypes {
         ...getDurationProperty(),
     };
 }
+
+/**
+ * Additional metadata collected from the extension, independent of the event itself.
+ */
+/* eslint-disable @typescript-eslint/naming-convention */
+export enum Metadata {
+    USER = "user",
+}
+/* eslint-enable @typescript-eslint/naming-convention */
+
+/**
+ * The definitions of all additional metadata collected by the telemetry.
+ * 
+ * The fields of this class should be defined in the Metadata enum.
+ */
+export class MetadataTypes {
+    [Metadata.USER]: EventType<{
+        hashedUserName: string;
+        host: string;
+        authType: AuthType;
+    }> = {
+        hashedUserName: {
+            comment: "A hash of the user name computed using bcrypt",
+        },
+        host: {
+            comment:
+                "The hostname of the workspace that the user is connected to",
+        },
+        authType: {
+            comment: "The kind of authentication used by the user",
+        },
+    };
+}
+
+/** The type of all extra metadata collected by the extension. */
+export type ExtraMetadata = {
+    [P in keyof MetadataTypes]: MetadataTypes[P] extends EventType<infer R> ? Partial<R> : never;
+};

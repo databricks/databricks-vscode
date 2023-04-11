@@ -40,8 +40,9 @@ import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManage
 import {FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
-import {Telemetry, updateUserMetadata} from "./telemetry";
+import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
+import {Metadata} from "./telemetry/constants";
 
 export async function activate(
     context: ExtensionContext
@@ -141,7 +142,10 @@ export async function activate(
     const connectionManager = new ConnectionManager(cli);
     context.subscriptions.push(
         connectionManager.onDidChangeState(async () =>
-            updateUserMetadata(connectionManager.databricksWorkspace)
+            telemetry.setMetadata(
+                Metadata.USER,
+                await toUserMetadata(connectionManager.databricksWorkspace)
+            )
         )
     );
     const metadataServiceManager = new MetadataServiceManager(

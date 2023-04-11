@@ -2,8 +2,8 @@
 import TelemetryReporter from "@vscode/extension-telemetry";
 import assert from "assert";
 import {mock, instance, capture, when} from "ts-mockito";
-import {Telemetry, updateUserMetadata} from ".";
-import {Events} from "./constants";
+import {Telemetry, toUserMetadata} from ".";
+import {Events, Metadata} from "./constants";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
@@ -42,7 +42,10 @@ describe(__filename, () => {
         when(ws.authProvider).thenReturn(instance(authProvider));
         when(ws.userName).thenReturn("miles@databricks.com");
         when(ws.host).thenReturn(Uri.parse("https://my.databricks.com"));
-        await updateUserMetadata(instance(ws));
+        telemetry.setMetadata(
+            Metadata.USER,
+            await toUserMetadata(instance(ws))
+        );
 
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
             command: "testCommand",

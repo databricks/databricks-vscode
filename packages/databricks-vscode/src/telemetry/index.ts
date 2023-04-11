@@ -5,14 +5,15 @@ import {
     DEV_APP_INSIGHTS_CONFIGURATION_STRING,
     EventType,
     EventTypes,
+    ExtraMetadata,
+    Metadata,
+    MetadataTypes,
     PROD_APP_INSIGHTS_CONFIGURATION_STRING,
 } from "./constants";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 
 export {Events, EventTypes} from "./constants";
-
-let telemetryReporter: TelemetryReporter | undefined;
 
 /**
  * A version number used for the telemetry metric schema. The version of the schema is always provided
@@ -35,14 +36,11 @@ let telemetryReporter: TelemetryReporter | undefined;
  */
 const telemetryVersion = "1.0";
 
-let userMetadata: Record<string, string> | undefined;
-
-export async function updateUserMetadata(
+export async function toUserMetadata(
     databricksWorkspace: DatabricksWorkspace | undefined
-) {
+): Promise<ExtraMetadata[Metadata.USER]> {
     if (databricksWorkspace === undefined) {
-        userMetadata = undefined;
-        return;
+        return {};
     }
     const userName = databricksWorkspace.userName;
     // Salt is the first 22 characters of the hash of the username, meant to guard against
@@ -54,7 +52,7 @@ export async function updateUserMetadata(
         .substring(0, 22);
     const bcryptSalt = `$2b$07$${salt}`;
     const hashedUserName = await bcrypt.hash(userName, bcryptSalt);
-    userMetadata = {
+    return {
         hashedUserName: hashedUserName,
         host: databricksWorkspace.host.authority,
         authType: databricksWorkspace.authProvider.authType,
@@ -69,10 +67,6 @@ function getTelemetryKey(): string {
 }
 
 function getTelemetryReporter(): TelemetryReporter | undefined {
-    if (telemetryReporter) {
-        return telemetryReporter;
-    }
-
     // If we cannot initialize the telemetry reporter, don't break the entire extension.
     try {
         return new TelemetryReporter(getTelemetryKey());
@@ -83,14 +77,20 @@ function getTelemetryReporter(): TelemetryReporter | undefined {
 
 export class Telemetry {
     private reporter?: TelemetryReporter;
+    private extraMetadata: Partial<ExtraMetadata>;
 
     constructor(reporter?: TelemetryReporter) {
         this.reporter = reporter;
+        this.extraMetadata = {};
     }
 
     static createDefault(): Telemetry {
         const reporter = getTelemetryReporter();
         return new Telemetry(reporter);
+    }
+
+    setMetadata<E extends keyof MetadataTypes>(prefix: E, properties: ExtraMetadata[E]) {
+        this.extraMetadata[prefix] = properties;
     }
 
     /**
@@ -100,9 +100,9 @@ export class Telemetry {
      * are combined into a single object. This is separated by the telemetry library into separate objects for
      * consumption by the TelemetryReporter.
      */
-    recordEvent<ES extends EventTypes, E extends keyof ES>(
-        eventName: string,
-        propsAndMetrics?: ES[E] extends EventType<infer R> ? R : never
+    recordEvent<E extends keyof EventTypes>(
+        eventName: E,
+        propsAndMetrics?: EventTypes[E] extends EventType<infer R> ? R : never
     ) {
         // If telemetry reporter cannot be initialized, don't report the event.
         if (!this.reporter) {
@@ -137,10 +137,12 @@ export class Telemetry {
             }
         }
         addKeys(propsAndMetrics, "event");
-        addKeys(userMetadata, "user");
+        Object.entries(this.extraMetadata).forEach(([prefix, props]) =>
+            addKeys(props, prefix)
+        );
 
         this.reporter.sendTelemetryEvent(
-            eventName,
+            eventName as string,
             finalProperties,
             finalMetrics
         );
