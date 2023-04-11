@@ -89,7 +89,10 @@ export class Telemetry {
         return new Telemetry(reporter);
     }
 
-    setMetadata<E extends keyof MetadataTypes>(prefix: E, properties: ExtraMetadata[E]) {
+    setMetadata<E extends keyof MetadataTypes>(
+        prefix: E,
+        properties: ExtraMetadata[E]
+    ) {
         this.extraMetadata[prefix] = properties;
     }
 

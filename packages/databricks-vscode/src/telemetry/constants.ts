@@ -71,7 +71,7 @@ export enum Metadata {
 
 /**
  * The definitions of all additional metadata collected by the telemetry.
- * 
+ *
  * The fields of this class should be defined in the Metadata enum.
  */
 export class MetadataTypes {
@@ -95,5 +95,7 @@ export class MetadataTypes {
 
 /** The type of all extra metadata collected by the extension. */
 export type ExtraMetadata = {
-    [P in keyof MetadataTypes]: MetadataTypes[P] extends EventType<infer R> ? Partial<R> : never;
+    [P in keyof MetadataTypes]: MetadataTypes[P] extends EventType<infer R>
+        ? Partial<R>
+        : never;
 };
