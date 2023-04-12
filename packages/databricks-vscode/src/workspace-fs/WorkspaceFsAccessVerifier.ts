@@ -73,7 +73,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         }
         const dbrVersionParts = cluster.dbrVersion;
         if (
-            dbrVersionParts[0] < 11 ||
+            (dbrVersionParts[0] !== "x" && dbrVersionParts[0] < 11) ||
             (dbrVersionParts[0] === 11 &&
                 dbrVersionParts[1] !== "x" &&
                 dbrVersionParts[1] < 2)

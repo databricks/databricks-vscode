@@ -60,6 +60,8 @@ export class ConnectionManager {
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
 
+    public metadataServiceUrl?: string;
+
     constructor(private cli: CliWrapper) {}
 
     get state(): ConnectionState {
@@ -118,7 +120,8 @@ export class ConnectionManager {
         try {
             try {
                 projectConfigFile = await ProjectConfigFile.load(
-                    vscodeWorkspace.rootPath
+                    vscodeWorkspace.rootPath!,
+                    this.cli.bricksPath
                 );
             } catch (e) {
                 if (
@@ -326,7 +329,8 @@ export class ConnectionManager {
     private async writeConfigFile(config: ProjectConfig) {
         const projectConfigFile = new ProjectConfigFile(
             config,
-            vscodeWorkspace.rootPath
+            vscodeWorkspace.rootPath!,
+            this.cli.bricksPath
         );
 
         await projectConfigFile.write();

@@ -19,7 +19,11 @@ export interface ProjectConfig {
 export class ConfigFileError extends Error {}
 
 export class ProjectConfigFile {
-    constructor(private config: ProjectConfig, readonly rootPath?: string) {}
+    constructor(
+        private config: ProjectConfig,
+        readonly rootPath: string,
+        readonly bricksPath: string
+    ) {}
 
     get host() {
         return this.config.authProvider.host;
@@ -55,7 +59,10 @@ export class ProjectConfigFile {
 
     async write() {
         try {
-            const originalConfig = await ProjectConfigFile.load(this.rootPath);
+            const originalConfig = await ProjectConfigFile.load(
+                this.rootPath,
+                this.bricksPath
+            );
             if (
                 JSON.stringify(originalConfig.toJSON(), null, 2) ===
                 JSON.stringify(this.toJSON(), null, 2)
@@ -91,7 +98,10 @@ export class ProjectConfigFile {
         );
     }
 
-    static async load(rootPath?: string): Promise<ProjectConfigFile> {
+    static async load(
+        rootPath: string,
+        bricksPath: string
+    ): Promise<ProjectConfigFile> {
         const projectConfigFilePath = this.getProjectConfigFilePath(rootPath);
 
         let rawConfig;
@@ -116,7 +126,7 @@ export class ProjectConfigFile {
             if (!config.authType && config.profile) {
                 authProvider = await this.importOldConfig(config);
             } else {
-                authProvider = AuthProvider.fromJSON(config);
+                authProvider = AuthProvider.fromJSON(config, bricksPath);
             }
         } catch (e: any) {
             NamedLogger.getOrCreate(Loggers.Extension).error(
@@ -139,7 +149,8 @@ export class ProjectConfigFile {
                           })
                         : undefined,
             },
-            rootPath
+            rootPath,
+            bricksPath
         );
     }
 
