@@ -42,7 +42,7 @@ import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
-import {Metadata} from "./telemetry/constants";
+import {Events, Metadata} from "./telemetry/constants";
 
 export async function activate(
     context: ExtensionContext
@@ -90,6 +90,7 @@ export async function activate(
     }
 
     const telemetry = Telemetry.createDefault();
+    telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
     NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
@@ -141,12 +142,15 @@ export async function activate(
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
     context.subscriptions.push(
-        connectionManager.onDidChangeState(async () =>
+        connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
                 Metadata.USER,
                 await toUserMetadata(connectionManager.databricksWorkspace)
-            )
-        )
+            );
+            telemetry.recordEvent(Events.CONNECTION_STATE_CHANGED, {
+                newState: connectionManager.state,
+            });
+        })
     );
     const metadataServiceManager = new MetadataServiceManager(
         connectionManager
