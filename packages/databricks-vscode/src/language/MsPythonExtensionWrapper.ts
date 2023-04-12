@@ -4,41 +4,50 @@ import {
     Event,
     window,
     Disposable,
-    Terminal,
     workspace,
     RelativePattern,
+    Terminal,
 } from "vscode";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
 import * as os from "node:os";
 import * as path from "node:path";
 import {mkdtemp, readFile} from "fs/promises";
+import {Mutex} from "../locking";
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
-    private _terminal: Terminal | undefined;
     private readonly disposables: Disposable[] = [];
-
+    private readonly terminalMutex: Mutex = new Mutex();
+    private _terminal?: Terminal;
     constructor(
-        private readonly pythonExtension: Extension<MsPythonExtensionApi>,
+        pythonExtension: Extension<MsPythonExtensionApi>,
         private readonly workspaceFolder: Uri,
         private readonly workspaceStateManager: WorkspaceStateManager
     ) {
         this.api = pythonExtension.exports as MsPythonExtensionApi;
+        this.onDidChangePythonExecutable(async () => {
+            try {
+                await this.terminalMutex.wait();
+                this.terminal.dispose();
+                this._terminal = undefined;
+            } finally {
+                this.terminalMutex.signal();
+            }
+        }, this);
     }
 
     get terminal() {
-        const terminalName = `databricks-${this.workspaceStateManager.fixedUUID.slice(
+        if (this._terminal) {
+            return this._terminal;
+        }
+        const terminalName = `databricks-pip-${this.workspaceStateManager.fixedUUID.slice(
             0,
             8
         )}`;
-        let terminal = window.terminals.find(
-            (terminal) => terminal.name === terminalName
-        );
-        if (!terminal) {
-            terminal = window.createTerminal(terminalName);
-            this.disposables.push(terminal);
-        }
-        return terminal;
+
+        this._terminal = window.createTerminal(terminalName);
+        this.disposables.push(this._terminal);
+        return this._terminal;
     }
 
     async getPythonExecutable() {
@@ -67,12 +76,18 @@ export class MsPythonExtensionWrapper implements Disposable {
             );
     }
 
+    get pythonEnvironment() {
+        return this.api.environments?.resolveEnvironment(
+            this.api.environments?.getActiveEnvironmentPath()
+        );
+    }
+
     private async executeInTerminalE(command: string) {
         const dir = await mkdtemp(path.join(os.tmpdir(), "databricks-vscode-"));
         const filePath = path.join(dir, "python-terminal-output.txt");
 
         const disposables: Disposable[] = [];
-        const exitCode = await new Promise<number | undefined>((resolve) => {
+        const exitCodePromise = new Promise<number | undefined>((resolve) => {
             const fsWatcher = workspace.createFileSystemWatcher(
                 new RelativePattern(dir, path.basename(filePath))
             );
@@ -91,8 +106,17 @@ export class MsPythonExtensionWrapper implements Disposable {
             );
             this.terminal.sendText(`${command}; echo $? > ${filePath}`);
         });
-        disposables.forEach((i) => i.dispose());
-        return exitCode;
+
+        try {
+            await this.terminalMutex.wait();
+            this.terminal.show();
+            this.terminal.sendText(`${command}; echo $? > ${filePath}`);
+            const exitCode = await exitCodePromise;
+            return exitCode;
+        } finally {
+            disposables.forEach((i) => i.dispose());
+            this.terminalMutex.signal();
+        }
     }
 
     async findPackageInEnvironment(name: string) {
@@ -151,7 +175,5 @@ export class MsPythonExtensionWrapper implements Disposable {
         }
     }
 
-    dispose() {
-        this._terminal?.dispose();
-    }
+    dispose() {}
 }

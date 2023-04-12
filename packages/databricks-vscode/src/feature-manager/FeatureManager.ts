@@ -1,4 +1,5 @@
 import {Event, EventEmitter, Disposable} from "vscode";
+import {Mutex} from "../locking";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {DisabledFeature} from "./DisabledFeature";
 import {EnabledFeature} from "./EnabledFeature";
@@ -34,6 +35,7 @@ export interface Feature extends Disposable {
  */
 export class FeatureManager<T = FeatureId> implements Disposable {
     private disposables: Disposable[] = [];
+    private readonly mutex: Mutex = new Mutex();
 
     private features: Map<
         T,
@@ -96,37 +98,42 @@ export class FeatureManager<T = FeatureId> implements Disposable {
      * @returns Promise<{@link FeatureState}>
      */
     async isEnabled(id: T, force = false): Promise<FeatureState> {
-        const feature = this.features.get(id);
-        if (!feature) {
-            return {
-                avaliable: false,
-                reason: `Feature ${id} has not been registered`,
-            };
-        }
-
-        const cachedState = this.stateCache.get(id);
-        if (cachedState) {
-            if (!force) {
-                return cachedState;
+        await this.mutex.wait();
+        try {
+            const feature = this.features.get(id);
+            if (!feature) {
+                return {
+                    avaliable: false,
+                    reason: `Feature ${id} has not been registered`,
+                };
             }
-            cachedState.dirty = true;
-        }
 
-        const state = await new Promise<FeatureState>((resolve, reject) => {
-            const changeListener = this.onDidChangeState(
-                id,
-                (state) => {
+            const cachedState = this.stateCache.get(id);
+            if (cachedState) {
+                if (!force) {
+                    return cachedState;
+                }
+                cachedState.dirty = true;
+            }
+
+            const state = await new Promise<FeatureState>((resolve, reject) => {
+                const changeListener = this.onDidChangeState(
+                    id,
+                    (state) => {
+                        changeListener.dispose();
+                        resolve(state);
+                    },
+                    this
+                );
+                feature.feature.check().catch((e) => {
                     changeListener.dispose();
-                    resolve(state);
-                },
-                this
-            );
-            feature.feature.check().catch((e) => {
-                changeListener.dispose();
-                reject(e);
+                    reject(e);
+                });
             });
-        });
-        return state;
+            return state;
+        } finally {
+            this.mutex.signal();
+        }
     }
 
     dispose() {

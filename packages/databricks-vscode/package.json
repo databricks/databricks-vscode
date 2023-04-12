@@ -44,7 +44,8 @@
         "workspaceContains:**/databricks.yml",
         "workspaceContains:**/bundle.yml",
         "workspaceContains:**/databricks.yaml",
-        "workspaceContains:**/bundle.yaml"
+        "workspaceContains:**/bundle.yaml",
+        "workspaceContains:.databricks"
     ],
     "main": "out/extension.js",
     "types": "out/extension.d.ts",
@@ -216,8 +217,8 @@
                 "category": "Databricks"
             },
             {
-                "command": "databricks.debugging.checkForDbConnect",
-                "title": "Enable DB Connect V2",
+                "command": "databricks.call",
+                "title": "Call",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             }
@@ -403,6 +404,10 @@
                 },
                 {
                     "command": "databricks.utils.openExternal",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.call",
                     "when": "false"
                 }
             ],

@@ -393,7 +393,12 @@ export async function activate(
             "databricks.utils.openExternal",
             utilCommands.openExternalCommand(),
             utilCommands
-        )
+        ),
+        telemetry.registerCommand("databricks.call", (fn) => {
+            if (fn) {
+                fn();
+            }
+        })
     );
 
     // generate a json schema for bundle root and load a custom provider into
@@ -418,41 +423,23 @@ export async function activate(
                 context
             )
     );
+    const databricksEnvFileManager = new DatabricksEnvFileManager(
+        workspace.workspaceFolders[0].uri,
+        featureManager,
+        connectionManager,
+        context
+    );
     context.subscriptions.push(
-        featureManager.onDidChangeState(
-            "debugging.dbconnect",
-            async (state) => {
-                if (state.avaliable) {
-                    window.showInformationMessage("Db Connect V2 is enabled");
-                    return;
-                }
-                if (state.isDisabledByFf) {
-                    return;
-                }
-                if (state.reason) {
-                    window.showErrorMessage(
-                        `DB Connect V2 is disabled because ${state.reason}`
-                    );
-                }
-                if (state.action) {
-                    await state.action();
-                }
+        databricksEnvFileManager,
+        databricksEnvFileManager.onDidChangeEnvironmentVariables(() => {
+            if (workspace.notebookDocuments.length) {
+                window.showInformationMessage(
+                    "Environment variables have changed. Restart all jupyter kernels to pickup the latest environment variables."
+                );
             }
-        ),
-        new DatabricksEnvFileManager(
-            workspace.workspaceFolders[0].uri,
-            featureManager,
-            connectionManager,
-            context
-        )
+        })
     );
     featureManager.isEnabled("debugging.dbconnect");
-
-    context.subscriptions.push(
-        commands.registerCommand("databricks.debugging.checkForDbConnect", () =>
-            featureManager.isEnabled("debugging.dbconnect", true)
-        )
-    );
 
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);
