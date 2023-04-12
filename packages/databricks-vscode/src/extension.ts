@@ -42,7 +42,7 @@ import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
-import {Metadata} from "./telemetry/constants";
+import {Events, Metadata} from "./telemetry/constants";
 
 export async function activate(
     context: ExtensionContext
@@ -141,12 +141,15 @@ export async function activate(
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
     context.subscriptions.push(
-        connectionManager.onDidChangeState(async () =>
+        connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
                 Metadata.USER,
                 await toUserMetadata(connectionManager.databricksWorkspace)
-            )
-        )
+            );
+            telemetry.recordEvent(Events.CONNECTION_STATE_CHANGED, {
+                newState: connectionManager.state,
+            });
+        })
     );
     const metadataServiceManager = new MetadataServiceManager(
         connectionManager
@@ -445,6 +448,7 @@ export async function activate(
     });
 
     CustomWhenContext.setActivated(true);
+    telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
     return {
         connectionManager: connectionManager,
     };

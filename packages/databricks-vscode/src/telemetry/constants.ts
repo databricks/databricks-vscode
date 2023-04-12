@@ -10,6 +10,8 @@ export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
 /* eslint-disable @typescript-eslint/naming-convention */
 export enum Events {
     COMMAND_EXECUTION = "commandExecution",
+    EXTENSION_ACTIVATED = "extensionActivation",
+    CONNECTION_STATE_CHANGED = "connectionStateChanged",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -23,9 +25,12 @@ type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
  * event. Values inhabiting this type are documentation about the event and its parameters: comments
  * explaining the event being collected and the interpretation of each parameter.
  */
-export type EventType<P extends Record<string, unknown>> = {
-    comment?: string;
-} & EventDescription<P>;
+export type EventType<P> = {comment?: string} & (P extends Record<
+    string,
+    unknown
+>
+    ? EventDescription<P>
+    : unknown);
 
 /** A metric which measures the duration of an event. */
 type DurationMeasurement = {
@@ -41,7 +46,11 @@ function getDurationProperty(): EventDescription<DurationMeasurement> {
     };
 }
 
-/** All events recordable by this module must reside in this class.  */
+/**
+ * All events recordable by this module must reside in this class.
+ *
+ * If an event has no additional metadata, set the type parameter of EventType<> to `undefined`.
+ */
 export class EventTypes {
     [Events.COMMAND_EXECUTION]: EventType<
         {
@@ -58,7 +67,30 @@ export class EventTypes {
         },
         ...getDurationProperty(),
     };
+    [Events.EXTENSION_ACTIVATED]: EventType<undefined> = {
+        comment: "Extention was activated",
+    };
+    [Events.CONNECTION_STATE_CHANGED]: EventType<{
+        newState: string;
+    }> = {
+        comment: "State of ConnectionManager has changed",
+        newState: {
+            comment: "The new state of the connection",
+        },
+    };
 }
+
+/**
+ * A convenience type to extract the type of the propsAndMetrics parameter from the type of the
+ * field of EventTypes
+ */
+export type EventProperties = {
+    [P in keyof EventTypes]: EventTypes[P] extends EventType<infer R>
+        ? R extends Record<string, unknown>
+            ? R
+            : never
+        : never;
+};
 
 /**
  * Additional metadata collected from the extension, independent of the event itself.

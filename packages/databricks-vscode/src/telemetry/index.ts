@@ -3,7 +3,7 @@ import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {isDevExtension} from "../utils/developmentUtils";
 import {
     DEV_APP_INSIGHTS_CONFIGURATION_STRING,
-    EventType,
+    EventProperties,
     EventTypes,
     ExtraMetadata,
     Metadata,
@@ -110,7 +110,7 @@ export class Telemetry {
      */
     recordEvent<E extends keyof EventTypes>(
         eventName: E,
-        propsAndMetrics?: EventTypes[E] extends EventType<infer R> ? R : never
+        propsAndMetrics?: EventProperties[E]
     ) {
         // If telemetry reporter cannot be initialized, don't report the event.
         if (!this.reporter) {
