@@ -104,6 +104,7 @@ export class MsPythonExtensionWrapper implements Disposable {
                 fsWatcher.onDidCreate(handleFileChange),
                 fsWatcher.onDidChange(handleFileChange)
             );
+            this.terminal.sendText(`${command}; echo $? > ${filePath}`);
         });
 
         try {
