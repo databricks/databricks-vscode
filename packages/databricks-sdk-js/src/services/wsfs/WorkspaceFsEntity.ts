@@ -102,6 +102,8 @@ export abstract class WorkspaceFsEntity {
                 children.push(entity);
             }
         }
+
+        this._children = children;
     }
 
     @withLogContext(ExposedLoggers.SDK)
