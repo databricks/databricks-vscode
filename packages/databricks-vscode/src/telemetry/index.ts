@@ -89,6 +89,11 @@ export class Telemetry {
         return new Telemetry(reporter);
     }
 
+    /**
+     * Add additional metadata as defined in MetadataTypes to all events tracked via this Telemetry instance.
+     * @param prefix The type of metadata. The string value of this is prefixed to all property keys when logged.
+     * @param properties The properties to log for this metadata.
+     */
     setMetadata<E extends keyof MetadataTypes>(
         prefix: E,
         properties: ExtraMetadata[E]
