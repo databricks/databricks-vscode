@@ -36,7 +36,7 @@ export class MsPythonExtensionWrapper implements Disposable {
         }, this);
     }
 
-    private get terminal() {
+    get terminal() {
         if (this._terminal) {
             return this._terminal;
         }
