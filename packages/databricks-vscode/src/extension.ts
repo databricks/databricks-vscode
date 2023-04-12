@@ -90,7 +90,6 @@ export async function activate(
     }
 
     const telemetry = Telemetry.createDefault();
-    telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
     NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
@@ -449,6 +448,7 @@ export async function activate(
     });
 
     CustomWhenContext.setActivated(true);
+    telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
     return {
         connectionManager: connectionManager,
     };
