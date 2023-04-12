@@ -1,5 +1,6 @@
 import assert from "assert";
-import {Mutex, RWLock} from "./RWLock";
+import {Mutex} from "./Mutex";
+import {RWLock} from "./RWLock";
 
 describe(__filename, async () => {
     it("mutext should enforce sequential order", async () => {

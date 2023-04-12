@@ -18,7 +18,7 @@ import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {PackageMetaData} from "../utils/packageJsonUtils";
-import {RWLock} from "./RWLock";
+import {RWLock} from "../locking";
 
 export const TASK_SYNC_TYPE = {
     syncFull: "sync-full",

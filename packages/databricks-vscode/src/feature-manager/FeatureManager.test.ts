@@ -30,27 +30,27 @@ describe(__filename, async () => {
         const testVerifier = new TestAccessVerifier();
         const fm = new FeatureManager<"test">([]);
         const spyTestVerifier = spy(testVerifier);
-        fm.registerFeature("test", testVerifier);
+        fm.registerFeature("test", () => testVerifier);
 
         assert.ok(!(await fm.isEnabled("test")).avaliable);
         assert.ok(!(await fm.isEnabled("test")).avaliable);
         verify(spyTestVerifier.check()).once();
         verify(spyTestVerifier.check1()).once();
-        verify(spyTestVerifier.check2()).never();
+        verify(spyTestVerifier.check2()).once();
     });
 
     it("should update cached value", async () => {
         const testVerifier = new TestAccessVerifier();
         const fm = new FeatureManager<"test">([]);
         const spyTestVerifier = spy(testVerifier);
-        fm.registerFeature("test", testVerifier);
+        fm.registerFeature("test", () => testVerifier);
 
         //check value is picked from cache
         assert.ok(!(await fm.isEnabled("test")).avaliable);
         assert.ok(!(await fm.isEnabled("test")).avaliable);
         verify(spyTestVerifier.check()).once();
         verify(spyTestVerifier.check1()).once();
-        verify(spyTestVerifier.check2()).never();
+        verify(spyTestVerifier.check2()).once();
 
         //cache should be true only when both values are true
         assert.ok(await testVerifier.check1(true));
@@ -63,7 +63,7 @@ describe(__filename, async () => {
         assert.ok(!(await fm.isEnabled("test")).avaliable);
         assert.ok((await fm.isEnabled("test")).reason === "reason2");
 
-        //cache should be  reset to true if both values are true
+        //cache should be reset to true if both values are true
         assert.ok(await testVerifier.check2(true));
         assert.ok((await fm.isEnabled("test")).avaliable);
     });
@@ -72,7 +72,7 @@ describe(__filename, async () => {
         const testVerifier = new TestAccessVerifier();
         const fm = new FeatureManager<"test">(["test"]);
         const spyTestVerifier = spy(testVerifier);
-        fm.registerFeature("test", testVerifier);
+        fm.registerFeature("test", () => testVerifier);
 
         assert.ok(!(await fm.isEnabled("test")).avaliable);
         assert.ok(!(await fm.isEnabled("test")).avaliable);
@@ -80,6 +80,8 @@ describe(__filename, async () => {
         verify(spyTestVerifier.check1()).never();
         verify(spyTestVerifier.check2()).never();
 
-        assert.ok((await fm.isEnabled("test")).reason === "Feature disabled");
+        assert.ok(
+            (await fm.isEnabled("test")).reason === "feature is disabled"
+        );
     });
 });

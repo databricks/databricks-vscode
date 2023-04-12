@@ -1,14 +1,44 @@
-import {randomUUID} from "crypto";
-import {Extension, Uri, Event, window, Disposable} from "vscode";
+import {
+    Extension,
+    Uri,
+    Event,
+    window,
+    Disposable,
+    Terminal,
+    workspace,
+    RelativePattern,
+} from "vscode";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
-
-export class MsPythonExtensionWrapper {
+import * as os from "node:os";
+import * as path from "node:path";
+import {mkdtemp, readFile} from "fs/promises";
+export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
+    private _terminal: Terminal | undefined;
+    private readonly disposables: Disposable[] = [];
+
     constructor(
         private readonly pythonExtension: Extension<MsPythonExtensionApi>,
-        private readonly workspaceFolder: Uri
+        private readonly workspaceFolder: Uri,
+        private readonly workspaceStateManager: WorkspaceStateManager
     ) {
         this.api = pythonExtension.exports as MsPythonExtensionApi;
+    }
+
+    get terminal() {
+        const terminalName = `databricks-${this.workspaceStateManager.fixedUUID.slice(
+            0,
+            8
+        )}`;
+        let terminal = window.terminals.find(
+            (terminal) => terminal.name === terminalName
+        );
+        if (!terminal) {
+            terminal = window.createTerminal(terminalName);
+            this.disposables.push(terminal);
+        }
+        return terminal;
     }
 
     async getPythonExecutable() {
@@ -38,23 +68,28 @@ export class MsPythonExtensionWrapper {
     }
 
     private async executeInTerminalE(command: string) {
-        const terminalName = `databricks-pip-${randomUUID().slice(0, 8)}`;
-        const terminal = window.createTerminal({
-            name: terminalName,
-            isTransient: true,
-        });
-        terminal.sendText(`${command}; exit $?`);
+        const dir = await mkdtemp(path.join(os.tmpdir(), "databricks-vscode-"));
+        const filePath = path.join(dir, "python-terminal-output.txt");
 
-        const disposables: Disposable[] = [terminal];
+        const disposables: Disposable[] = [];
         const exitCode = await new Promise<number | undefined>((resolve) => {
-            disposables.push(
-                window.onDidCloseTerminal((e) => {
-                    if (e.name !== terminalName) {
-                        return;
-                    }
-                    resolve(e.exitStatus?.code);
-                })
+            const fsWatcher = workspace.createFileSystemWatcher(
+                new RelativePattern(dir, path.basename(filePath))
             );
+            const handleFileChange = async () => {
+                try {
+                    const fileData = await readFile(filePath, "utf-8");
+                    resolve(parseInt(fileData));
+                } catch (e: unknown) {
+                    resolve(undefined);
+                }
+            };
+            disposables.push(
+                fsWatcher,
+                fsWatcher.onDidCreate(handleFileChange),
+                fsWatcher.onDidChange(handleFileChange)
+            );
+            this.terminal.sendText(`${command}; echo $? > ${filePath}`);
         });
         disposables.forEach((i) => i.dispose());
         return exitCode;
@@ -106,7 +141,7 @@ export class MsPythonExtensionWrapper {
 
         const execCommand = [
             executable,
-            `-m pip uninstall ${name} --disable-pip-version-check --no-python-version-warning`,
+            `-m pip uninstall ${name} --disable-pip-version-check --no-python-version-warning -y`,
         ].join(" ");
         const exitCode = await this.executeInTerminalE(execCommand);
         if (exitCode) {
@@ -114,5 +149,9 @@ export class MsPythonExtensionWrapper {
                 `Error while un-installing ${name} package from the current python environment.`
             );
         }
+    }
+
+    dispose() {
+        this._terminal?.dispose();
     }
 }

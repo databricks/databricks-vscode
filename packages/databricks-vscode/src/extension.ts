@@ -40,6 +40,7 @@ import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManage
 import {FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
+import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
 import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
@@ -77,6 +78,8 @@ export async function activate(
         return undefined;
     }
 
+    const workspaceStateManager = new WorkspaceStateManager(context);
+
     // Add the bricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.persistent = true;
     context.environmentVariableCollection.prepend(
@@ -109,9 +112,9 @@ export async function activate(
 
     const pythonExtensionWrapper = new MsPythonExtensionWrapper(
         pythonExtension,
-        workspace.workspaceFolders[0].uri
+        workspace.workspaceFolders[0].uri,
+        workspaceStateManager
     );
-    const workspaceStateManager = new WorkspaceStateManager(context);
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
@@ -405,44 +408,52 @@ export async function activate(
     const featureManager = new FeatureManager<"debugging.dbconnect">([
         "debugging.dbconnect",
     ]);
-    const dbConnectAccessVerifier = new DbConnectAccessVerifier(
-        connectionManager,
-        pythonExtensionWrapper,
-        workspaceStateManager
-    );
     featureManager.registerFeature(
         "debugging.dbconnect",
-        dbConnectAccessVerifier
+        () =>
+            new DbConnectAccessVerifier(
+                connectionManager,
+                pythonExtensionWrapper,
+                workspaceStateManager,
+                context
+            )
     );
     context.subscriptions.push(
-        dbConnectAccessVerifier,
         featureManager.onDidChangeState(
             "debugging.dbconnect",
             async (state) => {
                 if (state.avaliable) {
-                    window.showInformationMessage("Db Connect is enabled");
+                    window.showInformationMessage("Db Connect V2 is enabled");
+                    return;
+                }
+                if (state.isDisabledByFf) {
                     return;
                 }
                 if (state.reason) {
                     window.showErrorMessage(
-                        `DB Connect is disabled because ${state.reason}`
+                        `DB Connect V2 is disabled because ${state.reason}`
                     );
                 }
                 if (state.action) {
                     await state.action();
                 }
             }
+        ),
+        new DatabricksEnvFileManager(
+            workspace.workspaceFolders[0].uri,
+            featureManager,
+            connectionManager,
+            context
         )
     );
     featureManager.isEnabled("debugging.dbconnect");
 
     context.subscriptions.push(
-        telemetry.registerCommand(
-            "databricks.test.pipFreeze",
-            dbConnectAccessVerifier.checkDbConnectInstall,
-            dbConnectAccessVerifier
+        commands.registerCommand("databricks.debugging.checkForDbConnect", () =>
+            featureManager.isEnabled("debugging.dbconnect", true)
         )
     );
+
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);
     });
