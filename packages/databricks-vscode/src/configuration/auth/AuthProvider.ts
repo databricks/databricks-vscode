@@ -14,6 +14,7 @@ const extensionVersion = require("../../../package.json")
 import {AzureCliCheck} from "./AzureCliCheck";
 import {BricksCliCheck} from "./BricksCliCheck";
 
+// TODO: Resolve this with SDK's AuthType.
 export type AuthType = "azure-cli" | "google-id" | "bricks-cli" | "profile";
 
 export abstract class AuthProvider {

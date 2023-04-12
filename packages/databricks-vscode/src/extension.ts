@@ -40,6 +40,9 @@ import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManage
 import {FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
+import {Telemetry, toUserMetadata} from "./telemetry";
+import "./telemetry/commandExtensions";
+import {Events, Metadata} from "./telemetry/constants";
 
 export async function activate(
     context: ExtensionContext
@@ -86,6 +89,8 @@ export async function activate(
         loggerManager.initLoggers();
     }
 
+    const telemetry = Telemetry.createDefault();
+
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
     NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,
@@ -106,7 +111,6 @@ export async function activate(
         pythonExtension,
         workspace.workspaceFolders[0].uri
     );
-
     const workspaceStateManager = new WorkspaceStateManager(context);
 
     const configureAutocomplete = new ConfigureAutocomplete(
@@ -117,7 +121,7 @@ export async function activate(
     );
     context.subscriptions.push(
         configureAutocomplete,
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.autocomplete.configure",
             configureAutocomplete.configureCommand,
             configureAutocomplete
@@ -125,7 +129,7 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.logs.openFolder",
             loggerManager.openLogFolder,
             loggerManager
@@ -136,6 +140,17 @@ export async function activate(
 
     // Configuration group
     const connectionManager = new ConnectionManager(cli);
+    context.subscriptions.push(
+        connectionManager.onDidChangeState(async () => {
+            telemetry.setMetadata(
+                Metadata.USER,
+                await toUserMetadata(connectionManager.databricksWorkspace)
+            );
+            telemetry.recordEvent(Events.CONNECTION_STATE_CHANGED, {
+                newState: connectionManager.state,
+            });
+        })
+    );
     const metadataServiceManager = new MetadataServiceManager(
         connectionManager
     );
@@ -157,17 +172,17 @@ export async function activate(
             "workspaceFsView",
             workspaceFsDataProvider
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.wsfs.attachSyncDestination",
             workspaceFsCommands.attachSyncDestination,
             workspaceFsCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.wsfs.refresh",
             workspaceFsCommands.refresh,
             workspaceFsCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.wsfs.createFolder",
             workspaceFsCommands.createFolder,
             workspaceFsCommands
@@ -199,42 +214,42 @@ export async function activate(
             "configurationView",
             configurationDataProvider
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.connection.logout",
             connectionCommands.logoutCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.connection.configureWorkspace",
             connectionCommands.configureWorkspaceCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.connection.openDatabricksConfigFile",
             connectionCommands.openDatabricksConfigFileCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.connection.attachCluster",
             connectionCommands.attachClusterCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.connection.attachClusterQuickPick",
             connectionCommands.attachClusterQuickPickCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.connection.detachCluster",
             connectionCommands.detachClusterCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.connection.attachSyncDestination",
             connectionCommands.attachSyncDestinationCommand(),
             connectionCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.connection.detachSyncDestination",
             connectionCommands.detachWorkspaceCommand(),
             connectionCommands
@@ -263,12 +278,12 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.run.runEditorContents",
             runCommands.runEditorContentsCommand(),
             runCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.run.runEditorContentsAsWorkflow",
             runCommands.runEditorContentsAsWorkflowCommand(),
             runCommands
@@ -294,32 +309,32 @@ export async function activate(
         clusterTreeDataProvider,
         window.registerTreeDataProvider("clusterView", clusterTreeDataProvider),
 
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.cluster.refresh",
             clusterCommands.refreshCommand(),
             clusterCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.cluster.filterByAll",
             clusterCommands.filterCommand("ALL"),
             clusterCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.cluster.filterByRunning",
             clusterCommands.filterCommand("RUNNING"),
             clusterCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.cluster.filterByMe",
             clusterCommands.filterCommand("ME"),
             clusterCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.cluster.start",
             clusterCommands.startClusterCommand,
             clusterCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.cluster.stop",
             clusterCommands.stopClusterCommand,
             clusterCommands
@@ -329,17 +344,17 @@ export async function activate(
     // Sync
     const syncCommands = new SyncCommands(synchronizer);
     context.subscriptions.push(
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.sync.start",
             syncCommands.startCommand("incremental"),
             syncCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.sync.startFull",
             syncCommands.startCommand("full"),
             syncCommands
         ),
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.sync.stop",
             syncCommands.stopCommand(),
             syncCommands
@@ -357,7 +372,7 @@ export async function activate(
     // Quickstart
     const quickstartCommands = new QuickstartCommands(context);
     context.subscriptions.push(
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.quickstart.open",
             quickstartCommands.openQuickstartCommand(),
             quickstartCommands
@@ -371,7 +386,7 @@ export async function activate(
     // Utils
     const utilCommands = new UtilsCommands.UtilsCommands();
     context.subscriptions.push(
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.utils.openExternal",
             utilCommands.openExternalCommand(),
             utilCommands
@@ -422,7 +437,7 @@ export async function activate(
     featureManager.isEnabled("debugging.dbconnect");
 
     context.subscriptions.push(
-        commands.registerCommand(
+        telemetry.registerCommand(
             "databricks.test.pipFreeze",
             dbConnectAccessVerifier.checkDbConnectInstall,
             dbConnectAccessVerifier
@@ -433,6 +448,7 @@ export async function activate(
     });
 
     CustomWhenContext.setActivated(true);
+    telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
     return {
         connectionManager: connectionManager,
     };
