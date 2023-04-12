@@ -1,0 +1,13 @@
+diff --git a/dist/pageobjects/workbench/Input.js b/dist/pageobjects/workbench/Input.js
+index b443a277e48e1053e594873db5afc7c1d0f8a503..574e1491ead16479cb192788b5bc949af81fc885 100644
+--- a/dist/pageobjects/workbench/Input.js
++++ b/dist/pageobjects/workbench/Input.js
+@@ -214,7 +214,7 @@ export class Input extends BasePage {
+     async resetPosition() {
+         const text = await this.getText();
+         await this.clear();
+-        await this.setText(text);
++        await this.setText(text || "");
+     }
+ }
+ /**

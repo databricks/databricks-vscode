@@ -7,7 +7,7 @@ import {
     startSyncIfStopped,
     waitForSyncComplete,
     waitForTreeItems,
-} from "./utils";
+} from "./utils.ts";
 import {sleep} from "wdio-vscode-service";
 
 describe("Run python on cluster", async function () {
@@ -58,17 +58,21 @@ describe("Run python on cluster", async function () {
     });
 
     it("should start syncing", async () => {
-        await (
-            await driver.getWorkbench()
-        ).executeCommand("Databricks: Start synchronization (full sync)");
+        const workbench = await driver.getWorkbench();
+
+        const editorView = workbench.getEditorView();
+        await editorView.closeAllEditors();
+
+        await workbench.executeCommand(
+            "Databricks: Start synchronization (full sync)"
+        );
+
         await startSyncIfStopped();
         await waitForSyncComplete();
     });
 
     it("should run a python file on a cluster", async () => {
         const workbench = await driver.getWorkbench();
-        const editorView = workbench.getEditorView();
-        await editorView.closeAllEditors();
 
         // open file
         const input = await workbench.openCommandPrompt();
