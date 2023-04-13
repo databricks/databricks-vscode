@@ -1,7 +1,11 @@
 import assert from "node:assert";
 import path from "node:path";
 import * as fs from "fs/promises";
-import {dismissNotifications, getViewSection, waitForTreeItems} from "./utils";
+import {
+    dismissNotifications,
+    getViewSection,
+    waitForTreeItems,
+} from "./utils.ts";
 import {
     CustomTreeSection,
     InputBox,
@@ -118,7 +122,7 @@ describe("Configure Databricks Extension", async function () {
         assert(await waitForTreeItems(section, 10_000));
     });
 
-    it("shoult list clusters", async function () {
+    it("should list clusters", async function () {
         const section = await getViewSection("CLUSTERS");
         assert(section);
         const tree = section as CustomTreeSection;

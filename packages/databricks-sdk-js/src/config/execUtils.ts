@@ -2,7 +2,7 @@ import * as child_process from "node:child_process";
 import {ExecException} from "node:child_process";
 import {promisify} from "node:util";
 
-const execFile = promisify(child_process.execFile);
+export const execFile = promisify(child_process.execFile);
 
 export interface ExecFileException extends ExecException {
     stdout?: string;
@@ -20,7 +20,7 @@ export function isExecFileException(e: any): e is ExecFileException {
     );
 }
 
-function isFileNotFound(e: any): e is ExecFileException {
+export function isFileNotFound(e: any): e is ExecFileException {
     // when using plain execFile
     if (e.code === "ENOENT") {
         return true;

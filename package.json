@@ -32,14 +32,14 @@
     "homepage": "https://github.com/databricks/databricks-vscode#readme",
     "packageManager": "yarn@3.2.1",
     "devDependencies": {
-        "@typescript-eslint/eslint-plugin": "^5.52.0",
-        "@typescript-eslint/parser": "^5.52.0",
+        "@typescript-eslint/eslint-plugin": "^5.58.0",
+        "@typescript-eslint/parser": "^5.58.0",
         "conventional-changelog-cli": "^2.2.2",
-        "eslint": "^8.34.0",
-        "eslint-config-prettier": "^8.6.0",
+        "eslint": "^8.38.0",
+        "eslint-config-prettier": "^8.8.0",
         "eslint-plugin-no-only-tests": "^3.1.0",
         "ts-mockito": "^2.6.1",
-        "typescript": "^4.9.5"
+        "typescript": "^5.0.4"
     },
     "resolutions": {
         "json5": "2.2.2"

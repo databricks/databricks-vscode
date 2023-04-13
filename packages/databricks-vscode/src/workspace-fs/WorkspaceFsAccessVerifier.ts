@@ -22,7 +22,7 @@ export async function switchToWorkspace() {
 async function dbrBelowThreshold(cluster: Cluster) {
     const dbrVersionParts = cluster.dbrVersion!;
     return (
-        dbrVersionParts[0] < 11 ||
+        (dbrVersionParts[0] !== "x" && dbrVersionParts[0] < 11) ||
         (dbrVersionParts[0] === 11 &&
             dbrVersionParts[1] !== "x" &&
             dbrVersionParts[1] < 2)
@@ -49,7 +49,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             }),
             this._connectionManager.onDidChangeState(async (state) => {
                 if (state === "CONNECTED") {
-                    await this.switchIfNotEnabled();
+                    await this.verifyWorkspaceConfigs();
                 } else {
                     this._isEnabled = undefined;
                 }
@@ -127,7 +127,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         }
     }
 
-    async isEnabledForWorkspace() {
+    private async isEnabledForWorkspace() {
         if (this._connectionManager.state === "DISCONNECTED") {
             return false;
         }
@@ -171,7 +171,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         return this._isEnabled;
     }
 
-    async switchIfNotEnabled() {
+    async verifyWorkspaceConfigs() {
         if (
             workspaceConfigs.enableFilesInWorkspace &&
             !(await this.isEnabledForWorkspace())

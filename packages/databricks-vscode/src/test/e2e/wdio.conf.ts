@@ -3,19 +3,24 @@
 import type {Options} from "@wdio/types";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const video = require("wdio-video-reporter");
+import video from "wdio-video-reporter";
 import path from "node:path";
+import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
 import {WorkspaceClient, Cluster, Repo} from "@databricks/databricks-sdk";
-import {initialiseCustomCommands} from "./customCommands";
+import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile, ExecFileOptions} from "node:child_process";
 import {mkdirSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {version, name, engines} from "../../../package.json";
+import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "workspace");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const {version, name, engines} = packageJson;
+
 const REPO_NAME = "vscode-integ-test";
 const EXTENSION_DIR = path.resolve(tmpdir(), "extension-test", "extension");
 const VSIX_PATH = path.resolve(
@@ -25,6 +30,7 @@ const VSIX_PATH = path.resolve(
     "..",
     `${name}-${version}.vsix`
 );
+
 export const config: Options.Testrunner = {
     //
     // ====================
@@ -50,7 +56,7 @@ export const config: Options.Testrunner = {
         // for all available options
         tsNodeOpts: {
             transpileOnly: true,
-            project: "src/test/e2e/tsconfig.json",
+            project: path.join(__dirname, "tsconfig.json"),
         },
     },
 
@@ -70,7 +76,7 @@ export const config: Options.Testrunner = {
     // then the current working directory is where your `package.json` resides, so `wdio`
     // will be called from there.
     //
-    specs: ["./src/test/e2e/**/*.e2e.ts"],
+    specs: [__dirname + "/**/*.e2e.ts"],
     // Patterns to exclude.
     exclude: [
         // 'path/to/excluded/files'
@@ -335,10 +341,12 @@ export const config: Options.Testrunner = {
                         ],
                         spawnArgs,
                         (error, stdout, stderr) => {
-                            console.log(stdout);
-                            console.error(stderr);
-                            console.error(error);
+                            if (stdout) {
+                                console.log(stdout);
+                            }
                             if (error) {
+                                console.error(stderr);
+                                console.error(error);
                                 reject(error);
                             }
                             resolve(undefined);
@@ -369,7 +377,7 @@ export const config: Options.Testrunner = {
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     before: async function () {
-        initialiseCustomCommands();
+        ElementCustomCommands.initialise();
     },
 
     /**

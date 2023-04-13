@@ -78,7 +78,40 @@ export const workspaceConfigs = {
     get databrickscfgLocation() {
         const config = workspace
             .getConfiguration("databricks")
-            ?.get<string>("overrideDatabricksConfigFile");
+            .get<string>("overrideDatabricksConfigFile");
         return config === "" || config === undefined ? undefined : config;
+    },
+
+    get userEnvFile() {
+        const config = workspace
+            .getConfiguration("databricks")
+            .get<string>("python.envFile");
+
+        return config === "" || config === undefined ? undefined : config;
+    },
+
+    set userEnvFile(value: string | undefined) {
+        workspace
+            .getConfiguration("databricks")
+            .update("python.envFile", value, ConfigurationTarget.Workspace);
+    },
+
+    get experimetalFeatureOverides() {
+        return workspace
+            .getConfiguration("databricks")
+            .get<Array<string>>("experiments.optInto", []);
+    },
+
+    /**
+     * Set the python.envFile configuration in the ms-python extension
+     */
+    set msPythonEnvFile(value: string | undefined) {
+        workspace
+            .getConfiguration("python")
+            .update("envFile", value, ConfigurationTarget.Workspace);
+    },
+
+    get msPythonEnvFile() {
+        return workspace.getConfiguration("python").get<string>("envFile");
     },
 };
