@@ -98,11 +98,11 @@ export class ConfigurationDataProvider
                     "databricks.cluster.terminated";
 
                 switch (cluster.state) {
+                    case "RESIZING":
                     case "RUNNING":
                         contextValue = "databricks.cluster.running";
                         break;
                     case "PENDING":
-                    case "RESIZING":
                     case "RESTARTING":
                         contextValue = "databricks.cluster.pending";
                         break;
