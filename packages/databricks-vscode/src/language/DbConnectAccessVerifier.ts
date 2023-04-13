@@ -64,7 +64,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                 "checkCluster",
                 "No cluster attached",
                 this.promptForAttachingCluster(
-                    "No cluster is attached. Please attach a cluster."
+                    "Please attach a cluster to use DB Connect V2."
                 )
             );
         }
@@ -191,12 +191,12 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             env.version &&
             !(
                 env.version.major > 3 ||
-                (env.version.major === 3 && env.version.minor >= 9)
+                (env.version.major === 3 && env.version.minor >= 10)
             )
         ) {
             return this.rejectStep(
                 "checkDbConnectInstall",
-                `DB Connect V2 requires python >= 3.9.0. Current version is ${[
+                `DB Connect V2 requires python >= 3.10.0. Current version is ${[
                     env.version.major,
                     env.version.minor,
                     env.version.micro,

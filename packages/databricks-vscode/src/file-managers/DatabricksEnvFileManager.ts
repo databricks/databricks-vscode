@@ -19,6 +19,7 @@ import {SystemVariables} from "../vscode-objs/SystemVariables";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
@@ -34,7 +35,8 @@ export class DatabricksEnvFileManager implements Disposable {
         workspacePath: Uri,
         private readonly featureManager: FeatureManager,
         private readonly connectionManager: ConnectionManager,
-        private readonly extensionContext: ExtensionContext
+        private readonly extensionContext: ExtensionContext,
+        private readonly pythonExtension: MsPythonExtensionWrapper
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
         const unresolvedDatabricksEnvFile = path.join(
@@ -192,6 +194,25 @@ export class DatabricksEnvFileManager implements Disposable {
         return headers["Authorization"]?.split(" ")[1];
     }
 
+    private async userAgent() {
+        const client = this.connectionManager.workspaceClient?.apiClient;
+        if (!client) {
+            return;
+        }
+        const userAgent = [
+            `${client.product}/${client.productVersion}`,
+            `os/${process.platform}`,
+        ];
+
+        const env = await this.pythonExtension.pythonEnvironment;
+        if (env && env.version) {
+            const {major, minor} = env.version;
+            userAgent.push(`python/${major}.${minor}`);
+        }
+
+        return userAgent.join(" ");
+    }
+
     private async getDatabrickseEnvVars(): Promise<
         Record<string, string | undefined> | undefined
     > {
@@ -207,13 +228,14 @@ export class DatabricksEnvFileManager implements Disposable {
         const cluster = this.connectionManager.cluster;
         const host = this.connectionManager.databricksWorkspace?.host.authority;
         const pat = await this.getPatToken();
-        if (!cluster || !pat || !host) {
+        const userAgent = await this.userAgent();
+        if (!cluster || !pat || !host || !userAgent) {
             return;
         }
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
             DATABRICKS_CLUSTER_ID: cluster.id,
-            SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id}`,
+            SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=${userAgent}`,
             DATABRICKS_HOST: host,
             DATABRICKS_TOKEN: pat,
         };
