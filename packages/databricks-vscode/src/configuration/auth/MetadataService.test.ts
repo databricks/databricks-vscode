@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {MetadataService} from "./MetadataService";
-import got from "got";
+import fetch from "node-fetch-commonjs";
+
 import * as assert from "assert";
 import {
     ApiClient,
@@ -30,14 +31,14 @@ describe(__filename, function () {
     });
 
     it("should return 404 when no apiClient is configured", async () => {
-        const response = await got(metadataService.url, {
-            throwHttpErrors: false,
+        const response = await fetch(metadataService.url, {
             headers: {
                 [MetadataServiceHostHeader]: "https://test.com/",
                 [MetadataServiceVersionHeader]: MetadataServiceVersion,
             },
         });
-        assert.equal(response.statusCode, 404);
+
+        assert.equal(response.status, 404);
     });
 
     it("should return credentials when apiClient is configured", async () => {
@@ -56,26 +57,31 @@ describe(__filename, function () {
                 })
             )
         );
-        const response = (await got(metadataService.url, {
+
+        const response = await fetch(metadataService.url, {
             headers: {
                 [MetadataServiceHostHeader]: "https://test.com/",
                 [MetadataServiceVersionHeader]: MetadataServiceVersion,
             },
-        }).json()) as any;
-        assert.equal(response.token_type, "Bearer");
-        assert.equal(response.access_token, "XXXX");
+        });
+
+        const token = (await response.json()) as any;
+
+        assert.equal(token.token_type, "Bearer");
+        assert.equal(token.access_token, "XXXX");
     });
 
     it("should return 404 when magic is changed", async () => {
-        const url = metadataService.url;
         metadataService.updateMagic();
-        const response = await got(url, {
-            throwHttpErrors: false,
+
+        const response = await fetch(metadataService.url, {
             headers: {
-                Metadata: "true",
+                [MetadataServiceHostHeader]: "https://test.com/",
+                [MetadataServiceVersionHeader]: MetadataServiceVersion,
             },
         });
-        assert.equal(response.statusCode, 404);
+
+        assert.equal(response.status, 404);
     });
 
     it("should work together with the SDK", async () => {

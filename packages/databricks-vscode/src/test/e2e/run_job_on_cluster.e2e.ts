@@ -7,7 +7,7 @@ import {
     startSyncIfStopped,
     waitForSyncComplete,
     waitForTreeItems,
-} from "./utils";
+} from "./utils.ts";
 import {sleep} from "wdio-vscode-service";
 
 describe("Run job on cluster", async function () {

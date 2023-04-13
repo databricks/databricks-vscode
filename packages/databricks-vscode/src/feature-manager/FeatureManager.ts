@@ -1,8 +1,11 @@
 import {Event, EventEmitter, Disposable} from "vscode";
+import {Mutex} from "../locking";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {DisabledFeature} from "./DisabledFeature";
+import {EnabledFeature} from "./EnabledFeature";
 
 export type FeatureEnableAction = () => Promise<void>;
-
+export type FeatureId = "debugging.dbconnect";
 /**
  * The state of a feature.
  * *available*: If feature is enabled.
@@ -14,9 +17,11 @@ export interface FeatureState {
     avaliable: boolean;
     reason?: string;
     action?: FeatureEnableAction;
+    isDisabledByFf?: boolean;
+    dirty?: boolean;
 }
 
-export interface Feature {
+export interface Feature extends Disposable {
     check: () => Promise<void>;
     onDidChangeState: Event<FeatureState>;
 }
@@ -28,8 +33,9 @@ export interface Feature {
  * are satified.
  * *Disabled features*: Features which are disabled by feature flags. Their availability checks are not performed.
  */
-export class FeatureManager<T extends string> implements Disposable {
+export class FeatureManager<T = FeatureId> implements Disposable {
     private disposables: Disposable[] = [];
+    private readonly mutex: Mutex = new Mutex();
 
     private features: Map<
         T,
@@ -41,17 +47,24 @@ export class FeatureManager<T extends string> implements Disposable {
     > = new Map();
 
     private stateCache: Map<T, FeatureState> = new Map();
-    constructor(private readonly disabledFeatures: T[]) {}
+    constructor(private readonly disabledFeatures: (T | FeatureId)[]) {}
 
-    registerFeature(id: T, feature: Feature) {
+    registerFeature(
+        id: T,
+        featureFactory: () => Feature = () => new EnabledFeature()
+    ) {
         if (this.features.has(id)) {
             return;
         }
-        if (this.disabledFeatures.includes(id)) {
-            feature = new DisabledFeature();
-        }
+        const feature =
+            this.disabledFeatures.includes(id) &&
+            !workspaceConfigs.experimetalFeatureOverides.includes(id as string)
+                ? new DisabledFeature()
+                : featureFactory();
+
         const eventEmitter = new EventEmitter<FeatureState>();
         this.disposables.push(
+            feature,
             feature.onDidChangeState((e) => {
                 if (
                     !this.stateCache.has(id) ||
@@ -85,35 +98,42 @@ export class FeatureManager<T extends string> implements Disposable {
      * @returns Promise<{@link FeatureState}>
      */
     async isEnabled(id: T, force = false): Promise<FeatureState> {
-        const feature = this.features.get(id);
-        if (!feature) {
-            return {
-                avaliable: false,
-                reason: `Feature ${id} has not been registered`,
-            };
-        }
+        await this.mutex.wait();
+        try {
+            const feature = this.features.get(id);
+            if (!feature) {
+                return {
+                    avaliable: false,
+                    reason: `Feature ${id} has not been registered`,
+                };
+            }
 
-        const cachedState = this.stateCache.get(id);
-        if (cachedState && !force) {
-            return cachedState;
-        }
+            const cachedState = this.stateCache.get(id);
+            if (cachedState) {
+                if (!force) {
+                    return cachedState;
+                }
+                cachedState.dirty = true;
+            }
 
-        const state = await new Promise<FeatureState>((resolve, reject) => {
-            const changeListener = this.onDidChangeState(
-                id,
-                (state) => {
+            const state = await new Promise<FeatureState>((resolve, reject) => {
+                const changeListener = this.onDidChangeState(
+                    id,
+                    (state) => {
+                        changeListener.dispose();
+                        resolve(state);
+                    },
+                    this
+                );
+                feature.feature.check().catch((e) => {
                     changeListener.dispose();
-                    resolve(state);
-                },
-                this
-            );
-            feature.feature.check().catch((e) => {
-                changeListener.dispose();
-                reject(e);
+                    reject(e);
+                });
             });
-        });
-
-        return state;
+            return state;
+        } finally {
+            this.mutex.signal();
+        }
     }
 
     dispose() {

@@ -1,14 +1,53 @@
-import {randomUUID} from "crypto";
-import {Extension, Uri, Event, window, Disposable} from "vscode";
+import {
+    Extension,
+    Uri,
+    Event,
+    window,
+    Disposable,
+    workspace,
+    RelativePattern,
+    Terminal,
+} from "vscode";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
-
-export class MsPythonExtensionWrapper {
+import * as os from "node:os";
+import * as path from "node:path";
+import {mkdtemp, readFile} from "fs/promises";
+import {Mutex} from "../locking";
+export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
+    private readonly disposables: Disposable[] = [];
+    private readonly terminalMutex: Mutex = new Mutex();
+    private _terminal?: Terminal;
     constructor(
-        private readonly pythonExtension: Extension<MsPythonExtensionApi>,
-        private readonly workspaceFolder: Uri
+        pythonExtension: Extension<MsPythonExtensionApi>,
+        private readonly workspaceFolder: Uri,
+        private readonly workspaceStateManager: WorkspaceStateManager
     ) {
         this.api = pythonExtension.exports as MsPythonExtensionApi;
+        this.onDidChangePythonExecutable(async () => {
+            try {
+                await this.terminalMutex.wait();
+                this.terminal.dispose();
+                this._terminal = undefined;
+            } finally {
+                this.terminalMutex.signal();
+            }
+        }, this);
+    }
+
+    get terminal() {
+        if (this._terminal) {
+            return this._terminal;
+        }
+        const terminalName = `databricks-pip-${this.workspaceStateManager.fixedUUID.slice(
+            0,
+            8
+        )}`;
+
+        this._terminal = window.createTerminal(terminalName);
+        this.disposables.push(this._terminal);
+        return this._terminal;
     }
 
     async getPythonExecutable() {
@@ -37,27 +76,47 @@ export class MsPythonExtensionWrapper {
             );
     }
 
-    private async executeInTerminalE(command: string) {
-        const terminalName = `databricks-pip-${randomUUID().slice(0, 8)}`;
-        const terminal = window.createTerminal({
-            name: terminalName,
-            isTransient: true,
-        });
-        terminal.sendText(`${command}; exit $?`);
+    get pythonEnvironment() {
+        return this.api.environments?.resolveEnvironment(
+            this.api.environments?.getActiveEnvironmentPath()
+        );
+    }
 
-        const disposables: Disposable[] = [terminal];
-        const exitCode = await new Promise<number | undefined>((resolve) => {
-            disposables.push(
-                window.onDidCloseTerminal((e) => {
-                    if (e.name !== terminalName) {
-                        return;
-                    }
-                    resolve(e.exitStatus?.code);
-                })
+    private async executeInTerminalE(command: string) {
+        const dir = await mkdtemp(path.join(os.tmpdir(), "databricks-vscode-"));
+        const filePath = path.join(dir, "python-terminal-output.txt");
+
+        const disposables: Disposable[] = [];
+        const exitCodePromise = new Promise<number | undefined>((resolve) => {
+            const fsWatcher = workspace.createFileSystemWatcher(
+                new RelativePattern(dir, path.basename(filePath))
             );
+            const handleFileChange = async () => {
+                try {
+                    const fileData = await readFile(filePath, "utf-8");
+                    resolve(parseInt(fileData));
+                } catch (e: unknown) {
+                    resolve(undefined);
+                }
+            };
+            disposables.push(
+                fsWatcher,
+                fsWatcher.onDidCreate(handleFileChange),
+                fsWatcher.onDidChange(handleFileChange)
+            );
+            this.terminal.sendText(`${command}; echo $? > ${filePath}`);
         });
-        disposables.forEach((i) => i.dispose());
-        return exitCode;
+
+        try {
+            await this.terminalMutex.wait();
+            this.terminal.show();
+            this.terminal.sendText(`${command}; echo $? > ${filePath}`);
+            const exitCode = await exitCodePromise;
+            return exitCode;
+        } finally {
+            disposables.forEach((i) => i.dispose());
+            this.terminalMutex.signal();
+        }
     }
 
     async findPackageInEnvironment(name: string) {
@@ -106,7 +165,7 @@ export class MsPythonExtensionWrapper {
 
         const execCommand = [
             executable,
-            `-m pip uninstall ${name} --disable-pip-version-check --no-python-version-warning`,
+            `-m pip uninstall ${name} --disable-pip-version-check --no-python-version-warning -y`,
         ].join(" ");
         const exitCode = await this.executeInTerminalE(execCommand);
         if (exitCode) {
@@ -115,4 +174,6 @@ export class MsPythonExtensionWrapper {
             );
         }
     }
+
+    dispose() {}
 }

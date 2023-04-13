@@ -2,8 +2,7 @@ import {Disposable, EventEmitter} from "vscode";
 import {Feature, FeatureEnableAction, FeatureState} from "./FeatureManager";
 
 export type AccessVerifierStep = (...args: any) => Promise<boolean>;
-
-export abstract class MultiStepAccessVerifier implements Disposable, Feature {
+export abstract class MultiStepAccessVerifier implements Feature {
     protected disposables: Disposable[] = [];
     protected onDidChangeStateEmitter = new EventEmitter<FeatureState>();
     public onDidChangeState = this.onDidChangeStateEmitter.event;
@@ -35,14 +34,16 @@ export abstract class MultiStepAccessVerifier implements Disposable, Feature {
             this.stepValuesHas(step);
             const stepValue = await steps[step]();
             this.stepValues[step] = stepValue;
-            if (!stepValue) {
-                break;
-            }
         }
         return this.checkAllStepValues();
     }
 
-    rejectStep(id: string, reason?: string, action?: FeatureEnableAction) {
+    rejectStep(
+        id: string,
+        reason?: string,
+        action?: FeatureEnableAction,
+        featureFlag?: boolean
+    ) {
         this.stepValuesHas(id);
 
         this.stepValues[id] = false;
@@ -50,6 +51,7 @@ export abstract class MultiStepAccessVerifier implements Disposable, Feature {
             avaliable: false,
             reason,
             action,
+            isDisabledByFf: featureFlag === false,
         });
         return false;
     }
