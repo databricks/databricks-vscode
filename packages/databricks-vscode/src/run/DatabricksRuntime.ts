@@ -27,7 +27,6 @@ import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -132,9 +131,7 @@ export class DatabricksRuntime implements Disposable {
             }
 
             await this.wsfsAccessVerifier.verifyCluster(cluster);
-            if (workspaceConfigs.syncDestinationType === "workspace") {
-                await this.wsfsAccessVerifier.switchIfNotEnabled();
-            }
+            await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
             const isClusterRunning = await promptForClusterStart(
                 cluster,
                 async () => {
