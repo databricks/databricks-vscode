@@ -45,7 +45,10 @@ export class MsPythonExtensionWrapper implements Disposable {
             8
         )}`;
 
-        this._terminal = window.createTerminal(terminalName);
+        this._terminal = window.createTerminal({
+            name: terminalName,
+            isTransient: true,
+        });
         this.disposables.push(this._terminal);
         return this._terminal;
     }

@@ -136,7 +136,8 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             path.join(
                 "resources",
                 "python",
-                "databricks_connect-13.0.0-py2.py3-none-any.whl"
+                "generated",
+                "databricks_connect-13.0.0b5-py2.py3-none-any.whl"
             )
         );
 
@@ -200,7 +201,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                     env.version.major,
                     env.version.minor,
                     env.version.micro,
-                ].join(".")}`
+                ].join(".")}.`
             );
         }
         try {

@@ -427,7 +427,8 @@ export async function activate(
         workspace.workspaceFolders[0].uri,
         featureManager,
         connectionManager,
-        context
+        context,
+        pythonExtensionWrapper
     );
     context.subscriptions.push(
         databricksEnvFileManager,

@@ -166,7 +166,8 @@ export class ConfigureAutocomplete implements Disposable {
             path.join(
                 "resources",
                 "python",
-                "databricks_connect-13.0.0-py2.py3-none-any.whl"
+                "generated",
+                "databricks_connect-13.0.0b5-py2.py3-none-any.whl"
             )
         );
         await this.pythonExtension.installPackageInEnvironment(wheelPath);
