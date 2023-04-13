@@ -6,7 +6,7 @@ export async function promptForClusterStart(
     onReject: () => Promise<void>,
     onAccept: () => Promise<void> = async () => {}
 ) {
-    if (cluster.state !== "RUNNING") {
+    if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
         const response = await window.showErrorMessage(
             "The attached cluster is not running.",
             "Start Cluster",
