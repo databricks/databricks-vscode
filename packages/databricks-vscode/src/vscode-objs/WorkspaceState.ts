@@ -19,7 +19,7 @@ export class WorkspaceStateManager {
     }
 
     get filesInWorkspaceFf() {
-        return this.fixedRandom <= 0.97;
+        return this.fixedRandom <= 0.1;
     }
 
     get skipSwitchToWorkspace() {
