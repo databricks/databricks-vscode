@@ -33,15 +33,15 @@ export async function switchToWorkspacePrompt(
     workspaceState: WorkspaceStateManager
 ) {
     const message =
-        "Repos as sync destination is deprecated. Please switch to using workspace as the sync destination.";
+        "The Databricks extension works better when using the workspace as sync destination.";
     const selection = await window.showErrorMessage(
         message,
         "Switch to Workspace",
         "Ignore",
-        "Ignore for this workspace"
+        "Don't show again"
     );
 
-    if (selection === "Ignore for this workspace") {
+    if (selection === "Don't show again") {
         workspaceState.skipSwitchToWorkspace = true;
         return;
     }
