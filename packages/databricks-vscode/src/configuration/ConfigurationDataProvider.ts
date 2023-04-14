@@ -7,7 +7,6 @@ import {
     TreeDataProvider,
     TreeItem,
     TreeItemCollapsibleState,
-    Command,
 } from "vscode";
 
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
@@ -285,7 +284,7 @@ export class ConfigurationDataProvider
 
             if (
                 workspaceConfigs.syncDestinationType === "repo" &&
-                this.workspaceState.filesInWorkspaceFf &&
+                this.workspaceState.wsfsFeatureFlag &&
                 this.wsfsAccessVerifier.isEnabled
             ) {
                 children.push({

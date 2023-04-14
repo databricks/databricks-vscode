@@ -18,7 +18,7 @@ export class WorkspaceStateManager {
         return randomNum;
     }
 
-    get filesInWorkspaceFf() {
+    get wsfsFeatureFlag() {
         return this.fixedRandom <= 0.1;
     }
 
