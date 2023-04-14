@@ -46,17 +46,11 @@ export const workspaceConfigs = {
     },
 
     get syncDestinationType() {
-        const syncDestinationTypeShown =
+        return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<SyncDestinationType>("sync.destinationType") ??
-            "repo [deprecated]";
-
-        if (syncDestinationTypeShown === "repo [deprecated]") {
-            return "repo";
-        } else {
-            return syncDestinationTypeShown;
-        }
+                ?.get<SyncDestinationType>("sync.destinationType") ?? "repo"
+        );
     },
 
     get enableFilesInWorkspace() {
@@ -64,14 +58,11 @@ export const workspaceConfigs = {
     },
 
     async setSyncDestinationType(destinationType: SyncDestinationType) {
-        const destinationTypeShown =
-            destinationType === "repo" ? "repo [deprecated]" : "workspace";
-
         await workspace
             .getConfiguration("databricks")
             ?.update(
                 "sync.destinationType",
-                destinationTypeShown,
+                destinationType,
                 ConfigurationTarget.Workspace
             );
     },

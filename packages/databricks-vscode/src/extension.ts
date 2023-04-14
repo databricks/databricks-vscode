@@ -199,9 +199,20 @@ export async function activate(
         connectionManager,
         clusterModel
     );
+
+    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
+        connectionManager,
+        workspaceStateManager,
+        synchronizer
+    );
+
+    context.subscriptions.push(wsfsAccessVerifier);
+
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
-        synchronizer
+        synchronizer,
+        workspaceStateManager,
+        wsfsAccessVerifier
     );
 
     context.subscriptions.push(
@@ -253,13 +264,6 @@ export async function activate(
             connectionCommands
         )
     );
-
-    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
-        connectionManager,
-        workspaceStateManager,
-        synchronizer
-    );
-    context.subscriptions.push(wsfsAccessVerifier);
 
     // Run/debug group
     const runCommands = new RunCommands(connectionManager);

@@ -3,7 +3,7 @@ import {
     WorkspaceFsEntity,
     WorkspaceFsUtils,
 } from "@databricks/databricks-sdk";
-import {commands, Disposable, window} from "vscode";
+import {commands, Disposable, window, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CodeSynchronizer} from "../sync";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
@@ -29,10 +29,47 @@ async function dbrBelowThreshold(cluster: Cluster) {
     );
 }
 
+export async function switchToWorkspacePrompt(
+    workspaceState: WorkspaceStateManager
+) {
+    const message =
+        "Repos as sync destination is deprecated. Please switch to using workspace as the sync destination.";
+    const selection = await window.showErrorMessage(
+        message,
+        "Switch to Workspace",
+        "Ignore",
+        "Ignore for this workspace"
+    );
+
+    if (selection === "Ignore for this workspace") {
+        workspaceState.skipSwitchToWorkspace = true;
+        return;
+    }
+
+    if (selection === "Switch to Workspace") {
+        switchToWorkspace();
+    }
+}
+
 export class WorkspaceFsAccessVerifier implements Disposable {
     private disposables: Disposable[] = [];
     private currentCluster: Cluster | undefined;
     private _isEnabled: boolean | undefined;
+    private readonly onDidChangeStateEmitter = new EventEmitter<
+        boolean | undefined
+    >();
+    readonly onDidChangeState = this.onDidChangeStateEmitter.event;
+
+    private set isEnabled(value: boolean | undefined) {
+        if (this._isEnabled !== value) {
+            this.onDidChangeStateEmitter.fire(value);
+        }
+        this._isEnabled = value;
+    }
+
+    public get isEnabled() {
+        return this._isEnabled;
+    }
 
     constructor(
         private _connectionManager: ConnectionManager,
@@ -51,7 +88,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
                 if (state === "CONNECTED") {
                     await this.verifyWorkspaceConfigs();
                 } else {
-                    this._isEnabled = undefined;
+                    this.isEnabled = undefined;
                 }
             }),
             this._sync.onDidChangeState(async (state) => {
@@ -66,7 +103,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
                     workspaceConfigs.syncDestinationType === "workspace" &&
                     state === "FILES_IN_WORKSPACE_DISABLED"
                 ) {
-                    this._isEnabled = false;
+                    this.isEnabled = false;
                     const selection = await window.showErrorMessage(
                         "Sync failed. Files in Workspace is disabled for the current workspace.",
                         "Switch to Repos",
@@ -107,23 +144,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             ) {
                 return;
             }
-            const message =
-                "Please switch to workspace for better experience, repos has been deprecated";
-            const selection = await window.showErrorMessage(
-                message,
-                "Switch to Workspace",
-                "Ignore",
-                "Ignore for this workspace"
-            );
-
-            if (selection === "Ignore for this workspace") {
-                this.workspaceState.skipSwitchToWorkspace = true;
-                return;
-            }
-
-            if (selection === "Switch to Workspace") {
-                switchToWorkspace();
-            }
+            switchToWorkspacePrompt(this.workspaceState);
         }
     }
 
@@ -132,8 +153,8 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             return false;
         }
         await this._connectionManager.waitForConnect();
-        if (this._isEnabled !== undefined) {
-            return this._isEnabled;
+        if (this.isEnabled !== undefined) {
+            return this.isEnabled;
         }
         const rootPath =
             this._connectionManager.databricksWorkspace?.workspaceFsRoot;
@@ -161,14 +182,14 @@ export class WorkspaceFsAccessVerifier implements Disposable {
                         /.*(Files in Workspace is disabled|FEATURE_DISABLED).*/
                     )
                 ) {
-                    this._isEnabled = false;
-                    return this._isEnabled;
+                    this.isEnabled = false;
+                    return this.isEnabled;
                 }
             }
         }
 
-        this._isEnabled = true;
-        return this._isEnabled;
+        this.isEnabled = true;
+        return this.isEnabled;
     }
 
     async verifyWorkspaceConfigs() {

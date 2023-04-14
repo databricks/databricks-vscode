@@ -9,6 +9,8 @@ import {ConnectionManager} from "./ConnectionManager";
 import {resolveProviderResult} from "../test/utils";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 
 describe(__filename, () => {
     let connectionManagerMock: ConnectionManager;
@@ -59,7 +61,12 @@ describe(__filename, () => {
 
     it("should reload tree on cluster change", async () => {
         const connectionManager = instance(connectionManagerMock);
-        const provider = new ConfigurationDataProvider(connectionManager, sync);
+        const provider = new ConfigurationDataProvider(
+            connectionManager,
+            sync,
+            instance(mock(WorkspaceStateManager)),
+            instance(mock(WorkspaceFsAccessVerifier))
+        );
         disposables.push(provider);
 
         let called = false;
@@ -76,7 +83,12 @@ describe(__filename, () => {
 
     it("should reload tree on sync destination change", async () => {
         const connectionManager = instance(connectionManagerMock);
-        const provider = new ConfigurationDataProvider(connectionManager, sync);
+        const provider = new ConfigurationDataProvider(
+            connectionManager,
+            sync,
+            instance(mock(WorkspaceStateManager)),
+            instance(mock(WorkspaceFsAccessVerifier))
+        );
         disposables.push(provider);
 
         let called = false;
@@ -93,7 +105,12 @@ describe(__filename, () => {
 
     it("should get empty roots", async () => {
         const connectionManager = instance(connectionManagerMock);
-        const provider = new ConfigurationDataProvider(connectionManager, sync);
+        const provider = new ConfigurationDataProvider(
+            connectionManager,
+            sync,
+            instance(mock(WorkspaceStateManager)),
+            instance(mock(WorkspaceFsAccessVerifier))
+        );
         disposables.push(provider);
 
         const children = await resolveProviderResult(provider.getChildren());
@@ -119,7 +136,12 @@ describe(__filename, () => {
         when(connectionManagerMock.cluster).thenReturn(cluster);
 
         const connectionManager = instance(connectionManagerMock);
-        const provider = new ConfigurationDataProvider(connectionManager, sync);
+        const provider = new ConfigurationDataProvider(
+            connectionManager,
+            sync,
+            instance(mock(WorkspaceStateManager)),
+            instance(mock(WorkspaceFsAccessVerifier))
+        );
         disposables.push(provider);
 
         const children = await resolveProviderResult(provider.getChildren());

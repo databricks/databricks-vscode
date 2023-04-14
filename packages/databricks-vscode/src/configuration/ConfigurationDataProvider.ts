@@ -7,11 +7,18 @@ import {
     TreeDataProvider,
     TreeItem,
     TreeItemCollapsibleState,
+    Command,
 } from "vscode";
 
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {
+    WorkspaceFsAccessVerifier,
+    switchToWorkspacePrompt,
+} from "../workspace-fs";
 
 export type ConfigurationTreeItem = TreeItem & {
     url?: string;
@@ -34,7 +41,9 @@ export class ConfigurationDataProvider
 
     constructor(
         private connectionManager: ConnectionManager,
-        private sync: CodeSynchronizer
+        private sync: CodeSynchronizer,
+        private readonly workspaceState: WorkspaceStateManager,
+        private readonly wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {
         this.disposables.push(
             this.connectionManager.onDidChangeState(() => {
@@ -47,6 +56,9 @@ export class ConfigurationDataProvider
                 this._onDidChangeTreeData.fire();
             }),
             this.sync.onDidChangeState(() => {
+                this._onDidChangeTreeData.fire();
+            }),
+            this.wsfsAccessVerifier.onDidChangeState(() => {
                 this._onDidChangeTreeData.fire();
             })
         );
@@ -272,16 +284,29 @@ export class ConfigurationDataProvider
             ];
 
             if (
-                syncDestination.remoteUri.name !== syncDestination.localUri.name
+                workspaceConfigs.syncDestinationType === "repo" &&
+                this.workspaceState.filesInWorkspaceFf &&
+                this.wsfsAccessVerifier.isEnabled
             ) {
                 children.push({
-                    label: "The remote sync destination name does not match the current vscode workspace name",
-                    tooltip:
-                        "If syncing to directory with a different name is the intended behaviour, this warning can be ignored",
+                    label: {
+                        highlights: [[0, 10]],
+                        label: "Deprecated",
+                    },
+                    tooltip: "Click to switch to workspace",
                     iconPath: new ThemeIcon(
                         "warning",
                         new ThemeColor("problemsWarningIcon.foreground")
                     ),
+                    command: {
+                        title: "Call",
+                        command: "databricks.call",
+                        arguments: [
+                            () => {
+                                switchToWorkspacePrompt(this.workspaceState);
+                            },
+                        ],
+                    },
                 });
             }
             children.push(
