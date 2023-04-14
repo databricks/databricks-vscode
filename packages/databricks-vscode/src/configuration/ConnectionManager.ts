@@ -3,6 +3,7 @@ import {
     Cluster,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
+    ApiClient,
 } from "@databricks/databricks-sdk";
 import {
     env,
@@ -93,6 +94,10 @@ export class ConnectionManager {
         return this._workspaceClient;
     }
 
+    get apiClient(): ApiClient | undefined {
+        return this._workspaceClient?.apiClient;
+    }
+
     async login(interactive = false, force = false): Promise<void> {
         try {
             await this._login(interactive, force);
@@ -105,6 +110,7 @@ export class ConnectionManager {
             await this.logout();
         }
     }
+
     private async _login(interactive = false, force = false): Promise<void> {
         if (force) {
             await this.logout();

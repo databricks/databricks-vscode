@@ -447,9 +447,13 @@ export async function activate(
 
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
-    return {
+
+    const publicApi: PublicApi = {
+        version: 1,
         connectionManager: connectionManager,
     };
+
+    return publicApi;
 }
 
 // this method is called when your extension is deactivated
