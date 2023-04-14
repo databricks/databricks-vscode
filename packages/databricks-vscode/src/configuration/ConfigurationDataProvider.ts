@@ -290,7 +290,7 @@ export class ConfigurationDataProvider
                 children.push({
                     label: {
                         highlights: [[0, 10]],
-                        label: "Deprecated",
+                        label: "Switch to workspace",
                     },
                     tooltip: "Click to switch to workspace",
                     iconPath: new ThemeIcon(
