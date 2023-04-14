@@ -56,7 +56,11 @@ describe(__filename, () => {
     });
 
     afterEach(() => {
-        disposables.forEach((d) => d.dispose());
+        disposables.forEach((d) => {
+            try {
+                d.dispose();
+            } catch (e) {}
+        });
     });
 
     it("should reload tree on cluster change", async () => {
