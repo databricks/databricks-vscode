@@ -25,6 +25,17 @@ describe("Run python on cluster", async function () {
             recursive: true,
         });
 
+        await fs.mkdir(path.join(projectDir, ".vscode"), {
+            recursive: true,
+        });
+        await fs.writeFile(
+            path.join(projectDir, ".vscode", "settings.json"),
+            JSON.stringify({
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                "databricks.sync.destinationType": "repo",
+            })
+        );
+
         await fs.writeFile(
             path.join(projectDir, ".databricks", "project.json"),
             JSON.stringify({
@@ -89,11 +100,22 @@ describe("Run python on cluster", async function () {
             .openDebugConsoleView();
 
         while (true) {
+            // dismiss by message
+            await dismissNotifications();
             await sleep(2000);
             const text = await (await debugOutput.elem).getHTML();
             if (text && text.includes("hello world")) {
                 break;
             }
         }
+    });
+
+    after(async () => {
+        try {
+            await fs.rm(path.join(projectDir, ".vscode"), {
+                recursive: true,
+                force: true,
+            });
+        } catch {}
     });
 });

@@ -196,13 +196,6 @@
                 "category": "Databricks"
             },
             {
-                "command": "databricks.wsfs.attachSyncDestination",
-                "title": "Attach folder as sync destination",
-                "icon": "$(plug)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace",
-                "category": "Databricks"
-            },
-            {
                 "command": "databricks.wsfs.refresh",
                 "title": "Refresh workspace filesystem view",
                 "icon": "$(refresh)",
@@ -359,14 +352,6 @@
                     "command": "databricks.cluster.start",
                     "when": "view == configurationView && viewItem == databricks.cluster.terminated",
                     "group": "inline@0"
-                },
-                {
-                    "command": "databricks.wsfs.attachSyncDestination",
-                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace || view == workspaceFsView && viewItem =~ /^wsfs.repo.*$/ && config.databricks.sync.destinationType == repo"
-                },
-                {
-                    "command": "databricks.wsfs.createFolder",
-                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace"
                 }
             ],
             "editor/title/run": [
@@ -396,10 +381,6 @@
                 },
                 {
                     "command": "databricks.wsfs.refresh",
-                    "when": "config.databricks.sync.destinationType == workspace"
-                },
-                {
-                    "command": "databricks.wsfs.attachSyncDestination",
                     "when": "config.databricks.sync.destinationType == workspace"
                 },
                 {

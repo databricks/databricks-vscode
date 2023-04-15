@@ -50,6 +50,12 @@ export async function getViewSection(
     const section = await findViewSection(name);
     assert(section);
 
+    for (const s of ViewSectionTypes) {
+        if (s !== name) {
+            await (await findViewSection(s))?.collapse();
+        }
+    }
+
     await section.expand();
     await (await section.elem).click();
     return section;

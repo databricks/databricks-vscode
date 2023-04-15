@@ -16,11 +16,11 @@ import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
 
+const WORKSPACE_PATH = path.resolve(tmpdir(), "workspace");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const {version, name, engines} = packageJson;
 
-const WORKSPACE_PATH = path.resolve(__dirname, "workspace");
 const REPO_NAME = "vscode-integ-test";
 const EXTENSION_DIR = path.resolve(tmpdir(), "extension-test", "extension");
 const VSIX_PATH = path.resolve(

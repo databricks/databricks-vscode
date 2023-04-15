@@ -45,15 +45,11 @@ export class WorkspaceFsCommands implements Disposable {
                     )}-${this._workspaceState.fixedUUID.slice(0, 8)}`
                 );
                 if (element) {
-                    this.attachSyncDestination(element);
+                    await this._connectionManager.attachSyncDestination(
+                        new RemoteUri(element.path)
+                    );
                 }
             })
-        );
-    }
-
-    async attachSyncDestination(element: WorkspaceFsEntity) {
-        await this._connectionManager.attachSyncDestination(
-            new RemoteUri(element.path)
         );
     }
 
