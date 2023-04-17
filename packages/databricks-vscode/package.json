@@ -607,21 +607,6 @@
                         "type": "string",
                         "default": "",
                         "description": "Similar to python.envFile. Absolute path to a file containing environment variable definitions."
-                    },
-                    "databricks.experiments.optInto": {
-                        "type": "array",
-                        "default": [],
-                        "items": {
-                            "enum": [
-                                "debugging.dbconnect"
-                            ],
-                            "enumDescriptions": [
-                                "Interactive debugging using dbconnect V2."
-                            ],
-                            "type": "string"
-                        },
-                        "uniqueItems": true,
-                        "description": "Opt into experimental features."
                     }
                 }
             }

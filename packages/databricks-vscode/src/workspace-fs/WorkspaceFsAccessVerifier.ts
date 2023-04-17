@@ -139,6 +139,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
         } else {
             if (
                 workspaceConfigs.syncDestinationType === "workspace" ||
+                !this.workspaceState.wsfsFeatureFlag ||
                 !(await this.isEnabledForWorkspace()) ||
                 this.workspaceState.skipSwitchToWorkspace
             ) {
