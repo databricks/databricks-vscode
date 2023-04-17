@@ -4,8 +4,7 @@
 
 ## <small>0.3.8 (2023-04-17)</small>
 
--   Bump dependency versions (#653) ([df270e3](https://github.com/databricks/databricks-vscode/commit/df270e3)), closes [#653](https://github.com/databricks/databricks-vscode/issues/653)
--   We broke the SQLTools and Paiqo extensions (#660) ([919fd74](https://github.com/databricks/databricks-vscode/commit/919fd74)), closes [#660](https://github.com/databricks/databricks-vscode/issues/660)
+-  Fix: Reverted changes to the exported API. This had broken some downstream projects such as [SQLTools Databricks Driver](https://github.com/databricks/sqltools-databricks-driver) and [Databricks Power Tools for VSCode](https://github.com/paiqo/Databricks-VSCode).
 
 # Release: v0.3.7
 
