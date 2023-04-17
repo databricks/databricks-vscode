@@ -123,6 +123,16 @@ export async function dismissNotifications() {
 export async function waitForSyncComplete() {
     await browser.waitUntil(
         async () => {
+            return await getViewSubSection("CONFIGURATION", "Sync Destination");
+        },
+        {
+            timeout: 20000,
+            interval: 2000,
+            timeoutMsg: "Couldn't find sync destination tree items.",
+        }
+    );
+    await browser.waitUntil(
+        async () => {
             const repoConfigItem = await getViewSubSection(
                 "CONFIGURATION",
                 "Sync Destination"

@@ -16,7 +16,7 @@ describe("Run job on cluster with workspace", async function () {
 
     before(async () => {
         assert(process.env.TEST_DEFAULT_CLUSTER_ID);
-        assert(process.env.TEST_REPO_PATH);
+        assert(process.env.TEST_WORKSPACE_FOLDER_PATH);
         assert(process.env.WORKSPACE_PATH);
         projectDir = process.env.WORKSPACE_PATH;
 
@@ -40,7 +40,7 @@ describe("Run job on cluster with workspace", async function () {
             JSON.stringify({
                 clusterId: process.env["TEST_DEFAULT_CLUSTER_ID"],
                 profile: "DEFAULT",
-                workspacePath: process.env["TEST_REPO_PATH"],
+                workspacePath: process.env["TEST_WORKSPACE_FOLDER_PATH"],
             })
         );
         await fs.writeFile(

@@ -8,7 +8,13 @@ import path from "node:path";
 import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
-import {WorkspaceClient, Cluster, Repo} from "@databricks/databricks-sdk";
+import {
+    WorkspaceClient,
+    Cluster,
+    Repo,
+    WorkspaceFsEntity,
+    WorkspaceFsUtils,
+} from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile, ExecFileOptions} from "node:child_process";
 import {mkdirSync} from "node:fs";
@@ -259,12 +265,14 @@ export const config: Options.Testrunner = {
                 process.env["DATABRICKS_TOKEN"]
             );
             const repoPath = await createRepo(client);
+            const workspaceFolderPath = await createWsFolder(client);
             const configFile = await writeDatabricksConfig();
             await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
 
             process.env.DATABRICKS_CONFIG_FILE = configFile;
             process.env.WORKSPACE_PATH = WORKSPACE_PATH;
             process.env.TEST_REPO_PATH = repoPath;
+            process.env.TEST_WORKSPACE_FOLDER_PATH = workspaceFolderPath;
         } catch (e) {
             console.error(e);
             process.exit(1);
@@ -543,6 +551,28 @@ async function createRepo(workspaceClient: WorkspaceClient): Promise<string> {
     }
 
     return repo.path;
+}
+
+/**
+ * Create a workspace folder for the integration tests to use
+ */
+async function createWsFolder(
+    workspaceClient: WorkspaceClient
+): Promise<string> {
+    const me = (await workspaceClient.currentUser.me()).userName!;
+    const wsFolderPath = `/Users/${me}/.ide/${REPO_NAME}`;
+
+    console.log(`Creating test Workspace Folder: ${wsFolderPath}`);
+
+    await workspaceClient.workspace.mkdirs({path: wsFolderPath});
+    const repo = await WorkspaceFsEntity.fromPath(
+        workspaceClient,
+        wsFolderPath
+    );
+    if (WorkspaceFsUtils.isDirectory(repo)) {
+        return repo.path;
+    }
+    throw Error(`Couldn't create worspace folder at ${wsFolderPath}`);
 }
 
 async function startCluster(
