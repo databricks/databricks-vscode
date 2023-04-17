@@ -1,3 +1,17 @@
+# Release: v0.3.8
+
+## packages/databricks-vscode
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-   Feature: Add OAuth support.
+-   Feature: Add Telemetry to VS Code Extension.
+-   Fix: Don't sync .databricks folder even if it is not added to .gitignore, fixes [#628](https://github.com/databricks/databricks-vscode/issues/628)
+-   Feature: Enable workspace folder as sync destination for some of the users. They should now see a popup to start using workspace as sync destination, if they are on clusters with `dbr 11.2` or greater.
+-   Fix: Treat cluster in RESIZING state as running clusters, fixes [#618](https://github.com/databricks/databricks-vscode/issues/618)
+-   Fix: Reverted changes to the exported API. This had broken some downstream projects such as [SQLTools Databricks Driver](https://github.com/databricks/sqltools-databricks-driver) and [Databricks Power Tools for VSCode](https://github.com/paiqo/Databricks-VSCode).
+-   Feature: Environment files for python are now managed by the databricks extension. Added a setting `databricks.python.envFile` which overrides `python.envFile`. `python.envFile` is internally managed by the databricks extension. Users should use `databricks.python.envFile` instead.
+
 # Release: v0.3.7
 
 ## packages/databricks-vscode
