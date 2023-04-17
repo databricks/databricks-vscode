@@ -1,3 +1,26 @@
+# Release: v0.3.8
+
+## packages/databricks-vscode
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-   [DECO-643] Add Telemetry to VS Code Extension (#630) ([cda35ca](https://github.com/databricks/databricks-vscode/commit/cda35ca)), closes [#630](https://github.com/databricks/databricks-vscode/issues/630)
+-   [DECO-669] Instrument extension activation & connection state changes (#655) ([817912c](https://github.com/databricks/databricks-vscode/commit/817912c)), closes [#655](https://github.com/databricks/databricks-vscode/issues/655)
+-   [merge-hold] Files in Workspace: Show prompt to enable files in workspace and add deprecation banner ([1b9fabd](https://github.com/databricks/databricks-vscode/commit/1b9fabd)), closes [#587](https://github.com/databricks/databricks-vscode/issues/587)
+-   Add DB Connect Enabled ui button (#635) ([0a99827](https://github.com/databricks/databricks-vscode/commit/0a99827)), closes [#635](https://github.com/databricks/databricks-vscode/issues/635)
+-   Add Feature Manager and use it to manage dbconnect integration (#619) ([2f2eae4](https://github.com/databricks/databricks-vscode/commit/2f2eae4)), closes [#619](https://github.com/databricks/databricks-vscode/issues/619)
+-   Add metadata service client and server (#624) ([8632e49](https://github.com/databricks/databricks-vscode/commit/8632e49)), closes [#624](https://github.com/databricks/databricks-vscode/issues/624)
+-   Bricks CLI Auth (#541) ([3708572](https://github.com/databricks/databricks-vscode/commit/3708572)), closes [#541](https://github.com/databricks/databricks-vscode/issues/541)
+-   Bump bricks (#636) ([a50ef3c](https://github.com/databricks/databricks-vscode/commit/a50ef3c)), closes [#636](https://github.com/databricks/databricks-vscode/issues/636)
+-   Bump dependency versions (#653) ([df270e3](https://github.com/databricks/databricks-vscode/commit/df270e3)), closes [#653](https://github.com/databricks/databricks-vscode/issues/653)
+-   Delete dbconnect wheel (#658) ([3f0f65b](https://github.com/databricks/databricks-vscode/commit/3f0f65b)), closes [#658](https://github.com/databricks/databricks-vscode/issues/658)
+-   Fix typo (#599) ([719acb0](https://github.com/databricks/databricks-vscode/commit/719acb0)), closes [#599](https://github.com/databricks/databricks-vscode/issues/599)
+-   Remove dbconnect from optin options (#661) ([2be752d](https://github.com/databricks/databricks-vscode/commit/2be752d)), closes [#661](https://github.com/databricks/databricks-vscode/issues/661)
+-   Treat cluster in RESIZING state as running clusters (#656) ([d19f64a](https://github.com/databricks/databricks-vscode/commit/d19f64a)), closes [#656](https://github.com/databricks/databricks-vscode/issues/656) [#618](https://github.com/databricks/databricks-vscode/issues/618)
+-   Use minimum supported vscode version (from package.json) for integration tests (#626) ([ac449ac](https://github.com/databricks/databricks-vscode/commit/ac449ac)), closes [#626](https://github.com/databricks/databricks-vscode/issues/626)
+-   We broke the SQLTools and Paiqo extensions (#660) ([919fd74](https://github.com/databricks/databricks-vscode/commit/919fd74)), closes [#660](https://github.com/databricks/databricks-vscode/issues/660)
+-   Write .databricks.env file with the required env variables (#621) ([00d9b5e](https://github.com/databricks/databricks-vscode/commit/00d9b5e)), closes [#621](https://github.com/databricks/databricks-vscode/issues/621)
+
 # Release: v0.3.7
 
 ## packages/databricks-vscode

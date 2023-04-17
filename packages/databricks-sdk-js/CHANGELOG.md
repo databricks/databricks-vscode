@@ -1,3 +1,15 @@
+# Release: v0.3.8
+
+## packages/databricks-sdk-js
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-   Add Feature Manager and use it to manage dbconnect integration (#619) ([2f2eae4](https://github.com/databricks/databricks-vscode/commit/2f2eae4)), closes [#619](https://github.com/databricks/databricks-vscode/issues/619)
+-   Add metadata service client and server (#624) ([8632e49](https://github.com/databricks/databricks-vscode/commit/8632e49)), closes [#624](https://github.com/databricks/databricks-vscode/issues/624)
+-   Bricks CLI Auth (#541) ([3708572](https://github.com/databricks/databricks-vscode/commit/3708572)), closes [#541](https://github.com/databricks/databricks-vscode/issues/541)
+-   Bump dependency versions (#653) ([df270e3](https://github.com/databricks/databricks-vscode/commit/df270e3)), closes [#653](https://github.com/databricks/databricks-vscode/issues/653)
+-   Use waiter to handle long running calls (#611) ([2394e6a](https://github.com/databricks/databricks-vscode/commit/2394e6a)), closes [#611](https://github.com/databricks/databricks-vscode/issues/611)
+
 # Release: v0.3.7
 
 ## packages/databricks-sdk-js

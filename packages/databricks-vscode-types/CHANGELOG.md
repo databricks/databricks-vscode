@@ -1,3 +1,12 @@
+# Release: v0.3.8
+
+## packages/databricks-vscode-types
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-   Bump dependency versions (#653) ([df270e3](https://github.com/databricks/databricks-vscode/commit/df270e3)), closes [#653](https://github.com/databricks/databricks-vscode/issues/653)
+-   We broke the SQLTools and Paiqo extensions (#660) ([919fd74](https://github.com/databricks/databricks-vscode/commit/919fd74)), closes [#660](https://github.com/databricks/databricks-vscode/issues/660)
+
 # Release: v0.3.7
 
 ## packages/databricks-vscode-types
