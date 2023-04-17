@@ -30,6 +30,7 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
@@ -63,7 +64,10 @@ export class ConnectionManager {
 
     public metadataServiceUrl?: string;
 
-    constructor(private cli: CliWrapper) {}
+    constructor(
+        private cli: CliWrapper,
+        private workspaceState: WorkspaceStateManager
+    ) {}
 
     get state(): ConnectionState {
         return this._state;
@@ -218,7 +222,8 @@ export class ConnectionManager {
 
         if (
             this.databricksWorkspace &&
-            workspaceConfigs.enableFilesInWorkspace
+            (workspaceConfigs.enableFilesInWorkspace ||
+                this.workspaceState.wsfsFeatureFlag)
         ) {
             await this.createRootDirectory(
                 workspaceClient,

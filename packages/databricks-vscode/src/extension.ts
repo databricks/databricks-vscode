@@ -142,7 +142,7 @@ export async function activate(
     const cli = new CliWrapper(context);
 
     // Configuration group
-    const connectionManager = new ConnectionManager(cli);
+    const connectionManager = new ConnectionManager(cli, workspaceStateManager);
     context.subscriptions.push(
         connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
