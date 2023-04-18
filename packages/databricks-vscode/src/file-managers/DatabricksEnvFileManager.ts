@@ -235,9 +235,7 @@ export class DatabricksEnvFileManager implements Disposable {
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
             DATABRICKS_CLUSTER_ID: cluster.id,
-            SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${
-                cluster.id
-            };user_agent=${encodeURIComponent(userAgent)}`,
+            SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=vs_code`, //;user_agent=${encodeURIComponent(userAgent)}`,
             DATABRICKS_HOST: host,
             DATABRICKS_TOKEN: pat,
         };
