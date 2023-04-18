@@ -11,7 +11,6 @@ import {
 import {Loggers} from "../logger";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
-import {DbConnectAccessVerifier} from "./DbConnectAccessVerifier";
 import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
 
 const importString = "from databricks.sdk.runtime import *";

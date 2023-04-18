@@ -19,7 +19,6 @@ import {
     switchToWorkspacePrompt,
 } from "../workspace-fs";
 import {FeatureManager} from "../feature-manager/FeatureManager";
-import {Cluster} from "@databricks/databricks-sdk";
 
 export type ConfigurationTreeItem = TreeItem & {
     url?: string;

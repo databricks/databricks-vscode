@@ -1,9 +1,7 @@
 import {Cluster, logging} from "@databricks/databricks-sdk";
-import {window, ExtensionContext, commands} from "vscode";
-import * as path from "node:path";
+import {window, commands} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {MultiStepAccessVerifier} from "../feature-manager/MultiStepAccessVerfier";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
