@@ -1,3 +1,11 @@
+# Release: v0.3.8
+
+## packages/databricks-vscode-types
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-  Fix: Reverted changes to the exported API. This had broken some downstream projects such as [SQLTools Databricks Driver](https://github.com/databricks/sqltools-databricks-driver) and [Databricks Power Tools for VSCode](https://github.com/paiqo/Databricks-VSCode).
+
 # Release: v0.3.7
 
 ## packages/databricks-vscode-types

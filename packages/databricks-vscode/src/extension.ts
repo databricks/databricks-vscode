@@ -142,7 +142,7 @@ export async function activate(
     const cli = new CliWrapper(context);
 
     // Configuration group
-    const connectionManager = new ConnectionManager(cli);
+    const connectionManager = new ConnectionManager(cli, workspaceStateManager);
     context.subscriptions.push(
         connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
@@ -176,11 +176,6 @@ export async function activate(
             workspaceFsDataProvider
         ),
         telemetry.registerCommand(
-            "databricks.wsfs.attachSyncDestination",
-            workspaceFsCommands.attachSyncDestination,
-            workspaceFsCommands
-        ),
-        telemetry.registerCommand(
             "databricks.wsfs.refresh",
             workspaceFsCommands.refresh,
             workspaceFsCommands
@@ -204,9 +199,20 @@ export async function activate(
         connectionManager,
         clusterModel
     );
+
+    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
+        connectionManager,
+        workspaceStateManager,
+        synchronizer
+    );
+
+    context.subscriptions.push(wsfsAccessVerifier);
+
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
-        synchronizer
+        synchronizer,
+        workspaceStateManager,
+        wsfsAccessVerifier
     );
 
     context.subscriptions.push(
@@ -258,12 +264,6 @@ export async function activate(
             connectionCommands
         )
     );
-
-    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
-        connectionManager,
-        synchronizer
-    );
-    context.subscriptions.push(wsfsAccessVerifier);
 
     // Run/debug group
     const runCommands = new RunCommands(connectionManager);
@@ -448,9 +448,13 @@ export async function activate(
 
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
-    return {
+
+    const publicApi: PublicApi = {
+        version: 1,
         connectionManager: connectionManager,
     };
+
+    return publicApi;
 }
 
 // this method is called when your extension is deactivated

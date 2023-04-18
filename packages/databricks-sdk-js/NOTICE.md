@@ -10,7 +10,7 @@ This Software contains code from the following open source projects:
 | :------------------------------------------------------------------------- | :---------------- | :--------- | :------------------------------------------------------------- |
 | [fetch-blob](https://www.npmjs.com/package/fetch-blob)                     | 3.2.0             | MIT        | https://github.com/node-fetch/fetch-blob.git                   |
 | [formdata-polyfill](https://www.npmjs.com/package/formdata-polyfill)       | 4.0.10            | MIT        | git+https://jimmywarting@github.com/jimmywarting/FormData.git  |
-| [ini](https://www.npmjs.com/package/ini)                                   | 3.0.1             | ISC        | https://github.com/npm/ini.git                                 |
+| [ini](https://www.npmjs.com/package/ini)                                   | 4.0.0             | ISC        | https://github.com/npm/ini.git                                 |
 | [inversify](https://www.npmjs.com/package/inversify)                       | 6.0.1             | MIT        | https://github.com/inversify/InversifyJS.git                   |
 | [node-domexception](https://www.npmjs.com/package/node-domexception)       | 1.0.0             | MIT        | git+https://github.com/jimmywarting/node-domexception.git      |
 | [node-fetch-commonjs](https://www.npmjs.com/package/node-fetch-commonjs)   | 3.2.4             | MIT        | git@github.com:proteriax/node-fetch-cjs.git                    |

@@ -1,3 +1,14 @@
+# Release: v0.3.8
+
+## packages/databricks-sdk-js
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-   Feature: Add detection for Unity Catalogue to Clusters service.
+-   Feature: Add metadata service client and server as credential provider.
+-   Feature: Add credential provider to support OAuth through Bricks CLI.
+-   Feature: Use waiter to handle long running calls.
+
 # Release: v0.3.7
 
 ## packages/databricks-sdk-js
