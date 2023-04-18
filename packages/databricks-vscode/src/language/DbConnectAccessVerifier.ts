@@ -7,13 +7,14 @@ import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
+import {FeatureState} from "../feature-manager/FeatureManager";
 
 export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly workspaceState: WorkspaceStateManager,
-        private readonly context: ExtensionContext
+        private readonly dbConnectInstallPrompt: DbConnectInstallPrompt
     ) {
         super(["checkCluster", "checkWorkspaceHasUc", "checkDbConnectInstall"]);
         this.disposables.push(
@@ -21,23 +22,25 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                 if (this.connectionManager.state !== "CONNECTED") {
                     return;
                 }
-                const steps = {
-                    checkCluster: () => this.checkCluster(cluster),
-                };
-                this.runSteps(steps);
+                this.checkCluster(cluster);
             }, this),
             this.connectionManager.onDidChangeState((e) => {
                 if (e !== "CONNECTED") {
                     return;
                 }
-                this.runSteps({
-                    checkWorkspaceHasUc: () => this.checkWorkspaceHasUc(),
-                });
+                this.checkWorkspaceHasUc();
             }, this),
-            this.pythonExtension.onDidChangePythonExecutable(() => {
-                this.runSteps({
-                    checkDbConnectInstall: () => this.checkDbConnectInstall(),
-                });
+            this.pythonExtension.onDidChangePythonExecutable(async () => {
+                const check = await this.checkDbConnectInstall();
+                if (
+                    typeof check !== "boolean" &&
+                    check.reason?.includes(
+                        "databricks-connect package is not installed"
+                    ) &&
+                    check.action
+                ) {
+                    check.action(true);
+                }
             }, this)
         );
     }
@@ -64,7 +67,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                 "checkCluster",
                 "No cluster attached",
                 this.promptForAttachingCluster(
-                    "Please attach a cluster to use DB Connect V2."
+                    "Please attach a cluster to use Databricks Connect."
                 )
             );
         }
@@ -77,9 +80,9 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         ) {
             return this.rejectStep(
                 "checkCluster",
-                `DB Connect V2 requires cluster DBR >= 13.0.0.`,
+                `Databricks Connect requires cluster DBR >= 13.0.0.`,
                 this.promptForAttachingCluster(
-                    `DB Connect V2 requires cluster DBR >= 13.0.0. Currently it is ${dbrVersionParts.join(
+                    `Databricks Connect requires cluster DBR >= 13.0.0. Currently it is ${dbrVersionParts.join(
                         "."
                     )}. Please attach a new cluster.`
                 )
@@ -120,65 +123,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         return this.acceptStep("checkWorkspaceHasUc");
     }
 
-    async showDbConnectInstallPrompt() {
-        const executable = await this.pythonExtension.getPythonExecutable();
-        if (
-            this.workspaceState.skipDbConnectInstall ||
-            (executable &&
-                this.workspaceState.skippedEnvsForDbConnect.includes(
-                    executable
-                ))
-        ) {
-            return;
-        }
-
-        const wheelPath = this.context.asAbsolutePath(
-            path.join(
-                "resources",
-                "python",
-                "generated",
-                "databricks_connect-13.0.0b5-py2.py3-none-any.whl"
-            )
-        );
-
-        const choice = await window.showInformationMessage(
-            "Do you want to install databricks-connect in the current environment?",
-            "Yes",
-            "Ignore",
-            "Ignore for environment",
-            "Ignore for workspace"
-        );
-
-        switch (choice) {
-            case "Yes":
-                try {
-                    await this.pythonExtension.uninstallPackageFromEnvironment(
-                        "pyspark"
-                    );
-                    await this.pythonExtension.installPackageInEnvironment(
-                        wheelPath
-                    );
-                    this.checkDbConnectInstall();
-                } catch (e: unknown) {
-                    if (e instanceof Error) {
-                        window.showErrorMessage(e.message);
-                    }
-                }
-                break;
-
-            case "Ignore for environment":
-                if (executable) {
-                    this.workspaceState.skipDbConnectInstallForEnv(executable);
-                }
-                break;
-
-            case "Ignore for workspace":
-                this.workspaceState.skipDbConnectInstall = true;
-                break;
-        }
-    }
-
-    async checkDbConnectInstall() {
+    async checkDbConnectInstall(): Promise<boolean | FeatureState> {
         const executable = await this.pythonExtension.getPythonExecutable();
         if (!executable) {
             return this.rejectStep(
@@ -197,7 +142,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         ) {
             return this.rejectStep(
                 "checkDbConnectInstall",
-                `DB Connect V2 requires python >= 3.10.0. Current version is ${[
+                `Databricks Connect requires python >= 3.10.0. Current version is ${[
                     env.version.major,
                     env.version.minor,
                     env.version.micro,
@@ -206,7 +151,8 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         }
         try {
             const exists = await this.pythonExtension.findPackageInEnvironment(
-                "databricks-connect"
+                "databricks-connect",
+                "latest"
             );
             if (exists) {
                 return this.acceptStep("checkDbConnectInstall");
@@ -214,7 +160,10 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             return this.rejectStep(
                 "checkDbConnectInstall",
                 "databricks-connect package is not installed in the current environment",
-                () => this.showDbConnectInstallPrompt()
+                (advertisement = false) =>
+                    this.dbConnectInstallPrompt.show(advertisement, () =>
+                        this.checkDbConnectInstall()
+                    )
             );
         } catch (e: unknown) {
             if (e instanceof Error) {
@@ -227,12 +176,8 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
 
     override async check() {
         await this.connectionManager.waitForConnect();
-        const steps = {
-            checkCluster: () =>
-                this.checkCluster(this.connectionManager.cluster),
-            checkWorkspaceHasUc: () => this.checkWorkspaceHasUc(),
-            checkDbConnectInstall: () => this.checkDbConnectInstall(),
-        };
-        await this.runSteps(steps);
+        this.checkCluster(this.connectionManager.cluster);
+        this.checkWorkspaceHasUc();
+        this.checkDbConnectInstall();
     }
 }

@@ -135,8 +135,8 @@ export class DatabricksEnvFileManager implements Disposable {
         if (featureState.isDisabledByFf) {
             return;
         }
-        this.statusBarButton.name = "DB Connect V2 Disabled";
-        this.statusBarButton.text = "DB Connect V2 Disabled";
+        this.statusBarButton.name = "Databricks Connect disabled";
+        this.statusBarButton.text = "Databricks Connect disabled";
         this.statusBarButton.backgroundColor = new ThemeColor(
             "statusBarItem.errorBackground"
         );
@@ -170,9 +170,9 @@ export class DatabricksEnvFileManager implements Disposable {
         if (featureState.isDisabledByFf) {
             return;
         }
-        this.statusBarButton.name = "DB Connect V2 Enabled";
-        this.statusBarButton.text = "DB Connect V2 Enabled";
-        this.statusBarButton.tooltip = "DB Connect V2 Enabled";
+        this.statusBarButton.name = "Databricks Connect enabled";
+        this.statusBarButton.text = "Databricks Connect enabled";
+        this.statusBarButton.tooltip = "Databricks Connect enabled";
         this.statusBarButton.backgroundColor = undefined;
         this.statusBarButton.command = {
             title: "Call",

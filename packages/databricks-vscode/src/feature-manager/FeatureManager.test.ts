@@ -22,7 +22,8 @@ class TestAccessVerifier extends MultiStepAccessVerifier {
     }
 
     async check(): Promise<void> {
-        this.runSteps({check1: this.check1, check2: this.check2});
+        await this.check1();
+        await this.check2();
     }
 }
 describe(__filename, async () => {
