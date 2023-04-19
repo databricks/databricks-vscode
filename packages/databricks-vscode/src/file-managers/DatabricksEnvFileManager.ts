@@ -84,11 +84,10 @@ export class DatabricksEnvFileManager implements Disposable {
                 (featureState) => {
                     if (!featureState.avaliable) {
                         this.clearTerminalEnv();
-                        this.disableStatusBarButton();
-                        return;
+                    } else {
+                        this.emitToTerminal();
                     }
                     this.writeFile();
-                    this.emitToTerminal();
                 },
                 this
             ),
@@ -103,11 +102,10 @@ export class DatabricksEnvFileManager implements Disposable {
                     ).avaliable
                 ) {
                     this.clearTerminalEnv();
-                    this.disableStatusBarButton();
-                    return;
+                } else {
+                    this.emitToTerminal();
                 }
                 this.writeFile();
-                this.emitToTerminal();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
                 if (
@@ -119,11 +117,10 @@ export class DatabricksEnvFileManager implements Disposable {
                     ).avaliable
                 ) {
                     this.clearTerminalEnv();
-                    this.disableStatusBarButton();
-                    return;
+                } else {
+                    this.emitToTerminal();
                 }
                 this.writeFile();
-                this.emitToTerminal();
             }, this)
         );
     }
