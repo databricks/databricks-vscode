@@ -4,7 +4,8 @@
 
 ## <small>0.3.9 (2023-04-19)</small>
 
--   Files in Workspace Rollout 50% (#665) ([973d1fa](https://github.com/databricks/databricks-vscode/commit/973d1fa)), closes [#665](https://github.com/databricks/databricks-vscode/issues/665)
+-   Feature: Experimental Databricks Connect V2 integration. Add `debugging.dbconnect` to `databricks.experimental.optIn` vscode workspace setting, to start using the new integration.
+-   Feature: Next phase of Files in Workspace rollout. 50% of users should start seeing prompts to switch to workspace as sync destination.
 
 # Release: v0.3.8
 
