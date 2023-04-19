@@ -1,5 +1,5 @@
 import {spy, verify} from "ts-mockito";
-import {FeatureManager} from "./FeatureManager";
+import {FeatureManager, FeatureState} from "./FeatureManager";
 import {MultiStepAccessVerifier} from "./MultiStepAccessVerfier";
 import * as assert from "assert";
 class TestAccessVerifier extends MultiStepAccessVerifier {
@@ -22,9 +22,18 @@ class TestAccessVerifier extends MultiStepAccessVerifier {
     }
 
     async check(): Promise<void> {
-        this.runSteps({check1: this.check1, check2: this.check2});
+        await this.check1();
+        await this.check2();
     }
 }
+
+function isAvailable(state: boolean | FeatureState) {
+    if (typeof state === "boolean") {
+        return state;
+    }
+    return state.avaliable;
+}
+
 describe(__filename, async () => {
     it("should cache enablement value", async () => {
         const testVerifier = new TestAccessVerifier();
@@ -53,18 +62,18 @@ describe(__filename, async () => {
         verify(spyTestVerifier.check2()).once();
 
         //cache should be true only when both values are true
-        assert.ok(await testVerifier.check1(true));
+        assert.ok(isAvailable(await testVerifier.check1(true)));
         assert.ok(!(await fm.isEnabled("test")).avaliable);
-        assert.ok(await testVerifier.check2(true));
+        assert.ok(isAvailable(await testVerifier.check2(true)));
         assert.ok((await fm.isEnabled("test")).avaliable);
 
         //cache should be false if even 1 value is false
-        assert.ok(!(await testVerifier.check2(false)));
+        assert.ok(!isAvailable(await testVerifier.check2(false)));
         assert.ok(!(await fm.isEnabled("test")).avaliable);
         assert.ok((await fm.isEnabled("test")).reason === "reason2");
 
         //cache should be reset to true if both values are true
-        assert.ok(await testVerifier.check2(true));
+        assert.ok(isAvailable(await testVerifier.check2(true)));
         assert.ok((await fm.isEnabled("test")).avaliable);
     });
 

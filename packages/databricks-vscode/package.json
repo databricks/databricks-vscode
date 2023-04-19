@@ -155,7 +155,7 @@
             },
             {
                 "command": "databricks.run.runEditorContents",
-                "title": "Run File on Databricks",
+                "title": "Upload and Run File on Databricks",
                 "category": "Databricks",
                 "enablement": "!inDebugMode",
                 "icon": "$(play)"
@@ -602,6 +602,21 @@
                         "type": "string",
                         "default": "",
                         "description": "Override location of .databrickscfg file (default: DATABRICKS_CONFIG_FILE environment variable or ~/.databrickscfg)"
+                    },
+                    "databricks.experiments.optInto": {
+                        "type": "array",
+                        "default": [],
+                        "items": {
+                            "enum": [
+                                "debugging.dbconnect"
+                            ],
+                            "enumDescriptions": [
+                                "Interactive debugging using dbconnect V2."
+                            ],
+                            "type": "string"
+                        },
+                        "uniqueItems": true,
+                        "description": "Opt into experimental features."
                     },
                     "databricks.python.envFile": {
                         "type": "string",

@@ -11,6 +11,7 @@ import {
 import {Loggers} from "../logger";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
+import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
 
 const importString = "from databricks.sdk.runtime import *";
 
@@ -23,14 +24,31 @@ interface Step {
 
 export class ConfigureAutocomplete implements Disposable {
     private disposables: Disposable[] = [];
-    private _onPythonChangeEventListenerAdded = false;
 
     constructor(
         private readonly context: ExtensionContext,
         private readonly workspaceState: WorkspaceStateManager,
         private readonly workspaceFolder: string,
-        private readonly pythonExtension: MsPythonExtensionWrapper
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly dbConnectInstallPrompt: DbConnectInstallPrompt
     ) {
+        //Remove any type stubs that users already have. We will now start using the python SDK (installed with databricks-connect)
+        let extraPaths =
+            workspace
+                .getConfiguration("python")
+                .get<Array<string>>("analysis.extraPaths") ?? [];
+
+        extraPaths = extraPaths.filter(
+            (value) =>
+                !value.endsWith(path.join("resources", "python", "stubs"))
+        );
+        workspace
+            .getConfiguration("python")
+            .update(
+                "analysis.extraPaths",
+                extraPaths,
+                ConfigurationTarget.Global
+            );
         this.configure();
     }
 
@@ -82,27 +100,9 @@ export class ConfigureAutocomplete implements Disposable {
             return;
         }
 
-        /* 
-            We hook into the python extension, so that whenever user changes python interpreter (or environment),
-            we prompt them to go through the configuration steps again. For now this only involves installing pyspark. 
-            In future, we would want them to install databricks sdk in the new environment. 
-        */
-        if (!this._onPythonChangeEventListenerAdded) {
-            this.disposables.push(
-                this.pythonExtension.onDidChangePythonExecutable(
-                    () => this.configure(true),
-                    this
-                )
-            );
-            this._onPythonChangeEventListenerAdded = true;
-        }
-
         const steps = [
             {
                 fn: async (dryRun = false) => await this.installPyspark(dryRun),
-            },
-            {
-                fn: async () => this.updateExtraPaths(),
             },
             {
                 fn: async (dryRun = false) => this.addBuiltinsFile(dryRun),
@@ -149,53 +149,7 @@ export class ConfigureAutocomplete implements Disposable {
         if (dryRun) {
             return;
         }
-        const choice = await window.showInformationMessage(
-            "Install databricks-connect in local env? You need databricks-connect for autocompletion and interactive debugging.",
-            "Install",
-            "Continue without installing"
-        );
-
-        if (choice === undefined) {
-            return "Cancel";
-        }
-        if (choice === "Continue without installing") {
-            return "Skip";
-        }
-
-        const wheelPath = this.context.asAbsolutePath(
-            path.join(
-                "resources",
-                "python",
-                "databricks_connect-13.0.0-py2.py3-none-any.whl"
-            )
-        );
-        await this.pythonExtension.installPackageInEnvironment(wheelPath);
-    }
-
-    private async updateExtraPaths(): Promise<StepResult> {
-        let extraPaths =
-            workspace
-                .getConfiguration("python")
-                .get<Array<string>>("analysis.extraPaths") ?? [];
-        const stubPath = this.context.asAbsolutePath(
-            path.join("resources", "python", "stubs")
-        );
-        if (extraPaths.includes(stubPath)) {
-            return;
-        }
-        extraPaths = extraPaths.filter(
-            (value) =>
-                !value.endsWith(path.join("resources", "python", "stubs")) &&
-                value.includes("databricks")
-        );
-        extraPaths.push(stubPath);
-        workspace
-            .getConfiguration("python")
-            .update(
-                "analysis.extraPaths",
-                extraPaths,
-                ConfigurationTarget.Global
-            );
+        this.dbConnectInstallPrompt.show(false);
     }
 
     private async addBuiltinsFile(dryRun = false): Promise<StepResult> {

@@ -29,15 +29,6 @@ export abstract class MultiStepAccessVerifier implements Feature {
         return combinedValue;
     }
 
-    async runSteps(steps: Record<string, AccessVerifierStep>) {
-        for (const step in steps) {
-            this.stepValuesHas(step);
-            const stepValue = await steps[step]();
-            this.stepValues[step] = stepValue;
-        }
-        return this.checkAllStepValues();
-    }
-
     rejectStep(
         id: string,
         reason?: string,
@@ -47,13 +38,14 @@ export abstract class MultiStepAccessVerifier implements Feature {
         this.stepValuesHas(id);
 
         this.stepValues[id] = false;
-        this.onDidChangeStateEmitter.fire({
+        const state = {
             avaliable: false,
             reason,
             action,
             isDisabledByFf: featureFlag === false,
-        });
-        return false;
+        };
+        this.onDidChangeStateEmitter.fire(state);
+        return state;
     }
 
     acceptStep(id: string) {
@@ -64,10 +56,11 @@ export abstract class MultiStepAccessVerifier implements Feature {
     }
 
     private accept() {
-        this.onDidChangeStateEmitter.fire({
+        const state = {
             avaliable: true,
-        });
-        return true;
+        };
+        this.onDidChangeStateEmitter.fire(state);
+        return state;
     }
 
     abstract check(): Promise<void>;
