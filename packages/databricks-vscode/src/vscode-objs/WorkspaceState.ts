@@ -19,7 +19,7 @@ export class WorkspaceStateManager {
     }
 
     get wsfsFeatureFlag() {
-        return this.fixedRandom <= 0.1;
+        return this.fixedRandom <= 0.5;
     }
 
     get skipSwitchToWorkspace() {
