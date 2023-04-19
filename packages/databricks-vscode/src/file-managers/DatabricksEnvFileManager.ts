@@ -19,6 +19,7 @@ import {SystemVariables} from "../vscode-objs/SystemVariables";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
@@ -34,7 +35,8 @@ export class DatabricksEnvFileManager implements Disposable {
         workspacePath: Uri,
         private readonly featureManager: FeatureManager,
         private readonly connectionManager: ConnectionManager,
-        private readonly extensionContext: ExtensionContext
+        private readonly extensionContext: ExtensionContext,
+        private readonly pythonExtension: MsPythonExtensionWrapper
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
         const unresolvedDatabricksEnvFile = path.join(
@@ -82,11 +84,10 @@ export class DatabricksEnvFileManager implements Disposable {
                 (featureState) => {
                     if (!featureState.avaliable) {
                         this.clearTerminalEnv();
-                        this.disableStatusBarButton();
-                        return;
+                    } else {
+                        this.emitToTerminal();
                     }
                     this.writeFile();
-                    this.emitToTerminal();
                 },
                 this
             ),
@@ -101,11 +102,10 @@ export class DatabricksEnvFileManager implements Disposable {
                     ).avaliable
                 ) {
                     this.clearTerminalEnv();
-                    this.disableStatusBarButton();
-                    return;
+                } else {
+                    this.emitToTerminal();
                 }
                 this.writeFile();
-                this.emitToTerminal();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
                 if (
@@ -117,11 +117,10 @@ export class DatabricksEnvFileManager implements Disposable {
                     ).avaliable
                 ) {
                     this.clearTerminalEnv();
-                    this.disableStatusBarButton();
-                    return;
+                } else {
+                    this.emitToTerminal();
                 }
                 this.writeFile();
-                this.emitToTerminal();
             }, this)
         );
     }
@@ -133,8 +132,8 @@ export class DatabricksEnvFileManager implements Disposable {
         if (featureState.isDisabledByFf) {
             return;
         }
-        this.statusBarButton.name = "DB Connect V2 Disabled";
-        this.statusBarButton.text = "DB Connect V2 Disabled";
+        this.statusBarButton.name = "Databricks Connect disabled";
+        this.statusBarButton.text = "Databricks Connect disabled";
         this.statusBarButton.backgroundColor = new ThemeColor(
             "statusBarItem.errorBackground"
         );
@@ -168,9 +167,9 @@ export class DatabricksEnvFileManager implements Disposable {
         if (featureState.isDisabledByFf) {
             return;
         }
-        this.statusBarButton.name = "DB Connect V2 Enabled";
-        this.statusBarButton.text = "DB Connect V2 Enabled";
-        this.statusBarButton.tooltip = "DB Connect V2 Enabled";
+        this.statusBarButton.name = "Databricks Connect enabled";
+        this.statusBarButton.text = "Databricks Connect enabled";
+        this.statusBarButton.tooltip = "Databricks Connect enabled";
         this.statusBarButton.backgroundColor = undefined;
         this.statusBarButton.command = {
             title: "Call",
@@ -192,6 +191,25 @@ export class DatabricksEnvFileManager implements Disposable {
         return headers["Authorization"]?.split(" ")[1];
     }
 
+    private async userAgent() {
+        const client = this.connectionManager.workspaceClient?.apiClient;
+        if (!client) {
+            return;
+        }
+        const userAgent = [
+            `${client.product}/${client.productVersion}`,
+            `os/${process.platform}`,
+        ];
+
+        const env = await this.pythonExtension.pythonEnvironment;
+        if (env && env.version) {
+            const {major, minor} = env.version;
+            userAgent.push(`python/${major}.${minor}`);
+        }
+
+        return userAgent.join(" ");
+    }
+
     private async getDatabrickseEnvVars(): Promise<
         Record<string, string | undefined> | undefined
     > {
@@ -207,13 +225,14 @@ export class DatabricksEnvFileManager implements Disposable {
         const cluster = this.connectionManager.cluster;
         const host = this.connectionManager.databricksWorkspace?.host.authority;
         const pat = await this.getPatToken();
-        if (!cluster || !pat || !host) {
+        const userAgent = await this.userAgent();
+        if (!cluster || !pat || !host || !userAgent) {
             return;
         }
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
             DATABRICKS_CLUSTER_ID: cluster.id,
-            SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id}`,
+            SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=vs_code`, //;user_agent=${encodeURIComponent(userAgent)}`,
             DATABRICKS_HOST: host,
             DATABRICKS_TOKEN: pat,
         };

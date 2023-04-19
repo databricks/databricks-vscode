@@ -4,7 +4,7 @@ import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {DisabledFeature} from "./DisabledFeature";
 import {EnabledFeature} from "./EnabledFeature";
 
-export type FeatureEnableAction = () => Promise<void>;
+export type FeatureEnableAction = (...args: any[]) => Promise<void>;
 export type FeatureId = "debugging.dbconnect";
 /**
  * The state of a feature.

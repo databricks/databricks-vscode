@@ -14,6 +14,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {mkdtemp, readFile} from "fs/promises";
 import {Mutex} from "../locking";
+import * as child_process from "node:child_process";
+import {promisify} from "node:util";
+export const exec = promisify(child_process.exec);
+
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
     private readonly disposables: Disposable[] = [];
@@ -45,7 +49,10 @@ export class MsPythonExtensionWrapper implements Disposable {
             8
         )}`;
 
-        this._terminal = window.createTerminal(terminalName);
+        this._terminal = window.createTerminal({
+            name: terminalName,
+            isTransient: true,
+        });
         this.disposables.push(this._terminal);
         return this._terminal;
     }
@@ -104,7 +111,6 @@ export class MsPythonExtensionWrapper implements Disposable {
                 fsWatcher.onDidCreate(handleFileChange),
                 fsWatcher.onDidChange(handleFileChange)
             );
-            this.terminal.sendText(`${command}; echo $? > ${filePath}`);
         });
 
         try {
@@ -119,10 +125,34 @@ export class MsPythonExtensionWrapper implements Disposable {
         }
     }
 
-    async findPackageInEnvironment(name: string) {
+    private async executeInProcessE(command: string) {
+        const {stdout} = await exec(`${command}; echo $?`);
+        return parseInt(stdout.trim());
+    }
+
+    async findLatestPackageVersion(name: string) {
+        const executable = await this.getPythonExecutable();
+        if (!executable) {
+            return;
+        }
+        const execCommand = [
+            executable,
+            `-m pip index versions ${name} --disable-pip-version-check --no-python-version-warning`,
+        ];
+        const {stdout} = await exec(execCommand.join(" "));
+        const match = stdout.match(/.+\((.+)\)/);
+        if (match) {
+            return match[1];
+        }
+    }
+
+    async findPackageInEnvironment(name: string, version?: string) {
         const executable = await this.getPythonExecutable();
         if (!executable) {
             return false;
+        }
+        if (version === "latest") {
+            version = await this.findLatestPackageVersion(name);
         }
 
         const execCommand = [
@@ -130,21 +160,29 @@ export class MsPythonExtensionWrapper implements Disposable {
             "-m pip list --format json --disable-pip-version-check --no-python-version-warning",
             "|",
             executable,
-            `-c "import json; ip=json.loads(input()); fp=list(filter(lambda x: x[\\"name\\"] == \\"${name}\\", ip)); exit(0 if len(fp) >= 1 else 1);"`,
+            `-c "import json; ip=json.loads(input()); fp=list(filter(lambda x: x[\\"name\\"] == \\"${name}\\" ${
+                version ? `and x[\\"version\\"] == \\"${version}\\"` : ""
+            }, ip));`,
+            `exit(0 if len(fp) >= 1 else 1);"`,
         ].join(" ");
 
-        const exitCode = await this.executeInTerminalE(execCommand);
+        const exitCode = await this.executeInProcessE(execCommand);
         return !exitCode;
     }
 
-    async installPackageInEnvironment(name: string) {
+    async installPackageInEnvironment(name: string, version?: string) {
         const executable = await this.getPythonExecutable();
         if (!executable) {
             throw Error("No python executable found");
         }
+        if (version === "latest") {
+            version = await this.findLatestPackageVersion(name);
+        }
         const execCommand = [
             executable,
-            `-m pip install ${name} --disable-pip-version-check --no-python-version-warning`,
+            `-m pip install ${name}${
+                version ? `==${version}` : ""
+            } --disable-pip-version-check --no-python-version-warning`,
         ].join(" ");
 
         const exitCode = await this.executeInTerminalE(execCommand);

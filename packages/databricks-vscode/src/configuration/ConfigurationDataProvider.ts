@@ -18,6 +18,7 @@ import {
     WorkspaceFsAccessVerifier,
     switchToWorkspacePrompt,
 } from "../workspace-fs";
+import {FeatureManager} from "../feature-manager/FeatureManager";
 
 export type ConfigurationTreeItem = TreeItem & {
     url?: string;
@@ -42,7 +43,8 @@ export class ConfigurationDataProvider
         private connectionManager: ConnectionManager,
         private sync: CodeSynchronizer,
         private readonly workspaceState: WorkspaceStateManager,
-        private readonly wsfsAccessVerifier: WorkspaceFsAccessVerifier
+        private readonly wsfsAccessVerifier: WorkspaceFsAccessVerifier,
+        private readonly featureManager: FeatureManager
     ) {
         this.disposables.push(
             this.connectionManager.onDidChangeState(() => {
@@ -201,7 +203,14 @@ export class ConfigurationDataProvider
             const clusterItem =
                 ClusterListDataProvider.clusterNodeToTreeItem(cluster);
 
-            const children = [];
+            const children: ConfigurationTreeItem[] = [
+                {
+                    label: "Name",
+                    description: cluster.name,
+                    iconPath: clusterItem.iconPath,
+                    collapsibleState: TreeItemCollapsibleState.None,
+                },
+            ];
 
             let runPerms:
                 | "CAN_RUN"
@@ -254,18 +263,16 @@ export class ConfigurationDataProvider
                     break;
             }
 
-            return [
-                {
-                    label: "Name",
-                    description: cluster.name,
-                    iconPath: clusterItem.iconPath,
-                    collapsibleState: TreeItemCollapsibleState.None,
-                },
-                ...children,
+            children.push(
                 ...(await ClusterListDataProvider.clusterNodeToTreeItems(
                     cluster
-                )),
-            ];
+                ))
+            );
+            const dbconnectReason = await this.getDbConnectDisabledReason();
+            if (dbconnectReason) {
+                children.push(dbconnectReason);
+            }
+            return children;
         }
 
         if (element.id === "SYNC-DESTINATION" && syncDestination) {
@@ -324,5 +331,24 @@ export class ConfigurationDataProvider
         }
 
         return [];
+    }
+
+    async getDbConnectDisabledReason(): Promise<
+        ConfigurationTreeItem | undefined
+    > {
+        const isDbConnectEnabled = await this.featureManager.isEnabled(
+            "debugging.dbconnect"
+        );
+        if (isDbConnectEnabled.isDisabledByFf || isDbConnectEnabled.avaliable) {
+            return undefined;
+        }
+
+        return isDbConnectEnabled.reason &&
+            isDbConnectEnabled.reason.toLowerCase().includes("cluster")
+            ? {
+                  label: "Debug",
+                  description: isDbConnectEnabled.reason,
+              }
+            : undefined;
     }
 }
