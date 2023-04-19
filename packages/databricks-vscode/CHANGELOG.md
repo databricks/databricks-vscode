@@ -1,3 +1,11 @@
+# Release: v0.3.9
+
+## packages/databricks-vscode
+
+## <small>0.3.9 (2023-04-19)</small>
+
+-   Files in Workspace Rollout 50% (#665) ([973d1fa](https://github.com/databricks/databricks-vscode/commit/973d1fa)), closes [#665](https://github.com/databricks/databricks-vscode/issues/665)
+
 # Release: v0.3.8
 
 ## packages/databricks-vscode
