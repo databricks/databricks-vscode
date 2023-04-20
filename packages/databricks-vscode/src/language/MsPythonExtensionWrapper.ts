@@ -160,8 +160,8 @@ export class MsPythonExtensionWrapper implements Disposable {
             "-m pip list --format json --disable-pip-version-check --no-python-version-warning",
             "|",
             executable,
-            `-c "import json; ip=json.loads(input()); fp=list(filter(lambda x: x[\\"name\\"] == \\"${name}\\" ${
-                version ? `and x[\\"version\\"] == \\"${version}\\"` : ""
+            `-c "import json; ip=json.loads(input()); fp=list(filter(lambda x: x['name'] == '${name}' ${
+                version ? `and x['version'] == '${version}'` : ""
             }, ip));`,
             `exit(0 if len(fp) >= 1 else 1);"`,
         ].join(" ");
