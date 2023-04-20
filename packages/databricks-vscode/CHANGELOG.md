@@ -4,7 +4,7 @@
 
 ## <small>0.3.10 (2023-04-20)</small>
 
--   Fix for finding python packages on windows (#668) ([382b711](https://github.com/databricks/databricks-vscode/commit/382b711)), closes [#668](https://github.com/databricks/databricks-vscode/issues/668)
+-   Fix: Method for finding installed python packages was failing on windows. 
 
 # Release: v0.3.9
 
