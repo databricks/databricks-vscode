@@ -125,11 +125,6 @@ export class MsPythonExtensionWrapper implements Disposable {
         }
     }
 
-    private async executeInProcessE(command: string) {
-        const {stdout} = await exec(`${command}; echo $?`);
-        return parseInt(stdout.trim());
-    }
-
     async findLatestPackageVersion(name: string) {
         const executable = await this.getPythonExecutable();
         if (!executable) {
@@ -158,16 +153,15 @@ export class MsPythonExtensionWrapper implements Disposable {
         const execCommand = [
             executable,
             "-m pip list --format json --disable-pip-version-check --no-python-version-warning",
-            "|",
-            executable,
-            `-c "import json; ip=json.loads(input()); fp=list(filter(lambda x: x['name'] == '${name}' ${
-                version ? `and x['version'] == '${version}'` : ""
-            }, ip));`,
-            `exit(0 if len(fp) >= 1 else 1);"`,
         ].join(" ");
-
-        const exitCode = await this.executeInProcessE(execCommand);
-        return !exitCode;
+        const {stdout} = await exec(execCommand);
+        const data: Array<{name: string; version: string}> = JSON.parse(stdout);
+        const target = data.find(
+            (item) =>
+                item.name === name &&
+                (version === undefined || item.version === version)
+        );
+        return target !== undefined;
     }
 
     async installPackageInEnvironment(name: string, version?: string) {
