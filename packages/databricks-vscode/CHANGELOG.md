@@ -1,3 +1,11 @@
+# Release: v0.3.10
+
+## packages/databricks-vscode
+
+## <small>0.3.10 (2023-04-20)</small>
+
+-   Fix: Method for finding installed python packages was failing on windows. 
+
 # Release: v0.3.9
 
 ## packages/databricks-vscode
