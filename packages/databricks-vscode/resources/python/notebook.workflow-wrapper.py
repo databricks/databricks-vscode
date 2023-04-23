@@ -9,4 +9,4 @@ if dbutils.widgets.get("DATABRICKS_SOURCE_FILE") != "":
 
 if dbutils.widgets.get("DATABRICKS_PROJECT_ROOT") != "":
 	import sys
-	sys.path.append(dbutils.widgets.get("DATABRICKS_PROJECT_ROOT"))
+	sys.path.insert(0, dbutils.widgets.get("DATABRICKS_PROJECT_ROOT"))

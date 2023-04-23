@@ -12,8 +12,8 @@ env = {}
 os.chdir(os.path.dirname(python_file))
 
 # update python path
-sys.path.append(repo_path)
-sys.path.append(os.path.dirname(python_file))
+sys.path.insert(0, repo_path)
+sys.path.insert(0, os.path.dirname(python_file))
 
 # inject command line arguments
 sys.argv = args
