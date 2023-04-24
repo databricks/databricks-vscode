@@ -29,7 +29,7 @@ sys.argv = [value for i,value in enumerate(sys.argv) if i not in databricks_arg_
 os.chdir(os.path.dirname(python_file))
 
 # update python path
-sys.path.append(project_root)
+sys.path.insert(0, project_root)
 
 # provide spark globals
 user_ns = {
