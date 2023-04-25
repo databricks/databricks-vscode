@@ -12,8 +12,21 @@ import {Loggers} from "../logger";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
+import * as os from "node:os";
 
-const importString = "from databricks.sdk.runtime import *";
+const importString = [
+    "from databricks.sdk.runtime import *",
+    "from pyspark.sql.session import SparkSession",
+    "from pyspark.sql.functions import udf as U",
+    "from pyspark.sql.context import SQLContext",
+    "",
+    "udf = U",
+    "spark: SparkSession",
+    "sc = spark.sparkContext",
+    "sqlContext: SQLContext",
+    "sql = sqlContext.sql",
+    "table = sqlContext.table",
+].join(os.EOL);
 
 type StepResult = "Skip" | "Cancel" | "Error" | "Silent" | undefined;
 
