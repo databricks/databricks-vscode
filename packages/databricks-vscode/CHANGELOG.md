@@ -4,10 +4,9 @@
 
 ## <small>0.3.11 (2023-04-25)</small>
 
--   Enable all the customers to start seeing prompt for switching to wsfs (#676) ([b7c0138](https://github.com/databricks/databricks-vscode/commit/b7c0138)), closes [#676](https://github.com/databricks/databricks-vscode/issues/676)
--   Lint fix (#671) ([f34080b](https://github.com/databricks/databricks-vscode/commit/f34080b)), closes [#671](https://github.com/databricks/databricks-vscode/issues/671)
--   Move autcompletion for globals to `__builtins__.py` from internal stubs. (#675) ([6208b4c](https://github.com/databricks/databricks-vscode/commit/6208b4c)), closes [#675](https://github.com/databricks/databricks-vscode/issues/675)
--   Prepend cwd to PYTHONPATH so that local changes take precedence over installed libraries (#674) ([f7e9cdf](https://github.com/databricks/databricks-vscode/commit/f7e9cdf)), closes [#674](https://github.com/databricks/databricks-vscode/issues/674) [#673](https://github.com/databricks/databricks-vscode/issues/673)
+-   Feature: All customers should start seeing prompt for switching to using Workspace as sync destination.
+-   Feature: Move autcompletion for globals to `__builtins__.py` from internal stubs. 
+-   Fix: Prepend cwd to PYTHONPATH so that local changes take precedence over installed libraries, fixes [#673](https://github.com/databricks/databricks-vscode/issues/673)
 
 # Release: v0.3.10
 
