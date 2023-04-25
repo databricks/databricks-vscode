@@ -12,7 +12,6 @@ import {Loggers} from "../logger";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
-import * as os from "node:os";
 
 async function getImportString(context: ExtensionContext) {
     try {
