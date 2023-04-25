@@ -11,6 +11,7 @@ import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
+import {FeatureManager} from "../feature-manager/FeatureManager";
 
 describe(__filename, () => {
     let connectionManagerMock: ConnectionManager;
@@ -69,7 +70,8 @@ describe(__filename, () => {
             connectionManager,
             sync,
             instance(mock(WorkspaceStateManager)),
-            instance(mock(WorkspaceFsAccessVerifier))
+            instance(mock(WorkspaceFsAccessVerifier)),
+            instance(mock(FeatureManager<"debugging.dbconnect">))
         );
         disposables.push(provider);
 
@@ -91,7 +93,8 @@ describe(__filename, () => {
             connectionManager,
             sync,
             instance(mock(WorkspaceStateManager)),
-            instance(mock(WorkspaceFsAccessVerifier))
+            instance(mock(WorkspaceFsAccessVerifier)),
+            instance(mock(FeatureManager<"debugging.dbconnect">))
         );
         disposables.push(provider);
 
@@ -113,7 +116,8 @@ describe(__filename, () => {
             connectionManager,
             sync,
             instance(mock(WorkspaceStateManager)),
-            instance(mock(WorkspaceFsAccessVerifier))
+            instance(mock(WorkspaceFsAccessVerifier)),
+            instance(mock(FeatureManager<"debugging.dbconnect">))
         );
         disposables.push(provider);
 
@@ -144,7 +148,8 @@ describe(__filename, () => {
             connectionManager,
             sync,
             instance(mock(WorkspaceStateManager)),
-            instance(mock(WorkspaceFsAccessVerifier))
+            instance(mock(WorkspaceFsAccessVerifier)),
+            instance(mock(FeatureManager<"debugging.dbconnect">))
         );
         disposables.push(provider);
 

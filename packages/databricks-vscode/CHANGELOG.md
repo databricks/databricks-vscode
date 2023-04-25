@@ -1,3 +1,20 @@
+# Release: v0.3.10
+
+## packages/databricks-vscode
+
+## <small>0.3.10 (2023-04-20)</small>
+
+-   Fix: Method for finding installed python packages was failing on windows.
+
+# Release: v0.3.9
+
+## packages/databricks-vscode
+
+## <small>0.3.9 (2023-04-19)</small>
+
+-   Feature: Experimental Databricks Connect V2 integration. Add `debugging.dbconnect` to `databricks.experimental.optIn` vscode workspace setting, to start using the new integration.
+-   Feature: Next phase of Files in Workspace rollout. 50% of users should start seeing prompts to switch to workspace as sync destination.
+
 # Release: v0.3.8
 
 ## packages/databricks-vscode

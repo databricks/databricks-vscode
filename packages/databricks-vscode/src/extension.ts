@@ -44,6 +44,7 @@ import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager
 import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
+import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
 
 export async function activate(
     context: ExtensionContext
@@ -114,21 +115,6 @@ export async function activate(
         pythonExtension,
         workspace.workspaceFolders[0].uri,
         workspaceStateManager
-    );
-
-    const configureAutocomplete = new ConfigureAutocomplete(
-        context,
-        workspaceStateManager,
-        workspace.workspaceFolders[0].uri.fsPath,
-        pythonExtensionWrapper
-    );
-    context.subscriptions.push(
-        configureAutocomplete,
-        telemetry.registerCommand(
-            "databricks.autocomplete.configure",
-            configureAutocomplete.configureCommand,
-            configureAutocomplete
-        )
     );
 
     context.subscriptions.push(
@@ -208,11 +194,63 @@ export async function activate(
 
     context.subscriptions.push(wsfsAccessVerifier);
 
+    const dbConnectInstallPrompt = new DbConnectInstallPrompt(
+        workspaceStateManager,
+        pythonExtensionWrapper
+    );
+    const featureManager = new FeatureManager<"debugging.dbconnect">([
+        "debugging.dbconnect",
+    ]);
+    featureManager.registerFeature(
+        "debugging.dbconnect",
+        () =>
+            new DbConnectAccessVerifier(
+                connectionManager,
+                pythonExtensionWrapper,
+                dbConnectInstallPrompt
+            )
+    );
+    const databricksEnvFileManager = new DatabricksEnvFileManager(
+        workspace.workspaceFolders[0].uri,
+        featureManager,
+        connectionManager,
+        context,
+        pythonExtensionWrapper
+    );
+    context.subscriptions.push(
+        databricksEnvFileManager,
+        databricksEnvFileManager.onDidChangeEnvironmentVariables(() => {
+            if (workspace.notebookDocuments.length) {
+                window.showInformationMessage(
+                    "Environment variables have changed. Restart all jupyter kernels to pickup the latest environment variables."
+                );
+            }
+        })
+    );
+    featureManager.isEnabled("debugging.dbconnect");
+
+    const configureAutocomplete = new ConfigureAutocomplete(
+        context,
+        workspaceStateManager,
+        workspace.workspaceFolders[0].uri.fsPath,
+        pythonExtensionWrapper,
+        dbConnectInstallPrompt
+    );
+    context.subscriptions.push(
+        configureAutocomplete,
+        telemetry.registerCommand(
+            "databricks.autocomplete.configure",
+            configureAutocomplete.configureCommand,
+            configureAutocomplete
+        )
+    );
+
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         synchronizer,
         workspaceStateManager,
-        wsfsAccessVerifier
+        wsfsAccessVerifier,
+        featureManager
     );
 
     context.subscriptions.push(
@@ -409,37 +447,6 @@ export async function activate(
             e
         );
     });
-
-    const featureManager = new FeatureManager<"debugging.dbconnect">([
-        "debugging.dbconnect",
-    ]);
-    featureManager.registerFeature(
-        "debugging.dbconnect",
-        () =>
-            new DbConnectAccessVerifier(
-                connectionManager,
-                pythonExtensionWrapper,
-                workspaceStateManager,
-                context
-            )
-    );
-    const databricksEnvFileManager = new DatabricksEnvFileManager(
-        workspace.workspaceFolders[0].uri,
-        featureManager,
-        connectionManager,
-        context
-    );
-    context.subscriptions.push(
-        databricksEnvFileManager,
-        databricksEnvFileManager.onDidChangeEnvironmentVariables(() => {
-            if (workspace.notebookDocuments.length) {
-                window.showInformationMessage(
-                    "Environment variables have changed. Restart all jupyter kernels to pickup the latest environment variables."
-                );
-            }
-        })
-    );
-    featureManager.isEnabled("debugging.dbconnect");
 
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);

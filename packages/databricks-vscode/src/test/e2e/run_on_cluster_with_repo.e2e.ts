@@ -93,7 +93,9 @@ describe("Run python on cluster with repo", async function () {
         await sleep(1000);
 
         // run file
-        await workbench.executeQuickPick("Databricks: Run File on Databricks");
+        await workbench.executeQuickPick(
+            "Databricks: Upload and Run File on Databricks"
+        );
 
         const debugOutput = await workbench
             .getBottomBar()
