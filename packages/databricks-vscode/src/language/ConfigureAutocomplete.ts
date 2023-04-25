@@ -14,21 +14,24 @@ import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
 import * as os from "node:os";
 
-const importString = [
-    "from databricks.sdk.runtime import *",
-    "from pyspark.sql.session import SparkSession",
-    "from pyspark.sql.functions import udf as U",
-    "from pyspark.sql.context import SQLContext",
-    "",
-    "udf = U",
-    "spark: SparkSession",
-    "sc = spark.sparkContext",
-    "sqlContext: SQLContext",
-    "sql = sqlContext.sql",
-    "table = sqlContext.table",
-].join(os.EOL);
+async function getImportString(context: ExtensionContext) {
+    try {
+        return await readFile(
+            context.asAbsolutePath(
+                path.join("resources", "stubs", "__builtins__.pyi")
+            ),
+            "utf-8"
+        );
+    } catch (e: unknown) {
+        if (e instanceof Error) {
+            window.showErrorMessage(
+                `Can't read internal type stubs for autocompletion. ${e.message}`
+            );
+        }
+    }
+}
 
-type StepResult = "Skip" | "Cancel" | "Error" | "Silent" | undefined;
+type StepResult = "Skip" | "Cancel" | "Error" | undefined;
 
 interface Step {
     fn: (dryRun: boolean) => Promise<StepResult>;
@@ -182,6 +185,11 @@ export class ConfigureAutocomplete implements Disposable {
         } catch (e) {}
 
         const builtinsPath = path.join(builtinsDir, "__builtins__.pyi");
+
+        const importString = await getImportString(this.context);
+        if (importString === undefined) {
+            return "Error";
+        }
 
         if (
             builtinsFileExists &&
