@@ -1,5 +1,7 @@
 import {ConfigurationTarget, workspace} from "vscode";
 import {SyncDestinationType} from "../sync/SyncDestination";
+import path from "path";
+import os from "os";
 
 export const workspaceConfigs = {
     get maxFieldLength() {
@@ -93,6 +95,14 @@ export const workspaceConfigs = {
             .get<Array<string>>("experiments.optInto", []);
     },
 
+    get jupyterDefaultProfilePath() {
+        return workspace
+            .getConfiguration("databricks")
+            .get<string>(
+                "notebooks.ipythonDefaultProfilePath",
+                path.join(os.homedir(), ".ipython", "profile_default")
+            );
+    },
     /**
      * Set the python.envFile configuration in the ms-python extension
      */

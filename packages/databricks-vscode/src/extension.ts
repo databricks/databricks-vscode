@@ -45,6 +45,7 @@ import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
+import {JupyterInitScriptManager} from "./file-managers/JupyterInitScriptManager";
 
 export async function activate(
     context: ExtensionContext
@@ -210,6 +211,8 @@ export async function activate(
                 dbConnectInstallPrompt
             )
     );
+    featureManager.isEnabled("debugging.dbconnect");
+
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspace.workspaceFolders[0].uri,
         featureManager,
@@ -227,7 +230,12 @@ export async function activate(
             }
         })
     );
-    featureManager.isEnabled("debugging.dbconnect");
+
+    const jupyterInitScriptManager = new JupyterInitScriptManager(
+        featureManager,
+        context
+    );
+    context.subscriptions.push(jupyterInitScriptManager);
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
