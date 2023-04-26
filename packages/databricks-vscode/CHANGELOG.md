@@ -1,3 +1,13 @@
+# Release: v0.3.11
+
+## packages/databricks-vscode
+
+## <small>0.3.11 (2023-04-25)</small>
+
+-   Feature: All customers should start seeing prompt for switching to using Workspace as sync destination.
+-   Feature: Move autcompletion for globals to `__builtins__.py` from internal stubs.
+-   Fix: Prepend cwd to PYTHONPATH so that local changes take precedence over installed libraries, fixes [#673](https://github.com/databricks/databricks-vscode/issues/673)
+
 # Release: v0.3.10
 
 ## packages/databricks-vscode
