@@ -17,7 +17,7 @@ async function getImportString(context: ExtensionContext) {
     try {
         return await readFile(
             context.asAbsolutePath(
-                path.join("resources", "stubs", "__builtins__.pyi")
+                path.join("resources", "python", "stubs", "__builtins__.pyi")
             ),
             "utf-8"
         );
