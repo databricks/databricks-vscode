@@ -13,9 +13,24 @@ import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
 
-const importString = "from databricks.sdk.runtime import *";
+async function getImportString(context: ExtensionContext) {
+    try {
+        return await readFile(
+            context.asAbsolutePath(
+                path.join("resources", "python", "stubs", "__builtins__.pyi")
+            ),
+            "utf-8"
+        );
+    } catch (e: unknown) {
+        if (e instanceof Error) {
+            window.showErrorMessage(
+                `Can't read internal type stubs for autocompletion. ${e.message}`
+            );
+        }
+    }
+}
 
-type StepResult = "Skip" | "Cancel" | "Error" | "Silent" | undefined;
+type StepResult = "Skip" | "Cancel" | "Error" | undefined;
 
 interface Step {
     fn: (dryRun: boolean) => Promise<StepResult>;
@@ -169,6 +184,11 @@ export class ConfigureAutocomplete implements Disposable {
         } catch (e) {}
 
         const builtinsPath = path.join(builtinsDir, "__builtins__.pyi");
+
+        const importString = await getImportString(this.context);
+        if (importString === undefined) {
+            return "Error";
+        }
 
         if (
             builtinsFileExists &&
