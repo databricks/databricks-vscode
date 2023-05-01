@@ -635,7 +635,7 @@
         "useYarn": false
     },
     "bricks": {
-        "version": "0.0.28"
+        "version": "0.0.31"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
