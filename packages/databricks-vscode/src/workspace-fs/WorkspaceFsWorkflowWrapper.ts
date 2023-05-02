@@ -89,7 +89,7 @@ export class WorkspaceFsWorkflowWrapper {
         originalJson["cells"] = [bootstrapJson].concat(
             originalJson["cells"] ?? []
         );
-        this.createFile(
+        return this.createFile(
             getWrapperPath(remoteFilePath, [
                 "databricks",
                 "notebook",
