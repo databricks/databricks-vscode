@@ -235,6 +235,8 @@ export class DatabricksEnvFileManager implements Disposable {
             SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=vs_code`, //;user_agent=${encodeURIComponent(userAgent)}`,
             DATABRICKS_HOST: host,
             DATABRICKS_TOKEN: pat,
+            DATABRICKS_PROJECT_ROOT: (workspace.workspaceFolders ?? [])[0].uri
+                .fsPath,
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
@@ -263,7 +265,11 @@ export class DatabricksEnvFileManager implements Disposable {
         const data = Object.entries({
             ...databricksEnvVars,
             ...userEnvVars,
-        }).map(([key, value]) => `${key}="${value}"`);
+        }).map(([key, value]) => {
+            value = value?.startsWith('"') ? value.slice(1) : value;
+            value = value?.endsWith('"') ? value.slice(0, -1) : value;
+            return `${key}="${value}"`;
+        });
         try {
             const oldData = await readFile(
                 this.databricksEnvPath.fsPath,
