@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
@@ -56,6 +57,30 @@ describe("Run job on cluster with workspace", async function () {
             ].join("\n")
         );
 
+        await fs.writeFile(
+            path.join(projectDir, "notebook_ipynb.ipynb"),
+            JSON.stringify({
+                cells: [
+                    {
+                        cell_type: "code",
+                        execution_count: null,
+                        metadata: {},
+                        outputs: [],
+                        source: ['print("hello")'],
+                    },
+                ],
+                metadata: {
+                    kernelspec: {
+                        display_name: "Python 3",
+                        language: "python",
+                        name: "python3",
+                    },
+                    orig_nbformat: 4,
+                },
+                nbformat: 4,
+                nbformat_minor: 2,
+            })
+        );
         const section = await getViewSection("CONFIGURATION");
         assert(section);
         await waitForTreeItems(section);
@@ -129,6 +154,72 @@ describe("Run job on cluster with workspace", async function () {
         webView.close();
     });
 
+    it("should run a jupyter notebook as a job on a cluster", async () => {
+        await startSyncIfStopped();
+        await waitForSyncComplete();
+
+        const workbench = await driver.getWorkbench();
+        const editorView = workbench.getEditorView();
+        await editorView.closeAllEditors();
+
+        // open file
+        const input = await workbench.openCommandPrompt();
+        await sleep(200);
+        await input.setText("notebook_ipynb.ipynb");
+        await input.confirm();
+        await sleep(500);
+
+        // run file
+        await workbench.executeQuickPick(
+            "Databricks: Run File as Workflow on Databricks"
+        );
+
+        await dismissNotifications();
+        const webView = await workbench.getWebviewByTitle(/Databricks Job Run/);
+        await webView.open();
+
+        /* eslint-disable @typescript-eslint/naming-convention */
+        const labelToDefaults = {
+            taskRunId: {label: "task-run-id", default: /N\\A/},
+            clusterId: {label: "cluster", default: /N\\A/},
+            startTime: {label: "run-start-time", default: /-/},
+            endTime: {label: "run-end-time", default: /-/},
+            duration: {label: "run-duration", default: /-/},
+            status: {label: "run-status", default: /Synchronizing/},
+        };
+        /* eslint-enable @typescript-eslint/naming-convention */
+
+        // wait for job to get a task id
+        await browser.waitUntil(
+            async () =>
+                (
+                    await browser.getTextByLabel(
+                        labelToDefaults.taskRunId.label
+                    )
+                ).match(labelToDefaults.taskRunId.default) === null,
+            {
+                timeoutMsg: "Job did not start",
+            }
+        );
+
+        expect(
+            await browser.getTextByLabel(labelToDefaults.startTime.label)
+        ).not.toHaveText(labelToDefaults.startTime.default);
+
+        await browser.waitUntil(
+            async () =>
+                (
+                    await browser.getTextByLabel(labelToDefaults.status.label)
+                ).match(/Succeeded/) !== null,
+            {
+                timeout: 20000,
+                interval: 50,
+                timeoutMsg: "Job did not reach succeeded status after 20s.",
+            }
+        );
+
+        webView.close();
+    });
     it("should run a python file as a job on a cluster", async () => {
         await startSyncIfStopped();
         await waitForSyncComplete();
