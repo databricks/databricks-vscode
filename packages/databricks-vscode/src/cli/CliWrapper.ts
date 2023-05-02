@@ -85,11 +85,12 @@ export class CliWrapper {
         const cmd = await this.getListProfilesCommand();
         const res = await execFile(cmd.command, cmd.args, {
             env: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
+                /*  eslint-disable @typescript-eslint/naming-convention */
                 HOME: process.env.HOME,
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 DATABRICKS_CONFIG_FILE:
                     configfilePath || process.env.DATABRICKS_CONFIG_FILE,
+                BRICKS_OUTPUT_FORMAT: "json",
+                /*  eslint-enable @typescript-eslint/naming-convention */
             },
         });
         const profiles = JSON.parse(res.stdout).profiles || [];
