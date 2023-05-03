@@ -1,3 +1,13 @@
+# Release: v0.3.12
+
+## packages/databricks-vscode
+
+## <small>0.3.12 (2023-05-03)</small>
+
+-   Fix autocompletion stub path (#680) ([69da757](https://github.com/databricks/databricks-vscode/commit/69da757)), closes [#680](https://github.com/databricks/databricks-vscode/issues/680) [#678](https://github.com/databricks/databricks-vscode/issues/678)
+-   Fix multiple quote issue for .databricks.env file. (#686) ([20070db](https://github.com/databricks/databricks-vscode/commit/20070db)), closes [#686](https://github.com/databricks/databricks-vscode/issues/686)
+-   Update bricks profile to use BRICKS_OUTPUT_FORMAT environment variable (#679) ([97e7319](https://github.com/databricks/databricks-vscode/commit/97e7319)), closes [#679](https://github.com/databricks/databricks-vscode/issues/679)
+
 # Release: v0.3.11
 
 ## packages/databricks-vscode
