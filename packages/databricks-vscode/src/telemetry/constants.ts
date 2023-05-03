@@ -4,7 +4,7 @@ import {AuthType} from "../configuration/auth/AuthProvider";
 export const PROD_APP_INSIGHTS_CONFIGURATION_STRING = "";
 /** The application insights configuration string used while developing on the VS Code extension */
 export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
-    "InstrumentationKey=ae4b0735-b53b-409a-97d2-d77b6ec584a2;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
+    "InstrumentationKey=257d1561-5005-4a76-a3a8-7955df129e86;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
 
 /** The list of all events which can be monitored. */
 /* eslint-disable @typescript-eslint/naming-convention */
