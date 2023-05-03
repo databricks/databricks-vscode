@@ -7,7 +7,6 @@
 -   Fix: "Configure Autocompletion for Globals" was unable find type stubs, closes [#678](https://github.com/databricks/databricks-vscode/issues/678)
 -   Fix: .databricks.env file would start adding multiple quotes to existing variables
 
-
 # Release: v0.3.11
 
 ## packages/databricks-vscode
