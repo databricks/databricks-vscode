@@ -20,6 +20,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
@@ -48,17 +49,26 @@ export class DatabricksEnvFileManager implements Disposable {
             systemVariableResolver.resolve(unresolvedDatabricksEnvFile)
         );
 
-        const unresolvedUserEnvFile = workspaceConfigs.userEnvFile
+        const unresolvedUserEnvFile = this.isValidUserEnvPath(
+            workspaceConfigs.userEnvFile,
+            [unresolvedDatabricksEnvFile, this.databricksEnvPath.fsPath]
+        )
             ? workspaceConfigs.userEnvFile
-            : !workspaceConfigs.msPythonEnvFile ||
-              workspaceConfigs.msPythonEnvFile.includes(
-                  this.databricksEnvPath.fsPath
-              )
-            ? path.join("${workspaceFolder}", ".env")
-            : workspaceConfigs.msPythonEnvFile;
+            : this.isValidUserEnvPath(workspaceConfigs.msPythonEnvFile, [
+                  unresolvedDatabricksEnvFile,
+                  this.databricksEnvPath.fsPath,
+              ])
+            ? workspaceConfigs.msPythonEnvFile
+            : path.join("${workspaceFolder}", ".env");
         this.userEnvPath = Uri.file(
             systemVariableResolver.resolve(unresolvedUserEnvFile)
         );
+
+        NamedLogger.getOrCreate(Loggers.Extension).debug("Env file locations", {
+            unresolvedDatabricksEnvFile,
+            unresolvedUserEnvFile,
+            msEnvFile: workspaceConfigs.msPythonEnvFile,
+        });
 
         workspaceConfigs.msPythonEnvFile = unresolvedDatabricksEnvFile;
         workspaceConfigs.userEnvFile = unresolvedUserEnvFile;
@@ -123,6 +133,13 @@ export class DatabricksEnvFileManager implements Disposable {
                 this.writeFile();
             }, this)
         );
+    }
+
+    private isValidUserEnvPath(
+        path: string | undefined,
+        excludes: string[]
+    ): path is string {
+        return path !== undefined && !excludes.includes(path);
     }
 
     private async disableStatusBarButton() {
@@ -263,7 +280,10 @@ export class DatabricksEnvFileManager implements Disposable {
         const data = Object.entries({
             ...databricksEnvVars,
             ...userEnvVars,
-        }).map(([key, value]) => `${key}="${value}"`);
+        }).map(([key, value]) => {
+            value = value?.replaceAll(/^"|"$/g, "");
+            return `${key}="${value}"`;
+        });
         try {
             const oldData = await readFile(
                 this.databricksEnvPath.fsPath,

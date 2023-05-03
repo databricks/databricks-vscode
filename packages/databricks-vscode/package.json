@@ -373,7 +373,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "resourceLangId == python"
+                    "when": "resourceLangId == python || resourceExtname == .ipynb"
                 },
                 {
                     "command": "databricks.wsfs.createFolder",
