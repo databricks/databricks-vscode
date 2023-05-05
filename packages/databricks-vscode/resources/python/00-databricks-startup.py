@@ -38,6 +38,9 @@ class DatabricksMagics(Magics):
 
 
 def main():
+    spark = DatabricksSession.builder.getOrCreate()
+    dbutils = WorkspaceClient().dbutils
+
     remote_blocked_cell_magics = ["%%sh"]
     local_blocked_line_as_cell_magics = ["r", "scala"]
 
@@ -134,14 +137,11 @@ def main():
     except:
         pass
 
+    return spark, dbutils
 
 global _sqldf
 
 try:
-    spark = DatabricksSession.builder.getOrCreate()
-    dbutils = WorkspaceClient().dbutils
-    main()
+    spark, dbutils = main()
 except Exception as e:
     warnings.warn("Error initialising databricks globals. " + str(e))
-    del spark
-    del dbutils
