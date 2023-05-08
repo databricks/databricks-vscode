@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "0.3.11",
+    "version": "0.3.12",
     "engines": {
         "vscode": "^1.76.0"
     },
@@ -373,7 +373,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "resourceLangId == python"
+                    "when": "resourceLangId == python || resourceExtname == .ipynb"
                 },
                 {
                     "command": "databricks.wsfs.createFolder",
