@@ -49,12 +49,12 @@ export class DatabricksEnvFileManager implements Disposable {
             systemVariableResolver.resolve(unresolvedDatabricksEnvFile)
         );
 
-        const unresolvedUserEnvFile = this.checkValidUserEnvPath(
+        const unresolvedUserEnvFile = this.isValidUserEnvPath(
             workspaceConfigs.userEnvFile,
             [unresolvedDatabricksEnvFile, this.databricksEnvPath.fsPath]
         )
             ? workspaceConfigs.userEnvFile
-            : this.checkValidUserEnvPath(workspaceConfigs.msPythonEnvFile, [
+            : this.isValidUserEnvPath(workspaceConfigs.msPythonEnvFile, [
                   unresolvedDatabricksEnvFile,
                   this.databricksEnvPath.fsPath,
               ])
@@ -135,7 +135,7 @@ export class DatabricksEnvFileManager implements Disposable {
         );
     }
 
-    private checkValidUserEnvPath(
+    private isValidUserEnvPath(
         path: string | undefined,
         excludes: string[]
     ): path is string {
@@ -283,8 +283,7 @@ export class DatabricksEnvFileManager implements Disposable {
             ...databricksEnvVars,
             ...userEnvVars,
         }).map(([key, value]) => {
-            value = value?.startsWith('"') ? value.slice(1) : value;
-            value = value?.endsWith('"') ? value.slice(0, -1) : value;
+            value = value?.replaceAll(/^"|"$/g, "");
             return `${key}="${value}"`;
         });
         try {
