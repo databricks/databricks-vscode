@@ -106,7 +106,7 @@ export class ConnectionManager {
         try {
             await this._login(interactive, force);
         } catch (e) {
-            NamedLogger.getOrCreate("Extension").error("Login Error", e);
+            NamedLogger.getOrCreate("Extension").error("Login Error:", e);
             if (interactive && e instanceof Error) {
                 window.showErrorMessage(`Login error: ${e.message}`);
             }
