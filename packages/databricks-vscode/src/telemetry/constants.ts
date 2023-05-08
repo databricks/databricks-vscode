@@ -1,7 +1,8 @@
 import {AuthType} from "../configuration/auth/AuthProvider";
 
 /** The production application insights configuration string for Databricks. */
-export const PROD_APP_INSIGHTS_CONFIGURATION_STRING = "";
+export const PROD_APP_INSIGHTS_CONFIGURATION_STRING =
+    "InstrumentationKey=ebe191c5-f06b-4189-b68c-34fb5fbdb3f0;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
 /** The application insights configuration string used while developing on the VS Code extension */
 export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
     "InstrumentationKey=257d1561-5005-4a76-a3a8-7955df129e86;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
