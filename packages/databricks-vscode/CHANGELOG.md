@@ -4,8 +4,8 @@
 
 ## <small>0.3.13 (2023-05-09)</small>
 
--   Gracefully handle virtual /Repos/me folder (#693) ([b1a234f](https://github.com/databricks/databricks-vscode/commit/b1a234f)), closes [#693](https://github.com/databricks/databricks-vscode/issues/693) [#683](https://github.com/databricks/databricks-vscode/issues/683) [#691](https://github.com/databricks/databricks-vscode/issues/691) [#688](https://github.com/databricks/databricks-vscode/issues/688)
--   Update telemetry connection strings (#692) ([a5a9dbd](https://github.com/databricks/databricks-vscode/commit/a5a9dbd)), closes [#692](https://github.com/databricks/databricks-vscode/issues/692)
+-   Fix: Gracefully handle virtual /Repos/me folder, closes [#693](https://github.com/databricks/databricks-vscode/issues/693) [#683](https://github.com/databricks/databricks-vscode/issues/683) [#691](https://github.com/databricks/databricks-vscode/issues/691) [#688](https://github.com/databricks/databricks-vscode/issues/688)
+-   Feature: Start sending Telemetry from the VS Code Extension.
 
 # Release: v0.3.12
 
