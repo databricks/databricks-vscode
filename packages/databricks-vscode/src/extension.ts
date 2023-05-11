@@ -198,9 +198,7 @@ export async function activate(
         workspaceStateManager,
         pythonExtensionWrapper
     );
-    const featureManager = new FeatureManager<"debugging.dbconnect">([
-        "debugging.dbconnect",
-    ]);
+    const featureManager = new FeatureManager<"debugging.dbconnect">([]);
     featureManager.registerFeature(
         "debugging.dbconnect",
         () =>
