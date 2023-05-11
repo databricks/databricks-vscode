@@ -240,18 +240,29 @@ export class DatabricksEnvFileManager implements Disposable {
             return;
         }
         const cluster = this.connectionManager.cluster;
-        const host = this.connectionManager.databricksWorkspace?.host.authority;
-        const pat = await this.getPatToken();
         const userAgent = await this.userAgent();
-        if (!cluster || !pat || !host || !userAgent) {
+        const authProvider =
+            this.connectionManager.databricksWorkspace?.authProvider;
+        if (!cluster || !userAgent || !authProvider) {
             return;
         }
+
+        const authEnvVars: Record<string, string> = authProvider.toEnv();
+
+        const host = this.connectionManager.databricksWorkspace?.host.authority;
+        const pat = await this.getPatToken();
+        const sparkEnvVars: Record<string, string> = {};
+        if (pat && host) {
+            sparkEnvVars[
+                "SPARK_REMOTE"
+            ] = `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=vs_code`; //;user_agent=${encodeURIComponent(userAgent)}`
+        }
+
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
+            ...authEnvVars,
+            ...sparkEnvVars,
             DATABRICKS_CLUSTER_ID: cluster.id,
-            SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=vs_code`, //;user_agent=${encodeURIComponent(userAgent)}`,
-            DATABRICKS_HOST: host,
-            DATABRICKS_TOKEN: pat,
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
