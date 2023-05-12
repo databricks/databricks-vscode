@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "0.3.13",
+    "version": "0.3.13-hack",
     "engines": {
         "vscode": "^1.76.0"
     },
@@ -214,6 +214,11 @@
                 "title": "Call",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.assistant.reset",
+                "title": "Reset Chat history",
+                "icon": "$(refresh)"
             }
         ],
         "viewsContainers": {
@@ -230,6 +235,11 @@
                 {
                     "id": "configurationView",
                     "name": "Configuration"
+                },
+                {
+                    "type": "webview",
+                    "id": "assistantView",
+                    "name": "Assistant"
                 },
                 {
                     "id": "workspaceFsView",
@@ -256,6 +266,11 @@
         ],
         "menus": {
             "view/title": [
+                {
+                    "command": "databricks.assistant.reset",
+                    "when": "view == assistantView",
+                    "group": "navigation@3"
+                },
                 {
                     "command": "databricks.connection.configureWorkspace",
                     "when": "view == configurationView",
@@ -655,6 +670,7 @@
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "yarn run package:wrappers:write && tsc --build --force",
         "watch": "yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && tsc --build --watch --force",
+        "watch:assistant": "esbuild --bundle resources/webview-ui/assistant.tsx --outfile=resources/webview-ui/assistant.js --watch",
         "fix": "eslint src --ext ts --fix && prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",
@@ -670,11 +686,17 @@
     "dependencies": {
         "@databricks/databricks-sdk": "workspace:^",
         "@databricks/databricks-vscode-types": "workspace:^",
+        "@emotion/react": "^11.11.0",
+        "@vscode/codicons": "^0.0.33",
         "@vscode/debugadapter": "^1.59.0",
         "@vscode/extension-telemetry": "^0.7.7",
         "@vscode/webview-ui-toolkit": "^1.2.2",
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-markdown": "^8.0.7",
+        "react-syntax-highlighter": "^15.5.0",
         "triple-beam": "^1.3.0",
         "winston": "^3.8.2"
     },

@@ -1,0 +1,71 @@
+<html>
+    <head>
+        <title>Assistant</title>
+        <style>
+            body {
+                color: var(--vscode-editor-foreground);
+                font-family: var(--vscode-font-family);
+                font-weight: var(--vscode-font-weight);
+                margin: 0;
+                padding: 0;
+            }
+
+            div {
+                box-sizing: border-box;
+            }
+
+            .container {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+            }
+
+            #chat {
+                flex: 1;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column-reverse;
+            }
+
+            .message {
+                border-top: 1px solid var(--vscode-settings-dropdownListBorder);
+                padding: 15px;
+            }
+
+            .message_user {
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+
+            .message_text {
+            }
+
+            .code-block {
+                background-color: var(--input-background);
+            }
+
+            .code-block-button {
+                padding: 3px;
+                border-radius: 3px;
+                border: none;
+            }
+
+            .code-block-button:hover {
+                background-color: var(--button-icon-hover-background);
+            }
+        </style>
+        <link
+            href="../../node_modules/@vscode/codicons/dist/codicon.css"
+            rel="stylesheet"
+        />
+    </head>
+    <body>
+        <div id="root"></div>
+        <script
+            type="module"
+            src="../../node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js"
+        ></script>
+
+        <script src="assistant.js"></script>
+    </body>
+</html>

@@ -16,6 +16,7 @@ export * as workspace from "./apis/workspace";
 export * as workspaceconf from "./apis/workspaceconf";
 export * as permissions from "./apis/permissions";
 
+export * from "./services/LakeSense";
 export * from "./services/Cluster";
 export * from "./services/Command";
 export * from "./services/ExecutionContext";
@@ -25,13 +26,13 @@ export * from "./services/WorkspaceConf";
 
 export * from "./types";
 
-export {default as retry} from "./retries/retries";
+export { default as retry } from "./retries/retries";
 export * as retries from "./retries/retries";
-export type {RetryPolicy} from "./retries/retries";
-export {TimeUnits, default as Time} from "./retries/Time";
+export type { RetryPolicy } from "./retries/retries";
+export { TimeUnits, default as Time } from "./retries/Time";
 
 export * as logging from "./logging";
-export {Redactor, defaultRedactor} from "./Redactor";
+export { Redactor, defaultRedactor } from "./Redactor";
 
 export * from "./services/wsfs";
 export * from "./config";
