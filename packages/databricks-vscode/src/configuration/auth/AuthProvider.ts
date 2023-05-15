@@ -36,6 +36,7 @@ export abstract class AuthProvider {
      */
     abstract describe(): string;
     abstract toJSON(): Record<string, unknown>;
+    abstract toEnv(): Record<string, string>;
 
     getWorkspaceClient(): WorkspaceClient {
         const config = this.getSdkConfig();
@@ -109,6 +110,14 @@ export class ProfileAuthProvider extends AuthProvider {
         };
     }
 
+    toEnv(): Record<string, string> {
+        return {
+            DATABRICKS_HOST: this.host.toString(),
+            DATABRICKS_AUTH_TYPE: this.authType,
+            DATABRICKS_CONFIG_PROFILE: this.profile,
+        };
+    }
+
     getSdkConfig(): Config {
         return new Config({
             profile: this.profile,
@@ -143,6 +152,14 @@ export class BricksCliAuthProvider extends AuthProvider {
             authType: "bricks-cli",
             bricksCliPath: this.bricksPath,
         });
+    }
+
+    toEnv(): Record<string, string> {
+        return {
+            DATABRICKS_HOST: this.host.toString(),
+            DATABRICKS_AUTH_TYPE: this.authType,
+            BRICKS_CLI_PATH: this.bricksPath,
+        };
     }
 
     async check(silent: boolean): Promise<boolean> {
@@ -190,6 +207,17 @@ export class AzureCliAuthProvider extends AuthProvider {
             azureLoginAppId: this.appId,
             env: {},
         });
+    }
+
+    toEnv(): Record<string, string> {
+        const envVars: Record<string, string> = {
+            DATABRICKS_HOST: this.host.toString(),
+            DATABRICKS_AUTH_TYPE: this.authType,
+        };
+        if (this.appId) {
+            envVars["DATABRICKS_AZURE_LOGIN_APP_ID"] = this.appId;
+        }
+        return envVars;
     }
 
     async check(silent: boolean): Promise<boolean> {
