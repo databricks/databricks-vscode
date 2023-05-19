@@ -8,12 +8,13 @@ import {
 } from "./Config";
 import {execFile, isFileNotFound} from "./execUtils";
 import {refreshableTokenProvider, Token} from "./Token";
+import semver from "semver";
 
 /**
- * Authenticate through the Bricks CLI.
+ * Authenticate through the Databricks CLI.
  */
-export class BricksCliCredentials implements CredentialProvider {
-    public name: AuthType = "bricks-cli";
+export class DatabricksCliCredentials implements CredentialProvider {
+    public name: AuthType = "databricks-cli";
 
     async configure(config: Config): Promise<RequestVisitor | undefined> {
         if (!config.isAws()) {
@@ -29,9 +30,9 @@ export class BricksCliCredentials implements CredentialProvider {
             await ts();
         } catch (e) {
             if (e instanceof ConfigError) {
-                if (e.message.indexOf("Can't find 'bricks' command") >= 0) {
+                if (e.message.indexOf("Can't find 'databricks' command") >= 0) {
                     config.logger.debug(
-                        "Most likely Bricks CLI is not installed"
+                        "Most likely Databricks CLI is not installed"
                     );
                     return;
                 } else if (
@@ -60,10 +61,32 @@ export class BricksCliCredentials implements CredentialProvider {
                 args.push("--host", config.host!);
             }
 
-            const bricksCli = config.bricksCliPath || "bricks";
+            const databricksCli = config.databricksCliPath || "databricks";
 
             try {
-                const child = await execFile(bricksCli, args);
+                const child = await execFile(databricksCli, ["version"]);
+                const versionString = child.stdout.trim();
+                if (
+                    !versionString ||
+                    !semver.valid(versionString) ||
+                    semver.lt(versionString, "0.100.0")
+                ) {
+                    throw new ConfigError(
+                        `databricks-cli: Legacy version of the Databricks CLI detected. Please upgrade to version 0.100.0 or higher.`,
+                        config
+                    );
+                }
+            } catch (e) {
+                if (isFileNotFound(e)) {
+                    throw new ConfigError(
+                        "databricks-cli: Can't find 'databricks' command.",
+                        config
+                    );
+                }
+            }
+
+            try {
+                const child = await execFile(databricksCli, args);
 
                 let token: any;
                 try {
@@ -73,7 +96,7 @@ export class BricksCliCredentials implements CredentialProvider {
                     }
                 } catch (e) {
                     throw new ConfigError(
-                        `bricks-cli: cannot unmarshal Bricks CLI result: ${e}`,
+                        `databricks-cli: cannot unmarshal Databricks CLI result: ${e}`,
                         config
                     );
                 }
@@ -82,17 +105,10 @@ export class BricksCliCredentials implements CredentialProvider {
                     expiry: new Date(token.expiry).getTime(),
                 });
             } catch (e) {
-                if (isFileNotFound(e)) {
-                    throw new ConfigError(
-                        "bricks-cli: Can't find 'bricks' command.",
-                        config
-                    );
-                } else {
-                    throw new ConfigError(
-                        `bricks-cli: cannot get access token: ${e + ""}`,
-                        config
-                    );
-                }
+                throw new ConfigError(
+                    `databricks-cli: cannot get access token: ${e + ""}`,
+                    config
+                );
             }
         };
     }

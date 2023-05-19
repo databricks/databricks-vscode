@@ -81,7 +81,7 @@ export async function activate(
 
     const workspaceStateManager = new WorkspaceStateManager(context);
 
-    // Add the bricks binary to the PATH environment variable in terminals
+    // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.persistent = true;
     context.environmentVariableCollection.prepend(
         "PATH",
@@ -406,7 +406,7 @@ export async function activate(
         new ProjectConfigFileWatcher(
             connectionManager,
             workspace.rootPath!,
-            cli.bricksPath
+            cli.cliPath
         )
     );
 

@@ -1,5 +1,5 @@
 import {Disposable, Event, EventEmitter, TaskExecution, tasks} from "vscode";
-import {SyncTask, TASK_SYNC_TYPE} from "../cli/BricksTasks";
+import {SyncTask, TASK_SYNC_TYPE} from "../cli/SyncTasks";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {PackageMetaData} from "../utils/packageJsonUtils";
@@ -19,7 +19,7 @@ export class CodeSynchronizer implements Disposable {
         this._onDidChangeStateEmitter.event;
 
     // This state is updated from inside the SyncTask based on logs recieved from
-    // bricks sync stderr. Closing the SyncTask transitions the state back to
+    // databricks sync stderr. Closing the SyncTask transitions the state back to
     // stopped
     private _state: SyncState = "STOPPED";
 

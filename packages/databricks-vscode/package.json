@@ -417,8 +417,8 @@
         ],
         "problemMatchers": [
             {
-                "name": "bricks-sync",
-                "owner": "bricks",
+                "name": "databricks-sync",
+                "owner": "databricks",
                 "fileLocation": "relative",
                 "pattern": {
                     "regexp": "Putting (/Repos/.*)$",
@@ -580,10 +580,10 @@
                         "default": false,
                         "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
                     },
-                    "databricks.bricks.verboseMode": {
+                    "databricks.cli.verboseMode": {
                         "type": "boolean",
                         "default": false,
-                        "description": "Enable verbose logging for bricks CLI (sync mode)."
+                        "description": "Enable verbose logging for databricks CLI (sync mode)."
                     },
                     "databricks.sync.destinationType": {
                         "type": "string",
@@ -634,8 +634,8 @@
         "dependencies": false,
         "useYarn": false
     },
-    "bricks": {
-        "version": "0.0.31"
+    "cli": {
+        "version": "0.100.1"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
@@ -647,8 +647,8 @@
         "package:win32:x64": "./scripts/package-vsix.sh win32-x64",
         "package:win32:arm64": "./scripts/package-vsix.sh win32-arm64",
         "package:all": "yarn run package:linux:x64 && yarn run package:linux:arm64 && yarn run package:darwin:x64 && yarn run package:darwin:arm64 && yarn run package:win32:x64 && yarn run package:win32:arm64",
-        "package:cli:fetch": "bash ./scripts/fetch-bricks-cli.sh ${BRICKS_ARCH:-}",
-        "package:cli:link": "rm -f ./bin/bricks && ln -s ../../../../bricks/bricks bin",
+        "package:cli:fetch": "bash ./scripts/fetch-databricks-cli.sh ${CLI_ARCH:-}",
+        "package:cli:link": "rm -f ./bin/databricks && mkdir -p bin && ln -s ../../../../cli/cli bin/databricks",
         "package:wrappers:write": "ts-node ./scripts/writeIpynbWrapper.ts -s ./resources/python/notebook.workflow-wrapper.py -o ./resources/python/generated/notebook.workflow-wrapper.json",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",

@@ -26,7 +26,7 @@ describe(__filename, function () {
         const manager = new LoggerManager(instance(mockContext));
         await manager.initLoggers();
         NamedLogger.getOrCreate(Loggers.Extension).debug("test message");
-        NamedLogger.getOrCreate(Loggers.Bricks).debug("test message");
+        NamedLogger.getOrCreate(Loggers.CLI).debug("test message");
 
         await new Promise((resolve) =>
             setTimeout(
@@ -34,7 +34,7 @@ describe(__filename, function () {
                 new Time(0.5, TimeUnits.seconds).toMillSeconds().value
             )
         );
-        ["sdk-and-extension-logs.json", "bricks-logs.json"].forEach(
+        ["sdk-and-extension-logs.json", "databricks-cli-logs.json"].forEach(
             async (logfile) => {
                 const rawLogs = await readFile(path.join(tempDir, logfile), {
                     encoding: "utf-8",
