@@ -120,14 +120,26 @@ export class WorkspaceFsCommands implements Disposable {
 
         if (inputPath !== undefined) {
             if (!workspaceConfigs.enableFilesInWorkspace) {
-                created = await this.createRepo(
-                    rootPath + "/" + inputPath + REPO_NAME_SUFFIX
-                );
+                try {
+                    created = await this.createRepo(
+                        rootPath + "/" + inputPath + REPO_NAME_SUFFIX
+                    );
+                    if (created === undefined) {
+                        await window.showErrorMessage(
+                            `Can't create directory ${inputPath}`
+                        );
+                    }
+                } catch (e: any) {
+                    let msg: string;
+                    try {
+                        msg = JSON.parse(e.message).message;
+                    } catch {
+                        msg = e.message;
+                    }
+                    await window.showErrorMessage(msg);
+                }
             } else if (root) {
                 created = await root.mkdir(inputPath);
-            }
-            if (created === undefined) {
-                window.showErrorMessage(`Can't create directory ${inputPath}`);
             }
         }
 

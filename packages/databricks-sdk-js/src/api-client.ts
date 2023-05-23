@@ -131,7 +131,7 @@ export class ApiClient {
             }
         }
 
-        const response = await retry<Awaited<ReturnType<typeof fetch>>>({
+        const responseText = await retry<string>({
             timeout: new Time(
                 this.config.retryTimeoutSeconds || 300,
                 TimeUnits.seconds
@@ -163,55 +163,79 @@ export class ApiClient {
                     throw logAndReturnError(url, options, "", err, context);
                 }
 
+                let responseText: string;
+                try {
+                    const responseBody = await response.arrayBuffer();
+                    responseText = new TextDecoder().decode(responseBody);
+                } catch (e: any) {
+                    logAndReturnError(url, options, "", e, context);
+                    throw new ApiClientResponseError(
+                        `Can't parse response from ${url.toString()}`,
+                        ""
+                    );
+                }
+
                 switch (response.status) {
                     case 500:
                     case 429:
+                        // Repos API returns 429 when the user has too many repos. Don't retry in this case.
+                        if (
+                            responseText.indexOf(
+                                "Please delete repos before creating new repos"
+                            ) > -1
+                        ) {
+                            break;
+                        }
+
                         throw new RetriableError();
 
                     default:
                         break;
                 }
-                return response;
+
+                // throw error if the URL is incorrect and we get back an HTML page
+                if (response.headers.get("content-type")?.match("text/html")) {
+                    // When the AAD tenant is not configured correctly, the response is a HTML page with a title like this:
+                    // "Error 400 io.jsonwebtoken.IncorrectClaimException: Expected iss claim to be: https://sts.windows.net/aaaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa/, but was: https://sts.windows.net/bbbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb/."
+                    const m = responseText.match(
+                        /<title>(Error \d+.*?)<\/title>/
+                    );
+                    let error: HttpError;
+                    if (m) {
+                        error = new HttpError(m[1], response.status);
+                    } else {
+                        error = new HttpError(
+                            `Can't connect to ${url.toString()}`,
+                            response.status
+                        );
+                    }
+
+                    throw logAndReturnError(
+                        url,
+                        options,
+                        response,
+                        error,
+                        context
+                    );
+                }
+
+                // TODO proper error handling
+                if (!response.ok) {
+                    const err = responseText.match(/invalid access token/i)
+                        ? new HttpError("Invalid access token", response.status)
+                        : new HttpError(responseText, response.status);
+                    throw logAndReturnError(
+                        url,
+                        options,
+                        responseText,
+                        err,
+                        context
+                    );
+                }
+
+                return responseText;
             },
         });
-
-        let responseText: string;
-        try {
-            const responseBody = await response.arrayBuffer();
-            responseText = new TextDecoder().decode(responseBody);
-        } catch (e: any) {
-            logAndReturnError(url, options, "", e, context);
-            throw new ApiClientResponseError(
-                `Can't parse response from ${url.toString()}`,
-                ""
-            );
-        }
-
-        // throw error if the URL is incorrect and we get back an HTML page
-        if (response.headers.get("content-type")?.match("text/html")) {
-            // When the AAD tenant is not configured correctly, the response is a HTML page with a title like this:
-            // "Error 400 io.jsonwebtoken.IncorrectClaimException: Expected iss claim to be: https://sts.windows.net/aaaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa/, but was: https://sts.windows.net/bbbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb/."
-            const m = responseText.match(/<title>(Error \d+.*?)<\/title>/);
-            let error: HttpError;
-            if (m) {
-                error = new HttpError(m[1], response.status);
-            } else {
-                error = new HttpError(
-                    `Can't connect to ${url.toString()}`,
-                    response.status
-                );
-            }
-
-            throw logAndReturnError(url, options, response, error, context);
-        }
-
-        // TODO proper error handling
-        if (!response.ok) {
-            const err = responseText.match(/invalid access token/i)
-                ? new HttpError("Invalid access token", response.status)
-                : new HttpError(responseText, response.status);
-            throw logAndReturnError(url, options, responseText, err, context);
-        }
 
         let responseJson: any;
         try {
