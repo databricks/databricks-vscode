@@ -92,20 +92,18 @@ export abstract class WorkspaceFsEntity {
     }
 
     protected async fetchChildren() {
-        function objIsDefined(
-            obj: WorkspaceFsEntity | undefined
-        ): obj is WorkspaceFsEntity {
-            return obj !== undefined ? true : false;
+        const children: Array<WorkspaceFsEntity> = [];
+
+        for await (const child of this._workspaceFsService.list({
+            path: this.path,
+        })) {
+            const entity = entityFromObjInfo(this.wsClient, child);
+            if (entity) {
+                children.push(entity);
+            }
         }
 
-        this._children = (
-            await this._workspaceFsService.list({path: this.path})
-        ).objects
-            ?.map(
-                (obj) =>
-                    entityFromObjInfo(this.wsClient, obj) as WorkspaceFsEntity
-            )
-            .filter(objIsDefined);
+        this._children = children;
     }
 
     @withLogContext(ExposedLoggers.SDK)

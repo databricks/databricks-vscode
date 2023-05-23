@@ -183,11 +183,14 @@ export class ClusterPoliciesService {
      * Returns a list of policies accessible by the requesting user.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.List,
         @context context?: Context
-    ): Promise<model.ListPoliciesResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.Policy> {
+        const response = (await this._list(request, context)).policies;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 }
 
@@ -231,8 +234,8 @@ export class PolicyFamiliesService {
     }
 
     /**
-    
-	*/
+		
+		*/
     @withLogContext(ExposedLoggers.SDK)
     async get(
         request: model.GetPolicyFamilyRequest,
@@ -256,13 +259,37 @@ export class PolicyFamiliesService {
     }
 
     /**
-    
-	*/
+		
+		*/
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListPolicyFamiliesRequest,
         @context context?: Context
-    ): Promise<model.ListPolicyFamiliesResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.PolicyFamily> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (
+                !response.policy_families ||
+                response.policy_families.length === 0
+            ) {
+                break;
+            }
+
+            for (const v of response.policy_families) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 }

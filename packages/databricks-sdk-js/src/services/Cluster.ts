@@ -336,18 +336,17 @@ export class Cluster {
         clusterName: string
     ): Promise<Cluster | undefined> {
         const clusterApi = new ClustersService(client);
-        const clusterList = await clusterApi.list({can_use_client: ""});
-        const cluster = clusterList.clusters?.find((cluster) => {
-            return cluster.cluster_name === clusterName;
-        });
-        if (!cluster) {
-            return;
+
+        for await (const clusterInfo of clusterApi.list({can_use_client: ""})) {
+            if (clusterInfo.cluster_name === clusterName) {
+                const cluster = await clusterApi.get({
+                    cluster_id: clusterInfo.cluster_id!,
+                });
+                return new Cluster(client, cluster);
+            }
         }
 
-        const response = await clusterApi.get({
-            cluster_id: cluster.cluster_id!,
-        });
-        return new Cluster(client, response);
+        return;
     }
 
     static async fromClusterId(
@@ -359,15 +358,12 @@ export class Cluster {
         return new Cluster(client, response);
     }
 
-    static async list(client: ApiClient): Promise<Array<Cluster>> {
+    static async *list(client: ApiClient): AsyncIterable<Cluster> {
         const clusterApi = new ClustersService(client);
-        const response = await clusterApi.list({can_use_client: ""});
 
-        if (!response.clusters) {
-            return [];
+        for await (const clusterInfo of clusterApi.list({can_use_client: ""})) {
+            yield new Cluster(client, clusterInfo);
         }
-
-        return response.clusters.map((c) => new Cluster(client, c));
     }
 
     async submitRun(submitRunRequest: SubmitRun): Promise<WorkflowRun> {

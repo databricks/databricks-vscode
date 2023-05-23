@@ -138,10 +138,13 @@ export class GitCredentialsService {
      * supported.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         @context context?: Context
-    ): Promise<model.GetCredentialsResponse> {
-        return await this._list(context);
+    ): AsyncIterable<model.CredentialInfo> {
+        const response = (await this._list(context)).credentials;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

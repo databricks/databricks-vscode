@@ -236,11 +236,15 @@ export class WorkspaceAssignmentService {
      * Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListWorkspaceAssignmentRequest,
         @context context?: Context
-    ): Promise<model.PermissionAssignments> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.PermissionAssignment> {
+        const response = (await this._list(request, context))
+            .permission_assignments;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

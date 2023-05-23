@@ -426,11 +426,41 @@ export class JobsService {
      * Retrieves a list of jobs.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.List,
         @context context?: Context
-    ): Promise<model.ListJobsResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.BaseJob> {
+        // deduplicate items that may have been added during iteration
+        const seen: Record<number, boolean> = {};
+
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.jobs || response.jobs.length === 0) {
+                break;
+            }
+
+            for (const v of response.jobs) {
+                const id = v.job_id;
+                if (id) {
+                    if (seen[id]) {
+                        // item was added during iteration
+                        continue;
+                    }
+                    seen[id] = true;
+                }
+                yield v;
+            }
+
+            request.offset = request.offset || 0;
+            request.offset += response.jobs.length;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -453,11 +483,41 @@ export class JobsService {
      * List runs in descending order by start time.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listRuns(
+    async *listRuns(
         request: model.ListRuns,
         @context context?: Context
-    ): Promise<model.ListRunsResponse> {
-        return await this._listRuns(request, context);
+    ): AsyncIterable<model.BaseRun> {
+        // deduplicate items that may have been added during iteration
+        const seen: Record<number, boolean> = {};
+
+        while (true) {
+            const response = await this._listRuns(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.runs || response.runs.length === 0) {
+                break;
+            }
+
+            for (const v of response.runs) {
+                const id = v.run_id;
+                if (id) {
+                    if (seen[id]) {
+                        // item was added during iteration
+                        continue;
+                    }
+                    seen[id] = true;
+                }
+                yield v;
+            }
+
+            request.offset = request.offset || 0;
+            request.offset += response.runs.length;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
