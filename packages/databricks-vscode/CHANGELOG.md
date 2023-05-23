@@ -1,3 +1,12 @@
+# Release: v0.3.13
+
+## packages/databricks-vscode
+
+## <small>0.3.13 (2023-05-09)</small>
+
+-   Fix: Gracefully handle virtual /Repos/me folder, closes [#693](https://github.com/databricks/databricks-vscode/issues/693) [#683](https://github.com/databricks/databricks-vscode/issues/683) [#691](https://github.com/databricks/databricks-vscode/issues/691) [#688](https://github.com/databricks/databricks-vscode/issues/688)
+-   Feature: Start sending Telemetry from the VS Code Extension.
+
 # Release: v0.3.12
 
 ## packages/databricks-vscode

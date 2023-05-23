@@ -383,11 +383,32 @@ export class ClustersService {
      * nparameters necessary to request the next page of events.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async events(
+    async *events(
         request: model.GetEvents,
         @context context?: Context
-    ): Promise<model.GetEventsResponse> {
-        return await this._events(request, context);
+    ): AsyncIterable<model.ClusterEvent> {
+        while (true) {
+            const response = await this._events(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.events || response.events.length === 0) {
+                break;
+            }
+
+            for (const v of response.events) {
+                yield v;
+            }
+
+            if (!response.next_page) {
+                break;
+            }
+            request = response.next_page;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -501,11 +522,14 @@ export class ClustersService {
      * recently terminated job clusters.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.List,
         @context context?: Context
-    ): Promise<model.ListClustersResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.ClusterInfo> {
+        const response = (await this._list(request, context)).clusters;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1048,10 +1072,13 @@ export class InstanceProfilesService {
      * This API is available to all users.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         @context context?: Context
-    ): Promise<model.ListInstanceProfilesResponse> {
-        return await this._list(context);
+    ): AsyncIterable<model.InstanceProfile> {
+        const response = (await this._list(context)).instance_profiles;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

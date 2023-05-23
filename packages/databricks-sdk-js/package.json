@@ -1,6 +1,6 @@
 {
     "name": "@databricks/databricks-sdk",
-    "version": "0.3.12",
+    "version": "0.3.13",
     "description": "Databricks SDK",
     "repository": {
         "type": "git",
@@ -17,7 +17,7 @@
         "/dist"
     ],
     "scripts": {
-        "build": "tsc --build",
+        "build": "tsc --build --force",
         "watch": "tsc --build --watch",
         "clean": "rm -rf dist node_modules",
         "openapi:fetch": "./scripts/fetch_openapi.sh 3ff9adc9545ade95ab7de82e9437b8e4984a41a1",

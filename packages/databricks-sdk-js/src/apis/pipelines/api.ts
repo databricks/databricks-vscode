@@ -225,11 +225,32 @@ export class PipelinesService {
      * Retrieves events for a pipeline.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listPipelineEvents(
+    async *listPipelineEvents(
         request: model.ListPipelineEvents,
         @context context?: Context
-    ): Promise<model.ListPipelineEventsResponse> {
-        return await this._listPipelineEvents(request, context);
+    ): AsyncIterable<model.PipelineEvent> {
+        while (true) {
+            const response = await this._listPipelineEvents(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.events || response.events.length === 0) {
+                break;
+            }
+
+            for (const v of response.events) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -252,11 +273,32 @@ export class PipelinesService {
      * Lists pipelines defined in the Delta Live Tables system.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listPipelines(
+    async *listPipelines(
         request: model.ListPipelines,
         @context context?: Context
-    ): Promise<model.ListPipelinesResponse> {
-        return await this._listPipelines(request, context);
+    ): AsyncIterable<model.PipelineStateInfo> {
+        while (true) {
+            const response = await this._listPipelines(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.statuses || response.statuses.length === 0) {
+                break;
+            }
+
+            for (const v of response.statuses) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

@@ -221,11 +221,14 @@ export class SecretsService {
      * call.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listAcls(
+    async *listAcls(
         request: model.ListAcls,
         @context context?: Context
-    ): Promise<model.ListAclsResponse> {
-        return await this._listAcls(request, context);
+    ): AsyncIterable<model.AclItem> {
+        const response = (await this._listAcls(request, context)).items;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -250,10 +253,13 @@ export class SecretsService {
      * this API call.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listScopes(
+    async *listScopes(
         @context context?: Context
-    ): Promise<model.ListScopesResponse> {
-        return await this._listScopes(context);
+    ): AsyncIterable<model.SecretScope> {
+        const response = (await this._listScopes(context)).scopes;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -283,11 +289,14 @@ export class SecretsService {
      * call.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listSecrets(
+    async *listSecrets(
         request: model.ListSecrets,
         @context context?: Context
-    ): Promise<model.ListSecretsResponse> {
-        return await this._listSecrets(request, context);
+    ): AsyncIterable<model.SecretMetadata> {
+        const response = (await this._listSecrets(request, context)).secrets;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

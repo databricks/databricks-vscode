@@ -180,8 +180,13 @@ export class BudgetsService {
      * status for each day that the budget is configured to include.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.BudgetList> {
-        return await this._list(context);
+    async *list(
+        @context context?: Context
+    ): AsyncIterable<model.BudgetWithStatus> {
+        const response = (await this._list(context)).budgets;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -391,11 +396,15 @@ export class LogDeliveryService {
      * specified by ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListLogDeliveryRequest,
         @context context?: Context
-    ): Promise<model.WrappedLogDeliveryConfigurations> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.LogDeliveryConfiguration> {
+        const response = (await this._list(request, context))
+            .log_delivery_configurations;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

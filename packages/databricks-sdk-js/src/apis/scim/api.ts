@@ -137,11 +137,14 @@ export class AccountGroupsService {
      * Gets all details of the groups associated with the Databricks Account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListGroupsRequest,
         @context context?: Context
-    ): Promise<model.ListGroupsResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.Group> {
+        const response = (await this._list(request, context)).Resources;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -323,11 +326,14 @@ export class AccountServicePrincipalsService {
      * Gets the set of service principals associated with a Databricks Account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListServicePrincipalsRequest,
         @context context?: Context
-    ): Promise<model.ListServicePrincipalResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.ServicePrincipal> {
+        const response = (await this._list(request, context)).Resources;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -518,11 +524,14 @@ export class AccountUsersService {
      * Gets details for all the users associated with a Databricks Account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListUsersRequest,
         @context context?: Context
-    ): Promise<model.ListUsersResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.User> {
+        const response = (await this._list(request, context)).Resources;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -746,11 +755,14 @@ export class GroupsService {
      * Gets all details of the groups associated with the Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListGroupsRequest,
         @context context?: Context
-    ): Promise<model.ListGroupsResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.Group> {
+        const response = (await this._list(request, context)).Resources;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -932,11 +944,14 @@ export class ServicePrincipalsService {
      * Gets the set of service principals associated with a Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListServicePrincipalsRequest,
         @context context?: Context
-    ): Promise<model.ListServicePrincipalResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.ServicePrincipal> {
+        const response = (await this._list(request, context)).Resources;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1127,11 +1142,14 @@ export class UsersService {
      * Gets details for all the users associated with a Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListUsersRequest,
         @context context?: Context
-    ): Promise<model.ListUsersResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.User> {
+        const response = (await this._list(request, context)).Resources;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
