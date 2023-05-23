@@ -24,7 +24,7 @@ describe(__filename, () => {
             clusterId: "testClusterId",
             workspacePath: Uri.from({scheme: "wsfs", path: "workspacePath"}),
         };
-        await new ProjectConfigFile(expected, tempDir, "bricks").write();
+        await new ProjectConfigFile(expected, tempDir, "databricks").write();
 
         const rawData = await readFile(
             ProjectConfigFile.getProjectConfigFilePath(tempDir),
@@ -55,7 +55,7 @@ describe(__filename, () => {
             encoding: "utf-8",
         });
 
-        const actual = await ProjectConfigFile.load(tempDir, "bricks");
+        const actual = await ProjectConfigFile.load(tempDir, "databricks");
         assert.equal(actual.host.toString(), config.host);
         assert.ok(actual.authProvider instanceof ProfileAuthProvider);
         assert.equal(actual.authProvider.authType, config.authType);
@@ -99,7 +99,7 @@ token = testToken`,
             tempDir,
             ".databrickscfg"
         );
-        const actual = await ProjectConfigFile.load(tempDir, "bricks");
+        const actual = await ProjectConfigFile.load(tempDir, "databricks");
         assert.equal(
             actual.host.toString(),
             "https://000000000000.00.azuredatabricks.net/"

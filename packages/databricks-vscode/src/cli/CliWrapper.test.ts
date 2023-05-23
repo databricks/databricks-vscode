@@ -18,10 +18,10 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 const execFile = promisify(execFileCb);
 
 describe(__filename, () => {
-    it("should embed a working bricks CLI", async () => {
-        const bricksPath = __dirname + "/../../bin/bricks";
-        const result = await execFile(bricksPath, ["--help"]);
-        assert.ok(result.stdout.indexOf("bricks") > 0);
+    it("should embed a working databricks CLI", async () => {
+        const cliPath = __dirname + "/../../bin/databricks";
+        const result = await execFile(cliPath, ["--help"]);
+        assert.ok(result.stdout.indexOf("databricks") > 0);
     });
 
     it("should create sync commands", async () => {
@@ -45,13 +45,13 @@ describe(__filename, () => {
         let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/bricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json"
+            "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json"
         );
 
         ({command, args} = cli.getSyncCommand(mapper, "full"));
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/bricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json --full"
+            "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json --full"
         );
     });
 
@@ -69,7 +69,7 @@ describe(__filename, () => {
 
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/bricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
+            "./bin/databricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
         );
     });
 

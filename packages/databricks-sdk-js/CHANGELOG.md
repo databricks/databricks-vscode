@@ -36,7 +36,7 @@
 
 -   Feature: Add detection for Unity Catalogue to Clusters service.
 -   Feature: Add metadata service client and server as credential provider.
--   Feature: Add credential provider to support OAuth through Bricks CLI.
+-   Feature: Add credential provider to support OAuth through Databricks CLI.
 -   Feature: Use waiter to handle long running calls.
 
 # Release: v0.3.7

@@ -37,17 +37,17 @@ function getValidHost(host: string) {
  * Entrypoint for all wrapped CLI commands
  *
  * Righ now this is a placeholder for a future implementation
- * of the bricks CLI
+ * of the databricks CLI
  */
 export class CliWrapper {
     constructor(private extensionContext: ExtensionContext) {}
 
-    get bricksPath(): string {
-        return this.extensionContext.asAbsolutePath("./bin/bricks");
+    get cliPath(): string {
+        return this.extensionContext.asAbsolutePath("./bin/databricks");
     }
 
     /**
-     * Constructs the bricks sync command
+     * Constructs the databricks sync command
      */
     getSyncCommand(
         syncDestination: SyncDestinationMapper,
@@ -64,15 +64,15 @@ export class CliWrapper {
         if (syncType === "full") {
             args.push("--full");
         }
-        if (workspaceConfigs.bricksVerboseMode) {
+        if (workspaceConfigs.cliVerboseMode) {
             args.push("--log-level", "debug", "--log-file", "stderr");
         }
-        return {command: this.bricksPath, args};
+        return {command: this.cliPath, args};
     }
 
     private getListProfilesCommand(): Command {
         return {
-            command: this.bricksPath,
+            command: this.cliPath,
             args: ["auth", "profiles", "--skip-validate"],
         };
     }
@@ -89,7 +89,7 @@ export class CliWrapper {
                 HOME: process.env.HOME,
                 DATABRICKS_CONFIG_FILE:
                     configfilePath || process.env.DATABRICKS_CONFIG_FILE,
-                BRICKS_OUTPUT_FORMAT: "json",
+                DATABRICKS_OUTPUT_FORMAT: "json",
                 /*  eslint-enable @typescript-eslint/naming-convention */
             },
         });
@@ -134,13 +134,13 @@ export class CliWrapper {
 
     public async getBundleSchema(): Promise<string> {
         const execFile = promisify(execFileCb);
-        const {stdout} = await execFile(this.bricksPath, ["bundle", "schema"]);
+        const {stdout} = await execFile(this.cliPath, ["bundle", "schema"]);
         return stdout;
     }
 
     getAddProfileCommand(profile: string, host: URL): Command {
         return {
-            command: this.bricksPath,
+            command: this.cliPath,
             args: [
                 "configure",
                 "--no-interactive",

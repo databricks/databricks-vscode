@@ -12,10 +12,10 @@ const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
 import {AzureCliCheck} from "./AzureCliCheck";
-import {BricksCliCheck} from "./BricksCliCheck";
+import {DatabricksCliCheck} from "./DatabricksCliCheck";
 
 // TODO: Resolve this with SDK's AuthType.
-export type AuthType = "azure-cli" | "google-id" | "bricks-cli" | "profile";
+export type AuthType = "azure-cli" | "google-id" | "databricks-cli" | "profile";
 
 export abstract class AuthProvider {
     constructor(
@@ -56,7 +56,7 @@ export abstract class AuthProvider {
 
     static fromJSON(
         json: Record<string, any>,
-        bricksPath: string
+        databricksPath: string
     ): AuthProvider {
         const host =
             json.host instanceof URL
@@ -78,8 +78,8 @@ export abstract class AuthProvider {
                     json.appId
                 );
 
-            case "bricks-cli":
-                return new BricksCliAuthProvider(host, bricksPath);
+            case "databricks-cli":
+                return new DatabricksCliAuthProvider(host, databricksPath);
 
             case "profile":
                 if (!json.profile) {
@@ -129,9 +129,9 @@ export class ProfileAuthProvider extends AuthProvider {
     }
 }
 
-export class BricksCliAuthProvider extends AuthProvider {
-    constructor(host: URL, readonly bricksPath: string) {
-        super(host, "bricks-cli");
+export class DatabricksCliAuthProvider extends AuthProvider {
+    constructor(host: URL, readonly databricksPath: string) {
+        super(host, "databricks-cli");
     }
 
     describe(): string {
@@ -142,15 +142,15 @@ export class BricksCliAuthProvider extends AuthProvider {
         return {
             host: this.host.toString(),
             authType: this.authType,
-            bricksPath: this.bricksPath,
+            databricksPath: this.databricksPath,
         };
     }
 
     getSdkConfig(): Config {
         return new Config({
             host: this.host.toString(),
-            authType: "bricks-cli",
-            bricksCliPath: this.bricksPath,
+            authType: "databricks-cli",
+            databricksCliPath: this.databricksPath,
         });
     }
 
@@ -158,13 +158,13 @@ export class BricksCliAuthProvider extends AuthProvider {
         return {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: this.authType,
-            BRICKS_CLI_PATH: this.bricksPath,
+            DATABRICKS_CLI_PATH: this.databricksPath,
         };
     }
 
     async check(silent: boolean): Promise<boolean> {
-        const bricksCliCheck = new BricksCliCheck(this);
-        return bricksCliCheck.check(silent);
+        const databricksCliCheck = new DatabricksCliCheck(this);
+        return databricksCliCheck.check(silent);
     }
 }
 

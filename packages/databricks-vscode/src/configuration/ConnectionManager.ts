@@ -131,7 +131,7 @@ export class ConnectionManager {
             try {
                 projectConfigFile = await ProjectConfigFile.load(
                     vscodeWorkspace.rootPath!,
-                    this.cli.bricksPath
+                    this.cli.cliPath
                 );
             } catch (e) {
                 if (
@@ -336,7 +336,7 @@ export class ConnectionManager {
         const projectConfigFile = new ProjectConfigFile(
             config,
             vscodeWorkspace.rootPath!,
-            this.cli.bricksPath
+            this.cli.cliPath
         );
 
         await projectConfigFile.write();
