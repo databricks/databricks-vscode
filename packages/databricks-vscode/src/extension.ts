@@ -44,6 +44,7 @@ import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager
 import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
+import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
 
 export async function activate(
     context: ExtensionContext
@@ -116,21 +117,6 @@ export async function activate(
         workspaceStateManager
     );
 
-    const configureAutocomplete = new ConfigureAutocomplete(
-        context,
-        workspaceStateManager,
-        workspace.workspaceFolders[0].uri.fsPath,
-        pythonExtensionWrapper
-    );
-    context.subscriptions.push(
-        configureAutocomplete,
-        telemetry.registerCommand(
-            "databricks.autocomplete.configure",
-            configureAutocomplete.configureCommand,
-            configureAutocomplete
-        )
-    );
-
     context.subscriptions.push(
         telemetry.registerCommand(
             "databricks.logs.openFolder",
@@ -142,7 +128,7 @@ export async function activate(
     const cli = new CliWrapper(context);
 
     // Configuration group
-    const connectionManager = new ConnectionManager(cli);
+    const connectionManager = new ConnectionManager(cli, workspaceStateManager);
     context.subscriptions.push(
         connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
@@ -176,11 +162,6 @@ export async function activate(
             workspaceFsDataProvider
         ),
         telemetry.registerCommand(
-            "databricks.wsfs.attachSyncDestination",
-            workspaceFsCommands.attachSyncDestination,
-            workspaceFsCommands
-        ),
-        telemetry.registerCommand(
             "databricks.wsfs.refresh",
             workspaceFsCommands.refresh,
             workspaceFsCommands
@@ -204,9 +185,72 @@ export async function activate(
         connectionManager,
         clusterModel
     );
+
+    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
+        connectionManager,
+        workspaceStateManager,
+        synchronizer
+    );
+
+    context.subscriptions.push(wsfsAccessVerifier);
+
+    const dbConnectInstallPrompt = new DbConnectInstallPrompt(
+        workspaceStateManager,
+        pythonExtensionWrapper
+    );
+    const featureManager = new FeatureManager<"debugging.dbconnect">([
+        "debugging.dbconnect",
+    ]);
+    featureManager.registerFeature(
+        "debugging.dbconnect",
+        () =>
+            new DbConnectAccessVerifier(
+                connectionManager,
+                pythonExtensionWrapper,
+                dbConnectInstallPrompt
+            )
+    );
+    const databricksEnvFileManager = new DatabricksEnvFileManager(
+        workspace.workspaceFolders[0].uri,
+        featureManager,
+        connectionManager,
+        context,
+        pythonExtensionWrapper
+    );
+    context.subscriptions.push(
+        databricksEnvFileManager,
+        databricksEnvFileManager.onDidChangeEnvironmentVariables(() => {
+            if (workspace.notebookDocuments.length) {
+                window.showInformationMessage(
+                    "Environment variables have changed. Restart all jupyter kernels to pickup the latest environment variables."
+                );
+            }
+        })
+    );
+    featureManager.isEnabled("debugging.dbconnect");
+
+    const configureAutocomplete = new ConfigureAutocomplete(
+        context,
+        workspaceStateManager,
+        workspace.workspaceFolders[0].uri.fsPath,
+        pythonExtensionWrapper,
+        dbConnectInstallPrompt
+    );
+    context.subscriptions.push(
+        configureAutocomplete,
+        telemetry.registerCommand(
+            "databricks.autocomplete.configure",
+            configureAutocomplete.configureCommand,
+            configureAutocomplete
+        )
+    );
+
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
-        synchronizer
+        synchronizer,
+        workspaceStateManager,
+        wsfsAccessVerifier,
+        featureManager
     );
 
     context.subscriptions.push(
@@ -258,12 +302,6 @@ export async function activate(
             connectionCommands
         )
     );
-
-    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
-        connectionManager,
-        synchronizer
-    );
-    context.subscriptions.push(wsfsAccessVerifier);
 
     // Run/debug group
     const runCommands = new RunCommands(connectionManager);
@@ -410,46 +448,19 @@ export async function activate(
         );
     });
 
-    const featureManager = new FeatureManager<"debugging.dbconnect">([
-        "debugging.dbconnect",
-    ]);
-    featureManager.registerFeature(
-        "debugging.dbconnect",
-        () =>
-            new DbConnectAccessVerifier(
-                connectionManager,
-                pythonExtensionWrapper,
-                workspaceStateManager,
-                context
-            )
-    );
-    const databricksEnvFileManager = new DatabricksEnvFileManager(
-        workspace.workspaceFolders[0].uri,
-        featureManager,
-        connectionManager,
-        context
-    );
-    context.subscriptions.push(
-        databricksEnvFileManager,
-        databricksEnvFileManager.onDidChangeEnvironmentVariables(() => {
-            if (workspace.notebookDocuments.length) {
-                window.showInformationMessage(
-                    "Environment variables have changed. Restart all jupyter kernels to pickup the latest environment variables."
-                );
-            }
-        })
-    );
-    featureManager.isEnabled("debugging.dbconnect");
-
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);
     });
 
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
-    return {
+
+    const publicApi: PublicApi = {
+        version: 1,
         connectionManager: connectionManager,
     };
+
+    return publicApi;
 }
 
 // this method is called when your extension is deactivated

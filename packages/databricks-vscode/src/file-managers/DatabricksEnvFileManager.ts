@@ -19,6 +19,8 @@ import {SystemVariables} from "../vscode-objs/SystemVariables";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
@@ -34,7 +36,8 @@ export class DatabricksEnvFileManager implements Disposable {
         workspacePath: Uri,
         private readonly featureManager: FeatureManager,
         private readonly connectionManager: ConnectionManager,
-        private readonly extensionContext: ExtensionContext
+        private readonly extensionContext: ExtensionContext,
+        private readonly pythonExtension: MsPythonExtensionWrapper
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
         const unresolvedDatabricksEnvFile = path.join(
@@ -46,17 +49,26 @@ export class DatabricksEnvFileManager implements Disposable {
             systemVariableResolver.resolve(unresolvedDatabricksEnvFile)
         );
 
-        const unresolvedUserEnvFile = workspaceConfigs.userEnvFile
+        const unresolvedUserEnvFile = this.isValidUserEnvPath(
+            workspaceConfigs.userEnvFile,
+            [unresolvedDatabricksEnvFile, this.databricksEnvPath.fsPath]
+        )
             ? workspaceConfigs.userEnvFile
-            : !workspaceConfigs.msPythonEnvFile ||
-              workspaceConfigs.msPythonEnvFile.includes(
-                  this.databricksEnvPath.fsPath
-              )
-            ? path.join("${workspaceFolder}", ".env")
-            : workspaceConfigs.msPythonEnvFile;
+            : this.isValidUserEnvPath(workspaceConfigs.msPythonEnvFile, [
+                  unresolvedDatabricksEnvFile,
+                  this.databricksEnvPath.fsPath,
+              ])
+            ? workspaceConfigs.msPythonEnvFile
+            : path.join("${workspaceFolder}", ".env");
         this.userEnvPath = Uri.file(
             systemVariableResolver.resolve(unresolvedUserEnvFile)
         );
+
+        NamedLogger.getOrCreate(Loggers.Extension).debug("Env file locations", {
+            unresolvedDatabricksEnvFile,
+            unresolvedUserEnvFile,
+            msEnvFile: workspaceConfigs.msPythonEnvFile,
+        });
 
         workspaceConfigs.msPythonEnvFile = unresolvedDatabricksEnvFile;
         workspaceConfigs.userEnvFile = unresolvedUserEnvFile;
@@ -82,11 +94,10 @@ export class DatabricksEnvFileManager implements Disposable {
                 (featureState) => {
                     if (!featureState.avaliable) {
                         this.clearTerminalEnv();
-                        this.disableStatusBarButton();
-                        return;
+                    } else {
+                        this.emitToTerminal();
                     }
                     this.writeFile();
-                    this.emitToTerminal();
                 },
                 this
             ),
@@ -101,11 +112,10 @@ export class DatabricksEnvFileManager implements Disposable {
                     ).avaliable
                 ) {
                     this.clearTerminalEnv();
-                    this.disableStatusBarButton();
-                    return;
+                } else {
+                    this.emitToTerminal();
                 }
                 this.writeFile();
-                this.emitToTerminal();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
                 if (
@@ -117,13 +127,19 @@ export class DatabricksEnvFileManager implements Disposable {
                     ).avaliable
                 ) {
                     this.clearTerminalEnv();
-                    this.disableStatusBarButton();
-                    return;
+                } else {
+                    this.emitToTerminal();
                 }
                 this.writeFile();
-                this.emitToTerminal();
             }, this)
         );
+    }
+
+    private isValidUserEnvPath(
+        path: string | undefined,
+        excludes: string[]
+    ): path is string {
+        return path !== undefined && !excludes.includes(path);
     }
 
     private async disableStatusBarButton() {
@@ -133,8 +149,8 @@ export class DatabricksEnvFileManager implements Disposable {
         if (featureState.isDisabledByFf) {
             return;
         }
-        this.statusBarButton.name = "DB Connect V2 Disabled";
-        this.statusBarButton.text = "DB Connect V2 Disabled";
+        this.statusBarButton.name = "Databricks Connect disabled";
+        this.statusBarButton.text = "Databricks Connect disabled";
         this.statusBarButton.backgroundColor = new ThemeColor(
             "statusBarItem.errorBackground"
         );
@@ -168,9 +184,9 @@ export class DatabricksEnvFileManager implements Disposable {
         if (featureState.isDisabledByFf) {
             return;
         }
-        this.statusBarButton.name = "DB Connect V2 Enabled";
-        this.statusBarButton.text = "DB Connect V2 Enabled";
-        this.statusBarButton.tooltip = "DB Connect V2 Enabled";
+        this.statusBarButton.name = "Databricks Connect enabled";
+        this.statusBarButton.text = "Databricks Connect enabled";
+        this.statusBarButton.tooltip = "Databricks Connect enabled";
         this.statusBarButton.backgroundColor = undefined;
         this.statusBarButton.command = {
             title: "Call",
@@ -192,6 +208,25 @@ export class DatabricksEnvFileManager implements Disposable {
         return headers["Authorization"]?.split(" ")[1];
     }
 
+    private async userAgent() {
+        const client = this.connectionManager.workspaceClient?.apiClient;
+        if (!client) {
+            return;
+        }
+        const userAgent = [
+            `${client.product}/${client.productVersion}`,
+            `os/${process.platform}`,
+        ];
+
+        const env = await this.pythonExtension.pythonEnvironment;
+        if (env && env.version) {
+            const {major, minor} = env.version;
+            userAgent.push(`python/${major}.${minor}`);
+        }
+
+        return userAgent.join(" ");
+    }
+
     private async getDatabrickseEnvVars(): Promise<
         Record<string, string | undefined> | undefined
     > {
@@ -205,17 +240,29 @@ export class DatabricksEnvFileManager implements Disposable {
             return;
         }
         const cluster = this.connectionManager.cluster;
-        const host = this.connectionManager.databricksWorkspace?.host.authority;
-        const pat = await this.getPatToken();
-        if (!cluster || !pat || !host) {
+        const userAgent = await this.userAgent();
+        const authProvider =
+            this.connectionManager.databricksWorkspace?.authProvider;
+        if (!cluster || !userAgent || !authProvider) {
             return;
         }
+
+        const authEnvVars: Record<string, string> = authProvider.toEnv();
+
+        const host = this.connectionManager.databricksWorkspace?.host.authority;
+        const pat = await this.getPatToken();
+        const sparkEnvVars: Record<string, string> = {};
+        if (pat && host) {
+            sparkEnvVars[
+                "SPARK_REMOTE"
+            ] = `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=vs_code`; //;user_agent=${encodeURIComponent(userAgent)}`
+        }
+
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
+            ...authEnvVars,
+            ...sparkEnvVars,
             DATABRICKS_CLUSTER_ID: cluster.id,
-            SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id}`,
-            DATABRICKS_HOST: host,
-            DATABRICKS_TOKEN: pat,
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
@@ -244,7 +291,10 @@ export class DatabricksEnvFileManager implements Disposable {
         const data = Object.entries({
             ...databricksEnvVars,
             ...userEnvVars,
-        }).map(([key, value]) => `${key}="${value}"`);
+        }).map(([key, value]) => {
+            value = value?.replaceAll(/^"|"$/g, "");
+            return `${key}="${value}"`;
+        });
         try {
             const oldData = await readFile(
                 this.databricksEnvPath.fsPath,

@@ -3,6 +3,7 @@ import {
     Cluster,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
+    ApiClient,
 } from "@databricks/databricks-sdk";
 import {
     env,
@@ -29,6 +30,7 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
@@ -62,7 +64,10 @@ export class ConnectionManager {
 
     public metadataServiceUrl?: string;
 
-    constructor(private cli: CliWrapper) {}
+    constructor(
+        private cli: CliWrapper,
+        private workspaceState: WorkspaceStateManager
+    ) {}
 
     get state(): ConnectionState {
         return this._state;
@@ -93,18 +98,23 @@ export class ConnectionManager {
         return this._workspaceClient;
     }
 
+    get apiClient(): ApiClient | undefined {
+        return this._workspaceClient?.apiClient;
+    }
+
     async login(interactive = false, force = false): Promise<void> {
         try {
             await this._login(interactive, force);
         } catch (e) {
-            NamedLogger.getOrCreate("Extension").error("Login Error", e);
-            if (interactive) {
-                window.showErrorMessage(`Login error ${JSON.stringify(e)}`);
+            NamedLogger.getOrCreate("Extension").error("Login Error:", e);
+            if (interactive && e instanceof Error) {
+                window.showErrorMessage(`Login error: ${e.message}`);
             }
             this.updateState("DISCONNECTED");
             await this.logout();
         }
     }
+
     private async _login(interactive = false, force = false): Promise<void> {
         if (force) {
             await this.logout();
@@ -210,43 +220,39 @@ export class ConnectionManager {
             this.updateSyncDestination(undefined);
         }
 
-        if (
-            this.databricksWorkspace &&
-            workspaceConfigs.enableFilesInWorkspace
-        ) {
-            await this.createRootDirectory(
-                workspaceClient,
-                this.databricksWorkspace.currentFsRoot,
-                this.databricksWorkspace.userName
-            );
-        }
-
+        await this.createWsFsRootDirectory(workspaceClient);
         this.updateState("CONNECTED");
     }
 
-    async createRootDirectory(
-        wsClient: WorkspaceClient,
-        rootDirPath: RemoteUri,
-        me: string
-    ) {
+    async createWsFsRootDirectory(wsClient: WorkspaceClient) {
+        if (
+            !this.databricksWorkspace ||
+            !(
+                workspaceConfigs.enableFilesInWorkspace ||
+                this.workspaceState.wsfsFeatureFlag
+            )
+        ) {
+            return;
+        }
+        const rootDirPath = this.databricksWorkspace.workspaceFsRoot;
+        const me = this.databricksWorkspace.userName;
         let rootDir = await WorkspaceFsEntity.fromPath(
             wsClient,
             rootDirPath.path
         );
+        if (rootDir) {
+            return;
+        }
+        const meDir = await WorkspaceFsEntity.fromPath(
+            wsClient,
+            `/Users/${me}`
+        );
+        if (WorkspaceFsUtils.isDirectory(meDir)) {
+            rootDir = await meDir.mkdir(rootDirPath.path);
+        }
         if (!rootDir) {
-            const meDir = await WorkspaceFsEntity.fromPath(
-                wsClient,
-                `/Users/${me}`
-            );
-            if (WorkspaceFsUtils.isDirectory(meDir)) {
-                rootDir = await meDir.mkdir(rootDirPath.path);
-            }
-            if (!rootDir) {
-                window.showErrorMessage(
-                    `Can't find or create ${rootDirPath.path}`
-                );
-                return;
-            }
+            window.showErrorMessage(`Can't find or create ${rootDirPath.path}`);
+            return;
         }
     }
 

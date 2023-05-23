@@ -12,6 +12,13 @@ import {
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {
+    WorkspaceFsAccessVerifier,
+    switchToWorkspacePrompt,
+} from "../workspace-fs";
+import {FeatureManager} from "../feature-manager/FeatureManager";
 
 export type ConfigurationTreeItem = TreeItem & {
     url?: string;
@@ -34,7 +41,10 @@ export class ConfigurationDataProvider
 
     constructor(
         private connectionManager: ConnectionManager,
-        private sync: CodeSynchronizer
+        private sync: CodeSynchronizer,
+        private readonly workspaceState: WorkspaceStateManager,
+        private readonly wsfsAccessVerifier: WorkspaceFsAccessVerifier,
+        private readonly featureManager: FeatureManager
     ) {
         this.disposables.push(
             this.connectionManager.onDidChangeState(() => {
@@ -47,6 +57,9 @@ export class ConfigurationDataProvider
                 this._onDidChangeTreeData.fire();
             }),
             this.sync.onDidChangeState(() => {
+                this._onDidChangeTreeData.fire();
+            }),
+            this.wsfsAccessVerifier.onDidChangeState(() => {
                 this._onDidChangeTreeData.fire();
             })
         );
@@ -190,7 +203,14 @@ export class ConfigurationDataProvider
             const clusterItem =
                 ClusterListDataProvider.clusterNodeToTreeItem(cluster);
 
-            const children = [];
+            const children: ConfigurationTreeItem[] = [
+                {
+                    label: "Name",
+                    description: cluster.name,
+                    iconPath: clusterItem.iconPath,
+                    collapsibleState: TreeItemCollapsibleState.None,
+                },
+            ];
 
             let runPerms:
                 | "CAN_RUN"
@@ -243,18 +263,16 @@ export class ConfigurationDataProvider
                     break;
             }
 
-            return [
-                {
-                    label: "Name",
-                    description: cluster.name,
-                    iconPath: clusterItem.iconPath,
-                    collapsibleState: TreeItemCollapsibleState.None,
-                },
-                ...children,
+            children.push(
                 ...(await ClusterListDataProvider.clusterNodeToTreeItems(
                     cluster
-                )),
-            ];
+                ))
+            );
+            const dbconnectReason = await this.getDbConnectDisabledReason();
+            if (dbconnectReason) {
+                children.push(dbconnectReason);
+            }
+            return children;
         }
 
         if (element.id === "SYNC-DESTINATION" && syncDestination) {
@@ -272,16 +290,29 @@ export class ConfigurationDataProvider
             ];
 
             if (
-                syncDestination.remoteUri.name !== syncDestination.localUri.name
+                workspaceConfigs.syncDestinationType === "repo" &&
+                this.workspaceState.wsfsFeatureFlag &&
+                this.wsfsAccessVerifier.isEnabled
             ) {
                 children.push({
-                    label: "The remote sync destination name does not match the current vscode workspace name",
-                    tooltip:
-                        "If syncing to directory with a different name is the intended behaviour, this warning can be ignored",
+                    label: {
+                        highlights: [[0, 10]],
+                        label: "Switch to workspace",
+                    },
+                    tooltip: "Click to switch to workspace",
                     iconPath: new ThemeIcon(
                         "warning",
                         new ThemeColor("problemsWarningIcon.foreground")
                     ),
+                    command: {
+                        title: "Call",
+                        command: "databricks.call",
+                        arguments: [
+                            () => {
+                                switchToWorkspacePrompt(this.workspaceState);
+                            },
+                        ],
+                    },
                 });
             }
             children.push(
@@ -300,5 +331,24 @@ export class ConfigurationDataProvider
         }
 
         return [];
+    }
+
+    async getDbConnectDisabledReason(): Promise<
+        ConfigurationTreeItem | undefined
+    > {
+        const isDbConnectEnabled = await this.featureManager.isEnabled(
+            "debugging.dbconnect"
+        );
+        if (isDbConnectEnabled.isDisabledByFf || isDbConnectEnabled.avaliable) {
+            return undefined;
+        }
+
+        return isDbConnectEnabled.reason &&
+            isDbConnectEnabled.reason.toLowerCase().includes("cluster")
+            ? {
+                  label: "Debug",
+                  description: isDbConnectEnabled.reason,
+              }
+            : undefined;
     }
 }

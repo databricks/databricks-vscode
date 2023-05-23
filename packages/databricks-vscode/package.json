@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "0.3.7",
+    "version": "0.3.13",
     "engines": {
         "vscode": "^1.76.0"
     },
@@ -155,7 +155,7 @@
             },
             {
                 "command": "databricks.run.runEditorContents",
-                "title": "Run File on Databricks",
+                "title": "Upload and Run File on Databricks",
                 "category": "Databricks",
                 "enablement": "!inDebugMode",
                 "icon": "$(play)"
@@ -193,13 +193,6 @@
                 "command": "databricks.utils.openExternal",
                 "title": "Open link externally",
                 "icon": "$(link)",
-                "category": "Databricks"
-            },
-            {
-                "command": "databricks.wsfs.attachSyncDestination",
-                "title": "Attach folder as sync destination",
-                "icon": "$(plug)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace",
                 "category": "Databricks"
             },
             {
@@ -359,14 +352,6 @@
                     "command": "databricks.cluster.start",
                     "when": "view == configurationView && viewItem == databricks.cluster.terminated",
                     "group": "inline@0"
-                },
-                {
-                    "command": "databricks.wsfs.attachSyncDestination",
-                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace || view == workspaceFsView && viewItem =~ /^wsfs.repo.*$/ && config.databricks.sync.destinationType == repo"
-                },
-                {
-                    "command": "databricks.wsfs.createFolder",
-                    "when": "view == workspaceFsView && viewItem =~ /^wsfs.(directory|repo).*$/ && config.databricks.sync.destinationType == workspace"
                 }
             ],
             "editor/title/run": [
@@ -388,7 +373,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "resourceLangId == python"
+                    "when": "resourceLangId == python || resourceExtname == .ipynb"
                 },
                 {
                     "command": "databricks.wsfs.createFolder",
@@ -396,10 +381,6 @@
                 },
                 {
                     "command": "databricks.wsfs.refresh",
-                    "when": "config.databricks.sync.destinationType == workspace"
-                },
-                {
-                    "command": "databricks.wsfs.attachSyncDestination",
                     "when": "config.databricks.sync.destinationType == workspace"
                 },
                 {
@@ -622,11 +603,6 @@
                         "default": "",
                         "description": "Override location of .databrickscfg file (default: DATABRICKS_CONFIG_FILE environment variable or ~/.databrickscfg)"
                     },
-                    "databricks.python.envFile": {
-                        "type": "string",
-                        "default": "",
-                        "description": "Similar to python.envFile. Absolute path to a file containing environment variable definitions."
-                    },
                     "databricks.experiments.optInto": {
                         "type": "array",
                         "default": [],
@@ -641,6 +617,11 @@
                         },
                         "uniqueItems": true,
                         "description": "Opt into experimental features."
+                    },
+                    "databricks.python.envFile": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Similar to python.envFile. Absolute path to a file containing environment variable definitions."
                     }
                 }
             }
@@ -654,7 +635,7 @@
         "useYarn": false
     },
     "bricks": {
-        "version": "0.0.28"
+        "version": "0.0.31"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",

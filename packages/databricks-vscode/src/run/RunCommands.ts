@@ -46,7 +46,7 @@ export class RunCommands {
                     undefined,
                     {
                         type: "databricks",
-                        name: "Run File on Databricks",
+                        name: "Upload and Run File on Databricks",
                         request: "launch",
                         program: targetResource.fsPath,
                     },
@@ -85,7 +85,7 @@ export class RunCommands {
                     undefined,
                     {
                         type: "databricks-workflow",
-                        name: "Run File Run File on Databricks as Workflow",
+                        name: "Run File on Databricks as Workflow",
                         request: "launch",
                         program: targetResource.fsPath,
                     },
