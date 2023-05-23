@@ -16,7 +16,7 @@ import {mkdtemp, readFile} from "fs/promises";
 import {Mutex} from "../locking";
 import * as child_process from "node:child_process";
 import {promisify} from "node:util";
-export const exec = promisify(child_process.exec);
+export const execFile = promisify(child_process.execFile);
 
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
@@ -130,11 +130,19 @@ export class MsPythonExtensionWrapper implements Disposable {
         if (!executable) {
             return;
         }
-        const execCommand = [
+        const {stdout} = await execFile(
             executable,
-            `-m pip index versions ${name} --disable-pip-version-check --no-python-version-warning`,
-        ];
-        const {stdout} = await exec(execCommand.join(" "));
+            [
+                "-m",
+                "pip",
+                "index",
+                "versions",
+                name,
+                "--disable-pip-version-check",
+                "--no-python-version-warning",
+            ],
+            {shell: false}
+        );
         const match = stdout.match(/.+\((.+)\)/);
         if (match) {
             return match[1];
@@ -150,11 +158,20 @@ export class MsPythonExtensionWrapper implements Disposable {
             version = await this.findLatestPackageVersion(name);
         }
 
-        const execCommand = [
+        const {stdout} = await execFile(
             executable,
-            "-m pip list --format json --disable-pip-version-check --no-python-version-warning",
-        ].join(" ");
-        const {stdout} = await exec(execCommand);
+            [
+                "-m",
+                "pip",
+                "list",
+                "--format",
+                "json",
+                "--disable-pip-version-check",
+                "--no-python-version-warning",
+            ],
+            {shell: false}
+        );
+
         const data: Array<{name: string; version: string}> = JSON.parse(stdout);
         const target = data.find(
             (item) =>
@@ -172,12 +189,9 @@ export class MsPythonExtensionWrapper implements Disposable {
         if (version === "latest") {
             version = await this.findLatestPackageVersion(name);
         }
-        const execCommand = [
-            executable,
-            `-m pip install ${name}${
-                version ? `==${version}` : ""
-            } --disable-pip-version-check --no-python-version-warning`,
-        ].join(" ");
+        const execCommand = `'${executable}' -m pip install '${name}${
+            version ? `==${version}` : ""
+        }' --disable-pip-version-check --no-python-version-warning`;
 
         const exitCode = await this.executeInTerminalE(execCommand);
         if (exitCode) {
@@ -195,10 +209,7 @@ export class MsPythonExtensionWrapper implements Disposable {
             return;
         }
 
-        const execCommand = [
-            executable,
-            `-m pip uninstall ${name} --disable-pip-version-check --no-python-version-warning -y`,
-        ].join(" ");
+        const execCommand = `'${executable}' -m pip uninstall '${name}' --disable-pip-version-check --no-python-version-warning -y`;
         const exitCode = await this.executeInTerminalE(execCommand);
         if (exitCode) {
             throw new Error(
