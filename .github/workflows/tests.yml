@@ -118,17 +118,11 @@ jobs:
             - name: Building packages
               run: yarn run build
 
-            - name: Unit Tests with Coverage (OSX)
-              uses: GabrielBB/xvfb-action@v1
-              if: inputs.os != 'windows-latest'
+            - name: Unit Tests with Coverage
+              uses: setup-xvfb@v1
               with:
                   run: yarn run test:cov
                   working-directory: packages/databricks-vscode
-
-            - name: Unit Tests with Coverage (Windows)
-              if: inputs.os == 'windows-latest'
-              run: yarn run test:cov
-              working-directory: packages/databricks-vscode
 
             - name: Integration Tests
               run: yarn run test:integ
