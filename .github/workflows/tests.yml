@@ -119,7 +119,7 @@ jobs:
               run: yarn run build
 
             - name: Unit Tests with Coverage
-              uses: setup-xvfb@v1
+              uses: coactions/setup-xvfb@v1
               with:
                   run: yarn run test:cov
                   working-directory: packages/databricks-vscode
