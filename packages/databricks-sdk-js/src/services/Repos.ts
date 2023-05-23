@@ -4,7 +4,6 @@ import {List, ReposService, RepoInfo, CreateRepo} from "../apis/repos";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "../context";
 import {Context} from "../context";
-import {paginated} from "../decorators";
 import {ExposedLoggers, withLogContext} from "../logging";
 
 export interface RepoList {
@@ -14,25 +13,6 @@ export interface RepoList {
 
 export class RepoError extends Error {}
 
-export class Repos {
-    constructor(private readonly client: ApiClient) {}
-    @paginated<List, RepoList>("next_page_token", "repos")
-    @withLogContext(ExposedLoggers.SDK)
-    async paginatedList(
-        req: List,
-        @context context?: Context
-    ): Promise<RepoList> {
-        const reposApi = new ReposService(this.client);
-        const response = await reposApi.list(req, context);
-        return {
-            repos:
-                response.repos?.map(
-                    (details) => new Repo(this.client, details)
-                ) ?? [],
-            next_page_token: response["next_page_token"],
-        };
-    }
-}
 export class Repo {
     private readonly reposApi;
 
@@ -69,12 +49,16 @@ export class Repo {
     }
 
     @withLogContext(ExposedLoggers.SDK)
-    static async list(
+    static async *list(
         client: ApiClient,
         req: List,
         @context context?: Context
-    ) {
-        return (await new Repos(client).paginatedList(req, context)).repos;
+    ): AsyncIterable<Repo> {
+        const reposApi = new ReposService(client);
+
+        for await (const repo of reposApi.list(req, context)) {
+            yield new Repo(client, repo);
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -83,15 +67,21 @@ export class Repo {
         path: string,
         @context context?: Context
     ) {
-        const repos = await this.list(
+        const repos: Array<Repo> = [];
+        let exactRepo: Repo | undefined;
+        for await (const repo of this.list(
             client,
             {
                 path_prefix: path,
             },
             context
-        );
+        )) {
+            if (repo.path === path) {
+                exactRepo = repo;
+            }
+            repos.push(repo);
+        }
 
-        const exactRepo = repos.find((repo) => repo.path === path);
         if (repos.length !== 1 && !exactRepo) {
             throw new RepoError(`${repos.length} repos match prefix ${path}`);
         }

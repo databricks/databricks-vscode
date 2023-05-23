@@ -230,11 +230,14 @@ export class DbfsService {
      * the same functionality without timing out.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.List,
         @context context?: Context
-    ): Promise<model.ListStatusResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.FileInfo> {
+        const response = (await this._list(request, context)).files;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

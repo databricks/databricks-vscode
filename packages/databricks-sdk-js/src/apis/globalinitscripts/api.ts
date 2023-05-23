@@ -140,10 +140,13 @@ export class GlobalInitScriptsService {
      * script](#operation/get-script) operation.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         @context context?: Context
-    ): Promise<model.ListGlobalInitScriptsResponse> {
-        return await this._list(context);
+    ): AsyncIterable<model.GlobalInitScriptDetails> {
+        const response = (await this._list(context)).scripts;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

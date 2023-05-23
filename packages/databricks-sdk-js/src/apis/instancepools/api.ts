@@ -174,7 +174,12 @@ export class InstancePoolsService {
      * Gets a list of instance pools with their statistics.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.ListInstancePools> {
-        return await this._list(context);
+    async *list(
+        @context context?: Context
+    ): AsyncIterable<model.InstancePoolAndStats> {
+        const response = (await this._list(context)).instance_pools;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 }

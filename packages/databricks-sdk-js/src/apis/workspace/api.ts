@@ -181,11 +181,14 @@ export class WorkspaceService {
      * `RESOURCE_DOES_NOT_EXIST`.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.List,
         @context context?: Context
-    ): Promise<model.ListResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.ObjectInfo> {
+        const response = (await this._list(request, context)).objects;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

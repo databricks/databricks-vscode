@@ -173,11 +173,32 @@ export class ExperimentsService {
      * Gets a list of all experiments.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListExperimentsRequest,
         @context context?: Context
-    ): Promise<model.ListExperimentsResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.Experiment> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.experiments || response.experiments.length === 0) {
+                break;
+            }
+
+            for (const v of response.experiments) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -232,11 +253,32 @@ export class ExperimentsService {
      * Searches for experiments that satisfy specified search criteria.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async search(
+    async *search(
         request: model.SearchExperiments,
         @context context?: Context
-    ): Promise<model.SearchExperimentsResponse> {
-        return await this._search(request, context);
+    ): AsyncIterable<model.Experiment> {
+        while (true) {
+            const response = await this._search(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.experiments || response.experiments.length === 0) {
+                break;
+            }
+
+            for (const v of response.experiments) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -334,11 +376,32 @@ export class MLflowArtifactsService {
      * prefix.",
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListArtifactsRequest,
         @context context?: Context
-    ): Promise<model.ListArtifactsResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.FileInfo> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.files || response.files.length === 0) {
+                break;
+            }
+
+            for (const v of response.files) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 }
 
@@ -804,11 +867,32 @@ export class MLflowRunsService {
      * Search expressions can use `mlflowMetric` and `mlflowParam` keys.",
      */
     @withLogContext(ExposedLoggers.SDK)
-    async search(
+    async *search(
         request: model.SearchRuns,
         @context context?: Context
-    ): Promise<model.SearchRunsResponse> {
-        return await this._search(request, context);
+    ): AsyncIterable<model.Run> {
+        while (true) {
+            const response = await this._search(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.runs || response.runs.length === 0) {
+                break;
+            }
+
+            for (const v of response.runs) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1140,11 +1224,35 @@ export class ModelVersionsService {
      * Searches for specific model versions based on the supplied __filter__.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async search(
+    async *search(
         request: model.SearchModelVersionsRequest,
         @context context?: Context
-    ): Promise<model.SearchModelVersionsResponse> {
-        return await this._search(request, context);
+    ): AsyncIterable<model.ModelVersion> {
+        while (true) {
+            const response = await this._search(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (
+                !response.model_versions ||
+                response.model_versions.length === 0
+            ) {
+                break;
+            }
+
+            for (const v of response.model_versions) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1378,11 +1486,15 @@ export class RegisteredModelsService {
      * Gets the latest version of a registered model.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getLatestVersions(
+    async *getLatestVersions(
         request: model.GetLatestVersionsRequest,
         @context context?: Context
-    ): Promise<model.GetLatestVersionsResponse> {
-        return await this._getLatestVersions(request, context);
+    ): AsyncIterable<model.ModelVersion> {
+        const response = (await this._getLatestVersions(request, context))
+            .model_versions;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1406,11 +1518,35 @@ export class RegisteredModelsService {
      * __max_results__.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListRegisteredModelsRequest,
         @context context?: Context
-    ): Promise<model.ListRegisteredModelsResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.RegisteredModel> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (
+                !response.registered_models ||
+                response.registered_models.length === 0
+            ) {
+                break;
+            }
+
+            for (const v of response.registered_models) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1460,11 +1596,35 @@ export class RegisteredModelsService {
      * Search for registered models based on the specified __filter__.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async search(
+    async *search(
         request: model.SearchRegisteredModelsRequest,
         @context context?: Context
-    ): Promise<model.SearchRegisteredModelsResponse> {
-        return await this._search(request, context);
+    ): AsyncIterable<model.RegisteredModel> {
+        while (true) {
+            const response = await this._search(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (
+                !response.registered_models ||
+                response.registered_models.length === 0
+            ) {
+                break;
+            }
+
+            for (const v of response.registered_models) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1619,11 +1779,32 @@ export class RegistryWebhooksService {
      * Lists all registry webhooks.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListRegistryWebhooksRequest,
         @context context?: Context
-    ): Promise<model.ListRegistryWebhooks> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.RegistryWebhook> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.webhooks || response.webhooks.length === 0) {
+                break;
+            }
+
+            for (const v of response.webhooks) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -1803,11 +1984,14 @@ export class TransitionRequestsService {
      * Gets a list of all open stage transition requests for the model version.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListTransitionRequestsRequest,
         @context context?: Context
-    ): Promise<model.ListResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.Activity> {
+        const response = (await this._list(request, context)).requests;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

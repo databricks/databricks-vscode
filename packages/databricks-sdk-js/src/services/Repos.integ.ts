@@ -51,18 +51,24 @@ describe(__filename, function () {
     });
 
     it("should list repos by prefix", async () => {
-        const response = await Repo.list(integSetup.client.apiClient, {
+        const repos = [];
+        for await (const repo of Repo.list(integSetup.client.apiClient, {
             path_prefix: repoDir,
-        });
-        assert.ok(response.length > 0);
+        })) {
+            repos.push(repo);
+        }
+
+        assert.ok(repos.length > 0);
     });
 
     // skip test as it takes too long to run
     it.skip("should list all repos", async () => {
-        const response = await Repo.list(integSetup.client.apiClient, {});
+        const repos = [];
+        for await (const repo of Repo.list(integSetup.client.apiClient, {})) {
+            repos.push(repo);
+        }
 
-        assert.notEqual(response, undefined);
-        assert.ok(response.length > 0);
+        assert.ok(repos.length > 0);
     });
 
     it("should cancel listing repos", async () => {
@@ -83,10 +89,11 @@ describe(__filename, function () {
 
         // reponse should finish soon after cancellation
         const start = Date.now();
-        await response;
+        for await (const repo of response) {
+            assert.ok(repo);
+        }
+
         assert.ok(Date.now() - start < 600);
-        assert.notEqual(await response, undefined);
-        assert.ok((await response).length > 0);
     });
 
     it("Should find the exact matching repo if multiple repos with same prefix in fromPath", async () => {

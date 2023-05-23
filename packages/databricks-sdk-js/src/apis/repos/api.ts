@@ -142,11 +142,32 @@ export class ReposService {
      * paginated with each page containing twenty repos.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.List,
         @context context?: Context
-    ): Promise<model.ListReposResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.RepoInfo> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.repos || response.repos.length === 0) {
+                break;
+            }
+
+            for (const v of response.repos) {
+                yield v;
+            }
+
+            request.next_page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 
     @withLogContext(ExposedLoggers.SDK)

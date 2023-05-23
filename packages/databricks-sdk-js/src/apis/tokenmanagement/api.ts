@@ -132,10 +132,13 @@ export class TokenManagementService {
      * Lists all tokens associated with the specified workspace or user.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.List,
         @context context?: Context
-    ): Promise<model.ListTokensResponse> {
-        return await this._list(request, context);
+    ): AsyncIterable<model.TokenInfo> {
+        const response = (await this._list(request, context)).token_infos;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 }
