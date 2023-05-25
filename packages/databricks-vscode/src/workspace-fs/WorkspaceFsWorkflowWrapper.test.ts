@@ -1,8 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
-    ApiClientResponseError,
-    WorkspaceClient,
-} from "@databricks/databricks-sdk";
+import {ApiError, WorkspaceClient} from "@databricks/databricks-sdk";
 import {WorkspaceService} from "@databricks/databricks-sdk/dist/apis/workspace";
 import {
     instance,
@@ -124,10 +121,11 @@ describe(__filename, async () => {
                     anything()
                 )
             ).thenThrow(
-                new ApiClientResponseError(
+                new ApiError(
                     "RESOURCE_DOES_NOT_EXIST",
-                    {},
-                    "RESOURCE_DOES_NOT_EXIST"
+                    "RESOURCE_DOES_NOT_EXIST",
+                    404,
+                    {}
                 )
             );
 
@@ -206,10 +204,11 @@ describe(__filename, async () => {
                     anything()
                 )
             ).thenThrow(
-                new ApiClientResponseError(
+                new ApiError(
                     "RESOURCE_DOES_NOT_EXIST",
-                    {},
-                    "RESOURCE_DOES_NOT_EXIST"
+                    "RESOURCE_DOES_NOT_EXIST",
+                    404,
+                    {}
                 )
             );
 
