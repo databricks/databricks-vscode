@@ -33,7 +33,7 @@ export async function switchToWorkspacePrompt(
     workspaceState: WorkspaceStateManager
 ) {
     const message =
-        "The Databricks extension works better when using the workspace as sync destination.";
+        "Databricks recommends switching from Repos to Workspace as sync destination.";
     const selection = await window.showErrorMessage(
         message,
         "Switch to Workspace",
