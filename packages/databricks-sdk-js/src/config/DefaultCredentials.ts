@@ -11,6 +11,7 @@ import {
 import {MetadataServiceCredentials} from "./MetadataServiceCredentials";
 import {PatCredentials} from "./PatCredentials";
 import {M2mCredentials} from "./M2mCredentials";
+import {AzureClientSecretCredentials} from "./AzureClientSecretCredentials";
 
 export class DefaultCredentials implements CredentialProvider {
     public name: AuthType = "default";
@@ -25,7 +26,7 @@ export class DefaultCredentials implements CredentialProvider {
 
             // Attempt to configure auth from most specific to most generic (the Azure CLI).
             // new AzureMsiCredentials(),
-            // new AzureClientSecretCredentials(),
+            new AzureClientSecretCredentials(),
             new AzureCliCredentials(),
 
             // Attempt to configure auth from most specific to most generic (Google Application Default Credentials).
