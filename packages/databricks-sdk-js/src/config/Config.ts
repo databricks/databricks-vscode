@@ -61,7 +61,8 @@ export type AuthType =
     | "azure-cli"
     | "google-id"
     | "metadata-service"
-    | "databricks-cli";
+    | "databricks-cli"
+    | "oauth-m2m";
 
 export type AttributeName = keyof Omit<
     ConfigOptions,
@@ -193,6 +194,21 @@ export class Config {
         auth: "azure",
     })
     public azureLoginAppId?: string;
+
+    @attribute({
+        name: "client_id",
+        env: "DATABRICKS_CLIENT_ID",
+        auth: "oauth",
+    })
+    public clientId?: string;
+
+    @attribute({
+        name: "client_secret",
+        env: "DATABRICKS_CLIENT_SECRET",
+        auth: "oauth",
+        sensitive: true,
+    })
+    public clientSecret?: string;
 
     /** Path to the 'databricks' CLI */
     @attribute({
