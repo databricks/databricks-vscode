@@ -130,7 +130,7 @@ export async function activate(
     // Configuration group
     const connectionManager = new ConnectionManager(cli, workspaceStateManager);
     context.subscriptions.push(
-        connectionManager.onDidChangeState(async () => {
+        connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
                 Metadata.USER,
                 await toUserMetadata(connectionManager.databricksWorkspace)
@@ -138,6 +138,11 @@ export async function activate(
             telemetry.recordEvent(Events.CONNECTION_STATE_CHANGED, {
                 newState: connectionManager.state,
             });
+            if (state === "CONNECTED") {
+                telemetry.recordEvent(Events.SYNC_DESTINATION, {
+                    destination: workspaceConfigs.syncDestinationType,
+                });
+            }
         })
     );
     const metadataServiceManager = new MetadataServiceManager(
@@ -189,7 +194,8 @@ export async function activate(
     const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
         connectionManager,
         workspaceStateManager,
-        synchronizer
+        synchronizer,
+        telemetry
     );
 
     context.subscriptions.push(wsfsAccessVerifier);
@@ -250,7 +256,8 @@ export async function activate(
         synchronizer,
         workspaceStateManager,
         wsfsAccessVerifier,
-        featureManager
+        featureManager,
+        telemetry
     );
 
     context.subscriptions.push(
@@ -454,7 +461,6 @@ export async function activate(
 
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
-
     const publicApi: PublicApi = {
         version: 1,
         connectionManager: connectionManager,
