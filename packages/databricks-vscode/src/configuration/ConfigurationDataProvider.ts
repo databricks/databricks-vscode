@@ -19,7 +19,6 @@ import {
     switchToWorkspacePrompt,
 } from "../workspace-fs";
 import {FeatureManager} from "../feature-manager/FeatureManager";
-import {Telemetry} from "../telemetry";
 
 export type ConfigurationTreeItem = TreeItem & {
     url?: string;
@@ -45,8 +44,7 @@ export class ConfigurationDataProvider
         private sync: CodeSynchronizer,
         private readonly workspaceState: WorkspaceStateManager,
         private readonly wsfsAccessVerifier: WorkspaceFsAccessVerifier,
-        private readonly featureManager: FeatureManager,
-        private readonly telemetry: Telemetry
+        private readonly featureManager: FeatureManager
     ) {
         this.disposables.push(
             this.connectionManager.onDidChangeState(() => {
@@ -293,6 +291,7 @@ export class ConfigurationDataProvider
 
             if (
                 workspaceConfigs.syncDestinationType === "repo" &&
+                this.workspaceState.wsfsFeatureFlag &&
                 this.wsfsAccessVerifier.isEnabled
             ) {
                 children.push({
@@ -310,10 +309,7 @@ export class ConfigurationDataProvider
                         command: "databricks.call",
                         arguments: [
                             () => {
-                                switchToWorkspacePrompt(
-                                    this.workspaceState,
-                                    this.telemetry
-                                );
+                                switchToWorkspacePrompt(this.workspaceState);
                             },
                         ],
                     },

@@ -8,7 +8,6 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CodeSynchronizer} from "../sync";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
-import {Events, Telemetry} from "../telemetry";
 
 export async function switchToRepos() {
     await workspaceConfigs.setSyncDestinationType("repo");
@@ -31,8 +30,7 @@ async function dbrBelowThreshold(cluster: Cluster) {
 }
 
 export async function switchToWorkspacePrompt(
-    workspaceState: WorkspaceStateManager,
-    telemetry: Telemetry
+    workspaceState: WorkspaceStateManager
 ) {
     const message =
         "Databricks recommends switching from Repos to Workspace as sync destination.";
@@ -42,9 +40,6 @@ export async function switchToWorkspacePrompt(
         "Ignore",
         "Don't show again"
     );
-    telemetry.recordEvent(Events.SWITCH_TO_WORKSPACE_PROMPT, {
-        selection: selection ?? "undefined",
-    });
 
     if (selection === "Don't show again") {
         workspaceState.skipSwitchToWorkspace = true;
@@ -79,8 +74,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
     constructor(
         private _connectionManager: ConnectionManager,
         private readonly workspaceState: WorkspaceStateManager,
-        private _sync: CodeSynchronizer,
-        private readonly telemetry: Telemetry
+        private _sync: CodeSynchronizer
     ) {
         this.disposables.push(
             this._connectionManager.onDidChangeCluster(async (cluster) => {
@@ -144,17 +138,18 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             }
         } else {
             if (
-                workspaceConfigs.enableFilesInWorkspace ||
+                workspaceConfigs.syncDestinationType === "workspace" ||
+                !this.workspaceState.wsfsFeatureFlag ||
                 !(await this.isEnabledForWorkspace()) ||
                 this.workspaceState.skipSwitchToWorkspace
             ) {
                 return;
             }
-            switchToWorkspacePrompt(this.workspaceState, this.telemetry);
+            switchToWorkspacePrompt(this.workspaceState);
         }
     }
 
-    async isEnabledForWorkspace() {
+    private async isEnabledForWorkspace() {
         if (this._connectionManager.state === "DISCONNECTED") {
             return false;
         }

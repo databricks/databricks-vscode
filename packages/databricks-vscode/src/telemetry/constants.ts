@@ -13,8 +13,6 @@ export enum Events {
     COMMAND_EXECUTION = "commandExecution",
     EXTENSION_ACTIVATED = "extensionActivation",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
-    SYNC_DESTINATION = "syncDestination",
-    SWITCH_TO_WORKSPACE_PROMPT = "switchToWorkspacePrompt",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -79,22 +77,6 @@ export class EventTypes {
         comment: "State of ConnectionManager has changed",
         newState: {
             comment: "The new state of the connection",
-        },
-    };
-    [Events.SYNC_DESTINATION]: EventType<{
-        destination: string;
-    }> = {
-        comment: "Sync destination was selected",
-        destination: {
-            comment: "The destination that was selected",
-        },
-    };
-    [Events.SWITCH_TO_WORKSPACE_PROMPT]: EventType<{
-        selection: string;
-    }> = {
-        comment: "Prompt to switch to workspace was shown",
-        selection: {
-            comment: "The selection that was made",
         },
     };
 }

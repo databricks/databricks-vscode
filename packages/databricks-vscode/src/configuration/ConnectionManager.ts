@@ -227,7 +227,10 @@ export class ConnectionManager {
     async createWsFsRootDirectory(wsClient: WorkspaceClient) {
         if (
             !this.databricksWorkspace ||
-            !workspaceConfigs.enableFilesInWorkspace
+            !(
+                workspaceConfigs.enableFilesInWorkspace ||
+                this.workspaceState.wsfsFeatureFlag
+            )
         ) {
             return;
         }
