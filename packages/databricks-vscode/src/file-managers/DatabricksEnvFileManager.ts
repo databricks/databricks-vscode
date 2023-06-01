@@ -255,7 +255,9 @@ export class DatabricksEnvFileManager implements Disposable {
         if (pat && host) {
             sparkEnvVars[
                 "SPARK_REMOTE"
-            ] = `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=vs_code`; //;user_agent=${encodeURIComponent(userAgent)}`
+            ] = `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${
+                cluster.id
+            };user_agent=${encodeURIComponent(userAgent)}`;
         }
 
         /* eslint-disable @typescript-eslint/naming-convention */
