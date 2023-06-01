@@ -247,19 +247,9 @@ export class DatabricksEnvFileManager implements Disposable {
             return;
         }
 
-        let authEnvVars: Record<string, string> = {};
-        const host = this.connectionManager.databricksWorkspace?.host.authority;
-        if (host) {
-            /* eslint-disable @typescript-eslint/naming-convention */
-            authEnvVars = {
-                DATABRICKS_HOST: host,
-                DATABRICKS_AUTH_TYPE: "metadata-service",
-                DATABRICKS_METADATA_SERVICE_URL:
-                    this.connectionManager.metadataServiceUrl || "",
-            };
-            /* eslint-enable @typescript-eslint/naming-convention */
-        }
+        const authEnvVars: Record<string, string> = authProvider.toEnv();
 
+        const host = this.connectionManager.databricksWorkspace?.host.authority;
         const pat = await this.getPatToken();
         const sparkEnvVars: Record<string, string> = {};
         if (pat && host) {
