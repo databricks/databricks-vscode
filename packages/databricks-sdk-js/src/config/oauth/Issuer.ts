@@ -31,8 +31,8 @@ export class Issuer {
 
             return new Issuer(
                 config,
-                new URL(realAuthUrl.replace("/authorize", "/token")),
-                new URL(realAuthUrl)
+                new URL(realAuthUrl),
+                new URL(realAuthUrl.replace("/authorize", "/token"))
             );
         }
 

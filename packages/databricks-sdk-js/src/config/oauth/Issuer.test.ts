@@ -45,7 +45,7 @@ describe(__filename, () => {
         it("should return an instance of Issuer for Azure", async () => {
             const response = {
                 headers: new Map<string, string>([
-                    ["location", "https://example.com/real-auth-url"],
+                    ["location", "https://example.com/real-auth-url/authorize"],
                 ]),
             };
 
@@ -62,12 +62,12 @@ describe(__filename, () => {
 
             assert.ok(result instanceof Issuer);
             assert.deepStrictEqual(
-                result.authorizationEndpoint,
-                new URL("https://example.com/real-auth-url")
+                result.authorizationEndpoint.href,
+                "https://example.com/real-auth-url/authorize"
             );
             assert.deepStrictEqual(
-                result.tokenEndpoint,
-                new URL("https://example.com/real-auth-url/token")
+                result.tokenEndpoint.href,
+                "https://example.com/real-auth-url/token"
             );
         });
 
