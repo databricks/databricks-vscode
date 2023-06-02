@@ -65,8 +65,10 @@ export class ApiClient {
         return this.config.getHost();
     }
 
-    get accountId(): string | undefined {
-        return this.config.accountId;
+    get accountId(): Promise<string | undefined> {
+        return this.config.ensureResolved().then(() => {
+            return this.config.accountId;
+        });
     }
 
     userAgent(): string {
