@@ -1,3 +1,19 @@
+# Release: v0.3.14
+
+## packages/databricks-vscode
+
+## <small>0.3.14 (2023-06-02)</small>
+
+-   Fix: Fix error handling when repos limit is reached, fixes [#726](https://github.com/databricks/databricks-vscode/issues/726)
+-   Patch: Port error handling code from GO SDK
+-   Telemety: Record SDK AuthType instead of VSCode AuthType
+-   Fix: Bump dependencies
+-   Feature: Support all authentication methods for interactive debugging with dbconnect.
+-   Fix: Improve error message to switch from repos to workspace FS.
+-   Fix: Rename `bricks` cli to `databricks`
+-   Telemetry: Record sync destination type
+-   Fix: Properly escape calls to python so that they work with directories with spaces, fixes [#715](https://github.com/databricks/databricks-vscode/issues/715)
+
 # Release: v0.3.13
 
 ## packages/databricks-vscode

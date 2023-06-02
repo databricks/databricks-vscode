@@ -1,3 +1,16 @@
+# Release: v0.3.14
+
+## packages/databricks-sdk-js
+
+## <small>0.3.14 (2023-06-02)</small>
+
+-   SDK: Implement pagination
+-   SDK: Port error handling code from GO SDK
+-   Bump @types/node from 18.16.4 to 20.0.0
+-   Bump dependencies
+-   DB Connect Unified Auth Support
+-   Rename bricks to databricks
+
 # Release: v0.3.13
 
 ## packages/databricks-sdk-js
