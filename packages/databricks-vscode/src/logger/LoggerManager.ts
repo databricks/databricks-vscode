@@ -88,12 +88,12 @@ export class LoggerManager {
             true
         );
 
-        const bricksLogFile = await this.getLogFile("bricks");
+        const cliLogFile = await this.getLogFile("databricks-cli");
         /** 
-        This logger collects all the output from bricks.
+        This logger collects all the output from databricks CLI.
         */
         NamedLogger.getOrCreate(
-            "Bricks",
+            "DatabricksCLI",
             {
                 factory: (name) => {
                     return loggers.add(name, {
@@ -101,7 +101,7 @@ export class LoggerManager {
                             getOutputConsoleTransport(outputChannel, {
                                 level: "error",
                             }),
-                            this.getFileTransport(bricksLogFile, {
+                            this.getFileTransport(cliLogFile, {
                                 level: "debug",
                             }),
                         ],
@@ -120,6 +120,6 @@ export class LoggerManager {
 /* eslint-disable @typescript-eslint/naming-convention */
 export enum Loggers {
     Extension = "Extension",
-    Bricks = "Bricks",
+    CLI = "DatabricksCLI",
 }
 /* eslint-enable @typescript-eslint/naming-convention */

@@ -23,9 +23,9 @@
         "test": "yarn run test:lint && yarn run test:unit"
     },
     "devDependencies": {
-        "@types/vscode": "^1.75.1",
-        "eslint": "^8.38.0",
-        "prettier": "^2.8.7",
+        "@types/vscode": "^1.69.1",
+        "eslint": "^8.41.0",
+        "prettier": "^2.8.8",
         "typescript": "^5.0.4"
     },
     "dependencies": {

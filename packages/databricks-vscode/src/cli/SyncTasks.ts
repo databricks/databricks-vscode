@@ -13,7 +13,7 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CliWrapper, Command, SyncType} from "./CliWrapper";
 import {ChildProcess, spawn, SpawnOptions} from "node:child_process";
 import {SyncState} from "../sync/CodeSynchronizer";
-import {BricksSyncParser} from "./BricksSyncParser";
+import {DatabricksCliSyncParser} from "./DatabricksCliSyncParser";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
@@ -61,7 +61,7 @@ export class SyncTask extends Task {
 
         this.isBackground = true;
         this.detail = "$(rocket) Databricks sync";
-        this.problemMatchers = ["$bricks-sync"];
+        this.problemMatchers = ["$databricks-sync"];
         this.presentationOptions.echo = true;
         this.group = TaskGroup.Build;
         this.presentationOptions.reveal = TaskRevealKind.Always;
@@ -88,7 +88,7 @@ class CustomSyncTerminal implements Pseudoterminal {
     onDidClose: Event<void> = this.closeEmitter.event;
 
     private syncProcess: ChildProcess | undefined;
-    private bricksSyncParser: BricksSyncParser;
+    private databricksSyncParser: DatabricksCliSyncParser;
     private state: SyncState = "STOPPED";
     private syncStateCallback: (state: SyncState) => void;
 
@@ -112,7 +112,7 @@ class CustomSyncTerminal implements Pseudoterminal {
             this.state = state;
             syncStateCallback(state);
         };
-        this.bricksSyncParser = new BricksSyncParser(
+        this.databricksSyncParser = new DatabricksCliSyncParser(
             this.syncStateCallback,
             this.writeEmitter
         );
@@ -140,7 +140,7 @@ class CustomSyncTerminal implements Pseudoterminal {
         // Log the sync command being run, its args and any env overrides done by
         // vscode
         this.writeEmitter.fire(
-            "[VSCODE] bricks cli path: " + this.cmd.toString()
+            "[VSCODE] databricks cli path: " + this.cmd.toString()
         );
         this.writeEmitter.fire("\n\r");
         this.writeEmitter.fire(
@@ -178,13 +178,13 @@ class CustomSyncTerminal implements Pseudoterminal {
         const rwLock = new RWLock();
         this.syncProcess.stderr.on("data", async (data) => {
             await rwLock.readerEntry();
-            this.bricksSyncParser.processStderr(data.toString());
+            this.databricksSyncParser.processStderr(data.toString());
             await rwLock.readerExit();
         });
 
         this.syncProcess.stdout.on("data", async (data) => {
             await rwLock.readerEntry();
-            this.bricksSyncParser.processStdout(data.toString());
+            this.databricksSyncParser.processStdout(data.toString());
             await rwLock.readerExit();
         });
 
@@ -205,8 +205,8 @@ class CustomSyncTerminal implements Pseudoterminal {
  * and args properties. This is necessary because the process and args properties
  * are not known up front and can only be computed dynamically at runtime.
  *
- * A Custom implmentation of the terminal is needed to run bricks sync as a CustomExecution
- * vscode task, which allows us to parse the stdout/stderr bricks sync logs and compute
+ * A Custom implmentation of the terminal is needed to run databricks sync as a CustomExecution
+ * vscode task, which allows us to parse the stdout/stderr databricks sync logs and compute
  * sync completeness state based on the output logs
  */
 export class LazyCustomSyncTerminal extends CustomSyncTerminal {
@@ -292,9 +292,8 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
             cwd: workspacePath,
             env: {
                 /* eslint-disable @typescript-eslint/naming-convention */
-                BRICKS_ROOT: workspacePath,
-                BRICKS_UPSTREAM: "databricks-vscode",
-                BRICKS_UPSTREAM_VERSION: this.packageMetadata.version,
+                DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
+                DATABRICKS_CLI_UPSTREAM_VERSION: this.packageMetadata.version,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
                 DATABRICKS_HOST: dbWorkspace.host.toString(),

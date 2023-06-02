@@ -22,7 +22,7 @@ export class ProjectConfigFile {
     constructor(
         private config: ProjectConfig,
         readonly rootPath: string,
-        readonly bricksPath: string
+        readonly cliPath: string
     ) {}
 
     get host() {
@@ -61,7 +61,7 @@ export class ProjectConfigFile {
         try {
             const originalConfig = await ProjectConfigFile.load(
                 this.rootPath,
-                this.bricksPath
+                this.cliPath
             );
             if (
                 JSON.stringify(originalConfig.toJSON(), null, 2) ===
@@ -100,7 +100,7 @@ export class ProjectConfigFile {
 
     static async load(
         rootPath: string,
-        bricksPath: string
+        cliPath: string
     ): Promise<ProjectConfigFile> {
         const projectConfigFilePath = this.getProjectConfigFilePath(rootPath);
 
@@ -126,7 +126,7 @@ export class ProjectConfigFile {
             if (!config.authType && config.profile) {
                 authProvider = await this.importOldConfig(config);
             } else {
-                authProvider = AuthProvider.fromJSON(config, bricksPath);
+                authProvider = AuthProvider.fromJSON(config, cliPath);
             }
         } catch (e: any) {
             NamedLogger.getOrCreate(Loggers.Extension).error(
@@ -150,7 +150,7 @@ export class ProjectConfigFile {
                         : undefined,
             },
             rootPath,
-            bricksPath
+            cliPath
         );
     }
 

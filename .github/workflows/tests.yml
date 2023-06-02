@@ -12,7 +12,7 @@ on:
             vscode-version:
                 required: true
                 type: string
-            bricks_arch:
+            cli_arch:
                 required: true
                 type: string
 
@@ -78,7 +78,7 @@ jobs:
             DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
             DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
             TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_VSCODE_CLUSTER_ID }}
-            BRICKS_ARCH: ${{ inputs.bricks_arch }}
+            CLI_ARCH: ${{ inputs.cli_arch }}
 
         defaults:
             run:
@@ -97,13 +97,13 @@ jobs:
               uses: actions/cache@v3
               with:
                   path: /tmp/wdio-vscode-service
-                  key: ${{ inputs.bricks_arch }}-${{ inputs.vscode-version }}-wdio
+                  key: ${{ inputs.cli_arch }}-${{ inputs.vscode-version }}-wdio
 
             - name: Cache VSCode unit test runner
               uses: actions/cache@v3
               with:
                   path: /tmp/vscode-test-databricks
-                  key: ${{ inputs.bricks_arch }}-${{ inputs.vscode-version }}-vscode-test
+                  key: ${{ inputs.cli_arch }}-${{ inputs.vscode-version }}-vscode-test
 
             - run: yarn install --immutable
 
@@ -111,24 +111,18 @@ jobs:
               run: yarn run test:lint
               working-directory: packages/databricks-vscode
 
-            - name: Fetching Bricks CLI
+            - name: Fetching Databricks CLI
               run: yarn run package:cli:fetch
               working-directory: packages/databricks-vscode
 
             - name: Building packages
               run: yarn run build
 
-            - name: Unit Tests with Coverage (OSX)
-              uses: GabrielBB/xvfb-action@v1
-              if: inputs.os != 'windows-latest'
+            - name: Unit Tests with Coverage
+              uses: coactions/setup-xvfb@v1
               with:
                   run: yarn run test:cov
                   working-directory: packages/databricks-vscode
-
-            - name: Unit Tests with Coverage (Windows)
-              if: inputs.os == 'windows-latest'
-              run: yarn run test:cov
-              working-directory: packages/databricks-vscode
 
             - name: Integration Tests
               run: yarn run test:integ

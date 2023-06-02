@@ -3,12 +3,12 @@ import assert from "assert";
 import {mock, instance, capture, reset} from "ts-mockito";
 import {EventEmitter} from "vscode";
 import {SyncState} from "../sync";
-import {BricksSyncParser} from "./BricksSyncParser";
+import {DatabricksCliSyncParser} from "./DatabricksCliSyncParser";
 
-describe("tests for BricksSycnParser", () => {
+describe("tests for SycnParser", () => {
     let syncState: SyncState = "STOPPED";
     let mockedOutput: EventEmitter<string>;
-    let bricksSyncParser: BricksSyncParser;
+    let databricksSyncParser: DatabricksCliSyncParser;
 
     const syncStateCallback = (state: SyncState) => {
         syncState = state;
@@ -17,7 +17,7 @@ describe("tests for BricksSycnParser", () => {
     beforeEach(() => {
         syncState = "STOPPED";
         mockedOutput = mock(EventEmitter<string>);
-        bricksSyncParser = new BricksSyncParser(
+        databricksSyncParser = new DatabricksCliSyncParser(
             syncStateCallback,
             instance(mockedOutput)
         );
@@ -25,26 +25,26 @@ describe("tests for BricksSycnParser", () => {
 
     it("ignores empty lines", () => {
         assert.equal(syncState, "STOPPED");
-        bricksSyncParser.processStdout("\n\n");
+        databricksSyncParser.processStdout("\n\n");
         assert.equal(syncState, "STOPPED");
     });
 
     it("ignores non-JSON lines", () => {
         assert.equal(syncState, "STOPPED");
-        bricksSyncParser.processStdout("foo\nbar\n");
+        databricksSyncParser.processStdout("foo\nbar\n");
         assert.equal(syncState, "STOPPED");
     });
 
     it("transitions from STOPPED -> IN_PROGRESS -> WATCHING_FOR_CHANGES", () => {
         assert.equal(syncState, "STOPPED");
-        bricksSyncParser.processStdout(`{"type": "start"}`);
+        databricksSyncParser.processStdout(`{"type": "start"}`);
         assert.equal(syncState, "IN_PROGRESS");
-        bricksSyncParser.processStdout(`{"type": "complete"}`);
+        databricksSyncParser.processStdout(`{"type": "complete"}`);
         assert.equal(syncState, "WATCHING_FOR_CHANGES");
     });
 
     it("writes start events to the terminal", () => {
-        bricksSyncParser.processStdout(
+        databricksSyncParser.processStdout(
             `{"type": "start", "put": ["hello"], "delete": ["world"]}`
         );
         const arg = capture(mockedOutput.fire).first();
@@ -52,10 +52,10 @@ describe("tests for BricksSycnParser", () => {
     });
 
     it("writes progress events to the terminal", () => {
-        bricksSyncParser.processStdout(
+        databricksSyncParser.processStdout(
             `{"type": "progress", "action": "put", "path": "hello", "progress": 0.0}`
         );
-        bricksSyncParser.processStdout(
+        databricksSyncParser.processStdout(
             `{"type": "progress", "action": "put", "path": "hello", "progress": 1.0}`
         );
         assert.match(
@@ -64,10 +64,10 @@ describe("tests for BricksSycnParser", () => {
         );
         reset(mockedOutput);
 
-        bricksSyncParser.processStdout(
+        databricksSyncParser.processStdout(
             `{"type": "progress", "action": "delete", "path": "hello", "progress": 0.0}`
         );
-        bricksSyncParser.processStdout(
+        databricksSyncParser.processStdout(
             `{"type": "progress", "action": "delete", "path": "hello", "progress": 1.0}`
         );
         assert.match(
@@ -78,7 +78,7 @@ describe("tests for BricksSycnParser", () => {
     });
 
     it("writes complete events to the terminal", () => {
-        bricksSyncParser.processStdout(
+        databricksSyncParser.processStdout(
             `{"type": "complete", "put": ["hello"], "delete": ["world"]}`
         );
         const arg = capture(mockedOutput.fire).first();

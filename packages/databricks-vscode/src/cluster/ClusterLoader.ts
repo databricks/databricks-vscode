@@ -59,7 +59,7 @@ export class ClusterLoader implements Disposable {
 
     private cleanupClustersMap(clusters: Cluster[]) {
         const clusterIds = clusters.map((c) => c.id);
-        const toDelete = [];
+        const toDelete: string[] = [];
         for (const key of this._clusters.keys()) {
             if (!clusterIds.includes(key)) {
                 toDelete.push(key);

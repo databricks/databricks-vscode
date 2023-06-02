@@ -3,7 +3,7 @@ import {EventEmitter} from "vscode";
 import {Loggers} from "../logger";
 import {SyncState} from "../sync";
 
-const bricksLogLevelToSdk = new Map<string, LEVELS>([
+const databricksLogLevelToSdk = new Map<string, LEVELS>([
     ["DEBUG", LEVELS.debug],
     ["INFO", LEVELS.info],
     ["WARN", LEVELS.warn],
@@ -41,7 +41,7 @@ type EventProgress = EventBase & {
 
 type Event = EventStart | EventComplete | EventProgress;
 
-export class BricksSyncParser {
+export class DatabricksCliSyncParser {
     private state: SyncState = "STOPPED";
 
     constructor(
@@ -108,9 +108,10 @@ export class BricksSyncParser {
             );
             if (typeMatch) {
                 currentLogLevel =
-                    bricksLogLevelToSdk.get(typeMatch[1]) ?? currentLogLevel;
+                    databricksLogLevelToSdk.get(typeMatch[1]) ??
+                    currentLogLevel;
             }
-            NamedLogger.getOrCreate(Loggers.Bricks).log(currentLogLevel, line);
+            NamedLogger.getOrCreate(Loggers.CLI).log(currentLogLevel, line);
             this.writeEmitter.fire(line.trim() + "\r\n");
             if (this.matchForWsfsErrors(line)) {
                 return;
@@ -132,7 +133,7 @@ export class BricksSyncParser {
         return false;
     }
 
-    // This function processes the JSON output from bricks sync and parses it
+    // This function processes the JSON output from databricks sync and parses it
     // to figure out if a synchronization step is in progress or has completed.
     public processStdout(data: string) {
         const logLines = data.split("\n");
@@ -146,7 +147,8 @@ export class BricksSyncParser {
                 this.processLine(line);
             } catch (error: any) {
                 NamedLogger.getOrCreate(Loggers.Extension).error(
-                    "Error parsing JSON line from bricks sync stdout: " + error
+                    "Error parsing JSON line from databricks sync stdout: " +
+                        error
                 );
             }
 

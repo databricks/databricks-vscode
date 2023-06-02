@@ -50,7 +50,7 @@ describe(__filename, () => {
             name: "name",
             version: "version",
             arch: {
-                bricksArch: "bricksArch",
+                cliArch: "cliArch",
                 vsixArch: "vsixArch",
             },
             commitSha: "commitSha",
@@ -65,7 +65,7 @@ describe(__filename, () => {
         assert.deepEqual(actualMetadata, {
             packageName: "name",
             version: "version",
-            bricksArch: "bricksArch",
+            cliArch: "cliArch",
             vsixArch: "vsixArch",
             commitSha: "commitSha",
         });

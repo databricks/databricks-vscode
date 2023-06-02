@@ -4,7 +4,7 @@ import {
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
 import {Disposable, window} from "vscode";
-import {BricksCliAuthProvider} from "./AuthProvider";
+import {DatabricksCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -13,10 +13,10 @@ const extensionVersion = require("../../../package.json")
 
 type StepName = "tryLogin" | "login";
 
-export class BricksCliCheck implements Disposable {
+export class DatabricksCliCheck implements Disposable {
     private disposables: Disposable[] = [];
 
-    constructor(private authProvider: BricksCliAuthProvider) {}
+    constructor(private authProvider: DatabricksCliAuthProvider) {}
 
     dispose() {
         this.disposables.forEach((i) => i.dispose());
@@ -51,7 +51,7 @@ export class BricksCliCheck implements Disposable {
         } catch (e: any) {
             let message: string;
             if (e instanceof OrchestrationLoopError) {
-                message = "Can't login using Bricks CLI";
+                message = "Can't login using Databricks CLI";
             } else {
                 message = e.message;
             }
@@ -62,7 +62,7 @@ export class BricksCliCheck implements Disposable {
 
         if (result && !silent) {
             window.showInformationMessage(
-                "Databricks: Successfully logged in with Bricks CLI"
+                "Databricks: Successfully logged in with Databricks CLI"
             );
         }
 
@@ -73,8 +73,8 @@ export class BricksCliCheck implements Disposable {
         const workspaceClient = new WorkspaceClient(
             {
                 host: this.authProvider.host.toString(),
-                authType: "bricks-cli",
-                bricksCliPath: this.authProvider.bricksPath,
+                authType: "databricks-cli",
+                databricksCliPath: this.authProvider.databricksPath,
             },
             {
                 product: "databricks-vscode",
@@ -93,7 +93,7 @@ export class BricksCliCheck implements Disposable {
 
     private async login(): Promise<void> {
         try {
-            await ExecUtils.execFile(this.authProvider.bricksPath, [
+            await ExecUtils.execFile(this.authProvider.databricksPath, [
                 "auth",
                 "login",
                 "--host",
@@ -101,7 +101,9 @@ export class BricksCliCheck implements Disposable {
             ]);
         } catch (e: any) {
             throw new Error(
-                `Login failed with Bricks CLI failed: ${e.stderr || e.message}`
+                `Login failed with Databricks CLI failed: ${
+                    e.stderr || e.message
+                }`
             );
         }
     }

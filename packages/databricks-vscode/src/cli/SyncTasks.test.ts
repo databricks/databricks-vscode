@@ -7,7 +7,7 @@ import type {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";
 import {PackageMetaData} from "../utils/packageJsonUtils";
-import {LazyCustomSyncTerminal, SyncTask} from "./BricksTasks";
+import {LazyCustomSyncTerminal, SyncTask} from "./SyncTasks";
 import type {CliWrapper} from "./CliWrapper";
 
 describe(__filename, () => {
@@ -34,7 +34,7 @@ describe(__filename, () => {
         assert.equal(task.definition.type, "databricks");
         assert.equal(task.definition.task, "sync");
         assert.equal(task.isBackground, true);
-        assert.deepEqual(task.problemMatchers, ["$bricks-sync"]);
+        assert.deepEqual(task.problemMatchers, ["$databricks-sync"]);
     });
 
     describe("pseudo terminal", () => {
@@ -101,9 +101,8 @@ describe(__filename, () => {
                 cwd: Uri.file("/path/to/local/workspace").fsPath,
                 env: {
                     /* eslint-disable @typescript-eslint/naming-convention */
-                    BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
-                    BRICKS_UPSTREAM: "databricks-vscode",
-                    BRICKS_UPSTREAM_VERSION: "1.0.0",
+                    DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
+                    DATABRICKS_CLI_UPSTREAM_VERSION: "1.0.0",
                     DATABRICKS_HOST:
                         "https://000000000000.00.azuredatabricks.net/",
                     DATABRICKS_AUTH_TYPE: "metadata-service",
@@ -123,9 +122,8 @@ describe(__filename, () => {
                 cwd: Uri.file("/path/to/local/workspace").fsPath,
                 env: {
                     /* eslint-disable @typescript-eslint/naming-convention */
-                    BRICKS_ROOT: Uri.file("/path/to/local/workspace").fsPath,
-                    BRICKS_UPSTREAM: "databricks-vscode",
-                    BRICKS_UPSTREAM_VERSION: "1.0.0",
+                    DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
+                    DATABRICKS_CLI_UPSTREAM_VERSION: "1.0.0",
                     DATABRICKS_HOST:
                         "https://000000000000.00.azuredatabricks.net/",
                     DATABRICKS_AUTH_TYPE: "metadata-service",

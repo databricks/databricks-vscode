@@ -131,7 +131,7 @@ export class ConnectionManager {
             try {
                 projectConfigFile = await ProjectConfigFile.load(
                     vscodeWorkspace.rootPath!,
-                    this.cli.bricksPath
+                    this.cli.cliPath
                 );
             } catch (e) {
                 if (
@@ -227,10 +227,7 @@ export class ConnectionManager {
     async createWsFsRootDirectory(wsClient: WorkspaceClient) {
         if (
             !this.databricksWorkspace ||
-            !(
-                workspaceConfigs.enableFilesInWorkspace ||
-                this.workspaceState.wsfsFeatureFlag
-            )
+            !workspaceConfigs.enableFilesInWorkspace
         ) {
             return;
         }
@@ -336,7 +333,7 @@ export class ConnectionManager {
         const projectConfigFile = new ProjectConfigFile(
             config,
             vscodeWorkspace.rootPath!,
-            this.cli.bricksPath
+            this.cli.cliPath
         );
 
         await projectConfigFile.write();
