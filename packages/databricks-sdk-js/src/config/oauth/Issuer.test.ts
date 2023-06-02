@@ -42,35 +42,6 @@ describe(__filename, () => {
             assert.strictEqual(result, undefined);
         });
 
-        it("should return an instance of Issuer for Azure", async () => {
-            const response = {
-                headers: new Map<string, string>([
-                    ["location", "https://example.com/real-auth-url/authorize"],
-                ]),
-            };
-
-            when(spy(Issuer as any).fetch(anything(), anything())).thenResolve(
-                response as any
-            );
-
-            const result = await Issuer.discover(
-                new Config({
-                    ...config,
-                    isAzure: () => true,
-                })
-            );
-
-            assert.ok(result instanceof Issuer);
-            assert.deepStrictEqual(
-                result.authorizationEndpoint.href,
-                "https://example.com/real-auth-url/authorize"
-            );
-            assert.deepStrictEqual(
-                result.tokenEndpoint.href,
-                "https://example.com/real-auth-url/token"
-            );
-        });
-
         it("should return an instance for a workspace client", async () => {
             const response = {
                 status: 200,

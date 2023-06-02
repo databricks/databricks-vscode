@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {Config} from "./Config";
-import {Issuer} from "openid-client";
+import {Client} from "./oauth/Client";
 
 interface AzureEnvironment {
     name: string;
@@ -55,7 +55,7 @@ export function getAzureEnvironment(config: Config): AzureEnvironment {
 
 export async function azureEnsureWorkspaceUrl(
     config: Config,
-    client: InstanceType<Issuer["Client"]>
+    client: Client
 ): Promise<void> {
     if (!config.azureResourceId && config.host) {
         return;
@@ -64,8 +64,7 @@ export async function azureEnsureWorkspaceUrl(
     const env = getAzureEnvironment(config);
 
     const token = await client.grant({
-        grant_type: "client_credentials",
-        resource: [env.resourceManagerEndpoint],
+        resource: env.resourceManagerEndpoint,
     });
 
     const url = `${env.resourceManagerEndpoint.replace(/\/$/g, "")}${
@@ -73,10 +72,10 @@ export async function azureEnsureWorkspaceUrl(
     }?api-version=2018-04-01`;
 
     try {
-        const reponse = await client.requestResource(url, token, {
+        const response = await client.requestResource(new URL(url), token, {
             method: "GET",
         });
-        const body = JSON.parse(reponse.body?.toString("utf-8") || "");
+        const body = (await response.json()) as any;
 
         if (body.properties?.workspaceUrl) {
             config.host = `https://${body.properties.workspaceUrl}`;

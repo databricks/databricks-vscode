@@ -3,6 +3,7 @@ import {Token} from "../Token";
 import {OidcEndpoints} from "./OidcEndpoints";
 import {Headers, fetch, RequestInit} from "../../fetch";
 import {getBasicAuthHeader} from "../BasicCredentials";
+import * as querystring from "querystring";
 
 export interface ClientOptions {
     clientId: string;
@@ -19,11 +20,21 @@ export class Client {
         options.headers = options.headers ?? {};
     }
 
-    async grant(scope: string): Promise<Token> {
-        const params: Record<string, string> = {
-            grant_type: "client_credentials",
-            scope,
+    async requestResource(
+        url: URL,
+        token: Token,
+        requestOptions: RequestInit
+    ): ReturnType<typeof fetch> {
+        requestOptions.headers = {
+            ...this.options.headers,
+            Authorization: `Bearer ${token.accessToken}`,
         };
+
+        return await this.fetch(url.toString(), requestOptions);
+    }
+
+    async grant(params: Record<string, string | string[]>): Promise<Token> {
+        params.grant_type = "client_credentials";
 
         const requestOptions: RequestInit = {
             method: "POST",
@@ -43,7 +54,11 @@ export class Client {
             };
         }
 
-        requestOptions.body = new URLSearchParams(params).toString();
+        requestOptions.headers = {
+            ...requestOptions.headers,
+            "Content-Type": "application/x-www-form-urlencoded",
+        };
+        requestOptions.body = querystring.stringify(params);
 
         const response = await this.fetch(
             this.issuer.tokenEndpoint.toString(),
@@ -80,7 +95,8 @@ export class Client {
         if (
             !tokenSet ||
             typeof tokenSet.access_token !== "string" ||
-            typeof tokenSet.expires_in !== "number"
+            (typeof tokenSet.expires_in !== "number" &&
+                typeof tokenSet.expires_in !== "string")
         ) {
             throw new Error(
                 `Failed to retrieve token: ${JSON.stringify(tokenSet)}`
@@ -89,7 +105,7 @@ export class Client {
 
         return new Token({
             accessToken: tokenSet.access_token!,
-            expiry: Date.now() + tokenSet.expires_in! * 1000,
+            expiry: Date.now() + parseInt(tokenSet.expires_in!) * 1000,
         });
     }
 

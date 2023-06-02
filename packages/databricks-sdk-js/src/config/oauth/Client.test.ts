@@ -6,6 +6,7 @@ import {Client, ClientOptions} from "./Client";
 import {OidcEndpoints} from "./OidcEndpoints";
 import {Token} from "../Token";
 import {Config} from "../Config";
+import querystring from "querystring";
 
 describe(__filename, () => {
     const issuer = new OidcEndpoints(
@@ -59,7 +60,7 @@ describe(__filename, () => {
                 headers: new Map<string, string>(),
             } as any);
 
-            await client.grant("scope");
+            await client.grant({scope: "scope"});
 
             verify(
                 clientSpy.fetch("https://example.com/token", anything())
@@ -79,7 +80,7 @@ describe(__filename, () => {
                 headers: new Map<string, string>(),
             } as any);
 
-            const token = await client.grant("scope");
+            const token = await client.grant({scope: "scope"});
             assert.ok(token instanceof Token);
             assert.equal(token.accessToken, "access-token");
             assert.ok(token.expiry);
@@ -103,13 +104,18 @@ describe(__filename, () => {
                 } as any;
             });
 
-            await client.grant("scope");
+            await client.grant({scope: "scope"});
 
             const [url, requestOptions] = capture(clientSpy.fetch).last();
             assert.equal(url, "https://example.com/token");
-            assert.equal(
-                (requestOptions as any)?.body.toString(),
-                "grant_type=client_credentials&scope=scope&client_id=client-id&client_secret=client-secret"
+            assert.deepEqual(
+                querystring.parse((requestOptions as any)?.body.toString()),
+                {
+                    grant_type: "client_credentials",
+                    scope: "scope",
+                    client_id: "client-id",
+                    client_secret: "client-secret",
+                }
             );
         });
 
@@ -132,7 +138,7 @@ describe(__filename, () => {
                 } as any;
             });
 
-            await clientWithHeaders.grant("scope");
+            await clientWithHeaders.grant({scope: "scope"});
 
             const [url, requestOptions] = capture(clientSpy.fetch).last();
             assert.equal(url, "https://example.com/token");

@@ -11,7 +11,9 @@ import {
     RequestVisitor,
     Headers,
 } from "./Config";
-import {Issuer, TokenSet} from "openid-client";
+import {Token} from "./Token";
+import {Client} from "./oauth/Client";
+import {Issuer} from "./oauth/Issuer";
 
 export class AzureClientSecretCredentials implements CredentialProvider {
     public name: AuthType = "azure-client-secret";
@@ -29,25 +31,29 @@ export class AzureClientSecretCredentials implements CredentialProvider {
         }
 
         const env = getAzureEnvironment(config);
-        const client = this.getOAuthClient(config);
+        const client = await this.getOAuthClient(config);
+
+        if (!client) {
+            return;
+        }
         await azureEnsureWorkspaceUrl(config, client);
 
         config.logger.info(
             `Generating AAD token for Service Principal (${config.azureClientId})`
         );
 
-        let innerToken: TokenSet | undefined;
-        let cloudToken: TokenSet | undefined;
+        let innerToken: Token | undefined;
+        let cloudToken: Token | undefined;
 
         return async (headers: Headers) => {
-            if (!innerToken || innerToken.expired()) {
+            if (!innerToken || !innerToken.isValid()) {
                 innerToken = await client.grant({
                     grant_type: "client_credentials",
                     resource: [getAzureLoginAppId(config)],
                 });
             }
 
-            if (!cloudToken || cloudToken.expired()) {
+            if (!cloudToken || !cloudToken.isValid()) {
                 cloudToken = await client.grant({
                     grant_type: "client_credentials",
                     resource: [env.serviceManagementEndpoint],
@@ -58,22 +64,28 @@ export class AzureClientSecretCredentials implements CredentialProvider {
                 headers["X-Databricks-Azure-Workspace-Resource-Id"] =
                     config.azureResourceId;
             }
-            headers["Authorization"] = `Bearer ${innerToken.access_token}`;
+            headers["Authorization"] = `Bearer ${innerToken?.accessToken}`;
             headers["X-Databricks-Azure-SP-Management-Token"] =
-                cloudToken.access_token || "";
+                cloudToken?.accessToken || "";
         };
     }
 
-    getOAuthClient(config: Config): InstanceType<Issuer["Client"]> {
+    getOAuthClient(config: Config): Client {
         const env = getAzureEnvironment(config);
-        const issuer = new Issuer({
-            issuer: env.activeDirectoryEndpoint,
-            token_endpoint: `${env.activeDirectoryEndpoint}/${config.azureTenantId}/oauth2/token`,
-        });
+        const issuer = new Issuer(
+            config,
+            new URL(
+                `${env.activeDirectoryEndpoint}/${config.azureTenantId}/oauth2/authorize`
+            ),
+            new URL(
+                `${env.activeDirectoryEndpoint}/${config.azureTenantId}/oauth2/token`
+            )
+        );
 
-        const client = new issuer.Client({
-            client_id: config.azureClientId!,
-            client_secret: config.azureClientSecret!,
+        const client = issuer.getClient({
+            clientId: config.azureClientId!,
+            clientSecret: config.azureClientSecret!,
+            useHeader: true,
         });
 
         return client;

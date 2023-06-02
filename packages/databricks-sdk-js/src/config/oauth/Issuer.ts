@@ -18,24 +18,6 @@ export class Issuer {
             return;
         }
 
-        if (config.isAzure()) {
-            const response = await this.fetch(
-                `${config.host}/oidc/oauth2/v2.0/authorize`,
-                {}
-            );
-
-            const realAuthUrl = response.headers.get("location");
-            if (!realAuthUrl) {
-                return;
-            }
-
-            return new Issuer(
-                config,
-                new URL(realAuthUrl),
-                new URL(realAuthUrl.replace("/authorize", "/token"))
-            );
-        }
-
         if (config.isAccountClient() && config.accountId) {
             const prefix = `${config.host}/oidc/accounts/${config.accountId}`;
             return new Issuer(
