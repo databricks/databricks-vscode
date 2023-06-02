@@ -14,7 +14,6 @@ export enum Events {
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
     SYNC_DESTINATION = "syncDestination",
     SWITCH_TO_WORKSPACE_PROMPT = "switchToWorkspacePrompt",
-    AUTH_TYPE = "authType",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -95,14 +94,6 @@ export class EventTypes {
         comment: "Prompt to switch to workspace was shown",
         selection: {
             comment: "The selection that was made",
-        },
-    };
-    [Events.AUTH_TYPE]: EventType<{
-        authType: AuthType;
-    }> = {
-        comment: "The kind of authentication used by the user",
-        authType: {
-            comment: "The kind of authentication used by the user",
         },
     };
 }
