@@ -1,4 +1,5 @@
 import {
+    ApiError,
     WorkspaceFsDir,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
@@ -119,22 +120,31 @@ export class WorkspaceFsCommands implements Disposable {
         let created: WorkspaceFsEntity | undefined;
 
         if (inputPath !== undefined) {
-            if (!workspaceConfigs.enableFilesInWorkspace) {
-                created = await this.createRepo(
-                    rootPath + "/" + inputPath + REPO_NAME_SUFFIX
-                );
-            } else if (root) {
-                created = await root.mkdir(inputPath);
-            }
-            if (created === undefined) {
-                window.showErrorMessage(`Can't create directory ${inputPath}`);
+            try {
+                if (!workspaceConfigs.enableFilesInWorkspace) {
+                    created = await this.createRepo(
+                        rootPath + "/" + inputPath + REPO_NAME_SUFFIX
+                    );
+                } else if (root) {
+                    created = await root.mkdir(inputPath);
+                }
+            } catch (e: unknown) {
+                if (e instanceof ApiError) {
+                    window.showErrorMessage(
+                        `Can't create directory ${inputPath}: ${e.message}`
+                    );
+                    return;
+                }
             }
         }
 
-        if (created) {
-            this._workspaceFsDataProvider.refresh();
-            return created;
+        if (created === undefined) {
+            window.showErrorMessage(`Can't create directory ${inputPath}`);
+            return;
         }
+
+        this._workspaceFsDataProvider.refresh();
+        return created;
     }
 
     private async createRepo(repoPath: string) {
