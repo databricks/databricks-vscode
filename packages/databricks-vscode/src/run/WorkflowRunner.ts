@@ -1,9 +1,4 @@
-import {
-    Cluster,
-    WorkflowRun,
-    jobs,
-    ApiClientResponseError,
-} from "@databricks/databricks-sdk";
+import {Cluster, WorkflowRun, jobs, ApiError} from "@databricks/databricks-sdk";
 import {basename} from "node:path";
 import {
     CancellationToken,
@@ -210,7 +205,7 @@ export class WorkflowRunner implements Disposable {
                 panel.showStdoutResult(response.logs || "");
             }
         } catch (e: unknown) {
-            if (e instanceof ApiClientResponseError) {
+            if (e instanceof ApiError) {
                 panel.showError({
                     message: e.message,
                     stack:
