@@ -38,13 +38,7 @@ export class CredentialsService {
         request: model.CreateCredentialRequest,
         @context context?: Context
     ): Promise<model.Credential> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/credentials`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/credentials`;
         return (await this.client.request(
             path,
             "POST",
@@ -84,13 +78,7 @@ export class CredentialsService {
         request: model.DeleteCredentialRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/credentials/${request.credentials_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/credentials/${request.credentials_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -119,13 +107,7 @@ export class CredentialsService {
         request: model.GetCredentialRequest,
         @context context?: Context
     ): Promise<model.Credential> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/credentials/${request.credentials_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/credentials/${request.credentials_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -152,13 +134,7 @@ export class CredentialsService {
     private async _list(
         @context context?: Context
     ): Promise<Array<model.Credential>> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/credentials`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/credentials`;
         return (await this.client.request(
             path,
             "GET",
@@ -216,13 +192,7 @@ export class EncryptionKeysService {
         request: model.CreateCustomerManagedKeyRequest,
         @context context?: Context
     ): Promise<model.CustomerManagedKey> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/customer-managed-keys`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys`;
         return (await this.client.request(
             path,
             "POST",
@@ -264,13 +234,7 @@ export class EncryptionKeysService {
         request: model.DeleteEncryptionKeyRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -298,13 +262,7 @@ export class EncryptionKeysService {
         request: model.GetEncryptionKeyRequest,
         @context context?: Context
     ): Promise<model.CustomerManagedKey> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -344,13 +302,7 @@ export class EncryptionKeysService {
     private async _list(
         @context context?: Context
     ): Promise<Array<model.CustomerManagedKey>> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/customer-managed-keys`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys`;
         return (await this.client.request(
             path,
             "GET",
@@ -407,13 +359,7 @@ export class NetworksService {
         request: model.CreateNetworkRequest,
         @context context?: Context
     ): Promise<model.Network> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/networks`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/networks`;
         return (await this.client.request(
             path,
             "POST",
@@ -442,13 +388,7 @@ export class NetworksService {
         request: model.DeleteNetworkRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/networks/${request.network_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/networks/${request.network_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -480,13 +420,7 @@ export class NetworksService {
         request: model.GetNetworkRequest,
         @context context?: Context
     ): Promise<model.Network> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/networks/${request.network_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/networks/${request.network_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -513,13 +447,7 @@ export class NetworksService {
     private async _list(
         @context context?: Context
     ): Promise<Array<model.Network>> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/networks`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/networks`;
         return (await this.client.request(
             path,
             "GET",
@@ -573,13 +501,7 @@ export class PrivateAccessService {
         request: model.UpsertPrivateAccessSettingsRequest,
         @context context?: Context
     ): Promise<model.PrivateAccessSettings> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings`;
         return (await this.client.request(
             path,
             "POST",
@@ -620,13 +542,7 @@ export class PrivateAccessService {
         request: model.DeletePrivateAccesRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings/${request.private_access_settings_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -660,13 +576,7 @@ export class PrivateAccessService {
         request: model.GetPrivateAccesRequest,
         @context context?: Context
     ): Promise<model.PrivateAccessSettings> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings/${request.private_access_settings_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -699,13 +609,7 @@ export class PrivateAccessService {
     private async _list(
         @context context?: Context
     ): Promise<Array<model.PrivateAccessSettings>> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings`;
         return (await this.client.request(
             path,
             "GET",
@@ -732,13 +636,7 @@ export class PrivateAccessService {
         request: model.UpsertPrivateAccessSettingsRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings/${request.private_access_settings_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
         return (await this.client.request(
             path,
             "PUT",
@@ -809,13 +707,7 @@ export class StorageService {
         request: model.CreateStorageConfigurationRequest,
         @context context?: Context
     ): Promise<model.StorageConfiguration> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/storage-configurations`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations`;
         return (await this.client.request(
             path,
             "POST",
@@ -851,13 +743,7 @@ export class StorageService {
         request: model.DeleteStorageRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/storage-configurations/${request.storage_configuration_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations/${request.storage_configuration_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -885,13 +771,7 @@ export class StorageService {
         request: model.GetStorageRequest,
         @context context?: Context
     ): Promise<model.StorageConfiguration> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/storage-configurations/${request.storage_configuration_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations/${request.storage_configuration_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -918,13 +798,7 @@ export class StorageService {
     private async _list(
         @context context?: Context
     ): Promise<Array<model.StorageConfiguration>> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/storage-configurations`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations`;
         return (await this.client.request(
             path,
             "GET",
@@ -978,13 +852,7 @@ export class VpcEndpointsService {
         request: model.CreateVpcEndpointRequest,
         @context context?: Context
     ): Promise<model.VpcEndpoint> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/vpc-endpoints`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints`;
         return (await this.client.request(
             path,
             "POST",
@@ -1024,13 +892,7 @@ export class VpcEndpointsService {
         request: model.DeleteVpcEndpointRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -1070,13 +932,7 @@ export class VpcEndpointsService {
         request: model.GetVpcEndpointRequest,
         @context context?: Context
     ): Promise<model.VpcEndpoint> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -1107,13 +963,7 @@ export class VpcEndpointsService {
     private async _list(
         @context context?: Context
     ): Promise<Array<model.VpcEndpoint>> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/vpc-endpoints`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints`;
         return (await this.client.request(
             path,
             "GET",
@@ -1167,13 +1017,7 @@ export class WorkspacesService {
         request: model.CreateWorkspaceRequest,
         @context context?: Context
     ): Promise<model.Workspace> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/workspaces`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces`;
         return (await this.client.request(
             path,
             "POST",
@@ -1264,13 +1108,7 @@ export class WorkspacesService {
         request: model.DeleteWorkspaceRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -1304,13 +1142,7 @@ export class WorkspacesService {
         request: model.GetWorkspaceRequest,
         @context context?: Context
     ): Promise<model.Workspace> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -1350,13 +1182,7 @@ export class WorkspacesService {
     private async _list(
         @context context?: Context
     ): Promise<Array<model.Workspace>> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/workspaces`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces`;
         return (await this.client.request(
             path,
             "GET",
@@ -1384,13 +1210,7 @@ export class WorkspacesService {
         request: model.UpdateWorkspaceRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
         return (await this.client.request(
             path,
             "PATCH",

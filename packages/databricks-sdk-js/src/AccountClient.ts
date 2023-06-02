@@ -282,6 +282,12 @@ export class AccountClient {
         }
 
         this.config = config as Config;
+
+        this.config.ensureResolved();
+        if (!this.config.accountId || !this.config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
         this.apiClient = new ApiClient(this.config, options);
 
         this.billableUsage = new billing.BillableUsageService(this.apiClient);
