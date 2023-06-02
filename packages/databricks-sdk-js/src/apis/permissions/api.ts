@@ -164,13 +164,7 @@ export class WorkspaceAssignmentService {
         request: model.DeleteWorkspaceAssignmentRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/permissionassignments/principals/${request.principal_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments/principals/${request.principal_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -198,13 +192,7 @@ export class WorkspaceAssignmentService {
         request: model.GetWorkspaceAssignmentRequest,
         @context context?: Context
     ): Promise<model.WorkspacePermissions> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/permissionassignments/permissions`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments/permissions`;
         return (await this.client.request(
             path,
             "GET",
@@ -232,13 +220,7 @@ export class WorkspaceAssignmentService {
         request: model.ListWorkspaceAssignmentRequest,
         @context context?: Context
     ): Promise<model.PermissionAssignments> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/permissionassignments`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments`;
         return (await this.client.request(
             path,
             "GET",
@@ -270,13 +252,7 @@ export class WorkspaceAssignmentService {
         request: model.UpdateWorkspaceAssignments,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const config = this.client.config;
-        await config.ensureResolved();
-        if (!config.accountId || !config.isAccountClient()) {
-            throw new Error("invalid Databricks Account configuration");
-        }
-
-        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/permissionassignments/principals/${request.principal_id}`;
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/permissionassignments/principals/${request.principal_id}`;
         return (await this.client.request(
             path,
             "PUT",

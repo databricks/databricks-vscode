@@ -9,8 +9,6 @@ import {
 } from "./ConfigAttributes";
 import {DefaultCredentials} from "./DefaultCredentials";
 import {KnownConfigLoader} from "./KnownConfigLoader";
-import {OidcEndpoints} from "./oauth/OidcEndpoints";
-import fetch from "node-fetch-commonjs";
 
 export class ConfigError extends Error {
     constructor(readonly baseMessage: string, readonly config: Config) {
@@ -63,8 +61,7 @@ export type AuthType =
     | "azure-cli"
     | "google-id"
     | "metadata-service"
-    | "databricks-cli"
-    | "oauth-m2m";
+    | "databricks-cli";
 
 export type AttributeName = keyof Omit<
     ConfigOptions,
@@ -196,21 +193,6 @@ export class Config {
         auth: "azure",
     })
     public azureLoginAppId?: string;
-
-    @attribute({
-        name: "client_id",
-        env: "DATABRICKS_CLIENT_ID",
-        auth: "oauth",
-    })
-    public clientId?: string;
-
-    @attribute({
-        name: "client_secret",
-        env: "DATABRICKS_CLIENT_SECRET",
-        auth: "oauth",
-        sensitive: true,
-    })
-    public clientSecret?: string;
 
     /** Path to the 'databricks' CLI */
     @attribute({
@@ -382,63 +364,5 @@ export class Config {
             throw e;
         }
         this.authType = this.credentials.name;
-    }
-
-    async getOidcEndpoints(): Promise<OidcEndpoints | undefined> {
-        if (!this.host) {
-            return;
-        }
-
-        if (this.isAzure()) {
-            const response = await this.fetch(
-                `${this.host}/oidc/oauth2/v2.0/authorize`,
-                {}
-            );
-
-            const realAuthUrl = response.headers.get("location");
-            if (!realAuthUrl) {
-                return;
-            }
-
-            return new OidcEndpoints(
-                this,
-                new URL(realAuthUrl),
-                new URL(realAuthUrl.replace("/authorize", "/token"))
-            );
-        }
-
-        if (this.isAccountClient() && this.accountId) {
-            const prefix = `${this.host}/oidc/accounts/${this.accountId}`;
-            return new OidcEndpoints(
-                this,
-                new URL(`${prefix}/v1/authorize`),
-                new URL(`${prefix}/v1/token`)
-            );
-        }
-
-        const oidcEndpoint = `${this.host}/oidc/.well-known/oauth-authorization-server`;
-        const response = await this.fetch(oidcEndpoint, {});
-        if (response.status !== 200) {
-            return;
-        }
-
-        const json = (await response.json()) as any;
-        if (
-            !json ||
-            typeof json.authorization_endpoint !== "string" ||
-            typeof json.token_endpoint !== "string"
-        ) {
-            return;
-        }
-
-        return new OidcEndpoints(
-            this,
-            new URL(json.authorization_endpoint),
-            new URL(json.token_endpoint)
-        );
-    }
-
-    async fetch(url: string, options: any): ReturnType<typeof fetch> {
-        return await fetch(url, options);
     }
 }
