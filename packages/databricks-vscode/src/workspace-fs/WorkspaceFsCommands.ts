@@ -133,6 +133,7 @@ export class WorkspaceFsCommands implements Disposable {
                     await window.showErrorMessage(
                         `Can't create directory ${inputPath}: ${e.message}`
                     );
+                    return;
                 }
             }
         }
