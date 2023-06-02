@@ -4,7 +4,7 @@
 
 ## <small>0.3.14 (2023-06-02)</small>
 
--   Bump dependencies (#728) ([523acf7](https://github.com/databricks/databricks-vscode/commit/523acf7)), closes [#728](https://github.com/databricks/databricks-vscode/issues/728)
+-   Bump dependencies
 
 # Release: v0.3.13
 
