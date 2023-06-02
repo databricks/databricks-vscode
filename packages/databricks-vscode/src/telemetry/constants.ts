@@ -1,5 +1,4 @@
-import {AuthType} from "../configuration/auth/AuthProvider";
-
+import {AuthType} from "@databricks/databricks-sdk";
 /** The production application insights configuration string for Databricks. */
 export const PROD_APP_INSIGHTS_CONFIGURATION_STRING =
     "InstrumentationKey=ebe191c5-f06b-4189-b68c-34fb5fbdb3f0;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
@@ -15,6 +14,7 @@ export enum Events {
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
     SYNC_DESTINATION = "syncDestination",
     SWITCH_TO_WORKSPACE_PROMPT = "switchToWorkspacePrompt",
+    AUTH_TYPE = "authType",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -95,6 +95,14 @@ export class EventTypes {
         comment: "Prompt to switch to workspace was shown",
         selection: {
             comment: "The selection that was made",
+        },
+    };
+    [Events.AUTH_TYPE]: EventType<{
+        authType: AuthType;
+    }> = {
+        comment: "The kind of authentication used by the user",
+        authType: {
+            comment: "The kind of authentication used by the user",
         },
     };
 }
