@@ -1,4 +1,4 @@
-import {WorkspaceConf} from "..";
+import {ApiError, WorkspaceConf} from "..";
 import assert from "assert";
 
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
@@ -13,8 +13,8 @@ describe(__filename, function () {
         try {
             const wsConf = new WorkspaceConf(integSetup.client.apiClient);
             await wsConf.getStatus(["enableProjectTypeInWorkspace"]);
-        } catch (e: any) {
-            if (e.code === 403) {
+        } catch (e: unknown) {
+            if (e instanceof ApiError && e.statusCode === 403) {
                 // eslint-disable-next-line no-console
                 console.log(
                     "Workspace conf tests require administrator permissions"

@@ -9,27 +9,12 @@ import {Context} from "./context";
 import {Headers, Config} from "./config/Config";
 import retry, {RetriableError} from "./retries/retries";
 import Time, {TimeUnits} from "./retries/Time";
+import {HttpError, parseErrorFromResponse} from "./apierr";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sdkVersion = require("../package.json").version;
 
 type HttpMethod = "POST" | "GET" | "DELETE" | "PATCH" | "PUT";
-
-export class HttpError extends Error {
-    constructor(readonly message: string, readonly code: number) {
-        super(message);
-    }
-}
-
-export class ApiClientResponseError extends Error {
-    constructor(
-        readonly message: string,
-        readonly response: any,
-        readonly error_code?: string
-    ) {
-        super(message);
-    }
-}
 
 function logAndReturnError(
     url: URL,
@@ -131,13 +116,14 @@ export class ApiClient {
             }
         }
 
-        const response = await retry<Awaited<ReturnType<typeof fetch>>>({
+        const responseText = await retry<string>({
             timeout: new Time(
                 this.config.retryTimeoutSeconds || 300,
                 TimeUnits.seconds
             ),
             fn: async () => {
                 let response;
+                let body;
                 try {
                     const controller = new AbortController();
                     const signal = controller.signal;
@@ -152,6 +138,9 @@ export class ApiClient {
                         );
                     }
                     response = await responsePromise;
+                    body = new TextDecoder().decode(
+                        await response.arrayBuffer()
+                    );
                 } catch (e: any) {
                     const err =
                         e.code && e.code === "ENOTFOUND"
@@ -163,55 +152,28 @@ export class ApiClient {
                     throw logAndReturnError(url, options, "", err, context);
                 }
 
-                switch (response.status) {
-                    case 500:
-                    case 429:
+                if (!response.ok) {
+                    const err = parseErrorFromResponse(
+                        response.status,
+                        response.statusText,
+                        body
+                    );
+                    if (err.isRetryable()) {
                         throw new RetriableError();
-
-                    default:
-                        break;
+                    } else {
+                        throw logAndReturnError(
+                            url,
+                            options,
+                            response,
+                            err,
+                            context
+                        );
+                    }
                 }
-                return response;
+
+                return body;
             },
         });
-
-        let responseText: string;
-        try {
-            const responseBody = await response.arrayBuffer();
-            responseText = new TextDecoder().decode(responseBody);
-        } catch (e: any) {
-            logAndReturnError(url, options, "", e, context);
-            throw new ApiClientResponseError(
-                `Can't parse response from ${url.toString()}`,
-                ""
-            );
-        }
-
-        // throw error if the URL is incorrect and we get back an HTML page
-        if (response.headers.get("content-type")?.match("text/html")) {
-            // When the AAD tenant is not configured correctly, the response is a HTML page with a title like this:
-            // "Error 400 io.jsonwebtoken.IncorrectClaimException: Expected iss claim to be: https://sts.windows.net/aaaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaa/, but was: https://sts.windows.net/bbbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbb/."
-            const m = responseText.match(/<title>(Error \d+.*?)<\/title>/);
-            let error: HttpError;
-            if (m) {
-                error = new HttpError(m[1], response.status);
-            } else {
-                error = new HttpError(
-                    `Can't connect to ${url.toString()}`,
-                    response.status
-                );
-            }
-
-            throw logAndReturnError(url, options, response, error, context);
-        }
-
-        // TODO proper error handling
-        if (!response.ok) {
-            const err = responseText.match(/invalid access token/i)
-                ? new HttpError("Invalid access token", response.status)
-                : new HttpError(responseText, response.status);
-            throw logAndReturnError(url, options, responseText, err, context);
-        }
 
         let responseJson: any;
         try {
@@ -219,35 +181,9 @@ export class ApiClient {
                 responseText.length === 0 ? {} : JSON.parse(responseText);
         } catch (e) {
             logAndReturnError(url, options, responseText, e, context);
-            throw new ApiClientResponseError(responseText, e);
+            throw new Error(`Can't parse reponse as JSON: ${responseText}`);
         }
 
-        if ("error" in responseJson) {
-            logAndReturnError(
-                url,
-                options,
-                responseJson,
-                responseJson.error,
-                context
-            );
-            throw new ApiClientResponseError(responseJson.error, responseJson);
-        }
-
-        if ("error_code" in responseJson) {
-            const message =
-                responseJson.message || `HTTP error ${responseJson.error_code}`;
-            throw logAndReturnError(
-                url,
-                options,
-                responseJson,
-                new ApiClientResponseError(
-                    message,
-                    responseJson,
-                    responseJson.error_code
-                ),
-                context
-            );
-        }
         context?.logger?.debug(url.toString(), {
             request: options,
             response: responseJson,
