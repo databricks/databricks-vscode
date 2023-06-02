@@ -6,11 +6,12 @@ import {
     CredentialProvider,
     RequestVisitor,
 } from "./Config";
-import {Token, refreshableTokenProvider} from "./Token";
-import {Issuer} from "openid-client";
+import {refreshableTokenProvider} from "./Token";
+import {Client} from "./oauth/Client";
+import {Issuer} from "./oauth/Issuer";
 
 /**
- * M2mCredentials provides OAuth2.0 client credentials flow for service principals
+ * M2mCredentials provides OAuth 2.0 client credentials flow for service principals
  */
 export class M2mCredentials implements CredentialProvider {
     public name: AuthType = "oauth-m2m";
@@ -20,12 +21,16 @@ export class M2mCredentials implements CredentialProvider {
             return;
         }
 
-        let client: InstanceType<Issuer["Client"]>;
+        let client: Client;
         try {
-            const issuer = await getIssuer(config);
-            client = new issuer.Client({
-                client_id: config.clientId,
-                client_secret: config.clientSecret,
+            const issuer = await Issuer.discover(config);
+            if (!issuer) {
+                throw new Error("Unable to discover issuer");
+            }
+            client = await issuer?.getClient({
+                clientId: config.clientId,
+                clientSecret: config.clientSecret,
+                useHeader: true,
             });
         } catch (error: any) {
             throw new ConfigError(`oidc: ${error.message}`, config);
@@ -36,29 +41,7 @@ export class M2mCredentials implements CredentialProvider {
         );
 
         return refreshableTokenProvider(async () => {
-            const tokenSet = await client.grant({
-                grant_type: "client_credentials",
-                scope: "all-apis",
-            });
-
-            return new Token({
-                accessToken: tokenSet.access_token!,
-                expiry: tokenSet.expires_at! * 1000,
-            });
+            return await client.grant("all-apis");
         });
     }
-}
-
-async function getIssuer(config: Config): Promise<Issuer> {
-    if (config.isAccountClient() && config.accountId) {
-        const prefix = `${config.host}/oidc/accounts/${config.accountId}`;
-        return new Issuer({
-            issuer: prefix,
-            authorization_endpoint: `${prefix}/v1/authorize`,
-            token_endpoint: `${prefix}/v1/token`,
-            token_endpoint_auth_methods_supported: ["client_secret_basic"],
-        });
-    }
-
-    return await Issuer.discover(`${config.host!}/oidc`);
 }
