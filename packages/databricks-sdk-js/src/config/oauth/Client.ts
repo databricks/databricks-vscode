@@ -33,7 +33,9 @@ export class Client {
         return await this.fetch(url.toString(), requestOptions);
     }
 
-    async grant(params: Record<string, string | string[]>): Promise<Token> {
+    async exchangeToken(
+        params: Record<string, string | string[]>
+    ): Promise<Token> {
         params.grant_type = "client_credentials";
 
         const requestOptions: RequestInit = {

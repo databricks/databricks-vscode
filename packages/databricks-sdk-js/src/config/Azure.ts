@@ -61,9 +61,13 @@ export async function azureEnsureWorkspaceUrl(
         return;
     }
 
+    if (config.isAccountClient()) {
+        return;
+    }
+
     const env = getAzureEnvironment(config);
 
-    const token = await client.grant({
+    const token = await client.exchangeToken({
         resource: env.resourceManagerEndpoint,
     });
 

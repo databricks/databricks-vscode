@@ -4,16 +4,11 @@ import {
     getAzureEnvironment,
     getAzureLoginAppId,
 } from "./Azure";
-import {
-    AuthType,
-    Config,
-    CredentialProvider,
-    RequestVisitor,
-    Headers,
-} from "./Config";
+import {AuthType, Config, CredentialProvider, RequestVisitor} from "./Config";
 import {Token} from "./Token";
 import {Client} from "./oauth/Client";
-import {Issuer} from "./oauth/Issuer";
+import {OidcEndpoints} from "./oauth/OidcEndpoints";
+import {Headers} from "../fetch";
 
 export class AzureClientSecretCredentials implements CredentialProvider {
     public name: AuthType = "azure-client-secret";
@@ -47,14 +42,14 @@ export class AzureClientSecretCredentials implements CredentialProvider {
 
         return async (headers: Headers) => {
             if (!innerToken || !innerToken.isValid()) {
-                innerToken = await client.grant({
+                innerToken = await client.exchangeToken({
                     grant_type: "client_credentials",
                     resource: [getAzureLoginAppId(config)],
                 });
             }
 
             if (!cloudToken || !cloudToken.isValid()) {
-                cloudToken = await client.grant({
+                cloudToken = await client.exchangeToken({
                     grant_type: "client_credentials",
                     resource: [env.serviceManagementEndpoint],
                 });
@@ -72,7 +67,7 @@ export class AzureClientSecretCredentials implements CredentialProvider {
 
     getOAuthClient(config: Config): Client {
         const env = getAzureEnvironment(config);
-        const issuer = new Issuer(
+        const issuer = new OidcEndpoints(
             config,
             new URL(
                 `${env.activeDirectoryEndpoint}/${config.azureTenantId}/oauth2/authorize`

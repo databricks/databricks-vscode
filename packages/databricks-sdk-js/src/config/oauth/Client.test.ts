@@ -60,7 +60,7 @@ describe(__filename, () => {
                 headers: new Map<string, string>(),
             } as any);
 
-            await client.grant({scope: "scope"});
+            await client.exchangeToken({scope: "scope"});
 
             verify(
                 clientSpy.fetch("https://example.com/token", anything())
@@ -80,7 +80,7 @@ describe(__filename, () => {
                 headers: new Map<string, string>(),
             } as any);
 
-            const token = await client.grant({scope: "scope"});
+            const token = await client.exchangeToken({scope: "scope"});
             assert.ok(token instanceof Token);
             assert.equal(token.accessToken, "access-token");
             assert.ok(token.expiry);
@@ -104,7 +104,7 @@ describe(__filename, () => {
                 } as any;
             });
 
-            await client.grant({scope: "scope"});
+            await client.exchangeToken({scope: "scope"});
 
             const [url, requestOptions] = capture(clientSpy.fetch).last();
             assert.equal(url, "https://example.com/token");
@@ -138,7 +138,7 @@ describe(__filename, () => {
                 } as any;
             });
 
-            await clientWithHeaders.grant({scope: "scope"});
+            await clientWithHeaders.exchangeToken({scope: "scope"});
 
             const [url, requestOptions] = capture(clientSpy.fetch).last();
             assert.equal(url, "https://example.com/token");

@@ -111,20 +111,20 @@ describe(__filename, () => {
         it("should return an instance of Issuer for account client", async () => {
             const cfg = new Config({
                 ...config,
-                isAccountClient: () => true,
                 accountId: "123",
             });
+            cfg.isAccountClient = () => true;
 
             const result = await cfg.getOidcEndpoints();
 
             assert.ok(result instanceof OidcEndpoints);
             assert.deepStrictEqual(
-                result.authorizationEndpoint,
-                new URL("https://example.com/oidc/accounts/123/v1/authorize")
+                result.authorizationEndpoint.toString(),
+                "https://example.com/oidc/accounts/123/v1/authorize"
             );
             assert.deepStrictEqual(
-                result.tokenEndpoint,
-                new URL("https://example.com/oidc/accounts/123/v1/token")
+                result.tokenEndpoint.toString(),
+                "https://example.com/oidc/accounts/123/v1/token"
             );
         });
     });

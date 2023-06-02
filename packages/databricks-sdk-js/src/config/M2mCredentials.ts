@@ -41,7 +41,7 @@ export class M2mCredentials implements CredentialProvider {
         );
 
         return refreshableTokenProvider(async () => {
-            return await client.grant({scope: "all-apis"});
+            return await client.exchangeToken({scope: "all-apis"});
         });
     }
 }
