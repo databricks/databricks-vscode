@@ -1,3 +1,17 @@
+# Release: v0.3.14
+
+## packages/databricks-sdk-js
+
+## <small>0.3.14 (2023-06-02)</small>
+
+-   SDK: Implement OAuth M2M (#732) ([4521990](https://github.com/databricks/databricks-vscode/commit/4521990)), closes [#732](https://github.com/databricks/databricks-vscode/issues/732) [/github.com/databricks/databricks-sdk-go/blob/main/config/auth_m2m.go#L19](https://github.com//github.com/databricks/databricks-sdk-go/blob/main/config/auth_m2m.go/issues/L19)
+-   SDK: Implement pagination (#652) ([f610101](https://github.com/databricks/databricks-vscode/commit/f610101)), closes [#652](https://github.com/databricks/databricks-vscode/issues/652) [/github.com/databricks/databricks-sdk-go/blob/af881ce35a2c6d765eb1c1009c37994e632cea27/.codegen/api.go.tmpl#L100-L152](https://github.com//github.com/databricks/databricks-sdk-go/blob/af881ce35a2c6d765eb1c1009c37994e632cea27/.codegen/api.go.tmpl/issues/L100-L152)
+-   SDK: Port error handling code from GO SDK (#731) ([982d77d](https://github.com/databricks/databricks-vscode/commit/982d77d)), closes [#731](https://github.com/databricks/databricks-vscode/issues/731)
+-   Bump @types/node from 18.16.4 to 20.0.0 (#694) ([383e1d2](https://github.com/databricks/databricks-vscode/commit/383e1d2)), closes [#694](https://github.com/databricks/databricks-vscode/issues/694) [#689](https://github.com/databricks/databricks-vscode/issues/689) [#690](https://github.com/databricks/databricks-vscode/issues/690)
+-   Bump dependencies (#728) ([523acf7](https://github.com/databricks/databricks-vscode/commit/523acf7)), closes [#728](https://github.com/databricks/databricks-vscode/issues/728)
+-   DB Connect Unified Auth Support (#705) ([68a3297](https://github.com/databricks/databricks-vscode/commit/68a3297)), closes [#705](https://github.com/databricks/databricks-vscode/issues/705)
+-   Rename bricks to databricks (#721) ([de78f1c](https://github.com/databricks/databricks-vscode/commit/de78f1c)), closes [#721](https://github.com/databricks/databricks-vscode/issues/721)
+
 # Release: v0.3.13
 
 ## packages/databricks-sdk-js

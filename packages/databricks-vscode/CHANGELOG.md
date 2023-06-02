@@ -1,3 +1,21 @@
+# Release: v0.3.14
+
+## packages/databricks-vscode
+
+## <small>0.3.14 (2023-06-02)</small>
+
+-   SDK: Fix error handling when repos limit is reached (#727) ([d1c002c](https://github.com/databricks/databricks-vscode/commit/d1c002c)), closes [#727](https://github.com/databricks/databricks-vscode/issues/727)
+-   SDK: Implement pagination (#652) ([f610101](https://github.com/databricks/databricks-vscode/commit/f610101)), closes [#652](https://github.com/databricks/databricks-vscode/issues/652) [/github.com/databricks/databricks-sdk-go/blob/af881ce35a2c6d765eb1c1009c37994e632cea27/.codegen/api.go.tmpl#L100-L152](https://github.com//github.com/databricks/databricks-sdk-go/blob/af881ce35a2c6d765eb1c1009c37994e632cea27/.codegen/api.go.tmpl/issues/L100-L152)
+-   SDK: Port error handling code from GO SDK (#731) ([982d77d](https://github.com/databricks/databricks-vscode/commit/982d77d)), closes [#731](https://github.com/databricks/databricks-vscode/issues/731)
+-   Telemety: Record SDK AuthType instead of VSCode AuthType (#738) ([0fd1671](https://github.com/databricks/databricks-vscode/commit/0fd1671)), closes [#738](https://github.com/databricks/databricks-vscode/issues/738)
+-   Bump @types/node from 18.16.4 to 20.0.0 (#694) ([383e1d2](https://github.com/databricks/databricks-vscode/commit/383e1d2)), closes [#694](https://github.com/databricks/databricks-vscode/issues/694) [#689](https://github.com/databricks/databricks-vscode/issues/689) [#690](https://github.com/databricks/databricks-vscode/issues/690)
+-   Bump dependencies (#728) ([523acf7](https://github.com/databricks/databricks-vscode/commit/523acf7)), closes [#728](https://github.com/databricks/databricks-vscode/issues/728)
+-   DB Connect Unified Auth Support (#705) ([68a3297](https://github.com/databricks/databricks-vscode/commit/68a3297)), closes [#705](https://github.com/databricks/databricks-vscode/issues/705)
+-   Improve error message to switch from repos to workspace FS (#730) ([b2c726a](https://github.com/databricks/databricks-vscode/commit/b2c726a)), closes [#730](https://github.com/databricks/databricks-vscode/issues/730)
+-   Rename bricks to databricks (#721) ([de78f1c](https://github.com/databricks/databricks-vscode/commit/de78f1c)), closes [#721](https://github.com/databricks/databricks-vscode/issues/721)
+-   Telemetry for sync destination type (#735) ([196e16c](https://github.com/databricks/databricks-vscode/commit/196e16c)), closes [#735](https://github.com/databricks/databricks-vscode/issues/735)
+-   IDE: Properly encode calls to python (#725) ([d1dc9f8](https://github.com/databricks/databricks-vscode/commit/d1dc9f8)), closes [#725](https://github.com/databricks/databricks-vscode/issues/725)
+
 # Release: v0.3.13
 
 ## packages/databricks-vscode
