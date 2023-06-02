@@ -130,7 +130,7 @@ export class WorkspaceFsCommands implements Disposable {
                 }
             } catch (e: unknown) {
                 if (e instanceof ApiError) {
-                    await window.showErrorMessage(
+                    window.showErrorMessage(
                         `Can't create directory ${inputPath}: ${e.message}`
                     );
                     return;
@@ -139,9 +139,7 @@ export class WorkspaceFsCommands implements Disposable {
         }
 
         if (created === undefined) {
-            await window.showErrorMessage(
-                `Can't create directory ${inputPath}`
-            );
+            window.showErrorMessage(`Can't create directory ${inputPath}`);
             return;
         }
 
