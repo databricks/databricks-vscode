@@ -10,29 +10,21 @@ import {
 } from "./Config";
 import {MetadataServiceCredentials} from "./MetadataServiceCredentials";
 import {PatCredentials} from "./PatCredentials";
-import {M2mCredentials} from "./M2mCredentials";
 
 export class DefaultCredentials implements CredentialProvider {
     public name: AuthType = "default";
 
     async configure(config: Config): Promise<RequestVisitor> {
         const defaultChain: Array<CredentialProvider> = [
+            new MetadataServiceCredentials(),
             new PatCredentials(),
             new BasicCredentials(),
-            new M2mCredentials(),
             new DatabricksCliCredentials(),
-            new MetadataServiceCredentials(),
-
-            // Attempt to configure auth from most specific to most generic (the Azure CLI).
-            // new AzureMsiCredentials(),
             // new AzureClientSecretCredentials(),
             new AzureCliCredentials(),
-
-            // Attempt to configure auth from most specific to most generic (Google Application Default Credentials).
             // new GoogleDefaultCredentials(),
             // new GoogleCredentials(),
         ];
-
         for (const p of defaultChain) {
             if (config.authType && p.name !== config.authType) {
                 config.logger.info(
