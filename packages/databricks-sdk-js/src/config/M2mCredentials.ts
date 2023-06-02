@@ -8,7 +8,6 @@ import {
 } from "./Config";
 import {refreshableTokenProvider} from "./Token";
 import {Client} from "./oauth/Client";
-import {Issuer} from "./oauth/Issuer";
 
 /**
  * M2mCredentials provides OAuth 2.0 client credentials flow for service principals
@@ -23,11 +22,11 @@ export class M2mCredentials implements CredentialProvider {
 
         let client: Client;
         try {
-            const issuer = await Issuer.discover(config);
-            if (!issuer) {
-                throw new Error("Unable to discover issuer");
+            const endpoints = await config.getOidcEndpoints();
+            if (!endpoints) {
+                throw new Error("Unable to discover OIDC endpoints");
             }
-            client = await issuer?.getClient({
+            client = await endpoints?.getClient({
                 clientId: config.clientId,
                 clientSecret: config.clientSecret,
                 useHeader: true,

@@ -3,12 +3,12 @@ import assert from "assert";
 import {when, spy, anything, verify, capture} from "ts-mockito";
 
 import {Client, ClientOptions} from "./Client";
-import {Issuer} from "./Issuer";
+import {OidcEndpoints} from "./OidcEndpoints";
 import {Token} from "../Token";
 import {Config} from "../Config";
 
 describe(__filename, () => {
-    const issuer = new Issuer(
+    const issuer = new OidcEndpoints(
         new Config({
             host: "https://example.com",
             isAzure: () => false,

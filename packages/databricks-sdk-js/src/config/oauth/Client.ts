@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {Token} from "../Token";
-import {Issuer} from "./Issuer";
+import {OidcEndpoints} from "./OidcEndpoints";
 import {Headers} from "../Config";
 import fetch from "node-fetch-commonjs";
 import {RequestInit} from "node-fetch-commonjs";
@@ -15,7 +15,7 @@ export interface ClientOptions {
 }
 
 export class Client {
-    constructor(private issuer: Issuer, private options: ClientOptions) {
+    constructor(private issuer: OidcEndpoints, private options: ClientOptions) {
         options.useParams = options.useParams ?? false;
         options.useHeader = options.useHeader ?? false;
         options.headers = options.headers ?? {};

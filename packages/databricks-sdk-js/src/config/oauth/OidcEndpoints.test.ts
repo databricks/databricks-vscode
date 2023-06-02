@@ -2,7 +2,7 @@
 import assert from "assert";
 import {when, spy, anything} from "ts-mockito";
 
-import {Issuer} from "./Issuer";
+import {OidcEndpoints} from "./OidcEndpoints";
 import {Client} from "./Client";
 import {Config} from "../Config";
 
@@ -17,17 +17,25 @@ describe(__filename, () => {
     const authorizationEndpoint = new URL("https://example.com/authorize");
     const tokenEndpoint = new URL("https://example.com/token");
 
-    const issuer = new Issuer(config, authorizationEndpoint, tokenEndpoint);
-
     describe("constructor", () => {
+        const endpoints = new OidcEndpoints(
+            config,
+            authorizationEndpoint,
+            tokenEndpoint
+        );
         it("should create an instance of Issuer", () => {
-            assert.ok(issuer instanceof Issuer);
+            assert.ok(endpoints instanceof OidcEndpoints);
         });
     });
 
     describe("getClient", () => {
+        const endpoints = new OidcEndpoints(
+            config,
+            authorizationEndpoint,
+            tokenEndpoint
+        );
         it("should return an instance of Client", () => {
-            const client = issuer.getClient({
+            const client = endpoints.getClient({
                 clientId: "client-id",
                 clientSecret: "client-secret",
             });
@@ -37,7 +45,8 @@ describe(__filename, () => {
 
     describe("discover", () => {
         it("should return undefined if config.host is not set", async () => {
-            const result = await Issuer.discover(new Config({}));
+            const config = new Config({});
+            const result = await config.getOidcEndpoints();
 
             assert.strictEqual(result, undefined);
         });
@@ -49,18 +58,18 @@ describe(__filename, () => {
                 ]),
             };
 
-            when(spy(Issuer as any).fetch(anything(), anything())).thenResolve(
+            const cfg = new Config({
+                ...config,
+            });
+            when(spy(cfg as any).fetch(anything(), anything())).thenResolve(
                 response as any
             );
 
-            const result = await Issuer.discover(
-                new Config({
-                    ...config,
-                    isAzure: () => true,
-                })
-            );
+            cfg.isAzure = () => true;
+            const result = await cfg.getOidcEndpoints();
+            //console.log(result, "result");
 
-            assert.ok(result instanceof Issuer);
+            assert.ok(result instanceof OidcEndpoints);
             assert.deepStrictEqual(
                 result.authorizationEndpoint.href,
                 "https://example.com/real-auth-url/authorize"
@@ -80,13 +89,13 @@ describe(__filename, () => {
                 }),
             };
 
-            when(spy(Issuer as any).fetch(anything(), anything())).thenResolve(
+            when(spy(config as any).fetch(anything(), anything())).thenResolve(
                 response as any
             );
 
-            const result = await Issuer.discover(config);
+            const result = await config.getOidcEndpoints();
 
-            assert.ok(result instanceof Issuer);
+            assert.ok(result instanceof OidcEndpoints);
             assert.deepStrictEqual(
                 result.authorizationEndpoint,
                 new URL("https://example.com/authorize")
@@ -98,15 +107,15 @@ describe(__filename, () => {
         });
 
         it("should return an instance of Issuer for account client", async () => {
-            const result = await Issuer.discover(
-                new Config({
-                    ...config,
-                    isAccountClient: () => true,
-                    accountId: "123",
-                })
-            );
+            const cfg = new Config({
+                ...config,
+                isAccountClient: () => true,
+                accountId: "123",
+            });
 
-            assert.ok(result instanceof Issuer);
+            const result = await cfg.getOidcEndpoints();
+
+            assert.ok(result instanceof OidcEndpoints);
             assert.deepStrictEqual(
                 result.authorizationEndpoint,
                 new URL("https://example.com/oidc/accounts/123/v1/authorize")
