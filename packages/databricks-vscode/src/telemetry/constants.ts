@@ -1,5 +1,4 @@
-import {AuthType} from "../configuration/auth/AuthProvider";
-
+import {AuthType} from "@databricks/databricks-sdk";
 /** The production application insights configuration string for Databricks. */
 export const PROD_APP_INSIGHTS_CONFIGURATION_STRING =
     "InstrumentationKey=ebe191c5-f06b-4189-b68c-34fb5fbdb3f0;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
@@ -13,6 +12,8 @@ export enum Events {
     COMMAND_EXECUTION = "commandExecution",
     EXTENSION_ACTIVATED = "extensionActivation",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
+    SYNC_DESTINATION = "syncDestination",
+    SWITCH_TO_WORKSPACE_PROMPT = "switchToWorkspacePrompt",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -77,6 +78,22 @@ export class EventTypes {
         comment: "State of ConnectionManager has changed",
         newState: {
             comment: "The new state of the connection",
+        },
+    };
+    [Events.SYNC_DESTINATION]: EventType<{
+        destination: string;
+    }> = {
+        comment: "Sync destination was selected",
+        destination: {
+            comment: "The destination that was selected",
+        },
+    };
+    [Events.SWITCH_TO_WORKSPACE_PROMPT]: EventType<{
+        selection: string;
+    }> = {
+        comment: "Prompt to switch to workspace was shown",
+        selection: {
+            comment: "The selection that was made",
         },
     };
 }
