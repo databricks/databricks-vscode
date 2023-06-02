@@ -181,7 +181,7 @@ export class ApiClient {
                 responseText.length === 0 ? {} : JSON.parse(responseText);
         } catch (e) {
             logAndReturnError(url, options, responseText, e, context);
-            throw new Error(`Can't parse reposne as JSON: ${responseText}`);
+            throw new Error(`Can't parse reponse as JSON: ${responseText}`);
         }
 
         context?.logger?.debug(url.toString(), {
