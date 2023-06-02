@@ -7,10 +7,10 @@
 -   SDK: Implement OAuth M2M
 -   SDK: Implement pagination
 -   SDK: Port error handling code from GO SDK
--   Bump @types/node from 18.16.4 to 20.0.0 
--   Bump dependencies 
--   DB Connect Unified Auth Support 
--   Rename bricks to databricks 
+-   Bump @types/node from 18.16.4 to 20.0.0
+-   Bump dependencies
+-   DB Connect Unified Auth Support
+-   Rename bricks to databricks
 
 # Release: v0.3.13
 
