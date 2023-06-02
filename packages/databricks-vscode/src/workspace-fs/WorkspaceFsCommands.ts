@@ -1,4 +1,5 @@
 import {
+    ApiError,
     WorkspaceFsDir,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
@@ -119,34 +120,32 @@ export class WorkspaceFsCommands implements Disposable {
         let created: WorkspaceFsEntity | undefined;
 
         if (inputPath !== undefined) {
-            if (!workspaceConfigs.enableFilesInWorkspace) {
-                try {
+            try {
+                if (!workspaceConfigs.enableFilesInWorkspace) {
                     created = await this.createRepo(
                         rootPath + "/" + inputPath + REPO_NAME_SUFFIX
                     );
-                    if (created === undefined) {
-                        await window.showErrorMessage(
-                            `Can't create directory ${inputPath}`
-                        );
-                    }
-                } catch (e: any) {
-                    let msg: string;
-                    try {
-                        msg = JSON.parse(e.message).message;
-                    } catch {
-                        msg = e.message;
-                    }
-                    await window.showErrorMessage(msg);
+                } else if (root) {
+                    created = await root.mkdir(inputPath);
                 }
-            } else if (root) {
-                created = await root.mkdir(inputPath);
+            } catch (e: unknown) {
+                if (e instanceof ApiError) {
+                    await window.showErrorMessage(
+                        `Can't create directory ${inputPath}: ${e.message}`
+                    );
+                }
             }
         }
 
-        if (created) {
-            this._workspaceFsDataProvider.refresh();
-            return created;
+        if (created === undefined) {
+            await window.showErrorMessage(
+                `Can't create directory ${inputPath}`
+            );
+            return;
         }
+
+        this._workspaceFsDataProvider.refresh();
+        return created;
     }
 
     private async createRepo(repoPath: string) {
