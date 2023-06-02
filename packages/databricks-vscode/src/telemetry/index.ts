@@ -12,6 +12,7 @@ import {
 } from "./constants";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export {Events, EventTypes} from "./constants";
 
@@ -36,7 +37,7 @@ export {Events, EventTypes} from "./constants";
  */
 const telemetryVersion = "1.0";
 
-export async function toUserMetadata(
+async function getDatabricksWorkspaceMetadata(
     databricksWorkspace: DatabricksWorkspace | undefined
 ): Promise<ExtraMetadata[Metadata.USER]> {
     if (databricksWorkspace === undefined) {
@@ -55,8 +56,27 @@ export async function toUserMetadata(
     return {
         hashedUserName: hashedUserName,
         host: databricksWorkspace.host.authority,
-        authType: databricksWorkspace.authProvider.authType,
     };
+}
+
+function getAuthTypeMetadata(
+    connctionManager: ConnectionManager
+): ExtraMetadata[Metadata.USER] {
+    const authType = connctionManager.apiClient?.config.authType;
+    if (authType === undefined) {
+        return {};
+    }
+    return {authType};
+}
+
+export async function toUserMetadata(
+    connctionManager: ConnectionManager
+): Promise<ExtraMetadata[Metadata.USER]> {
+    const dbWorkspaceMetadata = await getDatabricksWorkspaceMetadata(
+        connctionManager.databricksWorkspace
+    );
+    const authType = getAuthTypeMetadata(connctionManager);
+    return {...dbWorkspaceMetadata, ...authType};
 }
 
 function getTelemetryKey(): string {

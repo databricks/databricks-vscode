@@ -133,7 +133,7 @@ export async function activate(
         connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
                 Metadata.USER,
-                await toUserMetadata(connectionManager.databricksWorkspace)
+                await toUserMetadata(connectionManager)
             );
             telemetry.recordEvent(Events.CONNECTION_STATE_CHANGED, {
                 newState: connectionManager.state,

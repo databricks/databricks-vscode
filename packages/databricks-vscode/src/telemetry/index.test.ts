@@ -5,8 +5,9 @@ import {mock, instance, capture, when} from "ts-mockito";
 import {Telemetry, toUserMetadata} from ".";
 import {Events, Metadata} from "./constants";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
+import {ConnectionManager} from "../configuration/ConnectionManager";
+import {ApiClient, Config} from "@databricks/databricks-sdk";
 
 describe(__filename, () => {
     let reporter: TelemetryReporter;
@@ -36,15 +37,20 @@ describe(__filename, () => {
     });
 
     it("sets user metadata correctly after logged in", async () => {
-        const authProvider = mock(AuthProvider);
-        when(authProvider.authType).thenReturn("azure-cli");
         const ws = mock(DatabricksWorkspace);
-        when(ws.authProvider).thenReturn(instance(authProvider));
         when(ws.userName).thenReturn("miles@databricks.com");
         when(ws.host).thenReturn(Uri.parse("https://my.databricks.com"));
+        const cm = mock(ConnectionManager);
+        when(cm.databricksWorkspace).thenReturn(instance(ws));
+        const mockConfig = mock(Config);
+        when(mockConfig.authType).thenReturn("azure-cli");
+        const mockClient = mock(ApiClient);
+        when(mockClient.config).thenReturn(instance(mockConfig));
+        when(cm.apiClient).thenReturn(instance(mockClient));
+
         telemetry.setMetadata(
             Metadata.USER,
-            await toUserMetadata(instance(ws))
+            await toUserMetadata(instance(cm))
         );
 
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
