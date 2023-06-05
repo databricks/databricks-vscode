@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {MetadataService} from "./MetadataService";
-import fetch from "node-fetch-commonjs";
+import {fetch} from "@databricks/databricks-sdk";
 
 import * as assert from "assert";
 import {

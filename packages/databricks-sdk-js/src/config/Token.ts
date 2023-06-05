@@ -1,5 +1,6 @@
 import {Provider} from "../types";
-import {RequestVisitor, Headers} from "./Config";
+import {RequestVisitor} from "./Config";
+import {Headers} from "../fetch";
 
 export type TokenProvider = Provider<Token>;
 

@@ -1,10 +1,5 @@
-import {
-    RequestVisitor,
-    Config,
-    CredentialProvider,
-    Headers,
-    AuthType,
-} from "./Config";
+import {RequestVisitor, Config, CredentialProvider, AuthType} from "./Config";
+import {Headers} from "../fetch";
 
 /**
  * Authenticate using a personal access token (PAT)
