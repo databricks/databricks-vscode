@@ -54,6 +54,8 @@ describe("Run job on cluster with workspace", async function () {
             [
                 "# Databricks notebook source",
                 `spark.sql('SELECT "hello world"').show()`,
+                "# COMMAND ----------",
+                "# MAGIC %sh ls",
             ].join("\n")
         );
 
@@ -151,6 +153,15 @@ describe("Run job on cluster with workspace", async function () {
             }
         );
 
+        const iframe = browser.$("#frame");
+        browser.switchToFrame(iframe);
+
+        const iframeRoot = await browser.$("html");
+        expect(iframeRoot).toHaveTextContaining("file.py");
+        expect(iframeRoot).toHaveTextContaining("notebook.py");
+        expect(iframeRoot).toHaveTextContaining("notebook_ipynb.py");
+
+        browser.switchToParentFrame();
         webView.close();
     });
 

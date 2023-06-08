@@ -295,10 +295,11 @@ export class ConfigurationDataProvider
                 workspaceConfigs.syncDestinationType === "repo" &&
                 this.wsfsAccessVerifier.isEnabled
             ) {
+                const label = "Switch to workspace";
                 children.push({
                     label: {
-                        highlights: [[0, 10]],
-                        label: "Switch to workspace",
+                        highlights: [[0, label.length]],
+                        label,
                     },
                     tooltip: "Click to switch to workspace",
                     iconPath: new ThemeIcon(
