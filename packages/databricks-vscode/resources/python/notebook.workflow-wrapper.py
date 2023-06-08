@@ -2,6 +2,7 @@
 def databricks_preamble():
     from IPython import get_ipython
     from typing import List
+    from shlex import quote
 
     dbutils.widgets.text("DATABRICKS_SOURCE_FILE", "")
     dbutils.widgets.text("DATABRICKS_PROJECT_ROOT", "")
@@ -20,7 +21,7 @@ def databricks_preamble():
         sys.path.insert(0, project_root_dir)
 
     def parse_databricks_magic_lines(lines: List[str]):
-        if len(lines) == 0:
+        if len(lines) == 0 or src_file_dir is None:
             return lines
 
         first = ""
@@ -36,7 +37,7 @@ def databricks_preamble():
             if magic == "sh":
                 return [
                     "%sh\n",
-                    f"cd {src_file_dir}\n",
+                    f"cd {quote(src_file_dir)}\n",
                     rest.strip() + "\n",
                     *lines[1:]
                 ]

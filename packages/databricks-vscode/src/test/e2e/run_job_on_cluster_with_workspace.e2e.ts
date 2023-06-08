@@ -49,13 +49,17 @@ describe("Run job on cluster with workspace", async function () {
             `spark.sql('SELECT "hello world"').show()`
         );
 
+        await fs.mkdir(path.join(projectDir, "a", "b"), {
+            recursive: true,
+        });
+
         await fs.writeFile(
-            path.join(projectDir, "notebook.py"),
+            path.join(projectDir, "a", "b", "notebook.py"),
             [
                 "# Databricks notebook source",
                 `spark.sql('SELECT "hello world"').show()`,
                 "# COMMAND ----------",
-                "# MAGIC %sh ls",
+                "# MAGIC %sh pwd",
             ].join("\n")
         );
 
@@ -157,9 +161,7 @@ describe("Run job on cluster with workspace", async function () {
         browser.switchToFrame(iframe);
 
         const iframeRoot = await browser.$("html");
-        expect(iframeRoot).toHaveTextContaining("file.py");
-        expect(iframeRoot).toHaveTextContaining("notebook.py");
-        expect(iframeRoot).toHaveTextContaining("notebook_ipynb.py");
+        expect(iframeRoot).toHaveTextContaining(/a\/b$/);
 
         browser.switchToParentFrame();
         webView.close();
