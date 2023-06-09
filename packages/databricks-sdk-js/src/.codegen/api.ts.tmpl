@@ -38,8 +38,16 @@ export class {{$s.PascalName}}Service {
 		): Promise<{{template "type_for_response" .}}> 
 		
 		{
+			{{if $s.IsAccounts }}
+			const config = this.client.config;
+			await config.ensureResolved();
+			if (!config.accountId || !config.isAccountClient()) {
+    	        throw new Error("invalid Databricks Account configuration");
+        	}
+			
+			{{end}}		
 			const path = {{if .PathParts -}}
-				`{{range  .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.Name}}}{{ else if .IsAccountId }}${this.client.accountId}{{end}}{{ end }}`
+				`{{range .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.Name}}}{{ else if .IsAccountId }}${config.accountId}{{end}}{{ end }}`
 			{{- else}}"{{.Path}}"{{end}}
 			return (await this.client.request(
 				path,

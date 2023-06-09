@@ -40,7 +40,13 @@ export class CustomAppIntegrationService {
         request: model.CreateCustomAppIntegration,
         @context context?: Context
     ): Promise<model.CreateCustomAppIntegrationOutput> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/oauth2/custom-app-integration/${request.integration_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/oauth2/custom-app-integration/${request.integration_id}`;
         return (await this.client.request(
             path,
             "POST",
@@ -69,7 +75,13 @@ export class CustomAppIntegrationService {
         request: model.DeleteCustomAppIntegrationRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/oauth2/custom-app-integration/${request.integration_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/oauth2/custom-app-integration/${request.integration_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -97,7 +109,13 @@ export class CustomAppIntegrationService {
         request: model.GetCustomAppIntegrationRequest,
         @context context?: Context
     ): Promise<model.GetCustomAppIntegrationOutput> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/oauth2/custom-app-integration/${request.integration_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/oauth2/custom-app-integration/${request.integration_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -124,7 +142,13 @@ export class CustomAppIntegrationService {
         request: model.UpdateCustomAppIntegration,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/oauth2/custom-app-integration/${request.integration_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/oauth2/custom-app-integration/${request.integration_id}`;
         return (await this.client.request(
             path,
             "PATCH",
@@ -176,7 +200,13 @@ export class PublishedAppIntegrationService {
         request: model.CreatePublishedAppIntegration,
         @context context?: Context
     ): Promise<model.CreatePublishedAppIntegrationOutput> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/oauth2/published-app-integration/${request.integration_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/oauth2/published-app-integration/${request.integration_id}`;
         return (await this.client.request(
             path,
             "POST",
@@ -205,7 +235,13 @@ export class PublishedAppIntegrationService {
         request: model.DeletePublishedAppIntegrationRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/oauth2/published-app-integration/${request.integration_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/oauth2/published-app-integration/${request.integration_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -233,7 +269,13 @@ export class PublishedAppIntegrationService {
         request: model.GetPublishedAppIntegrationRequest,
         @context context?: Context
     ): Promise<model.GetPublishedAppIntegrationOutput> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/oauth2/published-app-integration/${request.integration_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/oauth2/published-app-integration/${request.integration_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -260,7 +302,13 @@ export class PublishedAppIntegrationService {
         request: model.UpdatePublishedAppIntegration,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/oauth2/published-app-integration/${request.integration_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/oauth2/published-app-integration/${request.integration_id}`;
         return (await this.client.request(
             path,
             "PATCH",

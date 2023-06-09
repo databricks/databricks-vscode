@@ -1,4 +1,4 @@
-import {Config, WorkspaceClient} from "..";
+import {Config, WorkspaceClient} from "../src";
 
 /**
  * Example to show logged in user information
