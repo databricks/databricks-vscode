@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as https from "node:https";
-import {TextDecoder} from "node:util";
-import fetch from "node-fetch-commonjs";
 import {ExposedLoggers, Utils, withLogContext} from "./logging";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "./context";
 import {Context} from "./context";
-import {Headers, Config} from "./config/Config";
+import {Config} from "./config/Config";
 import retry, {RetriableError} from "./retries/retries";
 import Time, {TimeUnits} from "./retries/Time";
 import {HttpError, parseErrorFromResponse} from "./apierr";
+import {Headers, fetch, AbortController} from "./fetch";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sdkVersion = require("../package.json").version;
@@ -128,19 +127,21 @@ export class ApiClient {
                     const controller = new AbortController();
                     const signal = controller.signal;
                     const abort = controller.abort;
-                    const responsePromise = await fetch(url.toString(), {
-                        signal,
-                        ...options,
-                    });
                     if (context?.cancellationToken?.onCancellationRequested) {
                         context?.cancellationToken?.onCancellationRequested(
                             abort
                         );
                     }
-                    response = await responsePromise;
-                    body = new TextDecoder().decode(
-                        await response.arrayBuffer()
-                    );
+                    if (context?.cancellationToken?.isCancellationRequested) {
+                        abort();
+                    }
+
+                    response = await fetch(url.toString(), {
+                        signal,
+                        ...options,
+                    });
+
+                    body = await response.text();
                 } catch (e: any) {
                     const err =
                         e.code && e.code === "ENOTFOUND"

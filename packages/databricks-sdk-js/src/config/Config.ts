@@ -9,6 +9,7 @@ import {
 } from "./ConfigAttributes";
 import {DefaultCredentials} from "./DefaultCredentials";
 import {KnownConfigLoader} from "./KnownConfigLoader";
+import {Headers} from "../fetch";
 
 export class ConfigError extends Error {
     constructor(readonly baseMessage: string, readonly config: Config) {
@@ -48,7 +49,6 @@ export interface Logger {
     info(message: string): void;
 }
 
-export type Headers = Record<string, string>;
 export type RequestVisitor = (headers: Headers) => Promise<void>;
 
 type PublicInterface<T> = {[K in keyof T]: T[K]};

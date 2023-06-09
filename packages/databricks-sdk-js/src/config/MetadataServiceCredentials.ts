@@ -6,7 +6,7 @@ import {
     CredentialProvider,
     RequestVisitor,
 } from "./Config";
-import fetch from "node-fetch-commonjs";
+import {fetch} from "../fetch";
 import {refreshableTokenProvider, Token} from "./Token";
 import {Provider} from "../types";
 
