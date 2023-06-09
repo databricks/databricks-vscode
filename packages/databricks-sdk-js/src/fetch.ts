@@ -4,9 +4,8 @@
  *
  * We just implement enough to make the SDK work.
  */
-import https from "https";
-import http from "http";
-
+import https from "node:https";
+import http from "node:http";
 import assert from "node:assert";
 
 export type BodyInit = string;
@@ -43,9 +42,11 @@ export class AbortController {
             },
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             removeEventListener: (type = "abort", listener) => {
-                self.listeners = this.listeners.filter((l) => l !== listener);
+                self.listeners = self.listeners.filter((l) => l !== listener);
             },
         };
+
+        this.abort = this.abort.bind(this);
     }
 
     abort() {
@@ -112,6 +113,10 @@ export function fetch(uri: string, init?: RequestInit): Promise<Response> {
     const headers = init?.headers ?? {};
 
     return new Promise((resolve, reject) => {
+        if (signal?.aborted) {
+            return reject(new AbortError("The operation was aborted."));
+        }
+
         const url = new URL(uri);
 
         if (init?.body) {
@@ -140,12 +145,6 @@ export function fetch(uri: string, init?: RequestInit): Promise<Response> {
                         return fetch(res.headers.location, init);
                     }
 
-                    if (signal) {
-                        res.on("end", () => {
-                            signal.removeEventListener("abort", abort);
-                        });
-                    }
-
                     let body = "";
 
                     res.on("data", (chunk) => {
@@ -153,6 +152,9 @@ export function fetch(uri: string, init?: RequestInit): Promise<Response> {
                     });
 
                     res.on("end", () => {
+                        if (signal) {
+                            signal.removeEventListener("abort", abort);
+                        }
                         if (signal?.aborted) {
                             return;
                         }
@@ -160,6 +162,9 @@ export function fetch(uri: string, init?: RequestInit): Promise<Response> {
                     });
 
                     res.on("error", (err) => {
+                        if (signal) {
+                            signal.removeEventListener("abort", abort);
+                        }
                         reject(err);
                     });
                 }
@@ -167,12 +172,6 @@ export function fetch(uri: string, init?: RequestInit): Promise<Response> {
             .on("error", (err) => {
                 reject(err);
             });
-
-        if (init?.body) {
-            req.write(init.body);
-        }
-
-        req.end();
 
         if (signal) {
             signal.addEventListener("abort", abort);
@@ -187,5 +186,25 @@ export function fetch(uri: string, init?: RequestInit): Promise<Response> {
             }
             reject(err);
         }
+
+        new Promise<void>((resolve, reject) => {
+            if (init?.body) {
+                req.write(init.body, (err) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            } else {
+                resolve();
+            }
+        })
+            .then(() => {
+                req.end();
+            })
+            .catch((err) => {
+                reject(err);
+            });
     });
 }

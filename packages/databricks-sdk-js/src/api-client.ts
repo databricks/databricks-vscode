@@ -127,15 +127,20 @@ export class ApiClient {
                     const controller = new AbortController();
                     const signal = controller.signal;
                     const abort = controller.abort;
-                    response = await fetch(url.toString(), {
-                        signal,
-                        ...options,
-                    });
                     if (context?.cancellationToken?.onCancellationRequested) {
                         context?.cancellationToken?.onCancellationRequested(
                             abort
                         );
                     }
+                    if (context?.cancellationToken?.isCancellationRequested) {
+                        abort();
+                    }
+
+                    response = await fetch(url.toString(), {
+                        signal,
+                        ...options,
+                    });
+
                     body = await response.text();
                 } catch (e: any) {
                     const err =
