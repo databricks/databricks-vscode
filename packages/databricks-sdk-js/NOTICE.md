@@ -10,9 +10,12 @@ This Software contains code from the following open source projects:
 | :------------------------------------------------------------------------- | :---------------- | :--------- | :------------------------------------------------------------- |
 | [fetch-blob](https://www.npmjs.com/package/fetch-blob)                     | 3.2.0             | MIT        | https://github.com/node-fetch/fetch-blob.git                   |
 | [formdata-polyfill](https://www.npmjs.com/package/formdata-polyfill)       | 4.0.10            | MIT        | git+https://jimmywarting@github.com/jimmywarting/FormData.git  |
-| [ini](https://www.npmjs.com/package/ini)                                   | 3.0.1             | ISC        | https://github.com/npm/ini.git                                 |
+| [ini](https://www.npmjs.com/package/ini)                                   | 4.1.1             | ISC        | https://github.com/npm/ini.git                                 |
 | [inversify](https://www.npmjs.com/package/inversify)                       | 6.0.1             | MIT        | https://github.com/inversify/InversifyJS.git                   |
+| [lru-cache](https://www.npmjs.com/package/lru-cache)                       | 6.0.0             | ISC        | git://github.com/isaacs/node-lru-cache.git                     |
 | [node-domexception](https://www.npmjs.com/package/node-domexception)       | 1.0.0             | MIT        | git+https://github.com/jimmywarting/node-domexception.git      |
 | [node-fetch-commonjs](https://www.npmjs.com/package/node-fetch-commonjs)   | 3.2.4             | MIT        | git@github.com:proteriax/node-fetch-cjs.git                    |
 | [reflect-metadata](https://www.npmjs.com/package/reflect-metadata)         | 0.1.13            | Apache-2.0 | https://github.com/rbuckton/reflect-metadata.git               |
+| [semver](https://www.npmjs.com/package/semver)                             | 7.5.1             | ISC        | https://github.com/npm/node-semver.git                         |
 | [web-streams-polyfill](https://www.npmjs.com/package/web-streams-polyfill) | 3.2.1             | MIT        | git+https://github.com/MattiasBuelens/web-streams-polyfill.git |
+| [yallist](https://www.npmjs.com/package/yallist)                           | 4.0.0             | ISC        | git+https://github.com/isaacs/yallist.git                      |

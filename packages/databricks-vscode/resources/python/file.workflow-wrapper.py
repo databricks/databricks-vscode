@@ -8,7 +8,7 @@ databricks_arg_idx = []
 for i, arg in enumerate(sys.argv):
     if i == 0:
         continue
-    if sys.argv[i-1] == "--databricks-python-source":
+    if sys.argv[i-1] == "--databricks-source-file":
         python_file = arg
     elif sys.argv[i-1] == "--databricks-project-root":
         project_root = arg
@@ -29,7 +29,7 @@ sys.argv = [value for i,value in enumerate(sys.argv) if i not in databricks_arg_
 os.chdir(os.path.dirname(python_file))
 
 # update python path
-sys.path.append(project_root)
+sys.path.insert(0, project_root)
 
 # provide spark globals
 user_ns = {

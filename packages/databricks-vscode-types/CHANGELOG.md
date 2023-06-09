@@ -1,3 +1,55 @@
+# Release: v0.3.14
+
+## packages/databricks-vscode-types
+
+## <small>0.3.14 (2023-06-02)</small>
+
+-   Bump dependencies
+
+# Release: v0.3.13
+
+## packages/databricks-vscode-types
+
+## <small>0.3.13 (2023-05-09)</small>
+
+# Release: v0.3.12
+
+## packages/databricks-vscode-types
+
+## <small>0.3.12 (2023-05-03)</small>
+
+# Release: v0.3.11
+
+## packages/databricks-vscode-types
+
+## <small>0.3.11 (2023-04-25)</small>
+
+# Release: v0.3.10
+
+## packages/databricks-vscode-types
+
+## <small>0.3.10 (2023-04-20)</small>
+
+# Release: v0.3.9
+
+## packages/databricks-vscode-types
+
+## <small>0.3.9 (2023-04-19)</small>
+
+# Release: v0.3.8
+
+## packages/databricks-vscode-types
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-   Fix: Reverted changes to the exported API. This had broken some downstream projects such as [SQLTools Databricks Driver](https://github.com/databricks/sqltools-databricks-driver) and [Databricks Power Tools for VSCode](https://github.com/paiqo/Databricks-VSCode).
+
+# Release: v0.3.7
+
+## packages/databricks-vscode-types
+
+## <small>0.3.7 (2023-03-21)</small>
+
 # Release: v0.3.5
 
 ## packages/databricks-vscode-types

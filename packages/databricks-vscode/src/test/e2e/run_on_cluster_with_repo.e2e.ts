@@ -7,10 +7,10 @@ import {
     startSyncIfStopped,
     waitForSyncComplete,
     waitForTreeItems,
-} from "./utils";
+} from "./utils.ts";
 import {sleep} from "wdio-vscode-service";
 
-describe("Run python on cluster", async function () {
+describe("Run python on cluster with repo", async function () {
     let projectDir: string;
     this.timeout(3 * 60 * 1000);
 
@@ -24,6 +24,17 @@ describe("Run python on cluster", async function () {
         await fs.mkdir(path.join(projectDir, ".databricks"), {
             recursive: true,
         });
+
+        await fs.mkdir(path.join(projectDir, ".vscode"), {
+            recursive: true,
+        });
+        await fs.writeFile(
+            path.join(projectDir, ".vscode", "settings.json"),
+            JSON.stringify({
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                "databricks.sync.destinationType": "repo",
+            })
+        );
 
         await fs.writeFile(
             path.join(projectDir, ".databricks", "project.json"),
@@ -58,17 +69,21 @@ describe("Run python on cluster", async function () {
     });
 
     it("should start syncing", async () => {
-        await (
-            await driver.getWorkbench()
-        ).executeCommand("Databricks: Start synchronization (full sync)");
+        const workbench = await driver.getWorkbench();
+
+        const editorView = workbench.getEditorView();
+        await editorView.closeAllEditors();
+
+        await workbench.executeCommand(
+            "Databricks: Start synchronization (full sync)"
+        );
+
         await startSyncIfStopped();
         await waitForSyncComplete();
     });
 
     it("should run a python file on a cluster", async () => {
         const workbench = await driver.getWorkbench();
-        const editorView = workbench.getEditorView();
-        await editorView.closeAllEditors();
 
         // open file
         const input = await workbench.openCommandPrompt();
@@ -78,18 +93,31 @@ describe("Run python on cluster", async function () {
         await sleep(1000);
 
         // run file
-        await workbench.executeQuickPick("Databricks: Run File on Databricks");
+        await workbench.executeQuickPick(
+            "Databricks: Upload and Run File on Databricks"
+        );
 
         const debugOutput = await workbench
             .getBottomBar()
             .openDebugConsoleView();
 
         while (true) {
+            // dismiss by message
+            await dismissNotifications();
             await sleep(2000);
             const text = await (await debugOutput.elem).getHTML();
             if (text && text.includes("hello world")) {
                 break;
             }
         }
+    });
+
+    after(async () => {
+        try {
+            await fs.rm(path.join(projectDir, ".vscode"), {
+                recursive: true,
+                force: true,
+            });
+        } catch {}
     });
 });

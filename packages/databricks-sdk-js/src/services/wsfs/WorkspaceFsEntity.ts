@@ -1,5 +1,4 @@
 import {posix} from "path";
-import {ApiClientResponseError} from "../../api-client";
 import {ObjectInfo, WorkspaceService} from "../../apis/workspace";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
@@ -10,6 +9,7 @@ import {
     WorkspaceFsNotebook,
 } from ".";
 import {WorkspaceClient} from "../../WorkspaceClient";
+import {ApiError} from "../../apierr";
 
 export class ObjectInfoValidationError extends Error {
     constructor(message: string, readonly details: ObjectInfo) {
@@ -92,20 +92,18 @@ export abstract class WorkspaceFsEntity {
     }
 
     protected async fetchChildren() {
-        function objIsDefined(
-            obj: WorkspaceFsEntity | undefined
-        ): obj is WorkspaceFsEntity {
-            return obj !== undefined ? true : false;
+        const children: Array<WorkspaceFsEntity> = [];
+
+        for await (const child of this._workspaceFsService.list({
+            path: this.path,
+        })) {
+            const entity = entityFromObjInfo(this.wsClient, child);
+            if (entity) {
+                children.push(entity);
+            }
         }
 
-        this._children = (
-            await this._workspaceFsService.list({path: this.path})
-        ).objects
-            ?.map(
-                (obj) =>
-                    entityFromObjInfo(this.wsClient, obj) as WorkspaceFsEntity
-            )
-            .filter(objIsDefined);
+        this._children = children;
     }
 
     @withLogContext(ExposedLoggers.SDK)
@@ -123,8 +121,8 @@ export abstract class WorkspaceFsEntity {
             this.details = details;
             return this;
         } catch (e: unknown) {
-            if (e instanceof ApiClientResponseError) {
-                if (e.error_code === "RESOURCE_DOES_NOT_EXIST") {
+            if (e instanceof ApiError) {
+                if (e.errorCode === "RESOURCE_DOES_NOT_EXIST") {
                     return undefined;
                 }
             }
@@ -155,8 +153,8 @@ export abstract class WorkspaceFsEntity {
             return entity;
         } catch (e) {
             if (
-                e instanceof Error &&
-                e.message.includes("RESOURCE_DOES_NOT_EXIST")
+                e instanceof ApiError &&
+                e.errorCode === "RESOURCE_DOES_NOT_EXIST"
             ) {
                 return undefined;
             }

@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class AccountMetastoreAssignmentsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -27,13 +28,9 @@ export class AccountMetastoreAssignmentsError extends ApiError {
  */
 export class AccountMetastoreAssignmentsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Assigns a workspace to a metastore.
-     *
-     * Creates an assignment to a metastore for a workspace
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateMetastoreAssignment,
         @context context?: Context
     ): Promise<model.MetastoreAssignment> {
@@ -47,13 +44,20 @@ export class AccountMetastoreAssignmentsService {
     }
 
     /**
-     * Delete a metastore assignment.
+     * Assigns a workspace to a metastore.
      *
-     * Deletes a metastore assignment to a workspace, leaving the workspace with
-     * no metastore.
+     * Creates an assignment to a metastore for a workspace
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteAccountMetastoreAssignmentRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -64,6 +68,34 @@ export class AccountMetastoreAssignmentsService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a metastore assignment.
+     *
+     * Deletes a metastore assignment to a workspace, leaving the workspace with
+     * no metastore.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteAccountMetastoreAssignmentRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetAccountMetastoreAssignmentRequest,
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/metastore`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.MetastoreAssignment;
     }
 
     /**
@@ -79,23 +111,11 @@ export class AccountMetastoreAssignmentsService {
         request: model.GetAccountMetastoreAssignmentRequest,
         @context context?: Context
     ): Promise<model.MetastoreAssignment> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/metastore`;
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.MetastoreAssignment;
+        return await this._get(request, context);
     }
 
-    /**
-     * Get all workspaces assigned to a metastore.
-     *
-     * Gets a list of all Databricks workspace IDs that have been assigned to
-     * given metastore.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    private async _list(
         request: model.ListAccountMetastoreAssignmentsRequest,
         @context context?: Context
     ): Promise<Array<model.MetastoreAssignment>> {
@@ -109,13 +129,21 @@ export class AccountMetastoreAssignmentsService {
     }
 
     /**
-     * Updates a metastore assignment to a workspaces.
+     * Get all workspaces assigned to a metastore.
      *
-     * Updates an assignment to a metastore for a workspace. Currently, only the
-     * default catalog may be updated
+     * Gets a list of all Databricks workspace IDs that have been assigned to
+     * given metastore.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async list(
+        request: model.ListAccountMetastoreAssignmentsRequest,
+        @context context?: Context
+    ): Promise<Array<model.MetastoreAssignment>> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateMetastoreAssignment,
         @context context?: Context
     ): Promise<model.MetastoreAssignment> {
@@ -126,6 +154,20 @@ export class AccountMetastoreAssignmentsService {
             request,
             context
         )) as model.MetastoreAssignment;
+    }
+
+    /**
+     * Updates a metastore assignment to a workspaces.
+     *
+     * Updates an assignment to a metastore for a workspace. Currently, only the
+     * default catalog may be updated
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        return await this._update(request, context);
     }
 }
 
@@ -146,13 +188,9 @@ export class AccountMetastoresError extends ApiError {
  */
 export class AccountMetastoresService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create metastore.
-     *
-     * Creates a Unity Catalog metastore.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateMetastore,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
@@ -166,13 +204,20 @@ export class AccountMetastoresService {
     }
 
     /**
-     * Delete a metastore.
+     * Create metastore.
      *
-     * Deletes a Databricks Unity Catalog metastore for an account, both
-     * specified by ID.
+     * Creates a Unity Catalog metastore.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteAccountMetastoreRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -186,13 +231,21 @@ export class AccountMetastoresService {
     }
 
     /**
-     * Get a metastore.
+     * Delete a metastore.
      *
-     * Gets a Databricks Unity Catalog metastore from an account, both specified
-     * by ID.
+     * Deletes a Databricks Unity Catalog metastore for an account, both
+     * specified by ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteAccountMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetAccountMetastoreRequest,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
@@ -206,13 +259,21 @@ export class AccountMetastoresService {
     }
 
     /**
-     * Get all metastores associated with an account.
+     * Get a metastore.
      *
-     * Gets all Unity Catalog metastores associated with an account specified by
-     * ID.
+     * Gets a Databricks Unity Catalog metastore from an account, both specified
+     * by ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetAccountMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         @context context?: Context
     ): Promise<model.ListMetastoresResponse> {
         const path = `/api/2.0/accounts/${this.client.accountId}/metastores`;
@@ -225,12 +286,20 @@ export class AccountMetastoresService {
     }
 
     /**
-     * Update a metastore.
+     * Get all metastores associated with an account.
      *
-     * Updates an existing Unity Catalog metastore.
+     * Gets all Unity Catalog metastores associated with an account specified by
+     * ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async list(
+        @context context?: Context
+    ): Promise<model.ListMetastoresResponse> {
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateMetastore,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
@@ -241,6 +310,19 @@ export class AccountMetastoresService {
             request,
             context
         )) as model.MetastoreInfo;
+    }
+
+    /**
+     * Update a metastore.
+     *
+     * Updates an existing Unity Catalog metastore.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._update(request, context);
     }
 }
 
@@ -260,6 +342,21 @@ export class AccountStorageCredentialsError extends ApiError {
  */
 export class AccountStorageCredentialsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateStorageCredential,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/storage-credentials`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.StorageCredentialInfo;
+    }
+
     /**
      * Create a storage credential.
      *
@@ -277,10 +374,18 @@ export class AccountStorageCredentialsService {
         request: model.CreateStorageCredential,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/storage-credentials`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetAccountStorageCredentialRequest,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/storage-credentials/`;
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
         )) as model.StorageCredentialInfo;
@@ -298,13 +403,21 @@ export class AccountStorageCredentialsService {
         request: model.GetAccountStorageCredentialRequest,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/storage-credentials/`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListAccountStorageCredentialsRequest,
+        @context context?: Context
+    ): Promise<Array<model.StorageCredentialInfo>> {
+        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/storage-credentials`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.StorageCredentialInfo;
+        )) as Array<model.StorageCredentialInfo>;
     }
 
     /**
@@ -318,13 +431,7 @@ export class AccountStorageCredentialsService {
         request: model.ListAccountStorageCredentialsRequest,
         @context context?: Context
     ): Promise<Array<model.StorageCredentialInfo>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/storage-credentials`;
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as Array<model.StorageCredentialInfo>;
+        return await this._list(request, context);
     }
 }
 
@@ -351,14 +458,9 @@ export class CatalogsError extends ApiError {
  */
 export class CatalogsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a catalog.
-     *
-     * Creates a new catalog instance in the parent metastore if the caller is a
-     * metastore admin or has the **CREATE_CATALOG** privilege.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateCatalog,
         @context context?: Context
     ): Promise<model.CatalogInfo> {
@@ -372,13 +474,21 @@ export class CatalogsService {
     }
 
     /**
-     * Delete a catalog.
+     * Create a catalog.
      *
-     * Deletes the catalog that matches the supplied name. The caller must be a
-     * metastore admin or the owner of the catalog.
+     * Creates a new catalog instance in the parent metastore if the caller is a
+     * metastore admin or has the **CREATE_CATALOG** privilege.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateCatalog,
+        @context context?: Context
+    ): Promise<model.CatalogInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteCatalogRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -389,6 +499,34 @@ export class CatalogsService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a catalog.
+     *
+     * Deletes the catalog that matches the supplied name. The caller must be a
+     * metastore admin or the owner of the catalog.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteCatalogRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetCatalogRequest,
+        @context context?: Context
+    ): Promise<model.CatalogInfo> {
+        const path = `/api/2.1/unity-catalog/catalogs/${request.name}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.CatalogInfo;
     }
 
     /**
@@ -403,13 +541,20 @@ export class CatalogsService {
         request: model.GetCatalogRequest,
         @context context?: Context
     ): Promise<model.CatalogInfo> {
-        const path = `/api/2.1/unity-catalog/catalogs/${request.name}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<model.ListCatalogsResponse> {
+        const path = "/api/2.1/unity-catalog/catalogs";
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.CatalogInfo;
+        )) as model.ListCatalogsResponse;
     }
 
     /**
@@ -422,16 +567,25 @@ export class CatalogsService {
      * elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(@context context?: Context): AsyncIterable<model.CatalogInfo> {
+        const response = (await this._list(context)).catalogs;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateCatalog,
         @context context?: Context
-    ): Promise<model.ListCatalogsResponse> {
-        const path = "/api/2.1/unity-catalog/catalogs";
+    ): Promise<model.CatalogInfo> {
+        const path = `/api/2.1/unity-catalog/catalogs/${request.name}`;
         return (await this.client.request(
             path,
-            "GET",
-            undefined,
+            "PATCH",
+            request,
             context
-        )) as model.ListCatalogsResponse;
+        )) as model.CatalogInfo;
     }
 
     /**
@@ -446,13 +600,7 @@ export class CatalogsService {
         request: model.UpdateCatalog,
         @context context?: Context
     ): Promise<model.CatalogInfo> {
-        const path = `/api/2.1/unity-catalog/catalogs/${request.name}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.CatalogInfo;
+        return await this._update(request, context);
     }
 }
 
@@ -484,15 +632,9 @@ export class ExternalLocationsError extends ApiError {
  */
 export class ExternalLocationsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create an external location.
-     *
-     * Creates a new external location entry in the metastore. The caller must be
-     * a metastore admin or have the **CREATE_EXTERNAL_LOCATION** privilege on
-     * both the metastore and the associated storage credential.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateExternalLocation,
         @context context?: Context
     ): Promise<model.ExternalLocationInfo> {
@@ -506,13 +648,22 @@ export class ExternalLocationsService {
     }
 
     /**
-     * Delete an external location.
+     * Create an external location.
      *
-     * Deletes the specified external location from the metastore. The caller
-     * must be the owner of the external location.
+     * Creates a new external location entry in the metastore. The caller must be
+     * a metastore admin or have the **CREATE_EXTERNAL_LOCATION** privilege on
+     * both the metastore and the associated storage credential.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateExternalLocation,
+        @context context?: Context
+    ): Promise<model.ExternalLocationInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteExternalLocationRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -523,6 +674,34 @@ export class ExternalLocationsService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete an external location.
+     *
+     * Deletes the specified external location from the metastore. The caller
+     * must be the owner of the external location.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteExternalLocationRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetExternalLocationRequest,
+        @context context?: Context
+    ): Promise<model.ExternalLocationInfo> {
+        const path = `/api/2.1/unity-catalog/external-locations/${request.name}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.ExternalLocationInfo;
     }
 
     /**
@@ -537,13 +716,20 @@ export class ExternalLocationsService {
         request: model.GetExternalLocationRequest,
         @context context?: Context
     ): Promise<model.ExternalLocationInfo> {
-        const path = `/api/2.1/unity-catalog/external-locations/${request.name}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<model.ListExternalLocationsResponse> {
+        const path = "/api/2.1/unity-catalog/external-locations";
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.ExternalLocationInfo;
+        )) as model.ListExternalLocationsResponse;
     }
 
     /**
@@ -556,16 +742,27 @@ export class ExternalLocationsService {
      * the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         @context context?: Context
-    ): Promise<model.ListExternalLocationsResponse> {
-        const path = "/api/2.1/unity-catalog/external-locations";
+    ): AsyncIterable<model.ExternalLocationInfo> {
+        const response = (await this._list(context)).external_locations;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateExternalLocation,
+        @context context?: Context
+    ): Promise<model.ExternalLocationInfo> {
+        const path = `/api/2.1/unity-catalog/external-locations/${request.name}`;
         return (await this.client.request(
             path,
-            "GET",
-            undefined,
+            "PATCH",
+            request,
             context
-        )) as model.ListExternalLocationsResponse;
+        )) as model.ExternalLocationInfo;
     }
 
     /**
@@ -580,13 +777,7 @@ export class ExternalLocationsService {
         request: model.UpdateExternalLocation,
         @context context?: Context
     ): Promise<model.ExternalLocationInfo> {
-        const path = `/api/2.1/unity-catalog/external-locations/${request.name}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.ExternalLocationInfo;
+        return await this._update(request, context);
     }
 }
 
@@ -611,6 +802,21 @@ export class FunctionsError extends ApiError {
  */
 export class FunctionsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateFunction,
+        @context context?: Context
+    ): Promise<model.FunctionInfo> {
+        const path = "/api/2.1/unity-catalog/functions";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.FunctionInfo;
+    }
+
     /**
      * Create a function.
      *
@@ -625,13 +831,21 @@ export class FunctionsService {
         request: model.CreateFunction,
         @context context?: Context
     ): Promise<model.FunctionInfo> {
-        const path = "/api/2.1/unity-catalog/functions";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteFunctionRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.1/unity-catalog/functions/${request.name}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.FunctionInfo;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -650,13 +864,21 @@ export class FunctionsService {
         request: model.DeleteFunctionRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetFunctionRequest,
+        @context context?: Context
+    ): Promise<model.FunctionInfo> {
         const path = `/api/2.1/unity-catalog/functions/${request.name}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.FunctionInfo;
     }
 
     /**
@@ -675,13 +897,21 @@ export class FunctionsService {
         request: model.GetFunctionRequest,
         @context context?: Context
     ): Promise<model.FunctionInfo> {
-        const path = `/api/2.1/unity-catalog/functions/${request.name}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListFunctionsRequest,
+        @context context?: Context
+    ): Promise<model.ListFunctionsResponse> {
+        const path = "/api/2.1/unity-catalog/functions";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.FunctionInfo;
+        )) as model.ListFunctionsResponse;
     }
 
     /**
@@ -700,13 +930,21 @@ export class FunctionsService {
         request: model.ListFunctionsRequest,
         @context context?: Context
     ): Promise<model.ListFunctionsResponse> {
-        const path = "/api/2.1/unity-catalog/functions";
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateFunction,
+        @context context?: Context
+    ): Promise<model.FunctionInfo> {
+        const path = `/api/2.1/unity-catalog/functions/${request.name}`;
         return (await this.client.request(
             path,
-            "GET",
+            "PATCH",
             request,
             context
-        )) as model.ListFunctionsResponse;
+        )) as model.FunctionInfo;
     }
 
     /**
@@ -726,13 +964,7 @@ export class FunctionsService {
         request: model.UpdateFunction,
         @context context?: Context
     ): Promise<model.FunctionInfo> {
-        const path = `/api/2.1/unity-catalog/functions/${request.name}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.FunctionInfo;
+        return await this._update(request, context);
     }
 }
 
@@ -762,13 +994,9 @@ export class GrantsError extends ApiError {
  */
 export class GrantsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Get permissions.
-     *
-     * Gets the permissions for a securable.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetGrantRequest,
         @context context?: Context
     ): Promise<model.PermissionsList> {
@@ -782,12 +1010,20 @@ export class GrantsService {
     }
 
     /**
-     * Get effective permissions.
+     * Get permissions.
      *
-     * Gets the effective permissions for a securable.
+     * Gets the permissions for a securable.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getEffective(
+    async get(
+        request: model.GetGrantRequest,
+        @context context?: Context
+    ): Promise<model.PermissionsList> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getEffective(
         request: model.GetEffectiveRequest,
         @context context?: Context
     ): Promise<model.EffectivePermissionsList> {
@@ -801,12 +1037,20 @@ export class GrantsService {
     }
 
     /**
-     * Update permissions.
+     * Get effective permissions.
      *
-     * Updates the permissions for a securable.
+     * Gets the effective permissions for a securable.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async getEffective(
+        request: model.GetEffectiveRequest,
+        @context context?: Context
+    ): Promise<model.EffectivePermissionsList> {
+        return await this._getEffective(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdatePermissions,
         @context context?: Context
     ): Promise<model.PermissionsList> {
@@ -817,6 +1061,19 @@ export class GrantsService {
             request,
             context
         )) as model.PermissionsList;
+    }
+
+    /**
+     * Update permissions.
+     *
+     * Updates the permissions for a securable.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdatePermissions,
+        @context context?: Context
+    ): Promise<model.PermissionsList> {
+        return await this._update(request, context);
     }
 }
 
@@ -848,16 +1105,9 @@ export class MetastoresError extends ApiError {
  */
 export class MetastoresService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create an assignment.
-     *
-     * Creates a new metastore assignment. If an assignment for the same
-     * __workspace_id__ exists, it will be overwritten by the new
-     * __metastore_id__ and __default_catalog_name__. The caller must be an
-     * account admin.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async assign(
+    private async _assign(
         request: model.CreateMetastoreAssignment,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -871,12 +1121,23 @@ export class MetastoresService {
     }
 
     /**
-     * Create a metastore.
+     * Create an assignment.
      *
-     * Creates a new metastore based on a provided name and storage root path.
+     * Creates a new metastore assignment. If an assignment for the same
+     * __workspace_id__ exists, it will be overwritten by the new
+     * __metastore_id__ and __default_catalog_name__. The caller must be an
+     * account admin.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    async assign(
+        request: model.CreateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._assign(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
         request: model.CreateMetastore,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
@@ -890,12 +1151,20 @@ export class MetastoresService {
     }
 
     /**
-     * Get metastore assignment for workspace.
+     * Create a metastore.
      *
-     * Gets the metastore assignment for the workspace being accessed.
+     * Creates a new metastore based on a provided name and storage root path.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async current(
+    async create(
+        request: model.CreateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _current(
         @context context?: Context
     ): Promise<model.MetastoreAssignment> {
         const path = "/api/2.1/unity-catalog/current-metastore-assignment";
@@ -908,12 +1177,19 @@ export class MetastoresService {
     }
 
     /**
-     * Delete a metastore.
+     * Get metastore assignment for workspace.
      *
-     * Deletes a metastore. The caller must be a metastore admin.
+     * Gets the metastore assignment for the workspace being accessed.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async current(
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        return await this._current(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteMetastoreRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -927,13 +1203,20 @@ export class MetastoresService {
     }
 
     /**
-     * Get a metastore.
+     * Delete a metastore.
      *
-     * Gets a metastore that matches the supplied ID. The caller must be a
-     * metastore admin to retrieve this info.
+     * Deletes a metastore. The caller must be a metastore admin.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetMetastoreRequest,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
@@ -947,14 +1230,21 @@ export class MetastoresService {
     }
 
     /**
-     * List metastores.
+     * Get a metastore.
      *
-     * Gets an array of the available metastores (as __MetastoreInfo__ objects).
-     * The caller must be an admin to retrieve this info. There is no guarantee
-     * of a specific ordering of the elements in the array.
+     * Gets a metastore that matches the supplied ID. The caller must be a
+     * metastore admin to retrieve this info.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         @context context?: Context
     ): Promise<model.ListMetastoresResponse> {
         const path = "/api/2.1/unity-catalog/metastores";
@@ -964,6 +1254,36 @@ export class MetastoresService {
             undefined,
             context
         )) as model.ListMetastoresResponse;
+    }
+
+    /**
+     * List metastores.
+     *
+     * Gets an array of the available metastores (as __MetastoreInfo__ objects).
+     * The caller must be an admin to retrieve this info. There is no guarantee
+     * of a specific ordering of the elements in the array.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *list(
+        @context context?: Context
+    ): AsyncIterable<model.MetastoreInfo> {
+        const response = (await this._list(context)).metastores;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _summary(
+        @context context?: Context
+    ): Promise<model.GetMetastoreSummaryResponse> {
+        const path = "/api/2.1/unity-catalog/metastore_summary";
+        return (await this.client.request(
+            path,
+            "GET",
+            undefined,
+            context
+        )) as model.GetMetastoreSummaryResponse;
     }
 
     /**
@@ -977,23 +1297,11 @@ export class MetastoresService {
     async summary(
         @context context?: Context
     ): Promise<model.GetMetastoreSummaryResponse> {
-        const path = "/api/2.1/unity-catalog/metastore_summary";
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as model.GetMetastoreSummaryResponse;
+        return await this._summary(context);
     }
 
-    /**
-     * Delete an assignment.
-     *
-     * Deletes a metastore assignment. The caller must be an account
-     * administrator.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async unassign(
+    private async _unassign(
         request: model.UnassignRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1007,13 +1315,21 @@ export class MetastoresService {
     }
 
     /**
-     * Update a metastore.
+     * Delete an assignment.
      *
-     * Updates information for a specific metastore. The caller must be a
-     * metastore admin.
+     * Deletes a metastore assignment. The caller must be an account
+     * administrator.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async unassign(
+        request: model.UnassignRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._unassign(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateMetastore,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
@@ -1024,6 +1340,34 @@ export class MetastoresService {
             request,
             context
         )) as model.MetastoreInfo;
+    }
+
+    /**
+     * Update a metastore.
+     *
+     * Updates information for a specific metastore. The caller must be a
+     * metastore admin.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._update(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _updateAssignment(
+        request: model.UpdateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.1/unity-catalog/workspaces/${request.workspace_id}/metastore`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1040,13 +1384,7 @@ export class MetastoresService {
         request: model.UpdateMetastoreAssignment,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.1/unity-catalog/workspaces/${request.workspace_id}/metastore`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._updateAssignment(request, context);
     }
 }
 
@@ -1066,14 +1404,9 @@ export class ProvidersError extends ApiError {
  */
 export class ProvidersService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create an auth provider.
-     *
-     * Creates a new authentication provider minimally based on a name and
-     * authentication type. The caller must be an admin on the metastore.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateProvider,
         @context context?: Context
     ): Promise<model.ProviderInfo> {
@@ -1087,13 +1420,21 @@ export class ProvidersService {
     }
 
     /**
-     * Delete a provider.
+     * Create an auth provider.
      *
-     * Deletes an authentication provider, if the caller is a metastore admin or
-     * is the owner of the provider.
+     * Creates a new authentication provider minimally based on a name and
+     * authentication type. The caller must be an admin on the metastore.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateProvider,
+        @context context?: Context
+    ): Promise<model.ProviderInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteProviderRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1104,6 +1445,34 @@ export class ProvidersService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a provider.
+     *
+     * Deletes an authentication provider, if the caller is a metastore admin or
+     * is the owner of the provider.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteProviderRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetProviderRequest,
+        @context context?: Context
+    ): Promise<model.ProviderInfo> {
+        const path = `/api/2.1/unity-catalog/providers/${request.name}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.ProviderInfo;
     }
 
     /**
@@ -1118,13 +1487,21 @@ export class ProvidersService {
         request: model.GetProviderRequest,
         @context context?: Context
     ): Promise<model.ProviderInfo> {
-        const path = `/api/2.1/unity-catalog/providers/${request.name}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListProvidersRequest,
+        @context context?: Context
+    ): Promise<model.ListProvidersResponse> {
+        const path = "/api/2.1/unity-catalog/providers";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ProviderInfo;
+        )) as model.ListProvidersResponse;
     }
 
     /**
@@ -1136,17 +1513,28 @@ export class ProvidersService {
      * guarantee of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListProvidersRequest,
         @context context?: Context
-    ): Promise<model.ListProvidersResponse> {
-        const path = "/api/2.1/unity-catalog/providers";
+    ): AsyncIterable<model.ProviderInfo> {
+        const response = (await this._list(request, context)).providers;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listShares(
+        request: model.ListSharesRequest,
+        @context context?: Context
+    ): Promise<model.ListProviderSharesResponse> {
+        const path = `/api/2.1/unity-catalog/providers/${request.name}/shares`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListProvidersResponse;
+        )) as model.ListProviderSharesResponse;
     }
 
     /**
@@ -1161,13 +1549,21 @@ export class ProvidersService {
         request: model.ListSharesRequest,
         @context context?: Context
     ): Promise<model.ListProviderSharesResponse> {
-        const path = `/api/2.1/unity-catalog/providers/${request.name}/shares`;
+        return await this._listShares(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateProvider,
+        @context context?: Context
+    ): Promise<model.ProviderInfo> {
+        const path = `/api/2.1/unity-catalog/providers/${request.name}`;
         return (await this.client.request(
             path,
-            "GET",
+            "PATCH",
             request,
             context
-        )) as model.ListProviderSharesResponse;
+        )) as model.ProviderInfo;
     }
 
     /**
@@ -1183,13 +1579,7 @@ export class ProvidersService {
         request: model.UpdateProvider,
         @context context?: Context
     ): Promise<model.ProviderInfo> {
-        const path = `/api/2.1/unity-catalog/providers/${request.name}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.ProviderInfo;
+        return await this._update(request, context);
     }
 }
 
@@ -1209,13 +1599,9 @@ export class RecipientActivationError extends ApiError {
  */
 export class RecipientActivationService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Get a share activation URL.
-     *
-     * Gets an activation URL for a share.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async getActivationUrlInfo(
+    private async _getActivationUrlInfo(
         request: model.GetActivationUrlInfoRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1229,13 +1615,20 @@ export class RecipientActivationService {
     }
 
     /**
-     * Get an access token.
+     * Get a share activation URL.
      *
-     * Retrieve access token with an activation url. This is a public API without
-     * any authentication.
+     * Gets an activation URL for a share.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async retrieveToken(
+    async getActivationUrlInfo(
+        request: model.GetActivationUrlInfoRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._getActivationUrlInfo(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _retrieveToken(
         request: model.RetrieveTokenRequest,
         @context context?: Context
     ): Promise<model.RetrieveTokenResponse> {
@@ -1246,6 +1639,20 @@ export class RecipientActivationService {
             request,
             context
         )) as model.RetrieveTokenResponse;
+    }
+
+    /**
+     * Get an access token.
+     *
+     * Retrieve access token with an activation url. This is a public API without
+     * any authentication.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async retrieveToken(
+        request: model.RetrieveTokenRequest,
+        @context context?: Context
+    ): Promise<model.RetrieveTokenResponse> {
+        return await this._retrieveToken(request, context);
     }
 }
 
@@ -1265,15 +1672,9 @@ export class RecipientsError extends ApiError {
  */
 export class RecipientsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a share recipient.
-     *
-     * Creates a new recipient with the delta sharing authentication type in the
-     * metastore. The caller must be a metastore admin or has the
-     * **CREATE_RECIPIENT** privilege on the metastore.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateRecipient,
         @context context?: Context
     ): Promise<model.RecipientInfo> {
@@ -1287,13 +1688,22 @@ export class RecipientsService {
     }
 
     /**
-     * Delete a share recipient.
+     * Create a share recipient.
      *
-     * Deletes the specified recipient from the metastore. The caller must be the
-     * owner of the recipient.
+     * Creates a new recipient with the delta sharing authentication type in the
+     * metastore. The caller must be a metastore admin or has the
+     * **CREATE_RECIPIENT** privilege on the metastore.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateRecipient,
+        @context context?: Context
+    ): Promise<model.RecipientInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteRecipientRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1304,6 +1714,34 @@ export class RecipientsService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a share recipient.
+     *
+     * Deletes the specified recipient from the metastore. The caller must be the
+     * owner of the recipient.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteRecipientRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetRecipientRequest,
+        @context context?: Context
+    ): Promise<model.RecipientInfo> {
+        const path = `/api/2.1/unity-catalog/recipients/${request.name}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.RecipientInfo;
     }
 
     /**
@@ -1319,13 +1757,21 @@ export class RecipientsService {
         request: model.GetRecipientRequest,
         @context context?: Context
     ): Promise<model.RecipientInfo> {
-        const path = `/api/2.1/unity-catalog/recipients/${request.name}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListRecipientsRequest,
+        @context context?: Context
+    ): Promise<model.ListRecipientsResponse> {
+        const path = "/api/2.1/unity-catalog/recipients";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.RecipientInfo;
+        )) as model.ListRecipientsResponse;
     }
 
     /**
@@ -1337,17 +1783,28 @@ export class RecipientsService {
      * no guarantee of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListRecipientsRequest,
         @context context?: Context
-    ): Promise<model.ListRecipientsResponse> {
-        const path = "/api/2.1/unity-catalog/recipients";
+    ): AsyncIterable<model.RecipientInfo> {
+        const response = (await this._list(request, context)).recipients;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _rotateToken(
+        request: model.RotateRecipientToken,
+        @context context?: Context
+    ): Promise<model.RecipientInfo> {
+        const path = `/api/2.1/unity-catalog/recipients/${request.name}/rotate-token`;
         return (await this.client.request(
             path,
-            "GET",
+            "POST",
             request,
             context
-        )) as model.ListRecipientsResponse;
+        )) as model.RecipientInfo;
     }
 
     /**
@@ -1362,13 +1819,21 @@ export class RecipientsService {
         request: model.RotateRecipientToken,
         @context context?: Context
     ): Promise<model.RecipientInfo> {
-        const path = `/api/2.1/unity-catalog/recipients/${request.name}/rotate-token`;
+        return await this._rotateToken(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _sharePermissions(
+        request: model.SharePermissionsRequest,
+        @context context?: Context
+    ): Promise<model.GetRecipientSharePermissionsResponse> {
+        const path = `/api/2.1/unity-catalog/recipients/${request.name}/share-permissions`;
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
-        )) as model.RecipientInfo;
+        )) as model.GetRecipientSharePermissionsResponse;
     }
 
     /**
@@ -1382,13 +1847,21 @@ export class RecipientsService {
         request: model.SharePermissionsRequest,
         @context context?: Context
     ): Promise<model.GetRecipientSharePermissionsResponse> {
-        const path = `/api/2.1/unity-catalog/recipients/${request.name}/share-permissions`;
+        return await this._sharePermissions(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateRecipient,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.1/unity-catalog/recipients/${request.name}`;
         return (await this.client.request(
             path,
-            "GET",
+            "PATCH",
             request,
             context
-        )) as model.GetRecipientSharePermissionsResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1404,13 +1877,7 @@ export class RecipientsService {
         request: model.UpdateRecipient,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.1/unity-catalog/recipients/${request.name}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -1434,15 +1901,9 @@ export class SchemasError extends ApiError {
  */
 export class SchemasService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a schema.
-     *
-     * Creates a new schema for catalog in the Metatastore. The caller must be a
-     * metastore admin, or have the **CREATE_SCHEMA** privilege in the parent
-     * catalog.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateSchema,
         @context context?: Context
     ): Promise<model.SchemaInfo> {
@@ -1456,13 +1917,22 @@ export class SchemasService {
     }
 
     /**
-     * Delete a schema.
+     * Create a schema.
      *
-     * Deletes the specified schema from the parent catalog. The caller must be
-     * the owner of the schema or an owner of the parent catalog.
+     * Creates a new schema for catalog in the Metatastore. The caller must be a
+     * metastore admin, or have the **CREATE_SCHEMA** privilege in the parent
+     * catalog.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateSchema,
+        @context context?: Context
+    ): Promise<model.SchemaInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteSchemaRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1473,6 +1943,34 @@ export class SchemasService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a schema.
+     *
+     * Deletes the specified schema from the parent catalog. The caller must be
+     * the owner of the schema or an owner of the parent catalog.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteSchemaRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetSchemaRequest,
+        @context context?: Context
+    ): Promise<model.SchemaInfo> {
+        const path = `/api/2.1/unity-catalog/schemas/${request.full_name}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.SchemaInfo;
     }
 
     /**
@@ -1487,13 +1985,21 @@ export class SchemasService {
         request: model.GetSchemaRequest,
         @context context?: Context
     ): Promise<model.SchemaInfo> {
-        const path = `/api/2.1/unity-catalog/schemas/${request.full_name}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListSchemasRequest,
+        @context context?: Context
+    ): Promise<model.ListSchemasResponse> {
+        const path = "/api/2.1/unity-catalog/schemas";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.SchemaInfo;
+        )) as model.ListSchemasResponse;
     }
 
     /**
@@ -1507,17 +2013,28 @@ export class SchemasService {
      * the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListSchemasRequest,
         @context context?: Context
-    ): Promise<model.ListSchemasResponse> {
-        const path = "/api/2.1/unity-catalog/schemas";
+    ): AsyncIterable<model.SchemaInfo> {
+        const response = (await this._list(request, context)).schemas;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateSchema,
+        @context context?: Context
+    ): Promise<model.SchemaInfo> {
+        const path = `/api/2.1/unity-catalog/schemas/${request.full_name}`;
         return (await this.client.request(
             path,
-            "GET",
+            "PATCH",
             request,
             context
-        )) as model.ListSchemasResponse;
+        )) as model.SchemaInfo;
     }
 
     /**
@@ -1534,13 +2051,7 @@ export class SchemasService {
         request: model.UpdateSchema,
         @context context?: Context
     ): Promise<model.SchemaInfo> {
-        const path = `/api/2.1/unity-catalog/schemas/${request.full_name}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.SchemaInfo;
+        return await this._update(request, context);
     }
 }
 
@@ -1560,15 +2071,9 @@ export class SharesError extends ApiError {
  */
 export class SharesService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a share.
-     *
-     * Creates a new share for data objects. Data objects can be added at this
-     * time or after creation with **update**. The caller must be a metastore
-     * admin or have the **CREATE_SHARE** privilege on the metastore.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateShare,
         @context context?: Context
     ): Promise<model.ShareInfo> {
@@ -1582,13 +2087,22 @@ export class SharesService {
     }
 
     /**
-     * Delete a share.
+     * Create a share.
      *
-     * Deletes a data object share from the metastore. The caller must be an
-     * owner of the share.
+     * Creates a new share for data objects. Data objects can be added at this
+     * time or after creation with **update**. The caller must be a metastore
+     * admin or have the **CREATE_SHARE** privilege on the metastore.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateShare,
+        @context context?: Context
+    ): Promise<model.ShareInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteShareRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1602,13 +2116,21 @@ export class SharesService {
     }
 
     /**
-     * Get a share.
+     * Delete a share.
      *
-     * Gets a data object share from the metastore. The caller must be a
-     * metastore admin or the owner of the share.
+     * Deletes a data object share from the metastore. The caller must be an
+     * owner of the share.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteShareRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetShareRequest,
         @context context?: Context
     ): Promise<model.ShareInfo> {
@@ -1622,14 +2144,23 @@ export class SharesService {
     }
 
     /**
-     * List shares.
+     * Get a share.
      *
-     * Gets an array of data object shares from the metastore. The caller must be
-     * a metastore admin or the owner of the share. There is no guarantee of a
-     * specific ordering of the elements in the array.
+     * Gets a data object share from the metastore. The caller must be a
+     * metastore admin or the owner of the share.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.ListSharesResponse> {
+    async get(
+        request: model.GetShareRequest,
+        @context context?: Context
+    ): Promise<model.ShareInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<model.ListSharesResponse> {
         const path = "/api/2.1/unity-catalog/shares";
         return (await this.client.request(
             path,
@@ -1637,6 +2168,35 @@ export class SharesService {
             undefined,
             context
         )) as model.ListSharesResponse;
+    }
+
+    /**
+     * List shares.
+     *
+     * Gets an array of data object shares from the metastore. The caller must be
+     * a metastore admin or the owner of the share. There is no guarantee of a
+     * specific ordering of the elements in the array.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *list(@context context?: Context): AsyncIterable<model.ShareInfo> {
+        const response = (await this._list(context)).shares;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _sharePermissions(
+        request: model.SharePermissionsRequest,
+        @context context?: Context
+    ): Promise<model.PermissionsList> {
+        const path = `/api/2.1/unity-catalog/shares/${request.name}/permissions`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.PermissionsList;
     }
 
     /**
@@ -1650,13 +2210,21 @@ export class SharesService {
         request: model.SharePermissionsRequest,
         @context context?: Context
     ): Promise<model.PermissionsList> {
-        const path = `/api/2.1/unity-catalog/shares/${request.name}/permissions`;
+        return await this._sharePermissions(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateShare,
+        @context context?: Context
+    ): Promise<model.ShareInfo> {
+        const path = `/api/2.1/unity-catalog/shares/${request.name}`;
         return (await this.client.request(
             path,
-            "GET",
+            "PATCH",
             request,
             context
-        )) as model.PermissionsList;
+        )) as model.ShareInfo;
     }
 
     /**
@@ -1683,13 +2251,21 @@ export class SharesService {
         request: model.UpdateShare,
         @context context?: Context
     ): Promise<model.ShareInfo> {
-        const path = `/api/2.1/unity-catalog/shares/${request.name}`;
+        return await this._update(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _updatePermissions(
+        request: model.UpdateSharePermissions,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.1/unity-catalog/shares/${request.name}/permissions`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
             context
-        )) as model.ShareInfo;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1706,13 +2282,7 @@ export class SharesService {
         request: model.UpdateSharePermissions,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.1/unity-catalog/shares/${request.name}/permissions`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._updatePermissions(request, context);
     }
 }
 
@@ -1744,6 +2314,21 @@ export class StorageCredentialsError extends ApiError {
  */
 export class StorageCredentialsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateStorageCredential,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        const path = "/api/2.1/unity-catalog/storage-credentials";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.StorageCredentialInfo;
+    }
+
     /**
      * Create a storage credential.
      *
@@ -1761,13 +2346,21 @@ export class StorageCredentialsService {
         request: model.CreateStorageCredential,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
-        const path = "/api/2.1/unity-catalog/storage-credentials";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteStorageCredentialRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.1/unity-catalog/storage-credentials/${request.name}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.StorageCredentialInfo;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1781,13 +2374,21 @@ export class StorageCredentialsService {
         request: model.DeleteStorageCredentialRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetStorageCredentialRequest,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
         const path = `/api/2.1/unity-catalog/storage-credentials/${request.name}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.StorageCredentialInfo;
     }
 
     /**
@@ -1802,13 +2403,20 @@ export class StorageCredentialsService {
         request: model.GetStorageCredentialRequest,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
-        const path = `/api/2.1/unity-catalog/storage-credentials/${request.name}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.StorageCredentialInfo>> {
+        const path = "/api/2.1/unity-catalog/storage-credentials";
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.StorageCredentialInfo;
+        )) as Array<model.StorageCredentialInfo>;
     }
 
     /**
@@ -1824,13 +2432,21 @@ export class StorageCredentialsService {
     async list(
         @context context?: Context
     ): Promise<Array<model.StorageCredentialInfo>> {
-        const path = "/api/2.1/unity-catalog/storage-credentials";
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateStorageCredential,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        const path = `/api/2.1/unity-catalog/storage-credentials/${request.name}`;
         return (await this.client.request(
             path,
-            "GET",
-            undefined,
+            "PATCH",
+            request,
             context
-        )) as Array<model.StorageCredentialInfo>;
+        )) as model.StorageCredentialInfo;
     }
 
     /**
@@ -1845,13 +2461,21 @@ export class StorageCredentialsService {
         request: model.UpdateStorageCredential,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
-        const path = `/api/2.1/unity-catalog/storage-credentials/${request.name}`;
+        return await this._update(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _validate(
+        request: model.ValidateStorageCredential,
+        @context context?: Context
+    ): Promise<model.ValidateStorageCredentialResponse> {
+        const path = "/api/2.1/unity-catalog/validate-storage-credentials";
         return (await this.client.request(
             path,
-            "PATCH",
+            "POST",
             request,
             context
-        )) as model.StorageCredentialInfo;
+        )) as model.ValidateStorageCredentialResponse;
     }
 
     /**
@@ -1875,13 +2499,7 @@ export class StorageCredentialsService {
         request: model.ValidateStorageCredential,
         @context context?: Context
     ): Promise<model.ValidateStorageCredentialResponse> {
-        const path = "/api/2.1/unity-catalog/validate-storage-credentials";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.ValidateStorageCredentialResponse;
+        return await this._validate(request, context);
     }
 }
 
@@ -1913,6 +2531,21 @@ export class TableConstraintsError extends ApiError {
  */
 export class TableConstraintsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateTableConstraint,
+        @context context?: Context
+    ): Promise<model.TableConstraint> {
+        const path = "/api/2.1/unity-catalog/constraints";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.TableConstraint;
+    }
+
     /**
      * Create a table constraint.
      *
@@ -1932,13 +2565,21 @@ export class TableConstraintsService {
         request: model.CreateTableConstraint,
         @context context?: Context
     ): Promise<model.TableConstraint> {
-        const path = "/api/2.1/unity-catalog/constraints";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteTableConstraintRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.1/unity-catalog/constraints/${request.full_name}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.TableConstraint;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1960,13 +2601,7 @@ export class TableConstraintsService {
         request: model.DeleteTableConstraintRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.1/unity-catalog/constraints/${request.full_name}`;
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._delete(request, context);
     }
 }
 
@@ -1994,6 +2629,21 @@ export class TablesError extends ApiError {
  */
 export class TablesService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteTableRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.1/unity-catalog/tables/${request.full_name}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
     /**
      * Delete a table.
      *
@@ -2008,13 +2658,21 @@ export class TablesService {
         request: model.DeleteTableRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetTableRequest,
+        @context context?: Context
+    ): Promise<model.TableInfo> {
         const path = `/api/2.1/unity-catalog/tables/${request.full_name}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.TableInfo;
     }
 
     /**
@@ -2031,13 +2689,21 @@ export class TablesService {
         request: model.GetTableRequest,
         @context context?: Context
     ): Promise<model.TableInfo> {
-        const path = `/api/2.1/unity-catalog/tables/${request.full_name}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListTablesRequest,
+        @context context?: Context
+    ): Promise<model.ListTablesResponse> {
+        const path = "/api/2.1/unity-catalog/tables";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.TableInfo;
+        )) as model.ListTablesResponse;
     }
 
     /**
@@ -2051,17 +2717,28 @@ export class TablesService {
      * There is no guarantee of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListTablesRequest,
         @context context?: Context
-    ): Promise<model.ListTablesResponse> {
-        const path = "/api/2.1/unity-catalog/tables";
+    ): AsyncIterable<model.TableInfo> {
+        const response = (await this._list(request, context)).tables;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listSummaries(
+        request: model.ListSummariesRequest,
+        @context context?: Context
+    ): Promise<model.ListTableSummariesResponse> {
+        const path = "/api/2.1/unity-catalog/table-summaries";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListTablesResponse;
+        )) as model.ListTableSummariesResponse;
     }
 
     /**
@@ -2085,12 +2762,6 @@ export class TablesService {
         request: model.ListSummariesRequest,
         @context context?: Context
     ): Promise<model.ListTableSummariesResponse> {
-        const path = "/api/2.1/unity-catalog/table-summaries";
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.ListTableSummariesResponse;
+        return await this._listSummaries(request, context);
     }
 }

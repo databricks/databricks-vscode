@@ -13,6 +13,8 @@ Currently, we have the following packages:
 
 -   [databricks-vscode](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-vscode)
     The VSCode extension for Databricks published to the VSCode marketplace.
+-   [databricks-vscode-types](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-vscode-types)
+    Type definition of the public API of the VSCode extension.
 -   [databricks-sdk-js](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-sdk-js)
     JavaScript and TypeScript SDK for the Databricks REST API.
 

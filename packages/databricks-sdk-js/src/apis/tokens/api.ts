@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class TokensRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -28,6 +29,21 @@ export class TokensError extends ApiError {
  */
 export class TokensService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateTokenRequest,
+        @context context?: Context
+    ): Promise<model.CreateTokenResponse> {
+        const path = "/api/2.0/token/create";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.CreateTokenResponse;
+    }
+
     /**
      * Create a user token.
      *
@@ -41,13 +57,21 @@ export class TokensService {
         request: model.CreateTokenRequest,
         @context context?: Context
     ): Promise<model.CreateTokenResponse> {
-        const path = "/api/2.0/token/create";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.RevokeTokenRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/token/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.CreateTokenResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -63,13 +87,20 @@ export class TokensService {
         request: model.RevokeTokenRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/token/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<model.ListTokensResponse> {
+        const path = "/api/2.0/token/list";
         return (await this.client.request(
             path,
-            "POST",
-            request,
+            "GET",
+            undefined,
             context
-        )) as model.EmptyResponse;
+        )) as model.ListTokensResponse;
     }
 
     /**
@@ -78,13 +109,12 @@ export class TokensService {
      * Lists all the valid tokens for a user-workspace pair.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.ListTokensResponse> {
-        const path = "/api/2.0/token/list";
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as model.ListTokensResponse;
+    async *list(
+        @context context?: Context
+    ): AsyncIterable<model.PublicTokenInfo> {
+        const response = (await this._list(context)).token_infos;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 }

@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class SecretsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -38,6 +39,21 @@ export class SecretsError extends ApiError {
  */
 export class SecretsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _createScope(
+        request: model.CreateScope,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/secrets/scopes/create";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
     /**
      * Create a new secret scope.
      *
@@ -50,7 +66,15 @@ export class SecretsService {
         request: model.CreateScope,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/secrets/scopes/create";
+        return await this._createScope(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _deleteAcl(
+        request: model.DeleteAcl,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/secrets/acls/delete";
         return (await this.client.request(
             path,
             "POST",
@@ -74,7 +98,15 @@ export class SecretsService {
         request: model.DeleteAcl,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/secrets/acls/delete";
+        return await this._deleteAcl(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _deleteScope(
+        request: model.DeleteScope,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/secrets/scopes/delete";
         return (await this.client.request(
             path,
             "POST",
@@ -97,7 +129,15 @@ export class SecretsService {
         request: model.DeleteScope,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/secrets/scopes/delete";
+        return await this._deleteScope(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _deleteSecret(
+        request: model.DeleteSecret,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/secrets/delete";
         return (await this.client.request(
             path,
             "POST",
@@ -121,13 +161,21 @@ export class SecretsService {
         request: model.DeleteSecret,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/secrets/delete";
+        return await this._deleteSecret(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getAcl(
+        request: model.GetAcl,
+        @context context?: Context
+    ): Promise<model.AclItem> {
+        const path = "/api/2.0/secrets/acls/get";
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.AclItem;
     }
 
     /**
@@ -145,27 +193,11 @@ export class SecretsService {
         request: model.GetAcl,
         @context context?: Context
     ): Promise<model.AclItem> {
-        const path = "/api/2.0/secrets/acls/get";
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.AclItem;
+        return await this._getAcl(request, context);
     }
 
-    /**
-     * Lists ACLs.
-     *
-     * List the ACLs for a given secret scope. Users must have the `MANAGE`
-     * permission to invoke this API.
-     *
-     * Throws `RESOURCE_DOES_NOT_EXIST` if no such secret scope exists. Throws
-     * `PERMISSION_DENIED` if the user does not have permission to make this API
-     * call.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async listAcls(
+    private async _listAcls(
         request: model.ListAcls,
         @context context?: Context
     ): Promise<model.ListAclsResponse> {
@@ -179,15 +211,28 @@ export class SecretsService {
     }
 
     /**
-     * List all scopes.
+     * Lists ACLs.
      *
-     * Lists all secret scopes available in the workspace.
+     * List the ACLs for a given secret scope. Users must have the `MANAGE`
+     * permission to invoke this API.
      *
-     * Throws `PERMISSION_DENIED` if the user does not have permission to make
-     * this API call.
+     * Throws `RESOURCE_DOES_NOT_EXIST` if no such secret scope exists. Throws
+     * `PERMISSION_DENIED` if the user does not have permission to make this API
+     * call.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listScopes(
+    async *listAcls(
+        request: model.ListAcls,
+        @context context?: Context
+    ): AsyncIterable<model.AclItem> {
+        const response = (await this._listAcls(request, context)).items;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listScopes(
         @context context?: Context
     ): Promise<model.ListScopesResponse> {
         const path = "/api/2.0/secrets/scopes/list";
@@ -197,6 +242,38 @@ export class SecretsService {
             undefined,
             context
         )) as model.ListScopesResponse;
+    }
+
+    /**
+     * List all scopes.
+     *
+     * Lists all secret scopes available in the workspace.
+     *
+     * Throws `PERMISSION_DENIED` if the user does not have permission to make
+     * this API call.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *listScopes(
+        @context context?: Context
+    ): AsyncIterable<model.SecretScope> {
+        const response = (await this._listScopes(context)).scopes;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listSecrets(
+        request: model.ListSecrets,
+        @context context?: Context
+    ): Promise<model.ListSecretsResponse> {
+        const path = "/api/2.0/secrets/list";
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.ListSecretsResponse;
     }
 
     /**
@@ -212,17 +289,28 @@ export class SecretsService {
      * call.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listSecrets(
+    async *listSecrets(
         request: model.ListSecrets,
         @context context?: Context
-    ): Promise<model.ListSecretsResponse> {
-        const path = "/api/2.0/secrets/list";
+    ): AsyncIterable<model.SecretMetadata> {
+        const response = (await this._listSecrets(request, context)).secrets;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _putAcl(
+        request: model.PutAcl,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/secrets/acls/put";
         return (await this.client.request(
             path,
-            "GET",
+            "POST",
             request,
             context
-        )) as model.ListSecretsResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -261,7 +349,15 @@ export class SecretsService {
         request: model.PutAcl,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/secrets/acls/put";
+        return await this._putAcl(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _putSecret(
+        request: model.PutSecret,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/secrets/put";
         return (await this.client.request(
             path,
             "POST",
@@ -299,12 +395,6 @@ export class SecretsService {
         request: model.PutSecret,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/secrets/put";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._putSecret(request, context);
     }
 }

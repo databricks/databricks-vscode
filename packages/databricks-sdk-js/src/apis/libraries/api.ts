@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class LibrariesRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -46,6 +47,20 @@ export class LibrariesError extends ApiError {
  */
 export class LibrariesService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _allClusterStatuses(
+        @context context?: Context
+    ): Promise<model.ListAllClusterLibraryStatusesResponse> {
+        const path = "/api/2.0/libraries/all-cluster-statuses";
+        return (await this.client.request(
+            path,
+            "GET",
+            undefined,
+            context
+        )) as model.ListAllClusterLibraryStatusesResponse;
+    }
+
     /**
      * Get all statuses.
      *
@@ -58,13 +73,21 @@ export class LibrariesService {
     async allClusterStatuses(
         @context context?: Context
     ): Promise<model.ListAllClusterLibraryStatusesResponse> {
-        const path = "/api/2.0/libraries/all-cluster-statuses";
+        return await this._allClusterStatuses(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _clusterStatus(
+        request: model.ClusterStatus,
+        @context context?: Context
+    ): Promise<model.ClusterLibraryStatuses> {
+        const path = "/api/2.0/libraries/cluster-status";
         return (await this.client.request(
             path,
             "GET",
-            undefined,
+            request,
             context
-        )) as model.ListAllClusterLibraryStatusesResponse;
+        )) as model.ClusterLibraryStatuses;
     }
 
     /**
@@ -91,13 +114,21 @@ export class LibrariesService {
         request: model.ClusterStatus,
         @context context?: Context
     ): Promise<model.ClusterLibraryStatuses> {
-        const path = "/api/2.0/libraries/cluster-status";
+        return await this._clusterStatus(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _install(
+        request: model.InstallLibraries,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/libraries/install";
         return (await this.client.request(
             path,
-            "GET",
+            "POST",
             request,
             context
-        )) as model.ClusterLibraryStatuses;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -116,7 +147,15 @@ export class LibrariesService {
         request: model.InstallLibraries,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/libraries/install";
+        return await this._install(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _uninstall(
+        request: model.UninstallLibraries,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/libraries/uninstall";
         return (await this.client.request(
             path,
             "POST",
@@ -137,12 +176,6 @@ export class LibrariesService {
         request: model.UninstallLibraries,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/libraries/uninstall";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._uninstall(request, context);
     }
 }

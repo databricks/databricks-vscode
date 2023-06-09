@@ -7,10 +7,10 @@ import {
     startSyncIfStopped,
     waitForSyncComplete,
     waitForTreeItems,
-} from "./utils";
+} from "./utils.ts";
 import {sleep} from "wdio-vscode-service";
 
-describe("Run job on cluster", async function () {
+describe("Run job on cluster with repo", async function () {
     let projectDir: string;
     this.timeout(2 * 60 * 1000);
 
@@ -23,6 +23,17 @@ describe("Run job on cluster", async function () {
         await fs.mkdir(path.join(projectDir, ".databricks"), {
             recursive: true,
         });
+
+        await fs.mkdir(path.join(projectDir, ".vscode"), {
+            recursive: true,
+        });
+        await fs.writeFile(
+            path.join(projectDir, ".vscode", "settings.json"),
+            JSON.stringify({
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                "databricks.sync.destinationType": "repo",
+            })
+        );
 
         await fs.writeFile(
             path.join(projectDir, ".databricks", "project.json"),
@@ -71,6 +82,7 @@ describe("Run job on cluster", async function () {
             "Databricks: Run File as Workflow on Databricks"
         );
 
+        await dismissNotifications();
         const webView = await workbench.getWebviewByTitle(/Databricks Job Run/);
         await webView.open();
 
@@ -137,6 +149,7 @@ describe("Run job on cluster", async function () {
             "Databricks: Run File as Workflow on Databricks"
         );
 
+        await dismissNotifications();
         const webView = await workbench.getWebviewByTitle(/Databricks Job Run/);
         await webView.open();
 
@@ -181,5 +194,14 @@ describe("Run job on cluster", async function () {
         );
 
         webView.close();
+    });
+
+    after(async () => {
+        try {
+            await fs.rm(path.join(projectDir, ".vscode"), {
+                recursive: true,
+                force: true,
+            });
+        } catch {}
     });
 });

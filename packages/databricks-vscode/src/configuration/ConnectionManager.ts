@@ -3,6 +3,7 @@ import {
     Cluster,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
+    ApiClient,
 } from "@databricks/databricks-sdk";
 import {
     env,
@@ -29,6 +30,7 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
@@ -60,7 +62,12 @@ export class ConnectionManager {
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
 
-    constructor(private cli: CliWrapper) {}
+    public metadataServiceUrl?: string;
+
+    constructor(
+        private cli: CliWrapper,
+        private workspaceState: WorkspaceStateManager
+    ) {}
 
     get state(): ConnectionState {
         return this._state;
@@ -91,18 +98,23 @@ export class ConnectionManager {
         return this._workspaceClient;
     }
 
+    get apiClient(): ApiClient | undefined {
+        return this._workspaceClient?.apiClient;
+    }
+
     async login(interactive = false, force = false): Promise<void> {
         try {
             await this._login(interactive, force);
         } catch (e) {
-            NamedLogger.getOrCreate("Extension").error("Login Error", e);
-            if (interactive) {
-                window.showErrorMessage(`Login error ${JSON.stringify(e)}`);
+            NamedLogger.getOrCreate("Extension").error("Login Error:", e);
+            if (interactive && e instanceof Error) {
+                window.showErrorMessage(`Login error: ${e.message}`);
             }
             this.updateState("DISCONNECTED");
             await this.logout();
         }
     }
+
     private async _login(interactive = false, force = false): Promise<void> {
         if (force) {
             await this.logout();
@@ -118,7 +130,8 @@ export class ConnectionManager {
         try {
             try {
                 projectConfigFile = await ProjectConfigFile.load(
-                    vscodeWorkspace.rootPath
+                    vscodeWorkspace.rootPath!,
+                    this.cli.cliPath
                 );
             } catch (e) {
                 if (
@@ -207,43 +220,36 @@ export class ConnectionManager {
             this.updateSyncDestination(undefined);
         }
 
-        if (
-            this.databricksWorkspace &&
-            workspaceConfigs.enableFilesInWorkspace
-        ) {
-            await this.createRootDirectory(
-                workspaceClient,
-                this.databricksWorkspace.currentFsRoot,
-                this.databricksWorkspace.userName
-            );
-        }
-
+        await this.createWsFsRootDirectory(workspaceClient);
         this.updateState("CONNECTED");
     }
 
-    async createRootDirectory(
-        wsClient: WorkspaceClient,
-        rootDirPath: RemoteUri,
-        me: string
-    ) {
+    async createWsFsRootDirectory(wsClient: WorkspaceClient) {
+        if (
+            !this.databricksWorkspace ||
+            !workspaceConfigs.enableFilesInWorkspace
+        ) {
+            return;
+        }
+        const rootDirPath = this.databricksWorkspace.workspaceFsRoot;
+        const me = this.databricksWorkspace.userName;
         let rootDir = await WorkspaceFsEntity.fromPath(
             wsClient,
             rootDirPath.path
         );
+        if (rootDir) {
+            return;
+        }
+        const meDir = await WorkspaceFsEntity.fromPath(
+            wsClient,
+            `/Users/${me}`
+        );
+        if (WorkspaceFsUtils.isDirectory(meDir)) {
+            rootDir = await meDir.mkdir(rootDirPath.path);
+        }
         if (!rootDir) {
-            const meDir = await WorkspaceFsEntity.fromPath(
-                wsClient,
-                `/Users/${me}`
-            );
-            if (WorkspaceFsUtils.isDirectory(meDir)) {
-                rootDir = await meDir.mkdir(rootDirPath.path);
-            }
-            if (!rootDir) {
-                window.showErrorMessage(
-                    `Can't find or create ${rootDirPath.path}`
-                );
-                return;
-            }
+            window.showErrorMessage(`Can't find or create ${rootDirPath.path}`);
+            return;
         }
     }
 
@@ -326,7 +332,8 @@ export class ConnectionManager {
     private async writeConfigFile(config: ProjectConfig) {
         const projectConfigFile = new ProjectConfigFile(
             config,
-            vscodeWorkspace.rootPath
+            vscodeWorkspace.rootPath!,
+            this.cli.cliPath
         );
 
         await projectConfigFile.write();
@@ -337,15 +344,18 @@ export class ConnectionManager {
         skipWrite = false
     ): Promise<void> {
         try {
-            if (this.cluster === cluster) {
-                return;
-            }
-
             if (typeof cluster === "string") {
                 cluster = await Cluster.fromClusterId(
                     this._workspaceClient!.apiClient,
                     cluster
                 );
+            }
+
+            if (
+                JSON.stringify(this.cluster?.details) ===
+                JSON.stringify(cluster.details)
+            ) {
+                return;
             }
 
             if (!skipWrite) {
@@ -520,13 +530,13 @@ export class ConnectionManager {
     }
 
     async waitForConnect(): Promise<void> {
-        if (this._state === "CONNECTED") {
-            return;
-        } else if (this._state === "CONNECTING") {
+        if (this._state === "CONNECTING" || this._state === "DISCONNECTED") {
             return await new Promise((resolve) => {
-                const changeListener = this.onDidChangeState(() => {
-                    changeListener.dispose();
-                    resolve();
+                const changeListener = this.onDidChangeState((e) => {
+                    if (e === "CONNECTED") {
+                        changeListener.dispose();
+                        resolve();
+                    }
                 }, this);
             });
         }

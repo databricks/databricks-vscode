@@ -3,9 +3,8 @@ import yargs from "yargs";
 
 async function main() {
     const argv = await yargs
-        .option("bricksArch", {
-            alias: "b",
-            description: "Architecture of bricks-cli.",
+        .option("cliArch", {
+            description: "Architecture of databricks cli.",
             type: "string",
             requiresArg: true,
         })
@@ -35,7 +34,7 @@ async function main() {
     const jsonData = JSON.parse(rawData);
 
     jsonData["arch"] = {
-        bricksArch: argv.bricksArch,
+        cliArch: argv.cliArch,
         vsixArch: argv.vsixArch,
     };
     jsonData["commitSha"] = argv.commitSha;

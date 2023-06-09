@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class AlertsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -30,6 +31,21 @@ export class AlertsError extends ApiError {
  */
 export class AlertsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateAlert,
+        @context context?: Context
+    ): Promise<model.Alert> {
+        const path = "/api/2.0/preview/sql/alerts";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.Alert;
+    }
+
     /**
      * Create an alert.
      *
@@ -42,13 +58,21 @@ export class AlertsService {
         request: model.CreateAlert,
         @context context?: Context
     ): Promise<model.Alert> {
-        const path = "/api/2.0/preview/sql/alerts";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteAlertRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/preview/sql/alerts/${request.alert_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.Alert;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -63,22 +87,11 @@ export class AlertsService {
         request: model.DeleteAlertRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/preview/sql/alerts/${request.alert_id}`;
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._delete(request, context);
     }
 
-    /**
-     * Get an alert.
-     *
-     * Gets an alert.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetAlertRequest,
         @context context?: Context
     ): Promise<model.Alert> {
@@ -92,12 +105,22 @@ export class AlertsService {
     }
 
     /**
-     * Get alerts.
+     * Get an alert.
      *
-     * Gets a list of alerts.
+     * Gets an alert.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<Array<model.Alert>> {
+    async get(
+        request: model.GetAlertRequest,
+        @context context?: Context
+    ): Promise<model.Alert> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.Alert>> {
         const path = "/api/2.0/preview/sql/alerts";
         return (await this.client.request(
             path,
@@ -105,6 +128,30 @@ export class AlertsService {
             undefined,
             context
         )) as Array<model.Alert>;
+    }
+
+    /**
+     * Get alerts.
+     *
+     * Gets a list of alerts.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(@context context?: Context): Promise<Array<model.Alert>> {
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.EditAlert,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/preview/sql/alerts/${request.alert_id}`;
+        return (await this.client.request(
+            path,
+            "PUT",
+            request,
+            context
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -117,13 +164,7 @@ export class AlertsService {
         request: model.EditAlert,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/preview/sql/alerts/${request.alert_id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -147,11 +188,9 @@ export class DashboardsError extends ApiError {
  */
 export class DashboardsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a dashboard object.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateDashboardRequest,
         @context context?: Context
     ): Promise<model.Dashboard> {
@@ -165,13 +204,18 @@ export class DashboardsService {
     }
 
     /**
-     * Remove a dashboard.
-     *
-     * Moves a dashboard to the trash. Trashed dashboards do not appear in list
-     * views or searches, and cannot be shared.
+     * Create a dashboard object.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateDashboardRequest,
+        @context context?: Context
+    ): Promise<model.Dashboard> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteDashboardRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -185,13 +229,21 @@ export class DashboardsService {
     }
 
     /**
-     * Retrieve a definition.
+     * Remove a dashboard.
      *
-     * Returns a JSON representation of a dashboard object, including its
-     * visualization and query objects.
+     * Moves a dashboard to the trash. Trashed dashboards do not appear in list
+     * views or searches, and cannot be shared.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteDashboardRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetDashboardRequest,
         @context context?: Context
     ): Promise<model.Dashboard> {
@@ -205,12 +257,21 @@ export class DashboardsService {
     }
 
     /**
-     * Get dashboard objects.
+     * Retrieve a definition.
      *
-     * Fetch a paginated list of dashboard objects.
+     * Returns a JSON representation of a dashboard object, including its
+     * visualization and query objects.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetDashboardRequest,
+        @context context?: Context
+    ): Promise<model.Dashboard> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListDashboardsRequest,
         @context context?: Context
     ): Promise<model.ListResponse> {
@@ -224,12 +285,50 @@ export class DashboardsService {
     }
 
     /**
-     * Restore a dashboard.
+     * Get dashboard objects.
      *
-     * A restored dashboard appears in list views and searches and can be shared.
+     * Fetch a paginated list of dashboard objects.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async restore(
+    async *list(
+        request: model.ListDashboardsRequest,
+        @context context?: Context
+    ): AsyncIterable<model.Dashboard> {
+        // deduplicate items that may have been added during iteration
+        const seen: Record<string, boolean> = {};
+        request.page = 1; // start iterating from the first page
+
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.results || response.results.length === 0) {
+                break;
+            }
+
+            for (const v of response.results) {
+                const id = v.id;
+                if (id) {
+                    if (seen[id]) {
+                        // item was added during iteration
+                        continue;
+                    }
+                    seen[id] = true;
+                }
+                yield v;
+            }
+
+            request.page += 1;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _restore(
         request: model.RestoreDashboardRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -240,6 +339,19 @@ export class DashboardsService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Restore a dashboard.
+     *
+     * A restored dashboard appears in list views and searches and can be shared.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async restore(
+        request: model.RestoreDashboardRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._restore(request, context);
     }
 }
 
@@ -268,6 +380,20 @@ export class DataSourcesError extends ApiError {
  */
 export class DataSourcesService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.DataSource>> {
+        const path = "/api/2.0/preview/sql/data_sources";
+        return (await this.client.request(
+            path,
+            "GET",
+            undefined,
+            context
+        )) as Array<model.DataSource>;
+    }
+
     /**
      * Get a list of SQL warehouses.
      *
@@ -278,13 +404,7 @@ export class DataSourcesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(@context context?: Context): Promise<Array<model.DataSource>> {
-        const path = "/api/2.0/preview/sql/data_sources";
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as Array<model.DataSource>;
+        return await this._list(context);
     }
 }
 
@@ -316,14 +436,9 @@ export class DbsqlPermissionsError extends ApiError {
  */
 export class DbsqlPermissionsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Get object ACL.
-     *
-     * Gets a JSON representation of the access control list (ACL) for a
-     * specified object.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetDbsqlPermissionRequest,
         @context context?: Context
     ): Promise<model.GetResponse> {
@@ -337,13 +452,21 @@ export class DbsqlPermissionsService {
     }
 
     /**
-     * Set object ACL.
+     * Get object ACL.
      *
-     * Sets the access control list (ACL) for a specified object. This operation
-     * will complete rewrite the ACL.
+     * Gets a JSON representation of the access control list (ACL) for a
+     * specified object.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async set(
+    async get(
+        request: model.GetDbsqlPermissionRequest,
+        @context context?: Context
+    ): Promise<model.GetResponse> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _set(
         request: model.SetRequest,
         @context context?: Context
     ): Promise<model.SetResponse> {
@@ -357,13 +480,21 @@ export class DbsqlPermissionsService {
     }
 
     /**
-     * Transfer object ownership.
+     * Set object ACL.
      *
-     * Transfers ownership of a dashboard, query, or alert to an active user.
-     * Requires an admin API key.
+     * Sets the access control list (ACL) for a specified object. This operation
+     * will complete rewrite the ACL.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async transferOwnership(
+    async set(
+        request: model.SetRequest,
+        @context context?: Context
+    ): Promise<model.SetResponse> {
+        return await this._set(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _transferOwnership(
         request: model.TransferOwnershipRequest,
         @context context?: Context
     ): Promise<model.Success> {
@@ -374,6 +505,20 @@ export class DbsqlPermissionsService {
             request,
             context
         )) as model.Success;
+    }
+
+    /**
+     * Transfer object ownership.
+     *
+     * Transfers ownership of a dashboard, query, or alert to an active user.
+     * Requires an admin API key.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async transferOwnership(
+        request: model.TransferOwnershipRequest,
+        @context context?: Context
+    ): Promise<model.Success> {
+        return await this._transferOwnership(request, context);
     }
 }
 
@@ -395,6 +540,21 @@ export class QueriesError extends ApiError {
  */
 export class QueriesService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.QueryPostContent,
+        @context context?: Context
+    ): Promise<model.Query> {
+        const path = "/api/2.0/preview/sql/queries";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.Query;
+    }
+
     /**
      * Create a new query definition.
      *
@@ -413,13 +573,21 @@ export class QueriesService {
         request: model.QueryPostContent,
         @context context?: Context
     ): Promise<model.Query> {
-        const path = "/api/2.0/preview/sql/queries";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteQueryRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/preview/sql/queries/${request.query_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.Query;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -434,23 +602,11 @@ export class QueriesService {
         request: model.DeleteQueryRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/preview/sql/queries/${request.query_id}`;
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._delete(request, context);
     }
 
-    /**
-     * Get a query definition.
-     *
-     * Retrieve a query object definition along with contextual permissions
-     * information about the currently authenticated user.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetQueryRequest,
         @context context?: Context
     ): Promise<model.Query> {
@@ -464,13 +620,21 @@ export class QueriesService {
     }
 
     /**
-     * Get a list of queries.
+     * Get a query definition.
      *
-     * Gets a list of queries. Optionally, this list can be filtered by a search
-     * term.
+     * Retrieve a query object definition along with contextual permissions
+     * information about the currently authenticated user.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetQueryRequest,
+        @context context?: Context
+    ): Promise<model.Query> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListQueriesRequest,
         @context context?: Context
     ): Promise<model.QueryList> {
@@ -484,13 +648,51 @@ export class QueriesService {
     }
 
     /**
-     * Restore a query.
+     * Get a list of queries.
      *
-     * Restore a query that has been moved to the trash. A restored query appears
-     * in list views and searches. You can use restored queries for alerts.
+     * Gets a list of queries. Optionally, this list can be filtered by a search
+     * term.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async restore(
+    async *list(
+        request: model.ListQueriesRequest,
+        @context context?: Context
+    ): AsyncIterable<model.Query> {
+        // deduplicate items that may have been added during iteration
+        const seen: Record<string, boolean> = {};
+        request.page = 1; // start iterating from the first page
+
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.results || response.results.length === 0) {
+                break;
+            }
+
+            for (const v of response.results) {
+                const id = v.id;
+                if (id) {
+                    if (seen[id]) {
+                        // item was added during iteration
+                        continue;
+                    }
+                    seen[id] = true;
+                }
+                yield v;
+            }
+
+            request.page += 1;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _restore(
         request: model.RestoreQueryRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -501,6 +703,34 @@ export class QueriesService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Restore a query.
+     *
+     * Restore a query that has been moved to the trash. A restored query appears
+     * in list views and searches. You can use restored queries for alerts.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async restore(
+        request: model.RestoreQueryRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._restore(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.QueryEditContent,
+        @context context?: Context
+    ): Promise<model.Query> {
+        const path = `/api/2.0/preview/sql/queries/${request.query_id}`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.Query;
     }
 
     /**
@@ -515,13 +745,7 @@ export class QueriesService {
         request: model.QueryEditContent,
         @context context?: Context
     ): Promise<model.Query> {
-        const path = `/api/2.0/preview/sql/queries/${request.query_id}`;
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.Query;
+        return await this._update(request, context);
     }
 }
 
@@ -541,15 +765,9 @@ export class QueryHistoryError extends ApiError {
  */
 export class QueryHistoryService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * List Queries.
-     *
-     * List the history of queries through SQL warehouses.
-     *
-     * You can filter by user ID, warehouse ID, status, and time range.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    private async _list(
         request: model.ListQueryHistoryRequest,
         @context context?: Context
     ): Promise<model.ListQueriesResponse> {
@@ -560,6 +778,42 @@ export class QueryHistoryService {
             request,
             context
         )) as model.ListQueriesResponse;
+    }
+
+    /**
+     * List Queries.
+     *
+     * List the history of queries through SQL warehouses.
+     *
+     * You can filter by user ID, warehouse ID, status, and time range.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *list(
+        request: model.ListQueryHistoryRequest,
+        @context context?: Context
+    ): AsyncIterable<model.QueryInfo> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.res || response.res.length === 0) {
+                break;
+            }
+
+            for (const v of response.res) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 }
 
@@ -759,14 +1013,9 @@ export class StatementExecutionError extends ApiError {
  */
 export class StatementExecutionService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Cancel statement execution.
-     *
-     * Requests that an executing statement be canceled. Callers must poll for
-     * status to see the terminal state.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async cancelExecution(
+    private async _cancelExecution(
         request: model.CancelExecutionRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -780,13 +1029,21 @@ export class StatementExecutionService {
     }
 
     /**
-     * Execute a SQL statement.
+     * Cancel statement execution.
      *
-     * Execute a SQL statement, and if flagged as such, await its result for a
-     * specified time.
+     * Requests that an executing statement be canceled. Callers must poll for
+     * status to see the terminal state.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async executeStatement(
+    async cancelExecution(
+        request: model.CancelExecutionRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._cancelExecution(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _executeStatement(
         request: model.ExecuteStatementRequest,
         @context context?: Context
     ): Promise<model.ExecuteStatementResponse> {
@@ -797,6 +1054,34 @@ export class StatementExecutionService {
             request,
             context
         )) as model.ExecuteStatementResponse;
+    }
+
+    /**
+     * Execute a SQL statement.
+     *
+     * Execute a SQL statement, and if flagged as such, await its result for a
+     * specified time.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async executeStatement(
+        request: model.ExecuteStatementRequest,
+        @context context?: Context
+    ): Promise<model.ExecuteStatementResponse> {
+        return await this._executeStatement(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getStatement(
+        request: model.GetStatementRequest,
+        @context context?: Context
+    ): Promise<model.GetStatementResponse> {
+        const path = `/api/2.0/sql/statements/${request.statement_id}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.GetStatementResponse;
     }
 
     /**
@@ -813,13 +1098,21 @@ export class StatementExecutionService {
         request: model.GetStatementRequest,
         @context context?: Context
     ): Promise<model.GetStatementResponse> {
-        const path = `/api/2.0/sql/statements/${request.statement_id}`;
+        return await this._getStatement(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getStatementResultChunkN(
+        request: model.GetStatementResultChunkNRequest,
+        @context context?: Context
+    ): Promise<model.ResultData> {
+        const path = `/api/2.0/sql/statements/${request.statement_id}/result/chunks/${request.chunk_index}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.GetStatementResponse;
+        )) as model.ResultData;
     }
 
     /**
@@ -839,13 +1132,7 @@ export class StatementExecutionService {
         request: model.GetStatementResultChunkNRequest,
         @context context?: Context
     ): Promise<model.ResultData> {
-        const path = `/api/2.0/sql/statements/${request.statement_id}/result/chunks/${request.chunk_index}`;
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.ResultData;
+        return await this._getStatementResultChunkN(request, context);
     }
 }
 
@@ -867,13 +1154,9 @@ export class WarehousesError extends ApiError {
  */
 export class WarehousesService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a warehouse.
-     *
-     * Creates a new SQL warehouse.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateWarehouseRequest,
         @context context?: Context
     ): Promise<model.CreateWarehouseResponse> {
@@ -887,86 +1170,81 @@ export class WarehousesService {
     }
 
     /**
-     * create and wait to reach RUNNING state
-     *  or fail on reaching STOPPED or DELETED state
+     * Create a warehouse.
+     *
+     * Creates a new SQL warehouse.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async createAndWait(
+    async create(
         createWarehouseRequest: model.CreateWarehouseRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.GetWarehouseResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.GetWarehouseResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<
+        Waiter<model.CreateWarehouseResponse, model.GetWarehouseResponse>
+    > {
         const cancellationToken = context?.cancellationToken;
 
-        const createWarehouseResponse = await this.create(
+        const createWarehouseResponse = await this._create(
             createWarehouseRequest,
             context
         );
 
-        return await retry<model.GetWarehouseResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        id: createWarehouseResponse.id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "Warehouses.createAndWait: cancelled"
+        return asWaiter(createWarehouseResponse, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.GetWarehouseResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            id: createWarehouseResponse.id!,
+                        },
+                        context
                     );
-                    throw new WarehousesError("createAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state;
-                const statusMessage = pollResponse.health!.summary;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "STOPPED":
-                    case "DELETED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Warehouses.createAndWait: ${errorMessage}`
+                            "Warehouses.createAndWait: cancelled"
                         );
-                        throw new WarehousesError(
-                            "createAndWait",
-                            errorMessage
-                        );
+                        throw new WarehousesError("createAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Warehouses.createAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new WarehousesRetriableError(
-                            "createAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state;
+                    const statusMessage = pollResponse.health!.summary;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "STOPPED":
+                        case "DELETED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.createAndWait: ${errorMessage}`
+                            );
+                            throw new WarehousesError(
+                                "createAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.createAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WarehousesRetriableError(
+                                "createAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Delete a warehouse.
-     *
-     * Deletes a SQL warehouse.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    private async _delete(
         request: model.DeleteWarehouseRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -980,72 +1258,65 @@ export class WarehousesService {
     }
 
     /**
-     * delete and wait to reach DELETED state
+     * Delete a warehouse.
      *
+     * Deletes a SQL warehouse.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async deleteAndWait(
+    async delete(
         deleteWarehouseRequest: model.DeleteWarehouseRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.GetWarehouseResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.GetWarehouseResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.delete(deleteWarehouseRequest, context);
+        await this._delete(deleteWarehouseRequest, context);
 
-        return await retry<model.GetWarehouseResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        id: deleteWarehouseRequest.id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "Warehouses.deleteAndWait: cancelled"
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.GetWarehouseResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            id: deleteWarehouseRequest.id!,
+                        },
+                        context
                     );
-                    throw new WarehousesError("deleteAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state;
-                const statusMessage = pollResponse.health!.summary;
-                switch (status) {
-                    case "DELETED": {
-                        return pollResponse;
-                    }
-                    default: {
-                        const errorMessage = `failed to reach DELETED state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Warehouses.deleteAndWait: retrying: ${errorMessage}`
+                            "Warehouses.deleteAndWait: cancelled"
                         );
-                        throw new WarehousesRetriableError(
-                            "deleteAndWait",
-                            errorMessage
-                        );
+                        throw new WarehousesError("deleteAndWait", "cancelled");
                     }
-                }
-            },
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state;
+                    const statusMessage = pollResponse.health!.summary;
+                    switch (status) {
+                        case "DELETED": {
+                            return pollResponse;
+                        }
+                        default: {
+                            const errorMessage = `failed to reach DELETED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.deleteAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WarehousesRetriableError(
+                                "deleteAndWait",
+                                errorMessage
+                            );
+                        }
+                    }
+                },
+            });
         });
     }
 
-    /**
-     * Update a warehouse.
-     *
-     * Updates the configuration for a SQL warehouse.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async edit(
+    private async _edit(
         request: model.EditWarehouseRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1059,78 +1330,76 @@ export class WarehousesService {
     }
 
     /**
-     * edit and wait to reach RUNNING state
-     *  or fail on reaching STOPPED or DELETED state
+     * Update a warehouse.
+     *
+     * Updates the configuration for a SQL warehouse.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async editAndWait(
+    async edit(
         editWarehouseRequest: model.EditWarehouseRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.GetWarehouseResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.GetWarehouseResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.edit(editWarehouseRequest, context);
+        await this._edit(editWarehouseRequest, context);
 
-        return await retry<model.GetWarehouseResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        id: editWarehouseRequest.id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Warehouses.editAndWait: cancelled");
-                    throw new WarehousesError("editAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state;
-                const statusMessage = pollResponse.health!.summary;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "STOPPED":
-                    case "DELETED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.GetWarehouseResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            id: editWarehouseRequest.id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Warehouses.editAndWait: ${errorMessage}`
+                            "Warehouses.editAndWait: cancelled"
                         );
-                        throw new WarehousesError("editAndWait", errorMessage);
+                        throw new WarehousesError("editAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Warehouses.editAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new WarehousesRetriableError(
-                            "editAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state;
+                    const statusMessage = pollResponse.health!.summary;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "STOPPED":
+                        case "DELETED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.editAndWait: ${errorMessage}`
+                            );
+                            throw new WarehousesError(
+                                "editAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.editAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WarehousesRetriableError(
+                                "editAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Get warehouse info.
-     *
-     * Gets the information for a single SQL warehouse.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetWarehouseRequest,
         @context context?: Context
     ): Promise<model.GetWarehouseResponse> {
@@ -1144,82 +1413,79 @@ export class WarehousesService {
     }
 
     /**
-     * get and wait to reach RUNNING state
-     *  or fail on reaching STOPPED or DELETED state
+     * Get warehouse info.
+     *
+     * Gets the information for a single SQL warehouse.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getAndWait(
+    async get(
         getWarehouseRequest: model.GetWarehouseRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.GetWarehouseResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.GetWarehouseResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.GetWarehouseResponse, model.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        const getWarehouseResponse = await this.get(
+        const getWarehouseResponse = await this._get(
             getWarehouseRequest,
             context
         );
 
-        return await retry<model.GetWarehouseResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        id: getWarehouseResponse.id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Warehouses.getAndWait: cancelled");
-                    throw new WarehousesError("getAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state;
-                const statusMessage = pollResponse.health!.summary;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "STOPPED":
-                    case "DELETED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+        return asWaiter(getWarehouseResponse, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.GetWarehouseResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            id: getWarehouseResponse.id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Warehouses.getAndWait: ${errorMessage}`
+                            "Warehouses.getAndWait: cancelled"
                         );
-                        throw new WarehousesError("getAndWait", errorMessage);
+                        throw new WarehousesError("getAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Warehouses.getAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new WarehousesRetriableError(
-                            "getAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state;
+                    const statusMessage = pollResponse.health!.summary;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "STOPPED":
+                        case "DELETED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.getAndWait: ${errorMessage}`
+                            );
+                            throw new WarehousesError(
+                                "getAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.getAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WarehousesRetriableError(
+                                "getAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Get the workspace configuration.
-     *
-     * Gets the workspace level configuration that is shared by all SQL
-     * warehouses in a workspace.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async getWorkspaceWarehouseConfig(
+    private async _getWorkspaceWarehouseConfig(
         @context context?: Context
     ): Promise<model.GetWorkspaceWarehouseConfigResponse> {
         const path = "/api/2.0/sql/config/warehouses";
@@ -1232,12 +1498,20 @@ export class WarehousesService {
     }
 
     /**
-     * List warehouses.
+     * Get the workspace configuration.
      *
-     * Lists all SQL warehouses that a user has manager permissions on.
+     * Gets the workspace level configuration that is shared by all SQL
+     * warehouses in a workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async getWorkspaceWarehouseConfig(
+        @context context?: Context
+    ): Promise<model.GetWorkspaceWarehouseConfigResponse> {
+        return await this._getWorkspaceWarehouseConfig(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListWarehousesRequest,
         @context context?: Context
     ): Promise<model.ListWarehousesResponse> {
@@ -1251,13 +1525,23 @@ export class WarehousesService {
     }
 
     /**
-     * Set the workspace configuration.
+     * List warehouses.
      *
-     * Sets the workspace level configuration that is shared by all SQL
-     * warehouses in a workspace.
+     * Lists all SQL warehouses that a user has manager permissions on.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async setWorkspaceWarehouseConfig(
+    async *list(
+        request: model.ListWarehousesRequest,
+        @context context?: Context
+    ): AsyncIterable<model.EndpointInfo> {
+        const response = (await this._list(request, context)).warehouses;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _setWorkspaceWarehouseConfig(
         request: model.SetWorkspaceWarehouseConfigRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1271,12 +1555,21 @@ export class WarehousesService {
     }
 
     /**
-     * Start a warehouse.
+     * Set the workspace configuration.
      *
-     * Starts a SQL warehouse.
+     * Sets the workspace level configuration that is shared by all SQL
+     * warehouses in a workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async start(
+    async setWorkspaceWarehouseConfig(
+        request: model.SetWorkspaceWarehouseConfigRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._setWorkspaceWarehouseConfig(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _start(
         request: model.StartRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1290,80 +1583,76 @@ export class WarehousesService {
     }
 
     /**
-     * start and wait to reach RUNNING state
-     *  or fail on reaching STOPPED or DELETED state
+     * Start a warehouse.
+     *
+     * Starts a SQL warehouse.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async startAndWait(
+    async start(
         startRequest: model.StartRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.GetWarehouseResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.GetWarehouseResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.start(startRequest, context);
+        await this._start(startRequest, context);
 
-        return await retry<model.GetWarehouseResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        id: startRequest.id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "Warehouses.startAndWait: cancelled"
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.GetWarehouseResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            id: startRequest.id!,
+                        },
+                        context
                     );
-                    throw new WarehousesError("startAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state;
-                const statusMessage = pollResponse.health!.summary;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "STOPPED":
-                    case "DELETED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Warehouses.startAndWait: ${errorMessage}`
+                            "Warehouses.startAndWait: cancelled"
                         );
-                        throw new WarehousesError("startAndWait", errorMessage);
+                        throw new WarehousesError("startAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Warehouses.startAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new WarehousesRetriableError(
-                            "startAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state;
+                    const statusMessage = pollResponse.health!.summary;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "STOPPED":
+                        case "DELETED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.startAndWait: ${errorMessage}`
+                            );
+                            throw new WarehousesError(
+                                "startAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.startAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WarehousesRetriableError(
+                                "startAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
-    /**
-     * Stop a warehouse.
-     *
-     * Stops a SQL warehouse.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async stop(
+    private async _stop(
         request: model.StopRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1377,60 +1666,60 @@ export class WarehousesService {
     }
 
     /**
-     * stop and wait to reach STOPPED state
+     * Stop a warehouse.
      *
+     * Stops a SQL warehouse.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async stopAndWait(
+    async stop(
         stopRequest: model.StopRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (
-                newPollResponse: model.GetWarehouseResponse
-            ) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.GetWarehouseResponse> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.stop(stopRequest, context);
+        await this._stop(stopRequest, context);
 
-        return await retry<model.GetWarehouseResponse>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        id: stopRequest.id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error("Warehouses.stopAndWait: cancelled");
-                    throw new WarehousesError("stopAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.state;
-                const statusMessage = pollResponse.health!.summary;
-                switch (status) {
-                    case "STOPPED": {
-                        return pollResponse;
-                    }
-                    default: {
-                        const errorMessage = `failed to reach STOPPED state, got ${status}: ${statusMessage}`;
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.GetWarehouseResponse>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            id: stopRequest.id!,
+                        },
+                        context
+                    );
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Warehouses.stopAndWait: retrying: ${errorMessage}`
+                            "Warehouses.stopAndWait: cancelled"
                         );
-                        throw new WarehousesRetriableError(
-                            "stopAndWait",
-                            errorMessage
-                        );
+                        throw new WarehousesError("stopAndWait", "cancelled");
                     }
-                }
-            },
+                    await onProgress(pollResponse);
+                    const status = pollResponse.state;
+                    const statusMessage = pollResponse.health!.summary;
+                    switch (status) {
+                        case "STOPPED": {
+                            return pollResponse;
+                        }
+                        default: {
+                            const errorMessage = `failed to reach STOPPED state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Warehouses.stopAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WarehousesRetriableError(
+                                "stopAndWait",
+                                errorMessage
+                            );
+                        }
+                    }
+                },
+            });
         });
     }
 }

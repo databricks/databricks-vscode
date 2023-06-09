@@ -13,8 +13,8 @@ jobs:
             matrix:
                 arch:
                     [
-                        {bricks_arch: darwin_amd64, os: macos-latest},
-                        {bricks_arch: windows_amd64, os: windows-latest},
+                        {cli_arch: darwin_amd64, os: macos-latest},
+                        {cli_arch: windows_amd64, os: windows-latest},
                     ]
                 node-version: [16.x]
                 vscode-version: [stable, insiders]
@@ -24,7 +24,7 @@ jobs:
             os: ${{ matrix.arch.os }}
             node-version: ${{ matrix.node-version }}
             vscode-version: ${{ matrix.vscode-version }}
-            bricks_arch: ${{ matrix.arch.bricks_arch }}
+            cli_arch: ${{ matrix.arch.cli_arch }}
         secrets: inherit
 
     package:
@@ -45,7 +45,7 @@ jobs:
             - run: yarn run package:cli:fetch
               working-directory: packages/databricks-vscode
               env:
-                  BRICKS_ARCH: darwin_amd64
+                  CLI_ARCH: darwin_amd64
 
             - name: Building packages
               run: yarn run build

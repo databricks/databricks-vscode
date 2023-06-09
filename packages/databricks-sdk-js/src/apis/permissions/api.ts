@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class PermissionsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -28,14 +29,9 @@ export class PermissionsError extends ApiError {
  */
 export class PermissionsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Get object permissions.
-     *
-     * Gets the permission of an object. Objects can inherit permissions from
-     * their parent objects or root objects.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.ObjectPermissions> {
@@ -49,12 +45,21 @@ export class PermissionsService {
     }
 
     /**
-     * Get permission levels.
+     * Get object permissions.
      *
-     * Gets the permission levels that a user can have on an object.
+     * Gets the permission of an object. Objects can inherit permissions from
+     * their parent objects or root objects.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getPermissionLevels(
+    async get(
+        request: model.Get,
+        @context context?: Context
+    ): Promise<model.ObjectPermissions> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getPermissionLevels(
         request: model.GetPermissionLevels,
         @context context?: Context
     ): Promise<model.GetPermissionLevelsResponse> {
@@ -68,6 +73,33 @@ export class PermissionsService {
     }
 
     /**
+     * Get permission levels.
+     *
+     * Gets the permission levels that a user can have on an object.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async getPermissionLevels(
+        request: model.GetPermissionLevels,
+        @context context?: Context
+    ): Promise<model.GetPermissionLevelsResponse> {
+        return await this._getPermissionLevels(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _set(
+        request: model.PermissionsRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/permissions/${request.request_object_type}/${request.request_object_id}`;
+        return (await this.client.request(
+            path,
+            "PUT",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Set permissions.
      *
      * Sets permissions on object. Objects can inherit permissions from their
@@ -78,10 +110,18 @@ export class PermissionsService {
         request: model.PermissionsRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._set(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.PermissionsRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/permissions/${request.request_object_type}/${request.request_object_id}`;
         return (await this.client.request(
             path,
-            "PUT",
+            "PATCH",
             request,
             context
         )) as model.EmptyResponse;
@@ -97,13 +137,7 @@ export class PermissionsService {
         request: model.PermissionsRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/permissions/${request.request_object_type}/${request.request_object_id}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -124,14 +158,9 @@ export class WorkspaceAssignmentError extends ApiError {
  */
 export class WorkspaceAssignmentService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Delete permissions assignment.
-     *
-     * Deletes the workspace permissions assignment in a given account and
-     * workspace for the specified principal.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    private async _delete(
         request: model.DeleteWorkspaceAssignmentRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -145,13 +174,21 @@ export class WorkspaceAssignmentService {
     }
 
     /**
-     * List workspace permissions.
+     * Delete permissions assignment.
      *
-     * Get an array of workspace permissions for the specified account and
-     * workspace.
+     * Deletes the workspace permissions assignment in a given account and
+     * workspace for the specified principal.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteWorkspaceAssignmentRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetWorkspaceAssignmentRequest,
         @context context?: Context
     ): Promise<model.WorkspacePermissions> {
@@ -165,13 +202,21 @@ export class WorkspaceAssignmentService {
     }
 
     /**
-     * Get permission assignments.
+     * List workspace permissions.
      *
-     * Get the permission assignments for the specified Databricks Account and
-     * Databricks Workspace.
+     * Get an array of workspace permissions for the specified account and
+     * workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetWorkspaceAssignmentRequest,
+        @context context?: Context
+    ): Promise<model.WorkspacePermissions> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListWorkspaceAssignmentRequest,
         @context context?: Context
     ): Promise<model.PermissionAssignments> {
@@ -185,13 +230,25 @@ export class WorkspaceAssignmentService {
     }
 
     /**
-     * Create or update permissions assignment.
+     * Get permission assignments.
      *
-     * Creates or updates the workspace permissions assignment in a given account
-     * and workspace for the specified principal.
+     * Get the permission assignments for the specified Databricks Account and
+     * Databricks Workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async *list(
+        request: model.ListWorkspaceAssignmentRequest,
+        @context context?: Context
+    ): AsyncIterable<model.PermissionAssignment> {
+        const response = (await this._list(request, context))
+            .permission_assignments;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateWorkspaceAssignments,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -202,5 +259,19 @@ export class WorkspaceAssignmentService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Create or update permissions assignment.
+     *
+     * Creates or updates the workspace permissions assignment in a given account
+     * and workspace for the specified principal.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateWorkspaceAssignments,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._update(request, context);
     }
 }

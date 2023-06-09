@@ -23,7 +23,7 @@ export const nodeArchMap: Map<string, ArchType> = new Map([
     ["ia32", "x86_32"],
 ]);
 
-const bricksArchMap: Map<string, ArchDetails> = new Map([
+const cliArchMap: Map<string, ArchDetails> = new Map([
     ["darwin_arm64", {os: "macos", arch: "arm64"}],
     ["darwin_amd64", {os: "macos", arch: "x64"}],
     ["linux_arm64", {os: "linux", arch: "arm64"}],
@@ -46,7 +46,7 @@ export const vsixArchMap: Map<string, ArchDetails> = new Map([
 export interface PackageMetaData {
     packageName: string;
     version: string;
-    bricksArch?: string;
+    cliArch?: string;
     vsixArch?: string;
     commitSha?: string;
 }
@@ -76,7 +76,7 @@ export async function getMetadata(
     return {
         packageName: jsonData["name"],
         version: jsonData["version"],
-        bricksArch: jsonData["arch"]?.["bricksArch"],
+        cliArch: jsonData["arch"]?.["cliArch"],
         vsixArch: jsonData["arch"]?.["vsixArch"],
         commitSha: jsonData["commitSha"],
     };
@@ -126,10 +126,8 @@ export async function checkArchCompat(context: ExtensionContext) {
             metaData
         ) &&
         isCompatibleArchitecture(
-            "bricks-cli",
-            metaData.bricksArch
-                ? bricksArchMap.get(metaData.bricksArch)
-                : undefined,
+            "databricks-cli",
+            metaData.cliArch ? cliArchMap.get(metaData.cliArch) : undefined,
             nodeArch,
             metaData
         )

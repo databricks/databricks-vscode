@@ -27,7 +27,6 @@ import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {LocalUri} from "../sync/SyncDestination";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {isNotebook} from "../utils";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -192,9 +191,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
 
         await cluster.refresh();
         await this.wsfsAccessVerifier.verifyCluster(cluster);
-        if (workspaceConfigs.syncDestinationType === "workspace") {
-            await this.wsfsAccessVerifier.switchIfNotEnabled();
-        }
+        await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
         const isClusterRunning = await promptForClusterStart(
             cluster,
             async () => {

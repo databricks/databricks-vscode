@@ -7,7 +7,8 @@ export class ProjectConfigFileWatcher implements Disposable {
     private disposables: Array<Disposable> = [];
     constructor(
         readonly connectionManager: ConnectionManager,
-        rootPath?: string
+        rootPath: string,
+        cliPath: string
     ) {
         const fileSystemWatcher = workspace.createFileSystemWatcher(
             ProjectConfigFile.getProjectConfigFilePath(rootPath)
@@ -28,7 +29,10 @@ export class ProjectConfigFileWatcher implements Disposable {
                 }
             }, this),
             fileSystemWatcher.onDidChange(async () => {
-                const configFile = await ProjectConfigFile.load(rootPath);
+                const configFile = await ProjectConfigFile.load(
+                    rootPath,
+                    cliPath
+                );
                 if (this.connectionManager.state === "CONNECTING") {
                     await this.connectionManager.waitForConnect();
                 }

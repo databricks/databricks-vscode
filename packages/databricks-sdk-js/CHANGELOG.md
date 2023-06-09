@@ -1,3 +1,65 @@
+# Release: v0.3.14
+
+## packages/databricks-sdk-js
+
+## <small>0.3.14 (2023-06-02)</small>
+
+-   SDK: Implement pagination
+-   SDK: Port error handling code from GO SDK
+-   Bump @types/node from 18.16.4 to 20.0.0
+-   Bump dependencies
+-   DB Connect Unified Auth Support
+-   Rename bricks to databricks
+
+# Release: v0.3.13
+
+## packages/databricks-sdk-js
+
+## <small>0.3.13 (2023-05-09)</small>
+
+# Release: v0.3.12
+
+## packages/databricks-sdk-js
+
+## <small>0.3.12 (2023-05-03)</small>
+
+# Release: v0.3.11
+
+## packages/databricks-sdk-js
+
+## <small>0.3.11 (2023-04-25)</small>
+
+# Release: v0.3.10
+
+## packages/databricks-sdk-js
+
+## <small>0.3.10 (2023-04-20)</small>
+
+# Release: v0.3.9
+
+## packages/databricks-sdk-js
+
+## <small>0.3.9 (2023-04-19)</small>
+
+# Release: v0.3.8
+
+## packages/databricks-sdk-js
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-   Feature: Add detection for Unity Catalogue to Clusters service.
+-   Feature: Add metadata service client and server as credential provider.
+-   Feature: Add credential provider to support OAuth through Databricks CLI.
+-   Feature: Use waiter to handle long running calls.
+
+# Release: v0.3.7
+
+## packages/databricks-sdk-js
+
+## <small>0.3.7 (2023-03-21)</small>
+
+-   Fix: Fix error handling for api client errors.
+
 # Release: v0.3.5
 
 ## packages/databricks-sdk-js

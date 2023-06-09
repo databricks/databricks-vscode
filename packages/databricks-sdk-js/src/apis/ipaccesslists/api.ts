@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class IpAccessListsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -47,6 +48,21 @@ export class IpAccessListsError extends ApiError {
  */
 export class IpAccessListsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateIpAccessList,
+        @context context?: Context
+    ): Promise<model.CreateIpAccessListResponse> {
+        const path = "/api/2.0/ip-access-lists";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.CreateIpAccessListResponse;
+    }
+
     /**
      * Create access list.
      *
@@ -73,22 +89,11 @@ export class IpAccessListsService {
         request: model.CreateIpAccessList,
         @context context?: Context
     ): Promise<model.CreateIpAccessListResponse> {
-        const path = "/api/2.0/ip-access-lists";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.CreateIpAccessListResponse;
+        return await this._create(request, context);
     }
 
-    /**
-     * Delete access list.
-     *
-     * Deletes an IP access list, specified by its list ID.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    private async _delete(
         request: model.Delete,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -102,12 +107,20 @@ export class IpAccessListsService {
     }
 
     /**
-     * Get access list.
+     * Delete access list.
      *
-     * Gets an IP access list, specified by its list ID.
+     * Deletes an IP access list, specified by its list ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.Delete,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.FetchIpAccessListResponse> {
@@ -121,12 +134,20 @@ export class IpAccessListsService {
     }
 
     /**
-     * Get access lists.
+     * Get access list.
      *
-     * Gets all IP access lists for the specified workspace.
+     * Gets an IP access list, specified by its list ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.Get,
+        @context context?: Context
+    ): Promise<model.FetchIpAccessListResponse> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         @context context?: Context
     ): Promise<model.GetIpAccessListResponse> {
         const path = "/api/2.0/ip-access-lists";
@@ -136,6 +157,35 @@ export class IpAccessListsService {
             undefined,
             context
         )) as model.GetIpAccessListResponse;
+    }
+
+    /**
+     * Get access lists.
+     *
+     * Gets all IP access lists for the specified workspace.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *list(
+        @context context?: Context
+    ): AsyncIterable<model.IpAccessListInfo> {
+        const response = (await this._list(context)).ip_access_lists;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _replace(
+        request: model.ReplaceIpAccessList,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.0/ip-access-lists/${request.ip_access_list_id}`;
+        return (await this.client.request(
+            path,
+            "PUT",
+            request,
+            context
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -160,10 +210,18 @@ export class IpAccessListsService {
         request: model.ReplaceIpAccessList,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
+        return await this._replace(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateIpAccessList,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
         const path = `/api/2.0/ip-access-lists/${request.ip_access_list_id}`;
         return (await this.client.request(
             path,
-            "PUT",
+            "PATCH",
             request,
             context
         )) as model.EmptyResponse;
@@ -195,12 +253,6 @@ export class IpAccessListsService {
         request: model.UpdateIpAccessList,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/ip-access-lists/${request.ip_access_list_id}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }

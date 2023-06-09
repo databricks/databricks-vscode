@@ -1,3 +1,88 @@
+# Release: v0.3.14
+
+## packages/databricks-vscode
+
+## <small>0.3.14 (2023-06-02)</small>
+
+-   Fix: Fix error handling when repos limit is reached, fixes [#726](https://github.com/databricks/databricks-vscode/issues/726)
+-   Patch: Port error handling code from GO SDK
+-   Telemety: Record SDK AuthType instead of VSCode AuthType
+-   Fix: Bump dependencies
+-   Feature: Support all authentication methods for interactive debugging with dbconnect.
+-   Fix: Improve error message to switch from repos to workspace FS.
+-   Fix: Rename `bricks` cli to `databricks`
+-   Telemetry: Record sync destination type
+-   Fix: Properly escape calls to python so that they work with directories with spaces, fixes [#715](https://github.com/databricks/databricks-vscode/issues/715)
+
+# Release: v0.3.13
+
+## packages/databricks-vscode
+
+## <small>0.3.13 (2023-05-09)</small>
+
+-   Fix: Gracefully handle virtual /Repos/me folder, closes [#693](https://github.com/databricks/databricks-vscode/issues/693) [#683](https://github.com/databricks/databricks-vscode/issues/683) [#691](https://github.com/databricks/databricks-vscode/issues/691) [#688](https://github.com/databricks/databricks-vscode/issues/688)
+-   Feature: Start sending Telemetry from the VS Code Extension.
+
+# Release: v0.3.12
+
+## packages/databricks-vscode
+
+## <small>0.3.12 (2023-05-03)</small>
+
+-   Fix: "Configure Autocompletion for Globals" was unable find type stubs, closes [#678](https://github.com/databricks/databricks-vscode/issues/678)
+-   Fix: .databricks.env file would start adding multiple quotes to existing variables
+
+# Release: v0.3.11
+
+## packages/databricks-vscode
+
+## <small>0.3.11 (2023-04-25)</small>
+
+-   Feature: All customers should start seeing prompt for switching to using Workspace as sync destination.
+-   Feature: Move autcompletion for globals to `__builtins__.py` from internal stubs.
+-   Fix: Prepend cwd to PYTHONPATH so that local changes take precedence over installed libraries, fixes [#673](https://github.com/databricks/databricks-vscode/issues/673)
+
+# Release: v0.3.10
+
+## packages/databricks-vscode
+
+## <small>0.3.10 (2023-04-20)</small>
+
+-   Fix: Method for finding installed python packages was failing on windows.
+
+# Release: v0.3.9
+
+## packages/databricks-vscode
+
+## <small>0.3.9 (2023-04-19)</small>
+
+-   Feature: Experimental Databricks Connect V2 integration. Add `debugging.dbconnect` to `databricks.experimental.optIn` vscode workspace setting, to start using the new integration.
+-   Feature: Next phase of Files in Workspace rollout. 50% of users should start seeing prompts to switch to workspace as sync destination.
+
+# Release: v0.3.8
+
+## packages/databricks-vscode
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-   Feature: Add OAuth support.
+-   Feature: Add Telemetry to VS Code Extension.
+-   Fix: Don't sync .databricks folder even if it is not added to .gitignore, fixes [#628](https://github.com/databricks/databricks-vscode/issues/628)
+-   Feature: Enable workspace folder as sync destination for some of the users. They should now see a popup to start using workspace as sync destination, if they are on clusters with `dbr 11.2` or greater.
+-   Fix: Treat cluster in RESIZING state as running clusters, fixes [#618](https://github.com/databricks/databricks-vscode/issues/618)
+-   Fix: Reverted changes to the exported API. This had broken some downstream projects such as [SQLTools Databricks Driver](https://github.com/databricks/sqltools-databricks-driver) and [Databricks Power Tools for VSCode](https://github.com/paiqo/Databricks-VSCode).
+-   Feature: Environment files for python are now managed by the databricks extension. Added a setting `databricks.python.envFile` which overrides `python.envFile`. `python.envFile` is internally managed by the databricks extension. Users should use `databricks.python.envFile` instead.
+
+# Release: v0.3.7
+
+## packages/databricks-vscode
+
+## <small>0.3.7 (2023-03-21)</small>
+
+-   Fix: (Experimental) Show only directories in sync destination quickpick.
+-   Fix: (Experimental) Fix creation of .ide if it doesn't exists.
+-   Fix: Fix PATH delimiter on Windows, closes [#576](https://github.com/databricks/databricks-vscode/issues/576)
+
 # Release: v0.3.5
 
 ## packages/databricks-vscode

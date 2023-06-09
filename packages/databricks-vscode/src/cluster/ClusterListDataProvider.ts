@@ -72,13 +72,13 @@ export class ClusterListDataProvider
     public static clusterNodeToTreeItem(element: Cluster): TreeItem {
         let icon: ThemeIcon;
         switch (element.state) {
+            case "RESIZING":
             case "RUNNING":
                 icon = new ThemeIcon("debug-start");
                 break;
 
             case "RESTARTING":
             case "PENDING":
-            case "RESIZING":
                 icon = new ThemeIcon("debug-restart");
                 break;
 

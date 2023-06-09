@@ -1,6 +1,6 @@
 {
     "name": "@databricks/databricks-vscode-types",
-    "version": "0.3.5",
+    "version": "0.3.14",
     "description": "Package with types and interfaces to develop extensions to the Databricks VSCode plugin",
     "main": "index.js",
     "types": "index.d.ts",
@@ -23,10 +23,10 @@
         "test": "yarn run test:lint && yarn run test:unit"
     },
     "devDependencies": {
-        "@types/vscode": "^1.75.1",
-        "eslint": "^8.34.0",
-        "prettier": "^2.8.4",
-        "typescript": "^4.9.5"
+        "@types/vscode": "^1.69.1",
+        "eslint": "^8.41.0",
+        "prettier": "^2.8.8",
+        "typescript": "^5.0.4"
     },
     "dependencies": {
         "@databricks/databricks-sdk": "workspace:^"
