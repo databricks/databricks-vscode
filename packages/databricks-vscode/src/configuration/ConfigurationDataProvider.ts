@@ -7,6 +7,7 @@ import {
     TreeDataProvider,
     TreeItem,
     TreeItemCollapsibleState,
+    window,
 } from "vscode";
 
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
@@ -320,11 +321,36 @@ export class ConfigurationDataProvider
                     },
                 });
             }
+
+            const errorOverrides: TreeItem =
+                this.sync.state === "ERROR" && this.sync.reason
+                    ? {
+                          description: "Error - Click for more details",
+                          iconPath: new ThemeIcon(
+                              "alert",
+                              new ThemeColor("errorForeground")
+                          ),
+                          tooltip: "Click for more details",
+
+                          command: {
+                              title: "Call",
+                              command: "databricks.call",
+                              arguments: [
+                                  () => {
+                                      window.showErrorMessage(
+                                          `Sync Error: ${this.sync.reason}`
+                                      );
+                                  },
+                              ],
+                          },
+                      }
+                    : {};
             children.push(
                 {
                     label: `State`,
                     description: this.sync.state,
                     collapsibleState: TreeItemCollapsibleState.None,
+                    ...errorOverrides,
                 },
                 {
                     label: `Path`,
@@ -332,6 +358,7 @@ export class ConfigurationDataProvider
                     collapsibleState: TreeItemCollapsibleState.None,
                 }
             );
+
             return children;
         }
 
