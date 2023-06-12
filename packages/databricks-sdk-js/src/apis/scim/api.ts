@@ -40,7 +40,13 @@ export class AccountGroupsService {
         request: model.Group,
         @context context?: Context
     ): Promise<model.Group> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Groups`;
         return (await this.client.request(
             path,
             "POST",
@@ -68,7 +74,13 @@ export class AccountGroupsService {
         request: model.DeleteGroupRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -95,7 +107,13 @@ export class AccountGroupsService {
         request: model.GetGroupRequest,
         @context context?: Context
     ): Promise<model.Group> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -122,7 +140,13 @@ export class AccountGroupsService {
         request: model.ListGroupsRequest,
         @context context?: Context
     ): Promise<model.ListGroupsResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Groups`;
         return (await this.client.request(
             path,
             "GET",
@@ -152,7 +176,13 @@ export class AccountGroupsService {
         request: model.PartialUpdate,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "PATCH",
@@ -179,7 +209,13 @@ export class AccountGroupsService {
         request: model.Group,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Groups/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Groups/${request.id}`;
         return (await this.client.request(
             path,
             "PUT",
@@ -229,7 +265,13 @@ export class AccountServicePrincipalsService {
         request: model.ServicePrincipal,
         @context context?: Context
     ): Promise<model.ServicePrincipal> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/ServicePrincipals`;
         return (await this.client.request(
             path,
             "POST",
@@ -256,7 +298,13 @@ export class AccountServicePrincipalsService {
         request: model.DeleteServicePrincipalRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -283,7 +331,13 @@ export class AccountServicePrincipalsService {
         request: model.GetServicePrincipalRequest,
         @context context?: Context
     ): Promise<model.ServicePrincipal> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -311,7 +365,13 @@ export class AccountServicePrincipalsService {
         request: model.ListServicePrincipalsRequest,
         @context context?: Context
     ): Promise<model.ListServicePrincipalResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/ServicePrincipals`;
         return (await this.client.request(
             path,
             "GET",
@@ -341,7 +401,13 @@ export class AccountServicePrincipalsService {
         request: model.PartialUpdate,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "PATCH",
@@ -369,7 +435,13 @@ export class AccountServicePrincipalsService {
         request: model.ServicePrincipal,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/ServicePrincipals/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/ServicePrincipals/${request.id}`;
         return (await this.client.request(
             path,
             "PUT",
@@ -426,7 +498,13 @@ export class AccountUsersService {
         request: model.User,
         @context context?: Context
     ): Promise<model.User> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Users`;
         return (await this.client.request(
             path,
             "POST",
@@ -454,7 +532,13 @@ export class AccountUsersService {
         request: model.DeleteUserRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -482,7 +566,13 @@ export class AccountUsersService {
         request: model.GetUserRequest,
         @context context?: Context
     ): Promise<model.User> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -509,7 +599,13 @@ export class AccountUsersService {
         request: model.ListUsersRequest,
         @context context?: Context
     ): Promise<model.ListUsersResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Users`;
         return (await this.client.request(
             path,
             "GET",
@@ -539,7 +635,13 @@ export class AccountUsersService {
         request: model.PartialUpdate,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "PATCH",
@@ -567,7 +669,13 @@ export class AccountUsersService {
         request: model.User,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/scim/v2/Users/${request.id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/scim/v2/Users/${request.id}`;
         return (await this.client.request(
             path,
             "PUT",

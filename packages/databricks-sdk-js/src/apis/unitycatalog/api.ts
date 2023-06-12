@@ -34,7 +34,13 @@ export class AccountMetastoreAssignmentsService {
         request: model.CreateMetastoreAssignment,
         @context context?: Context
     ): Promise<model.MetastoreAssignment> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/metastores/${request.metastore_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/metastores/${request.metastore_id}`;
         return (await this.client.request(
             path,
             "POST",
@@ -61,7 +67,13 @@ export class AccountMetastoreAssignmentsService {
         request: model.DeleteAccountMetastoreAssignmentRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/metastores/${request.metastore_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/metastores/${request.metastore_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -89,7 +101,13 @@ export class AccountMetastoreAssignmentsService {
         request: model.GetAccountMetastoreAssignmentRequest,
         @context context?: Context
     ): Promise<model.MetastoreAssignment> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/metastore`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/metastore`;
         return (await this.client.request(
             path,
             "GET",
@@ -119,7 +137,13 @@ export class AccountMetastoreAssignmentsService {
         request: model.ListAccountMetastoreAssignmentsRequest,
         @context context?: Context
     ): Promise<Array<model.MetastoreAssignment>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/workspaces`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}/workspaces`;
         return (await this.client.request(
             path,
             "GET",
@@ -147,7 +171,13 @@ export class AccountMetastoreAssignmentsService {
         request: model.UpdateMetastoreAssignment,
         @context context?: Context
     ): Promise<model.MetastoreAssignment> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}/metastores/${request.metastore_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/metastores/${request.metastore_id}`;
         return (await this.client.request(
             path,
             "PUT",
@@ -194,7 +224,13 @@ export class AccountMetastoresService {
         request: model.CreateMetastore,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores`;
         return (await this.client.request(
             path,
             "POST",
@@ -221,7 +257,13 @@ export class AccountMetastoresService {
         request: model.DeleteAccountMetastoreRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}`;
         return (await this.client.request(
             path,
             "DELETE",
@@ -249,7 +291,13 @@ export class AccountMetastoresService {
         request: model.GetAccountMetastoreRequest,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}`;
         return (await this.client.request(
             path,
             "GET",
@@ -276,7 +324,13 @@ export class AccountMetastoresService {
     private async _list(
         @context context?: Context
     ): Promise<model.ListMetastoresResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores`;
         return (await this.client.request(
             path,
             "GET",
@@ -303,7 +357,13 @@ export class AccountMetastoresService {
         request: model.UpdateMetastore,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}`;
         return (await this.client.request(
             path,
             "PUT",
@@ -348,7 +408,13 @@ export class AccountStorageCredentialsService {
         request: model.CreateStorageCredential,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/storage-credentials`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}/storage-credentials`;
         return (await this.client.request(
             path,
             "POST",
@@ -382,7 +448,13 @@ export class AccountStorageCredentialsService {
         request: model.GetAccountStorageCredentialRequest,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/storage-credentials/`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}/storage-credentials/`;
         return (await this.client.request(
             path,
             "GET",
@@ -411,7 +483,13 @@ export class AccountStorageCredentialsService {
         request: model.ListAccountStorageCredentialsRequest,
         @context context?: Context
     ): Promise<Array<model.StorageCredentialInfo>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/metastores/${request.metastore_id}/storage-credentials`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}/storage-credentials`;
         return (await this.client.request(
             path,
             "GET",
