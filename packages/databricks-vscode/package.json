@@ -699,7 +699,7 @@
         "@wdio/mocha-framework": "^8.10.6",
         "@wdio/spec-reporter": "^8.10.6",
         "@wdio/types": "^8.10.4",
-        "esbuild": "^0.17.19",
+        "esbuild": "^0.18.1",
         "eslint": "^8.41.0",
         "fs-extra": "^11.1.1",
         "glob": "^10.2.6",
