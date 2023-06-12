@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {Cluster} from "..";
+import {CancellationToken, Cluster} from "..";
 import assert from "node:assert";
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
 
@@ -38,8 +38,12 @@ describe(__filename, function () {
 
     // skipping because running the test takes too long
     it.skip("should start a stopping cluster", async () => {
-        const token = {
+        let listener: any;
+        const token: CancellationToken = {
             isCancellationRequested: false,
+            onCancellationRequested: (_listener) => {
+                listener = _listener;
+            },
         };
 
         const cluster = integSetup.cluster;
@@ -53,6 +57,7 @@ describe(__filename, function () {
                 // cancel stop
                 setTimeout(() => {
                     token.isCancellationRequested = true;
+                    listener();
                     resolve();
                 }, 500);
             }),
