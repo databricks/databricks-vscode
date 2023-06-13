@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {IntegrationTestSetup, sleep} from "../test/IntegrationTestSetup";
+import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
 import * as assert from "node:assert";
 import {Repo} from "./Repos";
 import {RepoInfo, ReposService} from "../apis/repos";
 import {randomUUID} from "node:crypto";
 import {WorkspaceService} from "../apis/workspace";
 import {Context} from "../context";
+import {CancellationToken} from "../types";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;
@@ -72,8 +73,12 @@ describe(__filename, function () {
     });
 
     it("should cancel listing repos", async () => {
-        const token = {
+        let listener: any;
+        const token: CancellationToken = {
             isCancellationRequested: false,
+            onCancellationRequested: (_listener) => {
+                listener = _listener;
+            },
         };
 
         const response = Repo.list(
@@ -84,16 +89,22 @@ describe(__filename, function () {
             new Context({cancellationToken: token})
         );
 
-        await sleep(2000);
-        token.isCancellationRequested = true;
+        setTimeout(() => {
+            token.isCancellationRequested = true;
+            listener && listener();
+        }, 100);
 
         // reponse should finish soon after cancellation
         const start = Date.now();
-        for await (const repo of response) {
-            assert.ok(repo);
+        try {
+            for await (const repo of response) {
+                assert.ok(repo);
+            }
+        } catch (err: any) {
+            assert.equal(err.name, "AbortError");
         }
 
-        assert.ok(Date.now() - start < 600);
+        assert.ok(Date.now() - start < 150);
     });
 
     it("Should find the exact matching repo if multiple repos with same prefix in fromPath", async () => {

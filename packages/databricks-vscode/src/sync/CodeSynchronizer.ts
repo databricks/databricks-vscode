@@ -22,6 +22,9 @@ export class CodeSynchronizer implements Disposable {
     // databricks sync stderr. Closing the SyncTask transitions the state back to
     // stopped
     private _state: SyncState = "STOPPED";
+    //The ERROR state represents an untyped error, so we use this to store the
+    // reason for the error, which is displayed to the user.
+    private _reason?: string;
 
     disposables: Array<Disposable> = [];
     currentTaskExecution?: TaskExecution;
@@ -65,6 +68,10 @@ export class CodeSynchronizer implements Disposable {
         return this._state;
     }
 
+    get reason(): string | undefined {
+        return this._reason;
+    }
+
     async start(syncType: "full" | "incremental") {
         this._state = "IN_PROGRESS";
         this._onDidChangeStateEmitter.fire(this._state);
@@ -73,8 +80,9 @@ export class CodeSynchronizer implements Disposable {
             this.cli,
             syncType,
             this.packageMetadata,
-            (state: SyncState) => {
+            (state: SyncState, reason?: string) => {
                 this._state = state;
+                this._reason = reason;
                 this._onDidChangeStateEmitter.fire(state);
                 if (
                     [

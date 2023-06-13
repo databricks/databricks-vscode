@@ -48,11 +48,17 @@ describe("Run job on cluster with repo", async function () {
             `spark.sql('SELECT "hello world"').show()`
         );
 
+        await fs.mkdir(path.join(projectDir, "a", "b c"), {
+            recursive: true,
+        });
+
         await fs.writeFile(
-            path.join(projectDir, "notebook.py"),
+            path.join(projectDir, "a", "b c", "notebook.py"),
             [
                 "# Databricks notebook source",
                 `spark.sql('SELECT "hello world"').show()`,
+                "# COMMAND ----------",
+                "# MAGIC %sh pwd",
             ].join("\n")
         );
 
@@ -125,6 +131,14 @@ describe("Run job on cluster with repo", async function () {
                 timeoutMsg: "Job did not reach succeeded status after 20s.",
             }
         );
+
+        const iframe = browser.$("#frame");
+        browser.switchToFrame(iframe);
+
+        const iframeRoot = await browser.$("html");
+        expect(iframeRoot).toHaveTextContaining(/a\/b c$/);
+
+        browser.switchToParentFrame();
 
         webView.close();
     });

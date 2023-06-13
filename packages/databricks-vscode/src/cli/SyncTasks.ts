@@ -96,21 +96,33 @@ class CustomSyncTerminal implements Pseudoterminal {
         private cmd: string,
         private args: string[],
         private options: SpawnOptions,
-        syncStateCallback: (state: SyncState) => void
+        syncStateCallback: (state: SyncState, reason?: string) => void
     ) {
-        this.syncStateCallback = (state: SyncState) => {
+        this.syncStateCallback = (state: SyncState, reason?: string) => {
             if (
+                /*
+                We do NOT switch from FILES_IN_REPOS_DISABLED/FILES_IN_WORKSPACE_DISABLED
+                to ERROR/STOPPED. This is because sync process will always exit with non zero
+                exit code when Files in Repos/Workspace are disabled AFTER we have dectected it. 
+                
+                We also do NOT switch from STOPPED to ERROR, because the sync process could
+                exit with non zero exit code when force killed (eg. when killed from UI). This can
+                lead to a error state AFTER stopped state has been set.
+                */
                 ([
                     "FILES_IN_REPOS_DISABLED",
                     "FILES_IN_WORKSPACE_DISABLED",
                 ].includes(this.state) &&
                     ["ERROR", "STOPPED"].includes(state)) ||
-                (this.state === "STOPPED" && state === "ERROR")
+                (this.state === "STOPPED" &&
+                    state === "ERROR" &&
+                    reason === undefined) ||
+                this.state === state
             ) {
                 return;
             }
             this.state = state;
-            syncStateCallback(state);
+            syncStateCallback(this.state, reason);
         };
         this.databricksSyncParser = new DatabricksCliSyncParser(
             this.syncStateCallback,
