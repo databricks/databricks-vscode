@@ -160,10 +160,20 @@ describe(__filename, async () => {
                 "PY_DBNB"
             );
 
-            const wrapperData = await readFile(
-                path.join(resourceDirPath, "notebook.workflow-wrapper.py"),
-                "utf-8"
-            );
+            const wrapperData = (
+                await readFile(
+                    path.join(resourceDirPath, "notebook.workflow-wrapper.py"),
+                    "utf-8"
+                )
+            )
+                .replace(
+                    "{{DATABRICKS_SOURCE_FILE}}",
+                    new RemoteUri(originalFilePath).workspacePrefixPath
+                )
+                .replace(
+                    "{{DATABRICKS_PROJECT_ROOT}}",
+                    new RemoteUri(testDirPath).workspacePrefixPath
+                );
             const expected = comment
                 .concat(wrapperData.split(/\r?\n/))
                 .concat(["# COMMAND ----------"])
@@ -278,14 +288,24 @@ describe(__filename, async () => {
                 "IPYNB"
             );
 
-            const wrapperData = await readFile(
-                path.join(
-                    resourceDirPath,
-                    "generated",
-                    "notebook.workflow-wrapper.json"
-                ),
-                "utf-8"
-            );
+            const wrapperData = (
+                await readFile(
+                    path.join(
+                        resourceDirPath,
+                        "generated",
+                        "notebook.workflow-wrapper.json"
+                    ),
+                    "utf-8"
+                )
+            )
+                .replace(
+                    "{{DATABRICKS_SOURCE_FILE}}",
+                    new RemoteUri(originalFilePath).workspacePrefixPath
+                )
+                .replace(
+                    "{{DATABRICKS_PROJECT_ROOT}}",
+                    new RemoteUri(testDirPath).workspacePrefixPath
+                );
             const expected = originalData;
             expected.cells = [JSON.parse(wrapperData)].concat(expected.cells);
 
