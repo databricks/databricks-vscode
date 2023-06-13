@@ -4,8 +4,10 @@ def databricks_preamble():
     from typing import List
     from shlex import quote
 
-    dbutils.widgets.text("DATABRICKS_SOURCE_FILE", "")
-    dbutils.widgets.text("DATABRICKS_PROJECT_ROOT", "")
+    dbutils.widgets.text("DATABRICKS_SOURCE_FILE",
+                         "{{DATABRICKS_SOURCE_FILE}}")
+    dbutils.widgets.text("DATABRICKS_PROJECT_ROOT",
+                         "{{DATABRICKS_PROJECT_ROOT}}")
     src_file_dir = None
     project_root_dir = None
 

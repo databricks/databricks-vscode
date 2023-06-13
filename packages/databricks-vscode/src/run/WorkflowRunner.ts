@@ -147,6 +147,7 @@ export class WorkflowRunner implements Disposable {
                     ).createNotebookWrapper(
                         program,
                         syncDestination.localToRemote(program),
+                        syncDestination.remoteUri,
                         notebookType
                     );
                     remoteFilePath = wrappedFile

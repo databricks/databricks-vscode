@@ -156,6 +156,7 @@ describe(__filename, async () => {
             ).createNotebookWrapper(
                 new LocalUri(localFilePath.path),
                 new RemoteUri(originalFilePath),
+                new RemoteUri(testDirPath),
                 "PY_DBNB"
             );
 
@@ -273,6 +274,7 @@ describe(__filename, async () => {
             ).createNotebookWrapper(
                 new LocalUri(localFilePath.path),
                 new RemoteUri(originalFilePath),
+                new RemoteUri(testDirPath),
                 "IPYNB"
             );
 
