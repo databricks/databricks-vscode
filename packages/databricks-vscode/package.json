@@ -635,7 +635,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.100.1"
+        "version": "0.100.3"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
