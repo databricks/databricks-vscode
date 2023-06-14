@@ -6,7 +6,7 @@
         "type": "git",
         "url": "git+https://github.com/databricks/databricks-vscode.git#main"
     },
-    "license": "LicenseRef-LICENSE",
+    "license": "Apache-2.0",
     "bugs": {
         "url": "https://github.com/databricks/databricks-vscode/issues"
     },
