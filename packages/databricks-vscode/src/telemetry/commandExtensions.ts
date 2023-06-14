@@ -1,5 +1,5 @@
 import {Events, Telemetry} from ".";
-import {commands, Disposable} from "vscode";
+import {commands, Disposable, window} from "vscode";
 
 declare module "." {
     interface Telemetry {
@@ -24,14 +24,16 @@ Telemetry.prototype.registerCommand = function (
 ) {
     return commands.registerCommand(
         command,
-        (...args) => {
+        async (...args) => {
             const start = performance.now();
             let success = true;
             try {
-                return callback.call(thisArg, ...args);
+                return await Promise.resolve(callback.call(thisArg, ...args));
             } catch (e: any) {
                 success = false;
-                throw e;
+                window.showErrorMessage(
+                    `Error running command ${command}: ${e.message}`
+                );
             } finally {
                 const end = performance.now();
                 this.recordEvent(Events.COMMAND_EXECUTION, {
