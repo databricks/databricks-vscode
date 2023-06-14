@@ -1,3 +1,11 @@
+# Release: v0.3.15
+
+## packages/databricks-vscode-types
+
+## <small>0.3.15 (2023-06-14)</small>
+
+-   Reimplement subset of fetch required for the SDK (#741) ([adf2c29](https://github.com/databricks/databricks-vscode/commit/adf2c29)), closes [#741](https://github.com/databricks/databricks-vscode/issues/741)
+
 # Release: v0.3.14
 
 ## packages/databricks-vscode-types
