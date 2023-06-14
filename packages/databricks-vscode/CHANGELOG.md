@@ -1,3 +1,17 @@
+# Release: v0.3.15
+
+## packages/databricks-vscode
+
+## <small>0.3.15 (2023-06-14)</small>
+
+-   `cd` to directory of source file when using `%sh` magic in WSFS notebooks (#745) ([83a4554](https://github.com/databricks/databricks-vscode/commit/83a4554)), closes [#745](https://github.com/databricks/databricks-vscode/issues/745) [#734](https://github.com/databricks/databricks-vscode/issues/734)
+-   Default values for injected widgets in notebook wrapper (#752) ([958ce39](https://github.com/databricks/databricks-vscode/commit/958ce39)), closes [#752](https://github.com/databricks/databricks-vscode/issues/752)
+-   Files in Workspace: Make workspace the default sync destination (#602) ([ee030e6](https://github.com/databricks/databricks-vscode/commit/ee030e6)), closes [#602](https://github.com/databricks/databricks-vscode/issues/602)
+-   Fix DATABRICKS_AUTH_TYPE export and telemetry error handling (#756) ([d6e286f](https://github.com/databricks/databricks-vscode/commit/d6e286f)), closes [#756](https://github.com/databricks/databricks-vscode/issues/756)
+-   Kill execution if cluster is not running or sync destination is not attached (#754) ([29b8593](https://github.com/databricks/databricks-vscode/commit/29b8593)), closes [#754](https://github.com/databricks/databricks-vscode/issues/754)
+-   Reimplement subset of fetch required for the SDK (#741) ([adf2c29](https://github.com/databricks/databricks-vscode/commit/adf2c29)), closes [#741](https://github.com/databricks/databricks-vscode/issues/741)
+-   Surface sync errors in the UI (#748) ([1f48cd5](https://github.com/databricks/databricks-vscode/commit/1f48cd5)), closes [#748](https://github.com/databricks/databricks-vscode/issues/748)
+
 # Release: v0.3.14
 
 ## packages/databricks-vscode

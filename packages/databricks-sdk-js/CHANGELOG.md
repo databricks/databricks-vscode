@@ -1,3 +1,13 @@
+# Release: v0.3.15
+
+## packages/databricks-sdk-js
+
+## <small>0.3.15 (2023-06-14)</small>
+
+-   Kill execution if cluster is not running or sync destination is not attached (#754) ([29b8593](https://github.com/databricks/databricks-vscode/commit/29b8593)), closes [#754](https://github.com/databricks/databricks-vscode/issues/754)
+-   Reimplement subset of fetch required for the SDK (#741) ([adf2c29](https://github.com/databricks/databricks-vscode/commit/adf2c29)), closes [#741](https://github.com/databricks/databricks-vscode/issues/741)
+-   Revert "Revert "SDK: Implement OAuth M2M" (#740)" (#747) ([ba72d60](https://github.com/databricks/databricks-vscode/commit/ba72d60)), closes [#740](https://github.com/databricks/databricks-vscode/issues/740) [#747](https://github.com/databricks/databricks-vscode/issues/747)
+
 # Release: v0.3.14
 
 ## packages/databricks-sdk-js
