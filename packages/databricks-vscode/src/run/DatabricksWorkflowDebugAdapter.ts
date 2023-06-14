@@ -192,15 +192,8 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         await cluster.refresh();
         await this.wsfsAccessVerifier.verifyCluster(cluster);
         await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
-        const isClusterRunning = await promptForClusterStart(
-            cluster,
-            async () => {
-                this.onError(
-                    "Cancel execution because cluster is not running."
-                );
-            }
-        );
-        if (!isClusterRunning) {
+        if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
+            promptForClusterStart();
             return;
         }
 

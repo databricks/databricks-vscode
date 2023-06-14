@@ -101,10 +101,20 @@ export class WorkflowRunner implements Disposable {
 
         // We wait for sync to complete so that the local files are consistant
         // with the remote repo files
-        await this.codeSynchronizer.waitForSyncComplete();
+        await Promise.race([
+            this.codeSynchronizer.waitForSyncComplete(),
+            new Promise<undefined>((resolve) =>
+                token?.onCancellationRequested(() => resolve(undefined))
+            ),
+        ]);
+        if (token?.isCancellationRequested) {
+            return;
+        }
         if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {
             panel.showError({
-                message: `Can't sync ${program}. \nReason: ${this.codeSynchronizer.state}`,
+                message: `Can't sync ${program}. \nReason: ${
+                    this.codeSynchronizer.reason ?? this.codeSynchronizer.state
+                }`,
             });
             return;
         }

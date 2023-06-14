@@ -29,17 +29,7 @@ export class RunCommands {
                 }
 
                 if (this.connection.syncDestinationMapper === undefined) {
-                    await promptForAttachingSyncDest(async () => {
-                        window.showErrorMessage(
-                            "Execution cancelled because no Sync Destination is configured"
-                        );
-                    });
-                    if (this.connection.syncDestinationMapper === undefined) {
-                        window.showErrorMessage(
-                            "Execution cancelled because no Sync Destination is configured"
-                        );
-                        return;
-                    }
+                    promptForAttachingSyncDest();
                 }
 
                 await debug.startDebugging(
@@ -68,17 +58,8 @@ export class RunCommands {
                 }
 
                 if (this.connection.syncDestinationMapper === undefined) {
-                    await promptForAttachingSyncDest(async () => {
-                        window.showErrorMessage(
-                            "Execution cancelled because no Sync Destination is configured"
-                        );
-                    });
-                    if (this.connection.syncDestinationMapper === undefined) {
-                        window.showErrorMessage(
-                            "Execution cancelled because no Sync Destination is configured"
-                        );
-                        return;
-                    }
+                    promptForAttachingSyncDest();
+                    return;
                 }
 
                 await debug.startDebugging(

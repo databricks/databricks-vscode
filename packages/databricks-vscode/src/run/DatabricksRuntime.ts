@@ -132,24 +132,11 @@ export class DatabricksRuntime implements Disposable {
 
             await this.wsfsAccessVerifier.verifyCluster(cluster);
             await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
-            const isClusterRunning = await promptForClusterStart(
-                cluster,
-                async () => {
-                    this._onErrorEmitter.fire(
-                        "Cancel execution because cluster is not running."
-                    );
-                },
-                async () => {
-                    this._onDidSendOutputEmitter.fire({
-                        type: "err",
-                        text: `Starting cluster ${cluster?.name} ...`,
-                        filePath: program,
-                        column: 0,
-                        line: 0,
-                    });
-                }
-            );
-            if (!isClusterRunning) {
+            if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
+                this._onErrorEmitter.fire(
+                    "Cancel execution because cluster is not running."
+                );
+                promptForClusterStart();
                 return;
             }
 
