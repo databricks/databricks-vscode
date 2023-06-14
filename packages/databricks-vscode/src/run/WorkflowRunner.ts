@@ -108,6 +108,10 @@ export class WorkflowRunner implements Disposable {
             ),
         ]);
         if (token?.isCancellationRequested) {
+            panel.showError({
+                message: "Execution terminated by user.",
+            });
+            this.codeSynchronizer.stop();
             return;
         }
         if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {

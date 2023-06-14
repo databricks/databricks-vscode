@@ -20,7 +20,11 @@ import {
     SyncDestinationMapper,
 } from "../sync/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {promptForClusterStart} from "./prompts";
+import {
+    promptForAttachingSyncDest,
+    promptForClusterAttach,
+    promptForClusterStart,
+} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
@@ -49,8 +53,9 @@ export class DatabricksRuntime implements Disposable {
     private _onDidEndEmitter: EventEmitter<void> = new EventEmitter<void>();
     readonly onDidEnd: Event<void> = this._onDidEndEmitter.event;
 
-    private _onErrorEmitter: EventEmitter<string> = new EventEmitter<string>();
-    readonly onError: Event<string> = this._onErrorEmitter.event;
+    private _onErrorEmitter: EventEmitter<string | undefined> =
+        new EventEmitter<string | undefined>();
+    readonly onError: Event<string | undefined> = this._onErrorEmitter.event;
 
     private _onDidSendOutputEmitter: EventEmitter<OutputEvent> =
         new EventEmitter<OutputEvent>();
@@ -125,26 +130,22 @@ export class DatabricksRuntime implements Disposable {
 
             const cluster = this.connection.cluster;
             if (!cluster) {
-                return this._onErrorEmitter.fire(
-                    "You must attach to a cluster to run on Databricks"
-                );
+                promptForClusterAttach();
+                return this._onErrorEmitter.fire(undefined);
             }
 
             await this.wsfsAccessVerifier.verifyCluster(cluster);
             await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
             if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
-                this._onErrorEmitter.fire(
-                    "Cancel execution because cluster is not running."
-                );
+                this._onErrorEmitter.fire(undefined);
                 promptForClusterStart();
                 return;
             }
 
             const syncDestination = this.connection.syncDestinationMapper;
             if (!syncDestination) {
-                return this._onErrorEmitter.fire(
-                    "You must configure code synchronization to run on Databricks"
-                );
+                promptForAttachingSyncDest();
+                return this._onErrorEmitter.fire(undefined);
             }
 
             log(`Creating execution context on cluster ${cluster.id} ...`);

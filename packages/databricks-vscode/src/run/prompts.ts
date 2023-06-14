@@ -1,5 +1,19 @@
 import {commands, window} from "vscode";
 
+export async function promptForClusterAttach() {
+    const response = await window.showErrorMessage(
+        "Please attach a cluster",
+        "Attach Cluster",
+        "Cancel"
+    );
+    switch (response) {
+        case "Attach Cluster":
+            await commands.executeCommand(
+                "databricks.connection.attachClusterQuickPick"
+            );
+    }
+}
+
 export async function promptForClusterStart() {
     const response = await window.showErrorMessage(
         "The attached cluster is not running.",
