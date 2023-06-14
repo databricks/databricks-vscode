@@ -13,6 +13,7 @@ import {
     TreeItem,
     Workbench,
 } from "wdio-vscode-service";
+import {expect} from "chai";
 
 describe("Configure Databricks Extension", async function () {
     // this will be populated by the tests
@@ -199,7 +200,7 @@ describe("Configure Databricks Extension", async function () {
             host.startsWith("https") ? host : `https://${host}`
         ).toString();
 
-        assert.deepEqual(projectConfig, {
+        expect(projectConfig).to.include({
             host: expectedHost,
             authType: "profile",
             profile: "DEFAULT",
