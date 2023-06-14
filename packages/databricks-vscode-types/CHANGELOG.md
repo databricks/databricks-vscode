@@ -4,8 +4,7 @@
 
 ## <small>0.3.15 (2023-06-14)</small>
 
--   Kill execution if cluster is not running or sync destination is not attached (#754) ([29b8593](https://github.com/databricks/databricks-vscode/commit/29b8593)), closes [#754](https://github.com/databricks/databricks-vscode/issues/754)
--   Reimplement subset of fetch required for the SDK (#741) ([adf2c29](https://github.com/databricks/databricks-vscode/commit/adf2c29)), closes [#741](https://github.com/databricks/databricks-vscode/issues/741)
+-   Downgrade typescript to 5.0.0
 
 # Release: v0.3.14
 
