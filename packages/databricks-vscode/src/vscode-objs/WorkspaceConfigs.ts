@@ -55,7 +55,8 @@ export const workspaceConfigs = {
         return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<SyncDestinationType>("sync.destinationType") ?? "repo"
+                ?.get<SyncDestinationType>("sync.destinationType") ??
+            "workspace"
         );
     },
 

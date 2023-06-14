@@ -45,7 +45,7 @@ export class DatabricksCliSyncParser {
     private state: SyncState = "STOPPED";
 
     constructor(
-        private syncStateCallback: (state: SyncState) => void,
+        private syncStateCallback: (state: SyncState, reason?: string) => void,
         private writeEmitter: EventEmitter<string>
     ) {}
 
@@ -111,15 +111,17 @@ export class DatabricksCliSyncParser {
                     databricksLogLevelToSdk.get(typeMatch[1]) ??
                     currentLogLevel;
             }
-            NamedLogger.getOrCreate(Loggers.CLI).log(currentLogLevel, line);
+            NamedLogger.getOrCreate(Loggers.CLI).log(currentLogLevel, line, {
+                outfile: "stderr",
+            });
             this.writeEmitter.fire(line.trim() + "\r\n");
-            if (this.matchForWsfsErrors(line)) {
+            if (this.matchForErrors(line)) {
                 return;
             }
         }
     }
 
-    private matchForWsfsErrors(line: string) {
+    private matchForErrors(line: string) {
         if (line.match(/^Error: .*Files in Workspace is disabled.*/) !== null) {
             this.syncStateCallback("FILES_IN_WORKSPACE_DISABLED");
             return true;
@@ -127,6 +129,12 @@ export class DatabricksCliSyncParser {
 
         if (line.match(/^Error: .*Files in Repos is disabled.*/) !== null) {
             this.syncStateCallback("FILES_IN_REPOS_DISABLED");
+            return true;
+        }
+
+        const match = line.match(/^Error: (.*)/);
+        if (match !== null) {
+            this.syncStateCallback("ERROR", match[1]);
             return true;
         }
 
@@ -142,6 +150,9 @@ export class DatabricksCliSyncParser {
             if (line.length === 0) {
                 continue;
             }
+            NamedLogger.getOrCreate(Loggers.CLI).info(line, {
+                outfile: "stdout",
+            });
 
             try {
                 this.processLine(line);
@@ -152,7 +163,7 @@ export class DatabricksCliSyncParser {
                 );
             }
 
-            if (this.matchForWsfsErrors(line)) {
+            if (this.matchForErrors(line)) {
                 return;
             }
         }
