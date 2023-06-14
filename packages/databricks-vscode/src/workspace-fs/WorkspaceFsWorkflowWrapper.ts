@@ -27,6 +27,23 @@ function getWrapperPath(remoteFilePath: RemoteUri, extraParts: string[]) {
         })
     );
 }
+
+async function readBootstrap(
+    bootstrapPath: string,
+    remoteFilePath: RemoteUri,
+    dbProjectRoot: RemoteUri
+) {
+    return (await readFile(bootstrapPath, "utf-8"))
+        .replace(
+            "{{DATABRICKS_SOURCE_FILE}}",
+            remoteFilePath.workspacePrefixPath
+        )
+        .replace(
+            "{{DATABRICKS_PROJECT_ROOT}}",
+            dbProjectRoot.workspacePrefixPath
+        );
+}
+
 export class WorkspaceFsWorkflowWrapper {
     constructor(
         private readonly connectionManager: ConnectionManager,
@@ -70,6 +87,7 @@ export class WorkspaceFsWorkflowWrapper {
     private async createIpynbWrapper(
         localFilePath: LocalUri,
         remoteFilePath: RemoteUri,
+        dbProjectRoot: RemoteUri,
         @context ctx?: Context
     ) {
         const data = await readFile(localFilePath.path, "utf-8");
@@ -84,7 +102,7 @@ export class WorkspaceFsWorkflowWrapper {
             )
         );
         const bootstrapJson = JSON.parse(
-            await readFile(bootstrapPath, "utf-8")
+            await readBootstrap(bootstrapPath, remoteFilePath, dbProjectRoot)
         );
         originalJson["cells"] = [bootstrapJson].concat(
             originalJson["cells"] ?? []
@@ -104,6 +122,7 @@ export class WorkspaceFsWorkflowWrapper {
     private async createDbnbWrapper(
         localFilePath: LocalUri,
         remoteFilePath: RemoteUri,
+        dbProjectRoot: RemoteUri,
         @context ctx?: Context
     ) {
         const data = await readFile(localFilePath.path, "utf-8");
@@ -114,9 +133,9 @@ export class WorkspaceFsWorkflowWrapper {
         const bootstrapPath = this.extensionContext.asAbsolutePath(
             path.join("resources", "python", "notebook.workflow-wrapper.py")
         );
-        const bootstrapCode = (await readFile(bootstrapPath, "utf-8")).split(
-            /\r?\n/
-        );
+        const bootstrapCode = (
+            await readBootstrap(bootstrapPath, remoteFilePath, dbProjectRoot)
+        ).split(/\r?\n/);
         const wrappedCode = ["# Databricks notebook source"]
             .concat(bootstrapCode)
             .concat(["# COMMAND ----------"])
@@ -137,6 +156,7 @@ export class WorkspaceFsWorkflowWrapper {
     async createNotebookWrapper(
         localFilePath: LocalUri,
         remoteFilePath: RemoteUri,
+        dbProjectRoot: RemoteUri,
         notebookType: NotebookType,
         @context ctx?: Context
     ) {
@@ -145,12 +165,14 @@ export class WorkspaceFsWorkflowWrapper {
                 return this.createDbnbWrapper(
                     localFilePath,
                     remoteFilePath,
+                    dbProjectRoot,
                     ctx
                 );
             case "IPYNB":
                 return this.createIpynbWrapper(
                     localFilePath,
                     remoteFilePath,
+                    dbProjectRoot,
                     ctx
                 );
         }
