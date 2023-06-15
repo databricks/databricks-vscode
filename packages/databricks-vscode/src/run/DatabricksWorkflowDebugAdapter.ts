@@ -22,7 +22,7 @@ import {DebugProtocol} from "@vscode/debugprotocol";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
 import {WorkflowRunner} from "./WorkflowRunner";
-import {promptForClusterStart} from "./prompts";
+import {promptForClusterAttach, promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {LocalUri} from "../sync/SyncDestination";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
@@ -178,9 +178,8 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         const workspaceClient = this.connection.workspaceClient;
 
         if (!cluster || !workspaceClient) {
-            return this.onError(
-                "You must attach to a cluster to run on Databricks"
-            );
+            promptForClusterAttach();
+            return this.onError();
         }
         const syncDestination = this.connection.syncDestinationMapper;
         if (!syncDestination) {
@@ -192,16 +191,9 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         await cluster.refresh();
         await this.wsfsAccessVerifier.verifyCluster(cluster);
         await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
-        const isClusterRunning = await promptForClusterStart(
-            cluster,
-            async () => {
-                this.onError(
-                    "Cancel execution because cluster is not running."
-                );
-            }
-        );
-        if (!isClusterRunning) {
-            return;
+        if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
+            promptForClusterStart();
+            return this.onError();
         }
 
         await this.workflowRunner.run({
@@ -214,8 +206,10 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         });
     }
 
-    private onError(errorMessage: string) {
-        window.showErrorMessage(errorMessage);
+    private onError(errorMessage?: string) {
+        if (errorMessage) {
+            window.showErrorMessage(errorMessage);
+        }
         this.sendEvent(new ExitedEvent(1));
         this.sendEvent(new TerminatedEvent());
     }

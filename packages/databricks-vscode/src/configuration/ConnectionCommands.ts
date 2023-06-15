@@ -66,16 +66,12 @@ export class ConnectionCommands implements Disposable {
     /**
      * Disconnect from Databricks and reset project settings.
      */
-    logoutCommand() {
-        return () => {
-            this.connectionManager.logout();
-        };
+    async logoutCommand() {
+        this.connectionManager.logout();
     }
 
-    configureWorkspaceCommand() {
-        return () => {
-            this.connectionManager.configureWorkspace();
-        };
+    async configureWorkspaceCommand() {
+        await this.connectionManager.configureWorkspace();
     }
 
     openDatabricksConfigFileCommand() {
@@ -327,10 +323,8 @@ export class ConnectionCommands implements Disposable {
     /**
      * Set workspace to undefined and remove workspace path from settings file.
      */
-    detachWorkspaceCommand() {
-        return () => {
-            this.connectionManager.detachSyncDestination();
-        };
+    async detachWorkspaceCommand() {
+        this.connectionManager.detachSyncDestination();
     }
 
     dispose() {
