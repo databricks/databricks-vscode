@@ -133,7 +133,9 @@ export class DatabricksDebugSession extends LoggingDebugSession {
             }),
 
             this.runtime.onError((errorMessage) => {
-                window.showErrorMessage(errorMessage);
+                if (errorMessage) {
+                    window.showErrorMessage(errorMessage);
+                }
                 this.sendEvent(new ExitedEvent(1));
                 this.sendEvent(new TerminatedEvent());
             })

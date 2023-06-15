@@ -270,12 +270,12 @@ export async function activate(
         ),
         telemetry.registerCommand(
             "databricks.connection.logout",
-            connectionCommands.logoutCommand(),
+            connectionCommands.logoutCommand,
             connectionCommands
         ),
         telemetry.registerCommand(
             "databricks.connection.configureWorkspace",
-            connectionCommands.configureWorkspaceCommand(),
+            connectionCommands.configureWorkspaceCommand,
             connectionCommands
         ),
         telemetry.registerCommand(
@@ -305,7 +305,7 @@ export async function activate(
         ),
         telemetry.registerCommand(
             "databricks.connection.detachSyncDestination",
-            connectionCommands.detachWorkspaceCommand(),
+            connectionCommands.detachWorkspaceCommand,
             connectionCommands
         )
     );
@@ -359,7 +359,7 @@ export async function activate(
 
         telemetry.registerCommand(
             "databricks.cluster.refresh",
-            clusterCommands.refreshCommand(),
+            clusterCommands.refreshCommand,
             clusterCommands
         ),
         telemetry.registerCommand(

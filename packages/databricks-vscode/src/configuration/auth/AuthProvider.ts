@@ -113,7 +113,6 @@ export class ProfileAuthProvider extends AuthProvider {
     toEnv(): Record<string, string> {
         return {
             DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AUTH_TYPE: this.authType,
             DATABRICKS_CONFIG_PROFILE: this.profile,
         };
     }
@@ -157,7 +156,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
     toEnv(): Record<string, string> {
         return {
             DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AUTH_TYPE: this.authType,
+            DATABRICKS_AUTH_TYPE: "databricks-cli",
             DATABRICKS_CLI_PATH: this.databricksPath,
         };
     }
@@ -212,7 +211,7 @@ export class AzureCliAuthProvider extends AuthProvider {
     toEnv(): Record<string, string> {
         const envVars: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AUTH_TYPE: this.authType,
+            DATABRICKS_AUTH_TYPE: "azure-cli",
         };
         if (this.appId) {
             envVars["DATABRICKS_AZURE_LOGIN_APP_ID"] = this.appId;

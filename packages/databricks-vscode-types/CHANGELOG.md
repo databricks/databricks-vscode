@@ -1,3 +1,11 @@
+# Release: v0.3.15
+
+## packages/databricks-vscode-types
+
+## <small>0.3.15 (2023-06-14)</small>
+
+-   Downgrade typescript to 5.0.0
+
 # Release: v0.3.14
 
 ## packages/databricks-vscode-types

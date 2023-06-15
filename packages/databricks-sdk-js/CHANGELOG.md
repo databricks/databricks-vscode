@@ -1,3 +1,13 @@
+# Release: v0.3.15
+
+## packages/databricks-sdk-js
+
+## <small>0.3.15 (2023-06-14)</small>
+
+-   Downgrade typescript to 5.0.0
+-   Reimplement subset of fetch required for the SDK
+-   Implement OAuth M2M
+
 # Release: v0.3.14
 
 ## packages/databricks-sdk-js
