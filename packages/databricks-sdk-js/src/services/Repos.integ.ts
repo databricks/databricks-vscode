@@ -104,7 +104,7 @@ describe(__filename, function () {
             assert.equal(err.name, "AbortError");
         }
 
-        assert.ok(Date.now() - start < 500);
+        assert.ok(Date.now() - start < 300);
     });
 
     it("Should find the exact matching repo if multiple repos with same prefix in fromPath", async () => {
