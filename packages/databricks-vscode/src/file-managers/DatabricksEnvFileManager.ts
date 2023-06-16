@@ -269,7 +269,9 @@ export class DatabricksEnvFileManager implements Disposable {
 
     @logging.withLogContext(Loggers.Extension)
     async writeFile(@context ctx?: Context) {
-        const databricksEnvVars = await this.getDatabrickseEnvVars();
+        const databricksEnvVars = (await this.getDatabrickseEnvVars()) || {};
+        databricksEnvVars["PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT"] = "10";
+
         let userEnvVars: Record<string, string | undefined> = {};
         try {
             userEnvVars = (await readFile(this.userEnvPath.fsPath, "utf-8"))
