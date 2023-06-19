@@ -27,26 +27,31 @@ export class DbConnectInstallPrompt implements Disposable {
         const hasPyspark = await this.pythonExtension.findPackageInEnvironment(
             "pyspark"
         );
-        const hasDbConnect =
-            !hasPyspark &&
-            (await this.pythonExtension.findPackageInEnvironment(
-                "databricks-connect"
-            ));
 
-        let message = advertisement
+        const dbConnectDetails =
+            await this.pythonExtension.getPackageDetailsFromEnvironment(
+                "databricks-connect"
+            );
+
+        const hasDbConnect = !hasPyspark && dbConnectDetails !== undefined;
+        const env = (await this.pythonExtension.pythonEnvironment)?.environment;
+
+        const mainMessagePart = advertisement
             ? "Interactive debugging in PySpark is now available. Start using it by installing Databricks Connect in the"
             : "For interactive debugging and autocompletion you need Databricks Connect. Would you like to install it in the";
-
-        const env = (await this.pythonExtension.pythonEnvironment)?.environment;
-        message = `${message} ${
-            env ? "environment " + env.name : "current environment"
-        }. ${
-            hasPyspark
-                ? "(pyspark will be uninstalled)"
-                : hasDbConnect
-                ? "(databricks-connect will be updated to the latest version)"
-                : ""
-        }`;
+        const envMessagePart = env
+            ? "environment " + env.name
+            : "current environment";
+        const pkgUpdateMessagePart = hasPyspark
+            ? "(pyspark will be uninstalled)"
+            : hasDbConnect
+            ? `(databricks-connect will be updated to the latest version: ${
+                  dbConnectDetails.version
+              } -> ${await this.pythonExtension.findLatestPackageVersion(
+                  "databricks-connect"
+              )} )`
+            : "";
+        const message = `${mainMessagePart} ${envMessagePart}. ${pkgUpdateMessagePart}`;
 
         const choice = await window.showInformationMessage(
             message,
