@@ -6,47 +6,47 @@ export const workspaceConfigs = {
         return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<number>("logs.maxFieldLength") ?? 40
+                .get<number>("logs.maxFieldLength") ?? 40
         );
     },
     get truncationDepth() {
         return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<number>("logs.truncationDepth") ?? 2
+                .get<number>("logs.truncationDepth") ?? 2
         );
     },
     get maxArrayLength() {
         return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<number>("logs.maxArrayLength") ?? 2
+                .get<number>("logs.maxArrayLength") ?? 2
         );
     },
     get loggingEnabled() {
         return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<boolean>("logs.enabled") ?? true
+                .get<boolean>("logs.enabled") ?? true
         );
     },
     get onlyShowAccessibleClusters() {
         return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<boolean>("clusters.onlyShowAccessibleClusters") ?? false
+                .get<boolean>("clusters.onlyShowAccessibleClusters") ?? false
         );
     },
     get cliVerboseMode() {
         const legacyVerboseMode =
             workspace
                 .getConfiguration("databricks")
-                ?.get<boolean>("bricks.verboseMode") ?? false;
+                .get<boolean>("bricks.verboseMode") ?? false;
 
         const verboseMode =
             workspace
                 .getConfiguration("databricks")
-                ?.get<boolean>("cli.verboseMode") ?? false;
+                .get<boolean>("cli.verboseMode") ?? false;
 
         return verboseMode || legacyVerboseMode;
     },
@@ -55,8 +55,7 @@ export const workspaceConfigs = {
         return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<SyncDestinationType>("sync.destinationType") ??
-            "workspace"
+                .get<SyncDestinationType>("sync.destinationType") ?? "workspace"
         );
     },
 
@@ -67,7 +66,7 @@ export const workspaceConfigs = {
     async setSyncDestinationType(destinationType: SyncDestinationType) {
         await workspace
             .getConfiguration("databricks")
-            ?.update(
+            .update(
                 "sync.destinationType",
                 destinationType,
                 ConfigurationTarget.Workspace
@@ -101,7 +100,7 @@ export const workspaceConfigs = {
     },
 
     /**
-     * Set the python.envFile configuration in the ms-python extension
+     * set the python.envFile configuration in the ms-python extension
      */
     set msPythonEnvFile(value: string | undefined) {
         workspace
@@ -109,7 +108,40 @@ export const workspaceConfigs = {
             .update("envFile", value, ConfigurationTarget.Workspace);
     },
 
+    /**
+     * get the python.envFile configuration in the ms-python extension
+     */
     get msPythonEnvFile() {
         return workspace.getConfiguration("python").get<string>("envFile");
+    },
+
+    get jupyterCellMarkerRegex(): string | undefined {
+        return workspace
+            .getConfiguration("jupyter")
+            .get<string>("interactiveWindow.cellMarker.codeRegex");
+    },
+
+    set jupyterCellMarkerRegex(value: string | undefined) {
+        workspace
+            .getConfiguration("jupyter")
+            .update(
+                "interactiveWindow.cellMarker.codeRegex",
+                value,
+                ConfigurationTarget.Workspace
+            );
+    },
+
+    /**
+     * Get the jupyterCellMarkerDefault configuration in the ms-python extension.
+     * This config tells jupyter how new cells should be marked, by default.
+     */
+    set jupyterCellMarkerDefault(value: string) {
+        workspace
+            .getConfiguration("jupyter")
+            .update(
+                "interactiveWindow.cellMarker.default",
+                value,
+                ConfigurationTarget.Workspace
+            );
     },
 };
