@@ -267,14 +267,19 @@ export class DatabricksEnvFileManager implements Disposable {
         /* eslint-enable @typescript-eslint/naming-convention */
     }
 
-    @logging.withLogContext(Loggers.Extension)
-    async writeFile(@context ctx?: Context) {
-        const databricksEnvVars = (await this.getDatabrickseEnvVars()) || {};
-        databricksEnvVars["PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT"] = "10";
+    private getIdeEnvVars() {
+        /* eslint-disable @typescript-eslint/naming-convention */
+        return {
+            PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT: "10",
+        };
+        /* eslint-enable @typescript-eslint/naming-convention */
+    }
 
-        let userEnvVars: Record<string, string | undefined> = {};
+    //Get env variables from user's .env file
+    @logging.withLogContext(Loggers.Extension)
+    private async getUserEnvVars(@context ctx?: Context) {
         try {
-            userEnvVars = (await readFile(this.userEnvPath.fsPath, "utf-8"))
+            return (await readFile(this.userEnvPath.fsPath, "utf-8"))
                 .split(/\r?\n/)
                 .map((value) => {
                     const splits = value.split("=");
@@ -290,11 +295,17 @@ export class DatabricksEnvFileManager implements Disposable {
         } catch (e: unknown) {
             ctx?.logger?.error("Can't load .env file", e);
         }
+    }
+
+    @logging.withLogContext(Loggers.Extension)
+    async writeFile(@context ctx?: Context) {
+        const databricksEnvVars = await this.getDatabrickseEnvVars();
         const data = Object.entries({
-            ...databricksEnvVars,
-            ...userEnvVars,
+            ...(databricksEnvVars || {}),
+            ...this.getIdeEnvVars(),
+            ...((await this.getUserEnvVars(ctx)) || {}),
         }).map(([key, value]) => {
-            value = value?.replaceAll(/^"|"$/g, "");
+            value = value?.replaceAll(/^"|"$/g, ""); //strip quotes
             return `${key}="${value}"`;
         });
         try {
@@ -317,11 +328,10 @@ export class DatabricksEnvFileManager implements Disposable {
     }
 
     async emitToTerminal() {
-        const databricksEnvVars = await this.getDatabrickseEnvVars();
-        if (!databricksEnvVars) {
-            return;
-        }
-        Object.entries(databricksEnvVars).forEach(([key, value]) => {
+        Object.entries({
+            ...((await this.getDatabrickseEnvVars()) || {}),
+            ...this.getIdeEnvVars(),
+        }).forEach(([key, value]) => {
             if (value === undefined) {
                 return;
             }
