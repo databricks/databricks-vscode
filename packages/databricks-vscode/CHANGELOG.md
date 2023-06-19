@@ -1,3 +1,16 @@
+# Release: v0.3.15
+
+## packages/databricks-vscode
+
+## <small>0.3.15 (2023-06-14)</small>
+
+-   Feature: Make workspace the default sync destination
+-   Fix: `cd` to directory of the source file when using `%sh` magic in notebooks from a workspace directory, fixes [#734](https://github.com/databricks/databricks-vscode/issues/734)
+-   Fix: Wrapper notebook for notebooks in workspace directories, now includes the directory root information, enabling interactive execution in Databricks web UI.
+-   Fix: `databrickcfg` profile based authentication was not working for Python SDK and DB Connect V2.
+-   Fix: Kill execution if cluster is not running or sync destination is not attached instead of blocking.
+-   Fix: Show sync errors in the UI.
+
 # Release: v0.3.14
 
 ## packages/databricks-vscode
