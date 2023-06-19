@@ -45,7 +45,7 @@ import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
-import {DbConnectStatusBarButton} from "./language/DBConnectStatusBarButton";
+import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 
 export async function activate(
     context: ExtensionContext

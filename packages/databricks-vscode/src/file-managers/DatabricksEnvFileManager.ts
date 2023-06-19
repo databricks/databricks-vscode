@@ -17,7 +17,7 @@ import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
-import {DbConnectStatusBarButton} from "../language/DBConnectStatusBarButton";
+import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
