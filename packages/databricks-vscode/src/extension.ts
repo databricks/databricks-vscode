@@ -45,6 +45,7 @@ import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
+import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 
 export async function activate(
     context: ExtensionContext
@@ -458,6 +459,15 @@ export async function activate(
     connectionManager.login(false).catch((e) => {
         NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);
     });
+
+    try {
+        setDbnbCellLimits();
+    } catch (e) {
+        NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Error setting configs to parse databricks notebooks",
+            e
+        );
+    }
 
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);

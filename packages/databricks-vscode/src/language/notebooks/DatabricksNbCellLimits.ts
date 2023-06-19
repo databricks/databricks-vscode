@@ -1,20 +1,21 @@
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
-export function setDbNbCellLimits() {
+export function setDbnbCellLimits() {
     if (workspaceConfigs.jupyterCellMarkerRegex === undefined) {
         workspaceConfigs.jupyterCellMarkerRegex =
             "^(# Databricks notebook source|# COMMAND ----------)";
     }
 
-    const jupyterCellMarkerRegex = workspaceConfigs.jupyterCellMarkerRegex;
+    let jupyterCellMarkerRegex = workspaceConfigs.jupyterCellMarkerRegex;
 
     ["# Databricks notebook source", "# COMMAND ----------"].forEach(
         (value) => {
             if (!jupyterCellMarkerRegex.includes(value)) {
-                workspaceConfigs.jupyterCellMarkerRegex = `^${value}|${workspaceConfigs.jupyterCellMarkerRegex}`;
+                jupyterCellMarkerRegex = `^${value}|${jupyterCellMarkerRegex}`;
             }
         }
     );
 
+    workspaceConfigs.jupyterCellMarkerRegex = jupyterCellMarkerRegex;
     workspaceConfigs.jupyterCellMarkerDefault = "# COMMAND ----------";
 }
