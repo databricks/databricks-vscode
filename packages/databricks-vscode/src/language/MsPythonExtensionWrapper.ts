@@ -149,10 +149,10 @@ export class MsPythonExtensionWrapper implements Disposable {
         }
     }
 
-    async findPackageInEnvironment(name: string, version?: string) {
+    async getPackageDetailsFromEnvironment(name: string, version?: string) {
         const executable = await this.getPythonExecutable();
         if (!executable) {
-            return false;
+            return undefined;
         }
         if (version === "latest") {
             version = await this.findLatestPackageVersion(name);
@@ -173,12 +173,18 @@ export class MsPythonExtensionWrapper implements Disposable {
         );
 
         const data: Array<{name: string; version: string}> = JSON.parse(stdout);
-        const target = data.find(
+        return data.find(
             (item) =>
                 item.name === name &&
                 (version === undefined || item.version === version)
         );
-        return target !== undefined;
+    }
+
+    async findPackageInEnvironment(name: string, version?: string) {
+        return (
+            (await this.getPackageDetailsFromEnvironment(name, version)) !==
+            undefined
+        );
     }
 
     async installPackageInEnvironment(name: string, version?: string) {
