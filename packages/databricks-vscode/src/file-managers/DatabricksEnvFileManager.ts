@@ -3,10 +3,6 @@ import {
     Uri,
     workspace,
     ExtensionContext,
-    StatusBarItem,
-    window,
-    StatusBarAlignment,
-    ThemeColor,
     EventEmitter,
 } from "vscode";
 import {writeFile, readFile} from "fs/promises";
@@ -21,12 +17,12 @@ import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {DbConnectStatusBarButton} from "../language/DBConnectStatusBarButton";
 
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
     private readonly databricksEnvPath: Uri;
     private readonly userEnvPath: Uri;
-    private readonly statusBarButton: StatusBarItem;
     private readonly onDidChangeEnvironmentVariablesEmitter =
         new EventEmitter<void>();
     public readonly onDidChangeEnvironmentVariables =
@@ -35,6 +31,7 @@ export class DatabricksEnvFileManager implements Disposable {
     constructor(
         workspacePath: Uri,
         private readonly featureManager: FeatureManager,
+        private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
         private readonly extensionContext: ExtensionContext,
         private readonly pythonExtension: MsPythonExtensionWrapper
@@ -77,14 +74,7 @@ export class DatabricksEnvFileManager implements Disposable {
             this.userEnvPath.fsPath
         );
 
-        this.statusBarButton = window.createStatusBarItem(
-            StatusBarAlignment.Left,
-            1000
-        );
-        this.disableStatusBarButton();
-
         this.disposables.push(
-            this.statusBarButton,
             userEnvFileWatcher,
             userEnvFileWatcher.onDidChange(() => this.writeFile(), this),
             userEnvFileWatcher.onDidDelete(() => this.writeFile(), this),
@@ -142,64 +132,6 @@ export class DatabricksEnvFileManager implements Disposable {
         return path !== undefined && !excludes.includes(path);
     }
 
-    private async disableStatusBarButton() {
-        const featureState = await this.featureManager.isEnabled(
-            "debugging.dbconnect"
-        );
-        if (featureState.isDisabledByFf) {
-            return;
-        }
-        this.statusBarButton.name = "Databricks Connect disabled";
-        this.statusBarButton.text = "Databricks Connect disabled";
-        this.statusBarButton.backgroundColor = new ThemeColor(
-            "statusBarItem.errorBackground"
-        );
-        this.statusBarButton.tooltip = featureState?.reason;
-        this.statusBarButton.command = {
-            title: "Call",
-            command: "databricks.call",
-            arguments: [
-                async () => {
-                    const featureState = await this.featureManager.isEnabled(
-                        "debugging.dbconnect",
-                        true
-                    );
-                    if (!featureState.avaliable) {
-                        if (featureState.action) {
-                            featureState.action();
-                        } else if (featureState.reason) {
-                            window.showErrorMessage(featureState.reason);
-                        }
-                    }
-                },
-            ],
-        };
-        this.statusBarButton.show();
-    }
-
-    private async enableStatusBarButton() {
-        const featureState = await this.featureManager.isEnabled(
-            "debugging.dbconnect"
-        );
-        if (featureState.isDisabledByFf) {
-            return;
-        }
-        this.statusBarButton.name = "Databricks Connect enabled";
-        this.statusBarButton.text = "Databricks Connect enabled";
-        this.statusBarButton.tooltip = "Databricks Connect enabled";
-        this.statusBarButton.backgroundColor = undefined;
-        this.statusBarButton.command = {
-            title: "Call",
-            command: "databricks.call",
-            arguments: [
-                () => {
-                    this.featureManager.isEnabled("debugging.dbconnect", true);
-                },
-            ],
-        };
-        this.statusBarButton.show();
-    }
-
     private async getPatToken() {
         const headers: Record<string, string> = {};
         await this.connectionManager.workspaceClient?.apiClient.config.authenticate(
@@ -231,19 +163,11 @@ export class DatabricksEnvFileManager implements Disposable {
         Record<string, string | undefined> | undefined
     > {
         await this.connectionManager.waitForConnect();
-        const featureState = await this.featureManager.isEnabled(
-            "debugging.dbconnect"
-        );
-
-        if (!featureState.avaliable) {
-            this.disableStatusBarButton();
-            return;
-        }
         const cluster = this.connectionManager.cluster;
         const userAgent = await this.userAgent();
         const authProvider =
             this.connectionManager.databricksWorkspace?.authProvider;
-        if (!cluster || !userAgent || !authProvider) {
+        if (!userAgent || !authProvider) {
             return;
         }
 
@@ -252,7 +176,7 @@ export class DatabricksEnvFileManager implements Disposable {
         const host = this.connectionManager.databricksWorkspace?.host.authority;
         const pat = await this.getPatToken();
         const sparkEnvVars: Record<string, string> = {};
-        if (pat && host) {
+        if (pat && host && cluster) {
             sparkEnvVars[
                 "SPARK_REMOTE"
             ] = `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=vs_code`; //;user_agent=${encodeURIComponent(userAgent)}`
@@ -262,7 +186,7 @@ export class DatabricksEnvFileManager implements Disposable {
         return {
             ...authEnvVars,
             ...sparkEnvVars,
-            DATABRICKS_CLUSTER_ID: cluster.id,
+            DATABRICKS_CLUSTER_ID: cluster?.id,
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
@@ -304,10 +228,12 @@ export class DatabricksEnvFileManager implements Disposable {
             ...(databricksEnvVars || {}),
             ...this.getIdeEnvVars(),
             ...((await this.getUserEnvVars(ctx)) || {}),
-        }).map(([key, value]) => {
-            value = value?.replaceAll(/^"|"$/g, ""); //strip quotes
-            return `${key}="${value}"`;
-        });
+        })
+            .filter(([, value]) => value !== undefined)
+            .map(([key, value]) => {
+                value = value?.replaceAll(/ ^"|"$/g, ""); //strip quotes
+                return `${key}="${value}"`;
+            });
         try {
             const oldData = await readFile(
                 this.databricksEnvPath.fsPath,
@@ -322,9 +248,7 @@ export class DatabricksEnvFileManager implements Disposable {
             data.join(os.EOL),
             "utf-8"
         );
-        if (databricksEnvVars) {
-            this.enableStatusBarButton();
-        }
+        this.dbConnectStatusBarButton.update();
     }
 
     async emitToTerminal() {

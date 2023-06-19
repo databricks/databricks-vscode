@@ -45,6 +45,7 @@ import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
+import {DbConnectStatusBarButton} from "./language/DBConnectStatusBarButton";
 
 export async function activate(
     context: ExtensionContext
@@ -216,9 +217,13 @@ export async function activate(
                 dbConnectInstallPrompt
             )
     );
+    const dbConnectStatusBarButton = new DbConnectStatusBarButton(
+        featureManager
+    );
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspace.workspaceFolders[0].uri,
         featureManager,
+        dbConnectStatusBarButton,
         connectionManager,
         context,
         pythonExtensionWrapper
