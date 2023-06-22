@@ -81,11 +81,11 @@ jobs:
         run: yarn run generate-notice
 
       - name: lint fix
-        if: ${{ inputs.extension_version != '0.0.0' }}
+        if: ${{ inputs.extension_version != '0.0.0' && inputs.sdk_version != '0.0.0' }}
         run: yarn run fix
 
       - name: Create Branch
-        if: ${{ inputs.extension_version != '0.0.0' }}
+        if: ${{ inputs.extension_version != '0.0.0' && inputs.sdk_version != '0.0.0' }}
         id: create-branch
         run: |
           COMMIT_SHA=$(git rev-parse --short HEAD)
@@ -98,7 +98,7 @@ jobs:
           echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Create PR
-        if: ${{ inputs.extension_version != '0.0.0' }}
+        if: ${{ inputs.extension_version != '0.0.0' && inputs.sdk_version != '0.0.0'}}
         run: |
           gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.extension_version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
           rm ${{ steps.create-changelog.outputs.changelog_file }}
