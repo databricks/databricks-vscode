@@ -1,3 +1,12 @@
+# Release: v0.3.16
+
+## packages/databricks-sdk-js
+
+## <small>0.3.16 (2023-06-22)</small>
+
+-   Change License for the JS SDK to Apache 2.0 (#755) ([169c04c](https://github.com/databricks/databricks-vscode/commit/169c04c)), closes [#755](https://github.com/databricks/databricks-vscode/issues/755)
+-   Updated time to check for cancelling listing repos from 150 to 300ms (#763) ([9631b59](https://github.com/databricks/databricks-vscode/commit/9631b59)), closes [#763](https://github.com/databricks/databricks-vscode/issues/763)
+
 # Release: v0.3.15
 
 ## packages/databricks-sdk-js
