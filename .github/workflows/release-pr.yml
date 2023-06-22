@@ -1,88 +1,106 @@
 name: Create Release PR
 
 on:
-    workflow_dispatch:
-        inputs:
-            version:
-                description: "Release version"
-                required: true
-                default: 0.0.0
-                type: string
+  workflow_dispatch:
+    inputs:
+      extension_version:
+        description: "Extension Release version"
+        required: true
+        default: 0.0.0
+        type: string
 
-    workflow_call:
-        inputs:
-            version:
-                default: 0.0.0
-                type: string
+      sdk_version:
+        description: "SDK Release version"
+        required: true
+        default: 0.0.0
+        type: string
+
+  workflow_call:
+    inputs:
+      extension_version:
+        default: 0.0.0
+        type: string
+
+      sdk_version:
+        default: 0.0.0
+        type: string
 
 jobs:
-    release-pr:
-        runs-on: "macos-latest"
-        strategy:
-            matrix:
-                node-version: [16.x]
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                  fetch-depth: 0
+  release-pr:
+    runs-on: "macos-latest"
+    strategy:
+      matrix:
+        node-version: [16.x]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-            - run: git fetch --all --tags
+      - run: git fetch --all --tags
 
-            - name: Check Version
-              run: bash -c '$([[ "${{ inputs.version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
+      - name: Check Extension Version
+        run: bash -c '$([[ "${{ inputs.extension_version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
 
-            - run: |
-                  git config --global user.name "releasebot"
-                  git config --global user.email "noreply@github.com"
+      - name: Check SDK Version
+        run: bash -c '$([[ "${{ inputs.extension_version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
 
-            - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ matrix.node-version }}
-                  cache: "yarn"
+      - run: |
+          git config --global user.name "releasebot"
+          git config --global user.email "noreply@github.com"
 
-            - run: yarn install --immutable
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "yarn"
 
-            - name: Bump version
-              if: ${{ inputs.version != '0.0.0' }}
-              run: |
-                  yarn workspaces foreach version ${{ inputs.version }}
-                  yarn version ${{ inputs.version }}
+      - run: yarn install --immutable
 
-            - name: Changelog
-              id: create-changelog
-              run: |
-                  TMPFILE=$(mktemp /tmp/tmpfile.XXXX)
-                  bash scripts/generate_changelog.sh ${{ inputs.version }} $TMPFILE
+      - name: Bump SDK version
+        if: ${{ inputs.sdk_version != '0.0.0' }}
+        run: yarn workspace @databricks/databricks-sdk version ${{ inputs.sdk_version }}
 
-                  cat $TMPFILE >> $GITHUB_STEP_SUMMARY
+      - name: Bump Extension version
+        if: ${{ inputs.extension_version != '0.0.0' }}
+        run: |
+          yarn workspace @databricks/databricks-vscode version ${{ inputs.extension_version }}
+          yarn workspace @databricks/databricks-vscode-types version ${{ inputs.extension_version }}
+          yarn version ${{ inputs.extension_version }}
 
-                  echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
+      - name: Changelog
+        id: create-changelog
+        run: |
+          TMPFILE=$(mktemp /tmp/tmpfile.XXXX)
+          bash scripts/generate_changelog.sh ${{ inputs.extension_version }} ${{ inputs.sdk_version }} $TMPFILE
 
-            - name: Generate notice file
-              run: yarn run generate-notice
+          cat $TMPFILE >> $GITHUB_STEP_SUMMARY
 
-            - name: lint fix
-              if: ${{ inputs.version != '0.0.0' }}
-              run: yarn run fix
+          echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
 
-            - name: Create Branch
-              if: ${{ inputs.version != '0.0.0' }}
-              id: create-branch
-              run: |
-                  COMMIT_SHA=$(git rev-parse --short HEAD)
-                  BRANCH=releases/draft-$COMMIT_SHA-$(date +%s)
-                  git checkout -b $BRANCH
-                  git add  **/CHANGELOG.md **/package.json package.json **/NOTICE.md
-                  git status
-                  git commit -m "Changelog & version bump to ${{ inputs.version }}"
-                  git push origin HEAD
-                  echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
+      - name: Generate notice file
+        run: yarn run generate-notice
 
-            - name: Create PR
-              if: ${{ inputs.version != '0.0.0' }}
-              run: |
-                  gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
-                  rm ${{ steps.create-changelog.outputs.changelog_file }}
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: lint fix
+        if: ${{ inputs.extension_version != '0.0.0' }}
+        run: yarn run fix
+
+      - name: Create Branch
+        if: ${{ inputs.extension_version != '0.0.0' }}
+        id: create-branch
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          BRANCH=releases/draft-$COMMIT_SHA-$(date +%s)
+          git checkout -b $BRANCH
+          git add  **/CHANGELOG.md **/package.json package.json **/NOTICE.md
+          git status
+          git commit -m "Changelog & version bump to ${{ inputs.version }}"
+          git push origin HEAD
+          echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Create PR
+        if: ${{ inputs.extension_version != '0.0.0' }}
+        run: |
+          gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
+          rm ${{ steps.create-changelog.outputs.changelog_file }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
