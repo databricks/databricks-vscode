@@ -42,7 +42,7 @@ jobs:
         run: bash -c '$([[ "${{ inputs.extension_version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
 
       - name: Check SDK Version
-        run: bash -c '$([[ "${{ inputs.extension_version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
+        run: bash -c '$([[ "${{ inputs.sdk_version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
 
       - run: |
           git config --global user.name "releasebot"
@@ -78,6 +78,7 @@ jobs:
           echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
 
       - name: Generate notice file
+        if: ${{ inputs.extension_version != '0.0.0' && inputs.sdk_version != '0.0.0' }}
         run: yarn run generate-notice
 
       - name: lint fix
