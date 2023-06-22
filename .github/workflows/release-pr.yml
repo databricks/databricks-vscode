@@ -63,7 +63,7 @@ jobs:
       - name: Bump Extension version
         if: ${{ inputs.extension_version != '0.0.0' }}
         run: |
-          yarn workspace @databricks/databricks-vscode version ${{ inputs.extension_version }}
+          yarn workspace databricks version ${{ inputs.extension_version }}
           yarn workspace @databricks/databricks-vscode-types version ${{ inputs.extension_version }}
           yarn version ${{ inputs.extension_version }}
 
