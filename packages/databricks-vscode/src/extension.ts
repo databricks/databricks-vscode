@@ -46,6 +46,7 @@ import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
+import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 
 export async function activate(
     context: ExtensionContext
@@ -217,9 +218,13 @@ export async function activate(
                 dbConnectInstallPrompt
             )
     );
+    const dbConnectStatusBarButton = new DbConnectStatusBarButton(
+        featureManager
+    );
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspace.workspaceFolders[0].uri,
         featureManager,
+        dbConnectStatusBarButton,
         connectionManager,
         context,
         pythonExtensionWrapper
