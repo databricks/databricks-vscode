@@ -1,3 +1,12 @@
+# Release: v1.0.0
+
+## packages/databricks-vscode
+
+## 1.0.0 (2023-06-22)
+
+-   Add version information to `Update dbconnect` popup message (#766) ([8948c6f](https://github.com/databricks/databricks-vscode/commit/8948c6f)), closes [#766](https://github.com/databricks/databricks-vscode/issues/766)
+-   Set PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT variable (#764) ([b3732b5](https://github.com/databricks/databricks-vscode/commit/b3732b5)), closes [#764](https://github.com/databricks/databricks-vscode/issues/764)
+
 # Release: v0.3.15
 
 ## packages/databricks-vscode
