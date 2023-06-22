@@ -1,4 +1,4 @@
-import {commands} from "vscode";
+import {commands, workspace} from "vscode";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const CustomWhenContext = {
@@ -15,6 +15,30 @@ export const CustomWhenContext = {
             "setContext",
             "databricks.context.activated",
             value
+        );
+    },
+
+    updateShowClusterView() {
+        commands.executeCommand(
+            "setContext",
+            "databricks.feature.views.cluster",
+            (
+                workspace
+                    .getConfiguration("databricks")
+                    .get("experiments.optInto") as string[]
+            ).includes("views.cluster")
+        );
+    },
+
+    updateShowWorkspaceView() {
+        commands.executeCommand(
+            "setContext",
+            "databricks.feature.views.workspace",
+            (
+                workspace
+                    .getConfiguration("databricks")
+                    .get("experiments.optInto") as string[]
+            ).includes("views.workspace")
         );
     },
 };

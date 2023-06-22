@@ -123,17 +123,6 @@ describe("Configure Databricks Extension", async function () {
         assert(await waitForTreeItems(section, 10_000));
     });
 
-    it("should list clusters", async function () {
-        const section = await getViewSection("CLUSTERS");
-        assert(section);
-        const tree = section as CustomTreeSection;
-
-        assert(await waitForTreeItems(tree));
-
-        const items = await tree.getVisibleItems();
-        assert(items.length > 0);
-    });
-
     it("should attach cluster", async function () {
         const config = await getViewSection("CONFIGURATION");
         assert(config);
