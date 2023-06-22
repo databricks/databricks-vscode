@@ -12,9 +12,7 @@ import {
     FileNotFoundException,
     isExecFileException,
 } from "./execUtils";
-
-// Resource ID of the Azure application we need to log in.
-const azureDatabricksLoginAppID = "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d";
+import {getAzureLoginAppId} from "./Azure";
 
 /**
  * Authenticate using Azure CLI
@@ -27,7 +25,7 @@ export class AzureCliCredentials implements CredentialProvider {
             return;
         }
 
-        const appId = config.azureLoginAppId || azureDatabricksLoginAppID;
+        const appId = getAzureLoginAppId(config);
         const ts = this.getTokenSource(config, appId);
 
         try {

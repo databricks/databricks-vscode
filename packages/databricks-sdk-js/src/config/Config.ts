@@ -60,6 +60,7 @@ export type AuthType =
     | "pat"
     | "basic"
     | "azure-cli"
+    | "azure-client-secret"
     | "google-id"
     | "metadata-service"
     | "databricks-cli"
