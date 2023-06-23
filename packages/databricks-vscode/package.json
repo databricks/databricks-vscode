@@ -234,10 +234,11 @@
                 {
                     "id": "workspaceFsView",
                     "name": "Workspace explorer",
-                    "when": "config.databricks.sync.destinationType == workspace"
+                    "when": "config.databricks.sync.destinationType == workspace && databricks.feature.views.workspace"
                 },
                 {
                     "id": "clusterView",
+                    "when": "databricks.feature.views.cluster",
                     "name": "Clusters"
                 }
             ]
@@ -608,10 +609,14 @@
                         "default": [],
                         "items": {
                             "enum": [
-                                "debugging.dbconnect"
+                                "debugging.dbconnect",
+                                "views.cluster",
+                                "views.workspace"
                             ],
                             "enumDescriptions": [
-                                "Interactive debugging using dbconnect V2."
+                                "Interactive debugging using dbconnect V2.",
+                                "Show cluster view in the explorer.",
+                                "Show workspace browser in the explorer."
                             ],
                             "type": "string"
                         },
