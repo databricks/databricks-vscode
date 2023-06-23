@@ -4,10 +4,10 @@
 
 ## <small>0.3.16 (2023-06-23)</small>
 
--   SDK: Add support for Azure client secret auth (#733) ([835f21c](https://github.com/databricks/databricks-vscode/commit/835f21c)), closes [#733](https://github.com/databricks/databricks-vscode/issues/733)
--   SDK: Remove workaround for Repos API (#777) ([ff92580](https://github.com/databricks/databricks-vscode/commit/ff92580)), closes [#777](https://github.com/databricks/databricks-vscode/issues/777)
--   Change License for the JS SDK to Apache 2.0 (#755) ([169c04c](https://github.com/databricks/databricks-vscode/commit/169c04c)), closes [#755](https://github.com/databricks/databricks-vscode/issues/755)
--   Updated time to check for cancelling listing repos from 150 to 300ms (#763) ([9631b59](https://github.com/databricks/databricks-vscode/commit/9631b59)), closes [#763](https://github.com/databricks/databricks-vscode/issues/763)
+-   Add support for Azure client secret auth.
+-   Remove workaround for Repos API returning 429 for timeouts.
+-   Change License for the JS SDK to Apache 2.0
+-   Test-Fix: Updated time to check for cancelling listing repos from 150 to 300ms.
 
 # Release: v0.3.15
 
