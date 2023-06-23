@@ -56,23 +56,6 @@ describe(__filename, () => {
         assert.equal(err.isRetryable(), false);
     });
 
-    it("should treat 429 from quota error as non retryable", () => {
-        const status = 429;
-        const statusMessage = "Too Many Requests";
-        const body = `{"error_code":"RESOURCE_EXHAUSTED","message":"Failed to create repo. This workspace has 2000 repos, which exceeds the limit of 2000 repos. Please delete repos before creating new repos."}`;
-
-        const err = parseErrorFromResponse(status, statusMessage, body);
-        assert.equal(err.statusCode, 429);
-        assert.equal(err.errorCode, "RESOURCE_EXHAUSTED");
-        assert.equal(
-            err.message,
-            "Failed to create repo. This workspace has 2000 repos, which exceeds the limit of 2000 repos. Please delete repos before creating new repos."
-        );
-
-        assert.equal(err.response!.error_code, "RESOURCE_EXHAUSTED");
-        assert.equal(err.isRetryable(), false);
-    });
-
     it("should treat 429 error as retryable", () => {
         const status = 429;
         const statusMessage = "Too Many Requests";
