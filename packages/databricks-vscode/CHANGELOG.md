@@ -1,3 +1,15 @@
+# Release: v1.0.0
+
+## packages/databricks-vscode
+
+## 1.0.0 (2023-06-23)
+
+-   Add version information to `Update dbconnect` popup message (#766) ([8948c6f](https://github.com/databricks/databricks-vscode/commit/8948c6f)), closes [#766](https://github.com/databricks/databricks-vscode/issues/766)
+-   Bump databricks cli to v0.200.0 (#779) ([181f0d4](https://github.com/databricks/databricks-vscode/commit/181f0d4)), closes [#779](https://github.com/databricks/databricks-vscode/issues/779)
+-   Make cluster and workspace views experimental (#770) ([fb52fe9](https://github.com/databricks/databricks-vscode/commit/fb52fe9)), closes [#770](https://github.com/databricks/databricks-vscode/issues/770)
+-   Set PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT variable (#764) ([b3732b5](https://github.com/databricks/databricks-vscode/commit/b3732b5)), closes [#764](https://github.com/databricks/databricks-vscode/issues/764)
+-   IDE: Allow profiles with AWS OAuth and Azure Client Secret auth (#776) ([de93933](https://github.com/databricks/databricks-vscode/commit/de93933)), closes [#776](https://github.com/databricks/databricks-vscode/issues/776)
+
 # Release: v0.3.15
 
 ## packages/databricks-vscode
