@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class WorkspaceRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -31,6 +32,21 @@ export class WorkspaceError extends ApiError {
  */
 export class WorkspaceService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.Delete,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/workspace/delete";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
     /**
      * Delete a workspace object.
      *
@@ -48,13 +64,21 @@ export class WorkspaceService {
         request: model.Delete,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/workspace/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _export(
+        request: model.Export,
+        @context context?: Context
+    ): Promise<model.ExportResponse> {
+        const path = "/api/2.0/workspace/export";
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.ExportResponse;
     }
 
     /**
@@ -74,13 +98,21 @@ export class WorkspaceService {
         request: model.Export,
         @context context?: Context
     ): Promise<model.ExportResponse> {
-        const path = "/api/2.0/workspace/export";
+        return await this._export(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getStatus(
+        request: model.GetStatus,
+        @context context?: Context
+    ): Promise<model.ObjectInfo> {
+        const path = "/api/2.0/workspace/get-status";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ExportResponse;
+        )) as model.ObjectInfo;
     }
 
     /**
@@ -94,13 +126,21 @@ export class WorkspaceService {
         request: model.GetStatus,
         @context context?: Context
     ): Promise<model.ObjectInfo> {
-        const path = "/api/2.0/workspace/get-status";
+        return await this._getStatus(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _import(
+        request: model.Import,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/workspace/import";
         return (await this.client.request(
             path,
-            "GET",
+            "POST",
             request,
             context
-        )) as model.ObjectInfo;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -116,24 +156,11 @@ export class WorkspaceService {
         request: model.Import,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/workspace/import";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._import(request, context);
     }
 
-    /**
-     * List contents.
-     *
-     * Lists the contents of a directory, or the object if it is not a
-     * directory.If the input path does not exist, this call returns an error
-     * `RESOURCE_DOES_NOT_EXIST`.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    private async _list(
         request: model.List,
         @context context?: Context
     ): Promise<model.ListResponse> {
@@ -147,17 +174,25 @@ export class WorkspaceService {
     }
 
     /**
-     * Create a directory.
+     * List contents.
      *
-     * Creates the specified directory (and necessary parent directories if they
-     * do not exist). If there is an object (not a directory) at any prefix of
-     * the input path, this call returns an error `RESOURCE_ALREADY_EXISTS`.
-     *
-     * Note that if this operation fails it may have succeeded in creating some
-     * of the necessary\nparrent directories.
+     * Lists the contents of a directory, or the object if it is not a
+     * directory.If the input path does not exist, this call returns an error
+     * `RESOURCE_DOES_NOT_EXIST`.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async mkdirs(
+    async *list(
+        request: model.List,
+        @context context?: Context
+    ): AsyncIterable<model.ObjectInfo> {
+        const response = (await this._list(request, context)).objects;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _mkdirs(
         request: model.Mkdirs,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -168,5 +203,23 @@ export class WorkspaceService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Create a directory.
+     *
+     * Creates the specified directory (and necessary parent directories if they
+     * do not exist). If there is an object (not a directory) at any prefix of
+     * the input path, this call returns an error `RESOURCE_ALREADY_EXISTS`.
+     *
+     * Note that if this operation fails it may have succeeded in creating some
+     * of the necessary parrent directories.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async mkdirs(
+        request: model.Mkdirs,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._mkdirs(request, context);
     }
 }

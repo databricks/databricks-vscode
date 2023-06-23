@@ -1,7 +1,11 @@
 import assert from "node:assert";
 import path from "node:path";
 import * as fs from "fs/promises";
-import {dismissNotifications, getViewSection, waitForTreeItems} from "./utils";
+import {
+    dismissNotifications,
+    getViewSection,
+    waitForTreeItems,
+} from "./utils.ts";
 import {
     CustomTreeSection,
     InputBox,
@@ -9,6 +13,7 @@ import {
     TreeItem,
     Workbench,
 } from "wdio-vscode-service";
+import {expect} from "chai";
 
 describe("Configure Databricks Extension", async function () {
     // this will be populated by the tests
@@ -118,17 +123,6 @@ describe("Configure Databricks Extension", async function () {
         assert(await waitForTreeItems(section, 10_000));
     });
 
-    it("shoult list clusters", async function () {
-        const section = await getViewSection("CLUSTERS");
-        assert(section);
-        const tree = section as CustomTreeSection;
-
-        assert(await waitForTreeItems(tree));
-
-        const items = await tree.getVisibleItems();
-        assert(items.length > 0);
-    });
-
     it("should attach cluster", async function () {
         const config = await getViewSection("CONFIGURATION");
         assert(config);
@@ -195,7 +189,7 @@ describe("Configure Databricks Extension", async function () {
             host.startsWith("https") ? host : `https://${host}`
         ).toString();
 
-        assert.deepEqual(projectConfig, {
+        expect(projectConfig).to.include({
             host: expectedHost,
             authType: "profile",
             profile: "DEFAULT",

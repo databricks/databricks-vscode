@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class WorkspaceConfRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -27,13 +28,9 @@ export class WorkspaceConfError extends ApiError {
  */
 export class WorkspaceConfService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Check configuration status.
-     *
-     * Gets the configuration status for a workspace.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async getStatus(
+    private async _getStatus(
         request: model.GetStatus,
         @context context?: Context
     ): Promise<model.WorkspaceConf> {
@@ -47,13 +44,20 @@ export class WorkspaceConfService {
     }
 
     /**
-     * Enable/disable features.
+     * Check configuration status.
      *
-     * Sets the configuration status for a workspace, including enabling or
-     * disabling it.
+     * Gets the configuration status for a workspace.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async setStatus(
+    async getStatus(
+        request: model.GetStatus,
+        @context context?: Context
+    ): Promise<model.WorkspaceConf> {
+        return await this._getStatus(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _setStatus(
         request: model.WorkspaceConf,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -64,5 +68,19 @@ export class WorkspaceConfService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Enable/disable features.
+     *
+     * Sets the configuration status for a workspace, including enabling or
+     * disabling it.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async setStatus(
+        request: model.WorkspaceConf,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._setStatus(request, context);
     }
 }

@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class ClusterPoliciesRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -50,13 +51,9 @@ export class ClusterPoliciesError extends ApiError {
  */
 export class ClusterPoliciesService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a new policy.
-     *
-     * Creates a new policy with prescribed settings.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreatePolicy,
         @context context?: Context
     ): Promise<model.CreatePolicyResponse> {
@@ -70,6 +67,33 @@ export class ClusterPoliciesService {
     }
 
     /**
+     * Create a new policy.
+     *
+     * Creates a new policy with prescribed settings.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreatePolicy,
+        @context context?: Context
+    ): Promise<model.CreatePolicyResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeletePolicy,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/policies/clusters/delete";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Delete a cluster policy.
      *
      * Delete a policy for a cluster. Clusters governed by this policy can still
@@ -80,7 +104,15 @@ export class ClusterPoliciesService {
         request: model.DeletePolicy,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/policies/clusters/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _edit(
+        request: model.EditPolicy,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/policies/clusters/edit";
         return (await this.client.request(
             path,
             "POST",
@@ -100,23 +132,11 @@ export class ClusterPoliciesService {
         request: model.EditPolicy,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/policies/clusters/edit";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._edit(request, context);
     }
 
-    /**
-     * Get entity.
-     *
-     * Get a cluster policy entity. Creation and editing is available to admins
-     * only.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.Policy> {
@@ -130,12 +150,21 @@ export class ClusterPoliciesService {
     }
 
     /**
-     * Get a cluster policy.
+     * Get entity.
      *
-     * Returns a list of policies accessible by the requesting user.
+     * Get a cluster policy entity. Creation and editing is available to admins
+     * only.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.Get,
+        @context context?: Context
+    ): Promise<model.Policy> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.List,
         @context context?: Context
     ): Promise<model.ListPoliciesResponse> {
@@ -146,6 +175,22 @@ export class ClusterPoliciesService {
             request,
             context
         )) as model.ListPoliciesResponse;
+    }
+
+    /**
+     * Get a cluster policy.
+     *
+     * Returns a list of policies accessible by the requesting user.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *list(
+        request: model.List,
+        @context context?: Context
+    ): AsyncIterable<model.Policy> {
+        const response = (await this._list(request, context)).policies;
+        for (const v of response || []) {
+            yield v;
+        }
     }
 }
 
@@ -173,11 +218,9 @@ export class PolicyFamiliesError extends ApiError {
  */
 export class PolicyFamiliesService {
     constructor(readonly client: ApiClient) {}
-    /**
-    
-	*/
+
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetPolicyFamilyRequest,
         @context context?: Context
     ): Promise<model.PolicyFamily> {
@@ -191,10 +234,18 @@ export class PolicyFamiliesService {
     }
 
     /**
-    
-	*/
+		
+		*/
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetPolicyFamilyRequest,
+        @context context?: Context
+    ): Promise<model.PolicyFamily> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListPolicyFamiliesRequest,
         @context context?: Context
     ): Promise<model.ListPolicyFamiliesResponse> {
@@ -205,5 +256,40 @@ export class PolicyFamiliesService {
             request,
             context
         )) as model.ListPolicyFamiliesResponse;
+    }
+
+    /**
+		
+		*/
+    @withLogContext(ExposedLoggers.SDK)
+    async *list(
+        request: model.ListPolicyFamiliesRequest,
+        @context context?: Context
+    ): AsyncIterable<model.PolicyFamily> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (
+                !response.policy_families ||
+                response.policy_families.length === 0
+            ) {
+                break;
+            }
+
+            for (const v of response.policy_families) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 }

@@ -1,11 +1,12 @@
 import {execFile as execFileCb, spawn} from "child_process";
 import {ExtensionContext, window, commands} from "vscode";
-import {SyncDestinationMapper} from "../configuration/SyncDestination";
+import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {Cloud} from "../utils/constants";
 
 const execFile = promisify(execFileCb);
 
@@ -18,7 +19,7 @@ export interface ConfigEntry {
     name: string;
     host?: URL;
     accountId?: string;
-    cloud: "aws" | "azure" | "gcp";
+    cloud: Cloud;
     authType: string;
     valid: boolean;
 }
@@ -36,40 +37,42 @@ function getValidHost(host: string) {
  * Entrypoint for all wrapped CLI commands
  *
  * Righ now this is a placeholder for a future implementation
- * of the bricks CLI
+ * of the databricks CLI
  */
 export class CliWrapper {
     constructor(private extensionContext: ExtensionContext) {}
 
-    getTestBricksCommand(): Command {
-        return {
-            command: this.extensionContext.asAbsolutePath("./bin/bricks"),
-            args: [],
-        };
+    get cliPath(): string {
+        return this.extensionContext.asAbsolutePath("./bin/databricks");
     }
 
     /**
-     * Constructs the bricks sync command
+     * Constructs the databricks sync command
      */
     getSyncCommand(
         syncDestination: SyncDestinationMapper,
         syncType: SyncType
     ): Command {
-        const command = this.extensionContext.asAbsolutePath("./bin/bricks");
-        const args = ["sync", ".", syncDestination.remoteUri.path, "--watch"];
-
+        const args = [
+            "sync",
+            ".",
+            syncDestination.remoteUri.path,
+            "--watch",
+            "--output",
+            "json",
+        ];
         if (syncType === "full") {
             args.push("--full");
         }
-        if (workspaceConfigs.bricksVerboseMode) {
-            args.push("-v");
+        if (workspaceConfigs.cliVerboseMode) {
+            args.push("--log-level", "debug", "--log-file", "stderr");
         }
-        return {command, args};
+        return {command: this.cliPath, args};
     }
 
     private getListProfilesCommand(): Command {
         return {
-            command: this.extensionContext.asAbsolutePath("./bin/bricks"),
+            command: this.cliPath,
             args: ["auth", "profiles", "--skip-validate"],
         };
     }
@@ -82,11 +85,12 @@ export class CliWrapper {
         const cmd = await this.getListProfilesCommand();
         const res = await execFile(cmd.command, cmd.args, {
             env: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
+                /*  eslint-disable @typescript-eslint/naming-convention */
                 HOME: process.env.HOME,
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 DATABRICKS_CONFIG_FILE:
                     configfilePath || process.env.DATABRICKS_CONFIG_FILE,
+                DATABRICKS_OUTPUT_FORMAT: "json",
+                /*  eslint-enable @typescript-eslint/naming-convention */
             },
         });
         const profiles = JSON.parse(res.stdout).profiles || [];
@@ -130,16 +134,13 @@ export class CliWrapper {
 
     public async getBundleSchema(): Promise<string> {
         const execFile = promisify(execFileCb);
-        const {stdout} = await execFile(
-            this.extensionContext.asAbsolutePath("./bin/bricks"),
-            ["bundle", "schema"]
-        );
+        const {stdout} = await execFile(this.cliPath, ["bundle", "schema"]);
         return stdout;
     }
 
     getAddProfileCommand(profile: string, host: URL): Command {
         return {
-            command: this.extensionContext.asAbsolutePath("./bin/bricks"),
+            command: this.cliPath,
             args: [
                 "configure",
                 "--no-interactive",

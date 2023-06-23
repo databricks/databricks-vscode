@@ -2,20 +2,22 @@
     "compilerOptions": {
         "types": [
             "node",
-            "webdriverio/async",
+            "@wdio/globals/types",
             "@wdio/mocha-framework",
             "expect-webdriverio",
             "wdio-vscode-service"
         ],
+        "noEmit": true,
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
         "resolveJsonModule": true,
-        "module": "CommonJS",
-        "target": "ES2020",
+        "module": "ESNext",
+        "target": "ES2021",
         "isolatedModules": true,
         "sourceMap": true,
         "noImplicitAny": false,
         "strict": true /* enable all strict type-checking options */,
         "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node",
         "esModuleInterop": true
     }
 }

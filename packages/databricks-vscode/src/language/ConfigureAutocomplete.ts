@@ -3,56 +3,34 @@ import {appendFile, mkdir, readdir, readFile} from "fs/promises";
 import path from "path";
 import {
     ExtensionContext,
-    extensions,
-    Uri,
     window,
-    Event,
     Disposable,
     workspace,
     ConfigurationTarget,
 } from "vscode";
 import {Loggers} from "../logger";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
+import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
 
-type Resource = Uri | undefined;
-
-// Refer https://github.com/microsoft/vscode-python/blob/main/src/client/apiTypes.ts
-interface IPythonExtension {
-    /**
-     * Return internal settings within the extension which are stored in VSCode storage
-     */
-    settings: {
-        /**
-         * An event that is emitted when execution details (for a resource) change. For instance, when interpreter configuration changes.
-         */
-        readonly onDidChangeExecutionDetails: Event<Uri | undefined>;
-        /**
-         * Returns all the details the consumer needs to execute code within the selected environment,
-         * corresponding to the specified resource taking into account any workspace-specific settings
-         * for the workspace to which this resource belongs.
-         * @param {Resource} [resource] A resource for which the setting is asked for.
-         * * When no resource is provided, the setting scoped to the first workspace folder is returned.
-         * * If no folder is present, it returns the global setting.
-         * @returns {({ execCommand: string[] | undefined })}
-         */
-        getExecutionDetails(resource?: Resource): {
-            /**
-             * E.g of execution commands returned could be,
-             * * `['<path to the interpreter set in settings>']`
-             * * `['<path to the interpreter selected by the extension when setting is not set>']`
-             * * `['conda', 'run', 'python']` which is used to run from within Conda environments.
-             * or something similar for some other Python environments.
-             *
-             * @type {(string[] | undefined)} When return value is `undefined`, it means no interpreter is set.
-             * Otherwise, join the items returned using space to construct the full execution command.
-             */
-            execCommand: string[] | undefined;
-        };
-    };
+async function getImportString(context: ExtensionContext) {
+    try {
+        return await readFile(
+            context.asAbsolutePath(
+                path.join("resources", "python", "stubs", "__builtins__.pyi")
+            ),
+            "utf-8"
+        );
+    } catch (e: unknown) {
+        if (e instanceof Error) {
+            window.showErrorMessage(
+                `Can't read internal type stubs for autocompletion. ${e.message}`
+            );
+        }
+    }
 }
 
-const importString = "from databricks.sdk.runtime import *";
-
-type StepResult = "Skip" | "Cancel" | "Error" | "Silent" | undefined;
+type StepResult = "Skip" | "Cancel" | "Error" | undefined;
 
 interface Step {
     fn: (dryRun: boolean) => Promise<StepResult>;
@@ -61,12 +39,31 @@ interface Step {
 
 export class ConfigureAutocomplete implements Disposable {
     private disposables: Disposable[] = [];
-    private _onPythonChangeEventListenerAdded = false;
 
     constructor(
         private readonly context: ExtensionContext,
-        private readonly workspaceFolder: string
+        private readonly workspaceState: WorkspaceStateManager,
+        private readonly workspaceFolder: string,
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly dbConnectInstallPrompt: DbConnectInstallPrompt
     ) {
+        //Remove any type stubs that users already have. We will now start using the python SDK (installed with databricks-connect)
+        let extraPaths =
+            workspace
+                .getConfiguration("python")
+                .get<Array<string>>("analysis.extraPaths") ?? [];
+
+        extraPaths = extraPaths.filter(
+            (value) =>
+                !value.endsWith(path.join("resources", "python", "stubs"))
+        );
+        workspace
+            .getConfiguration("python")
+            .update(
+                "analysis.extraPaths",
+                extraPaths,
+                ConfigurationTarget.Global
+            );
         this.configure();
     }
 
@@ -109,54 +106,18 @@ export class ConfigureAutocomplete implements Disposable {
     }
 
     async configureCommand() {
+        this.workspaceState.skipAutocompleteConfigure = false;
         return this.configure(true);
     }
 
     private async configure(force = false) {
-        if (
-            !force &&
-            this.context.workspaceState.get<boolean>(
-                "databricks.autocompletion.skipConfigure"
-            )
-        ) {
+        if (!force || this.workspaceState.skipAutocompleteConfigure) {
             return;
-        }
-
-        const pythonExtension = extensions.getExtension("ms-python.python");
-        if (pythonExtension === undefined) {
-            window.showWarningMessage(
-                "VSCode Extension for Databricks requires Microsoft Python extension for providing autocompletion. Autocompletion will be disabled now."
-            );
-            return;
-        }
-        if (!pythonExtension.isActive) {
-            await pythonExtension.activate();
-        }
-        /* 
-            We hook into the python extension, so that whenever user changes python interpreter (or environment),
-            we prompt them to go through the configuration steps again. For now this only involves installing pyspark. 
-            In future, we would want them to install databricks sdk in the new environment. 
-        */
-        if (!this._onPythonChangeEventListenerAdded) {
-            this.disposables.push(
-                pythonExtension.exports.settings.onDidChangeExecutionDetails(
-                    () => this.configure(true),
-                    this
-                )
-            );
-            this._onPythonChangeEventListenerAdded = true;
         }
 
         const steps = [
             {
-                fn: async (dryRun = false) =>
-                    await this.installPyspark(
-                        pythonExtension.exports as IPythonExtension,
-                        dryRun
-                    ),
-            },
-            {
-                fn: async () => this.updateExtraPaths(),
+                fn: async (dryRun = false) => await this.installPyspark(dryRun),
             },
             {
                 fn: async (dryRun = false) => this.addBuiltinsFile(dryRun),
@@ -181,10 +142,7 @@ export class ConfigureAutocomplete implements Disposable {
         }
 
         if (choice === "Never for this workspace") {
-            this.context.workspaceState.update(
-                "databricks.autocompletion.skipConfigure",
-                true
-            );
+            this.workspaceState.skipAutocompleteConfigure = true;
             return;
         }
 
@@ -196,70 +154,17 @@ export class ConfigureAutocomplete implements Disposable {
         }
     }
 
-    private async installPyspark(
-        pythonExtension: IPythonExtension,
-        dryRun = false
-    ): Promise<StepResult> {
-        const execCommandParts = pythonExtension.settings.getExecutionDetails(
-            workspace.workspaceFolders?.[0].uri
-        ).execCommand;
+    private async installPyspark(dryRun = false): Promise<StepResult> {
+        const executable = await this.pythonExtension.getPythonExecutable();
 
-        if (execCommandParts === undefined) {
+        if (executable === undefined) {
             return "Skip";
         }
 
         if (dryRun) {
             return;
         }
-        const choice = await window.showInformationMessage(
-            ["Install pyspark in local env?"].join("\n"),
-            "Install PySpark",
-            "Continue without PySpark",
-            "Cancel"
-        );
-
-        if (choice === "Cancel" || choice === undefined) {
-            return "Cancel";
-        }
-        if (choice === "Continue without PySpark") {
-            return "Skip";
-        }
-
-        //TODO: Make sure that pyspark is not updated if it is already installed
-        const execCommand = execCommandParts
-            .concat(["-m", "pip", "install", "pyspark"])
-            .join(" ");
-
-        const terminal = window.createTerminal("pip");
-        this.disposables.push(terminal);
-        terminal.sendText(execCommand);
-        terminal.show();
-    }
-
-    private async updateExtraPaths(): Promise<StepResult> {
-        let extraPaths =
-            workspace
-                .getConfiguration("python")
-                .get<Array<string>>("analysis.extraPaths") ?? [];
-        const stubPath = this.context.asAbsolutePath(
-            path.join("resources", "python", "stubs")
-        );
-        if (extraPaths.includes(stubPath)) {
-            return;
-        }
-        extraPaths = extraPaths.filter(
-            (value) =>
-                !value.endsWith(path.join("resources", "python", "stubs")) &&
-                value.includes("databricks")
-        );
-        extraPaths.push(stubPath);
-        workspace
-            .getConfiguration("python")
-            .update(
-                "analysis.extraPaths",
-                extraPaths,
-                ConfigurationTarget.Global
-            );
+        this.dbConnectInstallPrompt.show(false);
     }
 
     private async addBuiltinsFile(dryRun = false): Promise<StepResult> {
@@ -279,6 +184,11 @@ export class ConfigureAutocomplete implements Disposable {
         } catch (e) {}
 
         const builtinsPath = path.join(builtinsDir, "__builtins__.pyi");
+
+        const importString = await getImportString(this.context);
+        if (importString === undefined) {
+            return "Error";
+        }
 
         if (
             builtinsFileExists &&

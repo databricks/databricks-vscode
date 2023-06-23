@@ -1,4 +1,5 @@
-import {workspace} from "vscode";
+import {ConfigurationTarget, workspace} from "vscode";
+import {SyncDestinationType} from "../sync/SyncDestination";
 
 export const workspaceConfigs = {
     get maxFieldLength() {
@@ -36,26 +37,79 @@ export const workspaceConfigs = {
                 ?.get<boolean>("clusters.onlyShowAccessibleClusters") ?? false
         );
     },
-    get bricksVerboseMode() {
+    get cliVerboseMode() {
+        const legacyVerboseMode =
+            workspace
+                .getConfiguration("databricks")
+                ?.get<boolean>("bricks.verboseMode") ?? false;
+
+        const verboseMode =
+            workspace
+                .getConfiguration("databricks")
+                ?.get<boolean>("cli.verboseMode") ?? false;
+
+        return verboseMode || legacyVerboseMode;
+    },
+
+    get syncDestinationType() {
         return (
             workspace
                 .getConfiguration("databricks")
-                ?.get<boolean>("bricks.verboseMode") ?? false
-        );
-    },
-    get enableFilesInWorkspace() {
-        return (
-            (workspace
-                .getConfiguration("databricks")
-                ?.get<"repo" | "workspace">("sync.destinationType") ??
-                "repo") === "workspace"
+                ?.get<SyncDestinationType>("sync.destinationType") ??
+            "workspace"
         );
     },
 
+    get enableFilesInWorkspace() {
+        return this.syncDestinationType === "workspace";
+    },
+
+    async setSyncDestinationType(destinationType: SyncDestinationType) {
+        await workspace
+            .getConfiguration("databricks")
+            ?.update(
+                "sync.destinationType",
+                destinationType,
+                ConfigurationTarget.Workspace
+            );
+    },
     get databrickscfgLocation() {
         const config = workspace
             .getConfiguration("databricks")
-            ?.get<string>("overrideDatabricksConfigFile");
+            .get<string>("overrideDatabricksConfigFile");
         return config === "" || config === undefined ? undefined : config;
+    },
+
+    get userEnvFile() {
+        const config = workspace
+            .getConfiguration("databricks")
+            .get<string>("python.envFile");
+
+        return config === "" || config === undefined ? undefined : config;
+    },
+
+    set userEnvFile(value: string | undefined) {
+        workspace
+            .getConfiguration("databricks")
+            .update("python.envFile", value, ConfigurationTarget.Workspace);
+    },
+
+    get experimetalFeatureOverides() {
+        return workspace
+            .getConfiguration("databricks")
+            .get<Array<string>>("experiments.optInto", []);
+    },
+
+    /**
+     * Set the python.envFile configuration in the ms-python extension
+     */
+    set msPythonEnvFile(value: string | undefined) {
+        workspace
+            .getConfiguration("python")
+            .update("envFile", value, ConfigurationTarget.Workspace);
+    },
+
+    get msPythonEnvFile() {
+        return workspace.getConfiguration("python").get<string>("envFile");
     },
 };

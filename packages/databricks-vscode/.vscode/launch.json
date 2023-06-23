@@ -13,7 +13,8 @@
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
-                "DATABRICKS_DEBUG_HEADERS": "false"
+                "DATABRICKS_DEBUG_HEADERS": "false",
+                "EXTENSION_DEVELOPMENT": "true"
             }
         },
         {
@@ -27,8 +28,53 @@
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
-                "DATABRICKS_DEBUG_HEADERS": "false"
+                "DATABRICKS_DEBUG_HEADERS": "false",
+                "EXTENSION_DEVELOPMENT": "true"
             }
+        },
+        {
+            "name": "Run selected E2E test",
+            "type": "node",
+            "request": "launch",
+            "args": [
+                "${workspaceFolder}/src/test/e2e/wdio.conf.ts",
+                "--spec",
+                "${file}"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "DATABRICKS_TOKEN": "${input:token}",
+                "DATABRICKS_HOST": "${input:host}",
+                "TEST_DEFAULT_CLUSTER_ID": "${input:clusterId}"
+            },
+            "autoAttachChildProcesses": true,
+            "program": "${workspaceRoot}/node_modules/.bin/wdio",
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "${workspaceFolder}/node_modules/**/*.js",
+                "${workspaceFolder}/lib/**/*.js",
+                "<node_internals>/**/*.js"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "token",
+            "description": "Databricks PAT",
+            "default": "${env:DATABRICKS_TOKEN}"
+        },
+        {
+            "type": "promptString",
+            "id": "host",
+            "description": "Databricks HOST",
+            "default": "${env:DATABRICKS_HOST}"
+        },
+        {
+            "type": "promptString",
+            "id": "clusterId",
+            "description": "Databricks cluster ID",
+            "default": "${env:TEST_DEFAULT_CLUSTER_ID}"
         }
     ]
 }

@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types"
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context"
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 {{range $i, $s := .Services }}
 export class {{$s.PascalName}}RetriableError extends ApiRetriableError {
@@ -30,88 +31,177 @@ export class {{$s.PascalName}}Service {
 	constructor(readonly client: ApiClient){}
 
 	{{- range $s.Methods}}
-	/**
-    {{.Comment "    * " 80}}
-	*/
-	@withLogContext(ExposedLoggers.SDK)
-    async {{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}},{{end}}
-        @context context?: Context
-	): Promise<{{if .Response}}
-        {{if .Response.ArrayValue}}
-            Array<model.{{.Response.ArrayValue.PascalName}}>
-        {{else}}
-            model.{{.Response.PascalName}}
-        {{end}}
-	{{else}}
-      model.EmptyResponse
-	{{end}}> 
-	
-	{
-            const path = {{if .PathParts -}}
-		        `{{range  .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.Name}}}{{ else if .IsAccountId }}${this.client.accountId}{{end}}{{ end }}`
-	        {{- else}}"{{.Path}}"{{end}}
+
+		@withLogContext(ExposedLoggers.SDK)
+		private async _{{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}},{{end}}
+			@context context?: Context
+		): Promise<{{template "type_for_response" .}}> 
+		
+		{
+			{{if $s.IsAccounts }}
+			const config = this.client.config;
+			await config.ensureResolved();
+			if (!config.accountId || !config.isAccountClient()) {
+    	        throw new Error("invalid Databricks Account configuration");
+        	}
+			
+			{{end}}		
+			const path = {{if .PathParts -}}
+				`{{range .PathParts}}{{.Prefix}}{{if .Field}}${request.{{.Field.Name}}}{{ else if .IsAccountId }}${config.accountId}{{end}}{{ end }}`
+			{{- else}}"{{.Path}}"{{end}}
 			return (await this.client.request(
 				path,
 				"{{.Verb}}",
 				{{if .Request -}}request{{else}}undefined{{end}}, 
 				context
 			) as {{if .Response}}{{if .Response.ArrayValue}}Array<model.{{.Response.ArrayValue.PascalName}}>{{else}}model.{{.Response.PascalName}}{{end}}{{else}}model.EmptyResponse{{end}})
+		}	
+
+		{{if .Wait}}
+		/**
+		{{.Comment "    * " 80}}
+		*/
+		@withLogContext(ExposedLoggers.SDK)
+		async {{.CamelName}}({{if .Request}}{{.Request.CamelName}}: model.{{.Request.PascalName}},{{end}}
+			@context context?: Context	
+		): Promise<Waiter<{{template "type_for_response" .}}, {{template "type_for_poll_response" .}}>> {
+			let cancellationToken = context?.cancellationToken;
+
+			{{if .Response}}const {{.Response.CamelName}} = {{end}}await this._{{.CamelName}}({{if .Request}}{{.Request.CamelName}},{{end}} context);
+
+			return asWaiter({{ if .Response}}{{.Response.CamelName}}{{ else }}null{{end}}, async(options) => { 
+				options = options || {};
+				options.onProgress =
+					options.onProgress || (async (newPollResponse) => {});
+				let {timeout, onProgress} = options;
+
+				return await retry<{{template "type_for_poll_response" .}}>({
+					timeout,
+					fn: async () => {
+						const pollResponse = await this.{{.Wait.Poll.CamelName}}({
+							{{range .Wait.Binding}}{{.PollField.Name}}: {{.Bind.Of.CamelName}}.{{.Bind.Name}}!,{{end}}
+						}, context)
+						if(cancellationToken?.isCancellationRequested) {
+							context?.logger?.error("{{$s.PascalName}}.{{.CamelName}}AndWait: cancelled");
+							throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", "cancelled");
+						}
+						await onProgress(pollResponse);
+						const status = pollResponse{{range $i, $e := .Wait.StatusPath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}
+						const statusMessage = pollResponse{{range $i, $e := .Wait.MessagePath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}
+						switch(status) {
+							{{range $i, $e := .Wait.Success}}{{if $i}} {{end}}case '{{$e.Content}}':{{end}}{
+								return pollResponse
+							}
+							{{if .Wait.Failure}}{{range $i, $e := .Wait.Failure}}{{if $i}} {{end}}case '{{$e.Content}}':{{end}}{
+								const errorMessage = `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`;
+								context?.logger?.error(`{{$s.PascalName}}.{{.CamelName}}AndWait: ${errorMessage}`);
+								throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", errorMessage);
+							}
+							{{end}}default:{
+								const errorMessage = `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`;
+								context?.logger?.error(`{{$s.PascalName}}.{{.CamelName}}AndWait: retrying: ${errorMessage}`);
+								throw new {{$s.PascalName}}RetriableError("{{.CamelName}}AndWait", errorMessage);
+							}
+						}
+					}
+				});
+			});
 		}
+		{{else if .Pagination}}
+		/**
+		{{.Comment "    * " 80}}
+		*/
+		@withLogContext(ExposedLoggers.SDK)
+		async *{{.CamelName}}({{if .Request}}request: model.{{.Request.PascalName}},{{end}}
+			@context context?: Context	
+		): AsyncIterable<model.{{.Pagination.Entity.PascalName}}> {
+			{{if .Pagination.MultiRequest}}
+			{{if .Pagination.NeedsOffsetDedupe -}}
+			// deduplicate items that may have been added during iteration
+			const seen: Record<{{template "type" .Pagination.Entity.IdentifierField.Entity}}, boolean> = {};
+			{{end}}{{if eq .Pagination.Increment 1 -}}
+			request.{{.Pagination.Offset.Name}} = 1; // start iterating from the first page
+			{{end}}
+			while(true) {
+				const response = await this._{{.CamelName}}({{if .Request}}request,{{end}} context);
+				if (
+                    context?.cancellationToken &&
+                    context?.cancellationToken.isCancellationRequested
+                ) {
+                    break;
+                }
 
-	{{if .Wait}}
-	/**
-	* {{.CamelName}} and wait to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state
-	* {{if .Wait.Failure}} or fail on reaching {{range $i, $e := .Wait.Failure}}{{if $i}} or {{end}}{{.Content}}{{end}} state{{end}}
-	*/
-	@withLogContext(ExposedLoggers.SDK)
-	async {{.CamelName}}AndWait({{if .Request}}{{.Request.CamelName}}: model.{{.Request.PascalName}}{{end}},
-		options?: {
-			timeout?: Time,
-			onProgress?: (newPollResponse: model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}) => Promise<void>
-		},
-		@context context?: Context	
-	): Promise<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}> {
-
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-		let {timeout, onProgress} = options;
-		let cancellationToken = context?.cancellationToken;
-
-		{{if .Wait.ForceBindRequest}}{{else if .Response}}const {{.Response.CamelName}} = {{end}}await this.{{.CamelName}}({{if .Request}}{{.Request.CamelName}},{{end}} context);
-
-		return await retry<model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}>({
-			timeout,
-			fn: async () => {
-				const pollResponse = await this.{{.Wait.Poll.CamelName}}({
-                    {{range .Wait.Binding}}{{.PollField.Name}}: {{.Bind.Of.CamelName}}.{{.Bind.Name}}!,{{end}}
-				}, context)
-				if(cancellationToken?.isCancellationRequested) {
-					context?.logger?.error("{{$s.PascalName}}.{{.CamelName}}AndWait: cancelled");
-					throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", "cancelled");
+				if (!response.{{.Pagination.Results.Name}} || response.{{.Pagination.Results.Name}}.length === 0) {
+					break;
 				}
-				await onProgress(pollResponse);
-				const status = pollResponse{{range $i, $e := .Wait.StatusPath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}
-				const statusMessage = pollResponse{{range $i, $e := .Wait.MessagePath}}{{if $i}}!{{end}}.{{$e.SnakeName}}{{end}}
-				switch(status) {
-					{{range $i, $e := .Wait.Success}}{{if $i}} {{end}}case '{{$e.Content}}':{{end}}{
-						return pollResponse
+
+				for (const v of response.{{.Pagination.Results.Name}}) {
+					{{- if .Pagination.NeedsOffsetDedupe -}}
+					const id = v.{{.Pagination.Entity.IdentifierField.Name}};
+					if (id) {
+						if (seen[id]) {
+							// item was added during iteration
+							continue;
+						}
+						seen[id] = true;
 					}
-					{{if .Wait.Failure}}{{range $i, $e := .Wait.Failure}}{{if $i}} {{end}}case '{{$e.Content}}':{{end}}{
-						const errorMessage = `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`;
-						context?.logger?.error(`{{$s.PascalName}}.{{.CamelName}}AndWait: ${errorMessage}`);
-						throw new {{$s.PascalName}}Error("{{.CamelName}}AndWait", errorMessage);
-					}
-					{{end}}default:{
-						const errorMessage = `failed to reach {{range $i, $e := .Wait.Success}}{{if $i}} or {{end}}{{.Content}}{{end}} state, got ${status}: ${statusMessage}`;
-						context?.logger?.error(`{{$s.PascalName}}.{{.CamelName}}AndWait: retrying: ${errorMessage}`);
-						throw new {{$s.PascalName}}RetriableError("{{.CamelName}}AndWait", errorMessage);
-					}
+					{{- end}}
+					yield v;
 				}
-			}
-		});
-	}
-	{{end}}
+
+				{{if eq .Path "/api/2.0/clusters/events" -}}
+				if (!response.next_page) {
+					break;
+				}
+				request = response.next_page;
+				{{- else if .Pagination.Token -}}
+				request.{{.Pagination.Token.PollField.Name}} = response.{{.Pagination.Token.Bind.Name}}
+				if (!response.{{.Pagination.Token.Bind.Name}}) {
+					break;
+				}
+				{{- else if eq .Pagination.Increment 1 -}}
+				request.{{.Pagination.Offset.Name}}+= 1;
+				{{- else -}}
+				request.{{.Pagination.Offset.Name}} = request.{{.Pagination.Offset.Name}} || 0;
+				request.{{.Pagination.Offset.Name}} += response.{{.Pagination.Results.Name}}.length;
+				{{- end}}
+			}{{else if .Pagination.Results}}
+			const response = (await this._{{.CamelName}}({{if .Request}}request,{{end}} context)).{{.Pagination.Results.Name}};
+						for (const v of response || []) {
+				yield v;
+			}{{else}}
+			const response = await this._{{.CamelName}}({{if .Request}}request,{{end}} context);
+			for (const v of response || []) {
+				yield v;
+			}{{end}}
+		}{{ else }}
+		/**
+		{{.Comment "    * " 80}}
+		*/
+		@withLogContext(ExposedLoggers.SDK)
+		async {{.CamelName}}({{if .Request}}request:  model.{{.Request.PascalName}},{{end}}
+			@context context?: Context
+		): Promise<{{template "type_for_response" .}}> 	
+		{
+			return await this._{{.CamelName}}({{if .Request}}request,{{end}} context);
+		}	
+		{{end}}
 	{{end}}
 }
 {{end}}
+
+{{- define "type_for_response" -}}
+	{{if .Response}}
+        {{if .Response.ArrayValue}}
+            Array<model.{{.Response.ArrayValue.PascalName}}>
+        {{else}}
+            model.{{.Response.PascalName}}
+        {{end}}
+	{{else}}
+        model.EmptyResponse
+	{{end}}
+{{- end -}}
+
+{{- define "type_for_poll_response" -}}
+model.{{if .Wait.Poll.Response}}{{.Wait.Poll.Response.PascalName}}{{else}}{{.Wait.Poll.EmptyResponseName.PascalName}}{{end}}
+{{- end -}}

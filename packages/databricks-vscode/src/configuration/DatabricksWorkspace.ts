@@ -11,7 +11,7 @@ import {Uri} from "vscode";
 import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider} from "./auth/AuthProvider";
-import {RemoteUri} from "./SyncDestination";
+import {RemoteUri} from "../sync/SyncDestination";
 
 export class DatabricksWorkspace {
     constructor(
@@ -30,13 +30,13 @@ export class DatabricksWorkspace {
             : this.repoRoot;
     }
 
-    private get workspaceFsRoot(): RemoteUri {
+    get workspaceFsRoot(): RemoteUri {
         return new RemoteUri(
             Uri.from({scheme: "wsfs", path: `/Users/${this.userName}/.ide`})
         );
     }
 
-    private get repoRoot(): RemoteUri {
+    get repoRoot(): RemoteUri {
         return new RemoteUri(
             Uri.from({scheme: "wsfs", path: `/Repos/${this.userName}`})
         );

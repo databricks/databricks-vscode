@@ -1,5 +1,5 @@
 import {Disposable, Event, EventEmitter, TaskExecution, tasks} from "vscode";
-import {SyncTask, TASK_SYNC_TYPE} from "../cli/BricksTasks";
+import {SyncTask, TASK_SYNC_TYPE} from "../cli/SyncTasks";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {PackageMetaData} from "../utils/packageJsonUtils";
@@ -8,6 +8,8 @@ export type SyncState =
     | "IN_PROGRESS"
     | "WATCHING_FOR_CHANGES"
     | "STOPPED"
+    | "FILES_IN_REPOS_DISABLED"
+    | "FILES_IN_WORKSPACE_DISABLED"
     | "ERROR";
 
 export class CodeSynchronizer implements Disposable {
@@ -17,9 +19,12 @@ export class CodeSynchronizer implements Disposable {
         this._onDidChangeStateEmitter.event;
 
     // This state is updated from inside the SyncTask based on logs recieved from
-    // bricks sync stderr. Closing the SyncTask transitions the state back to
+    // databricks sync stderr. Closing the SyncTask transitions the state back to
     // stopped
     private _state: SyncState = "STOPPED";
+    //The ERROR state represents an untyped error, so we use this to store the
+    // reason for the error, which is displayed to the user.
+    private _reason?: string;
 
     disposables: Array<Disposable> = [];
     currentTaskExecution?: TaskExecution;
@@ -63,6 +68,10 @@ export class CodeSynchronizer implements Disposable {
         return this._state;
     }
 
+    get reason(): string | undefined {
+        return this._reason;
+    }
+
     async start(syncType: "full" | "incremental") {
         this._state = "IN_PROGRESS";
         this._onDidChangeStateEmitter.fire(this._state);
@@ -71,9 +80,19 @@ export class CodeSynchronizer implements Disposable {
             this.cli,
             syncType,
             this.packageMetadata,
-            (state: SyncState) => {
+            (state: SyncState, reason?: string) => {
                 this._state = state;
+                this._reason = reason;
                 this._onDidChangeStateEmitter.fire(state);
+                if (
+                    [
+                        "ERROR",
+                        "FILES_IN_REPOS_DISABLED",
+                        "FILES_IN_WORKSPACE_DISABLED",
+                    ].includes(state)
+                ) {
+                    this.stop();
+                }
             }
         );
         await tasks.executeTask(task);
@@ -97,7 +116,14 @@ export class CodeSynchronizer implements Disposable {
         if (this._state !== "WATCHING_FOR_CHANGES") {
             return await new Promise((resolve) => {
                 const changeListener = this.onDidChangeState(() => {
-                    if (this._state === "WATCHING_FOR_CHANGES") {
+                    if (
+                        [
+                            "WATCHING_FOR_CHANGES",
+                            "FILES_IN_REPOS_DISABLED",
+                            "FILES_IN_WORKSPACE_DISABLED",
+                            "ERROR",
+                        ].includes(this.state)
+                    ) {
                         changeListener.dispose();
                         resolve();
                     }

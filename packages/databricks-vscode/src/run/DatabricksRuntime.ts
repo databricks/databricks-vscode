@@ -18,13 +18,18 @@ import {
     LocalUri,
     RemoteUri,
     SyncDestinationMapper,
-} from "../configuration/SyncDestination";
+} from "../sync/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {promptForClusterStart} from "./prompts";
+import {
+    promptForAttachingSyncDest,
+    promptForClusterAttach,
+    promptForClusterStart,
+} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
 
 export interface OutputEvent {
@@ -48,8 +53,9 @@ export class DatabricksRuntime implements Disposable {
     private _onDidEndEmitter: EventEmitter<void> = new EventEmitter<void>();
     readonly onDidEnd: Event<void> = this._onDidEndEmitter.event;
 
-    private _onErrorEmitter: EventEmitter<string> = new EventEmitter<string>();
-    readonly onError: Event<string> = this._onErrorEmitter.event;
+    private _onErrorEmitter: EventEmitter<string | undefined> =
+        new EventEmitter<string | undefined>();
+    readonly onError: Event<string | undefined> = this._onErrorEmitter.event;
 
     private _onDidSendOutputEmitter: EventEmitter<OutputEvent> =
         new EventEmitter<OutputEvent>();
@@ -92,7 +98,8 @@ export class DatabricksRuntime implements Disposable {
     constructor(
         private connection: ConnectionManager,
         private codeSynchronizer: CodeSynchronizer,
-        private context: ExtensionContext
+        private context: ExtensionContext,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {}
 
     /**
@@ -123,37 +130,22 @@ export class DatabricksRuntime implements Disposable {
 
             const cluster = this.connection.cluster;
             if (!cluster) {
-                return this._onErrorEmitter.fire(
-                    "You must attach to a cluster to run on Databricks"
-                );
+                promptForClusterAttach();
+                return this._onErrorEmitter.fire(undefined);
             }
 
-            const isClusterRunning = await promptForClusterStart(
-                cluster,
-                async () => {
-                    this._onErrorEmitter.fire(
-                        "Cancel execution because cluster is not running."
-                    );
-                },
-                async () => {
-                    this._onDidSendOutputEmitter.fire({
-                        type: "err",
-                        text: `Starting cluster ${cluster?.name} ...`,
-                        filePath: program,
-                        column: 0,
-                        line: 0,
-                    });
-                }
-            );
-            if (!isClusterRunning) {
+            await this.wsfsAccessVerifier.verifyCluster(cluster);
+            await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
+            if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
+                this._onErrorEmitter.fire(undefined);
+                promptForClusterStart();
                 return;
             }
 
             const syncDestination = this.connection.syncDestinationMapper;
             if (!syncDestination) {
-                return this._onErrorEmitter.fire(
-                    "You must configure code synchronization to run on Databricks"
-                );
+                promptForAttachingSyncDest();
+                return this._onErrorEmitter.fire(undefined);
             }
 
             log(`Creating execution context on cluster ${cluster.id} ...`);
@@ -178,7 +170,9 @@ export class DatabricksRuntime implements Disposable {
 
             this.disposables.push(
                 this.codeSynchronizer.onDidChangeState((state) => {
-                    if (state === "STOPPED") {
+                    if (
+                        !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(state)
+                    ) {
                         return this._onErrorEmitter.fire(
                             "Execution cancelled because sync was stopped"
                         );
@@ -186,7 +180,11 @@ export class DatabricksRuntime implements Disposable {
                 })
             );
 
-            if (this.codeSynchronizer.state === "STOPPED") {
+            if (
+                !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(
+                    this.codeSynchronizer.state
+                )
+            ) {
                 await commands.executeCommand("databricks.sync.start");
             }
 
@@ -194,6 +192,17 @@ export class DatabricksRuntime implements Disposable {
             // with the remote repo files
             await this.cancellable(this.codeSynchronizer.waitForSyncComplete());
             if (this._runtimeState === "CANCELED") {
+                return;
+            }
+            if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {
+                this._onDidSendOutputEmitter.fire({
+                    type: "err",
+                    text: `Can't sync ${program}. Reason: ${this.codeSynchronizer.state}`,
+                    filePath: program,
+                    line: 0,
+                    column: 0,
+                });
+                this._onErrorEmitter.fire(`Error in running ${program}.`);
                 return;
             }
             await commands.executeCommand("workbench.panel.repl.view.focus");

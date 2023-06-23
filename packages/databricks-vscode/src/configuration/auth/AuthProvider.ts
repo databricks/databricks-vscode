@@ -11,9 +11,11 @@ import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
-import {AzureCliCheck} from "../AzureCliCheck";
+import {AzureCliCheck} from "./AzureCliCheck";
+import {DatabricksCliCheck} from "./DatabricksCliCheck";
 
-export type AuthType = "azure-cli" | "google-id" | "oauth-u2m" | "profile";
+// TODO: Resolve this with SDK's AuthType.
+export type AuthType = "azure-cli" | "google-id" | "databricks-cli" | "profile";
 
 export abstract class AuthProvider {
     constructor(
@@ -34,7 +36,7 @@ export abstract class AuthProvider {
      */
     abstract describe(): string;
     abstract toJSON(): Record<string, unknown>;
-    abstract getEnvVars(): Record<string, string | undefined>;
+    abstract toEnv(): Record<string, string>;
 
     getWorkspaceClient(): WorkspaceClient {
         const config = this.getSdkConfig();
@@ -52,7 +54,10 @@ export abstract class AuthProvider {
 
     protected abstract getSdkConfig(): Config;
 
-    static fromJSON(json: Record<string, any>): AuthProvider {
+    static fromJSON(
+        json: Record<string, any>,
+        databricksPath: string
+    ): AuthProvider {
         const host =
             json.host instanceof URL
                 ? json.host
@@ -72,6 +77,9 @@ export abstract class AuthProvider {
                     json.tenantId,
                     json.appId
                 );
+
+            case "databricks-cli":
+                return new DatabricksCliAuthProvider(host, databricksPath);
 
             case "profile":
                 if (!json.profile) {
@@ -102,12 +110,10 @@ export class ProfileAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): Record<string, string | undefined> {
+    toEnv(): Record<string, string> {
         return {
+            DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_CONFIG_PROFILE: this.profile,
-            DATABRICKS_CONFIG_FILE:
-                workspaceConfigs.databrickscfgLocation ??
-                process.env.DATABRICKS_CONFIG_FILE,
         };
     }
 
@@ -119,6 +125,45 @@ export class ProfileAuthProvider extends AuthProvider {
                 process.env.DATABRICKS_CONFIG_FILE,
             env: {},
         });
+    }
+}
+
+export class DatabricksCliAuthProvider extends AuthProvider {
+    constructor(host: URL, readonly databricksPath: string) {
+        super(host, "databricks-cli");
+    }
+
+    describe(): string {
+        return "OAuth U2M";
+    }
+
+    toJSON(): Record<string, unknown> {
+        return {
+            host: this.host.toString(),
+            authType: this.authType,
+            databricksPath: this.databricksPath,
+        };
+    }
+
+    getSdkConfig(): Config {
+        return new Config({
+            host: this.host.toString(),
+            authType: "databricks-cli",
+            databricksCliPath: this.databricksPath,
+        });
+    }
+
+    toEnv(): Record<string, string> {
+        return {
+            DATABRICKS_HOST: this.host.toString(),
+            DATABRICKS_AUTH_TYPE: "databricks-cli",
+            DATABRICKS_CLI_PATH: this.databricksPath,
+        };
+    }
+
+    async check(silent: boolean): Promise<boolean> {
+        const databricksCliCheck = new DatabricksCliCheck(this);
+        return databricksCliCheck.check(silent);
     }
 }
 
@@ -154,13 +199,6 @@ export class AzureCliAuthProvider extends AuthProvider {
         };
     }
 
-    getEnvVars(): Record<string, string | undefined> {
-        return {
-            DATABRICKS_HOST: this.host.toString(),
-            DATABRICKS_AUTH_TYPE: this.authType,
-        };
-    }
-
     getSdkConfig(): Config {
         return new Config({
             host: this.host.toString(),
@@ -168,6 +206,17 @@ export class AzureCliAuthProvider extends AuthProvider {
             azureLoginAppId: this.appId,
             env: {},
         });
+    }
+
+    toEnv(): Record<string, string> {
+        const envVars: Record<string, string> = {
+            DATABRICKS_HOST: this.host.toString(),
+            DATABRICKS_AUTH_TYPE: "azure-cli",
+        };
+        if (this.appId) {
+            envVars["DATABRICKS_AZURE_LOGIN_APP_ID"] = this.appId;
+        }
+        return envVars;
     }
 
     async check(silent: boolean): Promise<boolean> {

@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class BillableUsageRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -28,6 +29,27 @@ export class BillableUsageError extends ApiError {
  */
 export class BillableUsageService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _download(
+        request: model.DownloadRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/usage/download`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
     /**
      * Return billable usage logs.
      *
@@ -42,13 +64,7 @@ export class BillableUsageService {
         request: model.DownloadRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/usage/download`;
-        return (await this.client.request(
-            path,
-            "GET",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._download(request, context);
     }
 }
 
@@ -69,6 +85,27 @@ export class BudgetsError extends ApiError {
  */
 export class BudgetsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.WrappedBudget,
+        @context context?: Context
+    ): Promise<model.WrappedBudgetWithStatus> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/budget`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.WrappedBudgetWithStatus;
+    }
+
     /**
      * Create a new budget.
      *
@@ -79,13 +116,27 @@ export class BudgetsService {
         request: model.WrappedBudget,
         @context context?: Context
     ): Promise<model.WrappedBudgetWithStatus> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/budget`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteBudgetRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/budget/${request.budget_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.WrappedBudgetWithStatus;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -98,13 +149,27 @@ export class BudgetsService {
         request: model.DeleteBudgetRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/budget/${request.budget_id}`;
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetBudgetRequest,
+        @context context?: Context
+    ): Promise<model.WrappedBudgetWithStatus> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/budget/${request.budget_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.WrappedBudgetWithStatus;
     }
 
     /**
@@ -118,13 +183,24 @@ export class BudgetsService {
         request: model.GetBudgetRequest,
         @context context?: Context
     ): Promise<model.WrappedBudgetWithStatus> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/budget/${request.budget_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(@context context?: Context): Promise<model.BudgetList> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/budget`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.WrappedBudgetWithStatus;
+        )) as model.BudgetList;
     }
 
     /**
@@ -134,14 +210,33 @@ export class BudgetsService {
      * status for each day that the budget is configured to include.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.BudgetList> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/budget`;
+    async *list(
+        @context context?: Context
+    ): AsyncIterable<model.BudgetWithStatus> {
+        const response = (await this._list(context)).budgets;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.WrappedBudget,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/budget/${request.budget_id}`;
         return (await this.client.request(
             path,
-            "GET",
-            undefined,
+            "PATCH",
+            request,
             context
-        )) as model.BudgetList;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -155,13 +250,7 @@ export class BudgetsService {
         request: model.WrappedBudget,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/budget/${request.budget_id}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -240,6 +329,27 @@ export class LogDeliveryError extends ApiError {
  */
 export class LogDeliveryService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.WrappedCreateLogDeliveryConfiguration,
+        @context context?: Context
+    ): Promise<model.WrappedLogDeliveryConfiguration> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/log-delivery`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.WrappedLogDeliveryConfiguration;
+    }
+
     /**
      * Create a new log delivery configuration.
      *
@@ -276,10 +386,24 @@ export class LogDeliveryService {
         request: model.WrappedCreateLogDeliveryConfiguration,
         @context context?: Context
     ): Promise<model.WrappedLogDeliveryConfiguration> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetLogDeliveryRequest,
+        @context context?: Context
+    ): Promise<model.WrappedLogDeliveryConfiguration> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/log-delivery/${request.log_delivery_configuration_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
         )) as model.WrappedLogDeliveryConfiguration;
@@ -296,13 +420,27 @@ export class LogDeliveryService {
         request: model.GetLogDeliveryRequest,
         @context context?: Context
     ): Promise<model.WrappedLogDeliveryConfiguration> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery/${request.log_delivery_configuration_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListLogDeliveryRequest,
+        @context context?: Context
+    ): Promise<model.WrappedLogDeliveryConfigurations> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/log-delivery`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.WrappedLogDeliveryConfiguration;
+        )) as model.WrappedLogDeliveryConfigurations;
     }
 
     /**
@@ -312,17 +450,35 @@ export class LogDeliveryService {
      * specified by ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.ListLogDeliveryRequest,
         @context context?: Context
-    ): Promise<model.WrappedLogDeliveryConfigurations> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery`;
+    ): AsyncIterable<model.LogDeliveryConfiguration> {
+        const response = (await this._list(request, context))
+            .log_delivery_configurations;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _patchStatus(
+        request: model.UpdateLogDeliveryConfigurationStatusRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/log-delivery/${request.log_delivery_configuration_id}`;
         return (await this.client.request(
             path,
-            "GET",
+            "PATCH",
             request,
             context
-        )) as model.WrappedLogDeliveryConfigurations;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -340,12 +496,6 @@ export class LogDeliveryService {
         request: model.UpdateLogDeliveryConfigurationStatusRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/log-delivery/${request.log_delivery_configuration_id}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._patchStatus(request, context);
     }
 }

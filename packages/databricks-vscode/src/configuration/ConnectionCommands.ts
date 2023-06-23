@@ -1,4 +1,8 @@
-import {Cluster, WorkspaceFsEntity} from "@databricks/databricks-sdk";
+import {
+    Cluster,
+    WorkspaceFsEntity,
+    WorkspaceFsUtils,
+} from "@databricks/databricks-sdk";
 import {homedir} from "node:os";
 import {
     Disposable,
@@ -16,8 +20,8 @@ import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
-import {RemoteUri, REPO_NAME_SUFFIX} from "./SyncDestination";
 import path from "node:path";
+import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -62,16 +66,12 @@ export class ConnectionCommands implements Disposable {
     /**
      * Disconnect from Databricks and reset project settings.
      */
-    logoutCommand() {
-        return () => {
-            this.connectionManager.logout();
-        };
+    async logoutCommand() {
+        this.connectionManager.logout();
     }
 
-    configureWorkspaceCommand() {
-        return () => {
-            this.connectionManager.configureWorkspace();
-        };
+    async configureWorkspaceCommand() {
+        await this.connectionManager.configureWorkspace();
     }
 
     openDatabricksConfigFileCommand() {
@@ -213,24 +213,10 @@ export class ConnectionCommands implements Disposable {
                 return;
             }
 
-            let rootDir = await WorkspaceFsEntity.fromPath(
+            const rootDir = await WorkspaceFsEntity.fromPath(
                 wsClient,
                 rootDirPath.path
             );
-            if (!rootDir && workspaceConfigs.enableFilesInWorkspace) {
-                const created = await (
-                    await WorkspaceFsEntity.fromPath(wsClient, `/Users/${me}`)
-                )?.mkdir(rootDirPath.path);
-
-                if (!created) {
-                    window.showErrorMessage(
-                        `Can't find or create ${rootDirPath}`
-                    );
-                    return;
-                }
-
-                rootDir = created;
-            }
 
             type WorkspaceFsQuickPickItem = QuickPickItem & {
                 path?: string;
@@ -241,7 +227,7 @@ export class ConnectionCommands implements Disposable {
                     alwaysShow: true,
                     detail: workspaceConfigs.enableFilesInWorkspace
                         ? `Create a new folder under /Workspace/${me}/.ide as sync destination`
-                        : `Create a new Repo under /Repo/${me} as sync destination`,
+                        : `Create a new Repo under /Repos/${me} as sync destination`,
                 },
                 {
                     label: "Sync Destinations",
@@ -255,13 +241,17 @@ export class ConnectionCommands implements Disposable {
             input.items = children;
             if (workspaceConfigs.enableFilesInWorkspace) {
                 children.push(
-                    ...((await rootDir?.children) ?? []).map((entity) => {
-                        return {
-                            label: entity.basename,
-                            detail: entity.path,
-                            path: entity.path,
-                        };
-                    })
+                    ...((await rootDir?.children) ?? [])
+                        .filter((entity) =>
+                            WorkspaceFsUtils.isDirectory(entity)
+                        )
+                        .map((entity) => {
+                            return {
+                                label: entity.basename,
+                                detail: entity.path,
+                                path: entity.path,
+                            };
+                        })
                 );
             } else {
                 const repos = (await rootDir?.children) ?? [];
@@ -333,10 +323,8 @@ export class ConnectionCommands implements Disposable {
     /**
      * Set workspace to undefined and remove workspace path from settings file.
      */
-    detachWorkspaceCommand() {
-        return () => {
-            this.connectionManager.detachSyncDestination();
-        };
+    async detachWorkspaceCommand() {
+        this.connectionManager.detachSyncDestination();
     }
 
     dispose() {

@@ -2,6 +2,7 @@ import {debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForAttachingSyncDest} from "./prompts";
 import {isNotebook} from "../utils";
+import {LocalUri} from "../sync/SyncDestination";
 
 /**
  * Run related commands
@@ -16,7 +17,7 @@ export class RunCommands {
         return async (resource: Uri) => {
             const targetResource = this.getTargetResource(resource);
             if (targetResource) {
-                if (await isNotebook(targetResource)) {
+                if (await isNotebook(new LocalUri(targetResource))) {
                     await window.showErrorMessage(
                         'Use "Run File as Workflow on Databricks" for running notebooks'
                     );
@@ -28,24 +29,15 @@ export class RunCommands {
                 }
 
                 if (this.connection.syncDestinationMapper === undefined) {
-                    await promptForAttachingSyncDest(async () => {
-                        window.showErrorMessage(
-                            "Execution cancelled because no Sync Destination is configured"
-                        );
-                    });
-                    if (this.connection.syncDestinationMapper === undefined) {
-                        window.showErrorMessage(
-                            "Execution cancelled because no Sync Destination is configured"
-                        );
-                        return;
-                    }
+                    promptForAttachingSyncDest();
+                    return;
                 }
 
                 await debug.startDebugging(
                     undefined,
                     {
                         type: "databricks",
-                        name: "Run File on Databricks",
+                        name: "Upload and Run File on Databricks",
                         request: "launch",
                         program: targetResource.fsPath,
                     },
@@ -67,24 +59,15 @@ export class RunCommands {
                 }
 
                 if (this.connection.syncDestinationMapper === undefined) {
-                    await promptForAttachingSyncDest(async () => {
-                        window.showErrorMessage(
-                            "Execution cancelled because no Sync Destination is configured"
-                        );
-                    });
-                    if (this.connection.syncDestinationMapper === undefined) {
-                        window.showErrorMessage(
-                            "Execution cancelled because no Sync Destination is configured"
-                        );
-                        return;
-                    }
+                    promptForAttachingSyncDest();
+                    return;
                 }
 
                 await debug.startDebugging(
                     undefined,
                     {
                         type: "databricks-workflow",
-                        name: "Run File Run File on Databricks as Workflow",
+                        name: "Run File on Databricks as Workflow",
                         request: "launch",
                         program: targetResource.fsPath,
                     },

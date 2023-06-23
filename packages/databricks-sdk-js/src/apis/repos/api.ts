@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class ReposRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -36,15 +37,9 @@ export class ReposError extends ApiError {
  */
 export class ReposService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a repo.
-     *
-     * Creates a repo in the workspace and links it to the remote Git repo
-     * specified. Note that repos created programmatically must be linked to a
-     * remote Git repo, unlike repos created in the browser.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateRepo,
         @context context?: Context
     ): Promise<model.RepoInfo> {
@@ -58,12 +53,22 @@ export class ReposService {
     }
 
     /**
-     * Delete a repo.
+     * Create a repo.
      *
-     * Deletes the specified repo.
+     * Creates a repo in the workspace and links it to the remote Git repo
+     * specified. Note that repos created programmatically must be linked to a
+     * remote Git repo, unlike repos created in the browser.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateRepo,
+        @context context?: Context
+    ): Promise<model.RepoInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.Delete,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -77,12 +82,20 @@ export class ReposService {
     }
 
     /**
-     * Get a repo.
+     * Delete a repo.
      *
-     * Returns the repo with the given repo ID.
+     * Deletes the specified repo.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.Delete,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.Get,
         @context context?: Context
     ): Promise<model.RepoInfo> {
@@ -96,13 +109,20 @@ export class ReposService {
     }
 
     /**
-     * Get repos.
+     * Get a repo.
      *
-     * Returns repos that the calling user has Manage permissions on. Results are
-     * paginated with each page containing twenty repos.
+     * Returns the repo with the given repo ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.Get,
+        @context context?: Context
+    ): Promise<model.RepoInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.List,
         @context context?: Context
     ): Promise<model.ListReposResponse> {
@@ -116,13 +136,42 @@ export class ReposService {
     }
 
     /**
-     * Update a repo.
+     * Get repos.
      *
-     * Updates the repo to a different branch or tag, or updates the repo to the
-     * latest commit on the same branch.
+     * Returns repos that the calling user has Manage permissions on. Results are
+     * paginated with each page containing twenty repos.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async *list(
+        request: model.List,
+        @context context?: Context
+    ): AsyncIterable<model.RepoInfo> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.repos || response.repos.length === 0) {
+                break;
+            }
+
+            for (const v of response.repos) {
+                yield v;
+            }
+
+            request.next_page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateRepo,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -133,5 +182,19 @@ export class ReposService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Update a repo.
+     *
+     * Updates the repo to a different branch or tag, or updates the repo to the
+     * latest commit on the same branch.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateRepo,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._update(request, context);
     }
 }

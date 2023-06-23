@@ -1,14 +1,18 @@
 import {TextDecoder} from "util";
-import {Uri, workspace} from "vscode";
+import {workspace} from "vscode";
+import {LocalUri} from "../sync/SyncDestination";
 
-export async function isNotebook(uri: Uri): Promise<boolean> {
+export type NotebookType = "IPYNB" | "PY_DBNB" | "OTHER_DBNB";
+export async function isNotebook(
+    uri: LocalUri
+): Promise<NotebookType | undefined> {
     const ext = uri.path.split(".").pop()?.toLowerCase();
     if (!ext) {
-        return false;
+        return;
     }
 
     if (ext === "ipynb") {
-        return true;
+        return "IPYNB";
     }
 
     const comment = {
@@ -18,10 +22,12 @@ export async function isNotebook(uri: Uri): Promise<boolean> {
         r: "#",
     }[ext];
 
-    const bytes = await workspace.fs.readFile(uri);
+    const bytes = await workspace.fs.readFile(uri.uri);
     const lines = new TextDecoder().decode(bytes).split(/\r?\n/);
-    return (
+    if (
         lines.length > 0 &&
         lines[0].startsWith(`${comment} Databricks notebook source`)
-    );
+    ) {
+        return ext === "py" ? "PY_DBNB" : "OTHER_DBNB";
+    }
 }

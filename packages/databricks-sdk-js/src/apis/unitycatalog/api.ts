@@ -10,6 +10,508 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
+
+export class AccountMetastoreAssignmentsRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("AccountMetastoreAssignments", method, message);
+    }
+}
+export class AccountMetastoreAssignmentsError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("AccountMetastoreAssignments", method, message);
+    }
+}
+
+/**
+ * These APIs manage metastore assignments to a workspace.
+ */
+export class AccountMetastoreAssignmentsService {
+    constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/metastores/${request.metastore_id}`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.MetastoreAssignment;
+    }
+
+    /**
+     * Assigns a workspace to a metastore.
+     *
+     * Creates an assignment to a metastore for a workspace
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteAccountMetastoreAssignmentRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/metastores/${request.metastore_id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a metastore assignment.
+     *
+     * Deletes a metastore assignment to a workspace, leaving the workspace with
+     * no metastore.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteAccountMetastoreAssignmentRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetAccountMetastoreAssignmentRequest,
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/metastore`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.MetastoreAssignment;
+    }
+
+    /**
+     * Gets the metastore assignment for a workspace.
+     *
+     * Gets the metastore assignment, if any, for the workspace specified by ID.
+     * If the workspace is assigned a metastore, the mappig will be returned. If
+     * no metastore is assigned to the workspace, the assignment will not be
+     * found and a 404 returned.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetAccountMetastoreAssignmentRequest,
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListAccountMetastoreAssignmentsRequest,
+        @context context?: Context
+    ): Promise<Array<model.MetastoreAssignment>> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}/workspaces`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as Array<model.MetastoreAssignment>;
+    }
+
+    /**
+     * Get all workspaces assigned to a metastore.
+     *
+     * Gets a list of all Databricks workspace IDs that have been assigned to
+     * given metastore.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListAccountMetastoreAssignmentsRequest,
+        @context context?: Context
+    ): Promise<Array<model.MetastoreAssignment>> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}/metastores/${request.metastore_id}`;
+        return (await this.client.request(
+            path,
+            "PUT",
+            request,
+            context
+        )) as model.MetastoreAssignment;
+    }
+
+    /**
+     * Updates a metastore assignment to a workspaces.
+     *
+     * Updates an assignment to a metastore for a workspace. Currently, only the
+     * default catalog may be updated
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        return await this._update(request, context);
+    }
+}
+
+export class AccountMetastoresRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("AccountMetastores", method, message);
+    }
+}
+export class AccountMetastoresError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("AccountMetastores", method, message);
+    }
+}
+
+/**
+ * These APIs manage Unity Catalog metastores for an account. A metastore
+ * contains catalogs that can be associated with workspaces
+ */
+export class AccountMetastoresService {
+    constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.MetastoreInfo;
+    }
+
+    /**
+     * Create metastore.
+     *
+     * Creates a Unity Catalog metastore.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteAccountMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a metastore.
+     *
+     * Deletes a Databricks Unity Catalog metastore for an account, both
+     * specified by ID.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteAccountMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetAccountMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.MetastoreInfo;
+    }
+
+    /**
+     * Get a metastore.
+     *
+     * Gets a Databricks Unity Catalog metastore from an account, both specified
+     * by ID.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetAccountMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<model.ListMetastoresResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores`;
+        return (await this.client.request(
+            path,
+            "GET",
+            undefined,
+            context
+        )) as model.ListMetastoresResponse;
+    }
+
+    /**
+     * Get all metastores associated with an account.
+     *
+     * Gets all Unity Catalog metastores associated with an account specified by
+     * ID.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        @context context?: Context
+    ): Promise<model.ListMetastoresResponse> {
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}`;
+        return (await this.client.request(
+            path,
+            "PUT",
+            request,
+            context
+        )) as model.MetastoreInfo;
+    }
+
+    /**
+     * Update a metastore.
+     *
+     * Updates an existing Unity Catalog metastore.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._update(request, context);
+    }
+}
+
+export class AccountStorageCredentialsRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("AccountStorageCredentials", method, message);
+    }
+}
+export class AccountStorageCredentialsError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("AccountStorageCredentials", method, message);
+    }
+}
+
+/**
+ * These APIs manage storage credentials for a particular metastore.
+ */
+export class AccountStorageCredentialsService {
+    constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateStorageCredential,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}/storage-credentials`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.StorageCredentialInfo;
+    }
+
+    /**
+     * Create a storage credential.
+     *
+     * Creates a new storage credential. The request object is specific to the
+     * cloud:
+     *
+     * * **AwsIamRole** for AWS credentials * **AzureServicePrincipal** for Azure
+     * credentials * **GcpServiceAcountKey** for GCP credentials.
+     *
+     * The caller must be a metastore admin and have the
+     * **CREATE_STORAGE_CREDENTIAL** privilege on the metastore.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateStorageCredential,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetAccountStorageCredentialRequest,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}/storage-credentials/`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.StorageCredentialInfo;
+    }
+
+    /**
+     * Gets the named storage credential.
+     *
+     * Gets a storage credential from the metastore. The caller must be a
+     * metastore admin, the owner of the storage credential, or have a level of
+     * privilege on the storage credential.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetAccountStorageCredentialRequest,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListAccountStorageCredentialsRequest,
+        @context context?: Context
+    ): Promise<Array<model.StorageCredentialInfo>> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/metastores/${request.metastore_id}/storage-credentials`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as Array<model.StorageCredentialInfo>;
+    }
+
+    /**
+     * Get all storage credentials assigned to a metastore.
+     *
+     * Gets a list of all storage credentials that have been assigned to given
+     * metastore.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListAccountStorageCredentialsRequest,
+        @context context?: Context
+    ): Promise<Array<model.StorageCredentialInfo>> {
+        return await this._list(request, context);
+    }
+}
 
 export class CatalogsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -34,14 +536,9 @@ export class CatalogsError extends ApiError {
  */
 export class CatalogsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a catalog.
-     *
-     * Creates a new catalog instance in the parent Metastore if the caller is a
-     * Metastore admin or has the CREATE_CATALOG privilege.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateCatalog,
         @context context?: Context
     ): Promise<model.CatalogInfo> {
@@ -55,13 +552,21 @@ export class CatalogsService {
     }
 
     /**
-     * Delete a catalog.
+     * Create a catalog.
      *
-     * Deletes the catalog that matches the supplied name. The caller must be a
-     * Metastore admin or the owner of the catalog.
+     * Creates a new catalog instance in the parent metastore if the caller is a
+     * metastore admin or has the **CREATE_CATALOG** privilege.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateCatalog,
+        @context context?: Context
+    ): Promise<model.CatalogInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteCatalogRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -75,14 +580,21 @@ export class CatalogsService {
     }
 
     /**
-     * Get a catalog.
+     * Delete a catalog.
      *
-     * Gets an array of all catalogs in the current Metastore for which the user
-     * is an admin or Catalog owner, or has the USE_CATALOG privilege set for
-     * their account.
+     * Deletes the catalog that matches the supplied name. The caller must be a
+     * metastore admin or the owner of the catalog.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteCatalogRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetCatalogRequest,
         @context context?: Context
     ): Promise<model.CatalogInfo> {
@@ -96,15 +608,22 @@ export class CatalogsService {
     }
 
     /**
-     * List catalogs.
+     * Get a catalog.
      *
-     * Gets an array of catalogs in the Metastore. If the caller is the Metastore
-     * admin, all catalogs will be retrieved. Otherwise, only catalogs owned by
-     * the caller (or for which the caller has the USE_CATALOG privilege) will be
-     * retrieved.
+     * Gets the specified catalog in a metastore. The caller must be a metastore
+     * admin, the owner of the catalog, or a user that has the **USE_CATALOG**
+     * privilege set for their account.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetCatalogRequest,
+        @context context?: Context
+    ): Promise<model.CatalogInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         @context context?: Context
     ): Promise<model.ListCatalogsResponse> {
         const path = "/api/2.1/unity-catalog/catalogs";
@@ -117,14 +636,24 @@ export class CatalogsService {
     }
 
     /**
-     * Update a catalog.
+     * List catalogs.
      *
-     * Updates the catalog that matches the supplied name. The caller must be
-     * either the owner of the catalog, or a Metastore admin (when changing the
-     * owner field of the catalog).
+     * Gets an array of catalogs in the metastore. If the caller is the metastore
+     * admin, all catalogs will be retrieved. Otherwise, only catalogs owned by
+     * the caller (or for which the caller has the **USE_CATALOG** privilege)
+     * will be retrieved. There is no guarantee of a specific ordering of the
+     * elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async *list(@context context?: Context): AsyncIterable<model.CatalogInfo> {
+        const response = (await this._list(context)).catalogs;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateCatalog,
         @context context?: Context
     ): Promise<model.CatalogInfo> {
@@ -135,6 +664,21 @@ export class CatalogsService {
             request,
             context
         )) as model.CatalogInfo;
+    }
+
+    /**
+     * Update a catalog.
+     *
+     * Updates the catalog that matches the supplied name. The caller must be
+     * either the owner of the catalog, or a metastore admin (when changing the
+     * owner field of the catalog).
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateCatalog,
+        @context context?: Context
+    ): Promise<model.CatalogInfo> {
+        return await this._update(request, context);
     }
 }
 
@@ -162,19 +706,13 @@ export class ExternalLocationsError extends ApiError {
  * credentials directly.
  *
  * To create external locations, you must be a metastore admin or a user with the
- * CREATE_EXTERNAL_LOCATION privilege.
+ * **CREATE_EXTERNAL_LOCATION** privilege.
  */
 export class ExternalLocationsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create an external location.
-     *
-     * Creates a new External Location entry in the Metastore. The caller must be
-     * a Metastore admin or have the CREATE_EXTERNAL_LOCATION privilege on both
-     * the Metastore and the associated storage credential.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateExternalLocation,
         @context context?: Context
     ): Promise<model.ExternalLocationInfo> {
@@ -188,13 +726,22 @@ export class ExternalLocationsService {
     }
 
     /**
-     * Delete an external location.
+     * Create an external location.
      *
-     * Deletes the specified external location from the Metastore. The caller
-     * must be the owner of the external location.
+     * Creates a new external location entry in the metastore. The caller must be
+     * a metastore admin or have the **CREATE_EXTERNAL_LOCATION** privilege on
+     * both the metastore and the associated storage credential.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateExternalLocation,
+        @context context?: Context
+    ): Promise<model.ExternalLocationInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteExternalLocationRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -208,14 +755,21 @@ export class ExternalLocationsService {
     }
 
     /**
-     * Get an external location.
+     * Delete an external location.
      *
-     * Gets an external location from the Metastore. The caller must be either a
-     * Metastore admin, the owner of the external location, or has some privilege
-     * on the external location.
+     * Deletes the specified external location from the metastore. The caller
+     * must be the owner of the external location.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteExternalLocationRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetExternalLocationRequest,
         @context context?: Context
     ): Promise<model.ExternalLocationInfo> {
@@ -229,14 +783,22 @@ export class ExternalLocationsService {
     }
 
     /**
-     * List external locations.
+     * Get an external location.
      *
-     * Gets an array of External Locations (ExternalLocationInfo objects) from
-     * the Metastore. The caller must be a Metastore admin, is the owner of the
-     * external location, or has some privilege on the external location.
+     * Gets an external location from the metastore. The caller must be either a
+     * metastore admin, the owner of the external location, or a user that has
+     * some privilege on the external location.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetExternalLocationRequest,
+        @context context?: Context
+    ): Promise<model.ExternalLocationInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         @context context?: Context
     ): Promise<model.ListExternalLocationsResponse> {
         const path = "/api/2.1/unity-catalog/external-locations";
@@ -249,14 +811,26 @@ export class ExternalLocationsService {
     }
 
     /**
-     * Update an external location.
+     * List external locations.
      *
-     * Updates an external location in the Metastore. The caller must be the
-     * owner of the external location, or be a Metastore admin. In the second
-     * case, the admin can only update the name of the external location.
+     * Gets an array of external locations (__ExternalLocationInfo__ objects)
+     * from the metastore. The caller must be a metastore admin, the owner of the
+     * external location, or a user that has some privilege on the external
+     * location. There is no guarantee of a specific ordering of the elements in
+     * the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async *list(
+        @context context?: Context
+    ): AsyncIterable<model.ExternalLocationInfo> {
+        const response = (await this._list(context)).external_locations;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateExternalLocation,
         @context context?: Context
     ): Promise<model.ExternalLocationInfo> {
@@ -267,6 +841,208 @@ export class ExternalLocationsService {
             request,
             context
         )) as model.ExternalLocationInfo;
+    }
+
+    /**
+     * Update an external location.
+     *
+     * Updates an external location in the metastore. The caller must be the
+     * owner of the external location, or be a metastore admin. In the second
+     * case, the admin can only update the name of the external location.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateExternalLocation,
+        @context context?: Context
+    ): Promise<model.ExternalLocationInfo> {
+        return await this._update(request, context);
+    }
+}
+
+export class FunctionsRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("Functions", method, message);
+    }
+}
+export class FunctionsError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("Functions", method, message);
+    }
+}
+
+/**
+ * Functions implement User-Defined Functions (UDFs) in Unity Catalog.
+ *
+ * The function implementation can be any SQL expression or Query, and it can be
+ * invoked wherever a table reference is allowed in a query. In Unity Catalog, a
+ * function resides at the same level as a table, so it can be referenced with
+ * the form __catalog_name__.__schema_name__.__function_name__.
+ */
+export class FunctionsService {
+    constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateFunction,
+        @context context?: Context
+    ): Promise<model.FunctionInfo> {
+        const path = "/api/2.1/unity-catalog/functions";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.FunctionInfo;
+    }
+
+    /**
+     * Create a function.
+     *
+     * Creates a new function
+     *
+     * The user must have the following permissions in order for the function to
+     * be created: - **USE_CATALOG** on the function's parent catalog -
+     * **USE_SCHEMA** and **CREATE_FUNCTION** on the function's parent schema
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateFunction,
+        @context context?: Context
+    ): Promise<model.FunctionInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteFunctionRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.1/unity-catalog/functions/${request.name}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a function.
+     *
+     * Deletes the function that matches the supplied name. For the deletion to
+     * succeed, the user must satisfy one of the following conditions: - Is the
+     * owner of the function's parent catalog - Is the owner of the function's
+     * parent schema and have the **USE_CATALOG** privilege on its parent catalog
+     * - Is the owner of the function itself and have both the **USE_CATALOG**
+     * privilege on its parent catalog and the **USE_SCHEMA** privilege on its
+     * parent schema
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteFunctionRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetFunctionRequest,
+        @context context?: Context
+    ): Promise<model.FunctionInfo> {
+        const path = `/api/2.1/unity-catalog/functions/${request.name}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.FunctionInfo;
+    }
+
+    /**
+     * Get a function.
+     *
+     * Gets a function from within a parent catalog and schema. For the fetch to
+     * succeed, the user must satisfy one of the following requirements: - Is a
+     * metastore admin - Is an owner of the function's parent catalog - Have the
+     * **USE_CATALOG** privilege on the function's parent catalog and be the
+     * owner of the function - Have the **USE_CATALOG** privilege on the
+     * function's parent catalog, the **USE_SCHEMA** privilege on the function's
+     * parent schema, and the **EXECUTE** privilege on the function itself
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetFunctionRequest,
+        @context context?: Context
+    ): Promise<model.FunctionInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.ListFunctionsRequest,
+        @context context?: Context
+    ): Promise<model.ListFunctionsResponse> {
+        const path = "/api/2.1/unity-catalog/functions";
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.ListFunctionsResponse;
+    }
+
+    /**
+     * List functions.
+     *
+     * List functions within the specified parent catalog and schema. If the user
+     * is a metastore admin, all functions are returned in the output list.
+     * Otherwise, the user must have the **USE_CATALOG** privilege on the catalog
+     * and the **USE_SCHEMA** privilege on the schema, and the output list
+     * contains only functions for which either the user has the **EXECUTE**
+     * privilege or the user is the owner. There is no guarantee of a specific
+     * ordering of the elements in the array.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async list(
+        request: model.ListFunctionsRequest,
+        @context context?: Context
+    ): Promise<model.ListFunctionsResponse> {
+        return await this._list(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateFunction,
+        @context context?: Context
+    ): Promise<model.FunctionInfo> {
+        const path = `/api/2.1/unity-catalog/functions/${request.name}`;
+        return (await this.client.request(
+            path,
+            "PATCH",
+            request,
+            context
+        )) as model.FunctionInfo;
+    }
+
+    /**
+     * Update a function.
+     *
+     * Updates the function that matches the supplied name. Only the owner of the
+     * function can be updated. If the user is not a metastore admin, the user
+     * must be a member of the group that is the new function owner. - Is a
+     * metastore admin - Is the owner of the function's parent catalog - Is the
+     * owner of the function's parent schema and has the **USE_CATALOG**
+     * privilege on its parent catalog - Is the owner of the function itself and
+     * has the **USE_CATALOG** privilege on its parent catalog as well as the
+     * **USE_SCHEMA** privilege on the function's parent schema.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateFunction,
+        @context context?: Context
+    ): Promise<model.FunctionInfo> {
+        return await this._update(request, context);
     }
 }
 
@@ -288,10 +1064,6 @@ export class GrantsError extends ApiError {
  * object. Securable objects in Unity Catalog are hierarchical and privileges are
  * inherited downward.
  *
- * Initially, users have no access to data in a metastore. Access can be granted
- * by either a metastore admin, the owner of an object, or the owner of the
- * catalog or schema that contains the object.
- *
  * Securable objects in Unity Catalog are hierarchical and privileges are
  * inherited downward. This means that granting a privilege on the catalog
  * automatically grants the privilege to all current and future objects within
@@ -300,42 +1072,86 @@ export class GrantsError extends ApiError {
  */
 export class GrantsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Get permissions.
-     *
-     * Gets the permissions for a Securable type.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetGrantRequest,
         @context context?: Context
-    ): Promise<model.GetPermissionsResponse> {
+    ): Promise<model.PermissionsList> {
         const path = `/api/2.1/unity-catalog/permissions/${request.securable_type}/${request.full_name}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.GetPermissionsResponse;
+        )) as model.PermissionsList;
     }
 
     /**
-     * Update permissions.
+     * Get permissions.
      *
-     * Updates the permissions for a Securable type.
+     * Gets the permissions for a securable.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async get(
+        request: model.GetGrantRequest,
+        @context context?: Context
+    ): Promise<model.PermissionsList> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getEffective(
+        request: model.GetEffectiveRequest,
+        @context context?: Context
+    ): Promise<model.EffectivePermissionsList> {
+        const path = `/api/2.1/unity-catalog/effective-permissions/${request.securable_type}/${request.full_name}`;
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.EffectivePermissionsList;
+    }
+
+    /**
+     * Get effective permissions.
+     *
+     * Gets the effective permissions for a securable.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async getEffective(
+        request: model.GetEffectiveRequest,
+        @context context?: Context
+    ): Promise<model.EffectivePermissionsList> {
+        return await this._getEffective(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdatePermissions,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<model.PermissionsList> {
         const path = `/api/2.1/unity-catalog/permissions/${request.securable_type}/${request.full_name}`;
         return (await this.client.request(
             path,
             "PATCH",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.PermissionsList;
+    }
+
+    /**
+     * Update permissions.
+     *
+     * Updates the permissions for a securable.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdatePermissions,
+        @context context?: Context
+    ): Promise<model.PermissionsList> {
+        return await this._update(request, context);
     }
 }
 
@@ -362,21 +1178,14 @@ export class MetastoresError extends ApiError {
  *
  * NOTE: This metastore is distinct from the metastore included in Databricks
  * workspaces created before Unity Catalog was released. If your workspace
- * includes a legacy Hive metastore, the data in that metastore is available in
- * Unity Catalog in a catalog named hive_metastore.
+ * includes a legacy Hive metastore, the data in that metastore is available in a
+ * catalog named hive_metastore.
  */
 export class MetastoresService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create an assignment.
-     *
-     * Creates a new Metastore assignment. If an assignment for the same
-     * __workspace_id__ exists, it will be overwritten by the new
-     * __metastore_id__ and __default_catalog_name__. The caller must be an
-     * account admin.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async assign(
+    private async _assign(
         request: model.CreateMetastoreAssignment,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -390,12 +1199,23 @@ export class MetastoresService {
     }
 
     /**
-     * Create a Metastore.
+     * Create an assignment.
      *
-     * Creates a new Metastore based on a provided name and storage root path.
+     * Creates a new metastore assignment. If an assignment for the same
+     * __workspace_id__ exists, it will be overwritten by the new
+     * __metastore_id__ and __default_catalog_name__. The caller must be an
+     * account admin.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    async assign(
+        request: model.CreateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._assign(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
         request: model.CreateMetastore,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
@@ -409,12 +1229,45 @@ export class MetastoresService {
     }
 
     /**
-     * Delete a Metastore.
+     * Create a metastore.
      *
-     * Deletes a Metastore. The caller must be a Metastore admin.
+     * Creates a new metastore based on a provided name and storage root path.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _current(
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        const path = "/api/2.1/unity-catalog/current-metastore-assignment";
+        return (await this.client.request(
+            path,
+            "GET",
+            undefined,
+            context
+        )) as model.MetastoreAssignment;
+    }
+
+    /**
+     * Get metastore assignment for workspace.
+     *
+     * Gets the metastore assignment for the workspace being accessed.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async current(
+        @context context?: Context
+    ): Promise<model.MetastoreAssignment> {
+        return await this._current(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteMetastoreRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -428,13 +1281,20 @@ export class MetastoresService {
     }
 
     /**
-     * Get a Metastore.
+     * Delete a metastore.
      *
-     * Gets a Metastore that matches the supplied ID. The caller must be a
-     * Metastore admin to retrieve this info.
+     * Deletes a metastore. The caller must be a metastore admin.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetMetastoreRequest,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
@@ -448,13 +1308,21 @@ export class MetastoresService {
     }
 
     /**
-     * List Metastores.
+     * Get a metastore.
      *
-     * Gets an array of the available Metastores (as MetastoreInfo objects). The
-     * caller must be an admin to retrieve this info.
+     * Gets a metastore that matches the supplied ID. The caller must be a
+     * metastore admin to retrieve this info.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetMetastoreRequest,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         @context context?: Context
     ): Promise<model.ListMetastoresResponse> {
         const path = "/api/2.1/unity-catalog/metastores";
@@ -467,14 +1335,24 @@ export class MetastoresService {
     }
 
     /**
-     * Get a summary.
+     * List metastores.
      *
-     * Gets information about a Metastore. This summary includes the storage
-     * credential, the cloud vendor, the cloud region, and the global Metastore
-     * ID.
+     * Gets an array of the available metastores (as __MetastoreInfo__ objects).
+     * The caller must be an admin to retrieve this info. There is no guarantee
+     * of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async summary(
+    async *list(
+        @context context?: Context
+    ): AsyncIterable<model.MetastoreInfo> {
+        const response = (await this._list(context)).metastores;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _summary(
         @context context?: Context
     ): Promise<model.GetMetastoreSummaryResponse> {
         const path = "/api/2.1/unity-catalog/metastore_summary";
@@ -487,13 +1365,21 @@ export class MetastoresService {
     }
 
     /**
-     * Delete an assignment.
+     * Get a metastore summary.
      *
-     * Deletes a Metastore assignment. The caller must be an account
-     * administrator.
+     * Gets information about a metastore. This summary includes the storage
+     * credential, the cloud vendor, the cloud region, and the global metastore
+     * ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async unassign(
+    async summary(
+        @context context?: Context
+    ): Promise<model.GetMetastoreSummaryResponse> {
+        return await this._summary(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _unassign(
         request: model.UnassignRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -507,13 +1393,21 @@ export class MetastoresService {
     }
 
     /**
-     * Update a Metastore.
+     * Delete an assignment.
      *
-     * Updates information for a specific Metastore. The caller must be a
-     * Metastore admin.
+     * Deletes a metastore assignment. The caller must be an account
+     * administrator.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async unassign(
+        request: model.UnassignRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._unassign(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateMetastore,
         @context context?: Context
     ): Promise<model.MetastoreInfo> {
@@ -527,16 +1421,21 @@ export class MetastoresService {
     }
 
     /**
-     * Update an assignment.
+     * Update a metastore.
      *
-     * Updates a Metastore assignment. This operation can be used to update
-     * __metastore_id__ or __default_catalog_name__ for a specified Workspace, if
-     * the Workspace is already assigned a Metastore. The caller must be an
-     * account admin to update __metastore_id__; otherwise, the caller can be a
-     * Workspace admin.
+     * Updates information for a specific metastore. The caller must be a
+     * metastore admin.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async updateAssignment(
+    async update(
+        request: model.UpdateMetastore,
+        @context context?: Context
+    ): Promise<model.MetastoreInfo> {
+        return await this._update(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _updateAssignment(
         request: model.UpdateMetastoreAssignment,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -547,6 +1446,23 @@ export class MetastoresService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Update an assignment.
+     *
+     * Updates a metastore assignment. This operation can be used to update
+     * __metastore_id__ or __default_catalog_name__ for a specified Workspace, if
+     * the Workspace is already assigned a metastore. The caller must be an
+     * account admin to update __metastore_id__; otherwise, the caller can be a
+     * Workspace admin.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async updateAssignment(
+        request: model.UpdateMetastoreAssignment,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._updateAssignment(request, context);
     }
 }
 
@@ -566,14 +1482,9 @@ export class ProvidersError extends ApiError {
  */
 export class ProvidersService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create an auth provider.
-     *
-     * Creates a new authentication provider minimally based on a name and
-     * authentication type. The caller must be an admin on the Metastore.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateProvider,
         @context context?: Context
     ): Promise<model.ProviderInfo> {
@@ -587,13 +1498,21 @@ export class ProvidersService {
     }
 
     /**
-     * Delete a provider.
+     * Create an auth provider.
      *
-     * Deletes an authentication provider, if the caller is a Metastore admin or
-     * is the owner of the provider.
+     * Creates a new authentication provider minimally based on a name and
+     * authentication type. The caller must be an admin on the metastore.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateProvider,
+        @context context?: Context
+    ): Promise<model.ProviderInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteProviderRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -607,14 +1526,21 @@ export class ProvidersService {
     }
 
     /**
-     * Get a provider.
+     * Delete a provider.
      *
-     * Gets a specific authentication provider. The caller must supply the name
-     * of the provider, and must either be a Metastore admin or the owner of the
-     * provider.
+     * Deletes an authentication provider, if the caller is a metastore admin or
+     * is the owner of the provider.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteProviderRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetProviderRequest,
         @context context?: Context
     ): Promise<model.ProviderInfo> {
@@ -628,14 +1554,22 @@ export class ProvidersService {
     }
 
     /**
-     * List providers.
+     * Get a provider.
      *
-     * Gets an array of available authentication providers. The caller must
-     * either be a Metastore admin or the owner of the providers. Providers not
-     * owned by the caller are not included in the response.
+     * Gets a specific authentication provider. The caller must supply the name
+     * of the provider, and must either be a metastore admin or the owner of the
+     * provider.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetProviderRequest,
+        @context context?: Context
+    ): Promise<model.ProviderInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListProvidersRequest,
         @context context?: Context
     ): Promise<model.ListProvidersResponse> {
@@ -649,14 +1583,26 @@ export class ProvidersService {
     }
 
     /**
-     * List shares.
+     * List providers.
      *
-     * Gets an array of all shares within the Metastore where:
-     *
-     * * the caller is a Metastore admin, or * the caller is the owner.
+     * Gets an array of available authentication providers. The caller must
+     * either be a metastore admin or the owner of the providers. Providers not
+     * owned by the caller are not included in the response. There is no
+     * guarantee of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async listShares(
+    async *list(
+        request: model.ListProvidersRequest,
+        @context context?: Context
+    ): AsyncIterable<model.ProviderInfo> {
+        const response = (await this._list(request, context)).providers;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listShares(
         request: model.ListSharesRequest,
         @context context?: Context
     ): Promise<model.ListProviderSharesResponse> {
@@ -670,15 +1616,22 @@ export class ProvidersService {
     }
 
     /**
-     * Update a provider.
+     * List shares by Provider.
      *
-     * Updates the information for an authentication provider, if the caller is a
-     * Metastore admin or is the owner of the provider. If the update changes the
-     * provider name, the caller must be both a Metastore admin and the owner of
-     * the provider.
+     * Gets an array of a specified provider's shares within the metastore where:
+     *
+     * * the caller is a metastore admin, or * the caller is the owner.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async listShares(
+        request: model.ListSharesRequest,
+        @context context?: Context
+    ): Promise<model.ListProviderSharesResponse> {
+        return await this._listShares(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateProvider,
         @context context?: Context
     ): Promise<model.ProviderInfo> {
@@ -689,6 +1642,22 @@ export class ProvidersService {
             request,
             context
         )) as model.ProviderInfo;
+    }
+
+    /**
+     * Update a provider.
+     *
+     * Updates the information for an authentication provider, if the caller is a
+     * metastore admin or is the owner of the provider. If the update changes the
+     * provider name, the caller must be both a metastore admin and the owner of
+     * the provider.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateProvider,
+        @context context?: Context
+    ): Promise<model.ProviderInfo> {
+        return await this._update(request, context);
     }
 }
 
@@ -708,13 +1677,9 @@ export class RecipientActivationError extends ApiError {
  */
 export class RecipientActivationService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Get a share activation URL.
-     *
-     * Gets information about an Activation URL.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async getActivationUrlInfo(
+    private async _getActivationUrlInfo(
         request: model.GetActivationUrlInfoRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -728,13 +1693,20 @@ export class RecipientActivationService {
     }
 
     /**
-     * Get an access token.
+     * Get a share activation URL.
      *
-     * RPC to retrieve access token with an activation token. This is a public
-     * API without any authentication.
+     * Gets an activation URL for a share.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async retrieveToken(
+    async getActivationUrlInfo(
+        request: model.GetActivationUrlInfoRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._getActivationUrlInfo(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _retrieveToken(
         request: model.RetrieveTokenRequest,
         @context context?: Context
     ): Promise<model.RetrieveTokenResponse> {
@@ -745,6 +1717,20 @@ export class RecipientActivationService {
             request,
             context
         )) as model.RetrieveTokenResponse;
+    }
+
+    /**
+     * Get an access token.
+     *
+     * Retrieve access token with an activation url. This is a public API without
+     * any authentication.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async retrieveToken(
+        request: model.RetrieveTokenRequest,
+        @context context?: Context
+    ): Promise<model.RetrieveTokenResponse> {
+        return await this._retrieveToken(request, context);
     }
 }
 
@@ -764,15 +1750,9 @@ export class RecipientsError extends ApiError {
  */
 export class RecipientsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a share recipient.
-     *
-     * Creates a new recipient with the delta sharing authentication type in the
-     * Metastore. The caller must be a Metastore admin or has the
-     * CREATE_RECIPIENT privilege on the Metastore.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateRecipient,
         @context context?: Context
     ): Promise<model.RecipientInfo> {
@@ -786,13 +1766,22 @@ export class RecipientsService {
     }
 
     /**
-     * Delete a share recipient.
+     * Create a share recipient.
      *
-     * Deletes the specified recipient from the Metastore. The caller must be the
-     * owner of the recipient.
+     * Creates a new recipient with the delta sharing authentication type in the
+     * metastore. The caller must be a metastore admin or has the
+     * **CREATE_RECIPIENT** privilege on the metastore.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateRecipient,
+        @context context?: Context
+    ): Promise<model.RecipientInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteRecipientRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -806,15 +1795,21 @@ export class RecipientsService {
     }
 
     /**
-     * Get a share recipient.
+     * Delete a share recipient.
      *
-     * Gets a share recipient from the Metastore if:
-     *
-     * * the caller is the owner of the share recipient, or: * is a Metastore
-     * admin
+     * Deletes the specified recipient from the metastore. The caller must be the
+     * owner of the recipient.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteRecipientRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetRecipientRequest,
         @context context?: Context
     ): Promise<model.RecipientInfo> {
@@ -828,14 +1823,23 @@ export class RecipientsService {
     }
 
     /**
-     * List share recipients.
+     * Get a share recipient.
      *
-     * Gets an array of all share recipients within the current Metastore where:
+     * Gets a share recipient from the metastore if:
      *
-     * * the caller is a Metastore admin, or * the caller is the owner.
+     * * the caller is the owner of the share recipient, or: * is a metastore
+     * admin
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetRecipientRequest,
+        @context context?: Context
+    ): Promise<model.RecipientInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListRecipientsRequest,
         @context context?: Context
     ): Promise<model.ListRecipientsResponse> {
@@ -846,6 +1850,39 @@ export class RecipientsService {
             request,
             context
         )) as model.ListRecipientsResponse;
+    }
+
+    /**
+     * List share recipients.
+     *
+     * Gets an array of all share recipients within the current metastore where:
+     *
+     * * the caller is a metastore admin, or * the caller is the owner. There is
+     * no guarantee of a specific ordering of the elements in the array.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *list(
+        request: model.ListRecipientsRequest,
+        @context context?: Context
+    ): AsyncIterable<model.RecipientInfo> {
+        const response = (await this._list(request, context)).recipients;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _rotateToken(
+        request: model.RotateRecipientToken,
+        @context context?: Context
+    ): Promise<model.RecipientInfo> {
+        const path = `/api/2.1/unity-catalog/recipients/${request.name}/rotate-token`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.RecipientInfo;
     }
 
     /**
@@ -860,23 +1897,11 @@ export class RecipientsService {
         request: model.RotateRecipientToken,
         @context context?: Context
     ): Promise<model.RecipientInfo> {
-        const path = `/api/2.1/unity-catalog/recipients/${request.name}/rotate-token`;
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.RecipientInfo;
+        return await this._rotateToken(request, context);
     }
 
-    /**
-     * Get share permissions.
-     *
-     * Gets the share permissions for the specified Recipient. The caller must be
-     * a Metastore admin or the owner of the Recipient.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async sharePermissions(
+    private async _sharePermissions(
         request: model.SharePermissionsRequest,
         @context context?: Context
     ): Promise<model.GetRecipientSharePermissionsResponse> {
@@ -890,15 +1915,21 @@ export class RecipientsService {
     }
 
     /**
-     * Update a share recipient.
+     * Get recipient share permissions.
      *
-     * Updates an existing recipient in the Metastore. The caller must be a
-     * Metastore admin or the owner of the recipient. If the recipient name will
-     * be updated, the user must be both a Metastore admin and the owner of the
-     * recipient.
+     * Gets the share permissions for the specified Recipient. The caller must be
+     * a metastore admin or the owner of the Recipient.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async sharePermissions(
+        request: model.SharePermissionsRequest,
+        @context context?: Context
+    ): Promise<model.GetRecipientSharePermissionsResponse> {
+        return await this._sharePermissions(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateRecipient,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -909,6 +1940,22 @@ export class RecipientsService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Update a share recipient.
+     *
+     * Updates an existing recipient in the metastore. The caller must be a
+     * metastore admin or the owner of the recipient. If the recipient name will
+     * be updated, the user must be both a metastore admin and the owner of the
+     * recipient.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateRecipient,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._update(request, context);
     }
 }
 
@@ -925,22 +1972,16 @@ export class SchemasError extends ApiError {
 
 /**
  * A schema (also called a database) is the second layer of Unity Catalog’s
- * three-level namespace. A schema organizes tables and views. To access (or
- * list) a table or view in a schema, users must have the USE_SCHEMA data
- * permission on the schema and its parent catalog, and they must have the SELECT
- * permission on the table or view.
+ * three-level namespace. A schema organizes tables, views and functions. To
+ * access (or list) a table or view in a schema, users must have the USE_SCHEMA
+ * data permission on the schema and its parent catalog, and they must have the
+ * SELECT permission on the table or view.
  */
 export class SchemasService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a schema.
-     *
-     * Creates a new schema for catalog in the Metatastore. The caller must be a
-     * Metastore admin, or have the CREATE_SCHEMA privilege in the parent
-     * catalog.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateSchema,
         @context context?: Context
     ): Promise<model.SchemaInfo> {
@@ -954,13 +1995,22 @@ export class SchemasService {
     }
 
     /**
-     * Delete a schema.
+     * Create a schema.
      *
-     * Deletes the specified schema from the parent catalog. The caller must be
-     * the owner of the schema or an owner of the parent catalog.
+     * Creates a new schema for catalog in the Metatastore. The caller must be a
+     * metastore admin, or have the **CREATE_SCHEMA** privilege in the parent
+     * catalog.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateSchema,
+        @context context?: Context
+    ): Promise<model.SchemaInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteSchemaRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -974,14 +2024,21 @@ export class SchemasService {
     }
 
     /**
-     * Get a schema.
+     * Delete a schema.
      *
-     * Gets the specified schema for a catalog in the Metastore. The caller must
-     * be a Metastore admin, the owner of the schema, or a user that has the
-     * USE_SCHEMA privilege on the schema.
+     * Deletes the specified schema from the parent catalog. The caller must be
+     * the owner of the schema or an owner of the parent catalog.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteSchemaRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetSchemaRequest,
         @context context?: Context
     ): Promise<model.SchemaInfo> {
@@ -995,15 +2052,22 @@ export class SchemasService {
     }
 
     /**
-     * List schemas.
+     * Get a schema.
      *
-     * Gets an array of schemas for catalog in the Metastore. If the caller is
-     * the Metastore admin or the owner of the parent catalog, all schemas for
-     * the catalog will be retrieved. Otherwise, only schemas owned by the caller
-     * (or for which the caller has the USE_SCHEMA privilege) will be retrieved.
+     * Gets the specified schema within the metastore. The caller must be a
+     * metastore admin, the owner of the schema, or a user that has the
+     * **USE_SCHEMA** privilege on the schema.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetSchemaRequest,
+        @context context?: Context
+    ): Promise<model.SchemaInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListSchemasRequest,
         @context context?: Context
     ): Promise<model.ListSchemasResponse> {
@@ -1017,16 +2081,28 @@ export class SchemasService {
     }
 
     /**
-     * Update a schema.
+     * List schemas.
      *
-     * Updates a schema for a catalog. The caller must be the owner of the
-     * schema. If the caller is a Metastore admin, only the __owner__ field can
-     * be changed in the update. If the __name__ field must be updated, the
-     * caller must be a Metastore admin or have the CREATE_SCHEMA privilege on
-     * the parent catalog.
+     * Gets an array of schemas for a catalog in the metastore. If the caller is
+     * the metastore admin or the owner of the parent catalog, all schemas for
+     * the catalog will be retrieved. Otherwise, only schemas owned by the caller
+     * (or for which the caller has the **USE_SCHEMA** privilege) will be
+     * retrieved. There is no guarantee of a specific ordering of the elements in
+     * the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async *list(
+        request: model.ListSchemasRequest,
+        @context context?: Context
+    ): AsyncIterable<model.SchemaInfo> {
+        const response = (await this._list(request, context)).schemas;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateSchema,
         @context context?: Context
     ): Promise<model.SchemaInfo> {
@@ -1037,6 +2113,23 @@ export class SchemasService {
             request,
             context
         )) as model.SchemaInfo;
+    }
+
+    /**
+     * Update a schema.
+     *
+     * Updates a schema for a catalog. The caller must be the owner of the schema
+     * or a metastore admin. If the caller is a metastore admin, only the
+     * __owner__ field can be changed in the update. If the __name__ field must
+     * be updated, the caller must be a metastore admin or have the
+     * **CREATE_SCHEMA** privilege on the parent catalog.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateSchema,
+        @context context?: Context
+    ): Promise<model.SchemaInfo> {
+        return await this._update(request, context);
     }
 }
 
@@ -1056,15 +2149,9 @@ export class SharesError extends ApiError {
  */
 export class SharesService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a share.
-     *
-     * Creates a new share for data objects. Data objects can be added at this
-     * time or after creation with **update**. The caller must be a Metastore
-     * admin or have the CREATE_SHARE privilege on the Metastore.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateShare,
         @context context?: Context
     ): Promise<model.ShareInfo> {
@@ -1078,13 +2165,22 @@ export class SharesService {
     }
 
     /**
-     * Delete a share.
+     * Create a share.
      *
-     * Deletes a data object share from the Metastore. The caller must be an
-     * owner of the share.
+     * Creates a new share for data objects. Data objects can be added at this
+     * time or after creation with **update**. The caller must be a metastore
+     * admin or have the **CREATE_SHARE** privilege on the metastore.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateShare,
+        @context context?: Context
+    ): Promise<model.ShareInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteShareRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1098,13 +2194,21 @@ export class SharesService {
     }
 
     /**
-     * Get a share.
+     * Delete a share.
      *
-     * Gets a data object share from the Metastore. The caller must be a
-     * Metastore admin or the owner of the share.
+     * Deletes a data object share from the metastore. The caller must be an
+     * owner of the share.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteShareRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetShareRequest,
         @context context?: Context
     ): Promise<model.ShareInfo> {
@@ -1118,13 +2222,23 @@ export class SharesService {
     }
 
     /**
-     * List shares.
+     * Get a share.
      *
-     * Gets an array of data object shares from the Metastore. The caller must be
-     * a Metastore admin or the owner of the share.
+     * Gets a data object share from the metastore. The caller must be a
+     * metastore admin or the owner of the share.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<model.ListSharesResponse> {
+    async get(
+        request: model.GetShareRequest,
+        @context context?: Context
+    ): Promise<model.ShareInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<model.ListSharesResponse> {
         const path = "/api/2.1/unity-catalog/shares";
         return (await this.client.request(
             path,
@@ -1135,46 +2249,50 @@ export class SharesService {
     }
 
     /**
-     * Get permissions.
+     * List shares.
      *
-     * Gets the permissions for a data share from the Metastore. The caller must
-     * be a Metastore admin or the owner of the share.
+     * Gets an array of data object shares from the metastore. The caller must be
+     * a metastore admin or the owner of the share. There is no guarantee of a
+     * specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async sharePermissions(
+    async *list(@context context?: Context): AsyncIterable<model.ShareInfo> {
+        const response = (await this._list(context)).shares;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _sharePermissions(
         request: model.SharePermissionsRequest,
         @context context?: Context
-    ): Promise<model.GetSharePermissionsResponse> {
+    ): Promise<model.PermissionsList> {
         const path = `/api/2.1/unity-catalog/shares/${request.name}/permissions`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.GetSharePermissionsResponse;
+        )) as model.PermissionsList;
     }
 
     /**
-     * Update a share.
+     * Get permissions.
      *
-     * Updates the share with the changes and data objects in the request. The
-     * caller must be the owner of the share or a Metastore admin.
-     *
-     * When the caller is a Metastore admin, only the __owner__ field can be
-     * updated.
-     *
-     * In the case that the Share name is changed, **updateShare** requires that
-     * the caller is both the share owner and a Metastore admin.
-     *
-     * For each table that is added through this method, the share owner must
-     * also have SELECT privilege on the table. This privilege must be maintained
-     * indefinitely for recipients to be able to access the table. Typically, you
-     * should use a group as the share owner.
-     *
-     * Table removals through **update** do not require additional privileges.
+     * Gets the permissions for a data share from the metastore. The caller must
+     * be a metastore admin or the owner of the share.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async sharePermissions(
+        request: model.SharePermissionsRequest,
+        @context context?: Context
+    ): Promise<model.PermissionsList> {
+        return await this._sharePermissions(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateShare,
         @context context?: Context
     ): Promise<model.ShareInfo> {
@@ -1188,16 +2306,34 @@ export class SharesService {
     }
 
     /**
-     * Update permissions.
+     * Update a share.
      *
-     * Updates the permissions for a data share in the Metastore. The caller must
-     * be a Metastore admin or an owner of the share.
+     * Updates the share with the changes and data objects in the request. The
+     * caller must be the owner of the share or a metastore admin.
      *
-     * For new recipient grants, the user must also be the owner of the
-     * recipients. recipient revocations do not require additional privileges.
+     * When the caller is a metastore admin, only the __owner__ field can be
+     * updated.
+     *
+     * In the case that the share name is changed, **updateShare** requires that
+     * the caller is both the share owner and a metastore admin.
+     *
+     * For each table that is added through this method, the share owner must
+     * also have **SELECT** privilege on the table. This privilege must be
+     * maintained indefinitely for recipients to be able to access the table.
+     * Typically, you should use a group as the share owner.
+     *
+     * Table removals through **update** do not require additional privileges.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async updatePermissions(
+    async update(
+        request: model.UpdateShare,
+        @context context?: Context
+    ): Promise<model.ShareInfo> {
+        return await this._update(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _updatePermissions(
         request: model.UpdateSharePermissions,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1208,6 +2344,23 @@ export class SharesService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Update permissions.
+     *
+     * Updates the permissions for a data share in the metastore. The caller must
+     * be a metastore admin or an owner of the share.
+     *
+     * For new recipient grants, the user must also be the owner of the
+     * recipients. recipient revocations do not require additional privileges.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async updatePermissions(
+        request: model.UpdateSharePermissions,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._updatePermissions(request, context);
     }
 }
 
@@ -1224,12 +2377,11 @@ export class StorageCredentialsError extends ApiError {
 
 /**
  * A storage credential represents an authentication and authorization mechanism
- * for accessing data stored on your cloud tenant, using an IAM role. Each
- * storage credential is subject to Unity Catalog access-control policies that
- * control which users and groups can access the credential. If a user does not
- * have access to a storage credential in Unity Catalog, the request fails and
- * Unity Catalog does not attempt to authenticate to your cloud tenant on the
- * user’s behalf.
+ * for accessing data stored on your cloud tenant. Each storage credential is
+ * subject to Unity Catalog access-control policies that control which users and
+ * groups can access the credential. If a user does not have access to a storage
+ * credential in Unity Catalog, the request fails and Unity Catalog does not
+ * attempt to authenticate to your cloud tenant on the user’s behalf.
  *
  * Databricks recommends using external locations rather than using storage
  * credentials directly.
@@ -1240,20 +2392,9 @@ export class StorageCredentialsError extends ApiError {
  */
 export class StorageCredentialsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create credentials.
-     *
-     * Creates a new storage credential. The request object is specific to the
-     * cloud:
-     *
-     * * **AwsIamRole** for AWS credentials * **AzureServicePrincipal** for Azure
-     * credentials * **GcpServiceAcountKey** for GCP credentials.
-     *
-     * The caller must be a Metastore admin and have the
-     * CREATE_STORAGE_CREDENTIAL privilege on the Metastore.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateStorageCredential,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
@@ -1267,13 +2408,27 @@ export class StorageCredentialsService {
     }
 
     /**
-     * Delete a credential.
+     * Create a storage credential.
      *
-     * Deletes a storage credential from the Metastore. The caller must be an
-     * owner of the storage credential.
+     * Creates a new storage credential. The request object is specific to the
+     * cloud:
+     *
+     * * **AwsIamRole** for AWS credentials * **AzureServicePrincipal** for Azure
+     * credentials * **GcpServiceAcountKey** for GCP credentials.
+     *
+     * The caller must be a metastore admin and have the
+     * **CREATE_STORAGE_CREDENTIAL** privilege on the metastore.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateStorageCredential,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteStorageCredentialRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1287,14 +2442,21 @@ export class StorageCredentialsService {
     }
 
     /**
-     * Get a credential.
+     * Delete a credential.
      *
-     * Gets a storage credential from the Metastore. The caller must be a
-     * Metastore admin, the owner of the storage credential, or have a level of
-     * privilege on the storage credential.
+     * Deletes a storage credential from the metastore. The caller must be an
+     * owner of the storage credential.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteStorageCredentialRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetStorageCredentialRequest,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
@@ -1308,35 +2470,51 @@ export class StorageCredentialsService {
     }
 
     /**
-     * List credentials.
+     * Get a credential.
      *
-     * Gets an array of storage credentials (as StorageCredentialInfo objects).
-     * The array is limited to only those storage credentials the caller has the
-     * privilege level to access. If the caller is a Metastore admin, all storage
-     * credentials will be retrieved.
+     * Gets a storage credential from the metastore. The caller must be a
+     * metastore admin, the owner of the storage credential, or have some
+     * permission on the storage credential.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetStorageCredentialRequest,
         @context context?: Context
-    ): Promise<model.ListStorageCredentialsResponse> {
+    ): Promise<model.StorageCredentialInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.StorageCredentialInfo>> {
         const path = "/api/2.1/unity-catalog/storage-credentials";
         return (await this.client.request(
             path,
             "GET",
             undefined,
             context
-        )) as model.ListStorageCredentialsResponse;
+        )) as Array<model.StorageCredentialInfo>;
     }
 
     /**
-     * Update a credential.
+     * List credentials.
      *
-     * Updates a storage credential on the Metastore. The caller must be the
-     * owner of the storage credential. If the caller is a Metastore admin, only
-     * the __owner__ credential can be changed.
+     * Gets an array of storage credentials (as __StorageCredentialInfo__
+     * objects). The array is limited to only those storage credentials the
+     * caller has permission to access. If the caller is a metastore admin, all
+     * storage credentials will be retrieved. There is no guarantee of a specific
+     * ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async list(
+        @context context?: Context
+    ): Promise<Array<model.StorageCredentialInfo>> {
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateStorageCredential,
         @context context?: Context
     ): Promise<model.StorageCredentialInfo> {
@@ -1347,6 +2525,161 @@ export class StorageCredentialsService {
             request,
             context
         )) as model.StorageCredentialInfo;
+    }
+
+    /**
+     * Update a credential.
+     *
+     * Updates a storage credential on the metastore. The caller must be the
+     * owner of the storage credential or a metastore admin. If the caller is a
+     * metastore admin, only the __owner__ credential can be changed.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateStorageCredential,
+        @context context?: Context
+    ): Promise<model.StorageCredentialInfo> {
+        return await this._update(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _validate(
+        request: model.ValidateStorageCredential,
+        @context context?: Context
+    ): Promise<model.ValidateStorageCredentialResponse> {
+        const path = "/api/2.1/unity-catalog/validate-storage-credentials";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.ValidateStorageCredentialResponse;
+    }
+
+    /**
+     * Validate a storage credential.
+     *
+     * Validates a storage credential. At least one of __external_location_name__
+     * and __url__ need to be provided. If only one of them is provided, it will
+     * be used for validation. And if both are provided, the __url__ will be used
+     * for validation, and __external_location_name__ will be ignored when
+     * checking overlapping urls.
+     *
+     * Either the __storage_credential_name__ or the cloud-specific credential
+     * must be provided.
+     *
+     * The caller must be a metastore admin or the storage credential owner or
+     * have the **CREATE_EXTERNAL_LOCATION** privilege on the metastore and the
+     * storage credential.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async validate(
+        request: model.ValidateStorageCredential,
+        @context context?: Context
+    ): Promise<model.ValidateStorageCredentialResponse> {
+        return await this._validate(request, context);
+    }
+}
+
+export class TableConstraintsRetriableError extends ApiRetriableError {
+    constructor(method: string, message?: string) {
+        super("TableConstraints", method, message);
+    }
+}
+export class TableConstraintsError extends ApiError {
+    constructor(method: string, message?: string) {
+        super("TableConstraints", method, message);
+    }
+}
+
+/**
+ * Primary key and foreign key constraints encode relationships between fields in
+ * tables.
+ *
+ * Primary and foreign keys are informational only and are not enforced. Foreign
+ * keys must reference a primary key in another table. This primary key is the
+ * parent constraint of the foreign key and the table this primary key is on is
+ * the parent table of the foreign key. Similarly, the foreign key is the child
+ * constraint of its referenced primary key; the table of the foreign key is the
+ * child table of the primary key.
+ *
+ * You can declare primary keys and foreign keys as part of the table
+ * specification during table creation. You can also add or drop constraints on
+ * existing tables.
+ */
+export class TableConstraintsService {
+    constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateTableConstraint,
+        @context context?: Context
+    ): Promise<model.TableConstraint> {
+        const path = "/api/2.1/unity-catalog/constraints";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.TableConstraint;
+    }
+
+    /**
+     * Create a table constraint.
+     *
+     * Creates a new table constraint.
+     *
+     * For the table constraint creation to succeed, the user must satisfy both
+     * of these conditions: - the user must have the **USE_CATALOG** privilege on
+     * the table's parent catalog, the **USE_SCHEMA** privilege on the table's
+     * parent schema, and be the owner of the table. - if the new constraint is a
+     * __ForeignKeyConstraint__, the user must have the **USE_CATALOG** privilege
+     * on the referenced parent table's catalog, the **USE_SCHEMA** privilege on
+     * the referenced parent table's schema, and be the owner of the referenced
+     * parent table.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateTableConstraint,
+        @context context?: Context
+    ): Promise<model.TableConstraint> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteTableConstraintRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = `/api/2.1/unity-catalog/constraints/${request.full_name}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a table constraint.
+     *
+     * Deletes a table constraint.
+     *
+     * For the table constraint deletion to succeed, the user must satisfy both
+     * of these conditions: - the user must have the **USE_CATALOG** privilege on
+     * the table's parent catalog, the **USE_SCHEMA** privilege on the table's
+     * parent schema, and be the owner of the table. - if __cascade__ argument is
+     * **true**, the user must have the following permissions on all of the child
+     * tables: the **USE_CATALOG** privilege on the table's catalog, the
+     * **USE_SCHEMA** privilege on the table's schema, and be the owner of the
+     * table.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(
+        request: model.DeleteTableConstraintRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
     }
 }
 
@@ -1369,21 +2702,14 @@ export class TablesError extends ApiError {
  * permission on the table, and they must have the USE_CATALOG permission on its
  * parent catalog and the USE_SCHEMA permission on its parent schema.
  *
- * A table can be managed or external.
+ * A table can be managed or external. From an API perspective, a __VIEW__ is a
+ * particular kind of table (rather than a managed or external table).
  */
 export class TablesService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Delete a table.
-     *
-     * Deletes a table from the specified parent catalog and schema. The caller
-     * must be the owner of the parent catalog, have the USE_CATALOG privilege on
-     * the parent catalog and be the owner of the parent schema, or be the owner
-     * of the table and have the USE_CATALOG privilege on the parent catalog and
-     * the USE_SCHEMA privilege on the parent schema.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    private async _delete(
         request: model.DeleteTableRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1397,16 +2723,24 @@ export class TablesService {
     }
 
     /**
-     * Get a table.
+     * Delete a table.
      *
-     * Gets a table from the Metastore for a specific catalog and schema. The
-     * caller must be a Metastore admin, be the owner of the table and have the
-     * USE_CATALOG privilege on the parent catalog and the USE_SCHEMA privilege
-     * on the parent schema, or be the owner of the table and have the SELECT
-     * privilege on it as well.
+     * Deletes a table from the specified parent catalog and schema. The caller
+     * must be the owner of the parent catalog, have the **USE_CATALOG**
+     * privilege on the parent catalog and be the owner of the parent schema, or
+     * be the owner of the table and have the **USE_CATALOG** privilege on the
+     * parent catalog and the **USE_SCHEMA** privilege on the parent schema.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    async delete(
+        request: model.DeleteTableRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
         request: model.GetTableRequest,
         @context context?: Context
     ): Promise<model.TableInfo> {
@@ -1420,16 +2754,24 @@ export class TablesService {
     }
 
     /**
-     * List tables.
+     * Get a table.
      *
-     * Gets an array of all tables for the current Metastore under the parent
-     * catalog and schema. The caller must be a Metastore admin or an owner of
-     * (or have the SELECT privilege on) the table. For the latter case, the
-     * caller must also be the owner or have the USE_CATALOG privilege on the
-     * parent catalog and the USE_SCHEMA privilege on the parent schema.
+     * Gets a table from the metastore for a specific catalog and schema. The
+     * caller must be a metastore admin, be the owner of the table and have the
+     * **USE_CATALOG** privilege on the parent catalog and the **USE_SCHEMA**
+     * privilege on the parent schema, or be the owner of the table and have the
+     * **SELECT** privilege on it as well.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async get(
+        request: model.GetTableRequest,
+        @context context?: Context
+    ): Promise<model.TableInfo> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListTablesRequest,
         @context context?: Context
     ): Promise<model.ListTablesResponse> {
@@ -1443,22 +2785,29 @@ export class TablesService {
     }
 
     /**
-     * List table summaries.
+     * List tables.
      *
-     * Gets an array of summaries for tables for a schema and catalog within the
-     * Metastore. The table summaries returned are either:
-     *
-     * * summaries for all tables (within the current Metastore and parent
-     * catalog and schema), when the user is a Metastore admin, or: * summaries
-     * for all tables and schemas (within the current Metastore and parent
-     * catalog) for which the user has ownership or the SELECT privilege on the
-     * Table and ownership or USE_SCHEMA privilege on the Schema, provided that
-     * the user also has ownership or the USE_CATALOG privilege on the parent
-     * Catalog
+     * Gets an array of all tables for the current metastore under the parent
+     * catalog and schema. The caller must be a metastore admin or an owner of
+     * (or have the **SELECT** privilege on) the table. For the latter case, the
+     * caller must also be the owner or have the **USE_CATALOG** privilege on the
+     * parent catalog and the **USE_SCHEMA** privilege on the parent schema.
+     * There is no guarantee of a specific ordering of the elements in the array.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async tableSummaries(
-        request: model.TableSummariesRequest,
+    async *list(
+        request: model.ListTablesRequest,
+        @context context?: Context
+    ): AsyncIterable<model.TableInfo> {
+        const response = (await this._list(request, context)).tables;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _listSummaries(
+        request: model.ListSummariesRequest,
         @context context?: Context
     ): Promise<model.ListTableSummariesResponse> {
         const path = "/api/2.1/unity-catalog/table-summaries";
@@ -1468,5 +2817,29 @@ export class TablesService {
             request,
             context
         )) as model.ListTableSummariesResponse;
+    }
+
+    /**
+     * List table summaries.
+     *
+     * Gets an array of summaries for tables for a schema and catalog within the
+     * metastore. The table summaries returned are either:
+     *
+     * * summaries for all tables (within the current metastore and parent
+     * catalog and schema), when the user is a metastore admin, or: * summaries
+     * for all tables and schemas (within the current metastore and parent
+     * catalog) for which the user has ownership or the **SELECT** privilege on
+     * the table and ownership or **USE_SCHEMA** privilege on the schema,
+     * provided that the user also has ownership or the **USE_CATALOG** privilege
+     * on the parent catalog.
+     *
+     * There is no guarantee of a specific ordering of the elements in the array.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async listSummaries(
+        request: model.ListSummariesRequest,
+        @context context?: Context
+    ): Promise<model.ListTableSummariesResponse> {
+        return await this._listSummaries(request, context);
     }
 }

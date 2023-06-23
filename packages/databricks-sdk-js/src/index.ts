@@ -35,3 +35,6 @@ export {Redactor, defaultRedactor} from "./Redactor";
 
 export * from "./services/wsfs";
 export * from "./config";
+export * from "./fetch";
+
+export {HttpError, ApiError} from "./apierr";

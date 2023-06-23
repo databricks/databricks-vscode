@@ -1,10 +1,15 @@
 import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
 import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
 import {MultiStepInput} from "../ui/wizard";
-import {normalizeHost} from "../utils/urlUtils";
+import {
+    isAwsHost,
+    isAzureHost,
+    isGcpHost,
+    normalizeHost,
+} from "../utils/urlUtils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider, AuthType} from "./auth/AuthProvider";
-import {ProjectConfig} from "./ProjectConfigFile";
+import {ProjectConfig} from "../file-managers/ProjectConfigFile";
 
 interface AuthTypeQuickPickItem extends QuickPickItem {
     authType: AuthType | "new-profile" | "none";
@@ -16,6 +21,7 @@ interface State {
     authType: AuthType;
     profile?: string;
     token?: string;
+    databricksPath?: string;
 }
 
 export async function configureWorkspaceWizard(
@@ -92,6 +98,14 @@ export async function configureWorkspaceWizard(
                     });
                     break;
 
+                case "databricks-cli":
+                    items.push({
+                        label: "OAuth (user to machine)",
+                        detail: "Authenticate using OAuth",
+                        authType: "databricks-cli",
+                    });
+                    break;
+
                 case "profile":
                     items.push({
                         label: "Databricks CLI Profiles",
@@ -154,6 +168,11 @@ export async function configureWorkspaceWizard(
                 state.authType = pick.authType;
                 break;
 
+            case "databricks-cli":
+                state.authType = pick.authType;
+                state.databricksPath = cliWrapper.cliPath;
+                break;
+
             case "profile":
                 state.authType = pick.authType;
                 state.profile = pick.profile;
@@ -172,16 +191,30 @@ export async function configureWorkspaceWizard(
     }
 
     return {
-        authProvider: AuthProvider.fromJSON(state),
+        authProvider: AuthProvider.fromJSON(state, cliWrapper.cliPath),
     };
 }
 
 async function listProfiles(cliWrapper: CliWrapper) {
-    const profiles = await cliWrapper.listProfiles(
-        workspaceConfigs.databrickscfgLocation
-    );
+    const profiles = (
+        await cliWrapper.listProfiles(workspaceConfigs.databrickscfgLocation)
+    ).filter((profile) => {
+        try {
+            normalizeHost(profile.host!.toString());
+            return true;
+        } catch (e) {
+            return false;
+        }
+    });
+
     return profiles.filter((profile) => {
-        return ["pat", "basic", "azure-cli"].includes(profile.authType);
+        return [
+            "pat",
+            "basic",
+            "azure-cli",
+            "oauth-m2m",
+            "azure-client-secret",
+        ].includes(profile.authType);
     });
 }
 
@@ -196,16 +229,16 @@ async function validateDatabricksHost(
 }
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
-    if (host.hostname.endsWith(".azuredatabricks.net")) {
+    if (isAzureHost(host)) {
         return ["azure-cli", "profile"];
     }
 
-    if (host.hostname.endsWith(".gcp.databricks.com")) {
+    if (isGcpHost(host)) {
         return ["google-id", "profile"];
     }
 
-    if (host.hostname.endsWith(".cloud.databricks.com")) {
-        return ["oauth-u2m", "profile"];
+    if (isAwsHost(host)) {
+        return ["databricks-cli", "profile"];
     }
 
     return ["profile"];

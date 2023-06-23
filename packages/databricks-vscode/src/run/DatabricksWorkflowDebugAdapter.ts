@@ -16,15 +16,16 @@ import {
     Disposable,
     ExtensionContext,
     ProviderResult,
-    Uri,
     window,
 } from "vscode";
 import {DebugProtocol} from "@vscode/debugprotocol";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
 import {WorkflowRunner} from "./WorkflowRunner";
-import {promptForClusterStart} from "./prompts";
+import {promptForClusterAttach, promptForClusterStart} from "./prompts";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import {LocalUri} from "../sync/SyncDestination";
+import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {isNotebook} from "../utils";
 
 /**
@@ -51,10 +52,15 @@ export class DatabricksWorkflowDebugAdapterFactory
 
     constructor(
         private connection: ConnectionManager,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier,
         context: ExtensionContext,
         codeSynchronizer: CodeSynchronizer
     ) {
-        this.workflowRunner = new WorkflowRunner(context, codeSynchronizer);
+        this.workflowRunner = new WorkflowRunner(
+            context,
+            codeSynchronizer,
+            connection
+        );
     }
 
     dispose() {
@@ -65,7 +71,8 @@ export class DatabricksWorkflowDebugAdapterFactory
         return new DebugAdapterInlineImplementation(
             new DatabricksWorkflowDebugSession(
                 this.connection,
-                this.workflowRunner
+                this.workflowRunner,
+                this.wsfsAccessVerifier
             )
         );
     }
@@ -78,7 +85,8 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
 
     constructor(
         private connection: ConnectionManager,
-        private workflowRunner: WorkflowRunner
+        private workflowRunner: WorkflowRunner,
+        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {
         super();
     }
@@ -156,7 +164,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         args: Array<string>
     ): Promise<void> {
         if (
-            !(await isNotebook(Uri.file(program))) &&
+            !(await isNotebook(new LocalUri(program))) &&
             !program.endsWith(".py")
         ) {
             return this.onError("Only Python files can be run as a workflow");
@@ -170,9 +178,8 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         const workspaceClient = this.connection.workspaceClient;
 
         if (!cluster || !workspaceClient) {
-            return this.onError(
-                "You must attach to a cluster to run on Databricks"
-            );
+            promptForClusterAttach();
+            return this.onError();
         }
         const syncDestination = this.connection.syncDestinationMapper;
         if (!syncDestination) {
@@ -182,31 +189,27 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         }
 
         await cluster.refresh();
-        const isClusterRunning = await promptForClusterStart(
-            cluster,
-            async () => {
-                this.onError(
-                    "Cancel execution because cluster is not running."
-                );
-            }
-        );
-        if (!isClusterRunning) {
-            return;
+        await this.wsfsAccessVerifier.verifyCluster(cluster);
+        await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
+        if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
+            promptForClusterStart();
+            return this.onError();
         }
 
         await this.workflowRunner.run({
-            program: Uri.file(program),
+            program: new LocalUri(program),
             parameters,
             args,
             cluster,
             syncDestination: syncDestination,
             token: this.token,
-            connectionManager: this.connection,
         });
     }
 
-    private onError(errorMessage: string) {
-        window.showErrorMessage(errorMessage);
+    private onError(errorMessage?: string) {
+        if (errorMessage) {
+            window.showErrorMessage(errorMessage);
+        }
         this.sendEvent(new ExitedEvent(1));
         this.sendEvent(new TerminatedEvent());
     }

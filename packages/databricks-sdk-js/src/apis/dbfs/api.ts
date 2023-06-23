@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class DbfsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -28,6 +29,21 @@ export class DbfsError extends ApiError {
  */
 export class DbfsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _addBlock(
+        request: model.AddBlock,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/dbfs/add-block";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
     /**
      * Append data block.
      *
@@ -43,7 +59,15 @@ export class DbfsService {
         request: model.AddBlock,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/dbfs/add-block";
+        return await this._addBlock(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _close(
+        request: model.Close,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/dbfs/close";
         return (await this.client.request(
             path,
             "POST",
@@ -63,13 +87,21 @@ export class DbfsService {
         request: model.Close,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/dbfs/close";
+        return await this._close(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.Create,
+        @context context?: Context
+    ): Promise<model.CreateResponse> {
+        const path = "/api/2.0/dbfs/create";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.CreateResponse;
     }
 
     /**
@@ -91,13 +123,21 @@ export class DbfsService {
         request: model.Create,
         @context context?: Context
     ): Promise<model.CreateResponse> {
-        const path = "/api/2.0/dbfs/create";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.Delete,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/dbfs/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.CreateResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -127,13 +167,21 @@ export class DbfsService {
         request: model.Delete,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/dbfs/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getStatus(
+        request: model.GetStatus,
+        @context context?: Context
+    ): Promise<model.FileInfo> {
+        const path = "/api/2.0/dbfs/get-status";
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.FileInfo;
     }
 
     /**
@@ -148,13 +196,21 @@ export class DbfsService {
         request: model.GetStatus,
         @context context?: Context
     ): Promise<model.FileInfo> {
-        const path = "/api/2.0/dbfs/get-status";
+        return await this._getStatus(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        request: model.List,
+        @context context?: Context
+    ): Promise<model.ListStatusResponse> {
+        const path = "/api/2.0/dbfs/list";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.FileInfo;
+        )) as model.ListStatusResponse;
     }
 
     /**
@@ -174,17 +230,28 @@ export class DbfsService {
      * the same functionality without timing out.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *list(
         request: model.List,
         @context context?: Context
-    ): Promise<model.ListStatusResponse> {
-        const path = "/api/2.0/dbfs/list";
+    ): AsyncIterable<model.FileInfo> {
+        const response = (await this._list(request, context)).files;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _mkdirs(
+        request: model.MkDirs,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/dbfs/mkdirs";
         return (await this.client.request(
             path,
-            "GET",
+            "POST",
             request,
             context
-        )) as model.ListStatusResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -201,7 +268,15 @@ export class DbfsService {
         request: model.MkDirs,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/dbfs/mkdirs";
+        return await this._mkdirs(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _move(
+        request: model.Move,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/dbfs/move";
         return (await this.client.request(
             path,
             "POST",
@@ -225,7 +300,15 @@ export class DbfsService {
         request: model.Move,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/dbfs/move";
+        return await this._move(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _put(
+        request: model.Put,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/dbfs/put";
         return (await this.client.request(
             path,
             "POST",
@@ -248,37 +331,18 @@ export class DbfsService {
      * be thrown if this limit is exceeded.
      *
      * If you want to upload large files, use the streaming upload. For details,
-     * see :method:create, :method:addBlock, :method:close.
+     * see :method:dbfs/create, :method:dbfs/addBlock, :method:dbfs/close.
      */
     @withLogContext(ExposedLoggers.SDK)
     async put(
         request: model.Put,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/dbfs/put";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._put(request, context);
     }
 
-    /**
-     * Get the contents of a file.
-     *
-     * "Returns the contents of a file. If the file does not exist, this call
-     * throws an exception with `RESOURCE_DOES_NOT_EXIST`. If the path is a
-     * directory, the read length is negative, or if the offset is negative, this
-     * call throws an exception with `INVALID_PARAMETER_VALUE`. If the read
-     * length exceeds 1 MB, this call throws an\nexception with
-     * `MAX_READ_SIZE_EXCEEDED`.
-     *
-     * If `offset + length` exceeds the number of bytes in a file, it reads the
-     * contents until the end of file.",
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async read(
+    private async _read(
         request: model.Read,
         @context context?: Context
     ): Promise<model.ReadResponse> {
@@ -289,5 +353,26 @@ export class DbfsService {
             request,
             context
         )) as model.ReadResponse;
+    }
+
+    /**
+     * Get the contents of a file.
+     *
+     * "Returns the contents of a file. If the file does not exist, this call
+     * throws an exception with `RESOURCE_DOES_NOT_EXIST`. If the path is a
+     * directory, the read length is negative, or if the offset is negative, this
+     * call throws an exception with `INVALID_PARAMETER_VALUE`. If the read
+     * length exceeds 1 MB, this call throws an exception with
+     * `MAX_READ_SIZE_EXCEEDED`.
+     *
+     * If `offset + length` exceeds the number of bytes in a file, it reads the
+     * contents until the end of file.",
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async read(
+        request: model.Read,
+        @context context?: Context
+    ): Promise<model.ReadResponse> {
+        return await this._read(request, context);
     }
 }

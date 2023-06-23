@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class ExperimentsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -27,6 +28,21 @@ export class ExperimentsError extends ApiError {
 */
 export class ExperimentsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateExperiment,
+        @context context?: Context
+    ): Promise<model.CreateExperimentResponse> {
+        const path = "/api/2.0/mlflow/experiments/create";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.CreateExperimentResponse;
+    }
+
     /**
      * Create experiment.
      *
@@ -43,13 +59,21 @@ export class ExperimentsService {
         request: model.CreateExperiment,
         @context context?: Context
     ): Promise<model.CreateExperimentResponse> {
-        const path = "/api/2.0/mlflow/experiments/create";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteExperiment,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/experiments/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.CreateExperimentResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -64,22 +88,11 @@ export class ExperimentsService {
         request: model.DeleteExperiment,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/experiments/delete";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._delete(request, context);
     }
 
-    /**
-     * Get an experiment.
-     *
-     * Gets metadata for an experiment. This method works on deleted experiments.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetExperimentRequest,
         @context context?: Context
     ): Promise<model.Experiment> {
@@ -93,20 +106,20 @@ export class ExperimentsService {
     }
 
     /**
-     * Get metadata.
+     * Get an experiment.
      *
-     * "Gets metadata for an experiment.
-     *
-     * This endpoint will return deleted experiments, but prefers the active
-     * experiment if an active and deleted experiment share the same name. If
-     * multiple deleted\nexperiments share the same name, the API will return one
-     * of them.
-     *
-     * Throws `RESOURCE_DOES_NOT_EXIST` if no experiment with the specified name
-     * exists.S
+     * Gets metadata for an experiment. This method works on deleted experiments.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getByName(
+    async get(
+        request: model.GetExperimentRequest,
+        @context context?: Context
+    ): Promise<model.Experiment> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getByName(
         request: model.GetByNameRequest,
         @context context?: Context
     ): Promise<model.GetExperimentByNameResponse> {
@@ -120,12 +133,28 @@ export class ExperimentsService {
     }
 
     /**
-     * List experiments.
+     * Get metadata.
      *
-     * Gets a list of all experiments.
+     * "Gets metadata for an experiment.
+     *
+     * This endpoint will return deleted experiments, but prefers the active
+     * experiment if an active and deleted experiment share the same name. If
+     * multiple deleted experiments share the same name, the API will return one
+     * of them.
+     *
+     * Throws `RESOURCE_DOES_NOT_EXIST` if no experiment with the specified name
+     * exists.S
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async getByName(
+        request: model.GetByNameRequest,
+        @context context?: Context
+    ): Promise<model.GetExperimentByNameResponse> {
+        return await this._getByName(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListExperimentsRequest,
         @context context?: Context
     ): Promise<model.ListExperimentsResponse> {
@@ -139,16 +168,41 @@ export class ExperimentsService {
     }
 
     /**
-     * Restores an experiment.
+     * List experiments.
      *
-     * "Restore an experiment marked for deletion. This also restores\nassociated
-     * metadata, runs, metrics, params, and tags. If experiment uses FileStore,
-     * underlying\nartifacts associated with experiment are also
-     * restored.\n\nThrows `RESOURCE_DOES_NOT_EXIST` if experiment was never
-     * created or was permanently deleted.",
+     * Gets a list of all experiments.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async restore(
+    async *list(
+        request: model.ListExperimentsRequest,
+        @context context?: Context
+    ): AsyncIterable<model.Experiment> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.experiments || response.experiments.length === 0) {
+                break;
+            }
+
+            for (const v of response.experiments) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _restore(
         request: model.RestoreExperiment,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -162,12 +216,25 @@ export class ExperimentsService {
     }
 
     /**
-     * Search experiments.
+     * Restores an experiment.
      *
-     * Searches for experiments that satisfy specified search criteria.
+     * "Restore an experiment marked for deletion. This also restores associated
+     * metadata, runs, metrics, params, and tags. If experiment uses FileStore,
+     * underlying artifacts associated with experiment are also restored.
+     *
+     * Throws `RESOURCE_DOES_NOT_EXIST` if experiment was never created or was
+     * permanently deleted.",
      */
     @withLogContext(ExposedLoggers.SDK)
-    async search(
+    async restore(
+        request: model.RestoreExperiment,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._restore(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _search(
         request: model.SearchExperiments,
         @context context?: Context
     ): Promise<model.SearchExperimentsResponse> {
@@ -181,6 +248,54 @@ export class ExperimentsService {
     }
 
     /**
+     * Search experiments.
+     *
+     * Searches for experiments that satisfy specified search criteria.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *search(
+        request: model.SearchExperiments,
+        @context context?: Context
+    ): AsyncIterable<model.Experiment> {
+        while (true) {
+            const response = await this._search(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.experiments || response.experiments.length === 0) {
+                break;
+            }
+
+            for (const v of response.experiments) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _setExperimentTag(
+        request: model.SetExperimentTag,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/experiments/set-experiment-tag";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Set a tag.
      *
      * Sets a tag on an experiment. Experiment tags are metadata that can be
@@ -191,7 +306,15 @@ export class ExperimentsService {
         request: model.SetExperimentTag,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/experiments/set-experiment-tag";
+        return await this._setExperimentTag(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateExperiment,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/experiments/update";
         return (await this.client.request(
             path,
             "POST",
@@ -210,13 +333,7 @@ export class ExperimentsService {
         request: model.UpdateExperiment,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/experiments/update";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -236,15 +353,9 @@ export class MLflowArtifactsError extends ApiError {
 */
 export class MLflowArtifactsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Get all artifacts.
-     *
-     * List artifacts for a run. Takes an optional `artifact_path` prefix. If it
-     * is specified, the response contains only artifacts with the specified
-     * prefix.",
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    private async _list(
         request: model.ListArtifactsRequest,
         @context context?: Context
     ): Promise<model.ListArtifactsResponse> {
@@ -255,6 +366,42 @@ export class MLflowArtifactsService {
             request,
             context
         )) as model.ListArtifactsResponse;
+    }
+
+    /**
+     * Get all artifacts.
+     *
+     * List artifacts for a run. Takes an optional `artifact_path` prefix. If it
+     * is specified, the response contains only artifacts with the specified
+     * prefix.",
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *list(
+        request: model.ListArtifactsRequest,
+        @context context?: Context
+    ): AsyncIterable<model.FileInfo> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.files || response.files.length === 0) {
+                break;
+            }
+
+            for (const v of response.files) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
     }
 }
 
@@ -275,6 +422,21 @@ export class MLflowDatabricksError extends ApiError {
  */
 export class MLflowDatabricksService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetMLflowDatabrickRequest,
+        @context context?: Context
+    ): Promise<model.GetResponse> {
+        const path = "/api/2.0/mlflow/databricks/registered-models/get";
+        return (await this.client.request(
+            path,
+            "GET",
+            request,
+            context
+        )) as model.GetResponse;
+    }
+
     /**
      * Get model.
      *
@@ -289,13 +451,22 @@ export class MLflowDatabricksService {
         request: model.GetMLflowDatabrickRequest,
         @context context?: Context
     ): Promise<model.GetResponse> {
-        const path = "/api/2.0/mlflow/databricks/registered-models/get";
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _transitionStage(
+        request: model.TransitionModelVersionStageDatabricks,
+        @context context?: Context
+    ): Promise<model.TransitionStageResponse> {
+        const path =
+            "/api/2.0/mlflow/databricks/model-versions/transition-stage";
         return (await this.client.request(
             path,
-            "GET",
+            "POST",
             request,
             context
-        )) as model.GetResponse;
+        )) as model.TransitionStageResponse;
     }
 
     /**
@@ -312,14 +483,7 @@ export class MLflowDatabricksService {
         request: model.TransitionModelVersionStageDatabricks,
         @context context?: Context
     ): Promise<model.TransitionStageResponse> {
-        const path =
-            "/api/2.0/mlflow/databricks/model-versions/transition-stage";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.TransitionStageResponse;
+        return await this._transitionStage(request, context);
     }
 }
 
@@ -339,13 +503,9 @@ export class MLflowMetricsError extends ApiError {
 */
 export class MLflowMetricsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Get history of a given metric within a run.
-     *
-     * Gets a list of all values for the specified metric for a given run.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async getHistory(
+    private async _getHistory(
         request: model.GetHistoryRequest,
         @context context?: Context
     ): Promise<model.GetMetricHistoryResponse> {
@@ -356,6 +516,19 @@ export class MLflowMetricsService {
             request,
             context
         )) as model.GetMetricHistoryResponse;
+    }
+
+    /**
+     * Get history of a given metric within a run.
+     *
+     * Gets a list of all values for the specified metric for a given run.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async getHistory(
+        request: model.GetHistoryRequest,
+        @context context?: Context
+    ): Promise<model.GetMetricHistoryResponse> {
+        return await this._getHistory(request, context);
     }
 }
 
@@ -375,16 +548,9 @@ export class MLflowRunsError extends ApiError {
 */
 export class MLflowRunsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a run.
-     *
-     * Creates a new run within an experiment. A run is usually a single
-     * execution of a machine learning or data ETL pipeline. MLflow uses runs to
-     * track the `mlflowParam`, `mlflowMetric` and `mlflowRunTag` associated with
-     * a single execution.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateRun,
         @context context?: Context
     ): Promise<model.CreateRunResponse> {
@@ -398,6 +564,36 @@ export class MLflowRunsService {
     }
 
     /**
+     * Create a run.
+     *
+     * Creates a new run within an experiment. A run is usually a single
+     * execution of a machine learning or data ETL pipeline. MLflow uses runs to
+     * track the `mlflowParam`, `mlflowMetric` and `mlflowRunTag` associated with
+     * a single execution.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateRun,
+        @context context?: Context
+    ): Promise<model.CreateRunResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteRun,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/runs/delete";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Delete a run.
      *
      * Marks a run for deletion.
@@ -407,7 +603,15 @@ export class MLflowRunsService {
         request: model.DeleteRun,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/runs/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _deleteTag(
+        request: model.DeleteTag,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/runs/delete-tag";
         return (await this.client.request(
             path,
             "POST",
@@ -427,13 +631,21 @@ export class MLflowRunsService {
         request: model.DeleteTag,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/runs/delete-tag";
+        return await this._deleteTag(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetRunRequest,
+        @context context?: Context
+    ): Promise<model.GetRunResponse> {
+        const path = "/api/2.0/mlflow/runs/get";
         return (await this.client.request(
             path,
-            "POST",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.GetRunResponse;
     }
 
     /**
@@ -451,13 +663,21 @@ export class MLflowRunsService {
         request: model.GetRunRequest,
         @context context?: Context
     ): Promise<model.GetRunResponse> {
-        const path = "/api/2.0/mlflow/runs/get";
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _logBatch(
+        request: model.LogBatch,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/runs/log-batch";
         return (await this.client.request(
             path,
-            "GET",
+            "POST",
             request,
             context
-        )) as model.GetRunResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -493,7 +713,7 @@ export class MLflowRunsService {
      * API request may be up to 1 MB in size and contain:
      *
      * * No more than 1000 metrics, params, and tags in total * Up to 1000
-     * metrics\n- Up to 100 params * Up to 100 tags
+     * metrics - Up to 100 params * Up to 100 tags
      *
      * For example, a valid request might contain 900 metrics, 50 params, and 50
      * tags, but logging 900 metrics, 50 params, and 51 tags is invalid.
@@ -508,7 +728,15 @@ export class MLflowRunsService {
         request: model.LogBatch,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/runs/log-batch";
+        return await this._logBatch(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _logMetric(
+        request: model.LogMetric,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/runs/log-metric";
         return (await this.client.request(
             path,
             "POST",
@@ -529,7 +757,15 @@ export class MLflowRunsService {
         request: model.LogMetric,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/runs/log-metric";
+        return await this._logMetric(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _logModel(
+        request: model.LogModel,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/runs/log-model";
         return (await this.client.request(
             path,
             "POST",
@@ -549,7 +785,15 @@ export class MLflowRunsService {
         request: model.LogModel,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/runs/log-model";
+        return await this._logModel(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _logParameter(
+        request: model.LogParam,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/runs/log-parameter";
         return (await this.client.request(
             path,
             "POST",
@@ -571,7 +815,15 @@ export class MLflowRunsService {
         request: model.LogParam,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/runs/log-parameter";
+        return await this._logParameter(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _restore(
+        request: model.RestoreRun,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/runs/restore";
         return (await this.client.request(
             path,
             "POST",
@@ -590,24 +842,11 @@ export class MLflowRunsService {
         request: model.RestoreRun,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/runs/restore";
-        return (await this.client.request(
-            path,
-            "POST",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._restore(request, context);
     }
 
-    /**
-     * Search for runs.
-     *
-     * Searches for runs that satisfy expressions.
-     *
-     * Search expressions can use `mlflowMetric` and `mlflowParam` keys.",
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async search(
+    private async _search(
         request: model.SearchRuns,
         @context context?: Context
     ): Promise<model.SearchRunsResponse> {
@@ -621,13 +860,43 @@ export class MLflowRunsService {
     }
 
     /**
-     * Set a tag.
+     * Search for runs.
      *
-     * Sets a tag on a run. Tags are run metadata that can be updated during a
-     * run and after a run completes.
+     * Searches for runs that satisfy expressions.
+     *
+     * Search expressions can use `mlflowMetric` and `mlflowParam` keys.",
      */
     @withLogContext(ExposedLoggers.SDK)
-    async setTag(
+    async *search(
+        request: model.SearchRuns,
+        @context context?: Context
+    ): AsyncIterable<model.Run> {
+        while (true) {
+            const response = await this._search(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.runs || response.runs.length === 0) {
+                break;
+            }
+
+            for (const v of response.runs) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _setTag(
         request: model.SetTag,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -641,12 +910,21 @@ export class MLflowRunsService {
     }
 
     /**
-     * Update a run.
+     * Set a tag.
      *
-     * Updates run metadata.
+     * Sets a tag on a run. Tags are run metadata that can be updated during a
+     * run and after a run completes.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async setTag(
+        request: model.SetTag,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._setTag(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateRun,
         @context context?: Context
     ): Promise<model.UpdateRunResponse> {
@@ -657,6 +935,19 @@ export class MLflowRunsService {
             request,
             context
         )) as model.UpdateRunResponse;
+    }
+
+    /**
+     * Update a run.
+     *
+     * Updates run metadata.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateRun,
+        @context context?: Context
+    ): Promise<model.UpdateRunResponse> {
+        return await this._update(request, context);
     }
 }
 
@@ -676,15 +967,9 @@ export class ModelVersionCommentsError extends ApiError {
 */
 export class ModelVersionCommentsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Post a comment.
-     *
-     * Posts a comment on a model version. A comment can be submitted either by a
-     * user or programmatically to display relevant information about the model.
-     * For example, test results or deployment errors.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateComment,
         @context context?: Context
     ): Promise<model.CreateResponse> {
@@ -698,12 +983,22 @@ export class ModelVersionCommentsService {
     }
 
     /**
-     * Delete a comment.
+     * Post a comment.
      *
-     * Deletes a comment on a model version.
+     * Posts a comment on a model version. A comment can be submitted either by a
+     * user or programmatically to display relevant information about the model.
+     * For example, test results or deployment errors.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateComment,
+        @context context?: Context
+    ): Promise<model.CreateResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteModelVersionCommentRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -717,12 +1012,20 @@ export class ModelVersionCommentsService {
     }
 
     /**
-     * Update a comment.
+     * Delete a comment.
      *
-     * Post an edit to a comment on a model version.
+     * Deletes a comment on a model version.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async delete(
+        request: model.DeleteModelVersionCommentRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateComment,
         @context context?: Context
     ): Promise<model.UpdateResponse> {
@@ -733,6 +1036,19 @@ export class ModelVersionCommentsService {
             request,
             context
         )) as model.UpdateResponse;
+    }
+
+    /**
+     * Update a comment.
+     *
+     * Post an edit to a comment on a model version.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateComment,
+        @context context?: Context
+    ): Promise<model.UpdateResponse> {
+        return await this._update(request, context);
     }
 }
 
@@ -752,13 +1068,9 @@ export class ModelVersionsError extends ApiError {
 */
 export class ModelVersionsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a model version.
-     *
-     * Creates a model version.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateModelVersionRequest,
         @context context?: Context
     ): Promise<model.CreateModelVersionResponse> {
@@ -772,6 +1084,33 @@ export class ModelVersionsService {
     }
 
     /**
+     * Create a model version.
+     *
+     * Creates a model version.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateModelVersionRequest,
+        @context context?: Context
+    ): Promise<model.CreateModelVersionResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteModelVersionRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/model-versions/delete";
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Delete a model version.
      *
      * Deletes a model version.
@@ -781,7 +1120,15 @@ export class ModelVersionsService {
         request: model.DeleteModelVersionRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/model-versions/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _deleteTag(
+        request: model.DeleteModelVersionTagRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/model-versions/delete-tag";
         return (await this.client.request(
             path,
             "DELETE",
@@ -800,22 +1147,11 @@ export class ModelVersionsService {
         request: model.DeleteModelVersionTagRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/model-versions/delete-tag";
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._deleteTag(request, context);
     }
 
-    /**
-     * Get a model version.
-     *
-     * Get a model version.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetModelVersionRequest,
         @context context?: Context
     ): Promise<model.GetModelVersionResponse> {
@@ -829,12 +1165,20 @@ export class ModelVersionsService {
     }
 
     /**
-     * Get a model version URI.
+     * Get a model version.
      *
-     * Gets a URI to download the model version.
+     * Get a model version.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getDownloadUri(
+    async get(
+        request: model.GetModelVersionRequest,
+        @context context?: Context
+    ): Promise<model.GetModelVersionResponse> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getDownloadUri(
         request: model.GetModelVersionDownloadUriRequest,
         @context context?: Context
     ): Promise<model.GetModelVersionDownloadUriResponse> {
@@ -848,12 +1192,20 @@ export class ModelVersionsService {
     }
 
     /**
-     * Searches model versions.
+     * Get a model version URI.
      *
-     * Searches for specific model versions based on the supplied __filter__.
+     * Gets a URI to download the model version.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async search(
+    async getDownloadUri(
+        request: model.GetModelVersionDownloadUriRequest,
+        @context context?: Context
+    ): Promise<model.GetModelVersionDownloadUriResponse> {
+        return await this._getDownloadUri(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _search(
         request: model.SearchModelVersionsRequest,
         @context context?: Context
     ): Promise<model.SearchModelVersionsResponse> {
@@ -867,12 +1219,44 @@ export class ModelVersionsService {
     }
 
     /**
-     * Set a version tag.
+     * Searches model versions.
      *
-     * Sets a model version tag.
+     * Searches for specific model versions based on the supplied __filter__.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async setTag(
+    async *search(
+        request: model.SearchModelVersionsRequest,
+        @context context?: Context
+    ): AsyncIterable<model.ModelVersion> {
+        while (true) {
+            const response = await this._search(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (
+                !response.model_versions ||
+                response.model_versions.length === 0
+            ) {
+                break;
+            }
+
+            for (const v of response.model_versions) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _setTag(
         request: model.SetModelVersionTagRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -886,12 +1270,20 @@ export class ModelVersionsService {
     }
 
     /**
-     * Transition a stage.
+     * Set a version tag.
      *
-     * Transition to the next model stage.
+     * Sets a model version tag.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async transitionStage(
+    async setTag(
+        request: model.SetModelVersionTagRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._setTag(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _transitionStage(
         request: model.TransitionModelVersionStage,
         @context context?: Context
     ): Promise<model.TransitionModelVersionStageResponse> {
@@ -905,12 +1297,20 @@ export class ModelVersionsService {
     }
 
     /**
-     * Update model version.
+     * Transition a stage.
      *
-     * Updates the model version.
+     * Transition to the next model stage.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async update(
+    async transitionStage(
+        request: model.TransitionModelVersionStage,
+        @context context?: Context
+    ): Promise<model.TransitionModelVersionStageResponse> {
+        return await this._transitionStage(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
         request: model.UpdateModelVersionRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -921,6 +1321,19 @@ export class ModelVersionsService {
             request,
             context
         )) as model.EmptyResponse;
+    }
+
+    /**
+     * Update model version.
+     *
+     * Updates the model version.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async update(
+        request: model.UpdateModelVersionRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._update(request, context);
     }
 }
 
@@ -940,6 +1353,21 @@ export class RegisteredModelsError extends ApiError {
 */
 export class RegisteredModelsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateRegisteredModelRequest,
+        @context context?: Context
+    ): Promise<model.CreateRegisteredModelResponse> {
+        const path = "/api/2.0/mlflow/registered-models/create";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.CreateRegisteredModelResponse;
+    }
+
     /**
      * Create a model.
      *
@@ -954,13 +1382,21 @@ export class RegisteredModelsService {
         request: model.CreateRegisteredModelRequest,
         @context context?: Context
     ): Promise<model.CreateRegisteredModelResponse> {
-        const path = "/api/2.0/mlflow/registered-models/create";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteRegisteredModelRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/registered-models/delete";
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.CreateRegisteredModelResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -973,7 +1409,15 @@ export class RegisteredModelsService {
         request: model.DeleteRegisteredModelRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/registered-models/delete";
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _deleteTag(
+        request: model.DeleteRegisteredModelTagRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/registered-models/delete-tag";
         return (await this.client.request(
             path,
             "DELETE",
@@ -992,22 +1436,11 @@ export class RegisteredModelsService {
         request: model.DeleteRegisteredModelTagRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/registered-models/delete-tag";
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._deleteTag(request, context);
     }
 
-    /**
-     * Get a model.
-     *
-     * Gets the registered model that matches the specified ID.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetRegisteredModelRequest,
         @context context?: Context
     ): Promise<model.GetRegisteredModelResponse> {
@@ -1021,12 +1454,20 @@ export class RegisteredModelsService {
     }
 
     /**
-     * Get the latest version.
+     * Get a model.
      *
-     * Gets the latest version of a registered model.
+     * Gets the registered model that matches the specified ID.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async getLatestVersions(
+    async get(
+        request: model.GetRegisteredModelRequest,
+        @context context?: Context
+    ): Promise<model.GetRegisteredModelResponse> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _getLatestVersions(
         request: model.GetLatestVersionsRequest,
         @context context?: Context
     ): Promise<model.GetLatestVersionsResponse> {
@@ -1040,13 +1481,24 @@ export class RegisteredModelsService {
     }
 
     /**
-     * List models.
+     * Get the latest version.
      *
-     * Lists all available registered models, up to the limit specified in
-     * __max_results__.
+     * Gets the latest version of a registered model.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async *getLatestVersions(
+        request: model.GetLatestVersionsRequest,
+        @context context?: Context
+    ): AsyncIterable<model.ModelVersion> {
+        const response = (await this._getLatestVersions(request, context))
+            .model_versions;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListRegisteredModelsRequest,
         @context context?: Context
     ): Promise<model.ListRegisteredModelsResponse> {
@@ -1060,12 +1512,45 @@ export class RegisteredModelsService {
     }
 
     /**
-     * Rename a model.
+     * List models.
      *
-     * Renames a registered model.
+     * Lists all available registered models, up to the limit specified in
+     * __max_results__.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async rename(
+    async *list(
+        request: model.ListRegisteredModelsRequest,
+        @context context?: Context
+    ): AsyncIterable<model.RegisteredModel> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (
+                !response.registered_models ||
+                response.registered_models.length === 0
+            ) {
+                break;
+            }
+
+            for (const v of response.registered_models) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _rename(
         request: model.RenameRegisteredModelRequest,
         @context context?: Context
     ): Promise<model.RenameRegisteredModelResponse> {
@@ -1079,12 +1564,20 @@ export class RegisteredModelsService {
     }
 
     /**
-     * Search models.
+     * Rename a model.
      *
-     * Search for registered models based on the specified __filter__.
+     * Renames a registered model.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async search(
+    async rename(
+        request: model.RenameRegisteredModelRequest,
+        @context context?: Context
+    ): Promise<model.RenameRegisteredModelResponse> {
+        return await this._rename(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _search(
         request: model.SearchRegisteredModelsRequest,
         @context context?: Context
     ): Promise<model.SearchRegisteredModelsResponse> {
@@ -1098,6 +1591,57 @@ export class RegisteredModelsService {
     }
 
     /**
+     * Search models.
+     *
+     * Search for registered models based on the specified __filter__.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *search(
+        request: model.SearchRegisteredModelsRequest,
+        @context context?: Context
+    ): AsyncIterable<model.RegisteredModel> {
+        while (true) {
+            const response = await this._search(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (
+                !response.registered_models ||
+                response.registered_models.length === 0
+            ) {
+                break;
+            }
+
+            for (const v of response.registered_models) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _setTag(
+        request: model.SetRegisteredModelTagRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/registered-models/set-tag";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
      * Set a tag.
      *
      * Sets a tag on a registered model.
@@ -1107,10 +1651,18 @@ export class RegisteredModelsService {
         request: model.SetRegisteredModelTagRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/registered-models/set-tag";
+        return await this._setTag(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateRegisteredModelRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/registered-models/update";
         return (await this.client.request(
             path,
-            "POST",
+            "PATCH",
             request,
             context
         )) as model.EmptyResponse;
@@ -1126,13 +1678,7 @@ export class RegisteredModelsService {
         request: model.UpdateRegisteredModelRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/registered-models/update";
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -1152,6 +1698,21 @@ export class RegistryWebhooksError extends ApiError {
 */
 export class RegistryWebhooksService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateRegistryWebhook,
+        @context context?: Context
+    ): Promise<model.CreateResponse> {
+        const path = "/api/2.0/mlflow/registry-webhooks/create";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.CreateResponse;
+    }
+
     /**
      * Create a webhook.
      *
@@ -1164,13 +1725,21 @@ export class RegistryWebhooksService {
         request: model.CreateRegistryWebhook,
         @context context?: Context
     ): Promise<model.CreateResponse> {
-        const path = "/api/2.0/mlflow/registry-webhooks/create";
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteRegistryWebhookRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/registry-webhooks/delete";
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.CreateResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1185,24 +1754,11 @@ export class RegistryWebhooksService {
         request: model.DeleteRegistryWebhookRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/registry-webhooks/delete";
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._delete(request, context);
     }
 
-    /**
-     * List registry webhooks.
-     *
-     * **NOTE:** This endpoint is in Public Preview.
-     *
-     * Lists all registry webhooks.
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    private async _list(
         request: model.ListRegistryWebhooksRequest,
         @context context?: Context
     ): Promise<model.ListRegistryWebhooks> {
@@ -1213,6 +1769,56 @@ export class RegistryWebhooksService {
             request,
             context
         )) as model.ListRegistryWebhooks;
+    }
+
+    /**
+     * List registry webhooks.
+     *
+     * **NOTE:** This endpoint is in Public Preview.
+     *
+     * Lists all registry webhooks.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async *list(
+        request: model.ListRegistryWebhooksRequest,
+        @context context?: Context
+    ): AsyncIterable<model.RegistryWebhook> {
+        while (true) {
+            const response = await this._list(request, context);
+            if (
+                context?.cancellationToken &&
+                context?.cancellationToken.isCancellationRequested
+            ) {
+                break;
+            }
+
+            if (!response.webhooks || response.webhooks.length === 0) {
+                break;
+            }
+
+            for (const v of response.webhooks) {
+                yield v;
+            }
+
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _test(
+        request: model.TestRegistryWebhookRequest,
+        @context context?: Context
+    ): Promise<model.TestRegistryWebhookResponse> {
+        const path = "/api/2.0/mlflow/registry-webhooks/test";
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.TestRegistryWebhookResponse;
     }
 
     /**
@@ -1227,13 +1833,21 @@ export class RegistryWebhooksService {
         request: model.TestRegistryWebhookRequest,
         @context context?: Context
     ): Promise<model.TestRegistryWebhookResponse> {
-        const path = "/api/2.0/mlflow/registry-webhooks/test";
+        return await this._test(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateRegistryWebhook,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const path = "/api/2.0/mlflow/registry-webhooks/update";
         return (await this.client.request(
             path,
-            "POST",
+            "PATCH",
             request,
             context
-        )) as model.TestRegistryWebhookResponse;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1248,13 +1862,7 @@ export class RegistryWebhooksService {
         request: model.UpdateRegistryWebhook,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = "/api/2.0/mlflow/registry-webhooks/update";
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._update(request, context);
     }
 }
 
@@ -1274,13 +1882,9 @@ export class TransitionRequestsError extends ApiError {
 */
 export class TransitionRequestsService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Approve transition requests.
-     *
-     * Approves a model version stage transition request.
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async approve(
+    private async _approve(
         request: model.ApproveTransitionRequest,
         @context context?: Context
     ): Promise<model.ApproveResponse> {
@@ -1294,12 +1898,20 @@ export class TransitionRequestsService {
     }
 
     /**
-     * Make a transition request.
+     * Approve transition requests.
      *
-     * Creates a model version stage transition request.
+     * Approves a model version stage transition request.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    async approve(
+        request: model.ApproveTransitionRequest,
+        @context context?: Context
+    ): Promise<model.ApproveResponse> {
+        return await this._approve(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
         request: model.CreateTransitionRequest,
         @context context?: Context
     ): Promise<model.CreateResponse> {
@@ -1313,12 +1925,20 @@ export class TransitionRequestsService {
     }
 
     /**
-     * Delete a ransition request.
+     * Make a transition request.
      *
-     * Cancels a model version stage transition request.
+     * Creates a model version stage transition request.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async delete(
+    async create(
+        request: model.CreateTransitionRequest,
+        @context context?: Context
+    ): Promise<model.CreateResponse> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
         request: model.DeleteTransitionRequestRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
@@ -1332,12 +1952,20 @@ export class TransitionRequestsService {
     }
 
     /**
-     * List transition requests.
+     * Delete a ransition request.
      *
-     * Gets a list of all open stage transition requests for the model version.
+     * Cancels a model version stage transition request.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(
+    async delete(
+        request: model.DeleteTransitionRequestRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
         request: model.ListTransitionRequestsRequest,
         @context context?: Context
     ): Promise<model.ListResponse> {
@@ -1351,12 +1979,23 @@ export class TransitionRequestsService {
     }
 
     /**
-     * Reject a transition request.
+     * List transition requests.
      *
-     * Rejects a model version stage transition request.
+     * Gets a list of all open stage transition requests for the model version.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async reject(
+    async *list(
+        request: model.ListTransitionRequestsRequest,
+        @context context?: Context
+    ): AsyncIterable<model.Activity> {
+        const response = (await this._list(request, context)).requests;
+        for (const v of response || []) {
+            yield v;
+        }
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _reject(
         request: model.RejectTransitionRequest,
         @context context?: Context
     ): Promise<model.RejectResponse> {
@@ -1367,5 +2006,18 @@ export class TransitionRequestsService {
             request,
             context
         )) as model.RejectResponse;
+    }
+
+    /**
+     * Reject a transition request.
+     *
+     * Rejects a model version stage transition request.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async reject(
+        request: model.RejectTransitionRequest,
+        @context context?: Context
+    ): Promise<model.RejectResponse> {
+        return await this._reject(request, context);
     }
 }

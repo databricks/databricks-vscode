@@ -13,10 +13,8 @@ export class ClusterCommands {
     /**
      * Refresh cluster tree view by reloading them throug the API
      */
-    refreshCommand() {
-        return () => {
-            this.clusterModel.refresh();
-        };
+    async refreshCommand() {
+        this.clusterModel.refresh();
     }
 
     /**

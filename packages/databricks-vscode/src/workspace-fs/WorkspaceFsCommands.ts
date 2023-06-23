@@ -1,4 +1,5 @@
 import {
+    ApiError,
     WorkspaceFsDir,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
@@ -7,24 +8,49 @@ import {context, Context} from "@databricks/databricks-sdk/dist/context";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {RemoteUri, REPO_NAME_SUFFIX} from "../configuration/SyncDestination";
+import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
 import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
+import path from "node:path";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
 export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
     constructor(
         private _workspaceFolder: Uri,
+        private readonly _workspaceState: WorkspaceStateManager,
         private _connectionManager: ConnectionManager,
         private _workspaceFsDataProvider: WorkspaceFsDataProvider
-    ) {}
+    ) {
+        this.disposables.push(
+            this._connectionManager.onDidChangeState(async (state) => {
+                if (
+                    state !== "CONNECTED" ||
+                    !workspaceConfigs.enableFilesInWorkspace ||
+                    this._connectionManager.syncDestinationMapper !== undefined
+                ) {
+                    return;
+                }
 
-    async attachSyncDestination(element: WorkspaceFsEntity) {
-        await this._connectionManager.attachSyncDestination(
-            new RemoteUri(element.path)
+                const root = await this.getValidRoot(
+                    this._connectionManager.databricksWorkspace?.currentFsRoot
+                        .path
+                );
+
+                const element = await root?.mkdir(
+                    `${path.basename(
+                        this._workspaceFolder.fsPath
+                    )}-${this._workspaceState.fixedUUID.slice(0, 8)}`
+                );
+                if (element) {
+                    await this._connectionManager.attachSyncDestination(
+                        new RemoteUri(element.path)
+                    );
+                }
+            })
         );
     }
 
@@ -94,22 +120,31 @@ export class WorkspaceFsCommands implements Disposable {
         let created: WorkspaceFsEntity | undefined;
 
         if (inputPath !== undefined) {
-            if (!workspaceConfigs.enableFilesInWorkspace) {
-                created = await this.createRepo(
-                    rootPath + "/" + inputPath + REPO_NAME_SUFFIX
-                );
-            } else if (root) {
-                created = await root.mkdir(inputPath);
-            }
-            if (created === undefined) {
-                window.showErrorMessage(`Can't create directory ${inputPath}`);
+            try {
+                if (!workspaceConfigs.enableFilesInWorkspace) {
+                    created = await this.createRepo(
+                        rootPath + "/" + inputPath + REPO_NAME_SUFFIX
+                    );
+                } else if (root) {
+                    created = await root.mkdir(inputPath);
+                }
+            } catch (e: unknown) {
+                if (e instanceof ApiError) {
+                    window.showErrorMessage(
+                        `Can't create directory ${inputPath}: ${e.message}`
+                    );
+                    return;
+                }
             }
         }
 
-        if (created) {
-            this._workspaceFsDataProvider.refresh();
-            return created;
+        if (created === undefined) {
+            window.showErrorMessage(`Can't create directory ${inputPath}`);
+            return;
         }
+
+        this._workspaceFsDataProvider.refresh();
+        return created;
     }
 
     private async createRepo(repoPath: string) {

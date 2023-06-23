@@ -1,12 +1,18 @@
 import {Provider} from "../types";
-import {RequestVisitor, Headers} from "./Config";
+import {RequestVisitor} from "./Config";
+import {Headers} from "../fetch";
 
 export type TokenProvider = Provider<Token>;
+
+// expiryDelta determines how earlier a token should be considered
+// expired than its actual expiration time. It is used to avoid late
+// expirations due to client-server time mismatches.
+const expiryDelta = 10 * 1000;
 
 export class Token {
     readonly accessToken: string;
     readonly refreshToken: string | undefined;
-    readonly expiry: number;
+    readonly expiry: number; // milliseconds since epoch
 
     constructor(options: {
         accessToken: string;
@@ -19,7 +25,7 @@ export class Token {
     }
 
     public isValid(): boolean {
-        return this.expiry === 0 || this.expiry > Date.now() + 10_000;
+        return this.expiry === 0 || this.expiry > Date.now() + expiryDelta;
     }
 }
 

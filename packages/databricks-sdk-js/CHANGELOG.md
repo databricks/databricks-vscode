@@ -1,3 +1,100 @@
+# Release: v0.3.15
+
+## packages/databricks-sdk-js
+
+## <small>0.3.15 (2023-06-14)</small>
+
+-   Downgrade typescript to 5.0.0
+-   Reimplement subset of fetch required for the SDK
+-   Implement OAuth M2M
+
+# Release: v0.3.14
+
+## packages/databricks-sdk-js
+
+## <small>0.3.14 (2023-06-02)</small>
+
+-   SDK: Implement pagination
+-   SDK: Port error handling code from GO SDK
+-   Bump @types/node from 18.16.4 to 20.0.0
+-   Bump dependencies
+-   DB Connect Unified Auth Support
+-   Rename bricks to databricks
+
+# Release: v0.3.13
+
+## packages/databricks-sdk-js
+
+## <small>0.3.13 (2023-05-09)</small>
+
+# Release: v0.3.12
+
+## packages/databricks-sdk-js
+
+## <small>0.3.12 (2023-05-03)</small>
+
+# Release: v0.3.11
+
+## packages/databricks-sdk-js
+
+## <small>0.3.11 (2023-04-25)</small>
+
+# Release: v0.3.10
+
+## packages/databricks-sdk-js
+
+## <small>0.3.10 (2023-04-20)</small>
+
+# Release: v0.3.9
+
+## packages/databricks-sdk-js
+
+## <small>0.3.9 (2023-04-19)</small>
+
+# Release: v0.3.8
+
+## packages/databricks-sdk-js
+
+## <small>0.3.8 (2023-04-17)</small>
+
+-   Feature: Add detection for Unity Catalogue to Clusters service.
+-   Feature: Add metadata service client and server as credential provider.
+-   Feature: Add credential provider to support OAuth through Databricks CLI.
+-   Feature: Use waiter to handle long running calls.
+
+# Release: v0.3.7
+
+## packages/databricks-sdk-js
+
+## <small>0.3.7 (2023-03-21)</small>
+
+-   Fix: Fix error handling for api client errors.
+
+# Release: v0.3.5
+
+## packages/databricks-sdk-js
+
+## <small>0.3.5 (2023-03-17)</small>
+
+-   Feature: Updated SDK to use latest OpenAPI spec, which adds support for SQL execution and model serving APIs.
+-   Feature: Added support for file creation to Workspace service.
+
+# Release: v0.3.4
+
+## packages/databricks-sdk-js
+
+## <small>0.3.4 (2023-03-10)</small>
+
+-   Feature: Add support for authenticating against Azure China and Azure GovCloud using the `az` CLI
+
+# Release: v0.3.3
+
+## packages/databricks-sdk-js
+
+## <small>0.3.3 (2023-03-06)</small>
+
+-   Fix: Fix log redaction for objects with circular references.
+
 # Release: v0.3.2
 
 ## packages/databricks-sdk-js

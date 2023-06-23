@@ -46,7 +46,7 @@ Once you have your project configured you can sync your local code to the repo a
 
 1. Create python file
 2. Add PySpark code to the python file.
-3. Click the "Run" icon in the tab bar and select "Run File on Databricks"
+3. Click the "Run" icon in the tab bar and select "Upload and Run File on Databricks"
 
 This will start the code synchronization and run the active python file on the configured cluster. The result is printed in the "debug" output panel.
 
@@ -75,7 +75,7 @@ This extension contributes the following settings:
 -   `databricks.logs.maxArrayLength`: The maximum number of items to show for array fields
 -   `databricks.logs.enabled`: Enable/disable logging. Reload window for changes to take effect
 -   `databricks.clusters.onlyShowAccessibleClusters`: Only show clusters that the user has access to
--   `databricks.bricks.verboseMode`: Show debug logs for the sync command
+-   `databricks.cli.verboseMode`: Show debug logs for the sync command
 
 ## <a id="commands"></a>`Databricks:` Commands
 
@@ -94,7 +94,7 @@ palette_, available by selecting _View > Command Palette_ or by typing
 | `Databricks: Start synchronization`              | Start synchronizing local code to the Databricks workspace. This command performs an incremental sync.                               |
 | `Databricks: Start synchronization (full sync)`  | Start synchronizing local code to the Databricks workspace. This command performs full sync even if an incremental sync is possible. |
 | `Databricks: Stop synchronization`               | Stop sync process.                                                                                                                   |
-| `Databricks: Run File on Databricks`             | Runs the selected Python file on the configured Databricks cluster                                                                   |
+| `Databricks: Upload and Run File on Databricks`  | Runs the selected Python file on the configured Databricks cluster                                                                   |
 | `Databricks: Run File as Workflow on Databricks` | Runs the selected Python file as a Workflow in the configured Databricks cluster                                                     |
 | `Databricks: Show Quickstart`                    | Show the Quickstart panel                                                                                                            |
 | `Databricks: Open Databricks configuration file` | Opens the Databricks configuration file for the current project                                                                      |

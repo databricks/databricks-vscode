@@ -10,6 +10,7 @@ import {CancellationToken} from "../../types";
 import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
+import {Waiter, asWaiter} from "../../wait";
 
 export class CredentialsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -31,6 +32,27 @@ export class CredentialsError extends ApiError {
  */
 export class CredentialsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateCredentialRequest,
+        @context context?: Context
+    ): Promise<model.Credential> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/credentials`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.Credential;
+    }
+
     /**
      * Create credential configuration.
      *
@@ -54,13 +76,27 @@ export class CredentialsService {
         request: model.CreateCredentialRequest,
         @context context?: Context
     ): Promise<model.Credential> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/credentials`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteCredentialRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/credentials/${request.credentials_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.Credential;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -75,13 +111,27 @@ export class CredentialsService {
         request: model.DeleteCredentialRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/credentials/${request.credentials_id}`;
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetCredentialRequest,
+        @context context?: Context
+    ): Promise<model.Credential> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/credentials/${request.credentials_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.Credential;
     }
 
     /**
@@ -95,13 +145,26 @@ export class CredentialsService {
         request: model.GetCredentialRequest,
         @context context?: Context
     ): Promise<model.Credential> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/credentials/${request.credentials_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.Credential>> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/credentials`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.Credential;
+        )) as Array<model.Credential>;
     }
 
     /**
@@ -112,13 +175,7 @@ export class CredentialsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(@context context?: Context): Promise<Array<model.Credential>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/credentials`;
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as Array<model.Credential>;
+        return await this._list(context);
     }
 }
 
@@ -149,10 +206,31 @@ export class EncryptionKeysError extends ApiError {
  * version of the platform. Updating a running workspace with workspace storage
  * encryption requires that the workspace is on the E2 version of the platform.
  * If you have an older workspace, it might not be on the E2 version of the
- * platform. If you are not sure, contact your Databricks reprsentative.
+ * platform. If you are not sure, contact your Databricks representative.
  */
 export class EncryptionKeysService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateCustomerManagedKeyRequest,
+        @context context?: Context
+    ): Promise<model.CustomerManagedKey> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/customer-managed-keys`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.CustomerManagedKey;
+    }
+
     /**
      * Create encryption key configuration.
      *
@@ -178,13 +256,27 @@ export class EncryptionKeysService {
         request: model.CreateCustomerManagedKeyRequest,
         @context context?: Context
     ): Promise<model.CustomerManagedKey> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteEncryptionKeyRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.CustomerManagedKey;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -198,13 +290,27 @@ export class EncryptionKeysService {
         request: model.DeleteEncryptionKeyRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetEncryptionKeyRequest,
+        @context context?: Context
+    ): Promise<model.CustomerManagedKey> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.CustomerManagedKey;
     }
 
     /**
@@ -231,13 +337,26 @@ export class EncryptionKeysService {
         request: model.GetEncryptionKeyRequest,
         @context context?: Context
     ): Promise<model.CustomerManagedKey> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys/${request.customer_managed_key_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.CustomerManagedKey>> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/customer-managed-keys`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.CustomerManagedKey;
+        )) as Array<model.CustomerManagedKey>;
     }
 
     /**
@@ -261,13 +380,7 @@ export class EncryptionKeysService {
     async list(
         @context context?: Context
     ): Promise<Array<model.CustomerManagedKey>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/customer-managed-keys`;
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as Array<model.CustomerManagedKey>;
+        return await this._list(context);
     }
 }
 
@@ -284,43 +397,23 @@ export class NetworksError extends ApiError {
 
 /**
  * These APIs manage network configurations for customer-managed VPCs (optional).
- * A network configuration encapsulates the IDs for AWS VPCs, subnets, and
- * security groups. Its ID is used when creating a new workspace if you use
- * customer-managed VPCs.
+ * Its ID is used when creating a new workspace if you use customer-managed VPCs.
  */
 export class NetworksService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create network configuration.
-     *
-     * Creates a Databricks network configuration that represents an AWS VPC and
-     * its resources. The VPC will be used for new Databricks clusters. This
-     * requires a pre-existing VPC and subnets. For VPC requirements, see
-     * [Customer-managed VPC].
-     *
-     * **Important**: You can share one customer-managed VPC with multiple
-     * workspaces in a single account. Therefore, you can share one VPC across
-     * multiple Account API network configurations. However, you **cannot** reuse
-     * subnets or Security Groups between workspaces. Because a Databricks
-     * Account API network configuration encapsulates this information, you
-     * cannot reuse a Databricks Account API network configuration across
-     * workspaces. If you plan to share one VPC with multiple workspaces, make
-     * sure you size your VPC and subnets accordingly. For information about how
-     * to create a new workspace with this API, see [Create a new workspace using
-     * the Account API].
-     *
-     * This operation is available only if your account is on the E2 version of
-     * the platform.
-     *
-     * [Create a new workspace using the Account API]: http://docs.databricks.com/administration-guide/account-api/new-workspace.html
-     * [Customer-managed VPC]: http://docs.databricks.com/administration-guide/cloud-configurations/aws/customer-managed-vpc.html
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateNetworkRequest,
         @context context?: Context
     ): Promise<model.Network> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/networks`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/networks`;
         return (await this.client.request(
             path,
             "POST",
@@ -330,9 +423,44 @@ export class NetworksService {
     }
 
     /**
-     * Delete network configuration.
+     * Create network configuration.
      *
-     * Deletes a Databricks network configuration, which represents an AWS VPC
+     * Creates a Databricks network configuration that represents an VPC and its
+     * resources. The VPC will be used for new Databricks clusters. This requires
+     * a pre-existing VPC and subnets.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async create(
+        request: model.CreateNetworkRequest,
+        @context context?: Context
+    ): Promise<model.Network> {
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteNetworkRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/networks/${request.network_id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
+    /**
+     * Delete a network configuration.
+     *
+     * Deletes a Databricks network configuration, which represents a cloud VPC
      * and its resources. You cannot delete a network that is associated with a
      * workspace.
      *
@@ -344,39 +472,60 @@ export class NetworksService {
         request: model.DeleteNetworkRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/networks/${request.network_id}`;
-        return (await this.client.request(
-            path,
-            "DELETE",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._delete(request, context);
     }
 
-    /**
-     * Get a network configuration.
-     *
-     * Gets a Databricks network configuration, which represents an AWS VPC and
-     * its resources. This requires a pre-existing VPC and subnets. For VPC
-     * requirements, see [Customer-managed VPC].
-     *
-     * This operation is available only if your account is on the E2 version of
-     * the platform.
-     *
-     * [Customer-managed VPC]: http://docs.databricks.com/administration-guide/cloud-configurations/aws/customer-managed-vpc.html
-     */
     @withLogContext(ExposedLoggers.SDK)
-    async get(
+    private async _get(
         request: model.GetNetworkRequest,
         @context context?: Context
     ): Promise<model.Network> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/networks/${request.network_id}`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/networks/${request.network_id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
         )) as model.Network;
+    }
+
+    /**
+     * Get a network configuration.
+     *
+     * Gets a Databricks network configuration, which represents a cloud VPC and
+     * its resources.
+     */
+    @withLogContext(ExposedLoggers.SDK)
+    async get(
+        request: model.GetNetworkRequest,
+        @context context?: Context
+    ): Promise<model.Network> {
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.Network>> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/networks`;
+        return (await this.client.request(
+            path,
+            "GET",
+            undefined,
+            context
+        )) as Array<model.Network>;
     }
 
     /**
@@ -390,13 +539,7 @@ export class NetworksService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(@context context?: Context): Promise<Array<model.Network>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/networks`;
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as Array<model.Network>;
+        return await this._list(context);
     }
 }
 
@@ -424,6 +567,27 @@ export class PrivateAccessError extends ApiError {
  */
 export class PrivateAccessService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.UpsertPrivateAccessSettingsRequest,
+        @context context?: Context
+    ): Promise<model.PrivateAccessSettings> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.PrivateAccessSettings;
+    }
+
     /**
      * Create private access settings.
      *
@@ -440,11 +604,6 @@ export class PrivateAccessService {
      * Before configuring PrivateLink, read the [Databricks article about
      * PrivateLink].
      *
-     * This operation is available only if your account is on the E2 version of
-     * the platform and your Databricks account is enabled for PrivateLink
-     * (Public Preview). Contact your Databricks representative to enable your
-     * account for PrivateLink.
-     *
      * [AWS PrivateLink]: https://aws.amazon.com/privatelink
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
      */
@@ -453,13 +612,27 @@ export class PrivateAccessService {
         request: model.UpsertPrivateAccessSettingsRequest,
         @context context?: Context
     ): Promise<model.PrivateAccessSettings> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeletePrivateAccesRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings/${request.private_access_settings_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.PrivateAccessSettings;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -471,11 +644,6 @@ export class PrivateAccessService {
      * Before configuring PrivateLink, read the [Databricks article about
      * PrivateLink].
      *
-     * This operation is available only if your account is on the E2 version of
-     * the platform and your Databricks account is enabled for PrivateLink
-     * (Public Preview). Contact your Databricks representative to enable your
-     * account for PrivateLink.
-     *
      * [AWS PrivateLink]: https://aws.amazon.com/privatelink
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
      */
@@ -484,13 +652,27 @@ export class PrivateAccessService {
         request: model.DeletePrivateAccesRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetPrivateAccesRequest,
+        @context context?: Context
+    ): Promise<model.PrivateAccessSettings> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings/${request.private_access_settings_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.PrivateAccessSettings;
     }
 
     /**
@@ -502,11 +684,6 @@ export class PrivateAccessService {
      * Before configuring PrivateLink, read the [Databricks article about
      * PrivateLink].
      *
-     * This operation is available only if your account is on the E2 version of
-     * the platform and your Databricks account is enabled for PrivateLink
-     * (Public Preview). Contact your Databricks representative to enable your
-     * account for PrivateLink.
-     *
      * [AWS PrivateLink]: https://aws.amazon.com/privatelink
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
      */
@@ -515,13 +692,26 @@ export class PrivateAccessService {
         request: model.GetPrivateAccesRequest,
         @context context?: Context
     ): Promise<model.PrivateAccessSettings> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.PrivateAccessSettings>> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.PrivateAccessSettings;
+        )) as Array<model.PrivateAccessSettings>;
     }
 
     /**
@@ -529,23 +719,32 @@ export class PrivateAccessService {
      *
      * Gets a list of all private access settings objects for an account,
      * specified by ID.
-     *
-     * This operation is available only if your account is on the E2 version of
-     * the platform and your Databricks account is enabled for AWS PrivateLink
-     * (Public Preview). Contact your Databricks representative to enable your
-     * account for PrivateLink.
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(
         @context context?: Context
     ): Promise<Array<model.PrivateAccessSettings>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings`;
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _replace(
+        request: model.UpsertPrivateAccessSettingsRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/private-access-settings/${request.private_access_settings_id}`;
         return (await this.client.request(
             path,
-            "GET",
-            undefined,
+            "PUT",
+            request,
             context
-        )) as Array<model.PrivateAccessSettings>;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -561,18 +760,15 @@ export class PrivateAccessService {
      * access settings are affected by any change. If `public_access_enabled`,
      * `private_access_level`, or `allowed_vpc_endpoint_ids` are updated, effects
      * of these changes might take several minutes to propagate to the workspace
-     * API. You can share one private access settings object with multiple
-     * workspaces in a single account. However, private access settings are
-     * specific to AWS regions, so only workspaces in the same AWS region can use
-     * a given private access settings object.
+     * API.
+     *
+     * You can share one private access settings object with multiple workspaces
+     * in a single account. However, private access settings are specific to AWS
+     * regions, so only workspaces in the same AWS region can use a given private
+     * access settings object.
      *
      * Before configuring PrivateLink, read the [Databricks article about
      * PrivateLink].
-     *
-     * This operation is available only if your account is on the E2 version of
-     * the platform and your Databricks account is enabled for PrivateLink
-     * (Public Preview). Contact your Databricks representative to enable your
-     * account for PrivateLink.
      *
      * [AWS PrivateLink]: https://aws.amazon.com/privatelink
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
@@ -582,13 +778,7 @@ export class PrivateAccessService {
         request: model.UpsertPrivateAccessSettingsRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/private-access-settings/${request.private_access_settings_id}`;
-        return (await this.client.request(
-            path,
-            "PUT",
-            request,
-            context
-        )) as model.EmptyResponse;
+        return await this._replace(request, context);
     }
 }
 
@@ -613,6 +803,27 @@ export class StorageError extends ApiError {
  */
 export class StorageService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateStorageConfigurationRequest,
+        @context context?: Context
+    ): Promise<model.StorageConfiguration> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/storage-configurations`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.StorageConfiguration;
+    }
+
     /**
      * Create new storage configuration.
      *
@@ -632,13 +843,27 @@ export class StorageService {
         request: model.CreateStorageConfigurationRequest,
         @context context?: Context
     ): Promise<model.StorageConfiguration> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteStorageRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/storage-configurations/${request.storage_configuration_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.StorageConfiguration;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -652,13 +877,27 @@ export class StorageService {
         request: model.DeleteStorageRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations/${request.storage_configuration_id}`;
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetStorageRequest,
+        @context context?: Context
+    ): Promise<model.StorageConfiguration> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/storage-configurations/${request.storage_configuration_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.StorageConfiguration;
     }
 
     /**
@@ -672,13 +911,26 @@ export class StorageService {
         request: model.GetStorageRequest,
         @context context?: Context
     ): Promise<model.StorageConfiguration> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations/${request.storage_configuration_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.StorageConfiguration>> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/storage-configurations`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.StorageConfiguration;
+        )) as Array<model.StorageConfiguration>;
     }
 
     /**
@@ -691,13 +943,7 @@ export class StorageService {
     async list(
         @context context?: Context
     ): Promise<Array<model.StorageConfiguration>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/storage-configurations`;
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as Array<model.StorageConfiguration>;
+        return await this._list(context);
     }
 }
 
@@ -726,6 +972,27 @@ export class VpcEndpointsError extends ApiError {
  */
 export class VpcEndpointsService {
     constructor(readonly client: ApiClient) {}
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _create(
+        request: model.CreateVpcEndpointRequest,
+        @context context?: Context
+    ): Promise<model.VpcEndpoint> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/vpc-endpoints`;
+        return (await this.client.request(
+            path,
+            "POST",
+            request,
+            context
+        )) as model.VpcEndpoint;
+    }
+
     /**
      * Create VPC endpoint configuration.
      *
@@ -733,27 +1000,11 @@ export class VpcEndpointsService {
      * object in AWS used to communicate privately with Databricks over [AWS
      * PrivateLink].
      *
-     * **Important**: When you register a VPC endpoint to the Databricks
-     * workspace VPC endpoint service for any workspace, **in this release
-     * Databricks enables front-end (web application and REST API) access from
-     * the source network of the VPC endpoint to all workspaces in that AWS
-     * region in your Databricks account if the workspaces have any PrivateLink
-     * connections in their workspace configuration**. If you have questions
-     * about this behavior, contact your Databricks representative.
-     *
-     * Within AWS, your VPC endpoint stays in `pendingAcceptance` state until you
-     * register it in a VPC endpoint configuration through the Account API. After
-     * you register the VPC endpoint configuration, the Databricks [endpoint
-     * service] automatically accepts the VPC endpoint and it eventually
-     * transitions to the `available` state.
+     * After you create the VPC endpoint configuration, the Databricks [endpoint
+     * service] automatically accepts the VPC endpoint.
      *
      * Before configuring PrivateLink, read the [Databricks article about
      * PrivateLink].
-     *
-     * This operation is available only if your account is on the E2 version of
-     * the platform and your Databricks account is enabled for PrivateLink
-     * (Public Preview). Contact your Databricks representative to enable your
-     * account for PrivateLink.
      *
      * [AWS PrivateLink]: https://aws.amazon.com/privatelink
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
@@ -765,13 +1016,27 @@ export class VpcEndpointsService {
         request: model.CreateVpcEndpointRequest,
         @context context?: Context
     ): Promise<model.VpcEndpoint> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints`;
+        return await this._create(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteVpcEndpointRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
         return (await this.client.request(
             path,
-            "POST",
+            "DELETE",
             request,
             context
-        )) as model.VpcEndpoint;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -788,11 +1053,6 @@ export class VpcEndpointsService {
      * Before configuring PrivateLink, read the [Databricks article about
      * PrivateLink].
      *
-     * This operation is available only if your account is on the E2 version of
-     * the platform and your Databricks account is enabled for PrivateLink
-     * (Public Preview). Contact your Databricks representative to enable your
-     * account for PrivateLink.
-     *
      * [AWS PrivateLink]: https://aws.amazon.com/privatelink
      * [AWS VPC endpoint]: https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
@@ -802,13 +1062,27 @@ export class VpcEndpointsService {
         request: model.DeleteVpcEndpointRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetVpcEndpointRequest,
+        @context context?: Context
+    ): Promise<model.VpcEndpoint> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.VpcEndpoint;
     }
 
     /**
@@ -818,11 +1092,6 @@ export class VpcEndpointsService {
      * object in AWS used to communicate privately with Databricks over [AWS
      * PrivateLink].
      *
-     * This operation is available only if your account is on the E2 version of
-     * the platform and your Databricks account is enabled for PrivateLink
-     * (Public Preview). Contact your Databricks representative to enable your
-     * account for PrivateLink.
-     *
      * [AWS PrivateLink]: https://aws.amazon.com/privatelink
      * [VPC endpoint]: https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html
      */
@@ -831,13 +1100,26 @@ export class VpcEndpointsService {
         request: model.GetVpcEndpointRequest,
         @context context?: Context
     ): Promise<model.VpcEndpoint> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints/${request.vpc_endpoint_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.VpcEndpoint>> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/vpc-endpoints`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.VpcEndpoint;
+        )) as Array<model.VpcEndpoint>;
     }
 
     /**
@@ -848,22 +1130,11 @@ export class VpcEndpointsService {
      * Before configuring PrivateLink, read the [Databricks article about
      * PrivateLink].
      *
-     * This operation is available only if your account is on the E2 version of
-     * the platform and your Databricks account is enabled for PrivateLink
-     * (Public Preview). Contact your Databricks representative to enable your
-     * account for PrivateLink.
-     *
      * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(@context context?: Context): Promise<Array<model.VpcEndpoint>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/vpc-endpoints`;
-        return (await this.client.request(
-            path,
-            "GET",
-            undefined,
-            context
-        )) as Array<model.VpcEndpoint>;
+        return await this._list(context);
     }
 }
 
@@ -890,51 +1161,19 @@ export class WorkspacesError extends ApiError {
  */
 export class WorkspacesService {
     constructor(readonly client: ApiClient) {}
-    /**
-     * Create a new workspace.
-     *
-     * Creates a new workspace using a credential configuration and a storage
-     * configuration, an optional network configuration (if using a
-     * customer-managed VPC), an optional managed services key configuration (if
-     * using customer-managed keys for managed services), and an optional storage
-     * key configuration (if using customer-managed keys for storage). The key
-     * configurations used for managed services and storage encryption can be the
-     * same or different.
-     *
-     * **Important**: This operation is asynchronous. A response with HTTP status
-     * code 200 means the request has been accepted and is in progress, but does
-     * not mean that the workspace deployed successfully and is running. The
-     * initial workspace status is typically `PROVISIONING`. Use the workspace ID
-     * (`workspace_id`) field in the response to identify the new workspace and
-     * make repeated `GET` requests with the workspace ID and check its status.
-     * The workspace becomes available when the status changes to `RUNNING`.
-     *
-     * You can share one customer-managed VPC with multiple workspaces in a
-     * single account. It is not required to create a new VPC for each workspace.
-     * However, you **cannot** reuse subnets or Security Groups between
-     * workspaces. If you plan to share one VPC with multiple workspaces, make
-     * sure you size your VPC and subnets accordingly. Because a Databricks
-     * Account API network configuration encapsulates this information, you
-     * cannot reuse a Databricks Account API network configuration across
-     * workspaces.\nFor information about how to create a new workspace with this
-     * API **including error handling**, see [Create a new workspace using the
-     * Account API].
-     *
-     * **Important**: Customer-managed VPCs, PrivateLink, and customer-managed
-     * keys are supported on a limited set of deployment and subscription types.
-     * If you have questions about availability, contact your Databricks
-     * representative.\n\nThis operation is available only if your account is on
-     * the E2 version of the platform or on a select custom plan that allows
-     * multiple workspaces per account.
-     *
-     * [Create a new workspace using the Account API]: http://docs.databricks.com/administration-guide/account-api/new-workspace.html
-     */
+
     @withLogContext(ExposedLoggers.SDK)
-    async create(
+    private async _create(
         request: model.CreateWorkspaceRequest,
         @context context?: Context
     ): Promise<model.Workspace> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces`;
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces`;
         return (await this.client.request(
             path,
             "POST",
@@ -944,76 +1183,104 @@ export class WorkspacesService {
     }
 
     /**
-     * create and wait to reach RUNNING state
-     *  or fail on reaching BANNED or FAILED state
+     * Create a new workspace.
+     *
+     * Creates a new workspace.
+     *
+     * **Important**: This operation is asynchronous. A response with HTTP status
+     * code 200 means the request has been accepted and is in progress, but does
+     * not mean that the workspace deployed successfully and is running. The
+     * initial workspace status is typically `PROVISIONING`. Use the workspace ID
+     * (`workspace_id`) field in the response to identify the new workspace and
+     * make repeated `GET` requests with the workspace ID and check its status.
+     * The workspace becomes available when the status changes to `RUNNING`.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async createAndWait(
+    async create(
         createWorkspaceRequest: model.CreateWorkspaceRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (newPollResponse: model.Workspace) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.Workspace> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.Workspace, model.Workspace>> {
         const cancellationToken = context?.cancellationToken;
 
-        const workspace = await this.create(createWorkspaceRequest, context);
+        const workspace = await this._create(createWorkspaceRequest, context);
 
-        return await retry<model.Workspace>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        workspace_id: workspace.workspace_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "Workspaces.createAndWait: cancelled"
+        return asWaiter(workspace, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.Workspace>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            workspace_id: workspace.workspace_id!,
+                        },
+                        context
                     );
-                    throw new WorkspacesError("createAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.workspace_status;
-                const statusMessage = pollResponse.workspace_status_message;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "BANNED":
-                    case "FAILED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Workspaces.createAndWait: ${errorMessage}`
+                            "Workspaces.createAndWait: cancelled"
                         );
-                        throw new WorkspacesError(
-                            "createAndWait",
-                            errorMessage
-                        );
+                        throw new WorkspacesError("createAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Workspaces.createAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new WorkspacesRetriableError(
-                            "createAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.workspace_status;
+                    const statusMessage = pollResponse.workspace_status_message;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "BANNED":
+                        case "FAILED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Workspaces.createAndWait: ${errorMessage}`
+                            );
+                            throw new WorkspacesError(
+                                "createAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Workspaces.createAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WorkspacesRetriableError(
+                                "createAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 
+    @withLogContext(ExposedLoggers.SDK)
+    private async _delete(
+        request: model.DeleteWorkspaceRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}`;
+        return (await this.client.request(
+            path,
+            "DELETE",
+            request,
+            context
+        )) as model.EmptyResponse;
+    }
+
     /**
-     * Delete workspace.
+     * Delete a workspace.
      *
      * Terminates and deletes a Databricks workspace. From an API perspective,
      * deletion is immediate. However, it might take a few minutes for all
@@ -1029,17 +1296,31 @@ export class WorkspacesService {
         request: model.DeleteWorkspaceRequest,
         @context context?: Context
     ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
+        return await this._delete(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _get(
+        request: model.GetWorkspaceRequest,
+        @context context?: Context
+    ): Promise<model.Workspace> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}`;
         return (await this.client.request(
             path,
-            "DELETE",
+            "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as model.Workspace;
     }
 
     /**
-     * Get workspace.
+     * Get a workspace.
      *
      * Gets information including status for a Databricks workspace, specified by
      * ID. In the response, the `workspace_status` field indicates the current
@@ -1062,13 +1343,26 @@ export class WorkspacesService {
         request: model.GetWorkspaceRequest,
         @context context?: Context
     ): Promise<model.Workspace> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
+        return await this._get(request, context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _list(
+        @context context?: Context
+    ): Promise<Array<model.Workspace>> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces`;
         return (await this.client.request(
             path,
             "GET",
-            request,
+            undefined,
             context
-        )) as model.Workspace;
+        )) as Array<model.Workspace>;
     }
 
     /**
@@ -1082,13 +1376,27 @@ export class WorkspacesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async list(@context context?: Context): Promise<Array<model.Workspace>> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces`;
+        return await this._list(context);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    private async _update(
+        request: model.UpdateWorkspaceRequest,
+        @context context?: Context
+    ): Promise<model.EmptyResponse> {
+        const config = this.client.config;
+        await config.ensureResolved();
+        if (!config.accountId || !config.isAccountClient()) {
+            throw new Error("invalid Databricks Account configuration");
+        }
+
+        const path = `/api/2.0/accounts/${config.accountId}/workspaces/${request.workspace_id}`;
         return (await this.client.request(
             path,
-            "GET",
-            undefined,
+            "PATCH",
+            request,
             context
-        )) as Array<model.Workspace>;
+        )) as model.EmptyResponse;
     }
 
     /**
@@ -1102,15 +1410,25 @@ export class WorkspacesService {
      * configuration for failed workspace deployment for some fields, but not all
      * fields. For a failed workspace, this request supports updates to the
      * following fields only: - Credential configuration ID - Storage
-     * configuration ID - Network configuration ID. Used only if you use
-     * customer-managed VPC. - Key configuration ID for managed services (control
-     * plane storage, such as notebook source and Databricks SQL queries). Used
-     * only if you use customer-managed keys for managed services. - Key
-     * configuration ID for workspace storage (root S3 bucket and, optionally,
-     * EBS volumes). Used only if you use customer-managed keys for workspace
-     * storage. **Important**: If the workspace was ever in the running state,
-     * even if briefly before becoming a failed workspace, you cannot add a new
-     * key configuration ID for workspace storage.
+     * configuration ID - Network configuration ID. Used only to add or change a
+     * network configuration for a customer-managed VPC. For a failed workspace
+     * only, you can convert a workspace with Databricks-managed VPC to use a
+     * customer-managed VPC by adding this ID. You cannot downgrade a workspace
+     * with a customer-managed VPC to be a Databricks-managed VPC. You can update
+     * the network configuration for a failed or running workspace to add
+     * PrivateLink support, though you must also add a private access settings
+     * object. - Key configuration ID for managed services (control plane
+     * storage, such as notebook source and Databricks SQL queries). Used only if
+     * you use customer-managed keys for managed services. - Key configuration ID
+     * for workspace storage (root S3 bucket and, optionally, EBS volumes). Used
+     * only if you use customer-managed keys for workspace storage.
+     * **Important**: If the workspace was ever in the running state, even if
+     * briefly before becoming a failed workspace, you cannot add a new key
+     * configuration ID for workspace storage. - Private access settings ID to
+     * add PrivateLink support. You can add or update the private access settings
+     * ID to upgrade a workspace to add support for front-end, back-end, or both
+     * types of connectivity. You cannot remove (downgrade) any existing
+     * front-end or back-end PrivateLink support on a workspace.
      *
      * After calling the `PATCH` operation to update the workspace configuration,
      * make repeated `GET` requests with the workspace ID and check the workspace
@@ -1125,14 +1443,12 @@ export class WorkspacesService {
      * For a running workspace, this request supports updating the following
      * fields only: - Credential configuration ID
      *
-     * - Network configuration ID. Used only if you already use use
-     * customer-managed VPC. This change is supported only if you specified a
-     * network configuration ID in your original workspace creation. In other
-     * words, you cannot switch from a Databricks-managed VPC to a
-     * customer-managed VPC. **Note**: You cannot use a network configuration
-     * update in this API to add support for PrivateLink (in Public Preview). To
-     * add PrivateLink to an existing workspace, contact your Databricks
-     * representative.
+     * - Network configuration ID. Used only if you already use a
+     * customer-managed VPC. You cannot convert a running workspace from a
+     * Databricks-managed VPC to a customer-managed VPC. You can use a network
+     * configuration update in this API for a failed or running workspace to add
+     * support for PrivateLink, although you also need to add a private access
+     * settings object.
      *
      * - Key configuration ID for managed services (control plane storage, such
      * as notebook source and Databricks SQL queries). Databricks does not
@@ -1148,17 +1464,19 @@ export class WorkspacesService {
      * (changes) the CMK keys and the DEK is re-encrypted with the DMK and the
      * new CMK. - Key configuration ID for workspace storage (root S3 bucket and,
      * optionally, EBS volumes). You can set this only if the workspace does not
-     * already have a customer-managed key configuration for workspace storage.
-     *
-     * **Important**: For updating running workspaces, this API is unavailable on
-     * Mondays, Tuesdays, and Thursdays from 4:30pm-7:30pm PST due to routine
-     * maintenance. Plan your workspace updates accordingly. For questions about
-     * this schedule, contact your Databricks representative.
+     * already have a customer-managed key configuration for workspace storage. -
+     * Private access settings ID to add PrivateLink support. You can add or
+     * update the private access settings ID to upgrade a workspace to add
+     * support for front-end, back-end, or both types of connectivity. You cannot
+     * remove (downgrade) any existing front-end or back-end PrivateLink support
+     * on a workspace.
      *
      * **Important**: To update a running workspace, your workspace must have no
-     * running cluster instances, which includes all-purpose clusters, job
-     * clusters, and pools that might have running clusters. Terminate all
-     * cluster instances in the workspace before calling this API.
+     * running compute resources that run in your workspace's VPC in the Classic
+     * data plane. For example, stop all all-purpose clusters, job clusters,
+     * pools with running clusters, and Classic SQL warehouses. If you do not
+     * terminate all cluster instances in the workspace before calling this API,
+     * the request will fail.
      *
      * ### Wait until changes take effect. After calling the `PATCH` operation to
      * update the workspace configuration, make repeated `GET` requests with the
@@ -1202,84 +1520,65 @@ export class WorkspacesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async update(
-        request: model.UpdateWorkspaceRequest,
-        @context context?: Context
-    ): Promise<model.EmptyResponse> {
-        const path = `/api/2.0/accounts/${this.client.accountId}/workspaces/${request.workspace_id}`;
-        return (await this.client.request(
-            path,
-            "PATCH",
-            request,
-            context
-        )) as model.EmptyResponse;
-    }
-
-    /**
-     * update and wait to reach RUNNING state
-     *  or fail on reaching BANNED or FAILED state
-     */
-    @withLogContext(ExposedLoggers.SDK)
-    async updateAndWait(
         updateWorkspaceRequest: model.UpdateWorkspaceRequest,
-        options?: {
-            timeout?: Time;
-            onProgress?: (newPollResponse: model.Workspace) => Promise<void>;
-        },
         @context context?: Context
-    ): Promise<model.Workspace> {
-        options = options || {};
-        options.onProgress =
-            options.onProgress || (async (newPollResponse) => {});
-        const {timeout, onProgress} = options;
+    ): Promise<Waiter<model.EmptyResponse, model.Workspace>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this.update(updateWorkspaceRequest, context);
+        await this._update(updateWorkspaceRequest, context);
 
-        return await retry<model.Workspace>({
-            timeout,
-            fn: async () => {
-                const pollResponse = await this.get(
-                    {
-                        workspace_id: updateWorkspaceRequest.workspace_id!,
-                    },
-                    context
-                );
-                if (cancellationToken?.isCancellationRequested) {
-                    context?.logger?.error(
-                        "Workspaces.updateAndWait: cancelled"
+        return asWaiter(null, async (options) => {
+            options = options || {};
+            options.onProgress =
+                options.onProgress || (async (newPollResponse) => {});
+            const {timeout, onProgress} = options;
+
+            return await retry<model.Workspace>({
+                timeout,
+                fn: async () => {
+                    const pollResponse = await this.get(
+                        {
+                            workspace_id: updateWorkspaceRequest.workspace_id!,
+                        },
+                        context
                     );
-                    throw new WorkspacesError("updateAndWait", "cancelled");
-                }
-                await onProgress(pollResponse);
-                const status = pollResponse.workspace_status;
-                const statusMessage = pollResponse.workspace_status_message;
-                switch (status) {
-                    case "RUNNING": {
-                        return pollResponse;
-                    }
-                    case "BANNED":
-                    case "FAILED": {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                    if (cancellationToken?.isCancellationRequested) {
                         context?.logger?.error(
-                            `Workspaces.updateAndWait: ${errorMessage}`
+                            "Workspaces.updateAndWait: cancelled"
                         );
-                        throw new WorkspacesError(
-                            "updateAndWait",
-                            errorMessage
-                        );
+                        throw new WorkspacesError("updateAndWait", "cancelled");
                     }
-                    default: {
-                        const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
-                        context?.logger?.error(
-                            `Workspaces.updateAndWait: retrying: ${errorMessage}`
-                        );
-                        throw new WorkspacesRetriableError(
-                            "updateAndWait",
-                            errorMessage
-                        );
+                    await onProgress(pollResponse);
+                    const status = pollResponse.workspace_status;
+                    const statusMessage = pollResponse.workspace_status_message;
+                    switch (status) {
+                        case "RUNNING": {
+                            return pollResponse;
+                        }
+                        case "BANNED":
+                        case "FAILED": {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Workspaces.updateAndWait: ${errorMessage}`
+                            );
+                            throw new WorkspacesError(
+                                "updateAndWait",
+                                errorMessage
+                            );
+                        }
+                        default: {
+                            const errorMessage = `failed to reach RUNNING state, got ${status}: ${statusMessage}`;
+                            context?.logger?.error(
+                                `Workspaces.updateAndWait: retrying: ${errorMessage}`
+                            );
+                            throw new WorkspacesRetriableError(
+                                "updateAndWait",
+                                errorMessage
+                            );
+                        }
                     }
-                }
-            },
+                },
+            });
         });
     }
 }

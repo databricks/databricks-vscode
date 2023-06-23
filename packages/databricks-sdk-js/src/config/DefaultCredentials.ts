@@ -1,5 +1,6 @@
 import {AzureCliCredentials} from "./AzureCliCredentials";
 import {BasicCredentials} from "./BasicCredentials";
+import {DatabricksCliCredentials} from "./DatabricksCliCredentials";
 import {
     RequestVisitor,
     Config,
@@ -7,7 +8,10 @@ import {
     ConfigError,
     AuthType,
 } from "./Config";
+import {MetadataServiceCredentials} from "./MetadataServiceCredentials";
 import {PatCredentials} from "./PatCredentials";
+import {M2mCredentials} from "./M2mCredentials";
+import {AzureClientSecretCredentials} from "./AzureClientSecretCredentials";
 
 export class DefaultCredentials implements CredentialProvider {
     public name: AuthType = "default";
@@ -16,11 +20,20 @@ export class DefaultCredentials implements CredentialProvider {
         const defaultChain: Array<CredentialProvider> = [
             new PatCredentials(),
             new BasicCredentials(),
-            // new AzureClientSecretCredentials(),
+            new M2mCredentials(),
+            new DatabricksCliCredentials(),
+            new MetadataServiceCredentials(),
+
+            // Attempt to configure auth from most specific to most generic (the Azure CLI).
+            // new AzureMsiCredentials(),
+            new AzureClientSecretCredentials(),
             new AzureCliCredentials(),
+
+            // Attempt to configure auth from most specific to most generic (Google Application Default Credentials).
             // new GoogleDefaultCredentials(),
             // new GoogleCredentials(),
         ];
+
         for (const p of defaultChain) {
             if (config.authType && p.name !== config.authType) {
                 config.logger.info(
