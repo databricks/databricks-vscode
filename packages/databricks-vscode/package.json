@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "0.3.15",
+    "version": "1.0.0",
     "engines": {
         "vscode": "^1.76.0"
     },
@@ -22,7 +22,6 @@
         "lakehouse"
     ],
     "pricing": "Free",
-    "preview": true,
     "badges": [],
     "icon": "images/databricks-logo.png",
     "galleryBanner": {

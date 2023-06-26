@@ -1,3 +1,14 @@
+# Release: v1.0.0
+
+## packages/databricks-vscode
+
+## 1.0.0 (2023-06-23)
+
+-   Feature: Add AWS OAuth and Azure Client Secret auth. These can be used through a `.databrickscfg` profile.
+-   Feature: Make cluster and workspace views experimental
+-   Fix: Add current version information to `Update dbconnect` popup message
+-   Fix: Set PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT environment variable. This prevents timeouts when fetching dataframes using dbconnect.
+
 # Release: v0.3.15
 
 ## packages/databricks-vscode
