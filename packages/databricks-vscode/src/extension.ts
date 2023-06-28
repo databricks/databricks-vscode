@@ -236,6 +236,7 @@ export async function activate(
         dbConnectStatusBarButton,
         connectionManager,
         context,
+
         pythonExtensionWrapper
     );
     context.subscriptions.push(

@@ -5,7 +5,7 @@ import {
     ExtensionContext,
     EventEmitter,
 } from "vscode";
-import {writeFile, readFile} from "fs/promises";
+import {writeFile, readFile, mkdir, cp} from "fs/promises";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import os from "node:os";
@@ -16,7 +16,10 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {
+    NamedLogger,
+    withLogContext,
+} from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 
 export class DatabricksEnvFileManager implements Disposable {
@@ -29,7 +32,7 @@ export class DatabricksEnvFileManager implements Disposable {
         this.onDidChangeEnvironmentVariablesEmitter.event;
 
     constructor(
-        workspacePath: Uri,
+        private readonly workspacePath: Uri,
         private readonly featureManager: FeatureManager,
         private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
@@ -191,10 +194,43 @@ export class DatabricksEnvFileManager implements Disposable {
         /* eslint-enable @typescript-eslint/naming-convention */
     }
 
-    private getIdeEnvVars() {
+    @withLogContext(Loggers.Extension)
+    private async getIpythonDir(@context ctx?: Context) {
+        try {
+            const ipythondir = path.join(
+                this.workspacePath.fsPath,
+                ".databricks",
+                "ipython"
+            );
+            const startupDir = path.join(
+                ipythondir,
+                "profile_default",
+                "startup"
+            );
+            await mkdir(startupDir, {recursive: true});
+            await cp(
+                this.extensionContext.asAbsolutePath(
+                    path.join("resources", "python", "00-databricks-init.py")
+                ),
+                path.join(startupDir, "00-databricks-init.py")
+            );
+            return ipythondir;
+        } catch (e: unknown) {
+            if (e instanceof Error) {
+                ctx?.logger?.error(
+                    "Failed to create notebook startup directory",
+                    e
+                );
+            }
+        }
+    }
+
+    @withLogContext(Loggers.Extension)
+    private async getIdeEnvVars(@context ctx?: Context) {
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
             PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT: "10",
+            IPYTHONDIR: await this.getIpythonDir(ctx),
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
@@ -223,10 +259,9 @@ export class DatabricksEnvFileManager implements Disposable {
 
     @logging.withLogContext(Loggers.Extension)
     async writeFile(@context ctx?: Context) {
-        const databricksEnvVars = await this.getDatabrickseEnvVars();
         const data = Object.entries({
-            ...(databricksEnvVars || {}),
-            ...this.getIdeEnvVars(),
+            ...((await this.getDatabrickseEnvVars()) || {}),
+            ...(await this.getIdeEnvVars()),
             ...((await this.getUserEnvVars(ctx)) || {}),
         })
             .filter(([, value]) => value !== undefined)
@@ -254,7 +289,7 @@ export class DatabricksEnvFileManager implements Disposable {
     async emitToTerminal() {
         Object.entries({
             ...((await this.getDatabrickseEnvVars()) || {}),
-            ...this.getIdeEnvVars(),
+            ...(await this.getIdeEnvVars()),
         }).forEach(([key, value]) => {
             if (value === undefined) {
                 return;
