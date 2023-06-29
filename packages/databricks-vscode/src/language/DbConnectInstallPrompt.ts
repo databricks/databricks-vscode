@@ -1,4 +1,4 @@
-import {window, commands} from "vscode";
+import {window} from "vscode";
 
 import {Disposable} from "vscode";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";

@@ -610,11 +610,13 @@
                         "items": {
                             "enum": [
                                 "debugging.dbconnect",
+                                "notebooks.dbconnect",
                                 "views.cluster",
                                 "views.workspace"
                             ],
                             "enumDescriptions": [
                                 "Interactive debugging using dbconnect V2.",
+                                "Limited local notebook support using dbconnect V2.",
                                 "Show cluster view in the explorer.",
                                 "Show workspace browser in the explorer."
                             ],
@@ -642,8 +644,9 @@
     "cli": {
         "version": "0.200.0"
     },
+    "jupyterInitScriptVersion": "0.0.1",
     "scripts": {
-        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
         "package": "vsce package --baseContentUrl https://github.com/databricks/databricks-vscode/blob/${TAG:-main}/packages/databricks-vscode --baseImagesUrl https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-main}/packages/databricks-vscode",
         "package:linux:x64": "./scripts/package-vsix.sh linux-x64",
         "package:linux:arm64": "./scripts/package-vsix.sh linux-arm64",
@@ -655,11 +658,12 @@
         "package:cli:fetch": "bash ./scripts/fetch-databricks-cli.sh ${CLI_ARCH:-}",
         "package:cli:link": "rm -f ./bin/databricks && mkdir -p bin && ln -s ../../../../cli/cli bin/databricks",
         "package:wrappers:write": "ts-node ./scripts/writeIpynbWrapper.ts -s ./resources/python/notebook.workflow-wrapper.py -o ./resources/python/generated/notebook.workflow-wrapper.json",
+        "package:jupyter-init-script:write": "ts-node ./scripts/writeJupyterInitFileWithVersion.ts",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
-        "build": "yarn run package:wrappers:write && tsc --build --force",
-        "watch": "yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && tsc --build --watch --force",
+        "build": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && tsc --build --force",
+        "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && tsc --build --watch --force",
         "fix": "eslint src --ext ts --fix && prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",

@@ -4,6 +4,7 @@ import {
     workspace,
     ExtensionContext,
     EventEmitter,
+    window,
 } from "vscode";
 import {writeFile, readFile, mkdir, cp} from "fs/promises";
 import {FeatureManager} from "../feature-manager/FeatureManager";
@@ -21,7 +22,8 @@ import {
     withLogContext,
 } from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
-
+import {PackageJsonUtils} from "../utils";
+import {exists} from "fs-extra";
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
     private readonly databricksEnvPath: Uri;
@@ -202,33 +204,51 @@ export class DatabricksEnvFileManager implements Disposable {
         ) {
             return;
         }
-        try {
-            const ipythondir = path.join(
-                this.workspacePath.fsPath,
-                ".databricks",
-                "ipython"
-            );
-            const startupDir = path.join(
-                ipythondir,
-                "profile_default",
-                "startup"
-            );
-            await mkdir(startupDir, {recursive: true});
-            await cp(
-                this.extensionContext.asAbsolutePath(
-                    path.join("resources", "python", "00-databricks-init.py")
-                ),
-                path.join(startupDir, "00-databricks-init.py")
-            );
+        const ipythondir = path.join(
+            this.workspacePath.fsPath,
+            ".databricks",
+            "ipython"
+        );
+        const startupDir = path.join(ipythondir, "profile_default", "startup");
+        const metadata = await PackageJsonUtils.getMetadata(
+            this.extensionContext
+        );
+        const destFile = path.join(
+            startupDir,
+            `00-databricks-init-v${metadata.jupyterInitScriptVersion}.py`
+        );
+        if (metadata.jupyterInitScriptVersion === undefined) {
+            return;
+        }
+        if (await exists(destFile)) {
             return ipythondir;
-        } catch (e: unknown) {
+        }
+
+        Promise.resolve(
+            (async () => {
+                await mkdir(startupDir, {recursive: true});
+                await cp(
+                    this.extensionContext.asAbsolutePath(
+                        path.join(
+                            "resources",
+                            "python",
+                            "generated",
+                            `00-databricks-init-${metadata.jupyterInitScriptVersion}.py`
+                        )
+                    ),
+                    path.join(destFile)
+                );
+            })()
+        ).catch((e) => {
+            ctx?.logger?.error("Failed to copy init script", e);
             if (e instanceof Error) {
-                ctx?.logger?.error(
-                    "Failed to create notebook startup directory",
-                    e
+                window.showWarningMessage(
+                    `Failed to copy databricks init script.` +
+                        `Some databricks notebook features may not work. ${e.message}`
                 );
             }
-        }
+        });
+        return ipythondir;
     }
 
     @withLogContext(Loggers.Extension)

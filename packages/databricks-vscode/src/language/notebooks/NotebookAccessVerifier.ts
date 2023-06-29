@@ -81,9 +81,9 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
                     "latest"
                 );
             if (databricksSdkExists) {
-                this.acceptStep("isPythonSdkInstalled");
+                return this.acceptStep("isPythonSdkInstalled");
             }
-            this.rejectStep(
+            return this.rejectStep(
                 "isPythonSdkInstalled",
                 "Python SDK is not installed",
                 async () => {
@@ -98,7 +98,7 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
             );
         } catch (e) {
             if (e instanceof Error) {
-                this.rejectStep("isPythonSdkInstalled", e.message);
+                return this.rejectStep("isPythonSdkInstalled", e.message);
             }
         }
     }
@@ -108,9 +108,12 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
             "debugging.dbconnect"
         );
         if (dbconnectFeature.avaliable) {
-            this.acceptStep("isDbConnectEnabled");
+            return this.acceptStep("isDbConnectEnabled");
         }
-        this.rejectStep("isDbConnectEnabled", "DbConnect is not enabled");
+        return this.rejectStep(
+            "isDbConnectEnabled",
+            "DbConnect is not enabled"
+        );
     }
 
     async check() {

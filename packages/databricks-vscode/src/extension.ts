@@ -37,7 +37,7 @@ import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
 import path from "node:path";
 import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManager";
-import {FeatureManager} from "./feature-manager/FeatureManager";
+import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
@@ -46,6 +46,7 @@ import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
+import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 
 export async function activate(
     context: ExtensionContext
@@ -215,7 +216,7 @@ export async function activate(
         workspaceStateManager,
         pythonExtensionWrapper
     );
-    const featureManager = new FeatureManager<"debugging.dbconnect">([
+    const featureManager = new FeatureManager<FeatureId>([
         "debugging.dbconnect",
     ]);
     featureManager.registerFeature(
@@ -461,6 +462,24 @@ export async function activate(
             }
         })
     );
+
+    featureManager.registerFeature(
+        "notebooks.dbconnect",
+        () =>
+            new NotebookAccessVerifier(
+                featureManager,
+                pythonExtensionWrapper,
+                workspaceStateManager
+            )
+    );
+    workspace.onDidOpenNotebookDocument(async () => {
+        const featureState = await featureManager.isEnabled(
+            "notebooks.dbconnect"
+        );
+        if (featureState.action) {
+            featureState.action();
+        }
+    });
 
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
