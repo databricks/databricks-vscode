@@ -44,8 +44,7 @@ describe("Configure Databricks Extension", async function () {
         await dismissNotifications();
     });
 
-    // eslint-disable-next-line no-only-tests/no-only-tests
-    it.only("should open VSCode", async function () {
+    it("should open VSCode", async function () {
         const title = await workbench.getTitleBar().getTitle();
         assert(title.indexOf("[Extension Development Host]") >= 0);
     });

@@ -312,7 +312,7 @@ export const config: Options.Testrunner = {
      * @param {Array.<String>} specs List of spec file paths that are to be run
      * @param {String} cid worker id (e.g. 0-0)
      */
-    beforeSession: async function (config: any, capabilities) {
+    beforeSession: async function (config, capabilities) {
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
         let cli: string;
@@ -464,7 +464,8 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      * @param {Array.<String>} specs List of spec file paths that ran
      */
-    // after: async function (result, capabilities, specs) {},
+    // after: async function (result, capabilities, specs) {
+    // },
 
     /**
      * Gets executed right after terminating the webdriver session.
