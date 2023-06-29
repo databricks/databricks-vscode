@@ -474,14 +474,16 @@ export async function activate(
                 workspaceStateManager
             )
     );
-    workspace.onDidOpenNotebookDocument(async () => {
-        const featureState = await featureManager.isEnabled(
-            "notebooks.dbconnect"
-        );
-        if (featureState.action) {
-            featureState.action();
-        }
-    });
+    context.subscriptions.push(
+        workspace.onDidOpenNotebookDocument(async () => {
+            const featureState = await featureManager.isEnabled(
+                "notebooks.dbconnect"
+            );
+            if (featureState.action) {
+                featureState.action();
+            }
+        })
+    );
 
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
