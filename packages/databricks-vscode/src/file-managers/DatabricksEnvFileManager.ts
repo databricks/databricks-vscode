@@ -24,10 +24,22 @@ import {
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {PackageJsonUtils} from "../utils";
 import {exists} from "fs-extra";
+import {FileUtils} from "../utils";
+
+function isValidUserEnvPath(
+    path: string | undefined,
+    excludes: string[]
+): path is string {
+    return path !== undefined && !excludes.includes(path);
+}
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
+
+    private readonly unresolvedDatabricksEnvFile: string;
     private readonly databricksEnvPath: Uri;
+    private readonly unresolvedUserEnvFile: string;
     private readonly userEnvPath: Uri;
+
     private readonly onDidChangeEnvironmentVariablesEmitter =
         new EventEmitter<void>();
     public readonly onDidChangeEnvironmentVariables =
@@ -42,38 +54,45 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly pythonExtension: MsPythonExtensionWrapper
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
-        const unresolvedDatabricksEnvFile = path.join(
+        this.unresolvedDatabricksEnvFile = path.join(
             "${workspaceFolder}",
             ".databricks",
             ".databricks.env"
         );
         this.databricksEnvPath = Uri.file(
-            systemVariableResolver.resolve(unresolvedDatabricksEnvFile)
+            systemVariableResolver.resolve(this.unresolvedDatabricksEnvFile)
         );
-
-        const unresolvedUserEnvFile = this.isValidUserEnvPath(
+        //Try to get user specified .env file fron databricks.python.envFile config
+        //If that is not found, then try to read python.envFile config
+        //Default to ${workspaceFolder}/.env.
+        this.unresolvedUserEnvFile = isValidUserEnvPath(
             workspaceConfigs.userEnvFile,
-            [unresolvedDatabricksEnvFile, this.databricksEnvPath.fsPath]
+            [this.unresolvedDatabricksEnvFile, this.databricksEnvPath.fsPath]
         )
             ? workspaceConfigs.userEnvFile
-            : this.isValidUserEnvPath(workspaceConfigs.msPythonEnvFile, [
-                  unresolvedDatabricksEnvFile,
+            : isValidUserEnvPath(workspaceConfigs.msPythonEnvFile, [
+                  this.unresolvedDatabricksEnvFile,
                   this.databricksEnvPath.fsPath,
               ])
             ? workspaceConfigs.msPythonEnvFile
             : path.join("${workspaceFolder}", ".env");
         this.userEnvPath = Uri.file(
-            systemVariableResolver.resolve(unresolvedUserEnvFile)
+            systemVariableResolver.resolve(this.unresolvedUserEnvFile)
         );
-
         NamedLogger.getOrCreate(Loggers.Extension).debug("Env file locations", {
-            unresolvedDatabricksEnvFile,
-            unresolvedUserEnvFile,
+            unresolvedDatabricksEnvFile: this.unresolvedDatabricksEnvFile,
+            unresolvedUserEnvFile: this.unresolvedUserEnvFile,
             msEnvFile: workspaceConfigs.msPythonEnvFile,
         });
+    }
 
-        workspaceConfigs.msPythonEnvFile = unresolvedDatabricksEnvFile;
-        workspaceConfigs.userEnvFile = unresolvedUserEnvFile;
+    public async init() {
+        await FileUtils.waitForDatabricksProject(
+            this.workspacePath,
+            this.connectionManager
+        );
+        workspaceConfigs.msPythonEnvFile = this.unresolvedDatabricksEnvFile;
+        workspaceConfigs.userEnvFile = this.unresolvedUserEnvFile;
 
         const userEnvFileWatcher = workspace.createFileSystemWatcher(
             this.userEnvPath.fsPath
@@ -84,7 +103,7 @@ export class DatabricksEnvFileManager implements Disposable {
             userEnvFileWatcher.onDidChange(() => this.writeFile(), this),
             userEnvFileWatcher.onDidDelete(() => this.writeFile(), this),
             userEnvFileWatcher.onDidCreate(() => this.writeFile(), this),
-            featureManager.onDidChangeState(
+            this.featureManager.onDidChangeState(
                 "debugging.dbconnect",
                 (featureState) => {
                     if (!featureState.avaliable) {
@@ -128,13 +147,6 @@ export class DatabricksEnvFileManager implements Disposable {
                 this.writeFile();
             }, this)
         );
-    }
-
-    private isValidUserEnvPath(
-        path: string | undefined,
-        excludes: string[]
-    ): path is string {
-        return path !== undefined && !excludes.includes(path);
     }
 
     private async getPatToken() {
