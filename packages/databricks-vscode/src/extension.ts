@@ -238,6 +238,7 @@ export async function activate(
         context,
         pythonExtensionWrapper
     );
+    databricksEnvFileManager.init();
     context.subscriptions.push(
         databricksEnvFileManager,
         databricksEnvFileManager.onDidChangeEnvironmentVariables(() => {
