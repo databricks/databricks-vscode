@@ -17,7 +17,7 @@ import {
 } from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile, ExecFileOptions} from "node:child_process";
-import {cpSync, mkdirSync} from "node:fs";
+import {cpSync, mkdirSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
@@ -473,6 +473,7 @@ export const config: Options.Testrunner = {
      * @param {Array.<String>} specs List of spec file paths that ran
      */
     afterSession: async function (config, capabilities, specs) {
+        await sleep(2000);
         try {
             const fileList = await glob(
                 path.join(
@@ -494,6 +495,7 @@ export const config: Options.Testrunner = {
                         path.basename(file)
                     )
                 );
+                rmSync(file);
             });
             console.log(
                 `User data copied to logs folder from ${VSCODE_STORAGE_DIR}`
