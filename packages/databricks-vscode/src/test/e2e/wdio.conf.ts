@@ -17,12 +17,14 @@ import {
 } from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile, ExecFileOptions} from "node:child_process";
-import {mkdirSync} from "node:fs";
+import {cpSync, mkdirSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
+import {glob} from "glob";
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "workspace");
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const {version, name, engines} = packageJson;
@@ -36,6 +38,7 @@ const VSIX_PATH = path.resolve(
     "..",
     `${name}-${version}.vsix`
 );
+const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
 
 export const config: Options.Testrunner = {
     //
@@ -122,6 +125,7 @@ export const config: Options.Testrunner = {
                         "resources",
                         "dummy-test"
                     ),
+                    storagePath: VSCODE_STORAGE_DIR,
                     vscodeArgs: {
                         extensionsDir: EXTENSION_DIR,
                         disableExtensions: false,
@@ -129,7 +133,6 @@ export const config: Options.Testrunner = {
                     workspacePath: WORKSPACE_PATH,
                     userSettings: {
                         "editor.fontSize": 14,
-                        "typescript.updateImportsOnFileMove.enabled": "always",
                         "files.simpleDialog.enable": true,
                         "workbench.editor.enablePreview": true,
                         "window.newWindowDimensions": "default",
@@ -461,7 +464,7 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      * @param {Array.<String>} specs List of spec file paths that ran
      */
-    // after: function (result, capabilities, specs) {
+    // after: async function (result, capabilities, specs) {
     // },
 
     /**
@@ -470,8 +473,38 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      * @param {Array.<String>} specs List of spec file paths that ran
      */
-    // afterSession: function (config, capabilities, specs) {
-    // },
+    afterSession: async function (config, capabilities, specs) {
+        await sleep(2000);
+        try {
+            const fileList = await glob(
+                path.join(
+                    VSCODE_STORAGE_DIR,
+                    "**",
+                    "databricks.databricks",
+                    "*.json"
+                )
+            );
+            console.log(fileList);
+            fileList.forEach((file) => {
+                cpSync(
+                    file,
+                    path.join(
+                        "logs",
+                        `vscode-logs-${specs
+                            .map((spec) => spec.split(path.sep).at(-1))
+                            .join("-")}`,
+                        path.basename(file)
+                    )
+                );
+                rmSync(file);
+            });
+            console.log(
+                `User data copied to logs folder from ${VSCODE_STORAGE_DIR}`
+            );
+        } catch (error) {
+            console.error(error);
+        }
+    },
 
     /**
      * Gets executed after all workers got shut down and the process is about to exit. An error

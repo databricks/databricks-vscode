@@ -40,7 +40,6 @@ describe("Configure Databricks Extension", async function () {
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
         projectDir = process.env.WORKSPACE_PATH;
         host = process.env.DATABRICKS_HOST;
-
         workbench = await browser.getWorkbench();
         await dismissNotifications();
     });

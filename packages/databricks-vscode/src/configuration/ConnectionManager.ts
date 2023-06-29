@@ -530,7 +530,7 @@ export class ConnectionManager {
     }
 
     async waitForConnect(): Promise<void> {
-        if (this._state === "CONNECTING" || this._state === "DISCONNECTED") {
+        if (this._state !== "CONNECTED") {
             return await new Promise((resolve) => {
                 const changeListener = this.onDidChangeState((e) => {
                     if (e === "CONNECTED") {
