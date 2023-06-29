@@ -1,6 +1,9 @@
 import {TextDecoder} from "util";
-import {workspace} from "vscode";
+import {Uri, workspace} from "vscode";
 import {LocalUri} from "../sync/SyncDestination";
+import {ConnectionManager} from "../configuration/ConnectionManager";
+import {exists} from "fs-extra";
+import path from "path";
 
 export type NotebookType = "IPYNB" | "PY_DBNB" | "OTHER_DBNB";
 export async function isNotebook(
@@ -29,5 +32,14 @@ export async function isNotebook(
         lines[0].startsWith(`${comment} Databricks notebook source`)
     ) {
         return ext === "py" ? "PY_DBNB" : "OTHER_DBNB";
+    }
+}
+
+export async function waitForDatabricksProject(
+    workspacePath: Uri,
+    connectionManager: ConnectionManager
+) {
+    if (!(await exists(path.join(workspacePath.fsPath, ".databricks")))) {
+        await connectionManager.waitForConnect();
     }
 }
