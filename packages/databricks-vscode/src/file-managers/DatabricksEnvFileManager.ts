@@ -18,7 +18,7 @@ import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
-import {exists} from "fs-extra";
+import {FileUtils} from "../utils";
 
 function isValidUserEnvPath(
     path: string | undefined,
@@ -40,7 +40,7 @@ export class DatabricksEnvFileManager implements Disposable {
         this.onDidChangeEnvironmentVariablesEmitter.event;
 
     constructor(
-        workspacePath: Uri,
+        private readonly workspacePath: Uri,
         private readonly featureManager: FeatureManager,
         private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
@@ -81,13 +81,10 @@ export class DatabricksEnvFileManager implements Disposable {
     }
 
     public async init() {
-        //If the databricks env file does not exist, wait for connection to be established
-        //before modifying configs and registering file watchers. This is to ensure that
-        //configs are not modified when extension is activated by mistake and user is not
-        //actually in a databricks project.
-        if (!(await exists(this.databricksEnvPath.fsPath))) {
-            await this.connectionManager.waitForConnect();
-        }
+        await FileUtils.waitForDatabricksProject(
+            this.workspacePath,
+            this.connectionManager
+        );
         workspaceConfigs.msPythonEnvFile = this.unresolvedDatabricksEnvFile;
         workspaceConfigs.userEnvFile = this.unresolvedUserEnvFile;
 
