@@ -30,14 +30,6 @@ export class ApiError extends Error {
 
     isRetryable(): boolean {
         if (this.statusCode === 429) {
-            // Repos API returns 429 when the user has too many repos. Don't retry in this case.
-            if (
-                this.message.includes(
-                    "Please delete repos before creating new repos"
-                )
-            ) {
-                return false;
-            }
             return true;
         }
         if (this.statusCode >= 400) {

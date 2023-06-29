@@ -1,3 +1,14 @@
+# Release: v0.3.16
+
+## packages/databricks-sdk-js
+
+## <small>0.3.16 (2023-06-23)</small>
+
+-   Add support for Azure client secret auth.
+-   Remove workaround for Repos API returning 429 for timeouts.
+-   Change License for the JS SDK to Apache 2.0
+-   Test-Fix: Updated time to check for cancelling listing repos from 150 to 300ms.
+
 # Release: v0.3.15
 
 ## packages/databricks-sdk-js

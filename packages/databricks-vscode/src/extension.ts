@@ -127,9 +127,19 @@ export async function activate(
         )
     );
 
-    const cli = new CliWrapper(context);
+    // manage contexts for experimental features
+    function updateFeatureContexts() {
+        CustomWhenContext.updateShowClusterView();
+        CustomWhenContext.updateShowWorkspaceView();
+    }
+
+    updateFeatureContexts();
+    context.subscriptions.push(
+        workspace.onDidChangeConfiguration(updateFeatureContexts)
+    );
 
     // Configuration group
+    const cli = new CliWrapper(context);
     const connectionManager = new ConnectionManager(cli, workspaceStateManager);
     context.subscriptions.push(
         connectionManager.onDidChangeState(async (state) => {

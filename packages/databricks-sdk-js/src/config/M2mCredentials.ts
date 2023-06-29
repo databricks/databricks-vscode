@@ -6,6 +6,7 @@ import {
     CredentialProvider,
     RequestVisitor,
 } from "./Config";
+
 import {refreshableTokenProvider} from "./Token";
 import {Client} from "./oauth/Client";
 
@@ -40,7 +41,7 @@ export class M2mCredentials implements CredentialProvider {
         );
 
         return refreshableTokenProvider(async () => {
-            return await client.grant("all-apis");
+            return await client.exchangeToken({scope: "all-apis"});
         });
     }
 }

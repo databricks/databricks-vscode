@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "0.3.15",
+    "version": "1.0.0",
     "engines": {
         "vscode": "^1.76.0"
     },
@@ -22,7 +22,6 @@
         "lakehouse"
     ],
     "pricing": "Free",
-    "preview": true,
     "badges": [],
     "icon": "images/databricks-logo.png",
     "galleryBanner": {
@@ -234,10 +233,11 @@
                 {
                     "id": "workspaceFsView",
                     "name": "Workspace explorer",
-                    "when": "config.databricks.sync.destinationType == workspace"
+                    "when": "config.databricks.sync.destinationType == workspace && databricks.feature.views.workspace"
                 },
                 {
                     "id": "clusterView",
+                    "when": "databricks.feature.views.cluster",
                     "name": "Clusters"
                 }
             ]
@@ -608,10 +608,14 @@
                         "default": [],
                         "items": {
                             "enum": [
-                                "debugging.dbconnect"
+                                "debugging.dbconnect",
+                                "views.cluster",
+                                "views.workspace"
                             ],
                             "enumDescriptions": [
-                                "Interactive debugging using dbconnect V2."
+                                "Interactive debugging using dbconnect V2.",
+                                "Show cluster view in the explorer.",
+                                "Show workspace browser in the explorer."
                             ],
                             "type": "string"
                         },
@@ -635,7 +639,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.100.3"
+        "version": "0.200.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",

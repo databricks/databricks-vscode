@@ -208,7 +208,13 @@ async function listProfiles(cliWrapper: CliWrapper) {
     });
 
     return profiles.filter((profile) => {
-        return ["pat", "basic", "azure-cli"].includes(profile.authType);
+        return [
+            "pat",
+            "basic",
+            "azure-cli",
+            "oauth-m2m",
+            "azure-client-secret",
+        ].includes(profile.authType);
     });
 }
 
