@@ -11,7 +11,7 @@ import {ExtensionContext} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Loggers} from "../logger";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
-import {NotebookType} from "../utils";
+import {FileUtils} from "../utils";
 
 function getWrapperPath(remoteFilePath: RemoteUri, extraParts: string[]) {
     return new RemoteUri(
@@ -157,7 +157,7 @@ export class WorkspaceFsWorkflowWrapper {
         localFilePath: LocalUri,
         remoteFilePath: RemoteUri,
         dbProjectRoot: RemoteUri,
-        notebookType: NotebookType,
+        notebookType: FileUtils.NotebookType,
         @context ctx?: Context
     ) {
         switch (notebookType) {

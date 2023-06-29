@@ -12,7 +12,7 @@ import {
 } from "vscode";
 import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
-import {isNotebook} from "../utils";
+import {FileUtils} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
 import Convert from "ansi-to-html";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -135,7 +135,7 @@ export class WorkflowRunner implements Disposable {
                             e.args?.runId
                         );
 
-                        if (await isNotebook(program)) {
+                        if (await FileUtils.isNotebook(program)) {
                             panel.showExportedRun(await run.export());
                         } else {
                             panel.showStdoutResult(
@@ -147,7 +147,7 @@ export class WorkflowRunner implements Disposable {
         });
 
         try {
-            const notebookType = await isNotebook(program);
+            const notebookType = await FileUtils.isNotebook(program);
             if (notebookType) {
                 let remoteFilePath: string =
                     syncDestination.localToRemoteNotebook(program).path;

@@ -45,6 +45,7 @@ import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
+import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 
 export async function activate(
@@ -475,13 +476,23 @@ export async function activate(
         NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);
     });
 
+    setDbnbCellLimits(
+        workspace.workspaceFolders[0].uri,
+        connectionManager
+    ).catch((e) => {
+        NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Error while setting jupyter configs for parsing databricks notebooks",
+            e
+        );
+    });
+
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
+
     const publicApi: PublicApi = {
         version: 1,
         connectionManager: connectionManager,
     };
-
     return publicApi;
 }
 
