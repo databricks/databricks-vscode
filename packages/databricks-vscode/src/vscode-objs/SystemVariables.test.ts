@@ -7,13 +7,13 @@ describe(__filename, () => {
         const workspacePath = "workspacePath";
         const systemVariables = new SystemVariables(Uri.file(workspacePath));
         const resolved = systemVariables.resolve("${workspaceRoot}/test");
-        expect(resolved).to.equal(`${workspacePath}/test`);
+        expect(resolved).to.equal(`/${workspacePath}/test`);
 
         systemVariables.resolve("${workspaceFolder}/test");
-        expect(resolved).to.equal(`${workspacePath}/test`);
+        expect(resolved).to.equal(`/${workspacePath}/test`);
 
         systemVariables.resolve("${cwd}/test");
-        expect(resolved).to.equal(`${workspacePath}/test`);
+        expect(resolved).to.equal(`/${workspacePath}/test`);
     });
 
     it("should not interpolate unknown variables", () => {
