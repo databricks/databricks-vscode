@@ -5,7 +5,7 @@ import {DisabledFeature} from "./DisabledFeature";
 import {EnabledFeature} from "./EnabledFeature";
 
 export type FeatureEnableAction = (...args: any[]) => Promise<void>;
-export type FeatureId = "debugging.dbconnect";
+export type FeatureId = "debugging.dbconnect" | "notebooks.dbconnect";
 /**
  * The state of a feature.
  * *available*: If feature is enabled.

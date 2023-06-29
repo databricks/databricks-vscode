@@ -47,7 +47,7 @@ export class DbConnectInstallPrompt implements Disposable {
             : hasDbConnect
             ? `(databricks-connect will be updated to the latest version: ${
                   dbConnectDetails.version
-              } -> ${await this.pythonExtension.findLatestPackageVersion(
+              } -> ${await this.pythonExtension.getLatestPackageVersion(
                   "databricks-connect"
               )} )`
             : "";
@@ -88,7 +88,7 @@ export class DbConnectInstallPrompt implements Disposable {
                 break;
 
             case "Change environment":
-                commands.executeCommand("python.setInterpreter");
+                await this.pythonExtension.selectPythonInterpreter();
                 break;
         }
     }

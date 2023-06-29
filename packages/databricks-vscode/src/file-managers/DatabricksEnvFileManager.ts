@@ -196,6 +196,12 @@ export class DatabricksEnvFileManager implements Disposable {
 
     @withLogContext(Loggers.Extension)
     private async getIpythonDir(@context ctx?: Context) {
+        if (
+            !(await this.featureManager.isEnabled("notebooks.dbconnect"))
+                .avaliable
+        ) {
+            return;
+        }
         try {
             const ipythondir = path.join(
                 this.workspacePath.fsPath,

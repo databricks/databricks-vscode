@@ -68,6 +68,24 @@ export class WorkspaceStateManager {
         );
     }
 
+    get skippedEnvsForDatabricksSdk() {
+        return this.context.globalState.get<string[]>(
+            "databricks.debugging.skipDatabricksSdkInstallForEnvs",
+            []
+        );
+    }
+
+    skipDatabricksSdkInstallForEnv(value: string) {
+        const currentEnvs = this.skippedEnvsForDatabricksSdk;
+        if (!currentEnvs.includes(value)) {
+            currentEnvs.push(value);
+        }
+        this.context.globalState.update(
+            "databricks.debugging.skipDatabricksSdkInstallForEnvs",
+            currentEnvs
+        );
+    }
+
     get fixedUUID() {
         let uuid = this.context.workspaceState.get<string>(
             "databricks.fixedUUID"

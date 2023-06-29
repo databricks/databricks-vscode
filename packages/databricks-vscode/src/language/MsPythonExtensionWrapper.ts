@@ -7,6 +7,7 @@ import {
     workspace,
     RelativePattern,
     Terminal,
+    commands,
 } from "vscode";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
@@ -125,7 +126,7 @@ export class MsPythonExtensionWrapper implements Disposable {
         }
     }
 
-    async findLatestPackageVersion(name: string) {
+    async getLatestPackageVersion(name: string) {
         const executable = await this.getPythonExecutable();
         if (!executable) {
             return;
@@ -155,7 +156,7 @@ export class MsPythonExtensionWrapper implements Disposable {
             return undefined;
         }
         if (version === "latest") {
-            version = await this.findLatestPackageVersion(name);
+            version = await this.getLatestPackageVersion(name);
         }
 
         const {stdout} = await execFile(
@@ -193,7 +194,7 @@ export class MsPythonExtensionWrapper implements Disposable {
             throw Error("No python executable found");
         }
         if (version === "latest") {
-            version = await this.findLatestPackageVersion(name);
+            version = await this.getLatestPackageVersion(name);
         }
         const execCommand = `'${executable}' -m pip install '${name}${
             version ? `==${version}` : ""
@@ -222,6 +223,10 @@ export class MsPythonExtensionWrapper implements Disposable {
                 `Error while un-installing ${name} package from the current python environment.`
             );
         }
+    }
+
+    async selectPythonInterpreter() {
+        await commands.executeCommand("python.setInterpreter");
     }
 
     dispose() {}
