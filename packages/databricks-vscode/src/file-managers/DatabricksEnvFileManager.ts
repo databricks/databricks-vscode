@@ -4,9 +4,8 @@ import {
     workspace,
     ExtensionContext,
     EventEmitter,
-    window,
 } from "vscode";
-import {writeFile, readFile, mkdir, cp} from "fs/promises";
+import {writeFile, readFile} from "fs/promises";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import os from "node:os";
@@ -17,14 +16,10 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
-import {
-    NamedLogger,
-    withLogContext,
-} from "@databricks/databricks-sdk/dist/logging";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
-import {PackageJsonUtils} from "../utils";
-import {exists} from "fs-extra";
 import {FileUtils} from "../utils";
+import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
 
 function isValidUserEnvPath(
     path: string | undefined,
@@ -51,7 +46,8 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
         private readonly extensionContext: ExtensionContext,
-        private readonly pythonExtension: MsPythonExtensionWrapper
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly notebookInitScriptManager: NotebookInitScriptManager
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
         this.unresolvedDatabricksEnvFile = path.join(
@@ -208,67 +204,22 @@ export class DatabricksEnvFileManager implements Disposable {
         /* eslint-enable @typescript-eslint/naming-convention */
     }
 
-    @withLogContext(Loggers.Extension)
-    private async getIpythonDir(@context ctx?: Context) {
+    private async getIpythonDir() {
         if (
             !(await this.featureManager.isEnabled("notebooks.dbconnect"))
                 .avaliable
         ) {
             return;
         }
-        const ipythondir = path.join(
-            this.workspacePath.fsPath,
-            ".databricks",
-            "ipython"
-        );
-        const startupDir = path.join(ipythondir, "profile_default", "startup");
-        const metadata = await PackageJsonUtils.getMetadata(
-            this.extensionContext
-        );
-        const destFile = path.join(
-            startupDir,
-            `00-databricks-init-v${metadata.jupyterInitScriptVersion}.py`
-        );
-        if (metadata.jupyterInitScriptVersion === undefined) {
-            return;
-        }
-        if (await exists(destFile)) {
-            return ipythondir;
-        }
 
-        Promise.resolve(
-            (async () => {
-                await mkdir(startupDir, {recursive: true});
-                await cp(
-                    this.extensionContext.asAbsolutePath(
-                        path.join(
-                            "resources",
-                            "python",
-                            "generated",
-                            `00-databricks-init-${metadata.jupyterInitScriptVersion}.py`
-                        )
-                    ),
-                    path.join(destFile)
-                );
-            })()
-        ).catch((e) => {
-            ctx?.logger?.error("Failed to copy init script", e);
-            if (e instanceof Error) {
-                window.showWarningMessage(
-                    `Failed to copy databricks init script.` +
-                        `Some databricks notebook features may not work. ${e.message}`
-                );
-            }
-        });
-        return ipythondir;
+        return this.notebookInitScriptManager.ipythonDir;
     }
 
-    @withLogContext(Loggers.Extension)
-    private async getIdeEnvVars(@context ctx?: Context) {
+    private async getIdeEnvVars() {
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
             PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT: "10",
-            IPYTHONDIR: await this.getIpythonDir(ctx),
+            IPYTHONDIR: await this.getIpythonDir(),
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }

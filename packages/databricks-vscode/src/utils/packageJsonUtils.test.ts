@@ -68,6 +68,7 @@ describe(__filename, () => {
             version: "version",
             cliArch: "cliArch",
             vsixArch: "vsixArch",
+            jupyterInitScriptVersion: "0.0.1",
             commitSha: "commitSha",
         });
     });

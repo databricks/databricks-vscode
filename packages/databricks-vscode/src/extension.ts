@@ -48,6 +48,7 @@ import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
+import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 
 export async function activate(
     context: ExtensionContext
@@ -232,14 +233,31 @@ export async function activate(
     const dbConnectStatusBarButton = new DbConnectStatusBarButton(
         featureManager
     );
+    const notebookInitScriptManager = new NotebookInitScriptManager(
+        workspace.workspaceFolders[0].uri,
+        context,
+        connectionManager
+    );
+    notebookInitScriptManager.updateInitScript().catch((e) => {
+        NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to update init script",
+            e
+        );
+        if (e instanceof Error) {
+            window.showWarningMessage(
+                `Failed to update databricks notebook init script.` +
+                    `Some databricks notebook features may not work. ${e.message}`
+            );
+        }
+    });
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspace.workspaceFolders[0].uri,
         featureManager,
         dbConnectStatusBarButton,
         connectionManager,
         context,
-
-        pythonExtensionWrapper
+        pythonExtensionWrapper,
+        notebookInitScriptManager
     );
     databricksEnvFileManager.init();
     context.subscriptions.push(
