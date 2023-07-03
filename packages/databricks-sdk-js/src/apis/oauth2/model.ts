@@ -9,17 +9,13 @@ export interface CreateCustomAppIntegration {
      */
     confidential?: boolean;
     /**
-     * The oauth app integration ID.
-     */
-    integration_id: string;
-    /**
      * name of the custom oauth app
      */
-    name?: string;
+    name: string;
     /**
      * List of oauth redirect urls
      */
-    redirect_urls?: Array<string>;
+    redirect_urls: Array<string>;
     /**
      * Token access policy
      */
@@ -42,16 +38,19 @@ export interface CreateCustomAppIntegrationOutput {
     integration_id?: string;
 }
 
+export interface CreateOAuthEnrollment {
+    /**
+     * If true, enable OAuth for all the published applications in the account.
+     */
+    enable_all_published_apps?: boolean;
+}
+
 export interface CreatePublishedAppIntegration {
     /**
      * app_id of the oauth published app integration. For example power-bi,
      * tableau-deskop
      */
     app_id?: string;
-    /**
-     * The oauth app integration ID.
-     */
-    integration_id: string;
     /**
      * Token access policy
      */
@@ -63,6 +62,43 @@ export interface CreatePublishedAppIntegrationOutput {
      * unique integration id for the published oauth app
      */
     integration_id?: string;
+}
+
+/**
+ * Create service principal secret
+ */
+export interface CreateServicePrincipalSecretRequest {
+    /**
+     * The service principal ID.
+     */
+    service_principal_id: number;
+}
+
+export interface CreateServicePrincipalSecretResponse {
+    /**
+     * UTC time when the secret was created
+     */
+    create_time?: string;
+    /**
+     * ID of the secret
+     */
+    id?: string;
+    /**
+     * Secret Value
+     */
+    secret?: string;
+    /**
+     * Secret Hash
+     */
+    secret_hash?: string;
+    /**
+     * Status of the secret
+     */
+    status?: string;
+    /**
+     * UTC time when the secret was updated
+     */
+    update_time?: string;
 }
 
 /**
@@ -85,6 +121,20 @@ export interface DeletePublishedAppIntegrationRequest {
     integration_id: string;
 }
 
+/**
+ * Delete service principal secret
+ */
+export interface DeleteServicePrincipalSecretRequest {
+    /**
+     * The secret ID.
+     */
+    secret_id: string;
+    /**
+     * The service principal ID.
+     */
+    service_principal_id: number;
+}
+
 export interface GetCustomAppIntegrationOutput {
     /**
      * oauth client id of the custom oauth app
@@ -94,6 +144,10 @@ export interface GetCustomAppIntegrationOutput {
      * indicates if an oauth client-secret should be generated
      */
     confidential?: boolean;
+    /**
+     * ID of this custom app
+     */
+    integration_id?: string;
     /**
      * name of the custom oauth app
      */
@@ -116,6 +170,13 @@ export interface GetCustomAppIntegrationRequest {
      * The oauth app integration ID.
      */
     integration_id: string;
+}
+
+export interface GetCustomAppIntegrationsOutput {
+    /**
+     * Array of Custom OAuth App Integrations defined for the account.
+     */
+    apps?: Array<GetCustomAppIntegrationOutput>;
 }
 
 export interface GetPublishedAppIntegrationOutput {
@@ -147,15 +208,69 @@ export interface GetPublishedAppIntegrationRequest {
     integration_id: string;
 }
 
+export interface GetPublishedAppIntegrationsOutput {
+    /**
+     * Array of Published OAuth App Integrations defined for the account.
+     */
+    apps?: Array<GetPublishedAppIntegrationOutput>;
+}
+
+/**
+ * List service principal secrets
+ */
+export interface ListServicePrincipalSecretsRequest {
+    /**
+     * The service principal ID.
+     */
+    service_principal_id: number;
+}
+
+export interface ListServicePrincipalSecretsResponse {
+    /**
+     * List of the secrets
+     */
+    secrets?: Array<SecretInfo>;
+}
+
+export interface OAuthEnrollmentStatus {
+    /**
+     * Is OAuth enrolled for the account.
+     */
+    is_enabled?: boolean;
+}
+
+export interface SecretInfo {
+    /**
+     * UTC time when the secret was created
+     */
+    create_time?: string;
+    /**
+     * ID of the secret
+     */
+    id?: string;
+    /**
+     * Secret Hash
+     */
+    secret_hash?: string;
+    /**
+     * Status of the secret
+     */
+    status?: string;
+    /**
+     * UTC time when the secret was updated
+     */
+    update_time?: string;
+}
+
 export interface TokenAccessPolicy {
     /**
      * access token time to live in minutes
      */
-    access_token_ttl_in_minutes?: any /* MISSING TYPE */;
+    access_token_ttl_in_minutes?: number;
     /**
      * refresh token time to live in minutes
      */
-    refresh_token_ttl_in_minutes?: any /* MISSING TYPE */;
+    refresh_token_ttl_in_minutes?: number;
 }
 
 export interface UpdateCustomAppIntegration {

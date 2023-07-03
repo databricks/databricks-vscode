@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
+
+/**
+ * The Jobs API allows you to create, edit, and delete jobs.
+ */
 
 import {ApiClient} from "../../api-client";
 import * as model from "./model";
@@ -11,6 +14,11 @@ import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
 import {Waiter, asWaiter} from "../../wait";
+
+import {ClusterSpec} from "../compute";
+import {ComputeSpec} from "../compute";
+import {Library} from "../compute";
+import {AccessControlRequest} from "../iam";
 
 export class JobsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -36,10 +44,11 @@ export class JobsError extends ApiError {
  * Spark submit, and Java applications.
  *
  * You should never hard code secrets or store them in plain text. Use the
- * :service:secrets to manage secrets in the [Databricks CLI]. Use the [Secrets
+ * [Secrets CLI] to manage secrets in the [Databricks CLI]. Use the [Secrets
  * utility] to reference secrets in notebooks and jobs.
  *
  * [Databricks CLI]: https://docs.databricks.com/dev-tools/cli/index.html
+ * [Secrets CLI]: https://docs.databricks.com/dev-tools/cli/secrets-cli.html
  * [Secrets utility]: https://docs.databricks.com/dev-tools/databricks-utils.html#dbutils-secrets
  */
 export class JobsService {
@@ -240,7 +249,7 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _exportRun(
-        request: model.ExportRun,
+        request: model.ExportRunRequest,
         @context context?: Context
     ): Promise<model.ExportRunOutput> {
         const path = "/api/2.1/jobs/runs/export";
@@ -259,7 +268,7 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async exportRun(
-        request: model.ExportRun,
+        request: model.ExportRunRequest,
         @context context?: Context
     ): Promise<model.ExportRunOutput> {
         return await this._exportRun(request, context);
@@ -267,7 +276,7 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.Get,
+        request: model.GetJobRequest,
         @context context?: Context
     ): Promise<model.Job> {
         const path = "/api/2.1/jobs/get";
@@ -286,7 +295,7 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.Get,
+        request: model.GetJobRequest,
         @context context?: Context
     ): Promise<model.Job> {
         return await this._get(request, context);
@@ -294,7 +303,7 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _getRun(
-        request: model.GetRun,
+        request: model.GetRunRequest,
         @context context?: Context
     ): Promise<model.Run> {
         const path = "/api/2.1/jobs/runs/get";
@@ -313,12 +322,12 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async getRun(
-        getRun: model.GetRun,
+        getRunRequest: model.GetRunRequest,
         @context context?: Context
     ): Promise<Waiter<model.Run, model.Run>> {
         const cancellationToken = context?.cancellationToken;
 
-        const run = await this._getRun(getRun, context);
+        const run = await this._getRun(getRunRequest, context);
 
         return asWaiter(run, async (options) => {
             options = options || {};
@@ -372,7 +381,7 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _getRunOutput(
-        request: model.GetRunOutput,
+        request: model.GetRunOutputRequest,
         @context context?: Context
     ): Promise<model.RunOutput> {
         const path = "/api/2.1/jobs/runs/get-output";
@@ -400,7 +409,7 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async getRunOutput(
-        request: model.GetRunOutput,
+        request: model.GetRunOutputRequest,
         @context context?: Context
     ): Promise<model.RunOutput> {
         return await this._getRunOutput(request, context);
@@ -408,7 +417,7 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _list(
-        request: model.List,
+        request: model.ListJobsRequest,
         @context context?: Context
     ): Promise<model.ListJobsResponse> {
         const path = "/api/2.1/jobs/list";
@@ -427,12 +436,9 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async *list(
-        request: model.List,
+        request: model.ListJobsRequest,
         @context context?: Context
     ): AsyncIterable<model.BaseJob> {
-        // deduplicate items that may have been added during iteration
-        const seen: Record<number, boolean> = {};
-
         while (true) {
             const response = await this._list(request, context);
             if (
@@ -447,25 +453,19 @@ export class JobsService {
             }
 
             for (const v of response.jobs) {
-                const id = v.job_id;
-                if (id) {
-                    if (seen[id]) {
-                        // item was added during iteration
-                        continue;
-                    }
-                    seen[id] = true;
-                }
                 yield v;
             }
 
-            request.offset = request.offset || 0;
-            request.offset += response.jobs.length;
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
         }
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _listRuns(
-        request: model.ListRuns,
+        request: model.ListRunsRequest,
         @context context?: Context
     ): Promise<model.ListRunsResponse> {
         const path = "/api/2.1/jobs/runs/list";
@@ -484,12 +484,9 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async *listRuns(
-        request: model.ListRuns,
+        request: model.ListRunsRequest,
         @context context?: Context
     ): AsyncIterable<model.BaseRun> {
-        // deduplicate items that may have been added during iteration
-        const seen: Record<number, boolean> = {};
-
         while (true) {
             const response = await this._listRuns(request, context);
             if (
@@ -504,19 +501,13 @@ export class JobsService {
             }
 
             for (const v of response.runs) {
-                const id = v.run_id;
-                if (id) {
-                    if (seen[id]) {
-                        // item was added during iteration
-                        continue;
-                    }
-                    seen[id] = true;
-                }
                 yield v;
             }
 
-            request.offset = request.offset || 0;
-            request.offset += response.runs.length;
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
         }
     }
 
@@ -807,7 +798,7 @@ export class JobsService {
     }
 
     /**
-     * Partially updates a job.
+     * Partially update a job.
      *
      * Add, update, or remove specific settings of an existing job. Use the
      * ResetJob to overwrite all job settings.

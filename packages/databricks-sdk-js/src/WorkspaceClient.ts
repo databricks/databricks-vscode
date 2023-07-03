@@ -6,41 +6,39 @@ import {Config, ConfigOptions} from "./config/Config";
 import {ApiClient, ClientOptions} from "./api-client";
 
 import * as billing from "./apis/billing";
-import * as clusterpolicies from "./apis/clusterpolicies";
-import * as clusters from "./apis/clusters";
-import * as commands from "./apis/commands";
-import * as dbfs from "./apis/dbfs";
-import * as deployment from "./apis/deployment";
-import * as endpoints from "./apis/endpoints";
-import * as gitcredentials from "./apis/gitcredentials";
-import * as globalinitscripts from "./apis/globalinitscripts";
-import * as instancepools from "./apis/instancepools";
-import * as ipaccesslists from "./apis/ipaccesslists";
+import * as catalog from "./apis/catalog";
+import * as compute from "./apis/compute";
+import * as files from "./apis/files";
+import * as iam from "./apis/iam";
 import * as jobs from "./apis/jobs";
-import * as libraries from "./apis/libraries";
-import * as mlflow from "./apis/mlflow";
+import * as ml from "./apis/ml";
 import * as oauth2 from "./apis/oauth2";
-import * as permissions from "./apis/permissions";
 import * as pipelines from "./apis/pipelines";
-import * as repos from "./apis/repos";
-import * as scim from "./apis/scim";
-import * as secrets from "./apis/secrets";
+import * as provisioning from "./apis/provisioning";
+import * as serving from "./apis/serving";
+import * as settings from "./apis/settings";
+import * as sharing from "./apis/sharing";
 import * as sql from "./apis/sql";
-import * as tokenmanagement from "./apis/tokenmanagement";
-import * as tokens from "./apis/tokens";
-import * as unitycatalog from "./apis/unitycatalog";
 import * as workspace from "./apis/workspace";
-import * as workspaceconf from "./apis/workspaceconf";
 
 export class WorkspaceClient {
     readonly config: Config;
     readonly apiClient: ApiClient;
 
     /**
+     * These APIs manage access rules on resources in an account. Currently, only
+     * grant rules are supported. A grant rule specifies a role assigned to a set of
+     * principals. A list of rules attached to a resource is called a rule set. A
+     * workspace must belong to an account for these APIs to work.
+     */
+    readonly accountAccessControlProxy: iam.AccountAccessControlProxyService;
+
+    /**
      * The alerts API can be used to perform CRUD operations on alerts. An alert is a
      * Databricks SQL object that periodically runs a query, evaluates a condition of
      * its result, and notifies one or more users and/or notification destinations if
-     * the condition was met.
+     * the condition was met. Alerts can be scheduled using the `sql_task` type of
+     * the Jobs API, e.g. :method:jobs/create.
      */
     readonly alerts: sql.AlertsService;
 
@@ -54,7 +52,7 @@ export class WorkspaceClient {
      * different workspaces can share access to the same data, depending on
      * privileges granted centrally in Unity Catalog.
      */
-    readonly catalogs: unitycatalog.CatalogsService;
+    readonly catalogs: catalog.CatalogsService;
 
     /**
      * Cluster policy limits the ability to configure clusters based on a set of
@@ -82,7 +80,7 @@ export class WorkspaceClient {
      * Only admin users can create, edit, and delete policies. Admin users also have
      * access to all policies.
      */
-    readonly clusterPolicies: clusterpolicies.ClusterPoliciesService;
+    readonly clusterPolicies: compute.ClusterPoliciesService;
 
     /**
      * The Clusters API allows you to create, start, edit, list, terminate, and
@@ -113,7 +111,7 @@ export class WorkspaceClient {
      * configuration even after it has been terminated for more than 30 days, an
      * administrator can pin a cluster to the cluster list.
      */
-    readonly clusters: clusters.ClustersService;
+    readonly clusters: compute.ClustersService;
 
     /**
      * This API allows executing commands on running clusters.
@@ -121,17 +119,33 @@ export class WorkspaceClient {
     readonly commands: commands.CommandExecutionService;
 
     /**
+     * Connections allow for creating a connection to an external data source.
+     *
+     * A connection is an abstraction of an external data source that can be
+     * connected from Databricks Compute. Creating a connection object is the first
+     * step to managing external data sources within Unity Catalog, with the second
+     * step being creating a data object (catalog, schema, or table) using the
+     * connection. Data objects derived from a connection can be written to or read
+     * from similar to other Unity Catalog data objects based on cloud storage. Users
+     * may create different types of connections with each connection having a unique
+     * set of configuration options to support credential management and other
+     * settings.
+     */
+    readonly connections: catalog.ConnectionsService;
+
+    /**
      * This API allows retrieving information about currently authenticated user or
      * service principal.
      */
-    readonly currentUser: scim.CurrentUserService;
+    readonly currentUser: iam.CurrentUserService;
 
     /**
      * In general, there is little need to modify dashboards using the API. However,
      * it can be useful to use dashboard objects to look-up a collection of related
      * query IDs. The API can also be used to duplicate multiple dashboards at once
      * since you can get a dashboard definition with a GET request and then POST it
-     * to create a new one.
+     * to create a new one. Dashboards can be scheduled using the `sql_task` type of
+     * the Jobs API, e.g. :method:jobs/create.
      */
     readonly dashboards: sql.DashboardsService;
 
@@ -153,7 +167,7 @@ export class WorkspaceClient {
      * DBFS API makes it simple to interact with various data sources without having
      * to include a users credentials every time to read a file.
      */
-    readonly dbfs: dbfs.DbfsService;
+    readonly dbfs: files.DbfsService;
 
     /**
      * The SQL Permissions API is similar to the endpoints of the
@@ -173,9 +187,17 @@ export class WorkspaceClient {
     readonly dbsqlPermissions: sql.DbsqlPermissionsService;
 
     /**
-    
-    */
-    readonly experiments: mlflow.ExperimentsService;
+     * Experiments are the primary unit of organization in MLflow; all MLflow runs
+     * belong to an experiment. Each experiment lets you visualize, search, and
+     * compare runs, as well as download run artifacts or metadata for analysis in
+     * other tools. Experiments are maintained in a Databricks hosted MLflow tracking
+     * server.
+     *
+     * Experiments are located in the workspace file tree. You manage experiments
+     * using the same tools you use to manage other workspace objects such as
+     * folders, notebooks, and libraries.
+     */
+    readonly experiments: ml.ExperimentsService;
 
     /**
      * An external location is an object that combines a cloud storage path with a
@@ -192,7 +214,7 @@ export class WorkspaceClient {
      * To create external locations, you must be a metastore admin or a user with the
      * **CREATE_EXTERNAL_LOCATION** privilege.
      */
-    readonly externalLocations: unitycatalog.ExternalLocationsService;
+    readonly externalLocations: catalog.ExternalLocationsService;
 
     /**
      * Functions implement User-Defined Functions (UDFs) in Unity Catalog.
@@ -202,7 +224,7 @@ export class WorkspaceClient {
      * function resides at the same level as a table, so it can be referenced with
      * the form __catalog_name__.__schema_name__.__function_name__.
      */
-    readonly functions: unitycatalog.FunctionsService;
+    readonly functions: catalog.FunctionsService;
 
     /**
      * Registers personal access token for Databricks to do operations on behalf of
@@ -212,7 +234,7 @@ export class WorkspaceClient {
      *
      * [more info]: https://docs.databricks.com/repos/get-access-tokens-from-git-provider.html
      */
-    readonly gitCredentials: gitcredentials.GitCredentialsService;
+    readonly gitCredentials: workspace.GitCredentialsService;
 
     /**
      * The Global Init Scripts API enables Workspace administrators to configure
@@ -225,7 +247,7 @@ export class WorkspaceClient {
      * launch and init scripts with later position are skipped. If enough containers
      * fail, the entire cluster fails with a `GLOBAL_INIT_SCRIPT_FAILURE` error code.
      */
-    readonly globalInitScripts: globalinitscripts.GlobalInitScriptsService;
+    readonly globalInitScripts: compute.GlobalInitScriptsService;
 
     /**
      * In Unity Catalog, data is secure by default. Initially, users have no access
@@ -240,18 +262,18 @@ export class WorkspaceClient {
      * the catalog. Similarly, privileges granted on a schema are inherited by all
      * current and future objects within that schema.
      */
-    readonly grants: unitycatalog.GrantsService;
+    readonly grants: catalog.GrantsService;
 
     /**
      * Groups simplify identity management, making it easier to assign access to
-     * Databricks Workspace, data, and other securable objects.
+     * Databricks workspace, data, and other securable objects.
      *
      * It is best practice to assign access to workspaces and access-control policies
      * in Unity Catalog to groups, instead of to users individually. All Databricks
-     * Workspace identities can be assigned as members of groups, and members inherit
+     * workspace identities can be assigned as members of groups, and members inherit
      * permissions that are assigned to their group.
      */
-    readonly groups: scim.GroupsService;
+    readonly groups: iam.GroupsService;
 
     /**
      * Instance Pools API are used to create, edit, delete and list instance pools by
@@ -273,7 +295,7 @@ export class WorkspaceClient {
      * Databricks does not charge DBUs while instances are idle in the pool. Instance
      * provider billing does apply. See pricing.
      */
-    readonly instancePools: instancepools.InstancePoolsService;
+    readonly instancePools: compute.InstancePoolsService;
 
     /**
      * The Instance Profiles API allows admins to add, list, and remove instance
@@ -283,7 +305,7 @@ export class WorkspaceClient {
      *
      * [Secure access to S3 buckets]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/instance-profiles.html
      */
-    readonly instanceProfiles: clusters.InstanceProfilesService;
+    readonly instanceProfiles: compute.InstanceProfilesService;
 
     /**
      * IP Access List enables admins to configure IP access lists.
@@ -308,7 +330,7 @@ export class WorkspaceClient {
      * After changes to the IP access list feature, it can take a few minutes for
      * changes to take effect.
      */
-    readonly ipAccessLists: ipaccesslists.IpAccessListsService;
+    readonly ipAccessLists: settings.IpAccessListsService;
 
     /**
      * The Jobs API allows you to create, edit, and delete jobs.
@@ -323,10 +345,11 @@ export class WorkspaceClient {
      * Spark submit, and Java applications.
      *
      * You should never hard code secrets or store them in plain text. Use the
-     * :service:secrets to manage secrets in the [Databricks CLI]. Use the [Secrets
+     * [Secrets CLI] to manage secrets in the [Databricks CLI]. Use the [Secrets
      * utility] to reference secrets in notebooks and jobs.
      *
      * [Databricks CLI]: https://docs.databricks.com/dev-tools/cli/index.html
+     * [Secrets CLI]: https://docs.databricks.com/dev-tools/cli/secrets-cli.html
      * [Secrets utility]: https://docs.databricks.com/dev-tools/databricks-utils.html#dbutils-secrets
      */
     readonly jobs: jobs.JobsService;
@@ -353,28 +376,7 @@ export class WorkspaceClient {
      * you restart the cluster. Until you restart the cluster, the status of the
      * uninstalled library appears as Uninstall pending restart.
      */
-    readonly libraries: libraries.LibrariesService;
-
-    /**
-    
-    */
-    readonly mLflowArtifacts: mlflow.MLflowArtifactsService;
-
-    /**
-     * These endpoints are modified versions of the MLflow API that accept additional
-     * input parameters or return additional information.
-     */
-    readonly mLflowDatabricks: mlflow.MLflowDatabricksService;
-
-    /**
-    
-    */
-    readonly mLflowMetrics: mlflow.MLflowMetricsService;
-
-    /**
-    
-    */
-    readonly mLflowRuns: mlflow.MLflowRunsService;
+    readonly libraries: compute.LibrariesService;
 
     /**
      * A metastore is the top-level container of objects in Unity Catalog. It stores
@@ -391,23 +393,19 @@ export class WorkspaceClient {
      * includes a legacy Hive metastore, the data in that metastore is available in a
      * catalog named hive_metastore.
      */
-    readonly metastores: unitycatalog.MetastoresService;
+    readonly metastores: catalog.MetastoresService;
 
     /**
-    
-    */
-    readonly modelVersionComments: mlflow.ModelVersionCommentsService;
-
-    /**
-    
-    */
-    readonly modelVersions: mlflow.ModelVersionsService;
+     * MLflow Model Registry is a centralized model repository and a UI and set of
+     * APIs that enable you to manage the full lifecycle of MLflow Models.
+     */
+    readonly modelRegistry: ml.ModelRegistryService;
 
     /**
      * Permissions API are used to create read, write, edit, update and manage access
      * for various users on different objects and endpoints.
      */
-    readonly permissions: permissions.PermissionsService;
+    readonly permissions: iam.PermissionsService;
 
     /**
      * The Delta Live Tables API allows you to create, edit, delete, start, and view
@@ -438,17 +436,18 @@ export class WorkspaceClient {
      * create cluster policies using a policy family. Cluster policies created using
      * a policy family inherit the policy family's policy definition.
      */
-    readonly policyFamilies: clusterpolicies.PolicyFamiliesService;
+    readonly policyFamilies: compute.PolicyFamiliesService;
 
     /**
-     * Databricks Delta Sharing: Providers REST API
+     * Databricks Providers REST API
      */
-    readonly providers: unitycatalog.ProvidersService;
+    readonly providers: sharing.ProvidersService;
 
     /**
      * These endpoints are used for CRUD operations on query definitions. Query
      * definitions include the target SQL warehouse, query text, name, description,
-     * tags, parameters, and visualizations.
+     * tags, parameters, and visualizations. Queries can be scheduled using the
+     * `sql_task` type of the Jobs API, e.g. :method:jobs/create.
      */
     readonly queries: sql.QueriesService;
 
@@ -458,24 +457,14 @@ export class WorkspaceClient {
     readonly queryHistory: sql.QueryHistoryService;
 
     /**
-     * Databricks Delta Sharing: Recipient Activation REST API
+     * Databricks Recipient Activation REST API
      */
-    readonly recipientActivation: unitycatalog.RecipientActivationService;
+    readonly recipientActivation: sharing.RecipientActivationService;
 
     /**
-     * Databricks Delta Sharing: Recipients REST API
+     * Databricks Recipients REST API
      */
-    readonly recipients: unitycatalog.RecipientsService;
-
-    /**
-    
-    */
-    readonly registeredModels: mlflow.RegisteredModelsService;
-
-    /**
-    
-    */
-    readonly registryWebhooks: mlflow.RegistryWebhooksService;
+    readonly recipients: sharing.RecipientsService;
 
     /**
      * The Repos API allows users to manage their git repos. Users can use the API to
@@ -489,7 +478,7 @@ export class WorkspaceClient {
      * science and engineering code development best practices using Git for version
      * control, collaboration, and CI/CD.
      */
-    readonly repos: repos.ReposService;
+    readonly repos: workspace.ReposService;
 
     /**
      * A schema (also called a database) is the second layer of Unity Catalog’s
@@ -498,7 +487,7 @@ export class WorkspaceClient {
      * data permission on the schema and its parent catalog, and they must have the
      * SELECT permission on the table or view.
      */
-    readonly schemas: unitycatalog.SchemasService;
+    readonly schemas: catalog.SchemasService;
 
     /**
      * The Secrets API allows you to manage secrets, secret scopes, and access
@@ -514,7 +503,7 @@ export class WorkspaceClient {
      * that might be displayed in notebooks, it is not possible to prevent such users
      * from reading secrets.
      */
-    readonly secrets: secrets.SecretsService;
+    readonly secrets: workspace.SecretsService;
 
     /**
      * Identities for use with jobs, automated tools, and systems such as scripts,
@@ -524,7 +513,7 @@ export class WorkspaceClient {
      * write, delete, or modify privileges in production. This eliminates the risk of
      * a user overwriting production data by accident.
      */
-    readonly servicePrincipals: scim.ServicePrincipalsService;
+    readonly servicePrincipals: iam.ServicePrincipalsService;
 
     /**
      * The Serving Endpoints API allows you to create, update, and delete model
@@ -541,12 +530,12 @@ export class WorkspaceClient {
      * Additionally, you can configure the scale of resources that should be applied
      * to each served model.
      */
-    readonly servingEndpoints: endpoints.ServingEndpointsService;
+    readonly servingEndpoints: serving.ServingEndpointsService;
 
     /**
-     * Databricks Delta Sharing: Shares REST API
+     * Databricks Shares REST API
      */
-    readonly shares: unitycatalog.SharesService;
+    readonly shares: sharing.SharesService;
 
     /**
      * The SQL Statement Execution API manages the execution of arbitrary SQL
@@ -619,16 +608,23 @@ export class WorkspaceClient {
      *
      * **Fetching result data: format and disposition**
      *
-     * Result data from statement execution is available in two formats: JSON, and
-     * [Apache Arrow Columnar]. Statements producing a result set smaller than 16 MiB
-     * can be fetched as `format=JSON_ARRAY`, using the `disposition=INLINE`. When a
-     * statement executed in `INLINE` disposition exceeds this limit, the execution
-     * is aborted, and no result can be fetched. Using `format=ARROW_STREAM` and
-     * `disposition=EXTERNAL_LINKS` allows large result sets, and with higher
-     * throughput.
+     * To specify the result data format, set the `format` field to `JSON_ARRAY`
+     * (JSON), `ARROW_STREAM` ([Apache Arrow Columnar]), or `CSV`.
      *
-     * The API uses defaults of `format=JSON_ARRAY` and `disposition=INLINE`. `We
-     * advise explicitly setting format and disposition in all production use cases.
+     * You can also configure how to fetch the result data in two different modes by
+     * setting the `disposition` field to `INLINE` or `EXTERNAL_LINKS`.
+     *
+     * The `INLINE` disposition can only be used with the `JSON_ARRAY` format and
+     * allows results up to 16 MiB. When a statement executed with `INLINE`
+     * disposition exceeds this limit, the execution is aborted, and no result can be
+     * fetched.
+     *
+     * The `EXTERNAL_LINKS` disposition allows fetching large result sets in
+     * `JSON_ARRAY`, `ARROW_STREAM` and `CSV` formats, and with higher throughput.
+     *
+     * The API uses defaults of `format=JSON_ARRAY` and `disposition=INLINE`.
+     * Databricks recommends that you explicit setting the format and the disposition
+     * for all production use cases.
      *
      * **Statement response: statement_id, status, manifest, and result**
      *
@@ -716,16 +712,11 @@ export class WorkspaceClient {
      * to service, and similarly. - After a statement has been submitted and a
      * statement_id is returned, that statement's status and result will
      * automatically close after either of 2 conditions: - The last result chunk is
-     * fetched (or resolved to an external link). - Ten (10) minutes pass with no
-     * calls to get status or fetch result data. Best practice: in asynchronous
-     * clients, poll for status regularly (and with backoff) to keep the statement
-     * open and alive. - After a `CANCEL` or `CLOSE` operation, the statement will no
-     * longer be visible from the API which means that a subsequent poll request may
-     * return an HTTP 404 NOT FOUND error. - After fetching the last result chunk
-     * (including chunk_index=0), the statement is closed; shortly after closure the
-     * statement will no longer be visible to the API and so, further calls such as
-     * :method:statementexecution/getStatement may return an HTTP 404 NOT FOUND
-     * error.
+     * fetched (or resolved to an external link). - One hour passes with no calls to
+     * get the status or fetch the result. Best practice: in asynchronous clients,
+     * poll for status regularly (and with backoff) to keep the statement open and
+     * alive. - After fetching the last result chunk (including chunk_index=0) the
+     * statement is automatically closed.
      *
      * [Apache Arrow Columnar]: https://arrow.apache.org/overview/
      * [Public Preview]: https://docs.databricks.com/release-notes/release-types.html
@@ -748,7 +739,14 @@ export class WorkspaceClient {
      * account admin who creates the storage credential can delegate ownership to
      * another user or group to manage permissions on it.
      */
-    readonly storageCredentials: unitycatalog.StorageCredentialsService;
+    readonly storageCredentials: catalog.StorageCredentialsService;
+
+    /**
+     * A system schema is a schema that lives within the system catalog. A system
+     * schema may contain information about customer usage of Unity Catalog such as
+     * audit-logs, billing-logs, lineage information, etc.
+     */
+    readonly systemSchemas: catalog.SystemSchemasService;
 
     /**
      * Primary key and foreign key constraints encode relationships between fields in
@@ -765,7 +763,7 @@ export class WorkspaceClient {
      * specification during table creation. You can also add or drop constraints on
      * existing tables.
      */
-    readonly tableConstraints: unitycatalog.TableConstraintsService;
+    readonly tableConstraints: catalog.TableConstraintsService;
 
     /**
      * A table resides in the third layer of Unity Catalog’s three-level namespace.
@@ -778,40 +776,47 @@ export class WorkspaceClient {
      * A table can be managed or external. From an API perspective, a __VIEW__ is a
      * particular kind of table (rather than a managed or external table).
      */
-    readonly tables: unitycatalog.TablesService;
+    readonly tables: catalog.TablesService;
 
     /**
      * Enables administrators to get all tokens and delete tokens for other users.
      * Admins can either get every token, get a specific token by ID, or get all
      * tokens for a particular user.
      */
-    readonly tokenManagement: tokenmanagement.TokenManagementService;
+    readonly tokenManagement: settings.TokenManagementService;
 
     /**
      * The Token API allows you to create, list, and revoke tokens that can be used
      * to authenticate and access Databricks REST APIs.
      */
-    readonly tokens: tokens.TokensService;
-
-    /**
-    
-    */
-    readonly transitionRequests: mlflow.TransitionRequestsService;
+    readonly tokens: settings.TokensService;
 
     /**
      * User identities recognized by Databricks and represented by email addresses.
      *
      * Databricks recommends using SCIM provisioning to sync users and groups
-     * automatically from your identity provider to your Databricks Workspace. SCIM
+     * automatically from your identity provider to your Databricks workspace. SCIM
      * streamlines onboarding a new employee or team by using your identity provider
-     * to create users and groups in Databricks Workspace and give them the proper
+     * to create users and groups in Databricks workspace and give them the proper
      * level of access. When a user leaves your organization or no longer needs
-     * access to Databricks Workspace, admins can terminate the user in your identity
+     * access to Databricks workspace, admins can terminate the user in your identity
      * provider and that user’s account will also be removed from Databricks
-     * Workspace. This ensures a consistent offboarding process and prevents
+     * workspace. This ensures a consistent offboarding process and prevents
      * unauthorized users from accessing sensitive data.
      */
-    readonly users: scim.UsersService;
+    readonly users: iam.UsersService;
+
+    /**
+     * Volumes are a Unity Catalog (UC) capability for accessing, storing, governing,
+     * organizing and processing files. Use cases include running machine learning on
+     * unstructured data such as image, audio, video, or PDF files, organizing data
+     * sets during the data exploration stages in data science, working with
+     * libraries that require access to the local file system on cluster machines,
+     * storing library and config files of arbitrary formats such as .whl or .txt
+     * centrally and providing secure access across workspaces to it, or transforming
+     * and querying non-tabular data files in ETL.
+     */
+    readonly volumes: catalog.VolumesService;
 
     /**
      * A SQL warehouse is a compute resource that lets you run SQL commands on data
@@ -830,9 +835,19 @@ export class WorkspaceClient {
     readonly workspace: workspace.WorkspaceService;
 
     /**
+     * A catalog in Databricks can be configured as __OPEN__ or __ISOLATED__. An
+     * __OPEN__ catalog can be accessed from any workspace, while an __ISOLATED__
+     * catalog can only be access from a configured list of workspaces.
+     *
+     * A catalog's workspace bindings can be configured by a metastore admin or the
+     * owner of the catalog.
+     */
+    readonly workspaceBindings: catalog.WorkspaceBindingsService;
+
+    /**
      * This API allows updating known workspace settings for advanced users.
      */
-    readonly workspaceConf: workspaceconf.WorkspaceConfService;
+    readonly workspaceConf: settings.WorkspaceConfService;
 
     constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
         if (!(config instanceof Config)) {
@@ -842,105 +857,139 @@ export class WorkspaceClient {
         this.config = config as Config;
         this.apiClient = new ApiClient(this.config, options);
 
+        this.accountAccessControlProxy =
+            new iam.AccountAccessControlProxyService(this.apiClient);
+
         this.alerts = new sql.AlertsService(this.apiClient);
-        this.catalogs = new unitycatalog.CatalogsService(this.apiClient);
-        this.clusterPolicies = new clusterpolicies.ClusterPoliciesService(
+
+        this.catalogs = new catalog.CatalogsService(this.apiClient);
+
+        this.clusterPolicies = new compute.ClusterPoliciesService(
             this.apiClient
         );
-        this.clusters = new clusters.ClustersService(this.apiClient);
-        this.commands = new commands.CommandExecutionService(this.apiClient);
-        this.currentUser = new scim.CurrentUserService(this.apiClient);
+
+        this.clusters = new compute.ClustersService(this.apiClient);
+
+        this.commandExecution = new compute.CommandExecutionService(
+            this.apiClient
+        );
+
+        this.connections = new catalog.ConnectionsService(this.apiClient);
+
+        this.currentUser = new iam.CurrentUserService(this.apiClient);
+
         this.dashboards = new sql.DashboardsService(this.apiClient);
+
         this.dataSources = new sql.DataSourcesService(this.apiClient);
-        this.dbfs = new dbfs.DbfsService(this.apiClient);
+
+        this.dbfs = new files.DbfsService(this.apiClient);
+
         this.dbsqlPermissions = new sql.DbsqlPermissionsService(this.apiClient);
-        this.experiments = new mlflow.ExperimentsService(this.apiClient);
-        this.externalLocations = new unitycatalog.ExternalLocationsService(
+
+        this.experiments = new ml.ExperimentsService(this.apiClient);
+
+        this.externalLocations = new catalog.ExternalLocationsService(
             this.apiClient
         );
-        this.functions = new unitycatalog.FunctionsService(this.apiClient);
-        this.gitCredentials = new gitcredentials.GitCredentialsService(
+
+        this.functions = new catalog.FunctionsService(this.apiClient);
+
+        this.gitCredentials = new workspace.GitCredentialsService(
             this.apiClient
         );
-        this.globalInitScripts = new globalinitscripts.GlobalInitScriptsService(
+
+        this.globalInitScripts = new compute.GlobalInitScriptsService(
             this.apiClient
         );
-        this.grants = new unitycatalog.GrantsService(this.apiClient);
-        this.groups = new scim.GroupsService(this.apiClient);
-        this.instancePools = new instancepools.InstancePoolsService(
+
+        this.grants = new catalog.GrantsService(this.apiClient);
+
+        this.groups = new iam.GroupsService(this.apiClient);
+
+        this.instancePools = new compute.InstancePoolsService(this.apiClient);
+
+        this.instanceProfiles = new compute.InstanceProfilesService(
             this.apiClient
         );
-        this.instanceProfiles = new clusters.InstanceProfilesService(
-            this.apiClient
-        );
-        this.ipAccessLists = new ipaccesslists.IpAccessListsService(
-            this.apiClient
-        );
+
+        this.ipAccessLists = new settings.IpAccessListsService(this.apiClient);
+
         this.jobs = new jobs.JobsService(this.apiClient);
-        this.libraries = new libraries.LibrariesService(this.apiClient);
-        this.mLflowArtifacts = new mlflow.MLflowArtifactsService(
-            this.apiClient
-        );
-        this.mLflowDatabricks = new mlflow.MLflowDatabricksService(
-            this.apiClient
-        );
-        this.mLflowMetrics = new mlflow.MLflowMetricsService(this.apiClient);
-        this.mLflowRuns = new mlflow.MLflowRunsService(this.apiClient);
-        this.metastores = new unitycatalog.MetastoresService(this.apiClient);
-        this.modelVersionComments = new mlflow.ModelVersionCommentsService(
-            this.apiClient
-        );
-        this.modelVersions = new mlflow.ModelVersionsService(this.apiClient);
-        this.permissions = new permissions.PermissionsService(this.apiClient);
+
+        this.libraries = new compute.LibrariesService(this.apiClient);
+
+        this.metastores = new catalog.MetastoresService(this.apiClient);
+
+        this.modelRegistry = new ml.ModelRegistryService(this.apiClient);
+
+        this.permissions = new iam.PermissionsService(this.apiClient);
+
         this.pipelines = new pipelines.PipelinesService(this.apiClient);
-        this.policyFamilies = new clusterpolicies.PolicyFamiliesService(
-            this.apiClient
-        );
-        this.providers = new unitycatalog.ProvidersService(this.apiClient);
+
+        this.policyFamilies = new compute.PolicyFamiliesService(this.apiClient);
+
+        this.providers = new sharing.ProvidersService(this.apiClient);
+
         this.queries = new sql.QueriesService(this.apiClient);
+
         this.queryHistory = new sql.QueryHistoryService(this.apiClient);
-        this.recipientActivation = new unitycatalog.RecipientActivationService(
+
+        this.recipientActivation = new sharing.RecipientActivationService(
             this.apiClient
         );
-        this.recipients = new unitycatalog.RecipientsService(this.apiClient);
-        this.registeredModels = new mlflow.RegisteredModelsService(
+
+        this.recipients = new sharing.RecipientsService(this.apiClient);
+
+        this.repos = new workspace.ReposService(this.apiClient);
+
+        this.schemas = new catalog.SchemasService(this.apiClient);
+
+        this.secrets = new workspace.SecretsService(this.apiClient);
+
+        this.servicePrincipals = new iam.ServicePrincipalsService(
             this.apiClient
         );
-        this.registryWebhooks = new mlflow.RegistryWebhooksService(
+
+        this.servingEndpoints = new serving.ServingEndpointsService(
             this.apiClient
         );
-        this.repos = new repos.ReposService(this.apiClient);
-        this.schemas = new unitycatalog.SchemasService(this.apiClient);
-        this.secrets = new secrets.SecretsService(this.apiClient);
-        this.servicePrincipals = new scim.ServicePrincipalsService(
-            this.apiClient
-        );
-        this.servingEndpoints = new endpoints.ServingEndpointsService(
-            this.apiClient
-        );
-        this.shares = new unitycatalog.SharesService(this.apiClient);
+
+        this.shares = new sharing.SharesService(this.apiClient);
+
         this.statementExecution = new sql.StatementExecutionService(
             this.apiClient
         );
-        this.storageCredentials = new unitycatalog.StorageCredentialsService(
+
+        this.storageCredentials = new catalog.StorageCredentialsService(
             this.apiClient
         );
-        this.tableConstraints = new unitycatalog.TableConstraintsService(
+
+        this.systemSchemas = new catalog.SystemSchemasService(this.apiClient);
+
+        this.tableConstraints = new catalog.TableConstraintsService(
             this.apiClient
         );
-        this.tables = new unitycatalog.TablesService(this.apiClient);
-        this.tokenManagement = new tokenmanagement.TokenManagementService(
+
+        this.tables = new catalog.TablesService(this.apiClient);
+
+        this.tokenManagement = new settings.TokenManagementService(
             this.apiClient
         );
-        this.tokens = new tokens.TokensService(this.apiClient);
-        this.transitionRequests = new mlflow.TransitionRequestsService(
-            this.apiClient
-        );
-        this.users = new scim.UsersService(this.apiClient);
+
+        this.tokens = new settings.TokensService(this.apiClient);
+
+        this.users = new iam.UsersService(this.apiClient);
+
+        this.volumes = new catalog.VolumesService(this.apiClient);
+
         this.warehouses = new sql.WarehousesService(this.apiClient);
+
         this.workspace = new workspace.WorkspaceService(this.apiClient);
-        this.workspaceConf = new workspaceconf.WorkspaceConfService(
+
+        this.workspaceBindings = new catalog.WorkspaceBindingsService(
             this.apiClient
         );
+
+        this.workspaceConf = new settings.WorkspaceConfService(this.apiClient);
     }
 }

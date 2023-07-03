@@ -226,25 +226,70 @@ export interface ClusterSpec {
     new_cluster?: any /* MISSING TYPE */;
 }
 
+export interface ConditionTask {
+    /**
+     * The left operand of the condition task. Can be either a string value or a
+     * job state or parameter reference.
+     */
+    left?: string;
+    /**
+     * * `EQUAL_TO`, `NOT_EQUAL` operators perform string comparison of their
+     * operands. This means that `“12.0” == “12”` will evaluate to
+     * `false`. * `GREATER_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN`,
+     * `LESS_THAN_OR_EQUAL` operators perform numeric comparison of their
+     * operands. `“12.0” >= “12”` will evaluate to `true`, `“10.0” >=
+     * “12”` will evaluate to `false`.
+     *
+     * The boolean comparison to task values can be implemented with operators
+     * `EQUAL_TO`, `NOT_EQUAL`. If a task value was set to a boolean value, it
+     * will be serialized to `“true”` or `“false”` for the comparison.
+     */
+    op?: ConditionTaskOp;
+    /**
+     * The right operand of the condition task. Can be either a string value or a
+     * job state or parameter reference.
+     */
+    right?: string;
+}
+
+/**
+ * * `EQUAL_TO`, `NOT_EQUAL` operators perform string comparison of their
+ * operands. This means that `“12.0” == “12”` will evaluate to `false`. *
+ * `GREATER_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN`, `LESS_THAN_OR_EQUAL`
+ * operators perform numeric comparison of their operands. `“12.0” >=
+ * “12”` will evaluate to `true`, `“10.0” >= “12”` will evaluate to
+ * `false`.
+ *
+ * The boolean comparison to task values can be implemented with operators
+ * `EQUAL_TO`, `NOT_EQUAL`. If a task value was set to a boolean value, it will
+ * be serialized to `“true”` or `“false”` for the comparison.
+ */
+export type ConditionTaskOp =
+    | "EQUAL_TO"
+    | "GREATER_THAN"
+    | "GREATER_THAN_OR_EQUAL"
+    | "LESS_THAN"
+    | "LESS_THAN_OR_EQUAL"
+    | "NOT_EQUAL";
+
 export interface Continuous {
     /**
      * Indicate whether the continuous execution of the job is paused or not.
      * Defaults to UNPAUSED.
      */
-    pause_status?: ContinuousPauseStatus;
+    pause_status?: PauseStatus;
 }
-
-/**
- * Indicate whether the continuous execution of the job is paused or not.
- * Defaults to UNPAUSED.
- */
-export type ContinuousPauseStatus = "PAUSED" | "UNPAUSED";
 
 export interface CreateJob {
     /**
      * List of permissions to set on the job.
      */
     access_control_list?: Array<any /* MISSING TYPE */>;
+    /**
+     * A list of compute requirements that can be referenced by tasks of this
+     * job.
+     */
+    compute?: Array<JobCompute>;
     /**
      * An optional continuous property for this job. The continuous property will
      * ensure that there is always one run executing. Only one of `schedule` and
@@ -262,7 +307,7 @@ export interface CreateJob {
      * Create/Update/Reset calls. When using the Jobs API 2.1 this value is
      * always set to `"MULTI_TASK"`.
      */
-    format?: CreateJobFormat;
+    format?: Format;
     /**
      * An optional specification for a remote repository containing the notebooks
      * used by this job's notebook tasks.
@@ -298,6 +343,21 @@ export interface CreateJob {
      */
     name?: string;
     /**
+     * Optional notification settings that are used when sending notifications to
+     * each of the `email_notifications` and `webhook_notifications` for this
+     * job.
+     */
+    notification_settings?: JobNotificationSettings;
+    /**
+     * Write-only setting, available only in Create/Update/Reset and Submit
+     * calls. Specifies the user or service principal that the job runs as. If
+     * not specified, the job runs as the user who created the job.
+     *
+     * Only `user_name` or `service_principal_name` can be specified. If both are
+     * specified, an error is thrown.
+     */
+    run_as?: JobRunAs;
+    /**
      * An optional periodic schedule for this job. The default behavior is that
      * the job only runs when triggered by clicking “Run Now” in the Jobs UI
      * or sending an API request to `runNow`.
@@ -312,7 +372,7 @@ export interface CreateJob {
     /**
      * A list of task specifications to be executed by this job.
      */
-    tasks?: Array<JobTaskSettings>;
+    tasks?: Array<Task>;
     /**
      * An optional timeout applied to each run of this job. The default behavior
      * is to have no timeout.
@@ -329,15 +389,8 @@ export interface CreateJob {
      * A collection of system notification IDs to notify when the run begins or
      * completes. The default behavior is to not send any system notifications.
      */
-    webhook_notifications?: JobWebhookNotifications;
+    webhook_notifications?: WebhookNotifications;
 }
-
-/**
- * Used to tell what is the format of the job. This field is ignored in
- * Create/Update/Reset calls. When using the Jobs API 2.1 this value is always
- * set to `"MULTI_TASK"`.
- */
-export type CreateJobFormat = "MULTI_TASK" | "SINGLE_TASK";
 
 export interface CreateResponse {
     /**
@@ -350,7 +403,7 @@ export interface CronSchedule {
     /**
      * Indicate whether this schedule is paused or not.
      */
-    pause_status?: CronSchedulePauseStatus;
+    pause_status?: PauseStatus;
     /**
      * A Cron expression using Quartz syntax that describes the schedule for a
      * job. See [Cron Trigger] for details. This field is required."
@@ -366,11 +419,6 @@ export interface CronSchedule {
      */
     timezone_id: string;
 }
-
-/**
- * Indicate whether this schedule is paused or not.
- */
-export type CronSchedulePauseStatus = "PAUSED" | "UNPAUSED";
 
 export interface DbtOutput {
     /**
@@ -440,10 +488,17 @@ export interface DeleteRun {
     run_id: number;
 }
 
+export interface ExportRunOutput {
+    /**
+     * The exported content in HTML format (one for every view item).
+     */
+    views?: Array<ViewItem>;
+}
+
 /**
  * Export and retrieve a job run
  */
-export interface ExportRun {
+export interface ExportRunRequest {
     /**
      * The canonical identifier for the run. This field is required.
      */
@@ -454,14 +509,7 @@ export interface ExportRun {
     views_to_export?: ViewsToExport;
 }
 
-export interface ExportRunOutput {
-    /**
-     * The exported content in HTML format (one for every view item).
-     */
-    views?: Array<ViewItem>;
-}
-
-export interface FileArrivalTriggerSettings {
+export interface FileArrivalTriggerConfiguration {
     /**
      * If set, the trigger starts a run only after the specified amount of time
      * passed since the last time the trigger fired. The minimum allowed value is
@@ -482,10 +530,12 @@ export interface FileArrivalTriggerSettings {
     wait_after_last_change_seconds?: number;
 }
 
+export type Format = "MULTI_TASK" | "SINGLE_TASK";
+
 /**
  * Get a single job
  */
-export interface Get {
+export interface GetJobRequest {
     /**
      * The canonical identifier of the job to retrieve information about. This
      * field is required.
@@ -494,9 +544,19 @@ export interface Get {
 }
 
 /**
+ * Get the output for a single run
+ */
+export interface GetRunOutputRequest {
+    /**
+     * The canonical identifier for the run. This field is required.
+     */
+    run_id: number;
+}
+
+/**
  * Get a single job run
  */
-export interface GetRun {
+export interface GetRunRequest {
     /**
      * Whether to include the repair history in the response.
      */
@@ -508,15 +568,15 @@ export interface GetRun {
     run_id: number;
 }
 
-/**
- * Get the output for a single run
- */
-export interface GetRunOutput {
-    /**
-     * The canonical identifier for the run. This field is required.
-     */
-    run_id: number;
-}
+export type GitProvider =
+    | "awsCodeCommit"
+    | "azureDevOpsServices"
+    | "bitbucketCloud"
+    | "bitbucketServer"
+    | "gitHub"
+    | "gitHubEnterprise"
+    | "gitLab"
+    | "gitLabEnterpriseEdition";
 
 /**
  * Read-only state of the remote repository at the time the job was run. This
@@ -553,7 +613,7 @@ export interface GitSource {
      * Unique identifier of the service used to host the Git repository. The
      * value is case insensitive.
      */
-    git_provider: GitSourceGitProvider;
+    git_provider: GitProvider;
     /**
      * Read-only state of the remote repository at the time the job was run. This
      * field is only included on job runs.
@@ -573,20 +633,6 @@ export interface GitSource {
     git_url: string;
 }
 
-/**
- * Unique identifier of the service used to host the Git repository. The value is
- * case insensitive.
- */
-export type GitSourceGitProvider =
-    | "awsCodeCommit"
-    | "azureDevOpsServices"
-    | "bitbucketCloud"
-    | "bitbucketServer"
-    | "gitHub"
-    | "gitHubEnterprise"
-    | "gitLab"
-    | "gitLabEnterpriseEdition";
-
 export interface Job {
     /**
      * The time at which this job was created in epoch milliseconds (milliseconds
@@ -603,10 +649,13 @@ export interface Job {
      */
     job_id?: number;
     /**
-     * The user name that the job runs as. `run_as_user_name` is based on the
-     * current job settings, and is set to the creator of the job if job access
-     * control is disabled, or the `is_owner` permission if job access control is
-     * enabled.
+     * The email of an active workspace user or the application ID of a service
+     * principal that the job runs as. This value can be changed by setting the
+     * `run_as` field when creating or updating a job.
+     *
+     * By default, `run_as_user_name` is based on the current job settings and is
+     * set to the creator of the job if job access control is disabled or to the
+     * user with the `is_owner` permission if job access control is enabled.
      */
     run_as_user_name?: string;
     /**
@@ -631,6 +680,16 @@ export interface JobCluster {
      * If new_cluster, a description of a cluster that is created for each task.
      */
     new_cluster?: any /* MISSING TYPE */;
+}
+
+export interface JobCompute {
+    /**
+     * A unique name for the compute requirement. This field is required and must
+     * be unique within the job. `JobTaskSettings` may refer to this field to
+     * determine the compute requirements for the task execution.
+     */
+    compute_key: string;
+    spec: any /* MISSING TYPE */;
 }
 
 export interface JobEmailNotifications {
@@ -663,7 +722,46 @@ export interface JobEmailNotifications {
     on_success?: Array<string>;
 }
 
+export interface JobNotificationSettings {
+    /**
+     * If true, do not send notifications to recipients specified in `on_failure`
+     * if the run is canceled.
+     */
+    no_alert_for_canceled_runs?: boolean;
+    /**
+     * If true, do not send notifications to recipients specified in `on_failure`
+     * if the run is skipped.
+     */
+    no_alert_for_skipped_runs?: boolean;
+}
+
+/**
+ * Write-only setting, available only in Create/Update/Reset and Submit calls.
+ * Specifies the user or service principal that the job runs as. If not
+ * specified, the job runs as the user who created the job.
+ *
+ * Only `user_name` or `service_principal_name` can be specified. If both are
+ * specified, an error is thrown.
+ */
+export interface JobRunAs {
+    /**
+     * Application ID of an active service principal. Setting this field requires
+     * the `servicePrincipal/user` role.
+     */
+    service_principal_name?: string;
+    /**
+     * The email of an active workspace user. Non-admin users can only set this
+     * field to their own email.
+     */
+    user_name?: string;
+}
+
 export interface JobSettings {
+    /**
+     * A list of compute requirements that can be referenced by tasks of this
+     * job.
+     */
+    compute?: Array<JobCompute>;
     /**
      * An optional continuous property for this job. The continuous property will
      * ensure that there is always one run executing. Only one of `schedule` and
@@ -681,7 +779,7 @@ export interface JobSettings {
      * Create/Update/Reset calls. When using the Jobs API 2.1 this value is
      * always set to `"MULTI_TASK"`.
      */
-    format?: JobSettingsFormat;
+    format?: Format;
     /**
      * An optional specification for a remote repository containing the notebooks
      * used by this job's notebook tasks.
@@ -717,6 +815,21 @@ export interface JobSettings {
      */
     name?: string;
     /**
+     * Optional notification settings that are used when sending notifications to
+     * each of the `email_notifications` and `webhook_notifications` for this
+     * job.
+     */
+    notification_settings?: JobNotificationSettings;
+    /**
+     * Write-only setting, available only in Create/Update/Reset and Submit
+     * calls. Specifies the user or service principal that the job runs as. If
+     * not specified, the job runs as the user who created the job.
+     *
+     * Only `user_name` or `service_principal_name` can be specified. If both are
+     * specified, an error is thrown.
+     */
+    run_as?: JobRunAs;
+    /**
      * An optional periodic schedule for this job. The default behavior is that
      * the job only runs when triggered by clicking “Run Now” in the Jobs UI
      * or sending an API request to `runNow`.
@@ -731,7 +844,7 @@ export interface JobSettings {
     /**
      * A list of task specifications to be executed by this job.
      */
-    tasks?: Array<JobTaskSettings>;
+    tasks?: Array<Task>;
     /**
      * An optional timeout applied to each run of this job. The default behavior
      * is to have no timeout.
@@ -748,160 +861,13 @@ export interface JobSettings {
      * A collection of system notification IDs to notify when the run begins or
      * completes. The default behavior is to not send any system notifications.
      */
-    webhook_notifications?: JobWebhookNotifications;
-}
-
-/**
- * Used to tell what is the format of the job. This field is ignored in
- * Create/Update/Reset calls. When using the Jobs API 2.1 this value is always
- * set to `"MULTI_TASK"`.
- */
-export type JobSettingsFormat = "MULTI_TASK" | "SINGLE_TASK";
-
-export interface JobTaskSettings {
-    /**
-     * If dbt_task, indicates that this must execute a dbt task. It requires both
-     * Databricks SQL and the ability to use a serverless or a pro SQL warehouse.
-     */
-    dbt_task?: DbtTask;
-    /**
-     * An optional array of objects specifying the dependency graph of the task.
-     * All tasks specified in this field must complete successfully before
-     * executing this task. The key is `task_key`, and the value is the name
-     * assigned to the dependent task. This field is required when a job consists
-     * of more than one task.
-     */
-    depends_on?: Array<TaskDependenciesItem>;
-    /**
-     * An optional description for this task. The maximum length is 4096 bytes.
-     */
-    description?: string;
-    /**
-     * An optional set of email addresses that is notified when runs of this task
-     * begin or complete as well as when this task is deleted. The default
-     * behavior is to not send any emails.
-     */
-    email_notifications?: JobEmailNotifications;
-    /**
-     * If existing_cluster_id, the ID of an existing cluster that is used for all
-     * runs of this task. When running tasks on an existing cluster, you may need
-     * to manually restart the cluster if it stops responding. We suggest running
-     * jobs on new clusters for greater reliability.
-     */
-    existing_cluster_id?: string;
-    /**
-     * If job_cluster_key, this task is executed reusing the cluster specified in
-     * `job.settings.job_clusters`.
-     */
-    job_cluster_key?: string;
-    /**
-     * An optional list of libraries to be installed on the cluster that executes
-     * the task. The default value is an empty list.
-     */
-    libraries?: Array<any /* MISSING TYPE */>;
-    /**
-     * An optional maximum number of times to retry an unsuccessful run. A run is
-     * considered to be unsuccessful if it completes with the `FAILED`
-     * result_state or `INTERNAL_ERROR` `life_cycle_state`. The value -1 means to
-     * retry indefinitely and the value 0 means to never retry. The default
-     * behavior is to never retry.
-     */
-    max_retries?: number;
-    /**
-     * An optional minimal interval in milliseconds between the start of the
-     * failed run and the subsequent retry run. The default behavior is that
-     * unsuccessful runs are immediately retried.
-     */
-    min_retry_interval_millis?: number;
-    /**
-     * If new_cluster, a description of a cluster that is created for only for
-     * this task.
-     */
-    new_cluster?: any /* MISSING TYPE */;
-    /**
-     * If notebook_task, indicates that this task must run a notebook. This field
-     * may not be specified in conjunction with spark_jar_task.
-     */
-    notebook_task?: NotebookTask;
-    /**
-     * If pipeline_task, indicates that this task must execute a Pipeline.
-     */
-    pipeline_task?: PipelineTask;
-    /**
-     * If python_wheel_task, indicates that this job must execute a PythonWheel.
-     */
-    python_wheel_task?: PythonWheelTask;
-    /**
-     * An optional policy to specify whether to retry a task when it times out.
-     * The default behavior is to not retry on timeout.
-     */
-    retry_on_timeout?: boolean;
-    /**
-     * If spark_jar_task, indicates that this task must run a JAR.
-     */
-    spark_jar_task?: SparkJarTask;
-    /**
-     * If spark_python_task, indicates that this task must run a Python file.
-     */
-    spark_python_task?: SparkPythonTask;
-    /**
-     * If spark_submit_task, indicates that this task must be launched by the
-     * spark submit script. This task can run only on new clusters.
-     */
-    spark_submit_task?: SparkSubmitTask;
-    /**
-     * If sql_task, indicates that this job must execute a SQL task.
-     */
-    sql_task?: SqlTask;
-    /**
-     * A unique name for the task. This field is used to refer to this task from
-     * other tasks. This field is required and must be unique within its parent
-     * job. On Update or Reset, this field is used to reference the tasks to be
-     * updated or reset. The maximum length is 100 characters.
-     */
-    task_key: string;
-    /**
-     * An optional timeout applied to each run of this job task. The default
-     * behavior is to have no timeout.
-     */
-    timeout_seconds?: number;
-}
-
-export interface JobWebhookNotifications {
-    /**
-     * An optional list of system notification IDs to call when the run fails. A
-     * maximum of 3 destinations can be specified for the `on_failure` property.
-     */
-    on_failure?: Array<JobWebhookNotificationsOnFailureItem>;
-    /**
-     * An optional list of system notification IDs to call when the run starts. A
-     * maximum of 3 destinations can be specified for the `on_start` property.
-     */
-    on_start?: Array<JobWebhookNotificationsOnStartItem>;
-    /**
-     * An optional list of system notification IDs to call when the run completes
-     * successfully. A maximum of 3 destinations can be specified for the
-     * `on_success` property.
-     */
-    on_success?: Array<JobWebhookNotificationsOnSuccessItem>;
-}
-
-export interface JobWebhookNotificationsOnFailureItem {
-    id?: string;
-}
-
-export interface JobWebhookNotificationsOnStartItem {
-    id?: string;
-}
-
-export interface JobWebhookNotificationsOnSuccessItem {
-    id?: string;
+    webhook_notifications?: WebhookNotifications;
 }
 
 /**
  * List all jobs
  */
-export interface List {
+export interface ListJobsRequest {
     /**
      * Whether to include task and cluster details in the response.
      */
@@ -918,22 +884,42 @@ export interface List {
     /**
      * The offset of the first job to return, relative to the most recently
      * created job.
+     *
+     * Deprecated since June 2023. Use `page_token` to iterate through the pages
+     * instead.
      */
     offset?: number;
+    /**
+     * Use `next_page_token` or `prev_page_token` returned from the previous
+     * request to list the next or previous page of jobs respectively.
+     */
+    page_token?: string;
 }
 
 export interface ListJobsResponse {
+    /**
+     * If true, additional jobs matching the provided filter are available for
+     * listing.
+     */
     has_more?: boolean;
     /**
      * The list of jobs.
      */
     jobs?: Array<BaseJob>;
+    /**
+     * A token that can be used to list the next page of jobs.
+     */
+    next_page_token?: string;
+    /**
+     * A token that can be used to list the previous page of jobs.
+     */
+    prev_page_token?: string;
 }
 
 /**
  * List runs for a job
  */
-export interface ListRuns {
+export interface ListRunsRequest {
     /**
      * If active_only is `true`, only active runs are included in the results;
      * otherwise, lists both active and completed runs. An active run is a run in
@@ -964,8 +950,16 @@ export interface ListRuns {
     limit?: number;
     /**
      * The offset of the first run to return, relative to the most recent run.
+     *
+     * Deprecated since June 2023. Use `page_token` to iterate through the pages
+     * instead.
      */
     offset?: number;
+    /**
+     * Use `next_page_token` or `prev_page_token` returned from the previous
+     * request to list the next or previous page of runs respectively.
+     */
+    page_token?: string;
     /**
      * The type of runs to return. For a description of run types, see
      * :method:jobs/getRun.
@@ -991,6 +985,14 @@ export interface ListRunsResponse {
      * listing.
      */
     has_more?: boolean;
+    /**
+     * A token that can be used to list the next page of runs.
+     */
+    next_page_token?: string;
+    /**
+     * A token that can be used to list the previous page of runs.
+     */
+    prev_page_token?: string;
     /**
      * A list of runs, from most recently started to least.
      */
@@ -1058,23 +1060,19 @@ export interface NotebookTask {
      */
     notebook_path: string;
     /**
-     * This describes an enum
-     */
-    source?: NotebookTaskSource;
-}
-
-/**
- * This describes an enum
- */
-export type NotebookTaskSource =
-    /**
+     * Optional location type of the notebook. When set to `WORKSPACE`, the
+     * notebook will be retrieved from the local <Databricks> workspace. When set
+     * to `GIT`, the notebook will be retrieved from a Git repository defined in
+     * `git_source`. If the value is empty, the task will use `GIT` if
+     * `git_source` is defined and `WORKSPACE` otherwise.
+     *
+     * * `WORKSPACE`: Notebook is located in <Databricks> workspace. * `GIT`:
      * Notebook is located in cloud Git provider.
      */
-    | "GIT"
-    /**
-     * Notebook is located in Databricks workspace.
-     */
-    | "WORKSPACE";
+    source?: Source;
+}
+
+export type PauseStatus = "PAUSED" | "UNPAUSED";
 
 export interface PipelineParams {
     /**
@@ -1271,7 +1269,8 @@ export interface RepairRun {
 
 export interface RepairRunResponse {
     /**
-     * The ID of the repair.
+     * The ID of the repair. Must be provided in subsequent repairs using the
+     * `latest_repair_id` field to ensure sequential repairs.
      */
     repair_id?: number;
 }
@@ -1285,8 +1284,8 @@ export interface ResetJob {
      * The new settings of the job. These settings completely replace the old
      * settings.
      *
-     * Changes to the field `JobSettings.timeout_seconds` are applied to active
-     * runs. Changes to other fields are applied to future runs only.
+     * Changes to the field `JobBaseSettings.timeout_seconds` are applied to
+     * active runs. Changes to other fields are applied to future runs only.
      */
     new_settings: JobSettings;
 }
@@ -1436,6 +1435,43 @@ export interface Run {
      */
     trigger?: TriggerType;
 }
+
+export interface RunConditionTask {
+    /**
+     * The left operand of the condition task.
+     */
+    left: string;
+    /**
+     * The condtion task operator.
+     */
+    op: RunConditionTaskOp;
+    /**
+     * The condition expression evaluation result. Filled in if the task was
+     * successfully completed. Can be `"true"` or `"false"`
+     */
+    outcome?: RunConditionTaskOutcome;
+    /**
+     * The right operand of the condition task.
+     */
+    right: string;
+}
+
+/**
+ * The condtion task operator.
+ */
+export type RunConditionTaskOp =
+    | "EQUAL_TO"
+    | "GREATER_THAN"
+    | "GREATER_THAN_OR_EQUAL"
+    | "LESS_THAN"
+    | "LESS_THAN_OR_EQUAL"
+    | "NOT_EQUAL";
+
+/**
+ * The condition expression evaluation result. Filled in if the task was
+ * successfully completed. Can be `"true"` or `"false"`
+ */
+export type RunConditionTaskOutcome = "false" | "true";
 
 /**
  * This describes an enum
@@ -1614,6 +1650,10 @@ export interface RunNowResponse {
 }
 
 export interface RunOutput {
+    /**
+     * The output of a condition task, if available.
+     */
+    condition_task?: any /* MISSING TYPE */;
     /**
      * The output of a dbt task, if available.
      */
@@ -1806,71 +1846,6 @@ export interface RunState {
     user_cancelled_or_timedout?: boolean;
 }
 
-export interface RunSubmitTaskSettings {
-    /**
-     * An optional array of objects specifying the dependency graph of the task.
-     * All tasks specified in this field must complete successfully before
-     * executing this task. The key is `task_key`, and the value is the name
-     * assigned to the dependent task. This field is required when a job consists
-     * of more than one task.
-     */
-    depends_on?: Array<TaskDependenciesItem>;
-    /**
-     * If existing_cluster_id, the ID of an existing cluster that is used for all
-     * runs of this task. When running tasks on an existing cluster, you may need
-     * to manually restart the cluster if it stops responding. We suggest running
-     * jobs on new clusters for greater reliability.
-     */
-    existing_cluster_id?: string;
-    /**
-     * An optional list of libraries to be installed on the cluster that executes
-     * the task. The default value is an empty list.
-     */
-    libraries?: Array<any /* MISSING TYPE */>;
-    /**
-     * If new_cluster, a description of a cluster that is created for each run.
-     */
-    new_cluster?: any /* MISSING TYPE */;
-    /**
-     * If notebook_task, indicates that this task must run a notebook. This field
-     * may not be specified in conjunction with spark_jar_task.
-     */
-    notebook_task?: NotebookTask;
-    /**
-     * If pipeline_task, indicates that this task must execute a Pipeline.
-     */
-    pipeline_task?: PipelineTask;
-    /**
-     * If python_wheel_task, indicates that this job must execute a PythonWheel.
-     */
-    python_wheel_task?: PythonWheelTask;
-    /**
-     * If spark_jar_task, indicates that this task must run a JAR.
-     */
-    spark_jar_task?: SparkJarTask;
-    /**
-     * If spark_python_task, indicates that this task must run a Python file.
-     */
-    spark_python_task?: SparkPythonTask;
-    /**
-     * If spark_submit_task, indicates that this task must be launched by the
-     * spark submit script. This task can run only on new clusters.
-     */
-    spark_submit_task?: SparkSubmitTask;
-    /**
-     * A unique name for the task. This field is used to refer to this task from
-     * other tasks. This field is required and must be unique within its parent
-     * job. On Update or Reset, this field is used to reference the tasks to be
-     * updated or reset. The maximum length is 100 characters.
-     */
-    task_key: string;
-    /**
-     * An optional timeout applied to each run of this job task. The default
-     * behavior is to have no timeout.
-     */
-    timeout_seconds?: number;
-}
-
 export interface RunTask {
     /**
      * The sequence number of this run attempt for a triggered job run. The
@@ -1897,6 +1872,12 @@ export interface RunTask {
      */
     cluster_instance?: ClusterInstance;
     /**
+     * If condition_task, specifies a condition with an outcome that can be used
+     * to control the execution of other tasks. Does not require a cluster to
+     * execute and does not support retries or notifications.
+     */
+    condition_task?: RunConditionTask;
+    /**
      * If dbt_task, indicates that this must execute a dbt task. It requires both
      * Databricks SQL and the ability to use a serverless or a pro SQL warehouse.
      */
@@ -1905,10 +1886,9 @@ export interface RunTask {
      * An optional array of objects specifying the dependency graph of the task.
      * All tasks specified in this field must complete successfully before
      * executing this task. The key is `task_key`, and the value is the name
-     * assigned to the dependent task. This field is required when a job consists
-     * of more than one task.
+     * assigned to the dependent task.
      */
-    depends_on?: Array<TaskDependenciesItem>;
+    depends_on?: Array<TaskDependency>;
     /**
      * An optional description for this task. The maximum length is 4096 bytes.
      */
@@ -2032,6 +2012,8 @@ export type RunType =
      */
     | "WORKFLOW_RUN";
 
+export type Source = "GIT" | "WORKSPACE";
+
 export interface SparkJarTask {
     /**
      * Deprecated since 04/2016\\. Provide a `jar` through the `libraries` field
@@ -2067,7 +2049,26 @@ export interface SparkPythonTask {
      * [Task parameter variables]: https://docs.databricks.com/jobs.html#parameter-variables
      */
     parameters?: Array<string>;
+    /**
+     * The Python file to be executed. Cloud file URIs (such as dbfs:/, s3:/,
+     * adls:/, gcs:/) and workspace paths are supported. For python files stored
+     * in the Databricks workspace, the path must be absolute and begin with `/`.
+     * For files stored in a remote repository, the path must be relative. This
+     * field is required.
+     */
     python_file: string;
+    /**
+     * Optional location type of the Python file. When set to `WORKSPACE` or not
+     * specified, the file will be retrieved from the local <Databricks>
+     * workspace or cloud location (if the `python_file` has a URI format). When
+     * set to `GIT`, the Python file will be retrieved from a Git repository
+     * defined in `git_source`.
+     *
+     * * `WORKSPACE`: The Python file is located in a <Databricks> workspace or
+     * at a cloud filesystem URI. * `GIT`: The Python file is located in a remote
+     * Git repository.
+     */
+    source?: Source;
 }
 
 export interface SparkSubmitTask {
@@ -2127,7 +2128,7 @@ export interface SqlDashboardOutput {
     /**
      * Widgets executed in the run. Only SQL query based widgets are listed.
      */
-    widgets?: SqlDashboardWidgetOutput;
+    widgets?: Array<SqlDashboardWidgetOutput>;
 }
 
 export interface SqlDashboardWidgetOutput {
@@ -2230,6 +2231,12 @@ export interface SqlTask {
      */
     dashboard?: SqlTaskDashboard;
     /**
+     * If file, indicates that this job runs a SQL file in a remote Git
+     * repository. Only one SQL statement is supported in a file. Multiple SQL
+     * statements separated by semicolons (;) are not permitted.
+     */
+    file?: SqlTaskFile;
+    /**
      * Parameters to be used for each run of this job. The SQL alert task does
      * not support custom parameters.
      */
@@ -2280,6 +2287,13 @@ export interface SqlTaskDashboard {
     subscriptions?: Array<SqlTaskSubscription>;
 }
 
+export interface SqlTaskFile {
+    /**
+     * Relative path of the SQL file in the remote Git repository.
+     */
+    path: string;
+}
+
 export interface SqlTaskQuery {
     /**
      * The canonical identifier of the SQL query.
@@ -2326,10 +2340,15 @@ export interface SubmitRun {
      */
     idempotency_token?: string;
     /**
+     * Optional notification settings that are used when sending notifications to
+     * each of the `webhook_notifications` for this run.
+     */
+    notification_settings?: JobNotificationSettings;
+    /**
      * An optional name for the run. The default value is `Untitled`.
      */
     run_name?: string;
-    tasks?: Array<RunSubmitTaskSettings>;
+    tasks?: Array<SubmitTask>;
     /**
      * An optional timeout applied to each run of this job. The default behavior
      * is to have no timeout.
@@ -2339,7 +2358,7 @@ export interface SubmitRun {
      * A collection of system notification IDs to notify when the run begins or
      * completes. The default behavior is to not send any system notifications.
      */
-    webhook_notifications?: JobWebhookNotifications;
+    webhook_notifications?: WebhookNotifications;
 }
 
 export interface SubmitRunResponse {
@@ -2349,8 +2368,264 @@ export interface SubmitRunResponse {
     run_id?: number;
 }
 
-export interface TaskDependenciesItem {
-    task_key?: string;
+export interface SubmitTask {
+    /**
+     * If condition_task, specifies a condition with an outcome that can be used
+     * to control the execution of other tasks. Does not require a cluster to
+     * execute and does not support retries or notifications.
+     */
+    condition_task?: ConditionTask;
+    /**
+     * An optional array of objects specifying the dependency graph of the task.
+     * All tasks specified in this field must complete successfully before
+     * executing this task. The key is `task_key`, and the value is the name
+     * assigned to the dependent task.
+     */
+    depends_on?: Array<TaskDependency>;
+    /**
+     * If existing_cluster_id, the ID of an existing cluster that is used for all
+     * runs of this task. When running tasks on an existing cluster, you may need
+     * to manually restart the cluster if it stops responding. We suggest running
+     * jobs on new clusters for greater reliability.
+     */
+    existing_cluster_id?: string;
+    /**
+     * An optional list of libraries to be installed on the cluster that executes
+     * the task. The default value is an empty list.
+     */
+    libraries?: Array<any /* MISSING TYPE */>;
+    /**
+     * If new_cluster, a description of a cluster that is created for each run.
+     */
+    new_cluster?: any /* MISSING TYPE */;
+    /**
+     * If notebook_task, indicates that this task must run a notebook. This field
+     * may not be specified in conjunction with spark_jar_task.
+     */
+    notebook_task?: NotebookTask;
+    /**
+     * If pipeline_task, indicates that this task must execute a Pipeline.
+     */
+    pipeline_task?: PipelineTask;
+    /**
+     * If python_wheel_task, indicates that this job must execute a PythonWheel.
+     */
+    python_wheel_task?: PythonWheelTask;
+    /**
+     * If spark_jar_task, indicates that this task must run a JAR.
+     */
+    spark_jar_task?: SparkJarTask;
+    /**
+     * If spark_python_task, indicates that this task must run a Python file.
+     */
+    spark_python_task?: SparkPythonTask;
+    /**
+     * If spark_submit_task, indicates that this task must be launched by the
+     * spark submit script. This task can run only on new clusters.
+     */
+    spark_submit_task?: SparkSubmitTask;
+    /**
+     * If sql_task, indicates that this job must execute a SQL.
+     */
+    sql_task?: SqlTask;
+    /**
+     * A unique name for the task. This field is used to refer to this task from
+     * other tasks. This field is required and must be unique within its parent
+     * job. On Update or Reset, this field is used to reference the tasks to be
+     * updated or reset. The maximum length is 100 characters.
+     */
+    task_key: string;
+    /**
+     * An optional timeout applied to each run of this job task. The default
+     * behavior is to have no timeout.
+     */
+    timeout_seconds?: number;
+}
+
+export interface Task {
+    /**
+     * The key of the compute requirement, specified in `job.settings.compute`,
+     * to use for execution of this task.
+     */
+    compute_key?: string;
+    /**
+     * If condition_task, specifies a condition with an outcome that can be used
+     * to control the execution of other tasks. Does not require a cluster to
+     * execute and does not support retries or notifications.
+     */
+    condition_task?: ConditionTask;
+    /**
+     * If dbt_task, indicates that this must execute a dbt task. It requires both
+     * Databricks SQL and the ability to use a serverless or a pro SQL warehouse.
+     */
+    dbt_task?: DbtTask;
+    /**
+     * An optional array of objects specifying the dependency graph of the task.
+     * All tasks specified in this field must complete successfully before
+     * executing this task. The key is `task_key`, and the value is the name
+     * assigned to the dependent task.
+     */
+    depends_on?: Array<TaskDependency>;
+    /**
+     * An optional description for this task. The maximum length is 4096 bytes.
+     */
+    description?: string;
+    /**
+     * An optional set of email addresses that is notified when runs of this task
+     * begin or complete as well as when this task is deleted. The default
+     * behavior is to not send any emails.
+     */
+    email_notifications?: TaskEmailNotifications;
+    /**
+     * If existing_cluster_id, the ID of an existing cluster that is used for all
+     * runs of this task. When running tasks on an existing cluster, you may need
+     * to manually restart the cluster if it stops responding. We suggest running
+     * jobs on new clusters for greater reliability.
+     */
+    existing_cluster_id?: string;
+    /**
+     * If job_cluster_key, this task is executed reusing the cluster specified in
+     * `job.settings.job_clusters`.
+     */
+    job_cluster_key?: string;
+    /**
+     * An optional list of libraries to be installed on the cluster that executes
+     * the task. The default value is an empty list.
+     */
+    libraries?: Array<any /* MISSING TYPE */>;
+    /**
+     * An optional maximum number of times to retry an unsuccessful run. A run is
+     * considered to be unsuccessful if it completes with the `FAILED`
+     * result_state or `INTERNAL_ERROR` `life_cycle_state`. The value -1 means to
+     * retry indefinitely and the value 0 means to never retry. The default
+     * behavior is to never retry.
+     */
+    max_retries?: number;
+    /**
+     * An optional minimal interval in milliseconds between the start of the
+     * failed run and the subsequent retry run. The default behavior is that
+     * unsuccessful runs are immediately retried.
+     */
+    min_retry_interval_millis?: number;
+    /**
+     * If new_cluster, a description of a cluster that is created for only for
+     * this task.
+     */
+    new_cluster?: any /* MISSING TYPE */;
+    /**
+     * If notebook_task, indicates that this task must run a notebook. This field
+     * may not be specified in conjunction with spark_jar_task.
+     */
+    notebook_task?: NotebookTask;
+    /**
+     * Optional notification settings that are used when sending notifications to
+     * each of the `email_notifications` for this task.
+     */
+    notification_settings?: TaskNotificationSettings;
+    /**
+     * If pipeline_task, indicates that this task must execute a Pipeline.
+     */
+    pipeline_task?: PipelineTask;
+    /**
+     * If python_wheel_task, indicates that this job must execute a PythonWheel.
+     */
+    python_wheel_task?: PythonWheelTask;
+    /**
+     * An optional policy to specify whether to retry a task when it times out.
+     * The default behavior is to not retry on timeout.
+     */
+    retry_on_timeout?: boolean;
+    /**
+     * If spark_jar_task, indicates that this task must run a JAR.
+     */
+    spark_jar_task?: SparkJarTask;
+    /**
+     * If spark_python_task, indicates that this task must run a Python file.
+     */
+    spark_python_task?: SparkPythonTask;
+    /**
+     * If spark_submit_task, indicates that this task must be launched by the
+     * spark submit script. This task can run only on new clusters.
+     */
+    spark_submit_task?: SparkSubmitTask;
+    /**
+     * If sql_task, indicates that this job must execute a SQL task.
+     */
+    sql_task?: SqlTask;
+    /**
+     * A unique name for the task. This field is used to refer to this task from
+     * other tasks. This field is required and must be unique within its parent
+     * job. On Update or Reset, this field is used to reference the tasks to be
+     * updated or reset. The maximum length is 100 characters.
+     */
+    task_key: string;
+    /**
+     * An optional timeout applied to each run of this job task. The default
+     * behavior is to have no timeout.
+     */
+    timeout_seconds?: number;
+}
+
+export interface TaskDependency {
+    /**
+     * Can only be specified on condition task dependencies. The outcome of the
+     * dependent task that must be met for this task to run.
+     */
+    outcome?: TaskDependencyOutcome;
+    /**
+     * The name of task that this task depends on.
+     */
+    task_key: string;
+}
+
+/**
+ * Can only be specified on condition task dependencies. The outcome of the
+ * dependent task that must be met for this task to run.
+ */
+export type TaskDependencyOutcome = "false" | "true";
+
+export interface TaskEmailNotifications {
+    /**
+     * A list of email addresses to be notified when a run unsuccessfully
+     * completes. A run is considered to have completed unsuccessfully if it ends
+     * with an `INTERNAL_ERROR` `life_cycle_state` or a `SKIPPED`, `FAILED`, or
+     * `TIMED_OUT` result_state. If this is not specified on job creation, reset,
+     * or update the list is empty, and notifications are not sent.
+     */
+    on_failure?: Array<string>;
+    /**
+     * A list of email addresses to be notified when a run begins. If not
+     * specified on job creation, reset, or update, the list is empty, and
+     * notifications are not sent.
+     */
+    on_start?: Array<string>;
+    /**
+     * A list of email addresses to be notified when a run successfully
+     * completes. A run is considered to have completed successfully if it ends
+     * with a `TERMINATED` `life_cycle_state` and a `SUCCESSFUL` result_state. If
+     * not specified on job creation, reset, or update, the list is empty, and
+     * notifications are not sent.
+     */
+    on_success?: Array<string>;
+}
+
+export interface TaskNotificationSettings {
+    /**
+     * If true, do not send notifications to recipients specified in `on_start`
+     * for the retried runs and do not send notifications to recipients specified
+     * in `on_failure` until the last retry of the run.
+     */
+    alert_on_last_attempt?: boolean;
+    /**
+     * If true, do not send notifications to recipients specified in `on_failure`
+     * if the run is canceled.
+     */
+    no_alert_for_canceled_runs?: boolean;
+    /**
+     * If true, do not send notifications to recipients specified in `on_failure`
+     * if the run is skipped.
+     */
+    no_alert_for_skipped_runs?: boolean;
 }
 
 export interface TriggerEvaluation {
@@ -2389,17 +2664,12 @@ export interface TriggerSettings {
     /**
      * File arrival trigger settings.
      */
-    file_arrival?: FileArrivalTriggerSettings;
+    file_arrival?: FileArrivalTriggerConfiguration;
     /**
      * Whether this trigger is paused or not.
      */
-    pause_status?: TriggerSettingsPauseStatus;
+    pause_status?: PauseStatus;
 }
-
-/**
- * Whether this trigger is paused or not.
- */
-export type TriggerSettingsPauseStatus = "PAUSED" | "UNPAUSED";
 
 /**
  * This describes an enum
@@ -2427,7 +2697,8 @@ export type TriggerType =
 export interface UpdateJob {
     /**
      * Remove top-level fields in the job settings. Removing nested fields is not
-     * supported. This field is optional.
+     * supported, except for tasks and job clusters (`tasks/task_1`). This field
+     * is optional.
      */
     fields_to_remove?: Array<string>;
     /**
@@ -2435,9 +2706,14 @@ export interface UpdateJob {
      */
     job_id: number;
     /**
-     * The new settings for the job. Any top-level fields specified in
-     * `new_settings` are completely replaced. Partially updating nested fields
-     * is not supported.
+     * The new settings for the job.
+     *
+     * Top-level fields specified in `new_settings` are completely replaced,
+     * except for arrays which are merged. That is, new and existing entries are
+     * completely replaced based on the respective key fields, i.e. `task_key` or
+     * `job_cluster_key`, while previous entries are kept.
+     *
+     * Partially updating nested fields is not supported.
      *
      * Changes to the field `JobSettings.timeout_seconds` are applied to active
      * runs. Changes to other fields are applied to future runs only.
@@ -2491,5 +2767,28 @@ export type ViewsToExport =
      * All dashboard views of the notebook.
      */
     | "DASHBOARDS";
+
+export interface Webhook {
+    id?: string;
+}
+
+export interface WebhookNotifications {
+    /**
+     * An optional list of system notification IDs to call when the run fails. A
+     * maximum of 3 destinations can be specified for the `on_failure` property.
+     */
+    on_failure?: Array<Webhook>;
+    /**
+     * An optional list of system notification IDs to call when the run starts. A
+     * maximum of 3 destinations can be specified for the `on_start` property.
+     */
+    on_start?: Array<Webhook>;
+    /**
+     * An optional list of system notification IDs to call when the run completes
+     * successfully. A maximum of 3 destinations can be specified for the
+     * `on_success` property.
+     */
+    on_success?: Array<Webhook>;
+}
 
 export interface EmptyResponse {}

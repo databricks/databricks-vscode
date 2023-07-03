@@ -6,35 +6,31 @@ import {Config, ConfigOptions} from "./config/Config";
 import {ApiClient, ClientOptions} from "./api-client";
 
 import * as billing from "./apis/billing";
-import * as clusterpolicies from "./apis/clusterpolicies";
-import * as clusters from "./apis/clusters";
-import * as commands from "./apis/commands";
-import * as dbfs from "./apis/dbfs";
-import * as deployment from "./apis/deployment";
-import * as endpoints from "./apis/endpoints";
-import * as gitcredentials from "./apis/gitcredentials";
-import * as globalinitscripts from "./apis/globalinitscripts";
-import * as instancepools from "./apis/instancepools";
-import * as ipaccesslists from "./apis/ipaccesslists";
+import * as catalog from "./apis/catalog";
+import * as compute from "./apis/compute";
+import * as files from "./apis/files";
+import * as iam from "./apis/iam";
 import * as jobs from "./apis/jobs";
-import * as libraries from "./apis/libraries";
-import * as mlflow from "./apis/mlflow";
+import * as ml from "./apis/ml";
 import * as oauth2 from "./apis/oauth2";
-import * as permissions from "./apis/permissions";
 import * as pipelines from "./apis/pipelines";
-import * as repos from "./apis/repos";
-import * as scim from "./apis/scim";
-import * as secrets from "./apis/secrets";
+import * as provisioning from "./apis/provisioning";
+import * as serving from "./apis/serving";
+import * as settings from "./apis/settings";
+import * as sharing from "./apis/sharing";
 import * as sql from "./apis/sql";
-import * as tokenmanagement from "./apis/tokenmanagement";
-import * as tokens from "./apis/tokens";
-import * as unitycatalog from "./apis/unitycatalog";
 import * as workspace from "./apis/workspace";
-import * as workspaceconf from "./apis/workspaceconf";
 
 export class AccountClient {
     readonly config: Config;
     readonly apiClient: ApiClient;
+
+    /**
+     * These APIs manage access rules on resources in an account. Currently, only
+     * grant rules are supported. A grant rule specifies a role assigned to a set of
+     * principals. A list of rules attached to a resource is called a rule set.
+     */
+    readonly accountAccessControl: iam.AccountAccessControlService;
 
     /**
      * This API allows you to download billable usage logs for the specified account
@@ -55,7 +51,7 @@ export class AccountClient {
      * credential configuration encapsulates this role information, and its ID is
      * used when creating a new workspace.
      */
-    readonly credentials: deployment.CredentialsService;
+    readonly credentials: provisioning.CredentialsService;
 
     /**
      * These APIs enable administrators to manage custom oauth app integrations,
@@ -86,18 +82,44 @@ export class AccountClient {
      * If you have an older workspace, it might not be on the E2 version of the
      * platform. If you are not sure, contact your Databricks representative.
      */
-    readonly encryptionKeys: deployment.EncryptionKeysService;
+    readonly encryptionKeys: provisioning.EncryptionKeysService;
 
     /**
      * Groups simplify identity management, making it easier to assign access to
-     * Databricks Account, data, and other securable objects.
+     * Databricks account, data, and other securable objects.
      *
      * It is best practice to assign access to workspaces and access-control policies
      * in Unity Catalog to groups, instead of to users individually. All Databricks
-     * Account identities can be assigned as members of groups, and members inherit
+     * account identities can be assigned as members of groups, and members inherit
      * permissions that are assigned to their group.
      */
-    readonly groups: scim.AccountGroupsService;
+    readonly accountGroups: iam.AccountGroupsService;
+
+    /**
+     * The Accounts IP Access List API enables account admins to configure IP access
+     * lists for access to the account console.
+     *
+     * Account IP Access Lists affect web application access and REST API access to
+     * the account console and account APIs. If the feature is disabled for the
+     * account, all access is allowed for this account. There is support for allow
+     * lists (inclusion) and block lists (exclusion).
+     *
+     * When a connection is attempted: 1. **First, all block lists are checked.** If
+     * the connection IP address matches any block list, the connection is rejected.
+     * 2. **If the connection was not rejected by block lists**, the IP address is
+     * compared with the allow lists.
+     *
+     * If there is at least one allow list for the account, the connection is allowed
+     * only if the IP address matches an allow list. If there are no allow lists for
+     * the account, all IP addresses are allowed.
+     *
+     * For all allow lists and block lists combined, the account supports a maximum
+     * of 1000 IP/CIDR values, where one CIDR counts as a single value.
+     *
+     * After changes to the account-level IP access lists, it can take a few minutes
+     * for changes to take effect.
+     */
+    readonly accountIpAccessLists: settings.AccountIpAccessListsService;
 
     /**
      * These APIs manage log delivery configurations for this account. The two
@@ -166,32 +188,33 @@ export class AccountClient {
     /**
      * These APIs manage metastore assignments to a workspace.
      */
-    readonly accountMetastoreAssignments: unitycatalog.AccountMetastoreAssignmentsService;
+    readonly accountMetastoreAssignments: catalog.AccountMetastoreAssignmentsService;
 
     /**
      * These APIs manage Unity Catalog metastores for an account. A metastore
      * contains catalogs that can be associated with workspaces
      */
-    readonly accountMetastores: unitycatalog.AccountMetastoresService;
+    readonly accountMetastores: catalog.AccountMetastoresService;
 
     /**
      * These APIs manage network configurations for customer-managed VPCs (optional).
      * Its ID is used when creating a new workspace if you use customer-managed VPCs.
      */
-    readonly networks: deployment.NetworksService;
+    readonly networks: provisioning.NetworksService;
 
     /**
-     * These APIs manage private access settings for this account. A private access
-     * settings object specifies how your workspace is accessed using AWS
-     * PrivateLink. Each workspace that has any PrivateLink connections must include
-     * the ID for a private access settings object is in its workspace configuration
-     * object. Your account must be enabled for PrivateLink to use these APIs. Before
-     * configuring PrivateLink, it is important to read the [Databricks article about
-     * PrivateLink].
+     * These APIs enable administrators to enroll OAuth for their accounts, which is
+     * required for adding/using any OAuth published/custom application integration.
      *
-     * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
+     * **Note:** Your account must be on the E2 version to use these APIs, this is
+     * because OAuth is only supported on the E2 version.
      */
-    readonly privateAccess: deployment.PrivateAccessService;
+    readonly oAuthEnrollment: oauth2.OAuthEnrollmentService;
+
+    /**
+     * These APIs manage private access settings for this account.
+     */
+    readonly privateAccess: provisioning.PrivateAccessService;
 
     /**
      * These APIs enable administrators to manage published oauth app integrations,
@@ -205,6 +228,23 @@ export class AccountClient {
     readonly publishedAppIntegration: oauth2.PublishedAppIntegrationService;
 
     /**
+     * These APIs enable administrators to manage service principal secrets.
+     *
+     * You can use the generated secrets to obtain OAuth access tokens for a service
+     * principal, which can then be used to access Databricks Accounts and Workspace
+     * APIs. For more information, see [Authentication using OAuth tokens for service
+     * principals],
+     *
+     * In addition, the generated secrets can be used to configure the Databricks
+     * Terraform Provider to authenticate with the service principal. For more
+     * information, see [Databricks Terraform Provider].
+     *
+     * [Authentication using OAuth tokens for service principals]: https://docs.databricks.com/dev-tools/authentication-oauth.html
+     * [Databricks Terraform Provider]: https://github.com/databricks/terraform-provider-databricks/blob/master/docs/index.md#authenticating-with-service-principal
+     */
+    readonly servicePrincipalSecrets: oauth2.ServicePrincipalSecretsService;
+
+    /**
      * Identities for use with jobs, automated tools, and systems such as scripts,
      * apps, and CI/CD platforms. Databricks recommends creating service principals
      * to run production jobs or modify production data. If all processes that act on
@@ -212,7 +252,12 @@ export class AccountClient {
      * write, delete, or modify privileges in production. This eliminates the risk of
      * a user overwriting production data by accident.
      */
-    readonly servicePrincipals: scim.AccountServicePrincipalsService;
+    readonly accountServicePrincipals: iam.AccountServicePrincipalsService;
+
+    /**
+     * TBD
+     */
+    readonly accountSettings: settings.AccountSettingsService;
 
     /**
      * These APIs manage storage configurations for this workspace. A root storage S3
@@ -222,47 +267,38 @@ export class AccountClient {
      * encapsulates this bucket information, and its ID is used when creating a new
      * workspace.
      */
-    readonly storage: deployment.StorageService;
+    readonly storage: provisioning.StorageService;
 
     /**
      * These APIs manage storage credentials for a particular metastore.
      */
-    readonly accountStorageCredentials: unitycatalog.AccountStorageCredentialsService;
+    readonly accountStorageCredentials: catalog.AccountStorageCredentialsService;
 
     /**
      * User identities recognized by Databricks and represented by email addresses.
      *
      * Databricks recommends using SCIM provisioning to sync users and groups
-     * automatically from your identity provider to your Databricks Account. SCIM
+     * automatically from your identity provider to your Databricks account. SCIM
      * streamlines onboarding a new employee or team by using your identity provider
-     * to create users and groups in Databricks Account and give them the proper
+     * to create users and groups in Databricks account and give them the proper
      * level of access. When a user leaves your organization or no longer needs
-     * access to Databricks Account, admins can terminate the user in your identity
+     * access to Databricks account, admins can terminate the user in your identity
      * provider and that user’s account will also be removed from Databricks
-     * Account. This ensures a consistent offboarding process and prevents
+     * account. This ensures a consistent offboarding process and prevents
      * unauthorized users from accessing sensitive data.
      */
-    readonly users: scim.AccountUsersService;
+    readonly accountUsers: iam.AccountUsersService;
 
     /**
-     * These APIs manage VPC endpoint configurations for this account. This object
-     * registers an AWS VPC endpoint in your Databricks account so your workspace can
-     * use it with AWS PrivateLink. Your VPC endpoint connects to one of two VPC
-     * endpoint services -- one for workspace (both for front-end connection and for
-     * back-end connection to REST APIs) and one for the back-end secure cluster
-     * connectivity relay from the data plane. Your account must be enabled for
-     * PrivateLink to use these APIs. Before configuring PrivateLink, it is important
-     * to read the [Databricks article about PrivateLink].
-     *
-     * [Databricks article about PrivateLink]: https://docs.databricks.com/administration-guide/cloud-configurations/aws/privatelink.html
+     * These APIs manage VPC endpoint configurations for this account.
      */
-    readonly vpcEndpoints: deployment.VpcEndpointsService;
+    readonly vpcEndpoints: provisioning.VpcEndpointsService;
 
     /**
      * The Workspace Permission Assignment API allows you to manage workspace
      * permissions for principals in your account.
      */
-    readonly workspaceAssignment: permissions.WorkspaceAssignmentService;
+    readonly workspaceAssignment: iam.WorkspaceAssignmentService;
 
     /**
      * These APIs manage workspaces for this account. A Databricks workspace is an
@@ -274,7 +310,7 @@ export class AccountClient {
      * platform or on a select custom plan that allows multiple workspaces per
      * account.
      */
-    readonly workspaces: deployment.WorkspacesService;
+    readonly workspaces: provisioning.WorkspacesService;
 
     constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
         if (!(config instanceof Config)) {
@@ -284,39 +320,55 @@ export class AccountClient {
         this.config = config as Config;
         this.apiClient = new ApiClient(this.config, options);
 
+        this.accountAccessControl = new iam.AccountAccessControlService(
+            this.apiClient
+        );
         this.billableUsage = new billing.BillableUsageService(this.apiClient);
         this.budgets = new billing.BudgetsService(this.apiClient);
-        this.credentials = new deployment.CredentialsService(this.apiClient);
+        this.credentials = new provisioning.CredentialsService(this.apiClient);
         this.customAppIntegration = new oauth2.CustomAppIntegrationService(
             this.apiClient
         );
-        this.encryptionKeys = new deployment.EncryptionKeysService(
+        this.encryptionKeys = new provisioning.EncryptionKeysService(
             this.apiClient
         );
-        this.groups = new scim.AccountGroupsService(this.apiClient);
+        this.accountGroups = new iam.AccountGroupsService(this.apiClient);
+        this.accountIpAccessLists = new settings.AccountIpAccessListsService(
+            this.apiClient
+        );
         this.logDelivery = new billing.LogDeliveryService(this.apiClient);
         this.accountMetastoreAssignments =
-            new unitycatalog.AccountMetastoreAssignmentsService(this.apiClient);
-        this.accountMetastores = new unitycatalog.AccountMetastoresService(
+            new catalog.AccountMetastoreAssignmentsService(this.apiClient);
+        this.accountMetastores = new catalog.AccountMetastoresService(
             this.apiClient
         );
-        this.networks = new deployment.NetworksService(this.apiClient);
-        this.privateAccess = new deployment.PrivateAccessService(
+        this.networks = new provisioning.NetworksService(this.apiClient);
+        this.oAuthEnrollment = new oauth2.OAuthEnrollmentService(
+            this.apiClient
+        );
+        this.privateAccess = new provisioning.PrivateAccessService(
             this.apiClient
         );
         this.publishedAppIntegration =
             new oauth2.PublishedAppIntegrationService(this.apiClient);
-        this.servicePrincipals = new scim.AccountServicePrincipalsService(
+        this.servicePrincipalSecrets =
+            new oauth2.ServicePrincipalSecretsService(this.apiClient);
+        this.accountServicePrincipals = new iam.AccountServicePrincipalsService(
             this.apiClient
         );
-        this.storage = new deployment.StorageService(this.apiClient);
+        this.accountSettings = new settings.AccountSettingsService(
+            this.apiClient
+        );
+        this.storage = new provisioning.StorageService(this.apiClient);
         this.accountStorageCredentials =
-            new unitycatalog.AccountStorageCredentialsService(this.apiClient);
-        this.users = new scim.AccountUsersService(this.apiClient);
-        this.vpcEndpoints = new deployment.VpcEndpointsService(this.apiClient);
-        this.workspaceAssignment = new permissions.WorkspaceAssignmentService(
+            new catalog.AccountStorageCredentialsService(this.apiClient);
+        this.accountUsers = new iam.AccountUsersService(this.apiClient);
+        this.vpcEndpoints = new provisioning.VpcEndpointsService(
             this.apiClient
         );
-        this.workspaces = new deployment.WorkspacesService(this.apiClient);
+        this.workspaceAssignment = new iam.WorkspaceAssignmentService(
+            this.apiClient
+        );
+        this.workspaces = new provisioning.WorkspacesService(this.apiClient);
     }
 }

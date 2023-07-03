@@ -35,10 +35,7 @@ export class WorkspaceClient {
         this.apiClient = new ApiClient(this.config, options);
 
         {{range .Services}}{{if not .IsAccounts}}
-        {{- if eq .Name "CommandExecution" -}}
-        this.commands = new commands.CommandExecutionService(this.apiClient);
-        {{else -}}
         this.{{.CamelName}} = new {{.Package.Name}}.{{.PascalName}}Service(this.apiClient);
-        {{end -}}{{end}}{{end}}
+        {{end}}{{end}}
     }
 }
