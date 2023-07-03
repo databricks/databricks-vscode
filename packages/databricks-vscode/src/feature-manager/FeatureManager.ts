@@ -3,6 +3,8 @@ import {Mutex} from "../locking";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {DisabledFeature} from "./DisabledFeature";
 import {EnabledFeature} from "./EnabledFeature";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {Loggers} from "../logger";
 
 export type FeatureEnableAction = (...args: any[]) => Promise<void>;
 export type FeatureId = "debugging.dbconnect" | "notebooks.dbconnect";
@@ -112,6 +114,9 @@ export class FeatureManager<T = FeatureId> implements Disposable {
             if (cachedState && !force) {
                 return cachedState;
             }
+            if (force) {
+                this.stateCache.delete(id);
+            }
 
             const state = await new Promise<FeatureState>((resolve, reject) => {
                 const changeListener = this.onDidChangeState(
@@ -126,8 +131,18 @@ export class FeatureManager<T = FeatureId> implements Disposable {
                     changeListener.dispose();
                     reject(e);
                 });
+            }).catch((e) => {
+                NamedLogger.getOrCreate(Loggers.Extension).error(
+                    `Error checking feature state ${id}`,
+                    e
+                );
             });
-            return state;
+
+            if (state !== undefined) {
+                return state;
+            }
+
+            throw new Error(`Feature ${id} is not available`);
         } finally {
             feature.mutex.signal();
         }
