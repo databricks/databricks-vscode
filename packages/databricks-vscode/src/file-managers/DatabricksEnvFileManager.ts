@@ -218,6 +218,7 @@ export class DatabricksEnvFileManager implements Disposable {
     private async getIdeEnvVars() {
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
+            //https://github.com/fabioz/PyDev.Debugger/blob/main/_pydevd_bundle/pydevd_constants.py
             PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT: "10",
             IPYTHONDIR: await this.getIpythonDir(),
         };
