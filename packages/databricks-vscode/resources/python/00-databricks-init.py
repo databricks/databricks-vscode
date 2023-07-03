@@ -6,6 +6,7 @@ from typing import List
 from IPython import get_ipython
 from databricks.connect import DatabricksSession
 from pyspark.sql import SparkSession, functions as udf, DataFrame
+from pyspark.sql.connect.dataframe import DataFrame as SparkConnectDataframe
 import sys
 
 
@@ -26,6 +27,7 @@ def create_and_register_databricks_globals():
     sql = spark.sql
     getArgument = dbutils.widgets.getArgument
 
+    globals()['dbutils'] = dbutils
     globals()['spark'] = spark
     globals()['sql'] = sql
     globals()['getArgument'] = getArgument
@@ -104,8 +106,8 @@ def register_magics():
         local_magic_dbr_alternative = {"%%sh": "%sh"}
         if magic in local_magic_dbr_alternative:
             warnings.warn(
-                magic
-                + "is not supported on Databricks. This notebook might fail when running on a Databricks cluster. "
+                "\n" + magic
+                + " is not supported on Databricks. This notebook might fail when running on a Databricks cluster.\n"
                   "Consider using %"
                 + local_magic_dbr_alternative[magic]
                 + " instead."
@@ -193,7 +195,8 @@ def register_formatters(notebook_config: LocalDatabricksNotebookConfig):
         return df.limit(notebook_config.dataframe_display_limit).toPandas().to_html()
 
     html_formatter = get_ipython().display_formatter.formatters["text/html"]
-    html_formatter.for_type(DataFrame, df_html)
+    html_formatter.for_type(SparkConnectDataframe, df_html)
+    html_formatter.for_type(Dataframe, df_html)
 
 
 @disposable
