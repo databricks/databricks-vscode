@@ -614,8 +614,8 @@
                                 "views.workspace"
                             ],
                             "enumDescriptions": [
-                                "Interactive debugging using dbconnect V2.",
-                                "Limited local notebook support using dbconnect V2.",
+                                "Interactive debugging using DB Connect v2.",
+                                "Limited local notebook support using DB Connect v2.",
                                 "Show cluster view in the explorer.",
                                 "Show workspace browser in the explorer."
                             ],
