@@ -22,7 +22,9 @@ def disposable(f):
 @disposable
 def create_and_register_databricks_globals():
     from databricks.sdk.runtime import dbutils
-    # "display", "displayHTML", "dbutils", "table", "sql", "udf", "getArgument", "sc", "sqlContext", "spark"
+    from IPython.display import HTML
+
+    # "table", "sc", "sqlContext" are missing
     spark: SparkSession = DatabricksSession.builder.getOrCreate()
     sql = spark.sql
     getArgument = dbutils.widgets.getArgument
@@ -31,6 +33,7 @@ def create_and_register_databricks_globals():
     globals()['spark'] = spark
     globals()['sql'] = sql
     globals()['getArgument'] = getArgument
+    globals()['displayHTML'] = HTML
 
 
 @disposable
@@ -196,7 +199,7 @@ def register_formatters(notebook_config: LocalDatabricksNotebookConfig):
 
     html_formatter = get_ipython().display_formatter.formatters["text/html"]
     html_formatter.for_type(SparkConnectDataframe, df_html)
-    html_formatter.for_type(Dataframe, df_html)
+    html_formatter.for_type(DataFrame, df_html)
 
 
 @disposable
