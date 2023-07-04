@@ -53,7 +53,6 @@ describe(__filename, () => {
                 cliArch: "cliArch",
                 vsixArch: "vsixArch",
             },
-            jupyterInitScriptVersion: "0.0.1",
             commitSha: "commitSha",
         };
         await writeFile(path, JSON.stringify(metaData));
@@ -68,7 +67,6 @@ describe(__filename, () => {
             version: "version",
             cliArch: "cliArch",
             vsixArch: "vsixArch",
-            jupyterInitScriptVersion: "0.0.1",
             commitSha: "commitSha",
         });
     });

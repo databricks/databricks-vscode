@@ -49,7 +49,6 @@ export interface PackageMetaData {
     cliArch?: string;
     vsixArch?: string;
     commitSha?: string;
-    jupyterInitScriptVersion?: string;
 }
 
 function getNodeArchDetails(): ArchDetails {
@@ -80,7 +79,6 @@ export async function getMetadata(
         cliArch: jsonData["arch"]?.["cliArch"],
         vsixArch: jsonData["arch"]?.["vsixArch"],
         commitSha: jsonData["commitSha"],
-        jupyterInitScriptVersion: jsonData["jupyterInitScriptVersion"],
     };
 }
 
