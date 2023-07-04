@@ -19,6 +19,7 @@ import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {FileUtils} from "../utils";
+import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
 
 function isValidUserEnvPath(
     path: string | undefined,
@@ -45,7 +46,8 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
         private readonly extensionContext: ExtensionContext,
-        private readonly pythonExtension: MsPythonExtensionWrapper
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly notebookInitScriptManager: NotebookInitScriptManager
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
         this.unresolvedDatabricksEnvFile = path.join(
@@ -202,10 +204,23 @@ export class DatabricksEnvFileManager implements Disposable {
         /* eslint-enable @typescript-eslint/naming-convention */
     }
 
-    private getIdeEnvVars() {
+    private async getIpythonDir() {
+        if (
+            !(await this.featureManager.isEnabled("notebooks.dbconnect"))
+                .avaliable
+        ) {
+            return;
+        }
+
+        return this.notebookInitScriptManager.ipythonDir;
+    }
+
+    private async getIdeEnvVars() {
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
+            //https://github.com/fabioz/PyDev.Debugger/blob/main/_pydevd_bundle/pydevd_constants.py
             PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT: "10",
+            IPYTHONDIR: await this.getIpythonDir(),
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
@@ -234,10 +249,9 @@ export class DatabricksEnvFileManager implements Disposable {
 
     @logging.withLogContext(Loggers.Extension)
     async writeFile(@context ctx?: Context) {
-        const databricksEnvVars = await this.getDatabrickseEnvVars();
         const data = Object.entries({
-            ...(databricksEnvVars || {}),
-            ...this.getIdeEnvVars(),
+            ...((await this.getDatabrickseEnvVars()) || {}),
+            ...(await this.getIdeEnvVars()),
             ...((await this.getUserEnvVars(ctx)) || {}),
         })
             .filter(([, value]) => value !== undefined)
@@ -265,7 +279,7 @@ export class DatabricksEnvFileManager implements Disposable {
     async emitToTerminal() {
         Object.entries({
             ...((await this.getDatabrickseEnvVars()) || {}),
-            ...this.getIdeEnvVars(),
+            ...(await this.getIdeEnvVars()),
         }).forEach(([key, value]) => {
             if (value === undefined) {
                 return;

@@ -9,6 +9,7 @@
         "sourceMap": true,
         "strict": true /* enable all strict type-checking options */,
         "forceConsistentCasingInFileNames": true,
-        "experimentalDecorators": true
+        "experimentalDecorators": true,
+        "resolveJsonModule": true
     }
 }

@@ -5,7 +5,7 @@ import {DisabledFeature} from "./DisabledFeature";
 import {EnabledFeature} from "./EnabledFeature";
 
 export type FeatureEnableAction = (...args: any[]) => Promise<void>;
-export type FeatureId = "debugging.dbconnect";
+export type FeatureId = "debugging.dbconnect" | "notebooks.dbconnect";
 /**
  * The state of a feature.
  * *available*: If feature is enabled.
@@ -18,7 +18,10 @@ export interface FeatureState {
     reason?: string;
     action?: FeatureEnableAction;
     isDisabledByFf?: boolean;
-    dirty?: boolean;
+    // Dirty is expected to only ever be et by featureManager.
+    // This forces a refresh of the cache because any incoming feature state will
+    // be different from the cached value, by not having this flag set.
+    _dirty?: boolean;
 }
 
 export interface Feature extends Disposable {
@@ -32,10 +35,10 @@ export interface Feature extends Disposable {
  * *Available feature*: Features for which all conditions (python package, workspace config, cluster dbr etc)
  * are satified.
  * *Disabled features*: Features which are disabled by feature flags. Their availability checks are not performed.
+ *                      until the experimental override is set to true.
  */
 export class FeatureManager<T = FeatureId> implements Disposable {
     private disposables: Disposable[] = [];
-    private readonly mutex: Mutex = new Mutex();
 
     private features: Map<
         T,
@@ -43,6 +46,7 @@ export class FeatureManager<T = FeatureId> implements Disposable {
             feature: Feature;
             onDidChangeStateEmitter: EventEmitter<FeatureState>;
             onDidChangeState: Event<FeatureState>;
+            mutex: Mutex;
         }
     > = new Map();
 
@@ -81,6 +85,7 @@ export class FeatureManager<T = FeatureId> implements Disposable {
             feature,
             onDidChangeStateEmitter: eventEmitter,
             onDidChangeState: eventEmitter.event,
+            mutex: new Mutex(),
         });
     }
 
@@ -98,22 +103,21 @@ export class FeatureManager<T = FeatureId> implements Disposable {
      * @returns Promise<{@link FeatureState}>
      */
     async isEnabled(id: T, force = false): Promise<FeatureState> {
-        await this.mutex.wait();
+        const feature = this.features.get(id);
+        if (!feature) {
+            return {
+                avaliable: false,
+                reason: `Feature ${id} has not been registered`,
+            };
+        }
+        await feature.mutex.wait();
         try {
-            const feature = this.features.get(id);
-            if (!feature) {
-                return {
-                    avaliable: false,
-                    reason: `Feature ${id} has not been registered`,
-                };
-            }
-
             const cachedState = this.stateCache.get(id);
             if (cachedState) {
                 if (!force) {
                     return cachedState;
                 }
-                cachedState.dirty = true;
+                cachedState._dirty = true;
             }
 
             const state = await new Promise<FeatureState>((resolve, reject) => {
@@ -132,7 +136,7 @@ export class FeatureManager<T = FeatureId> implements Disposable {
             });
             return state;
         } finally {
-            this.mutex.signal();
+            feature.mutex.signal();
         }
     }
 

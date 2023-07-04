@@ -37,7 +37,7 @@ import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
 import path from "node:path";
 import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManager";
-import {FeatureManager} from "./feature-manager/FeatureManager";
+import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
@@ -47,6 +47,8 @@ import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
+import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
+import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 
 export async function activate(
     context: ExtensionContext
@@ -216,7 +218,7 @@ export async function activate(
         workspaceStateManager,
         pythonExtensionWrapper
     );
-    const featureManager = new FeatureManager<"debugging.dbconnect">([
+    const featureManager = new FeatureManager<FeatureId>([
         "debugging.dbconnect",
     ]);
     featureManager.registerFeature(
@@ -231,13 +233,31 @@ export async function activate(
     const dbConnectStatusBarButton = new DbConnectStatusBarButton(
         featureManager
     );
+    const notebookInitScriptManager = new NotebookInitScriptManager(
+        workspace.workspaceFolders[0].uri,
+        context,
+        connectionManager
+    );
+    notebookInitScriptManager.updateInitScript().catch((e) => {
+        NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to update init script",
+            e
+        );
+        if (e instanceof Error) {
+            window.showWarningMessage(
+                `Failed to update databricks notebook init script. ` +
+                    `Some databricks notebook features may not work. ${e.message}`
+            );
+        }
+    });
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspace.workspaceFolders[0].uri,
         featureManager,
         dbConnectStatusBarButton,
         connectionManager,
         context,
-        pythonExtensionWrapper
+        pythonExtensionWrapper,
+        notebookInitScriptManager
     );
     databricksEnvFileManager.init();
     context.subscriptions.push(
@@ -459,6 +479,26 @@ export async function activate(
         telemetry.registerCommand("databricks.call", (fn) => {
             if (fn) {
                 fn();
+            }
+        })
+    );
+
+    featureManager.registerFeature(
+        "notebooks.dbconnect",
+        () =>
+            new NotebookAccessVerifier(
+                featureManager,
+                pythonExtensionWrapper,
+                workspaceStateManager
+            )
+    );
+    context.subscriptions.push(
+        workspace.onDidOpenNotebookDocument(async () => {
+            const featureState = await featureManager.isEnabled(
+                "notebooks.dbconnect"
+            );
+            if (featureState.action) {
+                featureState.action();
             }
         })
     );
