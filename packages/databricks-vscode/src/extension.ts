@@ -245,7 +245,7 @@ export async function activate(
         );
         if (e instanceof Error) {
             window.showWarningMessage(
-                `Failed to update databricks notebook init script.` +
+                `Failed to update databricks notebook init script. ` +
                     `Some databricks notebook features may not work. ${e.message}`
             );
         }

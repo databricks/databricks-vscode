@@ -1,13 +1,10 @@
 import {Disposable, Uri, ExtensionContext} from "vscode";
 import path from "path";
-import {PackageJsonUtils} from "../../utils";
-import {exists} from "fs-extra";
-import {mkdir, cp, rm} from "fs/promises";
+import {mkdir, cp, rm, readdir} from "fs/promises";
 import {glob} from "glob";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 export class NotebookInitScriptManager implements Disposable {
     private disposables: Disposable[] = [];
-    private _jupyterInitScriptVersion: string | undefined | null = null;
 
     constructor(
         private readonly workspacePath: Uri,
@@ -23,52 +20,29 @@ export class NotebookInitScriptManager implements Disposable {
         return path.join(this.ipythonDir, "profile_default", "startup");
     }
 
-    get jupyterInitScriptVersion(): Promise<string | undefined> {
-        if (this._jupyterInitScriptVersion !== null) {
-            return Promise.resolve(this._jupyterInitScriptVersion);
-        }
-
-        return PackageJsonUtils.getMetadata(this.extensionContext).then(
-            (metadata) => {
-                this._jupyterInitScriptVersion =
-                    metadata.jupyterInitScriptVersion;
-                return this._jupyterInitScriptVersion;
-            }
+    get generatedDir(): string {
+        return this.extensionContext.asAbsolutePath(
+            path.join(
+                "resources",
+                "python",
+                "generated",
+                "databricks-init-scripts"
+            )
         );
     }
 
-    get sourceFile(): Promise<string> {
-        return this.jupyterInitScriptVersion.then((version) => {
-            return this.extensionContext.asAbsolutePath(
-                path.join(
-                    "resources",
-                    "python",
-                    "generated",
-                    `00-databricks-init-${version}.py`
-                )
-            );
-        });
-    }
-
-    get destFile(): Promise<string> {
-        return this.jupyterInitScriptVersion.then((version) => {
-            return path.join(
-                this.startupDir,
-                `00-databricks-init-${version}.py`
-            );
-        });
+    get sourceFiles(): Promise<string[]> {
+        return readdir(this.generatedDir);
     }
 
     private async copyInitScript() {
-        if (
-            this.jupyterInitScriptVersion === undefined ||
-            (await exists(await this.destFile))
-        ) {
-            return;
-        }
-
         await mkdir(this.startupDir, {recursive: true});
-        await cp(await this.sourceFile, await this.destFile);
+        for (const file of await this.sourceFiles) {
+            await cp(
+                path.join(this.generatedDir, file),
+                path.join(this.startupDir, file)
+            );
+        }
     }
 
     async deleteOutdatedInitScripts() {
@@ -78,11 +52,12 @@ export class NotebookInitScriptManager implements Disposable {
             "startup"
         );
 
+        const sourceFiles = await this.sourceFiles;
         for (const file of await glob(
             path.join(startupDir, "00-databricks-init-*.py")
         )) {
-            if (file !== (await this.destFile)) {
-                await rm(file, {force: true});
+            if (!sourceFiles.includes(path.basename(file))) {
+                await rm(file);
             }
         }
     }
