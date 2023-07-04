@@ -204,7 +204,7 @@ export class DatabricksEnvFileManager implements Disposable {
         /* eslint-enable @typescript-eslint/naming-convention */
     }
 
-    private async getIpythonDir() {
+    private async getNotebookEnvVars() {
         if (
             !(await this.featureManager.isEnabled("notebooks.dbconnect"))
                 .avaliable
@@ -212,7 +212,12 @@ export class DatabricksEnvFileManager implements Disposable {
             return;
         }
 
-        return this.notebookInitScriptManager.ipythonDir;
+        /* eslint-disable @typescript-eslint/naming-convention */
+        return {
+            IPYTHONDIR: await this.notebookInitScriptManager.ipythonDir,
+            DATABRICKS_PROJECT_ROOT: await this.workspacePath.fsPath,
+        };
+        /* eslint-enable @typescript-eslint/naming-convention */
     }
 
     private async getIdeEnvVars() {
@@ -220,7 +225,6 @@ export class DatabricksEnvFileManager implements Disposable {
         return {
             //https://github.com/fabioz/PyDev.Debugger/blob/main/_pydevd_bundle/pydevd_constants.py
             PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT: "10",
-            IPYTHONDIR: await this.getIpythonDir(),
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
@@ -253,6 +257,7 @@ export class DatabricksEnvFileManager implements Disposable {
             ...((await this.getDatabrickseEnvVars()) || {}),
             ...(await this.getIdeEnvVars()),
             ...((await this.getUserEnvVars(ctx)) || {}),
+            ...(await this.getNotebookEnvVars()),
         })
             .filter(([, value]) => value !== undefined)
             .map(([key, value]) => {
@@ -280,6 +285,7 @@ export class DatabricksEnvFileManager implements Disposable {
         Object.entries({
             ...((await this.getDatabrickseEnvVars()) || {}),
             ...(await this.getIdeEnvVars()),
+            ...(await this.getNotebookEnvVars()),
         }).forEach(([key, value]) => {
             if (value === undefined) {
                 return;
