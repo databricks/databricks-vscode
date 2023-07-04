@@ -18,6 +18,10 @@ export interface FeatureState {
     reason?: string;
     action?: FeatureEnableAction;
     isDisabledByFf?: boolean;
+    // Dirty is expected to only ever be et by featureManager.
+    // This forces a refresh of the cache because any incoming feature state will
+    // be different from the cached value, by not having this flag set.
+    _dirty?: boolean;
 }
 
 export interface Feature extends Disposable {
@@ -109,8 +113,11 @@ export class FeatureManager<T = FeatureId> implements Disposable {
         await feature.mutex.wait();
         try {
             const cachedState = this.stateCache.get(id);
-            if (cachedState && !force) {
-                return cachedState;
+            if (cachedState) {
+                if (!force) {
+                    return cachedState;
+                }
+                cachedState._dirty = true;
             }
 
             const state = await new Promise<FeatureState>((resolve, reject) => {
