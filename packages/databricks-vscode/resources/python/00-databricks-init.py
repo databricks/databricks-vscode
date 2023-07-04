@@ -9,7 +9,6 @@ from pyspark.sql import SparkSession, functions as udf, DataFrame
 from pyspark.sql.connect.dataframe import DataFrame as SparkConnectDataframe
 import sys
 
-
 __disposables = []
 
 
@@ -161,7 +160,7 @@ def register_magics():
                 spark_string = (
                     "global _sqldf\n"
                     + "_sqldf = spark.sql('''"
-                    + "".join(lines)
+                    + "".join(lines).replace("'", "\\'")
                     + "''')\n"
                     + "_sqldf"
                 )
