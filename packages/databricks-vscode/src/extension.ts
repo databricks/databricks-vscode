@@ -238,8 +238,10 @@ export async function activate(
         workspace.workspaceFolders[0].uri,
         context,
         connectionManager,
-        featureManager
+        featureManager,
+        pythonExtensionWrapper
     );
+
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspace.workspaceFolders[0].uri,
         featureManager,
@@ -256,9 +258,7 @@ export async function activate(
             new NotebookAccessVerifier(
                 featureManager,
                 pythonExtensionWrapper,
-                workspaceStateManager,
-                notebookInitScriptManager,
-                databricksEnvFileManager
+                workspaceStateManager
             )
     );
 
