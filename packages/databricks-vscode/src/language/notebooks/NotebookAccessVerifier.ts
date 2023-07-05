@@ -15,7 +15,7 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
         this.disposables.push(
             this.featureManager.onDidChangeState(
                 "debugging.dbconnect",
-                this.check,
+                this.isDbConnectEnabled,
                 this
             ),
             this.pythonExtension.onDidChangePythonExecutable(
