@@ -184,10 +184,10 @@ export class NotebookInitScriptManager implements Disposable {
         }
 
         await this.verifyInitScriptMutex.wait();
-        if (this.initScriptSuccessfullyVerified) {
-            return true;
-        }
         try {
+            if (this.initScriptSuccessfullyVerified) {
+                return true;
+            }
             await this.updateInitScript();
             const executable = await this.pythonExtension.getPythonExecutable();
             if (!executable) {

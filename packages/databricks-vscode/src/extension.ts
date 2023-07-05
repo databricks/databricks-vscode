@@ -230,6 +230,17 @@ export async function activate(
                 dbConnectInstallPrompt
             )
     );
+
+    featureManager.registerFeature(
+        "notebooks.dbconnect",
+        () =>
+            new NotebookAccessVerifier(
+                featureManager,
+                pythonExtensionWrapper,
+                workspaceStateManager
+            )
+    );
+
     const dbConnectStatusBarButton = new DbConnectStatusBarButton(
         featureManager
     );
@@ -252,40 +263,30 @@ export async function activate(
         notebookInitScriptManager
     );
 
-    featureManager.registerFeature(
-        "notebooks.dbconnect",
-        () =>
-            new NotebookAccessVerifier(
-                featureManager,
-                pythonExtensionWrapper,
-                workspaceStateManager
-            )
-    );
-
     context.subscriptions.push(
         workspace.onDidOpenNotebookDocument(() =>
             featureManager.isEnabled("notebooks.dbconnect")
+        ),
+        featureManager.onDidChangeState(
+            "notebooks.dbconnect",
+            async (featureState) => {
+                const dbconnectState = await featureManager.isEnabled(
+                    "debugging.dbconnect"
+                );
+                if (!dbconnectState.avaliable) {
+                    return; // Only take action of notebook errors, when dbconnect is avaliable
+                }
+                if (featureState.action) {
+                    featureState.action();
+                } else if (featureState.reason) {
+                    window.showErrorMessage(
+                        `Error while trying to initialise Databricks Notebooks. Some features may not work. Reason: ${featureState.reason}`
+                    );
+                }
+            }
         )
     );
 
-    featureManager.onDidChangeState(
-        "notebooks.dbconnect",
-        async (featureState) => {
-            const dbconnectState = await featureManager.isEnabled(
-                "debugging.dbconnect"
-            );
-            if (!dbconnectState.avaliable) {
-                return; // Only take action of notebook errors, when dbconnect is avaliable
-            }
-            if (featureState.action) {
-                featureState.action();
-            } else if (featureState.reason) {
-                window.showErrorMessage(
-                    `Error while trying to initialise Databricks Notebooks. Some features may not work. Reason: ${featureState.reason}`
-                );
-            }
-        }
-    );
     notebookInitScriptManager.updateInitScript().catch((e) => {
         NamedLogger.getOrCreate(Loggers.Extension).error(
             "Failed to update init script",
