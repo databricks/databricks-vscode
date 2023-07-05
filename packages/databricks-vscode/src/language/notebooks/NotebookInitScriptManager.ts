@@ -3,13 +3,15 @@ import path from "path";
 import {mkdir, cp, rm, readdir} from "fs/promises";
 import {glob} from "glob";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
+import {FeatureManager} from "../../feature-manager/FeatureManager";
 export class NotebookInitScriptManager implements Disposable {
     private disposables: Disposable[] = [];
 
     constructor(
         private readonly workspacePath: Uri,
         private readonly extensionContext: ExtensionContext,
-        private readonly connectionManager: ConnectionManager
+        private readonly connectionManager: ConnectionManager,
+        private readonly featureManager: FeatureManager
     ) {}
 
     get ipythonDir(): string {
@@ -63,6 +65,12 @@ export class NotebookInitScriptManager implements Disposable {
     }
 
     async updateInitScript() {
+        if (
+            !(await this.featureManager.isEnabled("notebooks.dbconnect"))
+                .avaliable
+        ) {
+            return;
+        }
         await this.connectionManager.waitForConnect();
         await this.deleteOutdatedInitScripts();
         await this.copyInitScript();

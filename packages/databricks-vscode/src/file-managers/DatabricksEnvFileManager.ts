@@ -100,6 +100,14 @@ export class DatabricksEnvFileManager implements Disposable {
             userEnvFileWatcher.onDidDelete(() => this.writeFile(), this),
             userEnvFileWatcher.onDidCreate(() => this.writeFile(), this),
             this.featureManager.onDidChangeState(
+                "notebooks.dbconnect",
+                async () => {
+                    await this.clearTerminalEnv();
+                    await this.emitToTerminal();
+                    await this.writeFile();
+                }
+            ),
+            this.featureManager.onDidChangeState(
                 "debugging.dbconnect",
                 (featureState) => {
                     if (!featureState.avaliable) {
@@ -172,7 +180,7 @@ export class DatabricksEnvFileManager implements Disposable {
         return userAgent.join(" ");
     }
 
-    private async getDatabrickseEnvVars(): Promise<
+    public async getDatabrickseEnvVars(): Promise<
         Record<string, string | undefined> | undefined
     > {
         await this.connectionManager.waitForConnect();
@@ -200,11 +208,12 @@ export class DatabricksEnvFileManager implements Disposable {
             ...authEnvVars,
             ...sparkEnvVars,
             DATABRICKS_CLUSTER_ID: cluster?.id,
+            DATABRICKS_PROJECT_ROOT: this.workspacePath.fsPath,
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
 
-    private async getNotebookEnvVars() {
+    public async getNotebookEnvVars() {
         if (
             !(await this.featureManager.isEnabled("notebooks.dbconnect"))
                 .avaliable
@@ -215,12 +224,11 @@ export class DatabricksEnvFileManager implements Disposable {
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
             IPYTHONDIR: await this.notebookInitScriptManager.ipythonDir,
-            DATABRICKS_PROJECT_ROOT: await this.workspacePath.fsPath,
         };
         /* eslint-enable @typescript-eslint/naming-convention */
     }
 
-    private async getIdeEnvVars() {
+    public async getIdeEnvVars() {
         /* eslint-disable @typescript-eslint/naming-convention */
         return {
             //https://github.com/fabioz/PyDev.Debugger/blob/main/_pydevd_bundle/pydevd_constants.py
@@ -231,7 +239,7 @@ export class DatabricksEnvFileManager implements Disposable {
 
     //Get env variables from user's .env file
     @logging.withLogContext(Loggers.Extension)
-    private async getUserEnvVars(@context ctx?: Context) {
+    public async getUserEnvVars(@context ctx?: Context) {
         try {
             return (await readFile(this.userEnvPath.fsPath, "utf-8"))
                 .split(/\r?\n/)
@@ -260,10 +268,7 @@ export class DatabricksEnvFileManager implements Disposable {
             ...(await this.getNotebookEnvVars()),
         })
             .filter(([, value]) => value !== undefined)
-            .map(([key, value]) => {
-                value = value?.replaceAll(/ ^"|"$/g, ""); //strip quotes
-                return `${key}="${value}"`;
-            });
+            .map(([key, value]) => `${key}=${value}`);
         try {
             const oldData = await readFile(
                 this.databricksEnvPath.fsPath,
@@ -272,7 +277,9 @@ export class DatabricksEnvFileManager implements Disposable {
             if (oldData !== data.join(os.EOL)) {
                 this.onDidChangeEnvironmentVariablesEmitter.fire();
             }
-        } catch {}
+        } catch (e) {
+            ctx?.logger?.info("Error writing databricks.env file", e);
+        }
         await writeFile(
             this.databricksEnvPath.fsPath,
             data.join(os.EOL),

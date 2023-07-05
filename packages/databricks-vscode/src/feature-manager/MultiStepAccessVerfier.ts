@@ -4,8 +4,17 @@ import {Feature, FeatureEnableAction, FeatureState} from "./FeatureManager";
 export type AccessVerifierStep = (...args: any) => Promise<boolean>;
 export abstract class MultiStepAccessVerifier implements Feature {
     protected disposables: Disposable[] = [];
+    // Fired when the state of the entire feature changes (all steps are accepted, or >=1 steps are rejected)
     protected onDidChangeStateEmitter = new EventEmitter<FeatureState>();
     public onDidChangeState = this.onDidChangeStateEmitter.event;
+
+    // Fired when the state of a single step changes (accepted or rejected)
+    protected onDidChangeStepStateEmitter = new EventEmitter<{
+        id: string;
+        value: boolean;
+    }>();
+    public onDidChangeStepState = this.onDidChangeStepStateEmitter.event;
+
     public readonly stepValues: Record<string, boolean> = {};
 
     constructor(steps: string[]) {
@@ -43,20 +52,32 @@ export abstract class MultiStepAccessVerifier implements Feature {
         isDisabledByFf?: boolean
     ) {
         this.stepValuesHas(id);
-
+        if (this.stepValues[id]) {
+            this.onDidChangeStepStateEmitter.fire({
+                id,
+                value: false,
+            });
+        }
         this.stepValues[id] = false;
-        const state = {
+        const state: FeatureState = {
             avaliable: false,
             reason,
             action,
             isDisabledByFf: isDisabledByFf === true,
         };
+
         this.onDidChangeStateEmitter.fire(state);
         return state;
     }
 
     acceptStep(id: string) {
         this.stepValuesHas(id);
+        if (!this.stepValues[id]) {
+            this.onDidChangeStepStateEmitter.fire({
+                id,
+                value: true,
+            });
+        }
         this.stepValues[id] = true;
         this.checkAllStepValues();
         return true;
@@ -68,6 +89,21 @@ export abstract class MultiStepAccessVerifier implements Feature {
         };
         this.onDidChangeStateEmitter.fire(state);
         return state;
+    }
+
+    protected async waitForStep(id: string) {
+        this.stepValuesHas(id);
+        if (this.stepValues[id]) {
+            return true;
+        }
+        await new Promise<void>((resolve) => {
+            const changeListener = this.onDidChangeStepState((e) => {
+                if (e.id === id && e.value === true) {
+                    resolve();
+                    changeListener.dispose();
+                }
+            });
+        });
     }
 
     abstract check(): Promise<void>;
