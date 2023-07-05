@@ -9,8 +9,7 @@ const data = readFileSync(
     "utf-8"
 );
 const md5 = crypto.createHash("md5").update(data).digest("hex");
-// eslint-disable-next-line no-console
-console.log(md5);
+
 rmSync(path.join(pythonDir, "generated", "databricks-init-scripts"), {
     force: true,
     recursive: true,
