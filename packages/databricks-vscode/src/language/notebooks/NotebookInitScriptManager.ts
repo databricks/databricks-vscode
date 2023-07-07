@@ -313,26 +313,14 @@ export class NotebookInitScriptManager implements Disposable {
                 this.showVerificationFailMessage();
                 return;
             }
-            this.currentEnvPath = executable;
-            if (!executable) {
-                window
-                    .showErrorMessage(
-                        "Cannot verify databricks notebook init script. No python interpretter selected.",
-                        "Select Python Interpretter"
-                    )
-                    .then((choice) => {
-                        if (choice === "Select Python Interpretter") {
-                            this.pythonExtension.selectPythonInterpreter();
-                        }
-                    });
-                return;
-            }
-
             if (
                 !(await this.pythonExtension.findPackageInEnvironment(
                     "ipython"
                 ))
             ) {
+                if (!fromCommand) {
+                    return;
+                }
                 window
                     .showErrorMessage(
                         `Cannot verify databricks notebook init script. IPython is not installed in the current environment: ${
@@ -357,6 +345,24 @@ export class NotebookInitScriptManager implements Disposable {
                         }
                     });
             }
+
+            if (!executable) {
+                if (!fromCommand) {
+                    return;
+                }
+                window
+                    .showErrorMessage(
+                        "Cannot verify databricks notebook init script. No python interpretter selected.",
+                        "Select Python Interpretter"
+                    )
+                    .then((choice) => {
+                        if (choice === "Select Python Interpretter") {
+                            this.pythonExtension.selectPythonInterpreter();
+                        }
+                    });
+                return;
+            }
+            this.currentEnvPath = executable;
 
             await this.updateInitScript();
 
