@@ -219,7 +219,7 @@ export async function activate(
         pythonExtensionWrapper
     );
     const featureManager = new FeatureManager<FeatureId>([
-        "debugging.dbconnect",
+        "notebooks.dbconnect",
     ]);
     featureManager.registerFeature(
         "debugging.dbconnect",
@@ -268,7 +268,6 @@ export async function activate(
         dbConnectStatusBarButton,
         connectionManager,
         context,
-        pythonExtensionWrapper,
         notebookInitScriptManager
     );
 

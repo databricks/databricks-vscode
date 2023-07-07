@@ -300,7 +300,6 @@ export class NotebookInitScriptManager implements Disposable {
                         const env = {
                             ...((await EnvVarGenerators.getDatabrickseEnvVars(
                                 this.connectionManager,
-                                this.pythonExtension,
                                 this.workspacePath
                             )) ?? {}),
                             ...((await EnvVarGenerators.getIdeEnvVars()) ?? {}),

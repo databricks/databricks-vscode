@@ -5,7 +5,6 @@ import {FeatureManager} from "../feature-manager/FeatureManager";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {
@@ -55,66 +54,49 @@ export async function getNotebookEnvVars(
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
-async function getUserAgent(
-    connectionManager: ConnectionManager,
-    pythonExtension: MsPythonExtensionWrapper
-) {
+async function getUserAgent(connectionManager: ConnectionManager) {
     const client = connectionManager.workspaceClient?.apiClient;
     if (!client) {
         return;
     }
-    const userAgent = [
-        `${client.product}/${client.productVersion}`,
-        `os/${process.platform}`,
-    ];
-
-    const env = await pythonExtension.pythonEnvironment;
-    if (env && env.version) {
-        const {major, minor} = env.version;
-        userAgent.push(`python/${major}.${minor}`);
-    }
-
-    return userAgent.join(" ");
-}
-
-async function getPatToken(connectionManager: ConnectionManager) {
-    const headers: Record<string, string> = {};
-    await connectionManager.workspaceClient?.apiClient.config.authenticate(
-        headers
-    );
-    return headers["Authorization"]?.split(" ")[1];
+    return `${client.product}/${client.productVersion}`;
 }
 
 export async function getDatabrickseEnvVars(
     connectionManager: ConnectionManager,
-    pythonExtension: MsPythonExtensionWrapper,
     workspacePath: Uri
 ) {
     await connectionManager.waitForConnect();
     const cluster = connectionManager.cluster;
-    const userAgent = await getUserAgent(connectionManager, pythonExtension);
+    const userAgent = await getUserAgent(connectionManager);
     const authProvider = connectionManager.databricksWorkspace?.authProvider;
-    if (!userAgent || !authProvider) {
-        return;
-    }
-
-    const authEnvVars: Record<string, string> = authProvider.toEnv();
-
     const host = connectionManager.databricksWorkspace?.host.authority;
-    const pat = await getPatToken(connectionManager);
-    const sparkEnvVars: Record<string, string> = {};
-    if (pat && host && cluster) {
-        sparkEnvVars[
-            "SPARK_REMOTE"
-        ] = `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${cluster.id};user_agent=vs_code`; //;user_agent=${encodeURIComponent(userAgent)}`
+    if (
+        !userAgent ||
+        !authProvider ||
+        !host ||
+        !connectionManager.metadataServiceUrl
+    ) {
+        return;
     }
 
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
-        ...authEnvVars,
-        ...sparkEnvVars,
+        DATABRICKS_HOST: host,
+        DATABRICKS_AUTH_TYPE: "metadata-service",
+        DATABRICKS_METADATA_SERVICE_URL: connectionManager.metadataServiceUrl,
+        SPARK_CONNECT_USER_AGENT: userAgent,
         DATABRICKS_CLUSTER_ID: cluster?.id,
         DATABRICKS_PROJECT_ROOT: workspacePath.fsPath,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+export async function getProxyEnvVars() {
+    return {
+        /* eslint-disable @typescript-eslint/naming-convention */
+        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy,
+        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy,
+        /* eslint-enable @typescript-eslint/naming-convention */
+    };
 }

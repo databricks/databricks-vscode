@@ -15,7 +15,6 @@ import {SystemVariables} from "../vscode-objs/SystemVariables";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
-import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {EnvVarGenerators, FileUtils} from "../utils";
@@ -46,7 +45,6 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
         private readonly extensionContext: ExtensionContext,
-        private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly notebookInitScriptManager: NotebookInitScriptManager
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
@@ -153,27 +151,26 @@ export class DatabricksEnvFileManager implements Disposable {
         );
     }
 
-    public async getDatabrickseEnvVars() {
+    private async getDatabrickseEnvVars() {
         return EnvVarGenerators.getDatabrickseEnvVars(
             this.connectionManager,
-            this.pythonExtension,
             this.workspacePath
         );
     }
 
-    public async getNotebookEnvVars() {
+    private async getNotebookEnvVars() {
         return EnvVarGenerators.getNotebookEnvVars(
             this.featureManager,
             this.notebookInitScriptManager
         );
     }
 
-    public async getIdeEnvVars() {
+    private async getIdeEnvVars() {
         return EnvVarGenerators.getIdeEnvVars();
     }
 
     //Get env variables from user's .env file
-    public async getUserEnvVars() {
+    private async getUserEnvVars() {
         return EnvVarGenerators.getUserEnvVars(this.userEnvPath);
     }
 
@@ -184,6 +181,7 @@ export class DatabricksEnvFileManager implements Disposable {
             ...(await this.getIdeEnvVars()),
             ...((await this.getUserEnvVars()) || {}),
             ...(await this.getNotebookEnvVars()),
+            ...(await EnvVarGenerators.getProxyEnvVars()),
         })
             .filter(([, value]) => value !== undefined)
             .map(([key, value]) => `${key}=${value}`);
@@ -192,18 +190,19 @@ export class DatabricksEnvFileManager implements Disposable {
                 this.databricksEnvPath.fsPath,
                 "utf-8"
             );
+            data.sort();
             if (oldData !== data.join(os.EOL)) {
                 this.onDidChangeEnvironmentVariablesEmitter.fire();
             }
+            await writeFile(
+                this.databricksEnvPath.fsPath,
+                data.join(os.EOL),
+                "utf-8"
+            );
+            this.dbConnectStatusBarButton.update();
         } catch (e) {
             ctx?.logger?.info("Error writing databricks.env file", e);
         }
-        await writeFile(
-            this.databricksEnvPath.fsPath,
-            data.join(os.EOL),
-            "utf-8"
-        );
-        this.dbConnectStatusBarButton.update();
     }
 
     async emitToTerminal() {
@@ -211,6 +210,7 @@ export class DatabricksEnvFileManager implements Disposable {
             ...((await this.getDatabrickseEnvVars()) || {}),
             ...(await this.getIdeEnvVars()),
             ...(await this.getNotebookEnvVars()),
+            ...(await EnvVarGenerators.getProxyEnvVars()),
         }).forEach(([key, value]) => {
             if (value === undefined) {
                 return;
