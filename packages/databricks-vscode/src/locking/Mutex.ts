@@ -20,4 +20,8 @@ export class Mutex {
             this._locked = false;
         }
     }
+
+    get locked() {
+        return this._locked;
+    }
 }

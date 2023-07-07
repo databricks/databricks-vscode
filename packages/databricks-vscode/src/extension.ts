@@ -253,6 +253,15 @@ export async function activate(
         pythonExtensionWrapper
     );
 
+    context.subscriptions.push(
+        notebookInitScriptManager,
+        telemetry.registerCommand(
+            "databricks.notebookInitScript.verify",
+            notebookInitScriptManager.verifyInitScriptCommand,
+            notebookInitScriptManager
+        )
+    );
+
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspace.workspaceFolders[0].uri,
         featureManager,

@@ -37,10 +37,15 @@ async function isDbnbTextEditor(editor?: TextEditor) {
 export class NotebookInitScriptManager implements Disposable {
     private disposables: Disposable[] = [];
     private readonly verifyInitScriptMutex: Mutex = new Mutex();
+    private readonly verificationErrorMessageMutex: Mutex = new Mutex();
     readonly outputWindow: OutputChannel = window.createOutputChannel(
         "Databricks Notebooks"
     );
     private initScriptSuccessfullyVerified = false;
+    // current env can be undefined when no python interpreter is selected,
+    // so we have an additional null state to represent the case when we have
+    // not yet seen a python interpreter
+    private currentEnvPath?: string | null = null;
 
     constructor(
         private readonly workspacePath: Uri,
@@ -51,11 +56,12 @@ export class NotebookInitScriptManager implements Disposable {
     ) {
         this.disposables.push(
             this.outputWindow,
-            this.connectionManager.onDidChangeState((e) => {
-                if (e === "CONNECTED") {
-                    this.initScriptSuccessfullyVerified = false;
-                    this.verifyInitScript();
+            this.connectionManager.onDidChangeState(async (e) => {
+                if (e !== "CONNECTED" || (await this.isKnowEnvironment())) {
+                    return;
                 }
+                this.initScriptSuccessfullyVerified = false;
+                this.verifyInitScript();
             }),
             this.pythonExtension.onDidChangePythonExecutable(() => {
                 this.initScriptSuccessfullyVerified = false;
@@ -65,16 +71,23 @@ export class NotebookInitScriptManager implements Disposable {
                 this.initScriptSuccessfullyVerified = false;
                 this.verifyInitScript();
             }),
-            workspace.onDidOpenNotebookDocument(() => {
+            workspace.onDidOpenNotebookDocument(async () => {
+                if (await this.isKnowEnvironment()) {
+                    return;
+                }
                 this.verifyInitScript();
             }),
-            window.onDidChangeActiveNotebookEditor((activeNotebook) => {
-                if (activeNotebook) {
-                    this.verifyInitScript();
+            window.onDidChangeActiveNotebookEditor(async (activeNotebook) => {
+                if ((await this.isKnowEnvironment()) || !activeNotebook) {
+                    return;
                 }
+                this.verifyInitScript();
             }),
             window.onDidChangeActiveTextEditor(async (activeTextEditor) => {
-                if (activeTextEditor?.document.languageId !== "python") {
+                if (
+                    activeTextEditor?.document.languageId !== "python" ||
+                    (await this.isKnowEnvironment())
+                ) {
                     return;
                 }
                 const localUri = new LocalUri(activeTextEditor?.document.uri);
@@ -106,6 +119,13 @@ export class NotebookInitScriptManager implements Disposable {
 
     get sourceFiles(): Promise<string[]> {
         return readdir(this.generatedDir);
+    }
+
+    async isKnowEnvironment() {
+        return (
+            this.currentEnvPath ===
+            (await this.pythonExtension.getPythonExecutable())
+        );
     }
 
     private async copyInitScript() {
@@ -160,8 +180,32 @@ export class NotebookInitScriptManager implements Disposable {
         return EnvVarGenerators.getUserEnvVars(Uri.file(userEnvFile));
     }
 
+    private async showVerificationFailMessage() {
+        if (this.verificationErrorMessageMutex.locked) {
+            return;
+        }
+        await this.verificationErrorMessageMutex.wait();
+        try {
+            const choice = await window.showErrorMessage(
+                "There were errors when running the notebook init script. " +
+                    "See the Databricks Notebook output window for more details.",
+                "Open Output Window"
+            );
+            if (choice === "Open Output Window") {
+                this.outputWindow.show();
+            }
+        } finally {
+            this.verificationErrorMessageMutex.signal();
+        }
+    }
+
+    async verifyInitScriptCommand() {
+        this.currentEnvPath = null;
+        this.verifyInitScript();
+    }
+
     @withLogContext(Loggers.Extension)
-    async verifyInitScript(@context ctx?: Context) {
+    private async verifyInitScript(@context ctx?: Context) {
         // If we are not in a jupyter notebook or a databricks notebook,
         // then we don't need to verify the init script
         if (
@@ -188,8 +232,16 @@ export class NotebookInitScriptManager implements Disposable {
             if (this.initScriptSuccessfullyVerified) {
                 return true;
             }
-            await this.updateInitScript();
             const executable = await this.pythonExtension.getPythonExecutable();
+            if (this.currentEnvPath === executable) {
+                // We do not want to keep rerunning the init script verification
+                // for the same python environment. We need to give users time to
+                // fix the issue before we try again. The retry only happens when
+                // users explicitly run the "Verify Init Script" command
+                this.showVerificationFailMessage();
+                return;
+            }
+            this.currentEnvPath = executable;
             if (!executable) {
                 window
                     .showErrorMessage(
@@ -234,6 +286,7 @@ export class NotebookInitScriptManager implements Disposable {
                     });
             }
 
+            await this.updateInitScript();
             this.initScriptSuccessfullyVerified = await window.withProgress(
                 {location: ProgressLocation.Notification},
                 async (progress) => {
@@ -244,21 +297,23 @@ export class NotebookInitScriptManager implements Disposable {
                     let someScriptFailed = false;
                     for (const fileBaseName of await this.sourceFiles) {
                         const file = path.join(this.startupDir, fileBaseName);
+                        const env = {
+                            ...((await EnvVarGenerators.getDatabrickseEnvVars(
+                                this.connectionManager,
+                                this.pythonExtension,
+                                this.workspacePath
+                            )) ?? {}),
+                            ...((await EnvVarGenerators.getIdeEnvVars()) ?? {}),
+                            ...((await this.getUserEnvVars()) ?? {}),
+                        };
                         const {stderr} = await execFile(
                             executable,
                             ["-m", "IPython", file],
                             {
-                                shell: false,
-                                env: {
-                                    ...((await EnvVarGenerators.getDatabrickseEnvVars(
-                                        this.connectionManager,
-                                        this.pythonExtension,
-                                        this.workspacePath
-                                    )) ?? {}),
-                                    ...((await EnvVarGenerators.getIdeEnvVars()) ??
-                                        {}),
-                                    ...((await this.getUserEnvVars()) ?? {}),
-                                },
+                                //required for azure-cli auth to work
+                                //TODO: remove this when using metadata-service-auth
+                                shell: true,
+                                env,
                             }
                         );
                         const correctlyFormatttedErrors = stderr
@@ -289,17 +344,7 @@ export class NotebookInitScriptManager implements Disposable {
 
                     if (someScriptFailed) {
                         this.outputWindow.appendLine("\n\n");
-                        window
-                            .showErrorMessage(
-                                "There were errors when running the notebook init script. " +
-                                    "See the Databricks Notebook output window for more details.",
-                                "Open Output Window"
-                            )
-                            .then((choice) => {
-                                if (choice === "Open Output Window") {
-                                    this.outputWindow.show();
-                                }
-                            });
+                        this.showVerificationFailMessage();
                         return false;
                     }
                     window.showInformationMessage(
