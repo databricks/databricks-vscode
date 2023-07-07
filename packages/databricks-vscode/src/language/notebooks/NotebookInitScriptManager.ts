@@ -38,9 +38,7 @@ export class NotebookInitScriptManager implements Disposable {
     private disposables: Disposable[] = [];
     private readonly verifyInitScriptMutex: Mutex = new Mutex();
     private readonly verificationErrorMessageMutex: Mutex = new Mutex();
-    readonly outputWindow: OutputChannel = window.createOutputChannel(
-        "Databricks Notebooks"
-    );
+    private outputWindow?: OutputChannel;
     private initScriptSuccessfullyVerified = false;
     // current env can be undefined when no python interpreter is selected,
     // so we have an additional null state to represent the case when we have
@@ -54,21 +52,31 @@ export class NotebookInitScriptManager implements Disposable {
         private readonly featureManager: FeatureManager,
         private readonly pythonExtension: MsPythonExtensionWrapper
     ) {
+        this.featureManager.isEnabled("notebooks.dbconnect").then((state) => {
+            if (!state.isDisabledByFf) {
+                this.outputWindow = window.createOutputChannel(
+                    "Databricks Notebooks"
+                );
+                this.disposables.push(this.outputWindow);
+            }
+        });
         this.disposables.push(
-            this.outputWindow,
             this.connectionManager.onDidChangeState(async (e) => {
                 if (e !== "CONNECTED" || (await this.isKnowEnvironment())) {
                     return;
                 }
                 this.initScriptSuccessfullyVerified = false;
+                this.currentEnvPath = null;
                 this.verifyInitScript();
             }),
             this.pythonExtension.onDidChangePythonExecutable(() => {
                 this.initScriptSuccessfullyVerified = false;
+                this.currentEnvPath = null;
                 this.verifyInitScript();
             }),
             this.featureManager.onDidChangeState("notebooks.dbconnect", () => {
                 this.initScriptSuccessfullyVerified = false;
+                this.currentEnvPath = null;
                 this.verifyInitScript();
             }),
             workspace.onDidOpenNotebookDocument(async () => {
@@ -192,7 +200,7 @@ export class NotebookInitScriptManager implements Disposable {
                 "Open Output Window"
             );
             if (choice === "Open Output Window") {
-                this.outputWindow.show();
+                this.outputWindow?.show();
             }
         } finally {
             this.verificationErrorMessageMutex.signal();
@@ -200,12 +208,76 @@ export class NotebookInitScriptManager implements Disposable {
     }
 
     async verifyInitScriptCommand() {
+        this.initScriptSuccessfullyVerified = false;
         this.currentEnvPath = null;
-        this.verifyInitScript();
+        this.verifyInitScript(true);
     }
 
     @withLogContext(Loggers.Extension)
-    private async verifyInitScript(@context ctx?: Context) {
+    private async executeAndVerifyInitScripts(
+        executable: string,
+        @context ctx?: Context
+    ) {
+        let someScriptFailed = false;
+        for (const fileBaseName of await this.sourceFiles) {
+            const file = path.join(this.startupDir, fileBaseName);
+            const env = {
+                ...((await EnvVarGenerators.getDatabrickseEnvVars(
+                    this.connectionManager,
+                    this.workspacePath
+                )) ?? {}),
+                ...((await EnvVarGenerators.getIdeEnvVars()) ?? {}),
+                ...((await this.getUserEnvVars()) ?? {}),
+            };
+            const {stderr} = await execFile(
+                executable,
+                ["-m", "IPython", file],
+                {
+                    //required for azure-cli auth to work
+                    //TODO: remove this when using metadata-service-auth
+                    shell: true,
+                    env,
+                }
+            );
+            const correctlyFormatttedErrors = stderr
+                .split(/\r?\n/)
+                .filter((line) => line.split(":").length > 2);
+            if (correctlyFormatttedErrors.length > 0) {
+                someScriptFailed = true;
+                this.outputWindow?.appendLine("=".repeat(30));
+                this.outputWindow?.appendLine(
+                    `Errors in ${path.basename(file)}:`
+                );
+                this.outputWindow?.appendLine(" ");
+            }
+            correctlyFormatttedErrors.forEach((line) => {
+                const parts = line.split(":");
+                const [funcName, errorType, ...rest] = parts;
+                this.outputWindow?.appendLine(
+                    `${funcName} - ${errorType}: ${rest.join(":")}`
+                );
+            });
+
+            if (stderr.length > 0) {
+                ctx?.logger?.error("Notebook Init Script Error", {
+                    stderr: stderr,
+                });
+            }
+        }
+
+        if (someScriptFailed) {
+            this.outputWindow?.appendLine("\n\n");
+            this.showVerificationFailMessage();
+            return false;
+        }
+        return true;
+    }
+
+    @withLogContext(Loggers.Extension)
+    private async verifyInitScript(
+        fromCommand = false,
+        @context ctx?: Context
+    ) {
         // If we are not in a jupyter notebook or a databricks notebook,
         // then we don't need to verify the init script
         if (
@@ -287,71 +359,28 @@ export class NotebookInitScriptManager implements Disposable {
             }
 
             await this.updateInitScript();
-            this.initScriptSuccessfullyVerified = await window.withProgress(
-                {location: ProgressLocation.Notification},
-                async (progress) => {
-                    progress.report({
-                        message:
-                            "Verifying databricks notebook init scripts...",
-                    });
-                    let someScriptFailed = false;
-                    for (const fileBaseName of await this.sourceFiles) {
-                        const file = path.join(this.startupDir, fileBaseName);
-                        const env = {
-                            ...((await EnvVarGenerators.getDatabrickseEnvVars(
-                                this.connectionManager,
-                                this.workspacePath
-                            )) ?? {}),
-                            ...((await EnvVarGenerators.getIdeEnvVars()) ?? {}),
-                            ...((await this.getUserEnvVars()) ?? {}),
-                        };
-                        const {stderr} = await execFile(
-                            executable,
-                            ["-m", "IPython", file],
-                            {
-                                //required for azure-cli auth to work
-                                //TODO: remove this when using metadata-service-auth
-                                shell: true,
-                                env,
-                            }
-                        );
-                        const correctlyFormatttedErrors = stderr
-                            .split(/\r?\n/)
-                            .filter((line) => line.split(":").length > 2);
-                        if (correctlyFormatttedErrors.length > 0) {
-                            someScriptFailed = true;
-                            this.outputWindow.appendLine("=".repeat(30));
-                            this.outputWindow.appendLine(
-                                `Errors in ${path.basename(file)}:`
-                            );
-                            this.outputWindow.appendLine(" ");
-                        }
-                        correctlyFormatttedErrors.forEach((line) => {
-                            const parts = line.split(":");
-                            const [funcName, errorType, ...rest] = parts;
-                            this.outputWindow.appendLine(
-                                `${funcName} - ${errorType}: ${rest.join(":")}`
-                            );
-                        });
 
-                        if (stderr.length > 0) {
-                            ctx?.logger?.error("Notebook Init Script Error", {
-                                stderr: stderr,
-                            });
-                        }
-                    }
-
-                    if (someScriptFailed) {
-                        this.outputWindow.appendLine("\n\n");
-                        this.showVerificationFailMessage();
-                        return false;
-                    }
-                    window.showInformationMessage(
-                        "Successfully verified Databricks notebook init scripts"
-                    );
-                    return true;
-                }
-            );
+            this.initScriptSuccessfullyVerified = fromCommand
+                ? await window.withProgress(
+                      {location: ProgressLocation.Notification},
+                      async (progress) => {
+                          progress.report({
+                              message:
+                                  "Verifying databricks notebook init scripts...",
+                          });
+                          const success =
+                              await this.executeAndVerifyInitScripts(
+                                  executable
+                              );
+                          if (success) {
+                              window.showInformationMessage(
+                                  "Successfully verified Databricks notebook init scripts"
+                              );
+                          }
+                          return success;
+                      }
+                  )
+                : await this.executeAndVerifyInitScripts(executable);
         } catch (e) {
             ctx?.logger?.error("Notebook Init Script Error", e);
         } finally {

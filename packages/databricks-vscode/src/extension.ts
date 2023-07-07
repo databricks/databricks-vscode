@@ -286,7 +286,10 @@ export async function activate(
                 }
                 if (featureState.action) {
                     featureState.action();
-                } else if (featureState.reason) {
+                } else if (
+                    !featureState.isDisabledByFf &&
+                    featureState.reason
+                ) {
                     window.showErrorMessage(
                         `Error while trying to initialise Databricks Notebooks. Some features may not work. Reason: ${featureState.reason}`
                     );
