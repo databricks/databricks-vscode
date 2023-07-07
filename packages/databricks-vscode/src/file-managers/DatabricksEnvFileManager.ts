@@ -185,15 +185,19 @@ export class DatabricksEnvFileManager implements Disposable {
         })
             .filter(([, value]) => value !== undefined)
             .map(([key, value]) => `${key}=${value}`);
+        data.sort();
         try {
             const oldData = await readFile(
                 this.databricksEnvPath.fsPath,
                 "utf-8"
             );
-            data.sort();
             if (oldData !== data.join(os.EOL)) {
                 this.onDidChangeEnvironmentVariablesEmitter.fire();
             }
+        } catch (e) {
+            ctx?.logger?.info("Error reading old databricks.env file", e);
+        }
+        try {
             await writeFile(
                 this.databricksEnvPath.fsPath,
                 data.join(os.EOL),
