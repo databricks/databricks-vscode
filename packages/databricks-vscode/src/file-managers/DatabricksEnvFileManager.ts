@@ -153,26 +153,26 @@ export class DatabricksEnvFileManager implements Disposable {
         );
     }
 
-    public async getDatabrickseEnvVars() {
+    private async getDatabrickseEnvVars() {
         return EnvVarGenerators.getDatabrickseEnvVars(
             this.connectionManager,
             this.workspacePath
         );
     }
 
-    public async getNotebookEnvVars() {
+    private async getNotebookEnvVars() {
         return EnvVarGenerators.getNotebookEnvVars(
             this.featureManager,
             this.notebookInitScriptManager
         );
     }
 
-    public async getIdeEnvVars() {
+    private async getIdeEnvVars() {
         return EnvVarGenerators.getIdeEnvVars();
     }
 
     //Get env variables from user's .env file
-    public async getUserEnvVars() {
+    private async getUserEnvVars() {
         return EnvVarGenerators.getUserEnvVars(this.userEnvPath);
     }
 
