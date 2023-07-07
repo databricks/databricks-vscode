@@ -219,7 +219,7 @@ export async function activate(
         pythonExtensionWrapper
     );
     const featureManager = new FeatureManager<FeatureId>([
-        "debugging.dbconnect",
+        "notebooks.dbconnect",
     ]);
     featureManager.registerFeature(
         "debugging.dbconnect",
@@ -233,23 +233,35 @@ export async function activate(
     const dbConnectStatusBarButton = new DbConnectStatusBarButton(
         featureManager
     );
+
+    featureManager.registerFeature(
+        "notebooks.dbconnect",
+        () =>
+            new NotebookAccessVerifier(
+                featureManager,
+                pythonExtensionWrapper,
+                workspaceStateManager
+            )
+    );
+
     const notebookInitScriptManager = new NotebookInitScriptManager(
         workspace.workspaceFolders[0].uri,
         context,
-        connectionManager
+        connectionManager,
+        featureManager
     );
-    notebookInitScriptManager.updateInitScript().catch((e) => {
-        NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Failed to update init script",
-            e
-        );
-        if (e instanceof Error) {
-            window.showWarningMessage(
-                `Failed to update databricks notebook init script. ` +
-                    `Some databricks notebook features may not work. ${e.message}`
+
+    context.subscriptions.push(
+        workspace.onDidOpenNotebookDocument(async () => {
+            const featureState = await featureManager.isEnabled(
+                "notebooks.dbconnect"
             );
-        }
-    });
+            if (featureState.action) {
+                featureState.action();
+            }
+        }),
+        notebookInitScriptManager
+    );
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspace.workspaceFolders[0].uri,
         featureManager,
@@ -479,26 +491,6 @@ export async function activate(
         telemetry.registerCommand("databricks.call", (fn) => {
             if (fn) {
                 fn();
-            }
-        })
-    );
-
-    featureManager.registerFeature(
-        "notebooks.dbconnect",
-        () =>
-            new NotebookAccessVerifier(
-                featureManager,
-                pythonExtensionWrapper,
-                workspaceStateManager
-            )
-    );
-    context.subscriptions.push(
-        workspace.onDidOpenNotebookDocument(async () => {
-            const featureState = await featureManager.isEnabled(
-                "notebooks.dbconnect"
-            );
-            if (featureState.action) {
-                featureState.action();
             }
         })
     );
