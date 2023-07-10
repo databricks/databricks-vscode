@@ -15,7 +15,6 @@ import {SystemVariables} from "../vscode-objs/SystemVariables";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
-import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {EnvVarGenerators, FileUtils} from "../utils";
@@ -46,7 +45,6 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
         private readonly extensionContext: ExtensionContext,
-        private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly notebookInitScriptManager: NotebookInitScriptManager
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
@@ -187,15 +185,19 @@ export class DatabricksEnvFileManager implements Disposable {
         })
             .filter(([, value]) => value !== undefined)
             .map(([key, value]) => `${key}=${value}`);
+        data.sort();
         try {
             const oldData = await readFile(
                 this.databricksEnvPath.fsPath,
                 "utf-8"
             );
-            data.sort();
             if (oldData !== data.join(os.EOL)) {
                 this.onDidChangeEnvironmentVariablesEmitter.fire();
             }
+        } catch (e) {
+            ctx?.logger?.info("Error reading old databricks.env file", e);
+        }
+        try {
             await writeFile(
                 this.databricksEnvPath.fsPath,
                 data.join(os.EOL),

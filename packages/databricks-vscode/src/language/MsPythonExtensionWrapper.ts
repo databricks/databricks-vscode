@@ -79,6 +79,9 @@ export class MsPythonExtensionWrapper implements Disposable {
             return this.api.settings.onDidChangeExecutionDetails;
         }
         return (f) =>
+            // Active environment path actually returns the path of the active interpreter
+            // not the path of the active environment. It only returns path of the active
+            // environment if there is no active interpreter. We do not handle this case.
             this.api.environments.onDidChangeActiveEnvironmentPath((e) =>
                 f(Uri.file(e.path))
             );

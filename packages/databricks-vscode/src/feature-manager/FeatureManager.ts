@@ -78,8 +78,8 @@ export class FeatureManager<T = FeatureId> implements Disposable {
                         JSON.stringify(this.stateCache.get(id)) !==
                             JSON.stringify(e))
                 ) {
-                    eventEmitter.fire(e);
                     this.stateCache.set(id, e);
+                    eventEmitter.fire(e);
                 }
             }, this)
         );

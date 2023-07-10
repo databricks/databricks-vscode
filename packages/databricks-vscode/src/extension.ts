@@ -230,9 +230,6 @@ export async function activate(
                 dbConnectInstallPrompt
             )
     );
-    const dbConnectStatusBarButton = new DbConnectStatusBarButton(
-        featureManager
-    );
 
     featureManager.registerFeature(
         "notebooks.dbconnect",
@@ -244,33 +241,76 @@ export async function activate(
             )
     );
 
+    const dbConnectStatusBarButton = new DbConnectStatusBarButton(
+        featureManager
+    );
+
     const notebookInitScriptManager = new NotebookInitScriptManager(
         workspace.workspaceFolders[0].uri,
         context,
         connectionManager,
-        featureManager
+        featureManager,
+        pythonExtensionWrapper
     );
 
     context.subscriptions.push(
-        workspace.onDidOpenNotebookDocument(async () => {
-            const featureState = await featureManager.isEnabled(
-                "notebooks.dbconnect"
-            );
-            if (featureState.action) {
-                featureState.action();
-            }
-        }),
-        notebookInitScriptManager
+        notebookInitScriptManager,
+        telemetry.registerCommand(
+            "databricks.notebookInitScript.verify",
+            notebookInitScriptManager.verifyInitScriptCommand,
+            notebookInitScriptManager
+        )
     );
+
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspace.workspaceFolders[0].uri,
         featureManager,
         dbConnectStatusBarButton,
         connectionManager,
         context,
-        pythonExtensionWrapper,
         notebookInitScriptManager
     );
+
+    context.subscriptions.push(
+        workspace.onDidOpenNotebookDocument(() =>
+            featureManager.isEnabled("notebooks.dbconnect")
+        ),
+        featureManager.onDidChangeState(
+            "notebooks.dbconnect",
+            async (featureState) => {
+                const dbconnectState = await featureManager.isEnabled(
+                    "debugging.dbconnect"
+                );
+                if (!dbconnectState.avaliable) {
+                    return; // Only take action of notebook errors, when dbconnect is avaliable
+                }
+                if (featureState.action) {
+                    featureState.action();
+                } else if (
+                    !featureState.isDisabledByFf &&
+                    featureState.reason
+                ) {
+                    window.showErrorMessage(
+                        `Error while trying to initialise Databricks Notebooks. Some features may not work. Reason: ${featureState.reason}`
+                    );
+                }
+            }
+        )
+    );
+
+    notebookInitScriptManager.updateInitScript().catch((e) => {
+        NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to update init script",
+            e
+        );
+        if (e instanceof Error) {
+            window.showWarningMessage(
+                `Failed to update databricks notebook init script. ` +
+                    `Some databricks notebook features may not work. ${e.message}`
+            );
+        }
+    });
+
     databricksEnvFileManager.init();
     context.subscriptions.push(
         databricksEnvFileManager,

@@ -1,13 +1,29 @@
+import functools
+from typing import Union, List
 import os
 import shlex
-from IPython.core.magic import magics_class, Magics, line_magic, needs_local_scope
 import warnings
-from typing import List
-from IPython import get_ipython
-from databricks.connect import DatabricksSession
-from pyspark.sql import SparkSession, functions as udf, DataFrame
-from pyspark.sql.connect.dataframe import DataFrame as SparkConnectDataframe
-import sys
+
+
+def logError(function_name: str, e: Union[str, Exception]):
+    import sys
+    msg = [function_name]
+
+    typ = type(e)
+    if hasattr(typ, '__name__'):
+        msg.append(typ.__name__)
+    else:
+        msg.append("Error")
+
+    msg.append(str(e))
+    print(':'.join(msg), file=sys.stderr)
+
+
+try:
+    from IPython import get_ipython
+    from IPython.core.magic import magics_class, Magics, line_magic, needs_local_scope
+except Exception as e:
+    logError("Ipython Imports", e)
 
 __disposables = []
 
@@ -18,10 +34,24 @@ def disposable(f):
     return f
 
 
+def logErrorAndContinue(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as e:
+            logError(f.__name__, e)
+
+    return wrapper
+
+
+@logErrorAndContinue
 @disposable
 def create_and_register_databricks_globals():
     from databricks.sdk.runtime import dbutils
     from IPython.display import HTML
+    from pyspark.sql import functions as udf, SparkSession
+    from databricks.connect import DatabricksSession
 
     # "table", "sc", "sqlContext" are missing
     spark: SparkSession = DatabricksSession.builder.getOrCreate()
@@ -33,6 +63,7 @@ def create_and_register_databricks_globals():
     globals()['sql'] = sql
     globals()['getArgument'] = getArgument
     globals()['displayHTML'] = HTML
+    globals()['udf'] = udf
 
 
 @disposable
@@ -100,6 +131,7 @@ class DatabricksMagics(Magics):
         return cmd(*args[1:])
 
 
+@logErrorAndContinue
 @disposable
 def register_magics():
     def warn_for_dbr_alternative(magic):
@@ -191,8 +223,12 @@ def register_magics():
     ip.input_transformers_cleanup.append(parse_line_for_databricks_magics)
 
 
+@logErrorAndContinue
 @disposable
 def register_formatters(notebook_config: LocalDatabricksNotebookConfig):
+    from pyspark.sql.connect.dataframe import DataFrame as SparkConnectDataframe
+    from pyspark.sql import DataFrame
+
     def df_html(df):
         return df.limit(notebook_config.dataframe_display_limit).toPandas().to_html()
 
@@ -201,6 +237,7 @@ def register_formatters(notebook_config: LocalDatabricksNotebookConfig):
     html_formatter.for_type(DataFrame, df_html)
 
 
+@logErrorAndContinue
 @disposable
 def update_sys_path(notebook_config: LocalDatabricksNotebookConfig):
     sys.path.append(notebook_config.project_root)
@@ -211,13 +248,16 @@ def make_matplotlib_inline():
     try:
         import matplotlib
         get_ipython().run_line_magic("matplotlib", "inline")
-    except:
+    except Exception as e:
         pass
 
 
 global _sqldf
 
 try:
+    import sys
+
+    print(sys.modules[__name__])
     cfg = LocalDatabricksNotebookConfig()
     create_and_register_databricks_globals()
     register_magics()
@@ -231,4 +271,4 @@ try:
     globals().pop('disposable')
 
 except Exception as e:
-    warnings.warn("Error initialising databricks globals. " + str(e))
+    logError("unknown", e)

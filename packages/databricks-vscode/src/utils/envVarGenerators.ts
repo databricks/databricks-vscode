@@ -5,7 +5,6 @@ import {FeatureManager} from "../feature-manager/FeatureManager";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {

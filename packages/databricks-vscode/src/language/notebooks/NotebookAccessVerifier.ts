@@ -24,6 +24,7 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
             )
         );
     }
+
     async showSdkInstallPrompt() {
         const mainMessagePart =
             "Databricks SDK for python enables you to run databricks notebooks locally. Would you like to install it in the";
@@ -54,11 +55,11 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
         );
         switch (result) {
             case "Install":
-                this.pythonExtension.installPackageInEnvironment(
+                await this.pythonExtension.installPackageInEnvironment(
                     "databricks-sdk",
                     "latest"
                 );
-                await this.isPythonSdkInstalled();
+                return true;
                 break;
 
             case "Change environment":
@@ -72,9 +73,12 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
                     );
                 }
         }
+        return false;
     }
+
     async isPythonSdkInstalled() {
         try {
+            await this.waitForStep("isDbConnectEnabled");
             const databricksSdkExists =
                 await this.pythonExtension.findPackageInEnvironment(
                     "databricks-sdk",
@@ -88,7 +92,9 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
                 "Python SDK is not installed",
                 async () => {
                     try {
-                        await this.showSdkInstallPrompt();
+                        if (await this.showSdkInstallPrompt()) {
+                            this.acceptStep("isPythonSdkInstalled");
+                        }
                     } catch (e) {
                         if (e instanceof Error) {
                             window.showErrorMessage(e.message);

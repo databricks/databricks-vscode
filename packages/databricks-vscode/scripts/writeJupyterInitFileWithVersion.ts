@@ -8,7 +8,7 @@ const data = readFileSync(
     path.join(pythonDir, "00-databricks-init.py"),
     "utf-8"
 );
-const md5 = crypto.createHash("md5").update(data).digest("base64");
+const md5 = crypto.createHash("md5").update(data).digest("hex");
 
 rmSync(path.join(pythonDir, "generated", "databricks-init-scripts"), {
     force: true,
