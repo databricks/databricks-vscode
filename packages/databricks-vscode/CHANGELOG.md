@@ -9,7 +9,7 @@
 -   Experimental: Add an init script for Jupyter notebooks
 -   Experimental: Handle magic commands in init script.
 -   Experimental: Show errors in notebook init scripts
--   Fix: Block changes to vscode configs unless we are in a databricks project
+-   Fix: Block changes to VS Code configs unless we are in a Databricks project
 
 # Release: v1.0.0
 
