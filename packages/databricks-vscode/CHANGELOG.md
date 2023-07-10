@@ -4,12 +4,12 @@
 
 ## 1.1.0 (2023-07-10)
 
--   [DECO-1112] Allow jupyter code lenses to parse and interpret of databricks notebooks (dbnbs) (#769) ([27ab945](https://github.com/databricks/databricks-vscode/commit/27ab945)), closes [#769](https://github.com/databricks/databricks-vscode/issues/769)
--   [DECO-1113] Add an init script for jupyter notebooks (#788) ([e5e28bb](https://github.com/databricks/databricks-vscode/commit/e5e28bb)), closes [#788](https://github.com/databricks/databricks-vscode/issues/788)
--   Block changes to config unless we are in a databricks project (#789) ([375e3d9](https://github.com/databricks/databricks-vscode/commit/375e3d9)), closes [#789](https://github.com/databricks/databricks-vscode/issues/789)
--   Handle magic commands in init script (#793) ([475215b](https://github.com/databricks/databricks-vscode/commit/475215b)), closes [#793](https://github.com/databricks/databricks-vscode/issues/793)
--   Show errors in notebook init scripts (#797) ([7f0159a](https://github.com/databricks/databricks-vscode/commit/7f0159a)), closes [#797](https://github.com/databricks/databricks-vscode/issues/797)
--   Use metadata service and SPARK_CONNECT_USER_AGENT for dbconnect and enable it by default (#802) ([87dc5a5](https://github.com/databricks/databricks-vscode/commit/87dc5a5)), closes [#802](https://github.com/databricks/databricks-vscode/issues/802)
+-   Feature: Enable DB Connect V2 by default.
+-   Experimental: Allow jupyter code lenses to parse and interpret of databricks notebooks (python files)
+-   Experimental: Add an init script for jupyter notebooks
+-   Experimental: Handle magic commands in init script.
+-   Experimental: Show errors in notebook init scripts
+-   Fix: Block changes to vscode configs unless we are in a databricks project
 
 # Release: v1.0.0
 
