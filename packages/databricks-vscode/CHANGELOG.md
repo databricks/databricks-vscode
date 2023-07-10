@@ -5,7 +5,7 @@
 ## 1.1.0 (2023-07-10)
 
 -   Feature: Enable DB Connect V2 by default.
--   Experimental: Allow jupyter code lenses to parse and interpret of databricks notebooks (python files)
+-   Experimental: Allow Jupyter code lenses to parse and interpret databricks notebooks (python files)
 -   Experimental: Add an init script for jupyter notebooks
 -   Experimental: Handle magic commands in init script.
 -   Experimental: Show errors in notebook init scripts
