@@ -719,7 +719,7 @@
         "mocha": "^10.2.0",
         "mock-require": "^3.0.3",
         "nyc": "^15.1.0",
-        "prettier": "^2.8.8",
+        "prettier": "^3.0.0",
         "tmp-promise": "^3.0.3",
         "ts-mockito": "^2.6.1",
         "ts-node": "^10.9.1",
