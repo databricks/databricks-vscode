@@ -2,6 +2,12 @@
 
 ## packages/databricks-sdk-js
 
+## <small>0.3.16 (2023-07-10)</small>
+
+# Release: v0.3.16
+
+## packages/databricks-sdk-js
+
 ## <small>0.3.16 (2023-06-23)</small>
 
 -   Add support for Azure client secret auth.
