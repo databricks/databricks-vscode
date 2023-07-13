@@ -637,5 +637,3 @@ export interface UpdateRepo {
      */
     tag?: string;
 }
-
-export interface EmptyResponse {}
