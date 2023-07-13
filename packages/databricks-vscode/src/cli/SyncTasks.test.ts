@@ -103,8 +103,7 @@ describe(__filename, () => {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
                     DATABRICKS_CLI_UPSTREAM_VERSION: "1.0.0",
-                    DATABRICKS_HOST:
-                        "https://000000000000.00.azuredatabricks.net/",
+                    DATABRICKS_HOST: "000000000000.00.azuredatabricks.net",
                     DATABRICKS_AUTH_TYPE: "metadata-service",
                     DATABRICKS_METADATA_SERVICE_URL: "http://localhost:1234",
                     HOME: process.env.HOME,
@@ -124,8 +123,7 @@ describe(__filename, () => {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
                     DATABRICKS_CLI_UPSTREAM_VERSION: "1.0.0",
-                    DATABRICKS_HOST:
-                        "https://000000000000.00.azuredatabricks.net/",
+                    DATABRICKS_HOST: "000000000000.00.azuredatabricks.net",
                     DATABRICKS_AUTH_TYPE: "metadata-service",
                     DATABRICKS_METADATA_SERVICE_URL: "http://localhost:1234",
                     HOME: process.env.HOME,

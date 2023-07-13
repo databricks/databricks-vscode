@@ -64,15 +64,8 @@ function getUserAgent(connectionManager: ConnectionManager) {
 
 export function getAuthEnvVars(connectionManager: ConnectionManager) {
     const cluster = connectionManager.cluster;
-    const userAgent = getUserAgent(connectionManager);
-    const authProvider = connectionManager.databricksWorkspace?.authProvider;
     const host = connectionManager.databricksWorkspace?.host.authority;
-    if (
-        !userAgent ||
-        !authProvider ||
-        !host ||
-        !connectionManager.metadataServiceUrl
-    ) {
+    if (!host || !connectionManager.metadataServiceUrl) {
         return;
     }
 
@@ -89,12 +82,6 @@ export function getAuthEnvVars(connectionManager: ConnectionManager) {
 export function getCommonDatabricksEnvVars(
     connectionManager: ConnectionManager
 ) {
-    const authProvider = connectionManager.databricksWorkspace?.authProvider;
-    const host = connectionManager.databricksWorkspace?.host.authority;
-    if (!authProvider || !host || !connectionManager.metadataServiceUrl) {
-        return;
-    }
-
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         ...(getAuthEnvVars(connectionManager) || {}),
