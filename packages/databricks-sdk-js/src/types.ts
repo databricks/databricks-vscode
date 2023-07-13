@@ -10,3 +10,5 @@ export interface CancellationToken {
 export interface Provider<T> {
     (): Promise<T>;
 }
+
+export interface EmptyResponse {}

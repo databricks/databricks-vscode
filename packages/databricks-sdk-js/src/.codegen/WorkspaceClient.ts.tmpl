@@ -13,18 +13,11 @@ export class WorkspaceClient {
     readonly apiClient: ApiClient;
 
     {{range .Services}}{{if not .IsAccounts}}
-    {{- if eq .Name "CommandExecution" -}}
-    /**
-    * This API allows executing commands on running clusters.
-    */
-    readonly commands: commands.CommandExecutionService;
-    {{else -}}
     /**
     {{.Comment "* " 80}}
     */    
     readonly {{.CamelName}}: {{.Package.Name}}.{{.PascalName}}Service;
     {{end -}}{{end}}   
-    {{end}}
 
     constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
         if (!(config instanceof Config)) {
