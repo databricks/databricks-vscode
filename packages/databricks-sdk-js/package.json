@@ -21,7 +21,7 @@
         "watch": "tsc --build --watch",
         "clean": "rm -rf dist node_modules",
         "openapi:fetch": "./scripts/fetch_openapi.sh d4525bbc428d236f7508d3190f973fbf17fa5614",
-        "openapi:generate": "./scripts/generate_openapi.sh v0.12.0 && yarn run build",
+        "openapi:generate": "./scripts/generate_openapi.sh 3b4492b6d659ca3d03035e76e1bbc2c964d44f19 && yarn run build",
         "generate-notice": "../../scripts/generate_notice.sh",
         "fix": "eslint src --ext ts --fix && prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",

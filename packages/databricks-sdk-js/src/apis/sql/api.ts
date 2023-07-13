@@ -298,8 +298,9 @@ export class DashboardsService {
         request: sql.ListDashboardsRequest,
         @context context?: Context
     ): AsyncIterable<sql.Dashboard> {
+        // deduplicate items that may have been added during iteration
+        const seen: Record<string, boolean> = {};
         request.page = 1; // start iterating from the first page
-
         while (true) {
             const response = await this._list(request, context);
             if (
@@ -314,9 +315,18 @@ export class DashboardsService {
             }
 
             for (const v of response.results) {
+                const id = v.id;
+                if (id) {
+                    if (seen[id]) {
+                        // item was added during iteration
+                        continue;
+                    }
+                    seen[id] = true;
+                }
                 yield v;
             }
 
+            // paginate by increments of 1
             request.page += 1;
         }
     }
@@ -653,8 +663,9 @@ export class QueriesService {
         request: sql.ListQueriesRequest,
         @context context?: Context
     ): AsyncIterable<sql.Query> {
+        // deduplicate items that may have been added during iteration
+        const seen: Record<string, boolean> = {};
         request.page = 1; // start iterating from the first page
-
         while (true) {
             const response = await this._list(request, context);
             if (
@@ -669,9 +680,18 @@ export class QueriesService {
             }
 
             for (const v of response.results) {
+                const id = v.id;
+                if (id) {
+                    if (seen[id]) {
+                        // item was added during iteration
+                        continue;
+                    }
+                    seen[id] = true;
+                }
                 yield v;
             }
 
+            // paginate by increments of 1
             request.page += 1;
         }
     }

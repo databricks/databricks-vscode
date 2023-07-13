@@ -438,6 +438,7 @@ export class JobsService {
         request: jobs.ListJobsRequest,
         @context context?: Context
     ): AsyncIterable<jobs.BaseJob> {
+        let totalCount = 0;
         while (true) {
             const response = await this._list(request, context);
             if (
@@ -457,6 +458,12 @@ export class JobsService {
 
             request.page_token = response.next_page_token;
             if (!response.next_page_token) {
+                break;
+            }
+            const count = response.jobs.length;
+            totalCount += count;
+            const limit = request.limit;
+            if (limit && totalCount >= limit) {
                 break;
             }
         }
@@ -486,6 +493,7 @@ export class JobsService {
         request: jobs.ListRunsRequest,
         @context context?: Context
     ): AsyncIterable<jobs.BaseRun> {
+        let totalCount = 0;
         while (true) {
             const response = await this._listRuns(request, context);
             if (
@@ -505,6 +513,12 @@ export class JobsService {
 
             request.page_token = response.next_page_token;
             if (!response.next_page_token) {
+                break;
+            }
+            const count = response.runs.length;
+            totalCount += count;
+            const limit = request.limit;
+            if (limit && totalCount >= limit) {
                 break;
             }
         }

@@ -123,12 +123,15 @@ export class {{$s.PascalName}}Service {
             @context context?: Context    
         ): AsyncIterable<{{$s.Package.Name}}.{{.Pagination.Entity.PascalName}}> {
             {{if .Pagination.MultiRequest}}
-            {{if .Pagination.NeedsOffsetDedupe -}}
+            {{if .NeedsOffsetDedupe -}}
             // deduplicate items that may have been added during iteration
-            const seen: Record<{{template "type" .Pagination.Entity.IdentifierField.Entity}}, boolean> = {};
+            const seen: Record<{{template "type" .IdentifierField.Entity}}, boolean> = {};
             {{end}}{{if eq .Pagination.Increment 1 -}}
             request.{{.Pagination.Offset.Name}} = 1; // start iterating from the first page
             {{end}}
+            {{- if and .Pagination.Token .Pagination.Limit -}}
+                let totalCount = 0;
+            {{ end -}}
             while(true) {
                 const response = await this._{{.CamelName}}({{if .Request}}request,{{end}} context);
                 if (
@@ -143,8 +146,8 @@ export class {{$s.PascalName}}Service {
                 }
 
                 for (const v of response.{{.Pagination.Results.Name}}) {
-                    {{- if .Pagination.NeedsOffsetDedupe -}}
-                    const id = v.{{.Pagination.Entity.IdentifierField.Name}};
+                    {{- if .NeedsOffsetDedupe -}}
+                    const id = v.{{.IdentifierField.Name}};
                     if (id) {
                         if (seen[id]) {
                             // item was added during iteration
@@ -162,15 +165,21 @@ export class {{$s.PascalName}}Service {
                 }
                 request = response.next_page;
                 {{- else if .Pagination.Token -}}
-                request.{{.Pagination.Token.PollField.Name}} = response.{{.Pagination.Token.Bind.Name}}
-                if (!response.{{.Pagination.Token.Bind.Name}}) {
-                    break;
-                }
+                    request.{{.Pagination.Token.PollField.Name}} = response.{{.Pagination.Token.Bind.Name}}
+                    if (!response.{{.Pagination.Token.Bind.Name}}) {
+                        break;
+                    }
                 {{- else if eq .Pagination.Increment 1 -}}
-                request.{{.Pagination.Offset.Name}}+= 1;
-                {{- else -}}
-                request.{{.Pagination.Offset.Name}} = request.{{.Pagination.Offset.Name}} || 0;
-                request.{{.Pagination.Offset.Name}} += response.{{.Pagination.Results.Name}}.length;
+                    // paginate by increments of 1
+                    request.{{.Pagination.Offset.Name}}+= 1;
+                {{- end}}
+                {{- if and .Pagination.Token .Pagination.Limit -}}
+                    const count = response.{{.Pagination.Results.Name}}.length
+                    totalCount += count
+                    const limit = request.{{.Pagination.Limit.Name}}
+                    if (limit && totalCount >= limit) {
+                        break;
+                    }
                 {{- end}}
             }{{else if .Pagination.Results}}
             const response = (await this._{{.CamelName}}({{if .Request}}request,{{end}} context)).{{.Pagination.Results.Name}};

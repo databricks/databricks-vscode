@@ -188,12 +188,12 @@ export interface DeleteSecret {
 }
 
 export type ExportFormat =
+    | "AUTO"
     | "DBC"
     | "HTML"
     | "JUPYTER"
     | "R_MARKDOWN"
-    | "SOURCE"
-    | "AUTO";
+    | "SOURCE";
 
 /**
  * Export a workspace object

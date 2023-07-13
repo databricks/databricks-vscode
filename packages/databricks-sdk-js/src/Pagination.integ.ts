@@ -29,26 +29,6 @@ describe.skip(__filename, function () {
     });
 
     // jobs list
-    it("should paginate by token and dedupe results", async () => {
-        const items = [];
-        const seen = new Set<number>();
-        for await (const job of wsClient.jobs.list({})) {
-            items.push(job);
-            assert.ok(job.job_id);
-            if (seen.has(job.job_id!)) {
-                assert.fail(`job_id ${job.job_id} already seen`);
-            } else {
-                seen.add(job.job_id!);
-            }
-            if (items.length > 50) {
-                break;
-            }
-        }
-
-        assert.ok(items.length > 0);
-    });
-
-    // jobs list
     it("should paginate by offset", async () => {
         const items = [];
         for await (const job of wsClient.jobs.list({
@@ -77,12 +57,16 @@ describe.skip(__filename, function () {
     });
 
     it("should paginate cluster events", async () => {
+        assert.ok(
+            process.env.TEST_DEFAULT_CLUSTER_ID,
+            "TEST_DEFAULT_CLUSTER_ID must be set"
+        );
         const items = [];
         for await (const item of wsClient.clusters.events({
-            cluster_id: process.env.DATABRICKS_CLUSTER_ID!,
+            cluster_id: process.env.TEST_DEFAULT_CLUSTER_ID,
         })) {
             items.push(item);
-            if (items.length > 50) {
+            if (items.length > 60) {
                 break;
             }
         }

@@ -52,7 +52,7 @@ describe(__filename, () => {
     });
 
     // jobs list
-    it("should paginate by token and dedupe results", async () => {
+    it("should paginate by token", async () => {
         const responses = [
             {
                 jobs: [...Array(20).keys()].map((i) => {
@@ -61,28 +61,18 @@ describe(__filename, () => {
                         creator_user_name: `test-user-${i}`,
                     };
                 }),
-                has_more: true,
+                next_page_token: "foo",
             },
             {
-                jobs: [...Array(20).keys()]
-                    .map((i) => {
-                        return {
-                            job_id: 43368721962707 + i + 20,
-                            creator_user_name: `test-user-${i + 20}`,
-                        };
-                    })
-                    .concat([
-                        {
-                            // duplicate entry
-                            job_id: 43368721962707,
-                            creator_user_name: `test-user-0`,
-                        },
-                    ]),
-                has_more: true,
+                jobs: [...Array(20).keys()].map((i) => {
+                    return {
+                        job_id: 43368721962707 + i + 20,
+                        creator_user_name: `test-user-${i + 20}`,
+                    };
+                }),
+                next_page_token: "bar",
             },
-            {
-                has_more: false,
-            },
+            {},
         ];
 
         const jobsApi = wsClient.jobs;
@@ -91,15 +81,9 @@ describe(__filename, () => {
         };
 
         const items = [];
-        const seen = new Set<number>();
         for await (const job of wsClient.jobs.list({})) {
             items.push(job);
             assert.ok(job.job_id);
-            if (seen.has(job.job_id!)) {
-                assert.fail(`job_id ${job.job_id} already seen`);
-            } else {
-                seen.add(job.job_id!);
-            }
             if (items.length > 50) {
                 break;
             }
@@ -146,7 +130,7 @@ describe(__filename, () => {
             items.push(job);
         }
 
-        assert.equal(items.length, 50);
+        assert.equal(items.length, 25);
     });
 
     // sql dashboards list
