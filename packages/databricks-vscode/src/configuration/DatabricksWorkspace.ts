@@ -1,7 +1,7 @@
 import {
     WorkspaceClient,
     Cluster,
-    scim,
+    iam,
     WorkspaceConf,
     WorkspaceConfProps,
 } from "@databricks/databricks-sdk";
@@ -16,7 +16,7 @@ import {RemoteUri} from "../sync/SyncDestination";
 export class DatabricksWorkspace {
     constructor(
         private _authProvider: AuthProvider,
-        private me: scim.User,
+        private me: iam.User,
         private wsConf: WorkspaceConfProps
     ) {}
 
@@ -54,7 +54,7 @@ export class DatabricksWorkspace {
         return this.me.userName || "";
     }
 
-    get user(): scim.User {
+    get user(): iam.User {
         return this.me;
     }
 

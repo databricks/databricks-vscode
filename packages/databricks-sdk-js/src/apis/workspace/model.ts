@@ -187,7 +187,13 @@ export interface DeleteSecret {
     scope: string;
 }
 
-export type ExportFormat = "DBC" | "HTML" | "JUPYTER" | "R_MARKDOWN" | "SOURCE";
+export type ExportFormat =
+    | "DBC"
+    | "HTML"
+    | "JUPYTER"
+    | "R_MARKDOWN"
+    | "SOURCE"
+    | "AUTO";
 
 /**
  * Export a workspace object

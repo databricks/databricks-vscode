@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiClient} from "../api-client";
-import {List, ReposService, RepoInfo, CreateRepo} from "../apis/repos";
+import {
+    CreateRepo,
+    ListReposRequest,
+    RepoInfo,
+    ReposService,
+} from "../apis/workspace";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {context} from "../context";
 import {Context} from "../context";
@@ -54,7 +59,7 @@ export class Repo {
     @withLogContext(ExposedLoggers.SDK)
     static async *list(
         client: ApiClient,
-        req: List,
+        req: ListReposRequest,
         @context context?: Context
     ): AsyncIterable<Repo> {
         const reposApi = new ReposService(client);

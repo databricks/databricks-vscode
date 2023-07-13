@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {WorkspaceClient} from "./WorkspaceClient";
 import * as assert from "assert";
-import {ListReposResponse} from "./apis/repos";
+import {ListReposResponse} from "./apis/workspace";
 
 /**
  * This test uses scraped responses from a workspace that has a sufficient amount of resources.
