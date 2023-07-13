@@ -151,37 +151,41 @@ export class DatabricksEnvFileManager implements Disposable {
         );
     }
 
-    private async getDatabrickseEnvVars() {
-        return EnvVarGenerators.getDatabrickseEnvVars(
-            this.connectionManager,
-            this.workspacePath
+    private getDatabrickseEnvVars() {
+        return EnvVarGenerators.getCommonDatabricksEnvVars(
+            this.connectionManager
         );
     }
 
-    private async getNotebookEnvVars() {
+    private getNotebookEnvVars() {
         return EnvVarGenerators.getNotebookEnvVars(
             this.featureManager,
             this.notebookInitScriptManager
         );
     }
 
-    private async getIdeEnvVars() {
+    private getIdeEnvVars() {
         return EnvVarGenerators.getIdeEnvVars();
     }
 
     //Get env variables from user's .env file
     private async getUserEnvVars() {
-        return EnvVarGenerators.getUserEnvVars(this.userEnvPath);
+        return await EnvVarGenerators.getUserEnvVars(this.userEnvPath);
     }
 
     @logging.withLogContext(Loggers.Extension)
     async writeFile(@context ctx?: Context) {
+        await this.connectionManager.waitForConnect();
+
         const data = Object.entries({
-            ...((await this.getDatabrickseEnvVars()) || {}),
-            ...(await this.getIdeEnvVars()),
+            ...(this.getDatabrickseEnvVars() || {}),
+            ...(EnvVarGenerators.getDbConnectEnvVars(
+                this.connectionManager,
+                this.workspacePath
+            ) || {}),
+            ...this.getIdeEnvVars(),
             ...((await this.getUserEnvVars()) || {}),
             ...(await this.getNotebookEnvVars()),
-            ...(await EnvVarGenerators.getProxyEnvVars()),
         })
             .filter(([, value]) => value !== undefined)
             .map(([key, value]) => `${key}=${value}`);
@@ -210,11 +214,16 @@ export class DatabricksEnvFileManager implements Disposable {
     }
 
     async emitToTerminal() {
+        await this.connectionManager.waitForConnect();
+
         Object.entries({
-            ...((await this.getDatabrickseEnvVars()) || {}),
-            ...(await this.getIdeEnvVars()),
+            ...(this.getDatabrickseEnvVars() || {}),
+            ...this.getIdeEnvVars(),
+            ...(EnvVarGenerators.getDbConnectEnvVars(
+                this.connectionManager,
+                this.workspacePath
+            ) || {}),
             ...(await this.getNotebookEnvVars()),
-            ...(await EnvVarGenerators.getProxyEnvVars()),
         }).forEach(([key, value]) => {
             if (value === undefined) {
                 return;

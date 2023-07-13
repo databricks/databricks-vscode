@@ -30,7 +30,7 @@ export async function getUserEnvVars(userEnvPath: Uri) {
     }
 }
 
-export async function getIdeEnvVars() {
+export function getIdeEnvVars() {
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         //https://github.com/fabioz/PyDev.Debugger/blob/main/_pydevd_bundle/pydevd_constants.py
@@ -54,7 +54,7 @@ export async function getNotebookEnvVars(
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
-async function getUserAgent(connectionManager: ConnectionManager) {
+function getUserAgent(connectionManager: ConnectionManager) {
     const client = connectionManager.workspaceClient?.apiClient;
     if (!client) {
         return;
@@ -62,13 +62,9 @@ async function getUserAgent(connectionManager: ConnectionManager) {
     return `${client.product}/${client.productVersion}`;
 }
 
-export async function getDatabrickseEnvVars(
-    connectionManager: ConnectionManager,
-    workspacePath: Uri
-) {
-    await connectionManager.waitForConnect();
+export function getAuthEnvVars(connectionManager: ConnectionManager) {
     const cluster = connectionManager.cluster;
-    const userAgent = await getUserAgent(connectionManager);
+    const userAgent = getUserAgent(connectionManager);
     const authProvider = connectionManager.databricksWorkspace?.authProvider;
     const host = connectionManager.databricksWorkspace?.host.authority;
     if (
@@ -85,18 +81,61 @@ export async function getDatabrickseEnvVars(
         DATABRICKS_HOST: host,
         DATABRICKS_AUTH_TYPE: "metadata-service",
         DATABRICKS_METADATA_SERVICE_URL: connectionManager.metadataServiceUrl,
-        SPARK_CONNECT_USER_AGENT: userAgent,
         DATABRICKS_CLUSTER_ID: cluster?.id,
+    };
+    /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+export function getCommonDatabricksEnvVars(
+    connectionManager: ConnectionManager
+) {
+    const authProvider = connectionManager.databricksWorkspace?.authProvider;
+    const host = connectionManager.databricksWorkspace?.host.authority;
+    if (!authProvider || !host || !connectionManager.metadataServiceUrl) {
+        return;
+    }
+
+    /* eslint-disable @typescript-eslint/naming-convention */
+    return {
+        ...(getAuthEnvVars(connectionManager) || {}),
+        ...(getProxyEnvVars() || {}),
+    };
+    /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+export function getDbConnectEnvVars(
+    connectionManager: ConnectionManager,
+    workspacePath: Uri
+) {
+    const userAgent = getUserAgent(connectionManager);
+
+    /* eslint-disable @typescript-eslint/naming-convention */
+    return {
+        SPARK_CONNECT_USER_AGENT: userAgent,
         DATABRICKS_PROJECT_ROOT: workspacePath.fsPath,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
-export async function getProxyEnvVars() {
+export function getProxyEnvVars() {
     return {
         /* eslint-disable @typescript-eslint/naming-convention */
         HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy,
         HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy,
         /* eslint-enable @typescript-eslint/naming-convention */
     };
+}
+
+export function removeUndefinedKeys<
+    T extends Record<string, string | undefined>
+>(envVarMap?: T): T | undefined {
+    if (envVarMap === undefined) {
+        return;
+    }
+
+    const filteredEntries = Object.entries(envVarMap).filter(
+        (entry) => entry[1] !== undefined
+    ) as [string, string][];
+
+    return Object.fromEntries<string>(filteredEntries) as T;
 }

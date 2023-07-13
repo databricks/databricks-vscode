@@ -76,13 +76,14 @@ export class ConnectionCommands implements Disposable {
 
     openDatabricksConfigFileCommand() {
         return async () => {
+            const homeDir = process.env.HOME ?? homedir();
             let filePath =
                 workspaceConfigs.databrickscfgLocation ??
                 process.env.DATABRICKS_CONFIG_FILE ??
-                path.join(homedir(), ".databrickscfg");
+                path.join(homeDir, ".databrickscfg");
 
             if (filePath.startsWith("~/")) {
-                filePath = path.join(homedir(), filePath.slice(2));
+                filePath = path.join(homeDir, filePath.slice(2));
             }
             const uri = Uri.file(path.normalize(filePath));
 

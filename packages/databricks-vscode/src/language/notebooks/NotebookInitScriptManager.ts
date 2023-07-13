@@ -218,15 +218,19 @@ export class NotebookInitScriptManager implements Disposable {
         executable: string,
         @context ctx?: Context
     ) {
+        await this.connectionManager.waitForConnect();
         let someScriptFailed = false;
         for (const fileBaseName of await this.sourceFiles) {
             const file = path.join(this.startupDir, fileBaseName);
             const env = {
-                ...((await EnvVarGenerators.getDatabrickseEnvVars(
+                ...(EnvVarGenerators.getCommonDatabricksEnvVars(
+                    this.connectionManager
+                ) ?? {}),
+                ...(EnvVarGenerators.getDbConnectEnvVars(
                     this.connectionManager,
                     this.workspacePath
-                )) ?? {}),
-                ...((await EnvVarGenerators.getIdeEnvVars()) ?? {}),
+                ) ?? {}),
+                ...(EnvVarGenerators.getIdeEnvVars() ?? {}),
                 ...((await this.getUserEnvVars()) ?? {}),
             };
             const {stderr} = await execFile(
