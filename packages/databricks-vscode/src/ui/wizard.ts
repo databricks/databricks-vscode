@@ -219,7 +219,7 @@ export class MultiStepInput {
 
     async showQuickPick<
         T extends QuickPickItem,
-        P extends QuickPickParameters<T>
+        P extends QuickPickParameters<T>,
     >({
         title,
         step,

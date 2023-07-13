@@ -45,7 +45,10 @@ export class ApiClient {
     readonly productVersion: ProductVersion;
     readonly userAgentExtra: Record<string, string>;
 
-    constructor(readonly config: Config, options: ClientOptions = {}) {
+    constructor(
+        readonly config: Config,
+        options: ClientOptions = {}
+    ) {
         this.agent =
             options.agent ||
             new https.Agent({

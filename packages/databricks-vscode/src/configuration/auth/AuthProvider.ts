@@ -94,7 +94,10 @@ export abstract class AuthProvider {
 }
 
 export class ProfileAuthProvider extends AuthProvider {
-    constructor(host: URL, private readonly profile: string) {
+    constructor(
+        host: URL,
+        private readonly profile: string
+    ) {
         super(host, "profile");
     }
 
@@ -129,7 +132,10 @@ export class ProfileAuthProvider extends AuthProvider {
 }
 
 export class DatabricksCliAuthProvider extends AuthProvider {
-    constructor(host: URL, readonly databricksPath: string) {
+    constructor(
+        host: URL,
+        readonly databricksPath: string
+    ) {
         super(host, "databricks-cli");
     }
 

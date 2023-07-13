@@ -13,7 +13,10 @@ const transientErrorStringMatches = [
 ];
 
 export class HttpError extends Error {
-    constructor(readonly message: string, readonly code: number) {
+    constructor(
+        readonly message: string,
+        readonly code: number
+    ) {
         super(message);
     }
 }

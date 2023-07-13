@@ -323,10 +323,9 @@ export class NotebookInitScriptManager implements Disposable {
                 }
                 window
                     .showErrorMessage(
-                        `Cannot verify databricks notebook init script. IPython is not installed in the current environment: ${
-                            (await this.pythonExtension.pythonEnvironment)
-                                ?.environment?.name
-                        }`,
+                        `Cannot verify databricks notebook init script. IPython is not installed in the current environment: ${(
+                            await this.pythonExtension.pythonEnvironment
+                        )?.environment?.name}`,
                         "Install and try again",
                         "Change environment"
                     )

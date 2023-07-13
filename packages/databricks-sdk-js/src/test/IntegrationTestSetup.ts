@@ -7,7 +7,10 @@ import {WorkspaceClient} from "../WorkspaceClient";
 export class IntegrationTestSetup {
     readonly testRunId: string;
 
-    constructor(readonly client: WorkspaceClient, readonly cluster: Cluster) {
+    constructor(
+        readonly client: WorkspaceClient,
+        readonly cluster: Cluster
+    ) {
         this.testRunId = uuidv4();
     }
 

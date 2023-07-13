@@ -103,8 +103,9 @@ export class WorkflowRunner implements Disposable {
         // with the remote repo files
         await Promise.race([
             this.codeSynchronizer.waitForSyncComplete(),
-            new Promise<undefined>((resolve) =>
-                token?.onCancellationRequested(() => resolve(undefined))
+            new Promise<undefined>(
+                (resolve) =>
+                    token?.onCancellationRequested(() => resolve(undefined))
             ),
         ]);
         if (token?.isCancellationRequested) {

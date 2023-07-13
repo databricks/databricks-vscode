@@ -85,7 +85,10 @@ export class Response {
     readonly statusText: string;
     readonly url: string;
 
-    constructor(nodeResponse: http.IncomingMessage, private body: string) {
+    constructor(
+        nodeResponse: http.IncomingMessage,
+        private body: string
+    ) {
         this.headers = nodeResponse.headers as Headers;
         this.ok =
             nodeResponse.statusCode === undefined
