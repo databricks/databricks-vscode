@@ -16,7 +16,10 @@ export class RepoError extends Error {}
 export class Repo {
     private readonly reposApi;
 
-    constructor(private readonly client: ApiClient, private details: RepoInfo) {
+    constructor(
+        private readonly client: ApiClient,
+        private details: RepoInfo
+    ) {
         this.reposApi = new ReposService(this.client);
     }
 

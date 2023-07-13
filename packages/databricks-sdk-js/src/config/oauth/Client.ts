@@ -14,7 +14,10 @@ export interface ClientOptions {
 }
 
 export class Client {
-    constructor(private issuer: OidcEndpoints, private options: ClientOptions) {
+    constructor(
+        private issuer: OidcEndpoints,
+        private options: ClientOptions
+    ) {
         options.useParams = options.useParams ?? false;
         options.useHeader = options.useHeader ?? false;
         options.headers = options.headers ?? {};

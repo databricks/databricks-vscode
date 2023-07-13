@@ -13,7 +13,10 @@ import {Headers, fetch} from "../fetch";
 import {OidcEndpoints} from "./oauth/OidcEndpoints";
 
 export class ConfigError extends Error {
-    constructor(readonly baseMessage: string, readonly config: Config) {
+    constructor(
+        readonly baseMessage: string,
+        readonly config: Config
+    ) {
         let msg = baseMessage;
         const debugString = config.attributes.debugString();
         if (debugString) {

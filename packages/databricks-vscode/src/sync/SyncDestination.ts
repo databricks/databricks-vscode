@@ -150,7 +150,10 @@ export class LocalUri extends DatabricksUri<LocalUri> {
 }
 
 export class SyncDestinationMapper {
-    constructor(readonly localUri: LocalUri, readonly remoteUri: RemoteUri) {}
+    constructor(
+        readonly localUri: LocalUri,
+        readonly remoteUri: RemoteUri
+    ) {}
     /**
      * Maps a local notebook to notebook path used in workflow deifnitions.
      */
