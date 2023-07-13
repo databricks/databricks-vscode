@@ -11,4 +11,5 @@ export interface Provider<T> {
     (): Promise<T>;
 }
 
+/* eslint-disable @typescript-eslint/no-empty-interface */
 export interface EmptyResponse {}
