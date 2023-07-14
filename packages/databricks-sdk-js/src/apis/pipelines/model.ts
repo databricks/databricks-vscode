@@ -10,9 +10,10 @@ export interface CreatePipeline {
      */
     allow_duplicate_names?: boolean;
     /**
-     * Catalog in UC to add tables to. If target is specified, tables in this
-     * pipeline will be published to a "target" schema inside catalog (i.e.
-     * <catalog>.<target>.<table>).
+     * A catalog in Unity Catalog to publish data from this pipeline to. If
+     * `target` is specified, tables in this pipeline are published to a `target`
+     * schema inside `catalog` (for example, `catalog`.`target`.`table`). If
+     * `target` is not specified, no data is published to Unity Catalog.
      */
     catalog?: string;
     /**
@@ -61,11 +62,17 @@ export interface CreatePipeline {
      */
     photon?: boolean;
     /**
+     * Whether serverless compute is enabled for this pipeline.
+     */
+    serverless?: boolean;
+    /**
      * DBFS root directory for storing checkpoints and tables.
      */
     storage?: string;
     /**
-     * Target schema (database) to add tables in this pipeline to.
+     * Target schema (database) to add tables in this pipeline to. If not
+     * specified, no data is published to the Hive metastore or Unity Catalog. To
+     * publish to Unity Catalog, also specify `catalog`.
      */
     target?: string;
     /**
@@ -76,11 +83,12 @@ export interface CreatePipeline {
 
 export interface CreatePipelineResponse {
     /**
-     * Only returned when dry_run is true
+     * Only returned when dry_run is true.
      */
     effective_settings?: PipelineSpec;
     /**
-     * Only returned when dry_run is false
+     * The unique identifier for the newly created pipeline. Only returned when
+     * dry_run is false.
      */
     pipeline_id?: string;
 }
@@ -104,7 +112,7 @@ export interface DataPlaneId {
 /**
  * Delete a pipeline
  */
-export interface Delete {
+export interface DeletePipelineRequest {
     pipeline_id: string;
 }
 
@@ -115,9 +123,10 @@ export interface EditPipeline {
      */
     allow_duplicate_names?: boolean;
     /**
-     * Catalog in UC to add tables to. If target is specified, tables in this
-     * pipeline will be published to a "target" schema inside catalog (i.e.
-     * <catalog>.<target>.<table>).
+     * A catalog in Unity Catalog to publish data from this pipeline to. If
+     * `target` is specified, tables in this pipeline are published to a `target`
+     * schema inside `catalog` (for example, `catalog`.`target`.`table`). If
+     * `target` is not specified, no data is published to Unity Catalog.
      */
     catalog?: string;
     /**
@@ -175,11 +184,17 @@ export interface EditPipeline {
      */
     pipeline_id?: string;
     /**
+     * Whether serverless compute is enabled for this pipeline.
+     */
+    serverless?: boolean;
+    /**
      * DBFS root directory for storing checkpoints and tables.
      */
     storage?: string;
     /**
-     * Target schema (database) to add tables in this pipeline to.
+     * Target schema (database) to add tables in this pipeline to. If not
+     * specified, no data is published to the Hive metastore or Unity Catalog. To
+     * publish to Unity Catalog, also specify `catalog`.
      */
     target?: string;
     /**
@@ -204,6 +219,13 @@ export interface ErrorDetail {
  */
 export type EventLevel = "ERROR" | "INFO" | "METRICS" | "WARN";
 
+export interface FileLibrary {
+    /**
+     * The absolute path of the file.
+     */
+    path?: string;
+}
+
 export interface Filters {
     /**
      * Paths to exclude.
@@ -218,7 +240,7 @@ export interface Filters {
 /**
  * Get a pipeline
  */
-export interface Get {
+export interface GetPipelineRequest {
     pipeline_id: string;
 }
 
@@ -279,7 +301,7 @@ export type GetPipelineResponseHealth = "HEALTHY" | "UNHEALTHY";
 /**
  * Get a pipeline update
  */
-export interface GetUpdate {
+export interface GetUpdateRequest {
     /**
      * The ID of the pipeline.
      */
@@ -300,18 +322,12 @@ export interface GetUpdateResponse {
 /**
  * List pipeline events
  */
-export interface ListPipelineEvents {
+export interface ListPipelineEventsRequest {
     /**
      * Criteria to select a subset of results, expressed using a SQL-like syntax.
-     * The supported filters are:
-     *
-     * 1. level='INFO' (or WARN or ERROR)
-     *
-     * 2. level in ('INFO', 'WARN')
-     *
-     * 3. id='[event-id]'
-     *
-     * 4. timestamp > 'TIMESTAMP' (or >=,<,<=,=)
+     * The supported filters are: 1. level='INFO' (or WARN or ERROR) 2. level in
+     * ('INFO', 'WARN') 3. id='[event-id]' 4. timestamp > 'TIMESTAMP' (or
+     * >=,<,<=,=)
      *
      * Composite expressions are supported, for example: level in ('ERROR',
      * 'WARN') AND timestamp> '2021-07-22T06:37:33.083Z'
@@ -356,7 +372,7 @@ export interface ListPipelineEventsResponse {
 /**
  * List pipelines
  */
-export interface ListPipelines {
+export interface ListPipelinesRequest {
     /**
      * Select a subset of results based on the specified criteria. The supported
      * filters are:
@@ -402,7 +418,7 @@ export interface ListPipelinesResponse {
 /**
  * List pipeline updates
  */
-export interface ListUpdates {
+export interface ListUpdatesRequest {
     /**
      * Max number of entries to return in a single page.
      */
@@ -536,17 +552,17 @@ export interface PipelineCluster {
      */
     aws_attributes?: any /* MISSING TYPE */;
     /**
-     * Attributes related to clusters running on Amazon Web Services. If not
+     * Attributes related to clusters running on Microsoft Azure. If not
      * specified at cluster creation, a set of default values will be used.
      */
     azure_attributes?: any /* MISSING TYPE */;
     /**
      * The configuration for delivering spark logs to a long-term storage
-     * destination. Two kinds of destinations (dbfs and s3) are supported. Only
-     * one destination can be specified for one cluster. If the conf is given,
-     * the logs will be delivered to the destination every `5 mins`. The
-     * destination of driver logs is `$destination/$clusterId/driver`, while the
-     * destination of executor logs is `$destination/$clusterId/executor`.
+     * destination. Only dbfs destinations are supported. Only one destination
+     * can be specified for one cluster. If the conf is given, the logs will be
+     * delivered to the destination every `5 mins`. The destination of driver
+     * logs is `$destination/$clusterId/driver`, while the destination of
+     * executor logs is `$destination/$clusterId/executor`.
      */
     cluster_log_conf?: any /* MISSING TYPE */;
     /**
@@ -582,7 +598,9 @@ export interface PipelineCluster {
      */
     instance_pool_id?: string;
     /**
-     * Cluster label
+     * A label for the cluster specification, either `default` to configure the
+     * default cluster, or `maintenance` to configure the maintenance cluster.
+     * This field is optional. The default value is `default`.
      */
     label?: string;
     /**
@@ -680,39 +698,35 @@ export interface PipelineEvent {
 
 export interface PipelineLibrary {
     /**
-     * URI of the jar to be installed. Currently only DBFS and S3 URIs are
-     * supported. For example: `{ "jar": "dbfs:/mnt/databricks/library.jar" }` or
-     * `{ "jar": "s3://my-bucket/library.jar" }`. If S3 is used, please make sure
-     * the cluster has read access on the library. You may need to launch the
-     * cluster with an IAM role to access the S3 URI.
+     * The path to a file that defines a pipeline and is stored in the Databricks
+     * Repos.
+     */
+    file?: FileLibrary;
+    /**
+     * URI of the jar to be installed. Currently only DBFS is supported.
      */
     jar?: string;
     /**
-     * Specification of a maven library to be installed. For example: `{
-     * "coordinates": "org.jsoup:jsoup:1.7.2" }`
+     * Specification of a maven library to be installed.
      */
     maven?: any /* MISSING TYPE */;
     /**
      * The path to a notebook that defines a pipeline and is stored in the
-     * Databricks workspace. For example: `{ "notebook" : { "path" :
-     * "/my-pipeline-notebook-path" } }`. Currently, only Scala notebooks are
-     * supported, and pipelines must be defined in a package cell.
+     * <Databricks> workspace.
      */
     notebook?: NotebookLibrary;
     /**
-     * URI of the wheel to be installed. For example: `{ "whl": "dbfs:/my/whl" }`
-     * or `{ "whl": "s3://my-bucket/whl" }`. If S3 is used, please make sure the
-     * cluster has read access on the library. You may need to launch the cluster
-     * with an IAM role to access the S3 URI.
+     * URI of the wheel to be installed.
      */
     whl?: string;
 }
 
 export interface PipelineSpec {
     /**
-     * Catalog in UC to add tables to. If target is specified, tables in this
-     * pipeline will be published to a "target" schema inside catalog (i.e.
-     * <catalog>.<target>.<table>).
+     * A catalog in Unity Catalog to publish data from this pipeline to. If
+     * `target` is specified, tables in this pipeline are published to a `target`
+     * schema inside `catalog` (for example, `catalog`.`target`.`table`). If
+     * `target` is not specified, no data is published to Unity Catalog.
      */
     catalog?: string;
     /**
@@ -760,11 +774,17 @@ export interface PipelineSpec {
      */
     photon?: boolean;
     /**
+     * Whether serverless compute is enabled for this pipeline.
+     */
+    serverless?: boolean;
+    /**
      * DBFS root directory for storing checkpoints and tables.
      */
     storage?: string;
     /**
-     * Target schema (database) to add tables in this pipeline to.
+     * Target schema (database) to add tables in this pipeline to. If not
+     * specified, no data is published to the Hive metastore or Unity Catalog. To
+     * publish to Unity Catalog, also specify `catalog`.
      */
     target?: string;
     /**
@@ -828,7 +848,7 @@ export interface PipelineTrigger {
 /**
  * Reset a pipeline
  */
-export interface Reset {
+export interface ResetRequest {
     pipeline_id: string;
 }
 
@@ -915,7 +935,7 @@ export interface StartUpdateResponse {
 /**
  * Stop a pipeline
  */
-export interface Stop {
+export interface StopRequest {
     pipeline_id: string;
 }
 
@@ -1014,5 +1034,3 @@ export type UpdateStateInfoState =
     | "SETTING_UP_TABLES"
     | "STOPPING"
     | "WAITING_FOR_RESOURCES";
-
-export interface EmptyResponse {}

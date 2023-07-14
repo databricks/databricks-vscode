@@ -11,7 +11,10 @@ import {
 } from "../apis/jobs";
 
 export class WorkflowRun {
-    constructor(readonly client: ApiClient, private details: Run) {}
+    constructor(
+        readonly client: ApiClient,
+        private details: Run
+    ) {}
 
     static async fromId(
         client: ApiClient,

@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {
     ApiClient,
-    cluster,
-    permissions,
-    scim,
+    compute,
+    iam,
     WorkspaceClient,
 } from "@databricks/databricks-sdk";
 import assert from "assert";
@@ -11,7 +10,7 @@ import {anything, instance, mock, spy, when} from "ts-mockito";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ClusterLoader} from "./ClusterLoader";
 
-const me: scim.User = {
+const me: iam.User = {
     entitlements: [],
     groups: [
         {
@@ -22,7 +21,7 @@ const me: scim.User = {
     userName: "user-1",
     roles: [],
 };
-const mockListClustersResponse: cluster.ListClustersResponse = {
+const mockListClustersResponse: compute.ListClustersResponse = {
     clusters: [
         {
             cluster_id: "cluster-id-2",
@@ -60,37 +59,36 @@ const mockListClustersResponse: cluster.ListClustersResponse = {
             state: "RUNNING",
             single_user_name: me.userName,
             access_mode: "SINGLE_USER",
-        } as cluster.ClusterInfo & {access_mode: "SINGLE_USER"},
+        } as compute.ClusterDetails & {access_mode: "SINGLE_USER"},
     ],
 };
 
-const mockClusterPermissions: Map<string, permissions.ObjectPermissions> =
-    new Map([
-        [
-            "cluster-id-1",
-            {
-                access_control_list: [{user_name: me.userName}],
-            },
-        ],
-        [
-            "cluster-id-2",
-            {
-                access_control_list: [{group_name: me.groups![0].display}],
-            },
-        ],
-        [
-            "cluster-id-3",
-            {
-                access_control_list: [],
-            },
-        ],
-        [
-            "cluster-id-4",
-            {
-                access_control_list: [{group_name: me.groups![0].display}],
-            },
-        ],
-    ]);
+const mockClusterPermissions: Map<string, iam.ObjectPermissions> = new Map([
+    [
+        "cluster-id-1",
+        {
+            access_control_list: [{user_name: me.userName}],
+        },
+    ],
+    [
+        "cluster-id-2",
+        {
+            access_control_list: [{group_name: me.groups![0].display}],
+        },
+    ],
+    [
+        "cluster-id-3",
+        {
+            access_control_list: [],
+        },
+    ],
+    [
+        "cluster-id-4",
+        {
+            access_control_list: [{group_name: me.groups![0].display}],
+        },
+    ],
+]);
 describe(__filename, () => {
     let mockedConnectionManager: ConnectionManager;
     let mockedWorkspaceClient: WorkspaceClient;
@@ -101,25 +99,25 @@ describe(__filename, () => {
         mockedWorkspaceClient = mock<WorkspaceClient>();
         mockedApiClient = mock<ApiClient>();
 
-        when<cluster.ListClustersResponse>(
+        when<compute.ListClustersResponse>(
             mockedApiClient.request(
                 "/api/2.0/clusters/list",
                 "GET",
                 anything(),
                 anything()
-            ) as Promise<cluster.ListClustersResponse>
+            ) as Promise<compute.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);
         when(mockedConnectionManager.workspaceClient).thenReturn(
             instance(mockedWorkspaceClient)
         );
         for (const [id, perms] of mockClusterPermissions.entries()) {
-            when<permissions.ObjectPermissions>(
+            when<iam.ObjectPermissions>(
                 mockedApiClient.request(
                     `/api/2.0/permissions/clusters/${id}`,
                     "GET",
                     anything(),
                     anything()
-                ) as Promise<permissions.ObjectPermissions>
+                ) as Promise<iam.ObjectPermissions>
             ).thenResolve(perms);
         }
         when(mockedConnectionManager.databricksWorkspace).thenReturn({

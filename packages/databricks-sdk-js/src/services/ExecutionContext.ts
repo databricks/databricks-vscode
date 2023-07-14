@@ -1,6 +1,6 @@
 import {CancellationToken, Time} from "..";
 import {ApiClient} from "../api-client";
-import {CommandExecutionService, Language} from "../apis/commands";
+import {CommandExecutionService, Language} from "../apis/compute";
 import {DEFAULT_MAX_TIMEOUT} from "../retries/retries";
 import {Cluster} from "./Cluster";
 import {Command, CommandWithResult, StatusUpdateListener} from "./Command";

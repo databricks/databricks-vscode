@@ -1,5 +1,5 @@
 /* eslint-disable no-control-regex */
-import {commands} from "@databricks/databricks-sdk";
+import {compute} from "@databricks/databricks-sdk";
 import * as assert from "node:assert";
 
 interface Frame {
@@ -8,7 +8,7 @@ interface Frame {
     text: string;
 }
 
-export function parseErrorResult(result: commands.Results): Array<Frame> {
+export function parseErrorResult(result: compute.Results): Array<Frame> {
     assert.equal(result.resultType, "error");
 
     const cause = result.cause || "";

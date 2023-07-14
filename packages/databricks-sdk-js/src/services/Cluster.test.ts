@@ -5,16 +5,16 @@ import * as assert from "node:assert";
 import {mock, when, instance, deepEqual, verify, anything} from "ts-mockito";
 import Time, {TimeUnits} from "../retries/Time";
 import {getMockTestCluster} from "../test/fixtures/ClusterFixtures";
-import {ClusterInfo} from "../apis/clusters";
 import {TokenFixture} from "../test/fixtures/TokenFixtures";
 import FakeTimers from "@sinonjs/fake-timers";
+import {ClusterDetails} from "../apis/compute";
 
 describe(__filename, function () {
     this.timeout(new Time(10, TimeUnits.minutes).toMillSeconds().value);
 
     let mockedClient: ApiClient;
     let mockedCluster: Cluster;
-    let testClusterDetails: ClusterInfo;
+    let testClusterDetails: ClusterDetails;
     let fakeTimer: FakeTimers.InstalledClock;
 
     beforeEach(async () => {

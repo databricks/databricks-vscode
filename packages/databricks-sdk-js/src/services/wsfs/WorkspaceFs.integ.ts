@@ -94,7 +94,6 @@ describe(__filename, function () {
 
         const content = await integSetup.client.workspace.export({
             path: file.details.path,
-            format: "AUTO",
         });
 
         assert.ok(content.content !== undefined);
