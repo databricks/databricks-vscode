@@ -5,10 +5,10 @@ import {mock, when, instance} from "ts-mockito";
 import {ClusterModel} from "./ClusterModel";
 import {Disposable} from "vscode";
 import {ClusterListDataProvider} from "./ClusterListDataProvider";
-import {ApiClient, Cluster, cluster} from "@databricks/databricks-sdk";
+import {ApiClient, Cluster, compute} from "@databricks/databricks-sdk";
 import {resolveProviderResult} from "../test/utils";
 
-const mockListClustersResponse: cluster.ListClustersResponse = {
+const mockListClustersResponse: compute.ListClustersResponse = {
     clusters: [
         {
             cluster_id: "cluster-id-2",

@@ -197,9 +197,9 @@ export interface CreateLogDeliveryConfigurationParams {
      */
     status?: LogDeliveryConfigStatus;
     /**
-     * "The ID for a method:storage/create that represents the S3 bucket with
+     * The ID for a method:storage/create that represents the S3 bucket with
      * bucket policy as described in the main billable usage documentation page.
-     * See [Configure billable usage delivery]."
+     * See [Configure billable usage delivery].
      *
      * [Configure billable usage delivery]: https://docs.databricks.com/administration-guide/account-settings/billable-usage-delivery.html
      */
@@ -250,7 +250,7 @@ export type DeliveryStatus =
      */
     | "SUCCEEDED"
     /**
-     * The latest attempt of log delivery failed because of an Databricks internal
+     * The latest attempt of log delivery failed because of an <Databricks> internal
      * error. Contact support if it doesn't go away soon.
      */
     | "SYSTEM_FAILURE"
@@ -411,9 +411,9 @@ export interface LogDeliveryConfiguration {
      */
     status?: LogDeliveryConfigStatus;
     /**
-     * "The ID for a method:storage/create that represents the S3 bucket with
+     * The ID for a method:storage/create that represents the S3 bucket with
      * bucket policy as described in the main billable usage documentation page.
-     * See [Configure billable usage delivery]."
+     * See [Configure billable usage delivery].
      *
      * [Configure billable usage delivery]: https://docs.databricks.com/administration-guide/account-settings/billable-usage-delivery.html
      */
@@ -545,5 +545,3 @@ export interface WrappedLogDeliveryConfiguration {
 export interface WrappedLogDeliveryConfigurations {
     log_delivery_configurations?: Array<LogDeliveryConfiguration>;
 }
-
-export interface EmptyResponse {}

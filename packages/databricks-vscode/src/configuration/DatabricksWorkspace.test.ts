@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {scim} from "@databricks/databricks-sdk";
 import assert from "assert";
 import {Uri} from "vscode";
 import {ProfileAuthProvider} from "./auth/AuthProvider";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
+import {iam} from "@databricks/databricks-sdk";
 
 describe(__filename, () => {
     it("create an instance", () => {
         const host = Uri.parse("https://fabian.databricks.com");
-        const user: scim.User = {
+        const user: iam.User = {
             userName: "fabian@databricks.com",
         };
         const wsConf = {

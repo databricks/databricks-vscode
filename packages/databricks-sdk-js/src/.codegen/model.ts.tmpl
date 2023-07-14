@@ -23,8 +23,6 @@
 {{end}}
 {{end}}
 
-export interface EmptyResponse {};
-
 {{- define "type" -}}
 	{{- if not . }}any /* ERROR */
 	{{- else if .IsString}}string
