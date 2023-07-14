@@ -18,7 +18,7 @@ export interface Alert {
      */
     created_at?: string;
     /**
-     * ID of the alert.
+     * Alert ID.
      */
     id?: string;
     /**
@@ -34,11 +34,10 @@ export interface Alert {
      */
     options?: AlertOptions;
     /**
-     * The identifier of the parent folder containing the alert. Available for
-     * alerts in workspace.
+     * The identifier of the workspace folder containing the object.
      */
     parent?: string;
-    query?: Query;
+    query?: AlertQuery;
     /**
      * Number of seconds after being triggered before the alert rearms itself and
      * can be triggered again. If `null`, alert will never be triggered again.
@@ -93,7 +92,66 @@ export interface AlertOptions {
     /**
      * Value used to compare in alert evaluation.
      */
-    value: string;
+    value: any /* MISSING TYPE */;
+}
+
+export interface AlertQuery {
+    /**
+     * The timestamp when this query was created.
+     */
+    created_at?: string;
+    /**
+     * Data source ID.
+     */
+    data_source_id?: string;
+    /**
+     * General description that conveys additional information about this query
+     * such as usage notes.
+     */
+    description?: string;
+    /**
+     * Query ID.
+     */
+    id?: string;
+    /**
+     * Indicates whether the query is trashed. Trashed queries can't be used in
+     * dashboards, or appear in search results. If this boolean is `true`, the
+     * `options` property for this query includes a `moved_to_trash_at`
+     * timestamp. Trashed queries are permanently deleted after 30 days.
+     */
+    is_archived?: boolean;
+    /**
+     * Whether the query is a draft. Draft queries only appear in list views for
+     * their owners. Visualizations from draft queries cannot appear on
+     * dashboards.
+     */
+    is_draft?: boolean;
+    /**
+     * Text parameter types are not safe from SQL injection for all types of data
+     * source. Set this Boolean parameter to `true` if a query either does not
+     * use any text type parameters or uses a data source type where text type
+     * parameters are handled safely.
+     */
+    is_safe?: boolean;
+    /**
+     * The title of this query that appears in list views, widget headings, and
+     * on the query page.
+     */
+    name?: string;
+    options?: QueryOptions;
+    /**
+     * The text of the query to be run.
+     */
+    query?: string;
+    tags?: Array<string>;
+    /**
+     * The timestamp at which this query was last updated.
+     */
+    updated_at?: string;
+    /**
+     * The ID of the user who created this query.
+     */
+    user_id?: number;
 }
 
 /**
@@ -129,9 +187,6 @@ export interface ChannelInfo {
     name?: ChannelName;
 }
 
-/**
- * Name of the channel
- */
 export type ChannelName =
     | "CHANNEL_NAME_CURRENT"
     | "CHANNEL_NAME_CUSTOM"
@@ -238,12 +293,11 @@ export interface CreateAlert {
      */
     options: AlertOptions;
     /**
-     * The identifier of the workspace folder containing the alert. The default
-     * is ther user's home folder.
+     * The identifier of the workspace folder containing the object.
      */
     parent?: string;
     /**
-     * ID of the query evaluated by the alert.
+     * Query ID.
      */
     query_id: string;
     /**
@@ -258,42 +312,26 @@ export interface CreateAlert {
  */
 export interface CreateDashboardRequest {
     /**
-     * In the web application, query filters that share a name are coupled to a
-     * single selection box if this value is true.
+     * Indicates whether this query object should appear in the current user's
+     * favorites list. The application uses this flag to determine whether or not
+     * the "favorite star " should selected.
      */
-    dashboard_filters_enabled?: boolean;
-    /**
-     * Draft dashboards only appear in list views for their owners.
-     */
-    is_draft?: boolean;
-    /**
-     * Indicates whether the dashboard is trashed. Trashed dashboards don't
-     * appear in list views.
-     */
-    is_trashed?: boolean;
+    is_favorite?: boolean;
     /**
      * The title of this dashboard that appears in list views and at the top of
      * the dashboard page.
      */
     name?: string;
     /**
-     * The identifier of the workspace folder containing the dashboard. The
-     * default is the user's home folder.
+     * The identifier of the workspace folder containing the object.
      */
     parent?: string;
     tags?: Array<string>;
-    /**
-     * An array of widget objects. A complete description of widget objects can
-     * be found in the response to [Retrieve A Dashboard
-     * Definition](#operation/sql-analytics-fetch-dashboard). Databricks does not
-     * recommend creating new widgets via this API.
-     */
-    widgets?: Array<Widget>;
 }
 
 export interface CreateWarehouseRequest {
     /**
-     * The amount of time in minutes that a SQL Endpoint must be idle (i.e., no
+     * The amount of time in minutes that a SQL warehouse must be idle (i.e., no
      * RUNNING queries) before it is automatically stopped.
      *
      * Supported values: - Must be == 0 or >= 10 mins - 0 indicates no autostop.
@@ -306,8 +344,8 @@ export interface CreateWarehouseRequest {
      */
     channel?: Channel;
     /**
-     * Size of the clusters allocated for this endpoint. Increasing the size of a
-     * spark cluster allows you to run larger queries on it. If you want to
+     * Size of the clusters allocated for this warehouse. Increasing the size of
+     * a spark cluster allows you to run larger queries on it. If you want to
      * increase the number of concurrent queries, please tune max_num_clusters.
      *
      * Supported values: - 2X-Small - X-Small - Small - Medium - Large - X-Large
@@ -315,19 +353,17 @@ export interface CreateWarehouseRequest {
      */
     cluster_size?: string;
     /**
-     * endpoint creator name
+     * warehouse creator name
      */
     creator_name?: string;
     /**
-     * Configures whether the endpoint should use Photon optimized clusters.
+     * Configures whether the warehouse should use Photon optimized clusters.
      *
      * Defaults to false.
      */
     enable_photon?: boolean;
     /**
-     * Configures whether the endpoint should use Serverless Compute (aka Nephos)
-     *
-     * Defaults to value in global endpoint settings
+     * Configures whether the warehouse should use serverless compute
      */
     enable_serverless_compute?: boolean;
     /**
@@ -345,8 +381,8 @@ export interface CreateWarehouseRequest {
     max_num_clusters?: number;
     /**
      * Minimum number of available clusters that will be maintained for this SQL
-     * Endpoint. Increasing this will ensure that a larger number of clusters are
-     * always running and therefore may reduce the cold start time for new
+     * warehouse. Increasing this will ensure that a larger number of clusters
+     * are always running and therefore may reduce the cold start time for new
      * queries. This is similar to reserved vs. revocable cores in a resource
      * manager.
      *
@@ -368,13 +404,28 @@ export interface CreateWarehouseRequest {
     spot_instance_policy?: SpotInstancePolicy;
     /**
      * A set of key-value pairs that will be tagged on all resources (e.g., AWS
-     * instances and EBS volumes) associated with this SQL Endpoints.
+     * instances and EBS volumes) associated with this SQL warehouse.
      *
      * Supported values: - Number of tags < 45.
      */
     tags?: EndpointTags;
-    warehouse_type?: WarehouseType;
+    /**
+     * Warehouse type: `PRO` or `CLASSIC`. If you want to use serverless compute,
+     * you must set to `PRO` and also set the field `enable_serverless_compute`
+     * to `true`.
+     */
+    warehouse_type?: CreateWarehouseRequestWarehouseType;
 }
+
+/**
+ * Warehouse type: `PRO` or `CLASSIC`. If you want to use serverless compute, you
+ * must set to `PRO` and also set the field `enable_serverless_compute` to
+ * `true`.
+ */
+export type CreateWarehouseRequestWarehouseType =
+    | "CLASSIC"
+    | "PRO"
+    | "TYPE_UNSPECIFIED";
 
 export interface CreateWarehouseResponse {
     /**
@@ -430,8 +481,7 @@ export interface Dashboard {
     name?: string;
     options?: DashboardOptions;
     /**
-     * The identifier of the parent folder containing the dashboard. Available
-     * for dashboards in workspace.
+     * The identifier of the workspace folder containing the object.
      */
     parent?: string;
     /**
@@ -470,8 +520,7 @@ export interface DashboardOptions {
  */
 export interface DataSource {
     /**
-     * The unique identifier for this data source / SQL warehouse. Can be used
-     * when creating / modifying queries and dashboards.
+     * Data source ID.
      */
     id?: string;
     /**
@@ -581,7 +630,7 @@ export interface EditAlert {
      */
     options: AlertOptions;
     /**
-     * ID of the query evaluated by the alert.
+     * Query ID.
      */
     query_id: string;
     /**
@@ -593,7 +642,7 @@ export interface EditAlert {
 
 export interface EditWarehouseRequest {
     /**
-     * The amount of time in minutes that a SQL Endpoint must be idle (i.e., no
+     * The amount of time in minutes that a SQL warehouse must be idle (i.e., no
      * RUNNING queries) before it is automatically stopped.
      *
      * Supported values: - Must be == 0 or >= 10 mins - 0 indicates no autostop.
@@ -606,8 +655,8 @@ export interface EditWarehouseRequest {
      */
     channel?: Channel;
     /**
-     * Size of the clusters allocated for this endpoint. Increasing the size of a
-     * spark cluster allows you to run larger queries on it. If you want to
+     * Size of the clusters allocated for this warehouse. Increasing the size of
+     * a spark cluster allows you to run larger queries on it. If you want to
      * increase the number of concurrent queries, please tune max_num_clusters.
      *
      * Supported values: - 2X-Small - X-Small - Small - Medium - Large - X-Large
@@ -615,25 +664,17 @@ export interface EditWarehouseRequest {
      */
     cluster_size?: string;
     /**
-     * endpoint creator name
+     * warehouse creator name
      */
     creator_name?: string;
     /**
-     * Configures whether the endpoint should use Databricks Compute (aka Nephos)
-     *
-     * Deprecated: Use enable_serverless_compute
-     */
-    enable_databricks_compute?: boolean;
-    /**
-     * Configures whether the endpoint should use Photon optimized clusters.
+     * Configures whether the warehouse should use Photon optimized clusters.
      *
      * Defaults to false.
      */
     enable_photon?: boolean;
     /**
-     * Configures whether the endpoint should use Serverless Compute (aka Nephos)
-     *
-     * Defaults to value in global endpoint settings
+     * Configures whether the warehouse should use serverless compute.
      */
     enable_serverless_compute?: boolean;
     /**
@@ -655,8 +696,8 @@ export interface EditWarehouseRequest {
     max_num_clusters?: number;
     /**
      * Minimum number of available clusters that will be maintained for this SQL
-     * Endpoint. Increasing this will ensure that a larger number of clusters are
-     * always running and therefore may reduce the cold start time for new
+     * warehouse. Increasing this will ensure that a larger number of clusters
+     * are always running and therefore may reduce the cold start time for new
      * queries. This is similar to reserved vs. revocable cores in a resource
      * manager.
      *
@@ -678,13 +719,28 @@ export interface EditWarehouseRequest {
     spot_instance_policy?: SpotInstancePolicy;
     /**
      * A set of key-value pairs that will be tagged on all resources (e.g., AWS
-     * instances and EBS volumes) associated with this SQL Endpoints.
+     * instances and EBS volumes) associated with this SQL warehouse.
      *
      * Supported values: - Number of tags < 45.
      */
     tags?: EndpointTags;
-    warehouse_type?: WarehouseType;
+    /**
+     * Warehouse type: `PRO` or `CLASSIC`. If you want to use serverless compute,
+     * you must set to `PRO` and also set the field `enable_serverless_compute`
+     * to `true`.
+     */
+    warehouse_type?: EditWarehouseRequestWarehouseType;
 }
+
+/**
+ * Warehouse type: `PRO` or `CLASSIC`. If you want to use serverless compute, you
+ * must set to `PRO` and also set the field `enable_serverless_compute` to
+ * `true`.
+ */
+export type EditWarehouseRequestWarehouseType =
+    | "CLASSIC"
+    | "PRO"
+    | "TYPE_UNSPECIFIED";
 
 export interface EndpointConfPair {
     key?: string;
@@ -697,7 +753,7 @@ export interface EndpointHealth {
      */
     details?: string;
     /**
-     * The reason for failure to bring up clusters for this endpoint. This is
+     * The reason for failure to bring up clusters for this warehouse. This is
      * available when status is 'FAILED' and sometimes when it is DEGRADED.
      */
     failure_reason?: TerminationReason;
@@ -706,18 +762,19 @@ export interface EndpointHealth {
      */
     message?: string;
     /**
-     * Health status of the endpoint.
+     * Health status of the warehouse.
      */
     status?: Status;
     /**
-     * A short summary of the health status in case of degraded/failed endpoints.
+     * A short summary of the health status in case of degraded/failed
+     * warehouses.
      */
     summary?: string;
 }
 
 export interface EndpointInfo {
     /**
-     * The amount of time in minutes that a SQL Endpoint must be idle (i.e., no
+     * The amount of time in minutes that a SQL warehouse must be idle (i.e., no
      * RUNNING queries) before it is automatically stopped.
      *
      * Supported values: - Must be == 0 or >= 10 mins - 0 indicates no autostop.
@@ -730,8 +787,8 @@ export interface EndpointInfo {
      */
     channel?: Channel;
     /**
-     * Size of the clusters allocated for this endpoint. Increasing the size of a
-     * spark cluster allows you to run larger queries on it. If you want to
+     * Size of the clusters allocated for this warehouse. Increasing the size of
+     * a spark cluster allows you to run larger queries on it. If you want to
      * increase the number of concurrent queries, please tune max_num_clusters.
      *
      * Supported values: - 2X-Small - X-Small - Small - Medium - Large - X-Large
@@ -739,34 +796,26 @@ export interface EndpointInfo {
      */
     cluster_size?: string;
     /**
-     * endpoint creator name
+     * warehouse creator name
      */
     creator_name?: string;
     /**
-     * Configures whether the endpoint should use Databricks Compute (aka Nephos)
-     *
-     * Deprecated: Use enable_serverless_compute
-     */
-    enable_databricks_compute?: boolean;
-    /**
-     * Configures whether the endpoint should use Photon optimized clusters.
+     * Configures whether the warehouse should use Photon optimized clusters.
      *
      * Defaults to false.
      */
     enable_photon?: boolean;
     /**
-     * Configures whether the endpoint should use Serverless Compute (aka Nephos)
-     *
-     * Defaults to value in global endpoint settings
+     * Configures whether the warehouse should use serverless compute
      */
     enable_serverless_compute?: boolean;
     /**
-     * Optional health status. Assume the endpoint is healthy if this field is
+     * Optional health status. Assume the warehouse is healthy if this field is
      * not set.
      */
     health?: EndpointHealth;
     /**
-     * unique identifier for endpoint
+     * unique identifier for warehouse
      */
     id?: string;
     /**
@@ -774,7 +823,7 @@ export interface EndpointInfo {
      */
     instance_profile_arn?: string;
     /**
-     * the jdbc connection string for this endpoint
+     * the jdbc connection string for this warehouse
      */
     jdbc_url?: string;
     /**
@@ -788,8 +837,8 @@ export interface EndpointInfo {
     max_num_clusters?: number;
     /**
      * Minimum number of available clusters that will be maintained for this SQL
-     * Endpoint. Increasing this will ensure that a larger number of clusters are
-     * always running and therefore may reduce the cold start time for new
+     * warehouse. Increasing this will ensure that a larger number of clusters
+     * are always running and therefore may reduce the cold start time for new
      * queries. This is similar to reserved vs. revocable cores in a resource
      * manager.
      *
@@ -806,7 +855,7 @@ export interface EndpointInfo {
      */
     name?: string;
     /**
-     * current number of active sessions for the endpoint
+     * current number of active sessions for the warehouse
      */
     num_active_sessions?: number;
     /**
@@ -814,7 +863,7 @@ export interface EndpointInfo {
      */
     num_clusters?: number;
     /**
-     * ODBC parameters for the sql endpoint
+     * ODBC parameters for the SQL warehouse
      */
     odbc_params?: OdbcParams;
     /**
@@ -827,13 +876,25 @@ export interface EndpointInfo {
     state?: State;
     /**
      * A set of key-value pairs that will be tagged on all resources (e.g., AWS
-     * instances and EBS volumes) associated with this SQL Endpoints.
+     * instances and EBS volumes) associated with this SQL warehouse.
      *
      * Supported values: - Number of tags < 45.
      */
     tags?: EndpointTags;
-    warehouse_type?: WarehouseType;
+    /**
+     * Warehouse type: `PRO` or `CLASSIC`. If you want to use serverless compute,
+     * you must set to `PRO` and also set the field `enable_serverless_compute`
+     * to `true`.
+     */
+    warehouse_type?: EndpointInfoWarehouseType;
 }
+
+/**
+ * Warehouse type: `PRO` or `CLASSIC`. If you want to use serverless compute, you
+ * must set to `PRO` and also set the field `enable_serverless_compute` to
+ * `true`.
+ */
+export type EndpointInfoWarehouseType = "CLASSIC" | "PRO" | "TYPE_UNSPECIFIED";
 
 export interface EndpointTagPair {
     key?: string;
@@ -888,32 +949,48 @@ export interface ExecuteStatementRequest {
      */
     disposition?: Disposition;
     /**
-     * Statement execution supports two result formats: `JSON_ARRAY` (default),
-     * and `ARROW_STREAM`.
-     *
-     * **NOTE**
-     *
-     * Currently `JSON_ARRAY` is only available for requests with
-     * `disposition=INLINE`, and `ARROW_STREAM` is only available for requests
-     * with `disposition=EXTERNAL_LINKS`.
+     * Statement execution supports three result formats: `JSON_ARRAY` (default),
+     * `ARROW_STREAM`, and `CSV`.
      *
      * When specifying `format=JSON_ARRAY`, result data will be formatted as an
      * array of arrays of values, where each value is either the *string
      * representation* of a value, or `null`. For example, the output of `SELECT
-     * concat('id-', id) AS strId, id AS intId FROM range(3)` would look like
-     * this:
+     * concat('id-', id) AS strCol, id AS intCol, null AS nullCol FROM range(3)`
+     * would look like this:
      *
-     * ``` [ [ "id-1", "1" ], [ "id-2", "2" ], [ "id-3", "3" ], ] ```
+     * ``` [ [ "id-1", "1", null ], [ "id-2", "2", null ], [ "id-3", "3", null ],
+     * ] ```
      *
-     * `INLINE` `JSON_ARRAY` data can be found within
-     * `StatementResponse.result.chunk.data_array` or
-     * `ResultData.chunk.data_array`.
+     * `JSON_ARRAY` is supported with `INLINE` and `EXTERNAL_LINKS` dispositions.
      *
-     * When specifying `format=ARROW_STREAM`, results fetched through
-     * `external_links` will be chunks of result data, formatted as Apache Arrow
-     * Stream. See [Apache Arrow Streaming Format] for more details.
+     * `INLINE` `JSON_ARRAY` data can be found at the path
+     * `StatementResponse.result.data_array`.
      *
-     * [Apache Arrow Streaming Format]: https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format
+     * For `EXTERNAL_LINKS` `JSON_ARRAY` results, each URL points to a file in
+     * cloud storage that contains compact JSON with no indentation or extra
+     * whitespace.
+     *
+     * When specifying `format=ARROW_STREAM`, each chunk in the result will be
+     * formatted as Apache Arrow Stream. See the [Apache Arrow streaming format].
+     *
+     * IMPORTANT: The format `ARROW_STREAM` is supported only with
+     * `EXTERNAL_LINKS` disposition.
+     *
+     * When specifying `format=CSV`, each chunk in the result will be a CSV
+     * according to [RFC 4180] standard. All the columns values will have *string
+     * representation* similar to the `JSON_ARRAY` format, and `null` values will
+     * be encoded as “null”. Only the first chunk in the result would contain
+     * a header row with column names. For example, the output of `SELECT
+     * concat('id-', id) AS strCol, id AS intCol, null as nullCol FROM range(3)`
+     * would look like this:
+     *
+     * ``` strCol,intCol,nullCol id-1,1,null id-2,2,null id-3,3,null ```
+     *
+     * IMPORTANT: The format `CSV` is supported only with `EXTERNAL_LINKS`
+     * disposition.
+     *
+     * [Apache Arrow streaming format]: https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format
+     * [RFC 4180]: https://www.rfc-editor.org/rfc/rfc4180
      */
     format?: Format;
     /**
@@ -1014,32 +1091,48 @@ export interface ExternalLink {
 }
 
 /**
- * Statement execution supports two result formats: `JSON_ARRAY` (default), and
- * `ARROW_STREAM`.
- *
- * **NOTE**
- *
- * Currently `JSON_ARRAY` is only available for requests with
- * `disposition=INLINE`, and `ARROW_STREAM` is only available for requests with
- * `disposition=EXTERNAL_LINKS`.
+ * Statement execution supports three result formats: `JSON_ARRAY` (default),
+ * `ARROW_STREAM`, and `CSV`.
  *
  * When specifying `format=JSON_ARRAY`, result data will be formatted as an array
  * of arrays of values, where each value is either the *string representation* of
  * a value, or `null`. For example, the output of `SELECT concat('id-', id) AS
- * strId, id AS intId FROM range(3)` would look like this:
+ * strCol, id AS intCol, null AS nullCol FROM range(3)` would look like this:
  *
- * ``` [ [ "id-1", "1" ], [ "id-2", "2" ], [ "id-3", "3" ], ] ```
+ * ``` [ [ "id-1", "1", null ], [ "id-2", "2", null ], [ "id-3", "3", null ], ]
+ * ```
  *
- * `INLINE` `JSON_ARRAY` data can be found within
- * `StatementResponse.result.chunk.data_array` or `ResultData.chunk.data_array`.
+ * `JSON_ARRAY` is supported with `INLINE` and `EXTERNAL_LINKS` dispositions.
  *
- * When specifying `format=ARROW_STREAM`, results fetched through
- * `external_links` will be chunks of result data, formatted as Apache Arrow
- * Stream. See [Apache Arrow Streaming Format] for more details.
+ * `INLINE` `JSON_ARRAY` data can be found at the path
+ * `StatementResponse.result.data_array`.
  *
- * [Apache Arrow Streaming Format]: https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format
+ * For `EXTERNAL_LINKS` `JSON_ARRAY` results, each URL points to a file in cloud
+ * storage that contains compact JSON with no indentation or extra whitespace.
+ *
+ * When specifying `format=ARROW_STREAM`, each chunk in the result will be
+ * formatted as Apache Arrow Stream. See the [Apache Arrow streaming format].
+ *
+ * IMPORTANT: The format `ARROW_STREAM` is supported only with `EXTERNAL_LINKS`
+ * disposition.
+ *
+ * When specifying `format=CSV`, each chunk in the result will be a CSV according
+ * to [RFC 4180] standard. All the columns values will have *string
+ * representation* similar to the `JSON_ARRAY` format, and `null` values will be
+ * encoded as “null”. Only the first chunk in the result would contain a
+ * header row with column names. For example, the output of `SELECT concat('id-',
+ * id) AS strCol, id AS intCol, null as nullCol FROM range(3)` would look like
+ * this:
+ *
+ * ``` strCol,intCol,nullCol id-1,1,null id-2,2,null id-3,3,null ```
+ *
+ * IMPORTANT: The format `CSV` is supported only with `EXTERNAL_LINKS`
+ * disposition.
+ *
+ * [Apache Arrow streaming format]: https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format
+ * [RFC 4180]: https://www.rfc-editor.org/rfc/rfc4180
  */
-export type Format = "ARROW_STREAM" | "JSON_ARRAY";
+export type Format = "ARROW_STREAM" | "CSV" | "JSON_ARRAY";
 
 /**
  * Get an alert
@@ -1079,13 +1172,13 @@ export interface GetQueryRequest {
 export interface GetResponse {
     access_control_list?: Array<AccessControl>;
     /**
-     * A singular noun object type.
-     */
-    object_id?: ObjectType;
-    /**
      * An object's type and UUID, separated by a forward slash (/) character.
      */
-    object_type?: string;
+    object_id?: string;
+    /**
+     * A singular noun object type.
+     */
+    object_type?: ObjectType;
 }
 
 /**
@@ -1138,7 +1231,7 @@ export interface GetWarehouseRequest {
 
 export interface GetWarehouseResponse {
     /**
-     * The amount of time in minutes that a SQL Endpoint must be idle (i.e., no
+     * The amount of time in minutes that a SQL warehouse must be idle (i.e., no
      * RUNNING queries) before it is automatically stopped.
      *
      * Supported values: - Must be == 0 or >= 10 mins - 0 indicates no autostop.
@@ -1151,8 +1244,8 @@ export interface GetWarehouseResponse {
      */
     channel?: Channel;
     /**
-     * Size of the clusters allocated for this endpoint. Increasing the size of a
-     * spark cluster allows you to run larger queries on it. If you want to
+     * Size of the clusters allocated for this warehouse. Increasing the size of
+     * a spark cluster allows you to run larger queries on it. If you want to
      * increase the number of concurrent queries, please tune max_num_clusters.
      *
      * Supported values: - 2X-Small - X-Small - Small - Medium - Large - X-Large
@@ -1160,34 +1253,26 @@ export interface GetWarehouseResponse {
      */
     cluster_size?: string;
     /**
-     * endpoint creator name
+     * warehouse creator name
      */
     creator_name?: string;
     /**
-     * Configures whether the endpoint should use Databricks Compute (aka Nephos)
-     *
-     * Deprecated: Use enable_serverless_compute
-     */
-    enable_databricks_compute?: boolean;
-    /**
-     * Configures whether the endpoint should use Photon optimized clusters.
+     * Configures whether the warehouse should use Photon optimized clusters.
      *
      * Defaults to false.
      */
     enable_photon?: boolean;
     /**
-     * Configures whether the endpoint should use Serverless Compute (aka Nephos)
-     *
-     * Defaults to value in global endpoint settings
+     * Configures whether the warehouse should use serverless compute
      */
     enable_serverless_compute?: boolean;
     /**
-     * Optional health status. Assume the endpoint is healthy if this field is
+     * Optional health status. Assume the warehouse is healthy if this field is
      * not set.
      */
     health?: EndpointHealth;
     /**
-     * unique identifier for endpoint
+     * unique identifier for warehouse
      */
     id?: string;
     /**
@@ -1195,7 +1280,7 @@ export interface GetWarehouseResponse {
      */
     instance_profile_arn?: string;
     /**
-     * the jdbc connection string for this endpoint
+     * the jdbc connection string for this warehouse
      */
     jdbc_url?: string;
     /**
@@ -1209,8 +1294,8 @@ export interface GetWarehouseResponse {
     max_num_clusters?: number;
     /**
      * Minimum number of available clusters that will be maintained for this SQL
-     * Endpoint. Increasing this will ensure that a larger number of clusters are
-     * always running and therefore may reduce the cold start time for new
+     * warehouse. Increasing this will ensure that a larger number of clusters
+     * are always running and therefore may reduce the cold start time for new
      * queries. This is similar to reserved vs. revocable cores in a resource
      * manager.
      *
@@ -1227,7 +1312,7 @@ export interface GetWarehouseResponse {
      */
     name?: string;
     /**
-     * current number of active sessions for the endpoint
+     * current number of active sessions for the warehouse
      */
     num_active_sessions?: number;
     /**
@@ -1235,7 +1320,7 @@ export interface GetWarehouseResponse {
      */
     num_clusters?: number;
     /**
-     * ODBC parameters for the sql endpoint
+     * ODBC parameters for the SQL warehouse
      */
     odbc_params?: OdbcParams;
     /**
@@ -1248,13 +1333,28 @@ export interface GetWarehouseResponse {
     state?: State;
     /**
      * A set of key-value pairs that will be tagged on all resources (e.g., AWS
-     * instances and EBS volumes) associated with this SQL Endpoints.
+     * instances and EBS volumes) associated with this SQL warehouse.
      *
      * Supported values: - Number of tags < 45.
      */
     tags?: EndpointTags;
-    warehouse_type?: WarehouseType;
+    /**
+     * Warehouse type: `PRO` or `CLASSIC`. If you want to use serverless compute,
+     * you must set to `PRO` and also set the field `enable_serverless_compute`
+     * to `true`.
+     */
+    warehouse_type?: GetWarehouseResponseWarehouseType;
 }
+
+/**
+ * Warehouse type: `PRO` or `CLASSIC`. If you want to use serverless compute, you
+ * must set to `PRO` and also set the field `enable_serverless_compute` to
+ * `true`.
+ */
+export type GetWarehouseResponseWarehouseType =
+    | "CLASSIC"
+    | "PRO"
+    | "TYPE_UNSPECIFIED";
 
 export interface GetWorkspaceWarehouseConfigResponse {
     /**
@@ -1270,16 +1370,6 @@ export interface GetWorkspaceWarehouseConfigResponse {
      * must be less than <= 512K
      */
     data_access_config?: Array<EndpointConfPair>;
-    /**
-     * Enable Serverless compute for SQL Endpoints
-     *
-     * Deprecated: Use enable_serverless_compute
-     */
-    enable_databricks_compute?: boolean;
-    /**
-     * Enable Serverless compute for SQL Endpoints
-     */
-    enable_serverless_compute?: boolean;
     /**
      * List of Warehouse Types allowed in this workspace (limits allowed value of
      * the type field in CreateWarehouse and EditWarehouse). Note: Some types
@@ -1303,7 +1393,7 @@ export interface GetWorkspaceWarehouseConfigResponse {
      */
     instance_profile_arn?: string;
     /**
-     * Security policy for endpoints
+     * Security policy for warehouses
      */
     security_policy?: GetWorkspaceWarehouseConfigResponseSecurityPolicy;
     /**
@@ -1313,7 +1403,7 @@ export interface GetWorkspaceWarehouseConfigResponse {
 }
 
 /**
- * Security policy for endpoints
+ * Security policy for warehouses
  */
 export type GetWorkspaceWarehouseConfigResponseSecurityPolicy =
     | "DATA_ACCESS_CONTROL"
@@ -1437,7 +1527,7 @@ export interface ListResponse {
  */
 export interface ListWarehousesRequest {
     /**
-     * Service Principal which will be used to fetch the list of endpoints. If
+     * Service Principal which will be used to fetch the list of warehouses. If
      * not specified, the user from the session header is used.
      */
     run_as_user_id?: number;
@@ -1544,8 +1634,7 @@ export interface Query {
      */
     created_at?: string;
     /**
-     * Data Source ID. The UUID that uniquely identifies this data source / SQL
-     * warehouse across the API.
+     * Data source ID.
      */
     data_source_id?: string;
     /**
@@ -1553,6 +1642,9 @@ export interface Query {
      * such as usage notes.
      */
     description?: string;
+    /**
+     * Query ID.
+     */
     id?: string;
     /**
      * Indicates whether the query is trashed. Trashed queries can't be used in
@@ -1597,8 +1689,7 @@ export interface Query {
     name?: string;
     options?: QueryOptions;
     /**
-     * The identifier of the parent folder containing the query. Available for
-     * queries in workspace.
+     * The identifier of the workspace folder containing the object.
      */
     parent?: string;
     /**
@@ -1628,16 +1719,17 @@ export interface Query {
 
 export interface QueryEditContent {
     /**
-     * The ID of the data source / SQL warehouse where this query will run.
+     * Data source ID.
      */
     data_source_id?: string;
     /**
-     * General description that can convey additional information about this
-     * query such as usage notes.
+     * General description that conveys additional information about this query
+     * such as usage notes.
      */
     description?: string;
     /**
-     * The name or title of this query to display in list views.
+     * The title of this query that appears in list views, widget headings, and
+     * on the query page.
      */
     name?: string;
     /**
@@ -1647,7 +1739,7 @@ export interface QueryEditContent {
      */
     options?: any /* MISSING TYPE */;
     /**
-     * The text of the query.
+     * The text of the query to be run.
      */
     query?: string;
     query_id: string;
@@ -1892,16 +1984,17 @@ export interface QueryOptions {
 
 export interface QueryPostContent {
     /**
-     * The ID of the data source / SQL warehouse where this query will run.
+     * Data source ID.
      */
     data_source_id?: string;
     /**
-     * General description that can convey additional information about this
-     * query such as usage notes.
+     * General description that conveys additional information about this query
+     * such as usage notes.
      */
     description?: string;
     /**
-     * The name or title of this query to display in list views.
+     * The title of this query that appears in list views, widget headings, and
+     * on the query page.
      */
     name?: string;
     /**
@@ -1911,12 +2004,11 @@ export interface QueryPostContent {
      */
     options?: any /* MISSING TYPE */;
     /**
-     * The identifier of the workspace folder containing the query. The default
-     * is the user's home folder.
+     * The identifier of the workspace folder containing the object.
      */
     parent?: string;
     /**
-     * The text of the query.
+     * The text of the query to be run.
      */
     query?: string;
 }
@@ -2044,32 +2136,48 @@ export interface ResultManifest {
      */
     chunks?: Array<ChunkInfo>;
     /**
-     * Statement execution supports two result formats: `JSON_ARRAY` (default),
-     * and `ARROW_STREAM`.
-     *
-     * **NOTE**
-     *
-     * Currently `JSON_ARRAY` is only available for requests with
-     * `disposition=INLINE`, and `ARROW_STREAM` is only available for requests
-     * with `disposition=EXTERNAL_LINKS`.
+     * Statement execution supports three result formats: `JSON_ARRAY` (default),
+     * `ARROW_STREAM`, and `CSV`.
      *
      * When specifying `format=JSON_ARRAY`, result data will be formatted as an
      * array of arrays of values, where each value is either the *string
      * representation* of a value, or `null`. For example, the output of `SELECT
-     * concat('id-', id) AS strId, id AS intId FROM range(3)` would look like
-     * this:
+     * concat('id-', id) AS strCol, id AS intCol, null AS nullCol FROM range(3)`
+     * would look like this:
      *
-     * ``` [ [ "id-1", "1" ], [ "id-2", "2" ], [ "id-3", "3" ], ] ```
+     * ``` [ [ "id-1", "1", null ], [ "id-2", "2", null ], [ "id-3", "3", null ],
+     * ] ```
      *
-     * `INLINE` `JSON_ARRAY` data can be found within
-     * `StatementResponse.result.chunk.data_array` or
-     * `ResultData.chunk.data_array`.
+     * `JSON_ARRAY` is supported with `INLINE` and `EXTERNAL_LINKS` dispositions.
      *
-     * When specifying `format=ARROW_STREAM`, results fetched through
-     * `external_links` will be chunks of result data, formatted as Apache Arrow
-     * Stream. See [Apache Arrow Streaming Format] for more details.
+     * `INLINE` `JSON_ARRAY` data can be found at the path
+     * `StatementResponse.result.data_array`.
      *
-     * [Apache Arrow Streaming Format]: https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format
+     * For `EXTERNAL_LINKS` `JSON_ARRAY` results, each URL points to a file in
+     * cloud storage that contains compact JSON with no indentation or extra
+     * whitespace.
+     *
+     * When specifying `format=ARROW_STREAM`, each chunk in the result will be
+     * formatted as Apache Arrow Stream. See the [Apache Arrow streaming format].
+     *
+     * IMPORTANT: The format `ARROW_STREAM` is supported only with
+     * `EXTERNAL_LINKS` disposition.
+     *
+     * When specifying `format=CSV`, each chunk in the result will be a CSV
+     * according to [RFC 4180] standard. All the columns values will have *string
+     * representation* similar to the `JSON_ARRAY` format, and `null` values will
+     * be encoded as “null”. Only the first chunk in the result would contain
+     * a header row with column names. For example, the output of `SELECT
+     * concat('id-', id) AS strCol, id AS intCol, null as nullCol FROM range(3)`
+     * would look like this:
+     *
+     * ``` strCol,intCol,nullCol id-1,1,null id-2,2,null id-3,3,null ```
+     *
+     * IMPORTANT: The format `CSV` is supported only with `EXTERNAL_LINKS`
+     * disposition.
+     *
+     * [Apache Arrow streaming format]: https://arrow.apache.org/docs/format/Columnar.html#ipc-streaming-format
+     * [RFC 4180]: https://www.rfc-editor.org/rfc/rfc4180
      */
     format?: Format;
     /**
@@ -2141,13 +2249,13 @@ export interface SetRequest {
 export interface SetResponse {
     access_control_list?: Array<AccessControl>;
     /**
-     * A singular noun object type.
-     */
-    object_id?: ObjectType;
-    /**
      * An object's type and UUID, separated by a forward slash (/) character.
      */
-    object_type?: string;
+    object_id?: string;
+    /**
+     * A singular noun object type.
+     */
+    object_type?: ObjectType;
 }
 
 export interface SetWorkspaceWarehouseConfigRequest {
@@ -2164,16 +2272,6 @@ export interface SetWorkspaceWarehouseConfigRequest {
      * must be less than <= 512K
      */
     data_access_config?: Array<EndpointConfPair>;
-    /**
-     * Enable Serverless compute for SQL Endpoints
-     *
-     * Deprecated: Use enable_serverless_compute
-     */
-    enable_databricks_compute?: boolean;
-    /**
-     * Enable Serverless compute for SQL Endpoints
-     */
-    enable_serverless_compute?: boolean;
     /**
      * List of Warehouse Types allowed in this workspace (limits allowed value of
      * the type field in CreateWarehouse and EditWarehouse). Note: Some types
@@ -2197,13 +2295,9 @@ export interface SetWorkspaceWarehouseConfigRequest {
      */
     instance_profile_arn?: string;
     /**
-     * Security policy for endpoints
+     * Security policy for warehouses
      */
     security_policy?: SetWorkspaceWarehouseConfigRequestSecurityPolicy;
-    /**
-     * Internal. Used by frontend to save Serverless Compute agreement value.
-     */
-    serverless_agreement?: boolean;
     /**
      * SQL configuration parameters
      */
@@ -2211,7 +2305,7 @@ export interface SetWorkspaceWarehouseConfigRequest {
 }
 
 /**
- * Security policy for endpoints
+ * Security policy for warehouses
  */
 export type SetWorkspaceWarehouseConfigRequestSecurityPolicy =
     | "DATA_ACCESS_CONTROL"
@@ -2281,7 +2375,7 @@ export interface StatementStatus {
 }
 
 /**
- * Health status of the endpoint.
+ * Health status of the warehouse.
  */
 export type Status = "DEGRADED" | "FAILED" | "HEALTHY" | "STATUS_UNSPECIFIED";
 
@@ -2466,16 +2560,7 @@ export interface TransferOwnershipRequest {
 export interface User {
     email?: string;
     id?: number;
-    /**
-     * Whether this user is an admin in the Databricks workspace.
-     */
-    is_db_admin?: boolean;
     name?: string;
-    /**
-     * The URL for the gravatar profile picture tied to this user's email
-     * address.
-     */
-    profile_image_url?: string;
 }
 
 /**
@@ -2522,16 +2607,25 @@ export interface Visualization {
  * Warehouse ID.
  */
 
-export type WarehouseType = "CLASSIC" | "PRO" | "TYPE_UNSPECIFIED";
-
 export interface WarehouseTypePair {
     /**
      * If set to false the specific warehouse type will not be be allowed as a
      * value for warehouse_type in CreateWarehouse and EditWarehouse
      */
     enabled?: boolean;
-    warehouse_type?: WarehouseType;
+    /**
+     * Warehouse type: `PRO` or `CLASSIC`.
+     */
+    warehouse_type?: WarehouseTypePairWarehouseType;
 }
+
+/**
+ * Warehouse type: `PRO` or `CLASSIC`.
+ */
+export type WarehouseTypePairWarehouseType =
+    | "CLASSIC"
+    | "PRO"
+    | "TYPE_UNSPECIFIED";
 
 export interface Widget {
     /**
@@ -2589,5 +2683,3 @@ export interface WidgetOptions {
      */
     updated_at?: string;
 }
-
-export interface EmptyResponse {}

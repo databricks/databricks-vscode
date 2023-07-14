@@ -2,8 +2,8 @@ import {EventEmitter} from "events";
 import retry, {DEFAULT_MAX_TIMEOUT, RetriableError} from "../retries/retries";
 import {ExecutionContext} from "./ExecutionContext";
 import {CancellationToken} from "../types";
-import {CommandExecutionService, CommandStatusResponse} from "../apis/commands";
 import Time from "../retries/Time";
+import {CommandExecutionService, CommandStatusResponse} from "../apis/compute";
 
 interface CommandErrorParams {
     commandId: string;

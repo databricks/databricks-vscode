@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
 
+/**
+ * The Jobs API allows you to create, edit, and delete jobs.
+ */
+
 import {ApiClient} from "../../api-client";
-import * as model from "./model";
+import * as jobs from "./model";
+import {EmptyResponse} from "../../types";
 import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
@@ -11,6 +15,9 @@ import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
 import {Waiter, asWaiter} from "../../wait";
+
+import * as compute from "../compute";
+import * as iam from "../iam";
 
 export class JobsRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -36,10 +43,11 @@ export class JobsError extends ApiError {
  * Spark submit, and Java applications.
  *
  * You should never hard code secrets or store them in plain text. Use the
- * :service:secrets to manage secrets in the [Databricks CLI]. Use the [Secrets
+ * [Secrets CLI] to manage secrets in the [Databricks CLI]. Use the [Secrets
  * utility] to reference secrets in notebooks and jobs.
  *
  * [Databricks CLI]: https://docs.databricks.com/dev-tools/cli/index.html
+ * [Secrets CLI]: https://docs.databricks.com/dev-tools/cli/secrets-cli.html
  * [Secrets utility]: https://docs.databricks.com/dev-tools/databricks-utils.html#dbutils-secrets
  */
 export class JobsService {
@@ -47,16 +55,16 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _cancelAllRuns(
-        request: model.CancelAllRuns,
+        request: jobs.CancelAllRuns,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = "/api/2.1/jobs/runs/cancel-all";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -67,24 +75,24 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async cancelAllRuns(
-        request: model.CancelAllRuns,
+        request: jobs.CancelAllRuns,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._cancelAllRuns(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _cancelRun(
-        request: model.CancelRun,
+        request: jobs.CancelRun,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = "/api/2.1/jobs/runs/cancel";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -95,9 +103,9 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async cancelRun(
-        cancelRun: model.CancelRun,
+        cancelRun: jobs.CancelRun,
         @context context?: Context
-    ): Promise<Waiter<model.EmptyResponse, model.Run>> {
+    ): Promise<Waiter<EmptyResponse, jobs.Run>> {
         const cancellationToken = context?.cancellationToken;
 
         await this._cancelRun(cancelRun, context);
@@ -108,7 +116,7 @@ export class JobsService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.Run>({
+            return await retry<jobs.Run>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.getRun(
@@ -159,16 +167,16 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _create(
-        request: model.CreateJob,
+        request: jobs.CreateJob,
         @context context?: Context
-    ): Promise<model.CreateResponse> {
+    ): Promise<jobs.CreateResponse> {
         const path = "/api/2.1/jobs/create";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.CreateResponse;
+        )) as jobs.CreateResponse;
     }
 
     /**
@@ -178,24 +186,24 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
-        request: model.CreateJob,
+        request: jobs.CreateJob,
         @context context?: Context
-    ): Promise<model.CreateResponse> {
+    ): Promise<jobs.CreateResponse> {
         return await this._create(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _delete(
-        request: model.DeleteJob,
+        request: jobs.DeleteJob,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = "/api/2.1/jobs/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -205,24 +213,24 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
-        request: model.DeleteJob,
+        request: jobs.DeleteJob,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._delete(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _deleteRun(
-        request: model.DeleteRun,
+        request: jobs.DeleteRun,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = "/api/2.1/jobs/runs/delete";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -232,24 +240,24 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async deleteRun(
-        request: model.DeleteRun,
+        request: jobs.DeleteRun,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._deleteRun(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _exportRun(
-        request: model.ExportRun,
+        request: jobs.ExportRunRequest,
         @context context?: Context
-    ): Promise<model.ExportRunOutput> {
+    ): Promise<jobs.ExportRunOutput> {
         const path = "/api/2.1/jobs/runs/export";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ExportRunOutput;
+        )) as jobs.ExportRunOutput;
     }
 
     /**
@@ -259,24 +267,24 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async exportRun(
-        request: model.ExportRun,
+        request: jobs.ExportRunRequest,
         @context context?: Context
-    ): Promise<model.ExportRunOutput> {
+    ): Promise<jobs.ExportRunOutput> {
         return await this._exportRun(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.Get,
+        request: jobs.GetJobRequest,
         @context context?: Context
-    ): Promise<model.Job> {
+    ): Promise<jobs.Job> {
         const path = "/api/2.1/jobs/get";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.Job;
+        )) as jobs.Job;
     }
 
     /**
@@ -286,24 +294,24 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.Get,
+        request: jobs.GetJobRequest,
         @context context?: Context
-    ): Promise<model.Job> {
+    ): Promise<jobs.Job> {
         return await this._get(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _getRun(
-        request: model.GetRun,
+        request: jobs.GetRunRequest,
         @context context?: Context
-    ): Promise<model.Run> {
+    ): Promise<jobs.Run> {
         const path = "/api/2.1/jobs/runs/get";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.Run;
+        )) as jobs.Run;
     }
 
     /**
@@ -313,12 +321,12 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async getRun(
-        getRun: model.GetRun,
+        getRunRequest: jobs.GetRunRequest,
         @context context?: Context
-    ): Promise<Waiter<model.Run, model.Run>> {
+    ): Promise<Waiter<jobs.Run, jobs.Run>> {
         const cancellationToken = context?.cancellationToken;
 
-        const run = await this._getRun(getRun, context);
+        const run = await this._getRun(getRunRequest, context);
 
         return asWaiter(run, async (options) => {
             options = options || {};
@@ -326,7 +334,7 @@ export class JobsService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.Run>({
+            return await retry<jobs.Run>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.getRun(
@@ -372,16 +380,16 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _getRunOutput(
-        request: model.GetRunOutput,
+        request: jobs.GetRunOutputRequest,
         @context context?: Context
-    ): Promise<model.RunOutput> {
+    ): Promise<jobs.RunOutput> {
         const path = "/api/2.1/jobs/runs/get-output";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.RunOutput;
+        )) as jobs.RunOutput;
     }
 
     /**
@@ -400,39 +408,37 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async getRunOutput(
-        request: model.GetRunOutput,
+        request: jobs.GetRunOutputRequest,
         @context context?: Context
-    ): Promise<model.RunOutput> {
+    ): Promise<jobs.RunOutput> {
         return await this._getRunOutput(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _list(
-        request: model.List,
+        request: jobs.ListJobsRequest,
         @context context?: Context
-    ): Promise<model.ListJobsResponse> {
+    ): Promise<jobs.ListJobsResponse> {
         const path = "/api/2.1/jobs/list";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListJobsResponse;
+        )) as jobs.ListJobsResponse;
     }
 
     /**
-     * List all jobs.
+     * List jobs.
      *
      * Retrieves a list of jobs.
      */
     @withLogContext(ExposedLoggers.SDK)
     async *list(
-        request: model.List,
+        request: jobs.ListJobsRequest,
         @context context?: Context
-    ): AsyncIterable<model.BaseJob> {
-        // deduplicate items that may have been added during iteration
-        const seen: Record<number, boolean> = {};
-
+    ): AsyncIterable<jobs.BaseJob> {
+        let totalCount = 0;
         while (true) {
             const response = await this._list(request, context);
             if (
@@ -447,49 +453,47 @@ export class JobsService {
             }
 
             for (const v of response.jobs) {
-                const id = v.job_id;
-                if (id) {
-                    if (seen[id]) {
-                        // item was added during iteration
-                        continue;
-                    }
-                    seen[id] = true;
-                }
                 yield v;
             }
 
-            request.offset = request.offset || 0;
-            request.offset += response.jobs.length;
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+            const count = response.jobs.length;
+            totalCount += count;
+            const limit = request.limit;
+            if (limit && totalCount >= limit) {
+                break;
+            }
         }
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _listRuns(
-        request: model.ListRuns,
+        request: jobs.ListRunsRequest,
         @context context?: Context
-    ): Promise<model.ListRunsResponse> {
+    ): Promise<jobs.ListRunsResponse> {
         const path = "/api/2.1/jobs/runs/list";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListRunsResponse;
+        )) as jobs.ListRunsResponse;
     }
 
     /**
-     * List runs for a job.
+     * List job runs.
      *
      * List runs in descending order by start time.
      */
     @withLogContext(ExposedLoggers.SDK)
     async *listRuns(
-        request: model.ListRuns,
+        request: jobs.ListRunsRequest,
         @context context?: Context
-    ): AsyncIterable<model.BaseRun> {
-        // deduplicate items that may have been added during iteration
-        const seen: Record<number, boolean> = {};
-
+    ): AsyncIterable<jobs.BaseRun> {
+        let totalCount = 0;
         while (true) {
             const response = await this._listRuns(request, context);
             if (
@@ -504,34 +508,34 @@ export class JobsService {
             }
 
             for (const v of response.runs) {
-                const id = v.run_id;
-                if (id) {
-                    if (seen[id]) {
-                        // item was added during iteration
-                        continue;
-                    }
-                    seen[id] = true;
-                }
                 yield v;
             }
 
-            request.offset = request.offset || 0;
-            request.offset += response.runs.length;
+            request.page_token = response.next_page_token;
+            if (!response.next_page_token) {
+                break;
+            }
+            const count = response.runs.length;
+            totalCount += count;
+            const limit = request.limit;
+            if (limit && totalCount >= limit) {
+                break;
+            }
         }
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _repairRun(
-        request: model.RepairRun,
+        request: jobs.RepairRun,
         @context context?: Context
-    ): Promise<model.RepairRunResponse> {
+    ): Promise<jobs.RepairRunResponse> {
         const path = "/api/2.1/jobs/runs/repair";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.RepairRunResponse;
+        )) as jobs.RepairRunResponse;
     }
 
     /**
@@ -543,9 +547,9 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async repairRun(
-        repairRun: model.RepairRun,
+        repairRun: jobs.RepairRun,
         @context context?: Context
-    ): Promise<Waiter<model.RepairRunResponse, model.Run>> {
+    ): Promise<Waiter<jobs.RepairRunResponse, jobs.Run>> {
         const cancellationToken = context?.cancellationToken;
 
         const repairRunResponse = await this._repairRun(repairRun, context);
@@ -556,7 +560,7 @@ export class JobsService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.Run>({
+            return await retry<jobs.Run>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.getRun(
@@ -607,16 +611,16 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _reset(
-        request: model.ResetJob,
+        request: jobs.ResetJob,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = "/api/2.1/jobs/reset";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -627,24 +631,24 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async reset(
-        request: model.ResetJob,
+        request: jobs.ResetJob,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._reset(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _runNow(
-        request: model.RunNow,
+        request: jobs.RunNow,
         @context context?: Context
-    ): Promise<model.RunNowResponse> {
+    ): Promise<jobs.RunNowResponse> {
         const path = "/api/2.1/jobs/run-now";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.RunNowResponse;
+        )) as jobs.RunNowResponse;
     }
 
     /**
@@ -654,9 +658,9 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async runNow(
-        runNow: model.RunNow,
+        runNow: jobs.RunNow,
         @context context?: Context
-    ): Promise<Waiter<model.RunNowResponse, model.Run>> {
+    ): Promise<Waiter<jobs.RunNowResponse, jobs.Run>> {
         const cancellationToken = context?.cancellationToken;
 
         const runNowResponse = await this._runNow(runNow, context);
@@ -667,7 +671,7 @@ export class JobsService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.Run>({
+            return await retry<jobs.Run>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.getRun(
@@ -713,16 +717,16 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _submit(
-        request: model.SubmitRun,
+        request: jobs.SubmitRun,
         @context context?: Context
-    ): Promise<model.SubmitRunResponse> {
+    ): Promise<jobs.SubmitRunResponse> {
         const path = "/api/2.1/jobs/runs/submit";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.SubmitRunResponse;
+        )) as jobs.SubmitRunResponse;
     }
 
     /**
@@ -735,9 +739,9 @@ export class JobsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async submit(
-        submitRun: model.SubmitRun,
+        submitRun: jobs.SubmitRun,
         @context context?: Context
-    ): Promise<Waiter<model.SubmitRunResponse, model.Run>> {
+    ): Promise<Waiter<jobs.SubmitRunResponse, jobs.Run>> {
         const cancellationToken = context?.cancellationToken;
 
         const submitRunResponse = await this._submit(submitRun, context);
@@ -748,7 +752,7 @@ export class JobsService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.Run>({
+            return await retry<jobs.Run>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.getRun(
@@ -794,29 +798,29 @@ export class JobsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _update(
-        request: model.UpdateJob,
+        request: jobs.UpdateJob,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = "/api/2.1/jobs/update";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
-     * Partially updates a job.
+     * Partially update a job.
      *
      * Add, update, or remove specific settings of an existing job. Use the
      * ResetJob to overwrite all job settings.
      */
     @withLogContext(ExposedLoggers.SDK)
     async update(
-        request: model.UpdateJob,
+        request: jobs.UpdateJob,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._update(request, context);
     }
 }

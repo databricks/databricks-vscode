@@ -1,3 +1,16 @@
+# Release: v1.1.0
+
+## packages/databricks-vscode
+
+## 1.1.0 (2023-07-10)
+
+-   Feature: Enable DB Connect V2 by default.
+-   Experimental: Allow Jupyter code lenses to parse and interpret databricks notebooks (python files)
+-   Experimental: Add an init script for Jupyter notebooks
+-   Experimental: Handle magic commands in init script.
+-   Experimental: Show errors in notebook init scripts
+-   Fix: Block changes to VS Code configs unless we are in a Databricks project
+
 # Release: v1.0.0
 
 ## packages/databricks-vscode

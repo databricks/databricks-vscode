@@ -3,9 +3,8 @@
 import {IntegrationTestSetup} from "../test/IntegrationTestSetup";
 import * as assert from "node:assert";
 import {Repo} from "./Repos";
-import {RepoInfo, ReposService} from "../apis/repos";
 import {randomUUID} from "node:crypto";
-import {WorkspaceService} from "../apis/workspace";
+import {RepoInfo, ReposService, WorkspaceService} from "../apis/workspace";
 import {Context} from "../context";
 import {CancellationToken} from "../types";
 

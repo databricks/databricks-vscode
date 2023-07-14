@@ -20,7 +20,10 @@ export class MetadataService implements Disposable {
     private magic!: string;
     private _apiClient: ApiClient | undefined;
 
-    constructor(apiClient: ApiClient | undefined, private logger: NamedLogger) {
+    constructor(
+        apiClient: ApiClient | undefined,
+        private logger: NamedLogger
+    ) {
         this.updateMagic();
         this._apiClient = apiClient;
     }

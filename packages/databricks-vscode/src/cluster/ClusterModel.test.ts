@@ -5,8 +5,8 @@ import {mock, when, anything, anyString, instance, spy} from "ts-mockito";
 import {
     ApiClient,
     Cluster,
-    cluster,
     WorkspaceClient,
+    compute,
 } from "@databricks/databricks-sdk";
 import {ClusterModel} from "./ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -14,7 +14,7 @@ import {Disposable} from "vscode";
 import {ClusterLoader} from "./ClusterLoader";
 
 const me = "user-1";
-const mockListClustersResponse: cluster.ListClustersResponse = {
+const mockListClustersResponse: compute.ListClustersResponse = {
     clusters: [
         {
             cluster_id: "cluster-id-2",
@@ -46,13 +46,13 @@ describe(__filename, () => {
         mockedApiClient = mock<ApiClient>();
         mockedWorkspaceClient = mock(WorkspaceClient);
 
-        when<cluster.ListClustersResponse>(
+        when<compute.ListClustersResponse>(
             mockedApiClient.request(
                 anyString(),
                 "GET",
                 anything(),
                 anything()
-            ) as Promise<cluster.ListClustersResponse>
+            ) as Promise<compute.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);
 
         when(mockedWorkspaceClient.apiClient).thenReturn(

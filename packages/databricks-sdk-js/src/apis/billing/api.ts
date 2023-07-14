@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
 
+/**
+ * These APIs allow you to manage Billable Usage, Budgets, Log Delivery, etc.
+ */
+
 import {ApiClient} from "../../api-client";
-import * as model from "./model";
+import * as billing from "./model";
+import {EmptyResponse} from "../../types";
 import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
@@ -32,9 +36,9 @@ export class BillableUsageService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _download(
-        request: model.DownloadRequest,
+        request: billing.DownloadRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -47,7 +51,7 @@ export class BillableUsageService {
             "GET",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -55,15 +59,20 @@ export class BillableUsageService {
      *
      * Returns billable usage logs in CSV format for the specified account and
      * date range. For the data schema, see [CSV file schema]. Note that this
-     * method might take multiple seconds to complete.
+     * method might take multiple minutes to complete.
+     *
+     * **Warning**: Depending on the queried date range, the number of workspaces
+     * in the account, the size of the response and the internet speed of the
+     * caller, this API may hit a timeout after a few minutes. If you experience
+     * this, try to mitigate by calling the API with narrower date ranges.
      *
      * [CSV file schema]: https://docs.databricks.com/administration-guide/account-settings/usage-analysis.html#schema
      */
     @withLogContext(ExposedLoggers.SDK)
     async download(
-        request: model.DownloadRequest,
+        request: billing.DownloadRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._download(request, context);
     }
 }
@@ -88,9 +97,9 @@ export class BudgetsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _create(
-        request: model.WrappedBudget,
+        request: billing.WrappedBudget,
         @context context?: Context
-    ): Promise<model.WrappedBudgetWithStatus> {
+    ): Promise<billing.WrappedBudgetWithStatus> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -103,7 +112,7 @@ export class BudgetsService {
             "POST",
             request,
             context
-        )) as model.WrappedBudgetWithStatus;
+        )) as billing.WrappedBudgetWithStatus;
     }
 
     /**
@@ -113,17 +122,17 @@ export class BudgetsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
-        request: model.WrappedBudget,
+        request: billing.WrappedBudget,
         @context context?: Context
-    ): Promise<model.WrappedBudgetWithStatus> {
+    ): Promise<billing.WrappedBudgetWithStatus> {
         return await this._create(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _delete(
-        request: model.DeleteBudgetRequest,
+        request: billing.DeleteBudgetRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -136,7 +145,7 @@ export class BudgetsService {
             "DELETE",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -146,17 +155,17 @@ export class BudgetsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
-        request: model.DeleteBudgetRequest,
+        request: billing.DeleteBudgetRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._delete(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.GetBudgetRequest,
+        request: billing.GetBudgetRequest,
         @context context?: Context
-    ): Promise<model.WrappedBudgetWithStatus> {
+    ): Promise<billing.WrappedBudgetWithStatus> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -169,7 +178,7 @@ export class BudgetsService {
             "GET",
             request,
             context
-        )) as model.WrappedBudgetWithStatus;
+        )) as billing.WrappedBudgetWithStatus;
     }
 
     /**
@@ -180,14 +189,16 @@ export class BudgetsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.GetBudgetRequest,
+        request: billing.GetBudgetRequest,
         @context context?: Context
-    ): Promise<model.WrappedBudgetWithStatus> {
+    ): Promise<billing.WrappedBudgetWithStatus> {
         return await this._get(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
-    private async _list(@context context?: Context): Promise<model.BudgetList> {
+    private async _list(
+        @context context?: Context
+    ): Promise<billing.BudgetList> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -200,7 +211,7 @@ export class BudgetsService {
             "GET",
             undefined,
             context
-        )) as model.BudgetList;
+        )) as billing.BudgetList;
     }
 
     /**
@@ -212,7 +223,7 @@ export class BudgetsService {
     @withLogContext(ExposedLoggers.SDK)
     async *list(
         @context context?: Context
-    ): AsyncIterable<model.BudgetWithStatus> {
+    ): AsyncIterable<billing.BudgetWithStatus> {
         const response = (await this._list(context)).budgets;
         for (const v of response || []) {
             yield v;
@@ -221,9 +232,9 @@ export class BudgetsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _update(
-        request: model.WrappedBudget,
+        request: billing.WrappedBudget,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -236,7 +247,7 @@ export class BudgetsService {
             "PATCH",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -247,9 +258,9 @@ export class BudgetsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async update(
-        request: model.WrappedBudget,
+        request: billing.WrappedBudget,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._update(request, context);
     }
 }
@@ -332,9 +343,9 @@ export class LogDeliveryService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _create(
-        request: model.WrappedCreateLogDeliveryConfiguration,
+        request: billing.WrappedCreateLogDeliveryConfiguration,
         @context context?: Context
-    ): Promise<model.WrappedLogDeliveryConfiguration> {
+    ): Promise<billing.WrappedLogDeliveryConfiguration> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -347,7 +358,7 @@ export class LogDeliveryService {
             "POST",
             request,
             context
-        )) as model.WrappedLogDeliveryConfiguration;
+        )) as billing.WrappedLogDeliveryConfiguration;
     }
 
     /**
@@ -383,17 +394,17 @@ export class LogDeliveryService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
-        request: model.WrappedCreateLogDeliveryConfiguration,
+        request: billing.WrappedCreateLogDeliveryConfiguration,
         @context context?: Context
-    ): Promise<model.WrappedLogDeliveryConfiguration> {
+    ): Promise<billing.WrappedLogDeliveryConfiguration> {
         return await this._create(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.GetLogDeliveryRequest,
+        request: billing.GetLogDeliveryRequest,
         @context context?: Context
-    ): Promise<model.WrappedLogDeliveryConfiguration> {
+    ): Promise<billing.WrappedLogDeliveryConfiguration> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -406,7 +417,7 @@ export class LogDeliveryService {
             "GET",
             request,
             context
-        )) as model.WrappedLogDeliveryConfiguration;
+        )) as billing.WrappedLogDeliveryConfiguration;
     }
 
     /**
@@ -417,17 +428,17 @@ export class LogDeliveryService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.GetLogDeliveryRequest,
+        request: billing.GetLogDeliveryRequest,
         @context context?: Context
-    ): Promise<model.WrappedLogDeliveryConfiguration> {
+    ): Promise<billing.WrappedLogDeliveryConfiguration> {
         return await this._get(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _list(
-        request: model.ListLogDeliveryRequest,
+        request: billing.ListLogDeliveryRequest,
         @context context?: Context
-    ): Promise<model.WrappedLogDeliveryConfigurations> {
+    ): Promise<billing.WrappedLogDeliveryConfigurations> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -440,7 +451,7 @@ export class LogDeliveryService {
             "GET",
             request,
             context
-        )) as model.WrappedLogDeliveryConfigurations;
+        )) as billing.WrappedLogDeliveryConfigurations;
     }
 
     /**
@@ -451,9 +462,9 @@ export class LogDeliveryService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async *list(
-        request: model.ListLogDeliveryRequest,
+        request: billing.ListLogDeliveryRequest,
         @context context?: Context
-    ): AsyncIterable<model.LogDeliveryConfiguration> {
+    ): AsyncIterable<billing.LogDeliveryConfiguration> {
         const response = (await this._list(request, context))
             .log_delivery_configurations;
         for (const v of response || []) {
@@ -463,9 +474,9 @@ export class LogDeliveryService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _patchStatus(
-        request: model.UpdateLogDeliveryConfigurationStatusRequest,
+        request: billing.UpdateLogDeliveryConfigurationStatusRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const config = this.client.config;
         await config.ensureResolved();
         if (!config.accountId || !config.isAccountClient()) {
@@ -478,7 +489,7 @@ export class LogDeliveryService {
             "PATCH",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -493,9 +504,9 @@ export class LogDeliveryService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async patchStatus(
-        request: model.UpdateLogDeliveryConfigurationStatusRequest,
+        request: billing.UpdateLogDeliveryConfigurationStatusRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._patchStatus(request, context);
     }
 }

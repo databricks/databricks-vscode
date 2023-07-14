@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
 
+/**
+ * These APIs allow you to manage Alerts, Dashboards, Data Sources, Dbsql Permissions, Queries, Query History, Statement Execution, Warehouses, etc.
+ */
+
 import {ApiClient} from "../../api-client";
-import * as model from "./model";
+import * as sql from "./model";
+import {EmptyResponse} from "../../types";
 import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
@@ -27,23 +31,24 @@ export class AlertsError extends ApiError {
  * The alerts API can be used to perform CRUD operations on alerts. An alert is a
  * Databricks SQL object that periodically runs a query, evaluates a condition of
  * its result, and notifies one or more users and/or notification destinations if
- * the condition was met.
+ * the condition was met. Alerts can be scheduled using the `sql_task` type of
+ * the Jobs API, e.g. :method:jobs/create.
  */
 export class AlertsService {
     constructor(readonly client: ApiClient) {}
 
     @withLogContext(ExposedLoggers.SDK)
     private async _create(
-        request: model.CreateAlert,
+        request: sql.CreateAlert,
         @context context?: Context
-    ): Promise<model.Alert> {
+    ): Promise<sql.Alert> {
         const path = "/api/2.0/preview/sql/alerts";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.Alert;
+        )) as sql.Alert;
     }
 
     /**
@@ -55,24 +60,24 @@ export class AlertsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
-        request: model.CreateAlert,
+        request: sql.CreateAlert,
         @context context?: Context
-    ): Promise<model.Alert> {
+    ): Promise<sql.Alert> {
         return await this._create(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _delete(
-        request: model.DeleteAlertRequest,
+        request: sql.DeleteAlertRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/preview/sql/alerts/${request.alert_id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -84,24 +89,24 @@ export class AlertsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
-        request: model.DeleteAlertRequest,
+        request: sql.DeleteAlertRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._delete(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.GetAlertRequest,
+        request: sql.GetAlertRequest,
         @context context?: Context
-    ): Promise<model.Alert> {
+    ): Promise<sql.Alert> {
         const path = `/api/2.0/preview/sql/alerts/${request.alert_id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.Alert;
+        )) as sql.Alert;
     }
 
     /**
@@ -111,23 +116,21 @@ export class AlertsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.GetAlertRequest,
+        request: sql.GetAlertRequest,
         @context context?: Context
-    ): Promise<model.Alert> {
+    ): Promise<sql.Alert> {
         return await this._get(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
-    private async _list(
-        @context context?: Context
-    ): Promise<Array<model.Alert>> {
+    private async _list(@context context?: Context): Promise<Array<sql.Alert>> {
         const path = "/api/2.0/preview/sql/alerts";
         return (await this.client.request(
             path,
             "GET",
             undefined,
             context
-        )) as Array<model.Alert>;
+        )) as Array<sql.Alert>;
     }
 
     /**
@@ -136,22 +139,22 @@ export class AlertsService {
      * Gets a list of alerts.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<Array<model.Alert>> {
+    async list(@context context?: Context): Promise<Array<sql.Alert>> {
         return await this._list(context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _update(
-        request: model.EditAlert,
+        request: sql.EditAlert,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/preview/sql/alerts/${request.alert_id}`;
         return (await this.client.request(
             path,
             "PUT",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -161,9 +164,9 @@ export class AlertsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async update(
-        request: model.EditAlert,
+        request: sql.EditAlert,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._update(request, context);
     }
 }
@@ -184,23 +187,24 @@ export class DashboardsError extends ApiError {
  * it can be useful to use dashboard objects to look-up a collection of related
  * query IDs. The API can also be used to duplicate multiple dashboards at once
  * since you can get a dashboard definition with a GET request and then POST it
- * to create a new one.
+ * to create a new one. Dashboards can be scheduled using the `sql_task` type of
+ * the Jobs API, e.g. :method:jobs/create.
  */
 export class DashboardsService {
     constructor(readonly client: ApiClient) {}
 
     @withLogContext(ExposedLoggers.SDK)
     private async _create(
-        request: model.CreateDashboardRequest,
+        request: sql.CreateDashboardRequest,
         @context context?: Context
-    ): Promise<model.Dashboard> {
+    ): Promise<sql.Dashboard> {
         const path = "/api/2.0/preview/sql/dashboards";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.Dashboard;
+        )) as sql.Dashboard;
     }
 
     /**
@@ -208,24 +212,24 @@ export class DashboardsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
-        request: model.CreateDashboardRequest,
+        request: sql.CreateDashboardRequest,
         @context context?: Context
-    ): Promise<model.Dashboard> {
+    ): Promise<sql.Dashboard> {
         return await this._create(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _delete(
-        request: model.DeleteDashboardRequest,
+        request: sql.DeleteDashboardRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/preview/sql/dashboards/${request.dashboard_id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -236,24 +240,24 @@ export class DashboardsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
-        request: model.DeleteDashboardRequest,
+        request: sql.DeleteDashboardRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._delete(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.GetDashboardRequest,
+        request: sql.GetDashboardRequest,
         @context context?: Context
-    ): Promise<model.Dashboard> {
+    ): Promise<sql.Dashboard> {
         const path = `/api/2.0/preview/sql/dashboards/${request.dashboard_id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.Dashboard;
+        )) as sql.Dashboard;
     }
 
     /**
@@ -264,24 +268,24 @@ export class DashboardsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.GetDashboardRequest,
+        request: sql.GetDashboardRequest,
         @context context?: Context
-    ): Promise<model.Dashboard> {
+    ): Promise<sql.Dashboard> {
         return await this._get(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _list(
-        request: model.ListDashboardsRequest,
+        request: sql.ListDashboardsRequest,
         @context context?: Context
-    ): Promise<model.ListResponse> {
+    ): Promise<sql.ListResponse> {
         const path = "/api/2.0/preview/sql/dashboards";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListResponse;
+        )) as sql.ListResponse;
     }
 
     /**
@@ -291,13 +295,12 @@ export class DashboardsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async *list(
-        request: model.ListDashboardsRequest,
+        request: sql.ListDashboardsRequest,
         @context context?: Context
-    ): AsyncIterable<model.Dashboard> {
+    ): AsyncIterable<sql.Dashboard> {
         // deduplicate items that may have been added during iteration
         const seen: Record<string, boolean> = {};
         request.page = 1; // start iterating from the first page
-
         while (true) {
             const response = await this._list(request, context);
             if (
@@ -323,22 +326,23 @@ export class DashboardsService {
                 yield v;
             }
 
+            // paginate by increments of 1
             request.page += 1;
         }
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _restore(
-        request: model.RestoreDashboardRequest,
+        request: sql.RestoreDashboardRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/preview/sql/dashboards/trash/${request.dashboard_id}`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -348,9 +352,9 @@ export class DashboardsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async restore(
-        request: model.RestoreDashboardRequest,
+        request: sql.RestoreDashboardRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._restore(request, context);
     }
 }
@@ -384,14 +388,14 @@ export class DataSourcesService {
     @withLogContext(ExposedLoggers.SDK)
     private async _list(
         @context context?: Context
-    ): Promise<Array<model.DataSource>> {
+    ): Promise<Array<sql.DataSource>> {
         const path = "/api/2.0/preview/sql/data_sources";
         return (await this.client.request(
             path,
             "GET",
             undefined,
             context
-        )) as Array<model.DataSource>;
+        )) as Array<sql.DataSource>;
     }
 
     /**
@@ -403,7 +407,7 @@ export class DataSourcesService {
      * against it.
      */
     @withLogContext(ExposedLoggers.SDK)
-    async list(@context context?: Context): Promise<Array<model.DataSource>> {
+    async list(@context context?: Context): Promise<Array<sql.DataSource>> {
         return await this._list(context);
     }
 }
@@ -439,16 +443,16 @@ export class DbsqlPermissionsService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.GetDbsqlPermissionRequest,
+        request: sql.GetDbsqlPermissionRequest,
         @context context?: Context
-    ): Promise<model.GetResponse> {
+    ): Promise<sql.GetResponse> {
         const path = `/api/2.0/preview/sql/permissions/${request.objectType}/${request.objectId}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.GetResponse;
+        )) as sql.GetResponse;
     }
 
     /**
@@ -459,24 +463,24 @@ export class DbsqlPermissionsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.GetDbsqlPermissionRequest,
+        request: sql.GetDbsqlPermissionRequest,
         @context context?: Context
-    ): Promise<model.GetResponse> {
+    ): Promise<sql.GetResponse> {
         return await this._get(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _set(
-        request: model.SetRequest,
+        request: sql.SetRequest,
         @context context?: Context
-    ): Promise<model.SetResponse> {
+    ): Promise<sql.SetResponse> {
         const path = `/api/2.0/preview/sql/permissions/${request.objectType}/${request.objectId}`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.SetResponse;
+        )) as sql.SetResponse;
     }
 
     /**
@@ -487,24 +491,24 @@ export class DbsqlPermissionsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async set(
-        request: model.SetRequest,
+        request: sql.SetRequest,
         @context context?: Context
-    ): Promise<model.SetResponse> {
+    ): Promise<sql.SetResponse> {
         return await this._set(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _transferOwnership(
-        request: model.TransferOwnershipRequest,
+        request: sql.TransferOwnershipRequest,
         @context context?: Context
-    ): Promise<model.Success> {
+    ): Promise<sql.Success> {
         const path = `/api/2.0/preview/sql/permissions/${request.objectType}/${request.objectId}/transfer`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.Success;
+        )) as sql.Success;
     }
 
     /**
@@ -515,9 +519,9 @@ export class DbsqlPermissionsService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async transferOwnership(
-        request: model.TransferOwnershipRequest,
+        request: sql.TransferOwnershipRequest,
         @context context?: Context
-    ): Promise<model.Success> {
+    ): Promise<sql.Success> {
         return await this._transferOwnership(request, context);
     }
 }
@@ -536,23 +540,24 @@ export class QueriesError extends ApiError {
 /**
  * These endpoints are used for CRUD operations on query definitions. Query
  * definitions include the target SQL warehouse, query text, name, description,
- * tags, parameters, and visualizations.
+ * tags, parameters, and visualizations. Queries can be scheduled using the
+ * `sql_task` type of the Jobs API, e.g. :method:jobs/create.
  */
 export class QueriesService {
     constructor(readonly client: ApiClient) {}
 
     @withLogContext(ExposedLoggers.SDK)
     private async _create(
-        request: model.QueryPostContent,
+        request: sql.QueryPostContent,
         @context context?: Context
-    ): Promise<model.Query> {
+    ): Promise<sql.Query> {
         const path = "/api/2.0/preview/sql/queries";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.Query;
+        )) as sql.Query;
     }
 
     /**
@@ -570,24 +575,24 @@ export class QueriesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
-        request: model.QueryPostContent,
+        request: sql.QueryPostContent,
         @context context?: Context
-    ): Promise<model.Query> {
+    ): Promise<sql.Query> {
         return await this._create(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _delete(
-        request: model.DeleteQueryRequest,
+        request: sql.DeleteQueryRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/preview/sql/queries/${request.query_id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -599,24 +604,24 @@ export class QueriesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
-        request: model.DeleteQueryRequest,
+        request: sql.DeleteQueryRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._delete(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.GetQueryRequest,
+        request: sql.GetQueryRequest,
         @context context?: Context
-    ): Promise<model.Query> {
+    ): Promise<sql.Query> {
         const path = `/api/2.0/preview/sql/queries/${request.query_id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.Query;
+        )) as sql.Query;
     }
 
     /**
@@ -627,24 +632,24 @@ export class QueriesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        request: model.GetQueryRequest,
+        request: sql.GetQueryRequest,
         @context context?: Context
-    ): Promise<model.Query> {
+    ): Promise<sql.Query> {
         return await this._get(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _list(
-        request: model.ListQueriesRequest,
+        request: sql.ListQueriesRequest,
         @context context?: Context
-    ): Promise<model.QueryList> {
+    ): Promise<sql.QueryList> {
         const path = "/api/2.0/preview/sql/queries";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.QueryList;
+        )) as sql.QueryList;
     }
 
     /**
@@ -655,13 +660,12 @@ export class QueriesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async *list(
-        request: model.ListQueriesRequest,
+        request: sql.ListQueriesRequest,
         @context context?: Context
-    ): AsyncIterable<model.Query> {
+    ): AsyncIterable<sql.Query> {
         // deduplicate items that may have been added during iteration
         const seen: Record<string, boolean> = {};
         request.page = 1; // start iterating from the first page
-
         while (true) {
             const response = await this._list(request, context);
             if (
@@ -687,22 +691,23 @@ export class QueriesService {
                 yield v;
             }
 
+            // paginate by increments of 1
             request.page += 1;
         }
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _restore(
-        request: model.RestoreQueryRequest,
+        request: sql.RestoreQueryRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/preview/sql/queries/trash/${request.query_id}`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -713,24 +718,24 @@ export class QueriesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async restore(
-        request: model.RestoreQueryRequest,
+        request: sql.RestoreQueryRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._restore(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _update(
-        request: model.QueryEditContent,
+        request: sql.QueryEditContent,
         @context context?: Context
-    ): Promise<model.Query> {
+    ): Promise<sql.Query> {
         const path = `/api/2.0/preview/sql/queries/${request.query_id}`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.Query;
+        )) as sql.Query;
     }
 
     /**
@@ -742,9 +747,9 @@ export class QueriesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async update(
-        request: model.QueryEditContent,
+        request: sql.QueryEditContent,
         @context context?: Context
-    ): Promise<model.Query> {
+    ): Promise<sql.Query> {
         return await this._update(request, context);
     }
 }
@@ -768,16 +773,16 @@ export class QueryHistoryService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _list(
-        request: model.ListQueryHistoryRequest,
+        request: sql.ListQueryHistoryRequest,
         @context context?: Context
-    ): Promise<model.ListQueriesResponse> {
+    ): Promise<sql.ListQueriesResponse> {
         const path = "/api/2.0/sql/history/queries";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListQueriesResponse;
+        )) as sql.ListQueriesResponse;
     }
 
     /**
@@ -789,9 +794,9 @@ export class QueryHistoryService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async *list(
-        request: model.ListQueryHistoryRequest,
+        request: sql.ListQueryHistoryRequest,
         @context context?: Context
-    ): AsyncIterable<model.QueryInfo> {
+    ): AsyncIterable<sql.QueryInfo> {
         while (true) {
             const response = await this._list(request, context);
             if (
@@ -899,16 +904,23 @@ export class StatementExecutionError extends ApiError {
  *
  * **Fetching result data: format and disposition**
  *
- * Result data from statement execution is available in two formats: JSON, and
- * [Apache Arrow Columnar]. Statements producing a result set smaller than 16 MiB
- * can be fetched as `format=JSON_ARRAY`, using the `disposition=INLINE`. When a
- * statement executed in `INLINE` disposition exceeds this limit, the execution
- * is aborted, and no result can be fetched. Using `format=ARROW_STREAM` and
- * `disposition=EXTERNAL_LINKS` allows large result sets, and with higher
- * throughput.
+ * To specify the result data format, set the `format` field to `JSON_ARRAY`
+ * (JSON), `ARROW_STREAM` ([Apache Arrow Columnar]), or `CSV`.
  *
- * The API uses defaults of `format=JSON_ARRAY` and `disposition=INLINE`. `We
- * advise explicitly setting format and disposition in all production use cases.
+ * You can also configure how to fetch the result data in two different modes by
+ * setting the `disposition` field to `INLINE` or `EXTERNAL_LINKS`.
+ *
+ * The `INLINE` disposition can only be used with the `JSON_ARRAY` format and
+ * allows results up to 16 MiB. When a statement executed with `INLINE`
+ * disposition exceeds this limit, the execution is aborted, and no result can be
+ * fetched.
+ *
+ * The `EXTERNAL_LINKS` disposition allows fetching large result sets in
+ * `JSON_ARRAY`, `ARROW_STREAM` and `CSV` formats, and with higher throughput.
+ *
+ * The API uses defaults of `format=JSON_ARRAY` and `disposition=INLINE`.
+ * Databricks recommends that you explicit setting the format and the disposition
+ * for all production use cases.
  *
  * **Statement response: statement_id, status, manifest, and result**
  *
@@ -996,16 +1008,11 @@ export class StatementExecutionError extends ApiError {
  * to service, and similarly. - After a statement has been submitted and a
  * statement_id is returned, that statement's status and result will
  * automatically close after either of 2 conditions: - The last result chunk is
- * fetched (or resolved to an external link). - Ten (10) minutes pass with no
- * calls to get status or fetch result data. Best practice: in asynchronous
- * clients, poll for status regularly (and with backoff) to keep the statement
- * open and alive. - After a `CANCEL` or `CLOSE` operation, the statement will no
- * longer be visible from the API which means that a subsequent poll request may
- * return an HTTP 404 NOT FOUND error. - After fetching the last result chunk
- * (including chunk_index=0), the statement is closed; shortly after closure the
- * statement will no longer be visible to the API and so, further calls such as
- * :method:statementexecution/getStatement may return an HTTP 404 NOT FOUND
- * error.
+ * fetched (or resolved to an external link). - One hour passes with no calls to
+ * get the status or fetch the result. Best practice: in asynchronous clients,
+ * poll for status regularly (and with backoff) to keep the statement open and
+ * alive. - After fetching the last result chunk (including chunk_index=0) the
+ * statement is automatically closed.
  *
  * [Apache Arrow Columnar]: https://arrow.apache.org/overview/
  * [Public Preview]: https://docs.databricks.com/release-notes/release-types.html
@@ -1016,16 +1023,16 @@ export class StatementExecutionService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _cancelExecution(
-        request: model.CancelExecutionRequest,
+        request: sql.CancelExecutionRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/sql/statements/${request.statement_id}/cancel`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -1036,24 +1043,24 @@ export class StatementExecutionService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async cancelExecution(
-        request: model.CancelExecutionRequest,
+        request: sql.CancelExecutionRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._cancelExecution(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _executeStatement(
-        request: model.ExecuteStatementRequest,
+        request: sql.ExecuteStatementRequest,
         @context context?: Context
-    ): Promise<model.ExecuteStatementResponse> {
+    ): Promise<sql.ExecuteStatementResponse> {
         const path = "/api/2.0/sql/statements/";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.ExecuteStatementResponse;
+        )) as sql.ExecuteStatementResponse;
     }
 
     /**
@@ -1064,74 +1071,78 @@ export class StatementExecutionService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async executeStatement(
-        request: model.ExecuteStatementRequest,
+        request: sql.ExecuteStatementRequest,
         @context context?: Context
-    ): Promise<model.ExecuteStatementResponse> {
+    ): Promise<sql.ExecuteStatementResponse> {
         return await this._executeStatement(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _getStatement(
-        request: model.GetStatementRequest,
+        request: sql.GetStatementRequest,
         @context context?: Context
-    ): Promise<model.GetStatementResponse> {
+    ): Promise<sql.GetStatementResponse> {
         const path = `/api/2.0/sql/statements/${request.statement_id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.GetStatementResponse;
+        )) as sql.GetStatementResponse;
     }
 
     /**
      * Get status, manifest, and result first chunk.
      *
-     * Polls for the statement's status; when `status.state=SUCCEEDED` it will
-     * also return the result manifest and the first chunk of the result data.
+     * This request can be used to poll for the statement's status. When the
+     * `status.state` field is `SUCCEEDED` it will also return the result
+     * manifest and the first chunk of the result data. When the statement is in
+     * the terminal states `CANCELED`, `CLOSED` or `FAILED`, it returns HTTP 200
+     * with the state set. After at least 12 hours in terminal state, the
+     * statement is removed from the warehouse and further calls will receive an
+     * HTTP 404 response.
      *
      * **NOTE** This call currently may take up to 5 seconds to get the latest
      * status and result.
      */
     @withLogContext(ExposedLoggers.SDK)
     async getStatement(
-        request: model.GetStatementRequest,
+        request: sql.GetStatementRequest,
         @context context?: Context
-    ): Promise<model.GetStatementResponse> {
+    ): Promise<sql.GetStatementResponse> {
         return await this._getStatement(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _getStatementResultChunkN(
-        request: model.GetStatementResultChunkNRequest,
+        request: sql.GetStatementResultChunkNRequest,
         @context context?: Context
-    ): Promise<model.ResultData> {
+    ): Promise<sql.ResultData> {
         const path = `/api/2.0/sql/statements/${request.statement_id}/result/chunks/${request.chunk_index}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ResultData;
+        )) as sql.ResultData;
     }
 
     /**
      * Get result chunk by index.
      *
-     * After statement execution has SUCCEEDED, result data can be fetched by
-     * chunks.
-     *
-     * The first chunk (`chunk_index=0`) is typically fetched through
-     * `getStatementResult`, and subsequent chunks with this call. The response
-     * structure is identical to the nested `result` element described in
-     * getStatementResult, and similarly includes `next_chunk_index` and
-     * `next_chunk_internal_link` for simple iteration through the result set.
+     * After the statement execution has `SUCCEEDED`, the result data can be
+     * fetched by chunks. Whereas the first chuck with `chunk_index=0` is
+     * typically fetched through a `get status` request, subsequent chunks can be
+     * fetched using a `get result` request. The response structure is identical
+     * to the nested `result` element described in the `get status` request, and
+     * similarly includes the `next_chunk_index` and `next_chunk_internal_link`
+     * fields for simple iteration through the result set.
      */
     @withLogContext(ExposedLoggers.SDK)
     async getStatementResultChunkN(
-        request: model.GetStatementResultChunkNRequest,
+        request: sql.GetStatementResultChunkNRequest,
         @context context?: Context
-    ): Promise<model.ResultData> {
+    ): Promise<sql.ResultData> {
         return await this._getStatementResultChunkN(request, context);
     }
 }
@@ -1157,16 +1168,16 @@ export class WarehousesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _create(
-        request: model.CreateWarehouseRequest,
+        request: sql.CreateWarehouseRequest,
         @context context?: Context
-    ): Promise<model.CreateWarehouseResponse> {
+    ): Promise<sql.CreateWarehouseResponse> {
         const path = "/api/2.0/sql/warehouses";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.CreateWarehouseResponse;
+        )) as sql.CreateWarehouseResponse;
     }
 
     /**
@@ -1176,11 +1187,9 @@ export class WarehousesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
-        createWarehouseRequest: model.CreateWarehouseRequest,
+        createWarehouseRequest: sql.CreateWarehouseRequest,
         @context context?: Context
-    ): Promise<
-        Waiter<model.CreateWarehouseResponse, model.GetWarehouseResponse>
-    > {
+    ): Promise<Waiter<sql.CreateWarehouseResponse, sql.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
         const createWarehouseResponse = await this._create(
@@ -1194,7 +1203,7 @@ export class WarehousesService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.GetWarehouseResponse>({
+            return await retry<sql.GetWarehouseResponse>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.get(
@@ -1245,16 +1254,16 @@ export class WarehousesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _delete(
-        request: model.DeleteWarehouseRequest,
+        request: sql.DeleteWarehouseRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/sql/warehouses/${request.id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -1264,69 +1273,24 @@ export class WarehousesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
-        deleteWarehouseRequest: model.DeleteWarehouseRequest,
+        request: sql.DeleteWarehouseRequest,
         @context context?: Context
-    ): Promise<Waiter<model.EmptyResponse, model.GetWarehouseResponse>> {
-        const cancellationToken = context?.cancellationToken;
-
-        await this._delete(deleteWarehouseRequest, context);
-
-        return asWaiter(null, async (options) => {
-            options = options || {};
-            options.onProgress =
-                options.onProgress || (async (newPollResponse) => {});
-            const {timeout, onProgress} = options;
-
-            return await retry<model.GetWarehouseResponse>({
-                timeout,
-                fn: async () => {
-                    const pollResponse = await this.get(
-                        {
-                            id: deleteWarehouseRequest.id!,
-                        },
-                        context
-                    );
-                    if (cancellationToken?.isCancellationRequested) {
-                        context?.logger?.error(
-                            "Warehouses.deleteAndWait: cancelled"
-                        );
-                        throw new WarehousesError("deleteAndWait", "cancelled");
-                    }
-                    await onProgress(pollResponse);
-                    const status = pollResponse.state;
-                    const statusMessage = pollResponse.health!.summary;
-                    switch (status) {
-                        case "DELETED": {
-                            return pollResponse;
-                        }
-                        default: {
-                            const errorMessage = `failed to reach DELETED state, got ${status}: ${statusMessage}`;
-                            context?.logger?.error(
-                                `Warehouses.deleteAndWait: retrying: ${errorMessage}`
-                            );
-                            throw new WarehousesRetriableError(
-                                "deleteAndWait",
-                                errorMessage
-                            );
-                        }
-                    }
-                },
-            });
-        });
+    ): Promise<EmptyResponse> {
+        return await this._delete(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _edit(
-        request: model.EditWarehouseRequest,
+        request: sql.EditWarehouseRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/sql/warehouses/${request.id}/edit`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -1336,9 +1300,9 @@ export class WarehousesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async edit(
-        editWarehouseRequest: model.EditWarehouseRequest,
+        editWarehouseRequest: sql.EditWarehouseRequest,
         @context context?: Context
-    ): Promise<Waiter<model.EmptyResponse, model.GetWarehouseResponse>> {
+    ): Promise<Waiter<EmptyResponse, sql.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
         await this._edit(editWarehouseRequest, context);
@@ -1349,7 +1313,7 @@ export class WarehousesService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.GetWarehouseResponse>({
+            return await retry<sql.GetWarehouseResponse>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.get(
@@ -1400,16 +1364,16 @@ export class WarehousesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.GetWarehouseRequest,
+        request: sql.GetWarehouseRequest,
         @context context?: Context
-    ): Promise<model.GetWarehouseResponse> {
+    ): Promise<sql.GetWarehouseResponse> {
         const path = `/api/2.0/sql/warehouses/${request.id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.GetWarehouseResponse;
+        )) as sql.GetWarehouseResponse;
     }
 
     /**
@@ -1419,9 +1383,9 @@ export class WarehousesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        getWarehouseRequest: model.GetWarehouseRequest,
+        getWarehouseRequest: sql.GetWarehouseRequest,
         @context context?: Context
-    ): Promise<Waiter<model.GetWarehouseResponse, model.GetWarehouseResponse>> {
+    ): Promise<Waiter<sql.GetWarehouseResponse, sql.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
         const getWarehouseResponse = await this._get(
@@ -1435,7 +1399,7 @@ export class WarehousesService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.GetWarehouseResponse>({
+            return await retry<sql.GetWarehouseResponse>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.get(
@@ -1487,14 +1451,14 @@ export class WarehousesService {
     @withLogContext(ExposedLoggers.SDK)
     private async _getWorkspaceWarehouseConfig(
         @context context?: Context
-    ): Promise<model.GetWorkspaceWarehouseConfigResponse> {
+    ): Promise<sql.GetWorkspaceWarehouseConfigResponse> {
         const path = "/api/2.0/sql/config/warehouses";
         return (await this.client.request(
             path,
             "GET",
             undefined,
             context
-        )) as model.GetWorkspaceWarehouseConfigResponse;
+        )) as sql.GetWorkspaceWarehouseConfigResponse;
     }
 
     /**
@@ -1506,22 +1470,22 @@ export class WarehousesService {
     @withLogContext(ExposedLoggers.SDK)
     async getWorkspaceWarehouseConfig(
         @context context?: Context
-    ): Promise<model.GetWorkspaceWarehouseConfigResponse> {
+    ): Promise<sql.GetWorkspaceWarehouseConfigResponse> {
         return await this._getWorkspaceWarehouseConfig(context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _list(
-        request: model.ListWarehousesRequest,
+        request: sql.ListWarehousesRequest,
         @context context?: Context
-    ): Promise<model.ListWarehousesResponse> {
+    ): Promise<sql.ListWarehousesResponse> {
         const path = "/api/2.0/sql/warehouses";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListWarehousesResponse;
+        )) as sql.ListWarehousesResponse;
     }
 
     /**
@@ -1531,9 +1495,9 @@ export class WarehousesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async *list(
-        request: model.ListWarehousesRequest,
+        request: sql.ListWarehousesRequest,
         @context context?: Context
-    ): AsyncIterable<model.EndpointInfo> {
+    ): AsyncIterable<sql.EndpointInfo> {
         const response = (await this._list(request, context)).warehouses;
         for (const v of response || []) {
             yield v;
@@ -1542,16 +1506,16 @@ export class WarehousesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _setWorkspaceWarehouseConfig(
-        request: model.SetWorkspaceWarehouseConfigRequest,
+        request: sql.SetWorkspaceWarehouseConfigRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = "/api/2.0/sql/config/warehouses";
         return (await this.client.request(
             path,
             "PUT",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -1562,24 +1526,24 @@ export class WarehousesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async setWorkspaceWarehouseConfig(
-        request: model.SetWorkspaceWarehouseConfigRequest,
+        request: sql.SetWorkspaceWarehouseConfigRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._setWorkspaceWarehouseConfig(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _start(
-        request: model.StartRequest,
+        request: sql.StartRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/sql/warehouses/${request.id}/start`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -1589,9 +1553,9 @@ export class WarehousesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async start(
-        startRequest: model.StartRequest,
+        startRequest: sql.StartRequest,
         @context context?: Context
-    ): Promise<Waiter<model.EmptyResponse, model.GetWarehouseResponse>> {
+    ): Promise<Waiter<EmptyResponse, sql.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
         await this._start(startRequest, context);
@@ -1602,7 +1566,7 @@ export class WarehousesService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.GetWarehouseResponse>({
+            return await retry<sql.GetWarehouseResponse>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.get(
@@ -1653,16 +1617,16 @@ export class WarehousesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _stop(
-        request: model.StopRequest,
+        request: sql.StopRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/sql/warehouses/${request.id}/stop`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -1672,9 +1636,9 @@ export class WarehousesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async stop(
-        stopRequest: model.StopRequest,
+        stopRequest: sql.StopRequest,
         @context context?: Context
-    ): Promise<Waiter<model.EmptyResponse, model.GetWarehouseResponse>> {
+    ): Promise<Waiter<EmptyResponse, sql.GetWarehouseResponse>> {
         const cancellationToken = context?.cancellationToken;
 
         await this._stop(stopRequest, context);
@@ -1685,7 +1649,7 @@ export class WarehousesService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.GetWarehouseResponse>({
+            return await retry<sql.GetWarehouseResponse>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.get(

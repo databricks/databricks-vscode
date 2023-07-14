@@ -17,9 +17,9 @@ export class AccountClient {
     {{.Comment "* " 80}}
     */    
     readonly {{if eq .Package.Name "scim" -}}
-			{{.Name | trimPrefix "Account" | lowerFirst }} 
-		{{- else}}{{.CamelName}}{{end}}: {{.Package.Name}}.{{.PascalName}}Service;
-    {{end -}}{{end}}   
+        {{.Name | trimPrefix "Account" | lowerFirst }} 
+        {{- else}}{{.CamelName}}{{end}}: {{.Package.Name}}.{{.PascalName}}Service;
+    {{end -}}{{end}}
 
     constructor(config: ConfigOptions | Config, options: ClientOptions = {}) {
         if (!(config instanceof Config)) {

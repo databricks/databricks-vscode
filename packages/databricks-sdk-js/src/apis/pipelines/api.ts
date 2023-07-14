@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-
 // Code generated from OpenAPI specs by Databricks SDK Generator. DO NOT EDIT.
 
+/**
+ * The Delta Live Tables API allows you to create, edit, delete, start, and view details about pipelines.
+ */
+
 import {ApiClient} from "../../api-client";
-import * as model from "./model";
+import * as pipelines from "./model";
+import {EmptyResponse} from "../../types";
 import Time from "../../retries/Time";
 import retry from "../../retries/retries";
 import {CancellationToken} from "../../types";
@@ -11,6 +15,8 @@ import {ApiError, ApiRetriableError} from "../apiError";
 import {context, Context} from "../../context";
 import {ExposedLoggers, withLogContext} from "../../logging";
 import {Waiter, asWaiter} from "../../wait";
+
+import * as compute from "../compute";
 
 export class PipelinesRetriableError extends ApiRetriableError {
     constructor(method: string, message?: string) {
@@ -44,16 +50,16 @@ export class PipelinesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _create(
-        request: model.CreatePipeline,
+        request: pipelines.CreatePipeline,
         @context context?: Context
-    ): Promise<model.CreatePipelineResponse> {
+    ): Promise<pipelines.CreatePipelineResponse> {
         const path = "/api/2.0/pipelines";
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.CreatePipelineResponse;
+        )) as pipelines.CreatePipelineResponse;
     }
 
     /**
@@ -65,24 +71,24 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async create(
-        request: model.CreatePipeline,
+        request: pipelines.CreatePipeline,
         @context context?: Context
-    ): Promise<model.CreatePipelineResponse> {
+    ): Promise<pipelines.CreatePipelineResponse> {
         return await this._create(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _delete(
-        request: model.Delete,
+        request: pipelines.DeletePipelineRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/pipelines/${request.pipeline_id}`;
         return (await this.client.request(
             path,
             "DELETE",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -92,24 +98,24 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async delete(
-        request: model.Delete,
+        request: pipelines.DeletePipelineRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._delete(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _get(
-        request: model.Get,
+        request: pipelines.GetPipelineRequest,
         @context context?: Context
-    ): Promise<model.GetPipelineResponse> {
+    ): Promise<pipelines.GetPipelineResponse> {
         const path = `/api/2.0/pipelines/${request.pipeline_id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.GetPipelineResponse;
+        )) as pipelines.GetPipelineResponse;
     }
 
     /**
@@ -117,12 +123,17 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async get(
-        get: model.Get,
+        getPipelineRequest: pipelines.GetPipelineRequest,
         @context context?: Context
-    ): Promise<Waiter<model.GetPipelineResponse, model.GetPipelineResponse>> {
+    ): Promise<
+        Waiter<pipelines.GetPipelineResponse, pipelines.GetPipelineResponse>
+    > {
         const cancellationToken = context?.cancellationToken;
 
-        const getPipelineResponse = await this._get(get, context);
+        const getPipelineResponse = await this._get(
+            getPipelineRequest,
+            context
+        );
 
         return asWaiter(getPipelineResponse, async (options) => {
             options = options || {};
@@ -130,7 +141,7 @@ export class PipelinesService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.GetPipelineResponse>({
+            return await retry<pipelines.GetPipelineResponse>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.get(
@@ -180,16 +191,16 @@ export class PipelinesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _getUpdate(
-        request: model.GetUpdate,
+        request: pipelines.GetUpdateRequest,
         @context context?: Context
-    ): Promise<model.GetUpdateResponse> {
+    ): Promise<pipelines.GetUpdateResponse> {
         const path = `/api/2.0/pipelines/${request.pipeline_id}/updates/${request.update_id}`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.GetUpdateResponse;
+        )) as pipelines.GetUpdateResponse;
     }
 
     /**
@@ -199,24 +210,24 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async getUpdate(
-        request: model.GetUpdate,
+        request: pipelines.GetUpdateRequest,
         @context context?: Context
-    ): Promise<model.GetUpdateResponse> {
+    ): Promise<pipelines.GetUpdateResponse> {
         return await this._getUpdate(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _listPipelineEvents(
-        request: model.ListPipelineEvents,
+        request: pipelines.ListPipelineEventsRequest,
         @context context?: Context
-    ): Promise<model.ListPipelineEventsResponse> {
+    ): Promise<pipelines.ListPipelineEventsResponse> {
         const path = `/api/2.0/pipelines/${request.pipeline_id}/events`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListPipelineEventsResponse;
+        )) as pipelines.ListPipelineEventsResponse;
     }
 
     /**
@@ -226,9 +237,9 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async *listPipelineEvents(
-        request: model.ListPipelineEvents,
+        request: pipelines.ListPipelineEventsRequest,
         @context context?: Context
-    ): AsyncIterable<model.PipelineEvent> {
+    ): AsyncIterable<pipelines.PipelineEvent> {
         while (true) {
             const response = await this._listPipelineEvents(request, context);
             if (
@@ -255,16 +266,16 @@ export class PipelinesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _listPipelines(
-        request: model.ListPipelines,
+        request: pipelines.ListPipelinesRequest,
         @context context?: Context
-    ): Promise<model.ListPipelinesResponse> {
+    ): Promise<pipelines.ListPipelinesResponse> {
         const path = "/api/2.0/pipelines";
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListPipelinesResponse;
+        )) as pipelines.ListPipelinesResponse;
     }
 
     /**
@@ -274,9 +285,9 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async *listPipelines(
-        request: model.ListPipelines,
+        request: pipelines.ListPipelinesRequest,
         @context context?: Context
-    ): AsyncIterable<model.PipelineStateInfo> {
+    ): AsyncIterable<pipelines.PipelineStateInfo> {
         while (true) {
             const response = await this._listPipelines(request, context);
             if (
@@ -303,16 +314,16 @@ export class PipelinesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _listUpdates(
-        request: model.ListUpdates,
+        request: pipelines.ListUpdatesRequest,
         @context context?: Context
-    ): Promise<model.ListUpdatesResponse> {
+    ): Promise<pipelines.ListUpdatesResponse> {
         const path = `/api/2.0/pipelines/${request.pipeline_id}/updates`;
         return (await this.client.request(
             path,
             "GET",
             request,
             context
-        )) as model.ListUpdatesResponse;
+        )) as pipelines.ListUpdatesResponse;
     }
 
     /**
@@ -322,24 +333,24 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async listUpdates(
-        request: model.ListUpdates,
+        request: pipelines.ListUpdatesRequest,
         @context context?: Context
-    ): Promise<model.ListUpdatesResponse> {
+    ): Promise<pipelines.ListUpdatesResponse> {
         return await this._listUpdates(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _reset(
-        request: model.Reset,
+        request: pipelines.ResetRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/pipelines/${request.pipeline_id}/reset`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -349,12 +360,12 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async reset(
-        reset: model.Reset,
+        resetRequest: pipelines.ResetRequest,
         @context context?: Context
-    ): Promise<Waiter<model.EmptyResponse, model.GetPipelineResponse>> {
+    ): Promise<Waiter<EmptyResponse, pipelines.GetPipelineResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this._reset(reset, context);
+        await this._reset(resetRequest, context);
 
         return asWaiter(null, async (options) => {
             options = options || {};
@@ -362,12 +373,12 @@ export class PipelinesService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.GetPipelineResponse>({
+            return await retry<pipelines.GetPipelineResponse>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.get(
                         {
-                            pipeline_id: reset.pipeline_id!,
+                            pipeline_id: resetRequest.pipeline_id!,
                         },
                         context
                     );
@@ -412,16 +423,16 @@ export class PipelinesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _startUpdate(
-        request: model.StartUpdate,
+        request: pipelines.StartUpdate,
         @context context?: Context
-    ): Promise<model.StartUpdateResponse> {
+    ): Promise<pipelines.StartUpdateResponse> {
         const path = `/api/2.0/pipelines/${request.pipeline_id}/updates`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.StartUpdateResponse;
+        )) as pipelines.StartUpdateResponse;
     }
 
     /**
@@ -431,24 +442,24 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async startUpdate(
-        request: model.StartUpdate,
+        request: pipelines.StartUpdate,
         @context context?: Context
-    ): Promise<model.StartUpdateResponse> {
+    ): Promise<pipelines.StartUpdateResponse> {
         return await this._startUpdate(request, context);
     }
 
     @withLogContext(ExposedLoggers.SDK)
     private async _stop(
-        request: model.Stop,
+        request: pipelines.StopRequest,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/pipelines/${request.pipeline_id}/stop`;
         return (await this.client.request(
             path,
             "POST",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -458,12 +469,12 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async stop(
-        stop: model.Stop,
+        stopRequest: pipelines.StopRequest,
         @context context?: Context
-    ): Promise<Waiter<model.EmptyResponse, model.GetPipelineResponse>> {
+    ): Promise<Waiter<EmptyResponse, pipelines.GetPipelineResponse>> {
         const cancellationToken = context?.cancellationToken;
 
-        await this._stop(stop, context);
+        await this._stop(stopRequest, context);
 
         return asWaiter(null, async (options) => {
             options = options || {};
@@ -471,12 +482,12 @@ export class PipelinesService {
                 options.onProgress || (async (newPollResponse) => {});
             const {timeout, onProgress} = options;
 
-            return await retry<model.GetPipelineResponse>({
+            return await retry<pipelines.GetPipelineResponse>({
                 timeout,
                 fn: async () => {
                     const pollResponse = await this.get(
                         {
-                            pipeline_id: stop.pipeline_id!,
+                            pipeline_id: stopRequest.pipeline_id!,
                         },
                         context
                     );
@@ -521,16 +532,16 @@ export class PipelinesService {
 
     @withLogContext(ExposedLoggers.SDK)
     private async _update(
-        request: model.EditPipeline,
+        request: pipelines.EditPipeline,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         const path = `/api/2.0/pipelines/${request.pipeline_id}`;
         return (await this.client.request(
             path,
             "PUT",
             request,
             context
-        )) as model.EmptyResponse;
+        )) as EmptyResponse;
     }
 
     /**
@@ -540,9 +551,9 @@ export class PipelinesService {
      */
     @withLogContext(ExposedLoggers.SDK)
     async update(
-        request: model.EditPipeline,
+        request: pipelines.EditPipeline,
         @context context?: Context
-    ): Promise<model.EmptyResponse> {
+    ): Promise<EmptyResponse> {
         return await this._update(request, context);
     }
 }

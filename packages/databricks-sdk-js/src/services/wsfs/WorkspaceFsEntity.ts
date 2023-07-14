@@ -12,7 +12,10 @@ import {WorkspaceClient} from "../../WorkspaceClient";
 import {ApiError} from "../../apierr";
 
 export class ObjectInfoValidationError extends Error {
-    constructor(message: string, readonly details: ObjectInfo) {
+    constructor(
+        message: string,
+        readonly details: ObjectInfo
+    ) {
         super(message);
     }
 }

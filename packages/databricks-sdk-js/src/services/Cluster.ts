@@ -11,18 +11,18 @@ import {
 import {CancellationToken} from "../types";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-import {commands, Time, TimeUnits} from "..";
+import {Time, TimeUnits} from "..";
+import {Context, context} from "../context";
+import {ExposedLoggers, withLogContext} from "../logging";
 import {
-    ClusterInfo,
+    ClusterDetails,
     ClusterSource,
     ClustersService,
     DataSecurityMode,
+    Language,
     State,
-} from "../apis/clusters";
-import {Context, context} from "../context";
-import {User} from "../apis/scim";
-import {ExposedLoggers, withLogContext} from "../logging";
-import {PermissionsService} from "../apis/permissions";
+} from "../apis/compute";
+import {PermissionsService, User} from "../apis/iam";
 
 export class ClusterRetriableError extends RetriableError {}
 export class ClusterError extends Error {}
@@ -33,7 +33,7 @@ export class Cluster {
 
     constructor(
         private client: ApiClient,
-        private clusterDetails: ClusterInfo
+        private clusterDetails: ClusterDetails
     ) {
         this.clusterApi = new ClustersService(client);
     }
@@ -122,7 +122,7 @@ export class Cluster {
     get details() {
         return this.clusterDetails;
     }
-    set details(details: ClusterInfo) {
+    set details(details: ClusterDetails) {
         this.clusterDetails = details;
     }
 
@@ -283,7 +283,7 @@ export class Cluster {
 
     async stop(
         token?: CancellationToken,
-        onProgress?: (newPollResponse: ClusterInfo) => Promise<void>
+        onProgress?: (newPollResponse: ClusterDetails) => Promise<void>
     ) {
         this.details = await (
             await this.clusterApi.delete(
@@ -303,7 +303,7 @@ export class Cluster {
     }
 
     async createExecutionContext(
-        language: commands.Language = "python"
+        language: Language = "python"
     ): Promise<ExecutionContext> {
         return await ExecutionContext.create(this.client, this, language);
     }

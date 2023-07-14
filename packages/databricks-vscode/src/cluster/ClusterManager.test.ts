@@ -2,7 +2,7 @@ import {describe} from "mocha";
 import {ClusterManager} from "./ClusterManager";
 import {
     ApiClient,
-    cluster,
+    compute,
     Cluster,
     Time,
     TimeUnits,
@@ -23,7 +23,7 @@ import assert from "assert";
 describe(__filename, async () => {
     let mockedCluster: Cluster;
     let mockedClient: ApiClient;
-    let testClusterDetails: cluster.ClusterInfo;
+    let testClusterDetails: compute.ClusterDetails;
 
     beforeEach(async () => {
         ({testClusterDetails} = await ClusterFixture.getMockTestCluster());
@@ -87,7 +87,7 @@ describe(__filename, async () => {
         await mockedCluster.refresh();
         assert.equal(mockedCluster.state, "TERMINATED");
         interface OnProgContainer {
-            onProgress: (state: cluster.State) => void;
+            onProgress: (state: compute.State) => void;
         }
         const mockOnProgContainer = mock<OnProgContainer>();
         await new ClusterManager(mockedCluster).start(
