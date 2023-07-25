@@ -1,8 +1,11 @@
 import {CliWrapper} from "../cli/CliWrapper";
 import {extensions, Uri} from "vscode";
-import path from "node:path";
+import {workspace, RelativePattern, GlobPattern, Disposable} from "vscode";
+import YAML from "yaml";
 
-export async function generateBundleSchema(cli: CliWrapper) {
+export async function generateBundleSchema(
+    cli: CliWrapper
+): Promise<Disposable> {
     // get freshly generated bundle schema
     const bundleSchema = await cli.getBundleSchema();
 
@@ -10,7 +13,52 @@ export async function generateBundleSchema(cli: CliWrapper) {
     const dabsUriScheme = "dabs";
 
     // URI for bundle root config json schema
-    const rootConfigSchemaUri = `${dabsUriScheme}:///root.json`;
+    const rootConfigSchemaUri = `${dabsUriScheme}:///dabs.json`;
+
+    const folder = workspace.workspaceFolders?.[0];
+    const configFilePattern = new RelativePattern(
+        folder!,
+        "{databricks,bundle}.{yml,yaml}"
+    );
+
+    // file watcher on all YAML files
+    const watcher = workspace.createFileSystemWatcher("**/*.{yml,yaml}");
+    watcher.onDidChange(async () => {
+        await updateFileGlobs();
+    });
+
+    let configFiles = new Set<string>();
+    await updateFileGlobs();
+
+    async function updateFileGlobs() {
+        const fileGlobs: GlobPattern[] = [configFilePattern];
+
+        // find all YAML files that are included in the root config file
+        for (const configFile of await workspace.findFiles(configFilePattern)) {
+            try {
+                const fileContents = await workspace.fs.readFile(configFile);
+                const config = YAML.parse(fileContents.toString());
+                if (config.include) {
+                    fileGlobs.push(
+                        ...config.include.map(
+                            (g: string) => new RelativePattern(folder!, g)
+                        )
+                    );
+                }
+            } catch (e) {
+                // ignore errors
+            }
+        }
+
+        // expand globs to find all config files
+        const newConfigFiles = new Set<string>();
+        for (const glob of fileGlobs) {
+            for (const file of await workspace.findFiles(glob)) {
+                newConfigFiles.add(file.path);
+            }
+        }
+        configFiles = newConfigFiles;
+    }
 
     const extensionYaml = extensions.getExtension("redhat.vscode-yaml");
     if (extensionYaml) {
@@ -21,16 +69,9 @@ export async function generateBundleSchema(cli: CliWrapper) {
         redHatYamlSchemaApi.registerContributor(
             "dabs",
             (resource: string) => {
-                const validFileNames: string[] = [
-                    "databricks.yml",
-                    "databricks.yaml",
-                    "bundle.yml",
-                    "bundle.yaml",
-                ];
-                for (const name of validFileNames) {
-                    if (path.basename(resource) === name) {
-                        return rootConfigSchemaUri;
-                    }
+                const resourceUri = Uri.parse(resource);
+                if (configFiles.has(resourceUri.path)) {
+                    return rootConfigSchemaUri;
                 }
                 return undefined;
             },
@@ -43,4 +84,6 @@ export async function generateBundleSchema(cli: CliWrapper) {
             }
         );
     }
+
+    return watcher;
 }
