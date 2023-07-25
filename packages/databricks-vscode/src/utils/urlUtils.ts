@@ -23,7 +23,7 @@ export function normalizeHost(host: string): URL {
     }
     if (
         !url.hostname.match(
-            /(\.databricks\.azure\.us|\.databricks\.azure\.cn|\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com)$/
+            /(\.databricks\.azure\.us|\.databricks\.azure\.cn|\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com|\.dev\.databricks\.com)$/
         )
     ) {
         throw new Error("Not a Databricks host");
@@ -43,5 +43,7 @@ export function isGcpHost(url: URL): boolean {
 }
 
 export function isAwsHost(url: URL): boolean {
-    return !!url.hostname.match(/\.cloud\.databricks\.com$/);
+    return !!url.hostname.match(
+        /(\.cloud\.databricks\.com|\.dev\.databricks\.com)$/
+    );
 }

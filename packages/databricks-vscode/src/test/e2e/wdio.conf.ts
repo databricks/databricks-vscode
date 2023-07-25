@@ -339,13 +339,17 @@ export const config: Options.Testrunner = {
         for (let i = 0; i < 2; i++) {
             try {
                 await new Promise((resolve, reject) => {
+                    const extensionDependencies =
+                        packageJson.extensionDependencies.flatMap((item) => [
+                            "--install-extension",
+                            item,
+                        ]);
                     execFile(
                         cli,
                         [
                             "--extensions-dir",
                             EXTENSION_DIR,
-                            "--install-extension",
-                            "ms-python.python",
+                            ...extensionDependencies,
                             "--install-extension",
                             VSIX_PATH,
                             "--force",

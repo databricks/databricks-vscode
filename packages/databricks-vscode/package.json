@@ -6,7 +6,7 @@
     "license": "LicenseRef-LICENSE",
     "version": "1.1.0",
     "engines": {
-        "vscode": "^1.76.0"
+        "vscode": "^1.78.0"
     },
     "categories": [
         "Data Science",
@@ -638,7 +638,8 @@
         ]
     },
     "extensionDependencies": [
-        "ms-python.python"
+        "ms-python.python",
+        "ms-toolsai.jupyter"
     ],
     "vsce": {
         "dependencies": false,

@@ -19,6 +19,7 @@ import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {PackageMetaData} from "../utils/packageJsonUtils";
 import {RWLock} from "../locking";
+import {EnvVarGenerators} from "../utils";
 
 export const TASK_SYNC_TYPE = {
     syncFull: "sync-full",
@@ -285,21 +286,6 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
             );
         }
 
-        // Pass through proxy settings to child process.
-        const proxySettings: {[key: string]: string | undefined} = {
-            /* eslint-disable @typescript-eslint/naming-convention */
-            HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy,
-            HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy,
-            /* eslint-enable @typescript-eslint/naming-convention */
-        };
-
-        // Remove undefined keys.
-        Object.keys(proxySettings).forEach((key) => {
-            if (proxySettings[key] === undefined) {
-                delete proxySettings[key];
-            }
-        });
-
         return {
             cwd: workspacePath,
             env: {
@@ -308,11 +294,9 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 DATABRICKS_CLI_UPSTREAM_VERSION: this.packageMetadata.version,
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
-                DATABRICKS_HOST: dbWorkspace.host.toString(),
-                DATABRICKS_AUTH_TYPE: "metadata-service",
-                DATABRICKS_METADATA_SERVICE_URL:
-                    this.connection.metadataServiceUrl || "",
-                ...proxySettings,
+                ...EnvVarGenerators.removeUndefinedKeys(
+                    EnvVarGenerators.getCommonDatabricksEnvVars(this.connection)
+                ),
                 /* eslint-enable @typescript-eslint/naming-convention */
             },
         } as SpawnOptions;
