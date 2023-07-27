@@ -417,7 +417,12 @@ export async function activate(
     context.subscriptions.push(
         telemetry.registerCommand(
             "databricks.run.runEditorContents",
-            runCommands.runEditorContentsCommand(),
+            runCommands.runEditorContentsCommand(false),
+            runCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.run.debugEditorContents",
+            runCommands.runEditorContentsCommand(true),
             runCommands
         ),
         telemetry.registerCommand(

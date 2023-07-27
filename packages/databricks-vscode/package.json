@@ -160,6 +160,13 @@
                 "icon": "$(play)"
             },
             {
+                "command": "databricks.run.debugEditorContents",
+                "title": "Upload and Debug File on Databricks",
+                "category": "Databricks",
+                "enablement": "!inDebugMode",
+                "icon": "$(play)"
+            },
+            {
                 "command": "databricks.quickstart.open",
                 "title": "Show Quickstart",
                 "category": "Databricks"
@@ -367,6 +374,11 @@
                     "group": "navigation@1"
                 },
                 {
+                    "command": "databricks.run.debugEditorContents",
+                    "when": "resourceLangId == python",
+                    "group": "navigation@1"
+                },
+                {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb",
                     "group": "navigation@1"
@@ -378,6 +390,9 @@
                     "when": "resourceLangId == python"
                 },
                 {
+                    "command": "databricks.run.debugEditorContents",
+                    "when": "resourceLangId == python"
+                },                {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python || resourceExtname == .ipynb"
                 },
@@ -401,6 +416,10 @@
             "explorer/context": [
                 {
                     "command": "databricks.run.runEditorContents",
+                    "when": "resourceLangId == python"
+                },
+                {
+                    "command": "databricks.run.debugEditorContents",
                     "when": "resourceLangId == python"
                 },
                 {
@@ -467,6 +486,11 @@
                                     "type": "string"
                                 },
                                 "description": "Environment variables."
+                            },
+                            "debug": {
+                                "type": "boolean",
+                                "default": false,
+                                "description": "Enable/disable debugging."
                             }
                         }
                     }

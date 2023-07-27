@@ -13,7 +13,7 @@ export class RunCommands {
     /**
      * Run a Python file using the command execution API
      */
-    runEditorContentsCommand() {
+    runEditorContentsCommand(startDebugger: boolean) {
         return async (resource: Uri) => {
             const targetResource = this.getTargetResource(resource);
             if (targetResource) {
@@ -37,9 +37,12 @@ export class RunCommands {
                     undefined,
                     {
                         type: "databricks",
-                        name: "Upload and Run File on Databricks",
+                        name: startDebugger
+                            ? "Upload and Debug File on Databricks"
+                            : "Upload and Run File on Databricks",
                         request: "launch",
                         program: targetResource.fsPath,
+                        debug: startDebugger,
                     },
                     {noDebug: true}
                 );

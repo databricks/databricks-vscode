@@ -108,7 +108,8 @@ export class DatabricksRuntime implements Disposable {
     public async start(
         program: string,
         args: Array<string>,
-        envVars: EnvVars
+        envVars: EnvVars,
+        shouldDebug: boolean = false
     ): Promise<void> {
         const start = Date.now();
 
@@ -219,7 +220,8 @@ export class DatabricksRuntime implements Disposable {
                     program,
                     args,
                     syncDestination,
-                    envVars
+                    envVars,
+                    shouldDebug
                 ),
                 undefined,
                 this.token,
@@ -293,7 +295,8 @@ export class DatabricksRuntime implements Disposable {
         program: string,
         args: Array<string>,
         syncDestination: SyncDestinationMapper,
-        envVars: EnvVars
+        envVars: EnvVars,
+        shouldDebug: boolean = false
     ): Promise<string> {
         const bootstrapPath = Uri.joinPath(
             this.context.extensionUri,
@@ -340,6 +343,13 @@ export class DatabricksRuntime implements Disposable {
             "env = {}",
             `env = ${JSON.stringify(envVars)}`
         );
+
+        if (shouldDebug) {
+            bootstrap = bootstrap.replace(
+                "start_debugger = False",
+                "start_debugger = True"
+            );
+        }
 
         return bootstrap;
     }
