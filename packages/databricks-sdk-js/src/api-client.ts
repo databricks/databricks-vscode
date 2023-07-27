@@ -9,6 +9,7 @@ import retry, {RetriableError} from "./retries/retries";
 import Time, {TimeUnits} from "./retries/Time";
 import {HttpError, parseErrorFromResponse} from "./apierr";
 import {Headers, fetch, AbortController} from "./fetch";
+import {URLSearchParams} from "node:url";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sdkVersion = require("../package.json").version;
@@ -88,6 +89,40 @@ export class ApiClient {
         return pairs.join(" ");
     }
 
+    private static flattenRecord(
+        obj: Record<string, any>
+    ): Record<string, any> {
+        const result: Record<string, string> = {};
+        for (const [key, value] of Object.entries(obj)) {
+            // if value is a dictionary, flatten it
+            if (typeof value === "object" && !Array.isArray(value)) {
+                const flat = ApiClient.flattenRecord(value);
+                for (const [subKey, subValue] of Object.entries(flat)) {
+                    result[`${key}.${subKey}`] = subValue;
+                }
+            } else {
+                result[key] = value;
+            }
+        }
+        return result;
+    }
+
+    static prepareQueryParams(params: any): URLSearchParams {
+        const flat = ApiClient.flattenRecord(params);
+        const result = new URLSearchParams();
+        for (const [key, value] of Object.entries(flat)) {
+            // if value is an array, append each element separately
+            if (Array.isArray(value)) {
+                for (const element of value) {
+                    result.append(key, element);
+                }
+            } else {
+                result.append(key, value);
+            }
+        }
+        return result;
+    }
+
     @withLogContext(ExposedLoggers.SDK)
     async request(
         path: string,
@@ -116,7 +151,7 @@ export class ApiClient {
             if (method === "POST") {
                 options.body = JSON.stringify(payload);
             } else {
-                url.search = new URLSearchParams(payload).toString();
+                url.search = ApiClient.prepareQueryParams(payload).toString();
             }
         }
 

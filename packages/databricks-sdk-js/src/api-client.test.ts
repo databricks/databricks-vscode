@@ -29,4 +29,18 @@ describe(__filename, () => {
             )} os/${process.platform} auth/pat`
         );
     });
+
+    it("should properly flatten query parameters", () => {
+        const params = ApiClient.prepareQueryParams({
+            a: 1,
+            b: "2",
+            c: {
+                d: 3,
+                e: {
+                    f: [4, 5],
+                },
+            },
+        });
+        assert.deepEqual(params.toString(), "a=1&b=2&c.d=3&c.e.f=4&c.e.f=5");
+    });
 });
