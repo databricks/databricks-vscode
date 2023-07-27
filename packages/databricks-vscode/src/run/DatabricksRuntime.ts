@@ -7,11 +7,13 @@
 import {
     CancellationTokenSource,
     commands,
+    debug,
     Disposable,
     Event,
     EventEmitter,
     ExtensionContext,
     Uri,
+    workspace,
 } from "vscode";
 
 import {
@@ -214,6 +216,10 @@ export class DatabricksRuntime implements Disposable {
                 )} ...\n`
             );
 
+            if (shouldDebug) {
+                setTimeout(this.attachDebugger.bind(this), 3000);
+            }
+
             this.state = "EXECUTING";
             const response = await executionContext.execute(
                 await this.compileCommandString(
@@ -289,6 +295,40 @@ export class DatabricksRuntime implements Disposable {
         } finally {
             this._onDidEndEmitter.fire();
         }
+    }
+
+    private async attachDebugger() {
+        // TODO start tunnel process
+        const mapper = this.connection.syncDestinationMapper;
+        if (!mapper) {
+            return;
+        }
+
+        const workspaceFolder =
+            workspace.workspaceFolders && workspace.workspaceFolders[0];
+
+        if (!workspaceFolder) {
+            return;
+        }
+
+        const debugConfig = {
+            type: "python",
+            name: "Databricks: Remote Attach Debugger",
+            request: "attach",
+            connect: {
+                host: "localhost",
+                port: 5678,
+            },
+            pathMappings: [
+                {
+                    localRoot: workspaceFolder.uri.path,
+                    remoteRoot: mapper.remoteUri.workspacePrefixPath,
+                },
+            ],
+            justMyCode: true,
+        };
+
+        debug.startDebugging(workspaceFolder, debugConfig);
     }
 
     private async compileCommandString(

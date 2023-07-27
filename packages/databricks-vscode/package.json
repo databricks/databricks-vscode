@@ -392,7 +392,8 @@
                 {
                     "command": "databricks.run.debugEditorContents",
                     "when": "resourceLangId == python"
-                },                {
+                },
+                {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python || resourceExtname == .ipynb"
                 },
