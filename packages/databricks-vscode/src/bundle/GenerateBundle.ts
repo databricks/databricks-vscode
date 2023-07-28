@@ -16,14 +16,22 @@ export async function generateBundleSchema(
     const rootConfigSchemaUri = `${dabsUriScheme}:///dabs.json`;
 
     const folder = workspace.workspaceFolders?.[0];
+    if (!folder) {
+        throw new Error("No workspace folder found");
+    }
+
     const configFilePattern = new RelativePattern(
-        folder!,
+        folder,
         "{databricks,bundle}.{yml,yaml}"
     );
 
     // file watcher on all YAML files
-    const watcher = workspace.createFileSystemWatcher("**/*.{yml,yaml}");
-    watcher.onDidChange(async () => {
+    const yamlWatcher = workspace.createFileSystemWatcher("**/*.{yml,yaml}");
+    yamlWatcher.onDidCreate(async () => {
+        await updateFileGlobs();
+    });
+    const configWatcher = workspace.createFileSystemWatcher(configFilePattern);
+    configWatcher.onDidChange(async () => {
         await updateFileGlobs();
     });
 
@@ -85,5 +93,10 @@ export async function generateBundleSchema(
         );
     }
 
-    return watcher;
+    return {
+        dispose: () => {
+            yamlWatcher.dispose();
+            configWatcher.dispose();
+        },
+    };
 }
