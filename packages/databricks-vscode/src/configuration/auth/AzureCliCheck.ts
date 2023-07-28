@@ -58,6 +58,11 @@ export class AzureCliCheck implements Disposable {
                         type: "next",
                         next: "loginAzureCli",
                     };
+                } else if (result.expired) {
+                    return {
+                        type: "next",
+                        next: "loginAzureCli",
+                    };
                 } else if (result.aud) {
                     this.azureLoginAppId = result.aud;
                     return {
@@ -164,6 +169,7 @@ export class AzureCliCheck implements Disposable {
         iss?: string;
         aud?: string;
         canLogin: boolean;
+        expired: boolean;
         error?: Error;
     }> {
         const workspaceClient = new WorkspaceClient(
@@ -188,6 +194,18 @@ export class AzureCliCheck implements Disposable {
                 return {
                     iss: m[1],
                     canLogin: false,
+                    expired: false,
+                };
+            }
+
+            m = e.message.match(
+                /(Interactive authentication is needed). Please run:\naz login( --scope ([a-z0-9-]+?)\/\.default)?\n/s
+            );
+            if (m) {
+                return {
+                    canLogin: false,
+                    error: new Error(m[1]),
+                    expired: true,
                 };
             }
 
@@ -198,12 +216,13 @@ export class AzureCliCheck implements Disposable {
                 return {
                     aud: m[1],
                     canLogin: false,
+                    expired: false,
                 };
             }
 
-            return {canLogin: false, error: e};
+            return {canLogin: false, error: e, expired: false};
         }
-        return {canLogin: true};
+        return {canLogin: true, expired: false};
     }
 
     // check if Azure CLI is installed
