@@ -2,6 +2,15 @@
 
 ## packages/databricks-sdk-js
 
+## <small>0.3.16 (2023-07-31)</small>
+
+-   bump dependency versions (#811) ([7119fd5](https://github.com/databricks/databricks-vscode/commit/7119fd5)), closes [#811](https://github.com/databricks/databricks-vscode/issues/811)
+-   Update api to the latest version (#810) ([64d5455](https://github.com/databricks/databricks-vscode/commit/64d5455)), closes [#810](https://github.com/databricks/databricks-vscode/issues/810)
+
+# Release: v0.3.16
+
+## packages/databricks-sdk-js
+
 ## <small>0.3.16 (2023-07-10)</small>
 
 # Release: v0.3.16

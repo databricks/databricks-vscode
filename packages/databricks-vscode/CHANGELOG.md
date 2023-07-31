@@ -1,3 +1,17 @@
+# Release: v1.1.1
+
+## packages/databricks-vscode
+
+## <small>1.1.1 (2023-07-31)</small>
+
+-   Add explicit dependency on ms jupyter extension (#814) ([86d991f](https://github.com/databricks/databricks-vscode/commit/86d991f)), closes [#814](https://github.com/databricks/databricks-vscode/issues/814)
+-   Add support for test shards (#817) ([6a67a75](https://github.com/databricks/databricks-vscode/commit/6a67a75)), closes [#817](https://github.com/databricks/databricks-vscode/issues/817)
+-   bump dependency versions (#811) ([7119fd5](https://github.com/databricks/databricks-vscode/commit/7119fd5)), closes [#811](https://github.com/databricks/databricks-vscode/issues/811)
+-   Fix linting and tests (#813) ([db55c27](https://github.com/databricks/databricks-vscode/commit/db55c27)), closes [#813](https://github.com/databricks/databricks-vscode/issues/813)
+-   Handle az CLI token refresh (#820) ([bfea2ec](https://github.com/databricks/databricks-vscode/commit/bfea2ec)), closes [#820](https://github.com/databricks/databricks-vscode/issues/820)
+-   Unify most env vars to 1 location (#809) ([96adb86](https://github.com/databricks/databricks-vscode/commit/96adb86)), closes [#809](https://github.com/databricks/databricks-vscode/issues/809) [#795](https://github.com/databricks/databricks-vscode/issues/795)
+-   Update api to the latest version (#810) ([64d5455](https://github.com/databricks/databricks-vscode/commit/64d5455)), closes [#810](https://github.com/databricks/databricks-vscode/issues/810)
+
 # Release: v1.1.0
 
 ## packages/databricks-vscode
