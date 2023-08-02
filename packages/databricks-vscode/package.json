@@ -632,6 +632,11 @@
                         "type": "string",
                         "default": "",
                         "description": "Similar to python.envFile. Absolute path to a file containing environment variable definitions."
+                    },
+                    "databricks.wsfs.rearrangeCells": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable rearranging cells in wrapper files created when using `workspace` as the sync destination. **Note:** It is recommended to NOT disable this setting. If you do disable it, you will need to manually handle sys.path for local imports in your notebooks."
                     }
                 }
             }

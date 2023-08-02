@@ -144,4 +144,12 @@ export const workspaceConfigs = {
                 ConfigurationTarget.Workspace
             );
     },
+
+    get wsfsRearrangeCells(): boolean {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<boolean>("wsfs.rearrangeCells") ?? true
+        );
+    },
 };
