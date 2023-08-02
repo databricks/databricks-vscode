@@ -114,7 +114,7 @@ export function getProxyEnvVars() {
 }
 
 export function removeUndefinedKeys<
-    T extends Record<string, string | undefined>
+    T extends Record<string, string | undefined>,
 >(envVarMap?: T): T | undefined {
     if (envVarMap === undefined) {
         return;
