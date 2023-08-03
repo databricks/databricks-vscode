@@ -90,16 +90,39 @@ export function getCommonDatabricksEnvVars(
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
-export function getDbConnectEnvVars(
+async function getPatToken(connectionManager: ConnectionManager) {
+    const headers: Record<string, string> = {};
+    await connectionManager.workspaceClient?.apiClient.config.authenticate(
+        headers
+    );
+    return headers["Authorization"]?.split(" ")[1];
+}
+
+async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {
+    const host = connectionManager.databricksWorkspace?.host.authority;
+    const authType =
+        connectionManager.databricksWorkspace?.authProvider.authType;
+    if (host && connectionManager.cluster && authType === "profile") {
+        const pat = await getPatToken(connectionManager);
+        if (pat) {
+            return {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${connectionManager.cluster.id}`,
+            };
+        }
+    }
+}
+
+export async function getDbConnectEnvVars(
     connectionManager: ConnectionManager,
     workspacePath: Uri
 ) {
     const userAgent = getUserAgent(connectionManager);
-
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         SPARK_CONNECT_USER_AGENT: userAgent,
         DATABRICKS_PROJECT_ROOT: workspacePath.fsPath,
+        ...((await getSparkRemoteEnvVar(connectionManager)) || {}),
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }
@@ -114,7 +137,7 @@ export function getProxyEnvVars() {
 }
 
 export function removeUndefinedKeys<
-    T extends Record<string, string | undefined>
+    T extends Record<string, string | undefined>,
 >(envVarMap?: T): T | undefined {
     if (envVarMap === undefined) {
         return;

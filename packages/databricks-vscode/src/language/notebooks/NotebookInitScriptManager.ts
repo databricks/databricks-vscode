@@ -226,10 +226,10 @@ export class NotebookInitScriptManager implements Disposable {
                 ...(EnvVarGenerators.getCommonDatabricksEnvVars(
                     this.connectionManager
                 ) ?? {}),
-                ...(EnvVarGenerators.getDbConnectEnvVars(
+                ...((await EnvVarGenerators.getDbConnectEnvVars(
                     this.connectionManager,
                     this.workspacePath
-                ) ?? {}),
+                )) ?? {}),
                 ...(EnvVarGenerators.getIdeEnvVars() ?? {}),
                 ...((await this.getUserEnvVars()) ?? {}),
             };

@@ -179,10 +179,10 @@ export class DatabricksEnvFileManager implements Disposable {
 
         const data = Object.entries({
             ...(this.getDatabrickseEnvVars() || {}),
-            ...(EnvVarGenerators.getDbConnectEnvVars(
+            ...((await EnvVarGenerators.getDbConnectEnvVars(
                 this.connectionManager,
                 this.workspacePath
-            ) || {}),
+            )) || {}),
             ...this.getIdeEnvVars(),
             ...((await this.getUserEnvVars()) || {}),
             ...(await this.getNotebookEnvVars()),
@@ -219,10 +219,10 @@ export class DatabricksEnvFileManager implements Disposable {
         Object.entries({
             ...(this.getDatabrickseEnvVars() || {}),
             ...this.getIdeEnvVars(),
-            ...(EnvVarGenerators.getDbConnectEnvVars(
+            ...((await EnvVarGenerators.getDbConnectEnvVars(
                 this.connectionManager,
                 this.workspacePath
-            ) || {}),
+            )) || {}),
             ...(await this.getNotebookEnvVars()),
         }).forEach(([key, value]) => {
             if (value === undefined) {
