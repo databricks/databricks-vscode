@@ -102,6 +102,11 @@ async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {
     const host = connectionManager.databricksWorkspace?.host.authority;
     const authType =
         connectionManager.databricksWorkspace?.authProvider.authType;
+
+    // We export spark remote only for profile auth type. This is to support
+    // SparkSession builder in oss spark connect (and also dbconnect).
+    // For all other auth types, we don't export spark remote and expect users
+    // to use DatabricksSession for full functionality.
     if (host && connectionManager.cluster && authType === "profile") {
         const pat = await getPatToken(connectionManager);
         if (pat) {
