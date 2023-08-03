@@ -4,15 +4,11 @@
 
 ## <small>1.1.1 (2023-08-03)</small>
 
--   Add explicit dependency on ms jupyter extension (#814) ([86d991f](https://github.com/databricks/databricks-vscode/commit/86d991f)), closes [#814](https://github.com/databricks/databricks-vscode/issues/814)
--   Add support for test shards (#817) ([6a67a75](https://github.com/databricks/databricks-vscode/commit/6a67a75)), closes [#817](https://github.com/databricks/databricks-vscode/issues/817)
--   bump dependency versions (#811) ([7119fd5](https://github.com/databricks/databricks-vscode/commit/7119fd5)), closes [#811](https://github.com/databricks/databricks-vscode/issues/811)
--   Export `SPARK_REMOTE` env var for `profile` authentication type (#825) ([736a8bf](https://github.com/databricks/databricks-vscode/commit/736a8bf)), closes [#825](https://github.com/databricks/databricks-vscode/issues/825)
--   Fix linting and tests (#813) ([db55c27](https://github.com/databricks/databricks-vscode/commit/db55c27)), closes [#813](https://github.com/databricks/databricks-vscode/issues/813)
--   Fix wsfs wrapper preamble being ignored when %pip install restarts jupyter kernel (#824) ([e0d4307](https://github.com/databricks/databricks-vscode/commit/e0d4307)), closes [#824](https://github.com/databricks/databricks-vscode/issues/824) [#823](https://github.com/databricks/databricks-vscode/issues/823)
--   Handle az CLI token refresh (#820) ([bfea2ec](https://github.com/databricks/databricks-vscode/commit/bfea2ec)), closes [#820](https://github.com/databricks/databricks-vscode/issues/820)
--   Unify most env vars to 1 location (#809) ([96adb86](https://github.com/databricks/databricks-vscode/commit/96adb86)), closes [#809](https://github.com/databricks/databricks-vscode/issues/809) [#795](https://github.com/databricks/databricks-vscode/issues/795)
--   Update api to the latest version (#810) ([64d5455](https://github.com/databricks/databricks-vscode/commit/64d5455)), closes [#810](https://github.com/databricks/databricks-vscode/issues/810)
+-   Fix: Add explicit dependency on ms jupyter extension
+-   Fix: Export `SPARK_REMOTE` environment variable for `profile` authentication type
+-   Fix: Wsfs wrapper preamble being ignored when %pip install restarts jupyter kernel, closes [#823](https://github.com/databricks/databricks-vscode/issues/823)
+-   Fix: Handle token refresh for az cli
+-   Fix: Correctly handle HOME environment variable on windows[#795](https://github.com/databricks/databricks-vscode/issues/795)
 
 # Release: v1.1.0
 

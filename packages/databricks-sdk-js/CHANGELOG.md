@@ -4,8 +4,8 @@
 
 ## <small>0.3.16 (2023-08-03)</small>
 
--   bump dependency versions (#811) ([7119fd5](https://github.com/databricks/databricks-vscode/commit/7119fd5)), closes [#811](https://github.com/databricks/databricks-vscode/issues/811)
--   Update api to the latest version (#810) ([64d5455](https://github.com/databricks/databricks-vscode/commit/64d5455)), closes [#810](https://github.com/databricks/databricks-vscode/issues/810)
+-   bump dependency versions
+-   Update api to the latest version
 
 # Release: v0.3.16
 
