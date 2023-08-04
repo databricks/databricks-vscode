@@ -1,3 +1,15 @@
+# Release: v1.1.1
+
+## packages/databricks-vscode
+
+## <small>1.1.1 (2023-08-03)</small>
+
+-   Fix: Add explicit dependency on ms jupyter extension
+-   Fix: Export `SPARK_REMOTE` environment variable for `profile` authentication type
+-   Fix: Wsfs wrapper preamble being ignored when %pip install restarts jupyter kernel, closes [#823](https://github.com/databricks/databricks-vscode/issues/823)
+-   Fix: Handle token refresh for az cli
+-   Fix: Correctly handle HOME environment variable on windows[#795](https://github.com/databricks/databricks-vscode/issues/795)
+
 # Release: v1.1.0
 
 ## packages/databricks-vscode

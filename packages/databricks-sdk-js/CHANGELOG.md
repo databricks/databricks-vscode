@@ -2,6 +2,15 @@
 
 ## packages/databricks-sdk-js
 
+## <small>0.3.16 (2023-08-03)</small>
+
+-   bump dependency versions
+-   Update api to the latest version
+
+# Release: v0.3.16
+
+## packages/databricks-sdk-js
+
 ## <small>0.3.16 (2023-07-10)</small>
 
 # Release: v0.3.16
