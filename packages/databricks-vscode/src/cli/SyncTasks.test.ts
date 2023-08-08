@@ -101,8 +101,9 @@ describe(__filename, () => {
             delete process.env["HTTP_PROXY"];
             delete process.env["HTTPS_PROXY"];
 
+            const cwd = Uri.file("/path/to/local/workspace");
             assert.deepEqual(terminal.getProcessOptions(), {
-                cwd: Uri.file("/path/to/local/workspace").fsPath,
+                cwd: cwd.fsPath,
                 env: {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
@@ -112,9 +113,12 @@ describe(__filename, () => {
                     DATABRICKS_METADATA_SERVICE_URL: "http://localhost:1234",
                     HOME: process.env.HOME,
                     PATH: process.env.PATH,
-                    BUNDLE_ROOT: "/path/to/local/workspace",
-                    DATABRICKS_BUNDLE_INCLUDES:
-                        "/path/to/local/workspace/.databricks/databricks.yaml",
+                    BUNDLE_ROOT: cwd.fsPath,
+                    DATABRICKS_BUNDLE_INCLUDES: Uri.joinPath(
+                        cwd,
+                        ".databricks",
+                        "databricks.yaml"
+                    ).fsPath,
                     /* eslint-enable @typescript-eslint/naming-convention */
                 },
             });
@@ -124,8 +128,9 @@ describe(__filename, () => {
             process.env.HTTP_PROXY = "http_proxy";
             process.env.HTTPS_PROXY = "https_proxy";
 
+            const cwd = Uri.file("/path/to/local/workspace");
             assert.deepEqual(terminal.getProcessOptions(), {
-                cwd: Uri.file("/path/to/local/workspace").fsPath,
+                cwd: cwd.fsPath,
                 env: {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
@@ -137,9 +142,12 @@ describe(__filename, () => {
                     PATH: process.env.PATH,
                     HTTP_PROXY: "http_proxy",
                     HTTPS_PROXY: "https_proxy",
-                    BUNDLE_ROOT: "/path/to/local/workspace",
-                    DATABRICKS_BUNDLE_INCLUDES:
-                        "/path/to/local/workspace/.databricks/databricks.yaml",
+                    BUNDLE_ROOT: cwd.fsPath,
+                    DATABRICKS_BUNDLE_INCLUDES: Uri.joinPath(
+                        cwd,
+                        ".databricks",
+                        "databricks.yaml"
+                    ).fsPath,
                     /* eslint-enable @typescript-eslint/naming-convention */
                 },
             });
