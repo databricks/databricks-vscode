@@ -228,7 +228,8 @@ export class NotebookInitScriptManager implements Disposable {
                 ) ?? {}),
                 ...((await EnvVarGenerators.getDbConnectEnvVars(
                     this.connectionManager,
-                    this.workspacePath
+                    this.workspacePath,
+                    this.featureManager
                 )) ?? {}),
                 ...(EnvVarGenerators.getIdeEnvVars() ?? {}),
                 ...((await this.getUserEnvVars()) ?? {}),

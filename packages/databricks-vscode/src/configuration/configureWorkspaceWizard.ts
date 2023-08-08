@@ -10,6 +10,7 @@ import {
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider, AuthType} from "./auth/AuthProvider";
 import {ProjectConfig} from "../file-managers/ProjectConfigFile";
+import {LocalUri} from "../sync/SyncDestination";
 
 interface AuthTypeQuickPickItem extends QuickPickItem {
     authType: AuthType | "new-profile" | "none";
@@ -191,7 +192,10 @@ export async function configureWorkspaceWizard(
     }
 
     return {
-        authProvider: AuthProvider.fromJSON(state, cliWrapper.cliPath),
+        authProvider: AuthProvider.fromJSON(
+            state,
+            new LocalUri(cliWrapper.cliPath)
+        ),
     };
 }
 

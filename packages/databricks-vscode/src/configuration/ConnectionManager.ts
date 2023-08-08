@@ -5,13 +5,7 @@ import {
     WorkspaceFsUtils,
     ApiClient,
 } from "@databricks/databricks-sdk";
-import {
-    env,
-    EventEmitter,
-    Uri,
-    window,
-    workspace as vscodeWorkspace,
-} from "vscode";
+import {env, EventEmitter, Uri, window} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {
     SyncDestinationMapper,
@@ -66,7 +60,8 @@ export class ConnectionManager {
 
     constructor(
         private cli: CliWrapper,
-        private workspaceState: WorkspaceStateManager
+        private workspaceState: WorkspaceStateManager,
+        readonly workspaceRoot: LocalUri
     ) {}
 
     get state(): ConnectionState {
@@ -130,8 +125,9 @@ export class ConnectionManager {
         try {
             try {
                 projectConfigFile = await ProjectConfigFile.load(
-                    vscodeWorkspace.rootPath!,
-                    this.cli.cliPath
+                    this.workspaceRoot,
+                    new LocalUri(this.cli.cliPath),
+                    this.workspaceState
                 );
             } catch (e) {
                 if (
@@ -330,13 +326,9 @@ export class ConnectionManager {
     }
 
     private async writeConfigFile(config: ProjectConfig) {
-        const projectConfigFile = new ProjectConfigFile(
-            config,
-            vscodeWorkspace.rootPath!,
-            this.cli.cliPath
-        );
+        const projectConfigFile = ProjectConfigFile.fromConfig(config);
 
-        await projectConfigFile.write();
+        await projectConfigFile.write(this.workspaceRoot, this.workspaceState);
     }
 
     async attachCluster(
@@ -360,7 +352,10 @@ export class ConnectionManager {
 
             if (!skipWrite) {
                 this._projectConfigFile!.clusterId = cluster.id;
-                await this._projectConfigFile!.write();
+                await this._projectConfigFile!.write(
+                    this.workspaceRoot,
+                    this.workspaceState
+                );
             }
 
             if (cluster.state === "RUNNING") {
@@ -415,7 +410,10 @@ export class ConnectionManager {
 
         if (this._projectConfigFile) {
             this._projectConfigFile.clusterId = undefined;
-            await this._projectConfigFile.write();
+            await this._projectConfigFile.write(
+                this.workspaceRoot,
+                this.workspaceState
+            );
         }
 
         this.updateCluster(undefined);
@@ -426,13 +424,6 @@ export class ConnectionManager {
         skipWrite = false
     ): Promise<void> {
         try {
-            if (
-                !vscodeWorkspace.workspaceFolders ||
-                !vscodeWorkspace.workspaceFolders.length
-            ) {
-                // TODO how do we handle this?
-                return;
-            }
             if (
                 this.workspaceClient === undefined ||
                 this.databricksWorkspace === undefined
@@ -447,13 +438,15 @@ export class ConnectionManager {
             }
 
             if (!skipWrite) {
-                this._projectConfigFile!.workspacePath = remoteWorkspace.uri;
-                await this._projectConfigFile!.write();
+                this._projectConfigFile!.workspacePath = remoteWorkspace;
+                await this._projectConfigFile!.write(
+                    this.workspaceRoot,
+                    this.workspaceState
+                );
             }
 
-            const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
             this.updateSyncDestination(
-                new SyncDestinationMapper(new LocalUri(wsUri), remoteWorkspace)
+                new SyncDestinationMapper(this.workspaceRoot, remoteWorkspace)
             );
         } catch (e) {
             NamedLogger.getOrCreate("Extension").error(
@@ -477,7 +470,10 @@ export class ConnectionManager {
 
         if (this._projectConfigFile) {
             this._projectConfigFile.workspacePath = undefined;
-            await this._projectConfigFile.write();
+            await this._projectConfigFile.write(
+                this.workspaceRoot,
+                this.workspaceState
+            );
         }
 
         this.updateSyncDestination(undefined);

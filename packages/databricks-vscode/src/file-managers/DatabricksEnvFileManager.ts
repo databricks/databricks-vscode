@@ -100,52 +100,24 @@ export class DatabricksEnvFileManager implements Disposable {
             this.featureManager.onDidChangeState(
                 "notebooks.dbconnect",
                 async () => {
-                    await this.clearTerminalEnv();
-                    await this.emitToTerminal();
-                    await this.writeFile();
+                    this.emitToTerminal();
+                    this.writeFile();
                 }
             ),
             this.featureManager.onDidChangeState(
                 "debugging.dbconnect",
-                (featureState) => {
-                    if (!featureState.avaliable) {
-                        this.clearTerminalEnv();
-                    } else {
-                        this.emitToTerminal();
-                    }
+                () => {
+                    this.emitToTerminal();
                     this.writeFile();
                 },
                 this
             ),
-            this.connectionManager.onDidChangeCluster(async (cluster) => {
-                if (
-                    !cluster ||
-                    this.connectionManager.state !== "CONNECTED" ||
-                    !(
-                        await this.featureManager.isEnabled(
-                            "debugging.dbconnect"
-                        )
-                    ).avaliable
-                ) {
-                    this.clearTerminalEnv();
-                } else {
-                    this.emitToTerminal();
-                }
+            this.connectionManager.onDidChangeCluster(async () => {
+                this.emitToTerminal();
                 this.writeFile();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
-                if (
-                    this.connectionManager.state !== "CONNECTED" ||
-                    !(
-                        await this.featureManager.isEnabled(
-                            "debugging.dbconnect"
-                        )
-                    ).avaliable
-                ) {
-                    this.clearTerminalEnv();
-                } else {
-                    this.emitToTerminal();
-                }
+                this.emitToTerminal();
                 this.writeFile();
             }, this)
         );
@@ -181,11 +153,13 @@ export class DatabricksEnvFileManager implements Disposable {
             ...(this.getDatabrickseEnvVars() || {}),
             ...((await EnvVarGenerators.getDbConnectEnvVars(
                 this.connectionManager,
-                this.workspacePath
+                this.workspacePath,
+                this.featureManager
             )) || {}),
             ...this.getIdeEnvVars(),
             ...((await this.getUserEnvVars()) || {}),
             ...(await this.getNotebookEnvVars()),
+            ...EnvVarGenerators.getDatabricksCliEnvVars(this.connectionManager),
         })
             .filter(([, value]) => value !== undefined)
             .map(([key, value]) => `${key}=${value}`);
@@ -221,9 +195,11 @@ export class DatabricksEnvFileManager implements Disposable {
             ...this.getIdeEnvVars(),
             ...((await EnvVarGenerators.getDbConnectEnvVars(
                 this.connectionManager,
-                this.workspacePath
+                this.workspacePath,
+                this.featureManager
             )) || {}),
             ...(await this.getNotebookEnvVars()),
+            ...EnvVarGenerators.getDatabricksCliEnvVars(this.connectionManager),
         }).forEach(([key, value]) => {
             if (value === undefined) {
                 return;

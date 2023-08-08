@@ -19,6 +19,7 @@ export abstract class DatabricksUri<T> {
     abstract get path(): string;
 
     abstract relativePath(other: T): string;
+    abstract join(...others: (T | string)[]): T;
 
     hasChild(other: T) {
         const relative = this.relativePath(other);
@@ -30,12 +31,14 @@ export abstract class DatabricksUri<T> {
     }
 }
 export class RemoteUri extends DatabricksUri<RemoteUri> {
-    constructor(uri: Uri | string) {
+    constructor(uri: RemoteUri | Uri | string) {
         if (typeof uri === "string") {
             uri = Uri.from({
                 scheme: "wsfs",
                 path: uri,
             });
+        } else if (uri instanceof RemoteUri) {
+            uri = uri.uri;
         } else if (uri.scheme !== "wsfs") {
             const err = new Error(
                 `Remote file URI scheme must be wsfs. Found ${uri.scheme} (${uri.path})`
@@ -115,6 +118,17 @@ export class RemoteUri extends DatabricksUri<RemoteUri> {
             return "workspace";
         }
     }
+
+    join(...others: (RemoteUri | string)[]): RemoteUri {
+        return new RemoteUri(
+            path.posix.join(
+                this.path,
+                ...others.map((other) =>
+                    typeof other === "string" ? other : other.path
+                )
+            )
+        );
+    }
 }
 
 export class LocalUri extends DatabricksUri<LocalUri> {
@@ -146,6 +160,17 @@ export class LocalUri extends DatabricksUri<LocalUri> {
 
     relativePath(other: LocalUri) {
         return path.relative(this.path, other.path);
+    }
+
+    join(...others: (LocalUri | string)[]): LocalUri {
+        return new LocalUri(
+            path.join(
+                this.path,
+                ...others.map((other) =>
+                    typeof other === "string" ? other : other.path
+                )
+            )
+        );
     }
 }
 

@@ -74,7 +74,7 @@ export class DatabricksCliCheck implements Disposable {
             {
                 host: this.authProvider.host.toString(),
                 authType: "databricks-cli",
-                databricksCliPath: this.authProvider.databricksPath,
+                databricksCliPath: this.authProvider.databricksCliPath.fsPath,
             },
             {
                 product: "databricks-vscode",
@@ -93,12 +93,10 @@ export class DatabricksCliCheck implements Disposable {
 
     private async login(): Promise<void> {
         try {
-            await ExecUtils.execFile(this.authProvider.databricksPath, [
-                "auth",
-                "login",
-                "--host",
-                this.authProvider.host.toString(),
-            ]);
+            await ExecUtils.execFile(
+                this.authProvider.databricksCliPath.fsPath,
+                ["auth", "login", "--host", this.authProvider.host.toString()]
+            );
         } catch (e: any) {
             throw new Error(
                 `Login failed with Databricks CLI failed: ${

@@ -49,6 +49,7 @@ import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
+import {LocalUri} from "./sync/SyncDestination";
 
 export async function activate(
     context: ExtensionContext
@@ -142,7 +143,11 @@ export async function activate(
 
     // Configuration group
     const cli = new CliWrapper(context);
-    const connectionManager = new ConnectionManager(cli, workspaceStateManager);
+    const connectionManager = new ConnectionManager(
+        cli,
+        workspaceStateManager,
+        new LocalUri(workspace.workspaceFolders[0].uri)
+    );
     context.subscriptions.push(
         connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
@@ -502,7 +507,8 @@ export async function activate(
         new ProjectConfigFileWatcher(
             connectionManager,
             workspace.rootPath!,
-            cli.cliPath
+            cli.cliPath,
+            workspaceStateManager
         )
     );
 

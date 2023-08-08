@@ -295,7 +295,10 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
                 ...EnvVarGenerators.removeUndefinedKeys(
-                    EnvVarGenerators.getCommonDatabricksEnvVars(this.connection)
+                    EnvVarGenerators.getCommonDatabricksEnvVars(
+                        this.connection
+                    ),
+                    EnvVarGenerators.getDatabricksCliEnvVars(this.connection)
                 ),
                 /* eslint-enable @typescript-eslint/naming-convention */
             },

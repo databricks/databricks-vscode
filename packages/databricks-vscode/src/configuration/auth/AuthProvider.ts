@@ -13,6 +13,8 @@ const extensionVersion = require("../../../package.json")
 
 import {AzureCliCheck} from "./AzureCliCheck";
 import {DatabricksCliCheck} from "./DatabricksCliCheck";
+import {Uri} from "vscode";
+import {LocalUri} from "../../sync/SyncDestination";
 
 // TODO: Resolve this with SDK's AuthType.
 export type AuthType = "azure-cli" | "google-id" | "databricks-cli" | "profile";
@@ -56,7 +58,7 @@ export abstract class AuthProvider {
 
     static fromJSON(
         json: Record<string, any>,
-        databricksPath: string
+        databricksCliPath: LocalUri
     ): AuthProvider {
         const host =
             json.host instanceof URL
@@ -79,7 +81,10 @@ export abstract class AuthProvider {
                 );
 
             case "databricks-cli":
-                return new DatabricksCliAuthProvider(host, databricksPath);
+                return new DatabricksCliAuthProvider(
+                    host,
+                    databricksCliPath.uri
+                );
 
             case "profile":
                 if (!json.profile) {
@@ -134,7 +139,7 @@ export class ProfileAuthProvider extends AuthProvider {
 export class DatabricksCliAuthProvider extends AuthProvider {
     constructor(
         host: URL,
-        readonly databricksPath: string
+        readonly databricksCliPath: Uri
     ) {
         super(host, "databricks-cli");
     }
@@ -147,7 +152,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return {
             host: this.host.toString(),
             authType: this.authType,
-            databricksPath: this.databricksPath,
+            databricksCliPath: this.databricksCliPath.fsPath,
         };
     }
 
@@ -155,7 +160,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return new Config({
             host: this.host.toString(),
             authType: "databricks-cli",
-            databricksCliPath: this.databricksPath,
+            databricksCliPath: this.databricksCliPath.fsPath,
         });
     }
 
@@ -163,7 +168,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: "databricks-cli",
-            DATABRICKS_CLI_PATH: this.databricksPath,
+            DATABRICKS_CLI_PATH: this.databricksCliPath.fsPath,
         };
     }
 

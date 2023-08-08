@@ -82,6 +82,10 @@ describe(__filename, () => {
                 instance(mockSyncDestination)
             );
 
+            when(connection.workspaceRoot).thenReturn(
+                new LocalUri(Uri.file("/path/to/local/workspace"))
+            );
+
             terminal = new LazyCustomSyncTerminal(
                 instance(connection),
                 instance(cli),
@@ -108,6 +112,9 @@ describe(__filename, () => {
                     DATABRICKS_METADATA_SERVICE_URL: "http://localhost:1234",
                     HOME: process.env.HOME,
                     PATH: process.env.PATH,
+                    BUNDLE_ROOT: "/path/to/local/workspace",
+                    DATABRICKS_BUNDLE_INCLUDES:
+                        "/path/to/local/workspace/.databricks/databricks.yaml",
                     /* eslint-enable @typescript-eslint/naming-convention */
                 },
             });
@@ -130,6 +137,9 @@ describe(__filename, () => {
                     PATH: process.env.PATH,
                     HTTP_PROXY: "http_proxy",
                     HTTPS_PROXY: "https_proxy",
+                    BUNDLE_ROOT: "/path/to/local/workspace",
+                    DATABRICKS_BUNDLE_INCLUDES:
+                        "/path/to/local/workspace/.databricks/databricks.yaml",
                     /* eslint-enable @typescript-eslint/naming-convention */
                 },
             });

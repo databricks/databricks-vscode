@@ -5,6 +5,7 @@ import {FeatureManager} from "../feature-manager/FeatureManager";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {DatabricksYamlFile} from "../file-managers/DatabricksYamlFile";
 
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {
@@ -90,6 +91,17 @@ export function getCommonDatabricksEnvVars(
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
+export function getDatabricksCliEnvVars(connectionManager: ConnectionManager) {
+    /* eslint-disable @typescript-eslint/naming-convention */
+    return {
+        BUNDLE_ROOT: connectionManager.workspaceRoot.path,
+        DATABRICKS_BUNDLE_INCLUDES: DatabricksYamlFile.getFilePath(
+            connectionManager.workspaceRoot
+        ).path,
+    };
+    /* eslint-enable @typescript-eslint/naming-convention */
+}
+
 async function getPatToken(connectionManager: ConnectionManager) {
     const headers: Record<string, string> = {};
     await connectionManager.workspaceClient?.apiClient.config.authenticate(
@@ -120,8 +132,12 @@ async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {
 
 export async function getDbConnectEnvVars(
     connectionManager: ConnectionManager,
-    workspacePath: Uri
+    workspacePath: Uri,
+    featureManager: FeatureManager
 ) {
+    if (!(await featureManager.isEnabled("debugging.dbconnect")).avaliable) {
+        return;
+    }
     const userAgent = getUserAgent(connectionManager);
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
@@ -141,16 +157,18 @@ export function getProxyEnvVars() {
     };
 }
 
+type Intersection<T> = {[K in keyof T]: T[K]};
+
 export function removeUndefinedKeys<
-    T extends Record<string, string | undefined>,
->(envVarMap?: T): T | undefined {
-    if (envVarMap === undefined) {
-        return;
-    }
-
-    const filteredEntries = Object.entries(envVarMap).filter(
-        (entry) => entry[1] !== undefined
-    ) as [string, string][];
-
-    return Object.fromEntries<string>(filteredEntries) as T;
+    T extends Array<Record<string, string | undefined>>,
+>(...envVarMaps: [...T]): Intersection<T[number]> {
+    return envVarMaps
+        .map((envVarMap) => {
+            return Object.entries(envVarMap).filter(
+                (entry) => entry[1] !== undefined
+            ) as [string, string][];
+        })
+        .reduce((prev, cur) => {
+            return Object.assign(prev, {...Object.fromEntries(cur)});
+        }, {}) as Intersection<T[number]>;
 }

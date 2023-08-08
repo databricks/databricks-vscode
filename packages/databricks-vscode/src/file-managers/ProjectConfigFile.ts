@@ -1,164 +1,111 @@
-import path from "node:path";
-import fs from "node:fs/promises";
-import {
-    AuthProvider,
-    ProfileAuthProvider,
-} from "../configuration/auth/AuthProvider";
-import {Uri} from "vscode";
+import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
-import {Config} from "@databricks/databricks-sdk";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {LocalUri, RemoteUri} from "../sync/SyncDestination";
+import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {DatabricksYamlFile} from "./DatabricksYamlFile";
+import {ProjectJsonFile} from "./ProjectJsonFile";
 
 export interface ProjectConfig {
     authProvider: AuthProvider;
     clusterId?: string;
-    workspacePath?: Uri;
+    workspacePath?: RemoteUri;
 }
 
 export class ConfigFileError extends Error {}
 
 export class ProjectConfigFile {
+    readonly databricksYamlFile: DatabricksYamlFile;
     constructor(
-        private config: ProjectConfig,
-        readonly rootPath: string,
-        readonly cliPath: string
-    ) {}
+        readonly projectJsonFile: ProjectJsonFile,
+        databricksYamlFile?: DatabricksYamlFile
+    ) {
+        this.databricksYamlFile =
+            databricksYamlFile ??
+            new DatabricksYamlFile(projectJsonFile.authProvider.host);
+    }
 
     get host() {
-        return this.config.authProvider.host;
+        return this.projectJsonFile.authProvider.host;
     }
 
     get authProvider() {
-        return this.config.authProvider;
+        return this.projectJsonFile.authProvider;
     }
 
     get clusterId() {
-        return this.config.clusterId;
+        return (
+            this.databricksYamlFile.clusterId ??
+            this.projectJsonFile.otherConfig?.clusterId
+        );
     }
 
     set clusterId(clusterId: string | undefined) {
-        this.config.clusterId = clusterId;
+        this.databricksYamlFile.clusterId = clusterId;
     }
 
-    get workspacePath(): Uri | undefined {
-        return this.config.workspacePath;
+    get workspacePath(): RemoteUri | undefined {
+        return (
+            this.databricksYamlFile.workspacePath ??
+            this.projectJsonFile.workspacePath
+        );
     }
 
-    set workspacePath(workspacePath: Uri | undefined) {
-        this.config.workspacePath = workspacePath;
+    set workspacePath(workspacePath: RemoteUri | undefined) {
+        this.databricksYamlFile.workspacePath = workspacePath;
     }
 
-    toJSON(): Record<string, unknown> {
-        return {
-            ...this.config.authProvider.toJSON(),
-            clusterId: this.clusterId,
-            workspacePath: this.workspacePath?.path,
-        };
+    static fromConfig(config: ProjectConfig) {
+        return new ProjectConfigFile(
+            new ProjectJsonFile(config.authProvider, config),
+            new DatabricksYamlFile(
+                config.authProvider.host,
+                config.clusterId,
+                config.workspacePath
+            )
+        );
     }
 
-    async write() {
+    async write(rootPath: LocalUri, workspaceState: WorkspaceStateManager) {
         try {
-            const originalConfig = await ProjectConfigFile.load(
-                this.rootPath,
-                this.cliPath
+            await this.databricksYamlFile.write(rootPath, workspaceState);
+            await this.projectJsonFile.write(rootPath);
+        } catch (e) {
+            NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Error writing project config file",
+                e
             );
-            if (
-                JSON.stringify(originalConfig.toJSON(), null, 2) ===
-                JSON.stringify(this.toJSON(), null, 2)
-            ) {
-                return;
-            }
-        } catch (e) {}
-
-        const fileName = ProjectConfigFile.getProjectConfigFilePath(
-            this.rootPath
-        );
-        await fs.mkdir(path.dirname(fileName), {recursive: true});
-
-        await fs.writeFile(fileName, JSON.stringify(this, null, 2), {
-            encoding: "utf-8",
-        });
-    }
-
-    static async importOldConfig(config: any): Promise<ProfileAuthProvider> {
-        const sdkConfig = new Config({
-            profile: config.profile,
-            configFile:
-                workspaceConfigs.databrickscfgLocation ??
-                process.env.DATABRICKS_CONFIG_FILE,
-            env: {},
-        });
-
-        await sdkConfig.ensureResolved();
-
-        return new ProfileAuthProvider(
-            new URL(sdkConfig.host!),
-            sdkConfig.profile!
-        );
+        }
     }
 
     static async load(
-        rootPath: string,
-        cliPath: string
+        rootPath: LocalUri,
+        cliPath: LocalUri,
+        workspaceState: WorkspaceStateManager
     ): Promise<ProjectConfigFile> {
-        const projectConfigFilePath = this.getProjectConfigFilePath(rootPath);
-
-        let rawConfig;
+        let databricksYamlConfig: DatabricksYamlFile | undefined = undefined;
         try {
-            rawConfig = await fs.readFile(projectConfigFilePath, {
-                encoding: "utf-8",
-            });
-        } catch (e: any) {
-            if (e.code && e.code === "ENOENT") {
-                throw new ConfigFileError(
-                    `Project config file does not exist: ${projectConfigFilePath}`
-                );
-            } else {
-                throw e;
-            }
-        }
-
-        let authProvider: AuthProvider;
-        let config: any;
-        try {
-            config = JSON.parse(rawConfig);
-            if (!config.authType && config.profile) {
-                authProvider = await this.importOldConfig(config);
-            } else {
-                authProvider = AuthProvider.fromJSON(config, cliPath);
-            }
-        } catch (e: any) {
+            databricksYamlConfig = await DatabricksYamlFile.load(
+                rootPath,
+                workspaceState
+            );
+        } catch (e: unknown) {
             NamedLogger.getOrCreate(Loggers.Extension).error(
-                "Error parsing project config file",
+                "Error parsing project config file (databricks.yaml)",
                 e
             );
-            throw new ConfigFileError(
-                `Error parsing project config file: ${e.message}`
-            );
         }
-        return new ProjectConfigFile(
-            {
-                authProvider: authProvider!,
-                clusterId: config.clusterId,
-                workspacePath:
-                    config.workspacePath !== undefined
-                        ? Uri.from({
-                              scheme: "wsfs",
-                              path: config.workspacePath,
-                          })
-                        : undefined,
-            },
-            rootPath,
-            cliPath
-        );
-    }
 
-    static getProjectConfigFilePath(rootPath?: string): string {
-        if (!rootPath) {
-            throw new Error("Not in a VSCode workspace");
+        let projectJsonFile: ProjectJsonFile;
+        try {
+            projectJsonFile = await ProjectJsonFile.load(rootPath, cliPath);
+        } catch (e: unknown) {
+            NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Error parsing project config file (project.json)",
+                e
+            );
+            throw e;
         }
-        const cwd = path.normalize(rootPath);
-        return path.join(cwd, ".databricks", "project.json");
+        return new ProjectConfigFile(projectJsonFile, databricksYamlConfig);
     }
 }

@@ -4,6 +4,7 @@ import {LocalUri} from "../sync/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {exists} from "fs-extra";
 import path from "path";
+import {readFile, stat, writeFile} from "fs/promises";
 
 export type NotebookType = "IPYNB" | "PY_DBNB" | "OTHER_DBNB";
 export async function isNotebook(
@@ -42,4 +43,21 @@ export async function waitForDatabricksProject(
     if (!(await exists(path.join(workspacePath.fsPath, ".databricks")))) {
         await connectionManager.waitForConnect();
     }
+}
+
+export async function writeFileIfDiff(
+    uri: Uri,
+    content: string,
+    encoding: BufferEncoding = "utf-8"
+) {
+    let currentContent: string | undefined = "";
+    try {
+        if ((await stat(uri.fsPath)).isFile()) {
+            currentContent = await readFile(uri.fsPath, {encoding});
+        }
+        if (currentContent === content) {
+            return;
+        }
+    } catch (e) {}
+    await writeFile(uri.fsPath, content, {encoding});
 }
