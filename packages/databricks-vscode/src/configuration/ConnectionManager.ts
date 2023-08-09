@@ -59,7 +59,7 @@ export class ConnectionManager {
 
     constructor(
         private cli: CliWrapper,
-        private workspaceState: WorkspaceStateManager,
+        readonly workspaceState: WorkspaceStateManager,
         readonly workspaceRoot: LocalUri
     ) {}
 

@@ -19,6 +19,8 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {EnvVarGenerators, FileUtils} from "../utils";
 import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
+import {MetadataServiceManager} from "../configuration/auth/MetadataServiceManager";
+import {Mutex} from "../locking";
 
 function isValidUserEnvPath(
     path: string | undefined,
@@ -28,11 +30,14 @@ function isValidUserEnvPath(
 }
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
+    private mutex = new Mutex();
 
     private readonly unresolvedDatabricksEnvFile: string;
     private readonly databricksEnvPath: Uri;
     private readonly unresolvedUserEnvFile: string;
     private readonly userEnvPath: Uri;
+
+    private readonly knownTerminalEnvVars = new Map<string, string>();
 
     private readonly onDidChangeEnvironmentVariablesEmitter =
         new EventEmitter<void>();
@@ -45,7 +50,8 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
         private readonly extensionContext: ExtensionContext,
-        private readonly notebookInitScriptManager: NotebookInitScriptManager
+        private readonly notebookInitScriptManager: NotebookInitScriptManager,
+        private readonly metadataServiceManager: MetadataServiceManager
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
         this.unresolvedDatabricksEnvFile = path.join(
@@ -97,28 +103,24 @@ export class DatabricksEnvFileManager implements Disposable {
             userEnvFileWatcher.onDidChange(() => this.writeFile(), this),
             userEnvFileWatcher.onDidDelete(() => this.writeFile(), this),
             userEnvFileWatcher.onDidCreate(() => this.writeFile(), this),
-            this.featureManager.onDidChangeState(
-                "notebooks.dbconnect",
-                async () => {
-                    this.emitToTerminal();
-                    this.writeFile();
-                }
-            ),
+            this.featureManager.onDidChangeState("notebooks.dbconnect", () => {
+                this.exportEnvVarsSynchronised();
+            }),
             this.featureManager.onDidChangeState(
                 "debugging.dbconnect",
                 () => {
-                    this.emitToTerminal();
-                    this.writeFile();
+                    this.exportEnvVarsSynchronised();
                 },
                 this
             ),
             this.connectionManager.onDidChangeCluster(async () => {
-                this.emitToTerminal();
-                this.writeFile();
+                this.exportEnvVarsSynchronised();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
-                this.emitToTerminal();
-                this.writeFile();
+                this.exportEnvVarsSynchronised();
+            }, this),
+            this.metadataServiceManager.onDidChangeMagic(async () => {
+                this.exportEnvVarsSynchronised();
             }, this)
         );
     }
@@ -146,7 +148,20 @@ export class DatabricksEnvFileManager implements Disposable {
     }
 
     @logging.withLogContext(Loggers.Extension)
-    async writeFile(@context ctx?: Context) {
+    async exportEnvVarsSynchronised(@context ctx?: Context) {
+        await this.mutex.wait();
+        try {
+            await this.writeFile();
+            await this.emitToTerminal();
+        } catch (e) {
+            ctx?.logger?.info("Error exporting env vars", e);
+        } finally {
+            this.mutex.signal();
+        }
+    }
+
+    @logging.withLogContext(Loggers.Extension)
+    private async writeFile(@context ctx?: Context) {
         await this.connectionManager.waitForConnect();
 
         const data = Object.entries({
@@ -187,10 +202,10 @@ export class DatabricksEnvFileManager implements Disposable {
         }
     }
 
-    async emitToTerminal() {
+    private async emitToTerminal() {
         await this.connectionManager.waitForConnect();
 
-        Object.entries({
+        const envVars = Object.entries({
             ...(this.getDatabrickseEnvVars() || {}),
             ...this.getIdeEnvVars(),
             ...((await EnvVarGenerators.getDbConnectEnvVars(
@@ -200,14 +215,27 @@ export class DatabricksEnvFileManager implements Disposable {
             )) || {}),
             ...(await this.getNotebookEnvVars()),
             ...EnvVarGenerators.getDatabricksCliEnvVars(this.connectionManager),
-        }).forEach(([key, value]) => {
-            if (value === undefined) {
-                return;
+        }).filter(([, value]) => value !== undefined);
+
+        // Add only new env vars to terminal
+        envVars
+            .filter(
+                ([key, value]) => this.knownTerminalEnvVars.get(key) !== value
+            )
+            .forEach(([key, value]) => {
+                this.extensionContext.environmentVariableCollection.replace(
+                    key,
+                    value!
+                );
+                this.knownTerminalEnvVars.set(key, value!);
+            });
+
+        // Delete keys that are no longer in use from knownTerminalEnvVars
+        const currentEnvVarKeys = new Set(envVars.map(([key]) => key));
+        Array.from(this.knownTerminalEnvVars.keys()).forEach((key) => {
+            if (!currentEnvVarKeys.has(key)) {
+                this.knownTerminalEnvVars.delete(key);
             }
-            this.extensionContext.environmentVariableCollection.replace(
-                key,
-                value
-            );
         });
     }
 

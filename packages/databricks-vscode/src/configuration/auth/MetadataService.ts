@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as http from "node:http";
 import * as crypto from "node:crypto";
-import {Disposable} from "vscode";
+import {Disposable, EventEmitter} from "vscode";
 import {AddressInfo} from "node:net";
 import {
     ApiClient,
@@ -19,6 +19,8 @@ export class MetadataService implements Disposable {
 
     private magic!: string;
     private _apiClient: ApiClient | undefined;
+    private onDidChangeMagicEvent = new EventEmitter<void>();
+    public onDidChangeMagic = this.onDidChangeMagicEvent.event;
 
     constructor(
         apiClient: ApiClient | undefined,
@@ -48,6 +50,7 @@ export class MetadataService implements Disposable {
 
     updateMagic() {
         this.magic = crypto.randomUUID();
+        this.onDidChangeMagicEvent.fire();
     }
 
     dispose() {

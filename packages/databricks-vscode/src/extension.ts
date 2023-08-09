@@ -273,7 +273,8 @@ export async function activate(
         dbConnectStatusBarButton,
         connectionManager,
         context,
-        notebookInitScriptManager
+        notebookInitScriptManager,
+        metadataServiceManager
     );
 
     context.subscriptions.push(

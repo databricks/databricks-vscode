@@ -20,10 +20,6 @@ interface DatabricksYaml {
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
-function getTargetName(workspaceState: WorkspaceStateManager) {
-    return `databricks-vscode-${workspaceState.fixedUUID.slice(0, 8)}`;
-}
-
 export class DatabricksYamlFile {
     constructor(
         readonly workspaceUrl: URL,
@@ -34,7 +30,7 @@ export class DatabricksYamlFile {
     private toYaml(workspaceState: WorkspaceStateManager) {
         const environments: DatabricksYaml["environments"] = {};
         /* eslint-disable @typescript-eslint/naming-convention */
-        environments[getTargetName(workspaceState)] = {
+        environments[DatabricksYamlFile.getTargetName(workspaceState)] = {
             compute_id: this.clusterId,
             workspace: {
                 host: this.workspaceUrl.toString(),
@@ -48,12 +44,19 @@ export class DatabricksYamlFile {
         return doc.toString();
     }
 
+    static getTargetName(workspaceState: WorkspaceStateManager) {
+        return `databricks-vscode-${workspaceState.fixedUUID.slice(0, 8)}`;
+    }
+
     private static fromYaml(
         yaml: string,
         workspaceState: WorkspaceStateManager
     ) {
         const parsedConfig: DatabricksYaml = YAML.parse(yaml);
-        const target = parsedConfig.environments[getTargetName(workspaceState)];
+        const target =
+            parsedConfig.environments[
+                DatabricksYamlFile.getTargetName(workspaceState)
+            ];
         return new DatabricksYamlFile(
             new URL(target.workspace.host),
             target.compute_id,

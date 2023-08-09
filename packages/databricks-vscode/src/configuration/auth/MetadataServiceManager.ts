@@ -1,21 +1,29 @@
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
-import {Disposable} from "vscode";
+import {Disposable, EventEmitter} from "vscode";
 import {ConnectionManager} from "../ConnectionManager";
 import {MetadataService} from "./MetadataService";
+import {Loggers} from "../../logger";
 
 export class MetadataServiceManager implements Disposable {
     readonly metadataSerivce: MetadataService;
     private disposables: Disposable[] = [];
+    private onDidChangeMagicEvent = new EventEmitter<void>();
+    public onDidChangeMagic = this.onDidChangeMagicEvent.event;
 
     constructor(private readonly connctionManager: ConnectionManager) {
         this.metadataSerivce = new MetadataService(
             undefined,
-            NamedLogger.getOrCreate("Extension")
+            NamedLogger.getOrCreate(Loggers.Extension)
         );
 
         this.disposables.push(
             this.metadataSerivce,
-            this.connctionManager.onDidChangeState(this.updateApiClient, this)
+            this.connctionManager.onDidChangeState(this.updateApiClient, this),
+            this.metadataSerivce.onDidChangeMagic(
+                this.onDidChangeMagicEvent.fire,
+                this
+            ),
+            this.onDidChangeMagicEvent
         );
     }
 
