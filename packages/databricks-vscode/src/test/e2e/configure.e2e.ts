@@ -14,6 +14,7 @@ import {
     Workbench,
 } from "wdio-vscode-service";
 import {expect} from "chai";
+import * as YAML from "yaml";
 
 describe("Configure Databricks Extension", async function () {
     // this will be populated by the tests
@@ -192,7 +193,26 @@ describe("Configure Databricks Extension", async function () {
             host: expectedHost,
             authType: "profile",
             profile: "DEFAULT",
-            clusterId,
         });
+
+        const yamlConfig = YAML.parse(
+            await fs.readFile(
+                path.join(projectDir, ".databricks", "databricks.yaml"),
+                "utf-8"
+            )
+        );
+
+        expect(yamlConfig).to.have.key("environments");
+        const environment: any = Object.entries(yamlConfig.environments)[0][1];
+        /* eslint-disable @typescript-eslint/naming-convention */
+        expect(environment).to.include({
+            compute_id: clusterId,
+            mode: "development",
+        });
+        expect(environment.workspace).to.include({
+            host: expectedHost,
+        });
+        expect(environment.workspace).to.have.any.keys("root_path");
+        /* eslint-enable @typescript-eslint/naming-convention */
     });
 });

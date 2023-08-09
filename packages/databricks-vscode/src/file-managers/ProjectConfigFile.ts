@@ -12,8 +12,6 @@ export interface ProjectConfig {
     workspacePath?: RemoteUri;
 }
 
-export class ConfigFileError extends Error {}
-
 export class ProjectConfigFile {
     readonly databricksYamlFile: DatabricksYamlFile;
     constructor(

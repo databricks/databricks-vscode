@@ -13,7 +13,6 @@ import {
     LocalUri,
 } from "../sync/SyncDestination";
 import {
-    ConfigFileError,
     ProjectConfig,
     ProjectConfigFile,
 } from "../file-managers/ProjectConfigFile";
@@ -129,11 +128,8 @@ export class ConnectionManager {
                     new LocalUri(this.cli.cliPath),
                     this.workspaceState
                 );
-            } catch (e) {
-                if (
-                    e instanceof ConfigFileError &&
-                    e.message.startsWith("Project config file does not exist")
-                ) {
+            } catch (e: any) {
+                if (e.code === "ENOENT") {
                     this.updateState("DISCONNECTED");
                     await this.logout();
                     return;
