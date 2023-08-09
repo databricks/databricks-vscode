@@ -1,16 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {mkdir, mkdtemp, readFile, writeFile} from "fs/promises";
-import {
-    // ProjectConfig,
-    ProjectConfigFile,
-} from "./ProjectConfigFile";
+import {ProjectConfigFile} from "./ProjectConfigFile";
 import * as assert from "assert";
 import path from "path";
 import * as os from "os";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
-// import {mock, when} from "ts-mockito";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {DatabricksYamlFile} from "./DatabricksYamlFile";
 import {ProjectJsonFile} from "./ProjectJsonFile";

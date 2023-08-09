@@ -12,6 +12,20 @@ export interface ProjectConfig {
     workspacePath?: RemoteUri;
 }
 
+/**
+ * We have 2 config files: project.json and databricks.yaml.
+ *
+ * project.json stores stuff requrired only for the extension (eg, auth type etc).
+ * Authentication for all the tools launched from vscode is through the metadata service.
+ *
+ * databricks.yaml stores everything we can configure from the extension and which
+ * is relevant to create a valid dab.
+ *
+ * To support the old (single project.json) format, we fallback to reading the project.json
+ * in getters, when a property is not present in databricks.yaml.
+ *
+ * We always write in the new format.
+ */
 export class ProjectConfigFile {
     readonly databricksYamlFile: DatabricksYamlFile;
     constructor(
@@ -81,6 +95,8 @@ export class ProjectConfigFile {
         cliPath: LocalUri,
         workspaceState: WorkspaceStateManager
     ): Promise<ProjectConfigFile> {
+        // We try to load the databricks.yaml file. If it fails, we still continue on to load
+        // project.json, but we log the error.
         let databricksYamlConfig: DatabricksYamlFile | undefined = undefined;
         try {
             databricksYamlConfig = await DatabricksYamlFile.load(
@@ -94,6 +110,7 @@ export class ProjectConfigFile {
             );
         }
 
+        // If project.json fails to load, we throw the error.
         let projectJsonFile: ProjectJsonFile;
         try {
             projectJsonFile = await ProjectJsonFile.load(rootPath, cliPath);
