@@ -319,7 +319,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
             );
         }
 
-        this.command = this.cli.getSyncCommand(syncDestination, this.syncType);
+        this.command = this.cli.getSyncCommand(this.syncType);
 
         return this.command;
     }

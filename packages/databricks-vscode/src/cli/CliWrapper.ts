@@ -1,6 +1,5 @@
 import {execFile as execFileCb, spawn} from "child_process";
 import {ExtensionContext, window, commands} from "vscode";
-import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
@@ -49,18 +48,8 @@ export class CliWrapper {
     /**
      * Constructs the databricks sync command
      */
-    getSyncCommand(
-        syncDestination: SyncDestinationMapper,
-        syncType: SyncType
-    ): Command {
-        const args = [
-            "sync",
-            ".",
-            syncDestination.remoteUri.path,
-            "--watch",
-            "--output",
-            "json",
-        ];
+    getSyncCommand(syncType: SyncType): Command {
+        const args = ["sync", "--watch", "--output", "json"];
         if (syncType === "full") {
             args.push("--full");
         }

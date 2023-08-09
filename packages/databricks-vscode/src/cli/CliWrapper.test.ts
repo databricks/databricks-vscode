@@ -1,10 +1,4 @@
 import * as assert from "assert";
-import {Uri} from "vscode";
-import {
-    LocalUri,
-    RemoteUri,
-    SyncDestinationMapper,
-} from "../sync/SyncDestination";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
@@ -30,28 +24,17 @@ describe(__filename, () => {
                 return path;
             },
         } as any);
-        const mapper = new SyncDestinationMapper(
-            new LocalUri(
-                Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
-            ),
-            new RemoteUri(
-                Uri.from({
-                    scheme: "wsfs",
-                    path: "/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
-                })
-            )
-        );
 
-        let {command, args} = cli.getSyncCommand(mapper, "incremental");
+        let {command, args} = cli.getSyncCommand("incremental");
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json"
+            "./bin/databricks sync --watch --output json"
         );
 
-        ({command, args} = cli.getSyncCommand(mapper, "full"));
+        ({command, args} = cli.getSyncCommand("full"));
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json --full"
+            "./bin/databricks sync --watch --output json --full"
         );
     });
 
