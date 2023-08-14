@@ -8,12 +8,12 @@ describe(__filename, () => {
     before(async () => {
         mapper = new SyncDestinationMapper(
             new LocalUri(
-                Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
+                Uri.file("/Users/xyz/Desktop/notebook-best-practices")
             ),
             new RemoteUri(
                 Uri.from({
                     scheme: "wsfs",
-                    path: "/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+                    path: "/Repos/xyz@example.com/notebook-best-practices",
                 })
             )
         );
@@ -23,11 +23,11 @@ describe(__filename, () => {
             mapper.localToRemote(
                 new LocalUri(
                     Uri.file(
-                        "/Users/fabian.jakobs/Desktop/notebook-best-practices/hello.py"
+                        "/Users/xyz/Desktop/notebook-best-practices/hello.py"
                     )
                 )
             ).path,
-            "/Repos/fabian.jakobs@databricks.com/notebook-best-practices/hello.py"
+            "/Repos/xyz@example.com/notebook-best-practices/files/hello.py"
         );
     });
 
@@ -40,11 +40,11 @@ describe(__filename, () => {
             mapper.localToRemoteNotebook(
                 new LocalUri(
                     Uri.file(
-                        "/Users/fabian.jakobs/Desktop/notebook-best-practices/notebooks/covid_eda.py"
+                        "/Users/xyz/Desktop/notebook-best-practices/notebooks/covid_eda.py"
                     )
                 )
             ).path,
-            "/Repos/fabian.jakobs@databricks.com/notebook-best-practices/notebooks/covid_eda"
+            "/Repos/xyz@example.com/notebook-best-practices/files/notebooks/covid_eda"
         );
     });
 
@@ -55,14 +55,14 @@ describe(__filename, () => {
                 new RemoteUri(
                     Uri.from({
                         scheme: "wsfs",
-                        path: "/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+                        path: "/Repos/xyz@example.com/notebook-best-practices",
                     })
                 )
             );
             assert.equal(
                 mapper.localToRemote(new LocalUri(Uri.file("c:\\a\\b\\c\\d")))
                     .path,
-                "/Repos/fabian.jakobs@databricks.com/notebook-best-practices/d"
+                "/Repos/xyz@example.com/notebook-best-practices/files/d"
             );
         });
     }
