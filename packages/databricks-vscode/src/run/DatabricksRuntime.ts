@@ -218,11 +218,8 @@ export class DatabricksRuntime implements Disposable {
             if (shouldDebug) {
                 const ngrokAuthToken = workspaceConfigs.ngrokAuthToken;
                 if (ngrokAuthToken) {
-                    log("Installing pyngrok ...");
-                    await executionContext.execute("%pip install pyngrok");
-
                     const response = await executionContext.execute(
-                        await this.compileTunnelScript(ngrokAuthToken, log)
+                        await this.compileTunnelScript(ngrokAuthToken)
                     );
                     const result = response.result;
 
@@ -235,7 +232,10 @@ export class DatabricksRuntime implements Disposable {
                         log(`Debugger exposed at ${debugUrl.toString()}`);
                     } else {
                         shouldDebug = false;
-                        console.error(result);
+                        this._onErrorEmitter.fire(
+                            JSON.stringify(result, null, 2)
+                        );
+                        return;
                     }
                 } else {
                     shouldDebug = false;
@@ -265,8 +265,6 @@ export class DatabricksRuntime implements Disposable {
                 new Time(240, TimeUnits.hours)
             );
             const result = response.result;
-
-            console.log("result", result);
 
             if (result.results!.resultType === "text") {
                 this._onDidSendOutputEmitter.fire({
@@ -363,36 +361,7 @@ export class DatabricksRuntime implements Disposable {
         debug.startDebugging(workspaceFolder, debugConfig);
     }
 
-    private async compileTunnelScript(
-        ngrokAuthToken: string,
-        log: (message: string) => void
-    ): Promise<string> {
-        const username = this.connection.databricksWorkspace?.userName;
-        const wsClient = this.connection.workspaceClient;
-        if (!username || !wsClient) {
-            throw new Error("No workspace connected.");
-        }
-
-        const secretScope = `${username}/vscode`;
-        log(`Creating secret scope ${secretScope}`);
-
-        try {
-            await wsClient.secrets.createScope({
-                scope: secretScope,
-            });
-        } catch (e: any) {
-            if (e.errorCode !== "RESOURCE_ALREADY_EXISTS") {
-                throw e;
-            }
-        }
-
-        log("Writing secret");
-        await wsClient.secrets.putSecret({
-            scope: secretScope,
-            key: "ngrok",
-            string_value: ngrokAuthToken,
-        });
-
+    private async compileTunnelScript(ngrokAuthToken: string): Promise<string> {
         const tunnelPath = Uri.joinPath(
             this.context.extensionUri,
             "resources",
@@ -403,8 +372,8 @@ export class DatabricksRuntime implements Disposable {
         let tunnelCode = await fs.readFile(tunnelPath.fsPath, "utf8");
 
         tunnelCode = tunnelCode.replace(
-            'secret_scope = ""',
-            `secret_scope = "${secretScope}"`
+            'auth_token = ""',
+            `auth_token = "${ngrokAuthToken}"`
         );
 
         return tunnelCode;

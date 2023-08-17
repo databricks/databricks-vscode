@@ -1,9 +1,12 @@
+%pip install pyngrok==6.0.0
+
 from pyngrok import ngrok
+import os
 
-secret_scope = ""
+# this value will be filled in the the extension
+auth_token = ""
 
-ngrok.kill()
-auth_token = dbutils.secrets.get(scope=secret_scope, key="ngrok")
+os.system("pkill ngrok")
 ngrok.set_auth_token(auth_token)
 tunnel = ngrok.connect(5678, "tcp")
 
