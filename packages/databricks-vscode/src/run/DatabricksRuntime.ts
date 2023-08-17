@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /**
  * Main runner for executing code on Databricks
  *
@@ -33,6 +34,7 @@ import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -210,17 +212,46 @@ export class DatabricksRuntime implements Disposable {
             }
             await commands.executeCommand("workbench.panel.repl.view.focus");
 
+            this.state = "EXECUTING";
+
+            let debugUrl: URL | undefined;
+            if (shouldDebug) {
+                const ngrokAuthToken = workspaceConfigs.ngrokAuthToken;
+                if (ngrokAuthToken) {
+                    log("Installing pyngrok ...");
+                    await executionContext.execute("%pip install pyngrok");
+
+                    const response = await executionContext.execute(
+                        await this.compileTunnelScript(ngrokAuthToken, log)
+                    );
+                    const result = response.result;
+
+                    if (result.results!.resultType === "text") {
+                        const responseString = result.results?.data as string;
+
+                        debugUrl = new URL(
+                            responseString.split("\n").pop() || ""
+                        );
+                        log(`Debugger exposed at ${debugUrl.toString()}`);
+                    } else {
+                        shouldDebug = false;
+                        console.error(result);
+                    }
+                } else {
+                    shouldDebug = false;
+                }
+            }
+
+            if (shouldDebug && debugUrl) {
+                setTimeout(this.attachDebugger.bind(this, debugUrl), 2000);
+            }
+
             log(
                 `Running ${syncDestination.localUri.relativePath(
                     new LocalUri(program)
                 )} ...\n`
             );
 
-            if (shouldDebug) {
-                setTimeout(this.attachDebugger.bind(this), 3000);
-            }
-
-            this.state = "EXECUTING";
             const response = await executionContext.execute(
                 await this.compileCommandString(
                     program,
@@ -234,6 +265,8 @@ export class DatabricksRuntime implements Disposable {
                 new Time(240, TimeUnits.hours)
             );
             const result = response.result;
+
+            console.log("result", result);
 
             if (result.results!.resultType === "text") {
                 this._onDidSendOutputEmitter.fire({
@@ -297,8 +330,7 @@ export class DatabricksRuntime implements Disposable {
         }
     }
 
-    private async attachDebugger() {
-        // TODO start tunnel process
+    private async attachDebugger(debugUrl: URL) {
         const mapper = this.connection.syncDestinationMapper;
         if (!mapper) {
             return;
@@ -316,8 +348,8 @@ export class DatabricksRuntime implements Disposable {
             name: "Databricks: Remote Attach Debugger",
             request: "attach",
             connect: {
-                host: "localhost",
-                port: 5678,
+                host: debugUrl.hostname,
+                port: debugUrl.port,
             },
             pathMappings: [
                 {
@@ -329,6 +361,53 @@ export class DatabricksRuntime implements Disposable {
         };
 
         debug.startDebugging(workspaceFolder, debugConfig);
+    }
+
+    private async compileTunnelScript(
+        ngrokAuthToken: string,
+        log: (message: string) => void
+    ): Promise<string> {
+        const username = this.connection.databricksWorkspace?.userName;
+        const wsClient = this.connection.workspaceClient;
+        if (!username || !wsClient) {
+            throw new Error("No workspace connected.");
+        }
+
+        const secretScope = `${username}/vscode`;
+        log(`Creating secret scope ${secretScope}`);
+
+        try {
+            await wsClient.secrets.createScope({
+                scope: secretScope,
+            });
+        } catch (e: any) {
+            if (e.errorCode !== "RESOURCE_ALREADY_EXISTS") {
+                throw e;
+            }
+        }
+
+        log("Writing secret");
+        await wsClient.secrets.putSecret({
+            scope: secretScope,
+            key: "ngrok",
+            string_value: ngrokAuthToken,
+        });
+
+        const tunnelPath = Uri.joinPath(
+            this.context.extensionUri,
+            "resources",
+            "python",
+            "tunnel.py"
+        );
+
+        let tunnelCode = await fs.readFile(tunnelPath.fsPath, "utf8");
+
+        tunnelCode = tunnelCode.replace(
+            'secret_scope = ""',
+            `secret_scope = "${secretScope}"`
+        );
+
+        return tunnelCode;
     }
 
     private async compileCommandString(

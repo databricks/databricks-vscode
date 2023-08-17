@@ -11,11 +11,19 @@ env = {}
 
 if start_debugger:
     import debugpy
+    from pyngrok import ngrok
     import time
+    import atexit
 
-    # TODO: should be like this but the version in the DBR doesn't support it
-    # debugpy.listen(5678, in_process_debug_adapter=True)
-    # HACK: kill stranglers
+    def cleanup():
+        os.system("pkill -f debugpy")
+        os.killpg(0, 9)
+        ngrok.kill()
+
+    # Start a new process group, so the debug subprocess is killed when this process is killed
+    os.setpgrp()
+    atexit.register(cleanup)
+
     os.system("pkill -f debugpy")
     debugpy.listen(5678)
 

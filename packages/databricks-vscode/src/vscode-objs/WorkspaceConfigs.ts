@@ -59,6 +59,14 @@ export const workspaceConfigs = {
         );
     },
 
+    get ngrokAuthToken() {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<string>("tunnel.ngrokAuthToken") ?? ""
+        );
+    },
+
     get enableFilesInWorkspace() {
         return this.syncDestinationType === "workspace";
     },

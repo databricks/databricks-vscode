@@ -629,6 +629,11 @@
                             "Use a Repo as sync destination"
                         ]
                     },
+                    "databricks.tunnel.ngrokAuthToken": {
+                        "type": "string",
+                        "default": "",
+                        "description": "ngrok authentication token to tunnel debug messages from the cluster. (https://dashboard.ngrok.com/get-started/setup)"
+                    },
                     "databricks.overrideDatabricksConfigFile": {
                         "type": "string",
                         "default": "",
