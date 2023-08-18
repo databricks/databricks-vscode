@@ -1,3 +1,13 @@
+# Release: v1.1.2
+
+## packages/databricks-vscode
+
+## <small>1.1.2 (2023-08-18)</small>
+
+-   Append databricks cli path to the end of PATH (#833) ([cfe7d15](https://github.com/databricks/databricks-vscode/commit/cfe7d15)), closes [#833](https://github.com/databricks/databricks-vscode/issues/833)
+-   Don't cache environment variables across restarts for a workspace (#835) ([71e1c55](https://github.com/databricks/databricks-vscode/commit/71e1c55)), closes [#835](https://github.com/databricks/databricks-vscode/issues/835)
+-   Fetch SDK from Github until we publish to NPM ([2c623ba](https://github.com/databricks/databricks-vscode/commit/2c623ba))
+
 # Release: v1.1.1
 
 ## packages/databricks-vscode

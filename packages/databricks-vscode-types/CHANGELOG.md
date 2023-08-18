@@ -1,3 +1,11 @@
+# Release: v1.1.2
+
+## packages/databricks-vscode-types
+
+## <small>1.1.2 (2023-08-18)</small>
+
+-   Fetch SDK from Github until we publish to NPM ([2c623ba](https://github.com/databricks/databricks-vscode/commit/2c623ba))
+
 # Release: v1.1.1
 
 ## packages/databricks-vscode-types
