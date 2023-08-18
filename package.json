@@ -13,6 +13,7 @@
         "yarn": ">=3.2.0"
     },
     "scripts": {
+        "fetch:sdk": "rm -rf vendor && mkdir vendor && gh release download -R databricks/databricks-sdk-js v0.3.16 -p '*.tgz' && mv *.tgz vendor/databricks-sdk.tgz",
         "test": "yarn workspaces foreach run test",
         "test:integ": "yarn workspaces foreach run test:integ",
         "build": "yarn workspaces foreach run build",
@@ -32,6 +33,7 @@
     "homepage": "https://github.com/databricks/databricks-vscode#readme",
     "packageManager": "yarn@3.2.1",
     "devDependencies": {
+        "@types/node": "^20.5.0",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
         "conventional-changelog-cli": "^3.0.0",

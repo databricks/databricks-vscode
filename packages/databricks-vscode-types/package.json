@@ -29,6 +29,6 @@
         "typescript": "~5.1.6"
     },
     "dependencies": {
-        "@databricks/databricks-sdk": "workspace:^"
+        "@databricks/databricks-sdk": "../../vendor/databricks-sdk.tgz"
     }
 }
