@@ -365,27 +365,33 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@databricks/databricks-sdk@file:../../vendor/databricks-sdk-js-0.3.16.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
+"@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
   version: 0.3.16
-  resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk-js-0.3.16.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
+  resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
   dependencies:
+    "@types/ini": ^1.3.31
+    "@types/node": ^20.4.2
+    "@types/semver": ^7.5.0
     ini: ^4.1.1
     inversify: ^6.0.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: c6ba8daafb8f09e6abdb29ff7942c8378b5039b90ffd71471a5667a28f11ec98c5ad7a2f24aa0cec0849603b41e935d0656d476cc669ced58fdf7c829898b3f8
+  checksum: 2fbf7327009b6c0dd7e04ca2980c1a2245e115fcd60701d756824be128697b78307f4f857182810772df4a70e7fdab73313ff75a6034f153371f9f9434a73fa3
   languageName: node
   linkType: hard
 
-"@databricks/databricks-sdk@file:../../vendor/databricks-sdk-js-0.3.16.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
+"@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
   version: 0.3.16
-  resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk-js-0.3.16.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
+  resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
   dependencies:
+    "@types/ini": ^1.3.31
+    "@types/node": ^20.4.2
+    "@types/semver": ^7.5.0
     ini: ^4.1.1
     inversify: ^6.0.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: c6ba8daafb8f09e6abdb29ff7942c8378b5039b90ffd71471a5667a28f11ec98c5ad7a2f24aa0cec0849603b41e935d0656d476cc669ced58fdf7c829898b3f8
+  checksum: 2fbf7327009b6c0dd7e04ca2980c1a2245e115fcd60701d756824be128697b78307f4f857182810772df4a70e7fdab73313ff75a6034f153371f9f9434a73fa3
   languageName: node
   linkType: hard
 
@@ -393,7 +399,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
-    "@databricks/databricks-sdk": ../../vendor/databricks-sdk-js-0.3.16.tgz
+    "@databricks/databricks-sdk": ../../vendor/databricks-sdk.tgz
     "@types/vscode": ^1.69.1
     eslint: ^8.44.0
     prettier: ^3.0.0
@@ -1433,6 +1439,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/ini@npm:^1.3.31":
+  version: 1.3.31
+  resolution: "@types/ini@npm:1.3.31"
+  checksum: aca4fed0cd68f6693fd64e1b7d188a9c8c6f5823b2e3501b0570135555d4184d7d0dfba2c1afb3514c94cb21ece732f4467ea98c827d1b1b98716827ac9de680
+  languageName: node
+  linkType: hard
+
 "@types/istanbul-lib-coverage@npm:*, @types/istanbul-lib-coverage@npm:^2.0.0":
   version: 2.0.4
   resolution: "@types/istanbul-lib-coverage@npm:2.0.4"
@@ -1554,6 +1567,13 @@ __metadata:
   version: 7.3.13
   resolution: "@types/semver@npm:7.3.13"
   checksum: 00c0724d54757c2f4bc60b5032fe91cda6410e48689633d5f35ece8a0a66445e3e57fa1d6e07eb780f792e82ac542948ec4d0b76eb3484297b79bd18b8cf1cb0
+  languageName: node
+  linkType: hard
+
+"@types/semver@npm:^7.5.0":
+  version: 7.5.0
+  resolution: "@types/semver@npm:7.5.0"
+  checksum: 0a64b9b9c7424d9a467658b18dd70d1d781c2d6f033096a6e05762d20ebbad23c1b69b0083b0484722aabf35640b78ccc3de26368bcae1129c87e9df028a22e2
   languageName: node
   linkType: hard
 
@@ -3635,7 +3655,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
-    "@databricks/databricks-sdk": ../../vendor/databricks-sdk-js-0.3.16.tgz
+    "@databricks/databricks-sdk": ../../vendor/databricks-sdk.tgz
     "@databricks/databricks-vscode-types": "workspace:^"
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@sinonjs/fake-timers": ^10.3.0
