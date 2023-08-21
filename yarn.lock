@@ -420,7 +420,6 @@ __metadata:
     eslint-plugin-no-only-tests: ^3.1.0
     ts-mockito: ^2.6.1
     typescript: ~5.1.6
-    yaml: ^2.3.1
   languageName: unknown
   linkType: soft
 
@@ -3702,6 +3701,7 @@ __metadata:
     wdio-video-reporter: ^4.0.3
     wdio-vscode-service: ^5.2.0
     winston: ^3.10.0
+    yaml: ^2.3.1
     yargs: ^17.7.2
   languageName: unknown
   linkType: soft

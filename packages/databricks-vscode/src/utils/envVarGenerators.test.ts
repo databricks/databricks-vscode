@@ -11,6 +11,7 @@ import {
 import {Uri} from "vscode";
 import assert from "assert";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
+import {FeatureId, FeatureManager} from "../feature-manager/FeatureManager";
 
 describe(__filename, () => {
     let mockConnectionManager: ConnectionManager;
@@ -87,6 +88,7 @@ describe(__filename, () => {
     describe("getDbConnectEnvVars", () => {
         const mockWorkspacePath = Uri.file("example");
         let mockAuthProvider: AuthProvider;
+        let mockFeatureManager: FeatureManager<FeatureId>;
         beforeEach(() => {
             when(mockApiClient.product).thenReturn("test");
             when(mockApiClient.productVersion).thenReturn("0.0.1");
@@ -94,6 +96,12 @@ describe(__filename, () => {
             when(mockDatabricksWorkspace.authProvider).thenReturn(
                 instance(mockAuthProvider)
             );
+            mockFeatureManager = mock(FeatureManager<FeatureId>);
+            when(
+                mockFeatureManager.isEnabled("debugging.dbconnect")
+            ).thenResolve({
+                avaliable: true,
+            });
         });
 
         it("should generate correct dbconnect env vars when auth type is not profile", async () => {
@@ -101,7 +109,8 @@ describe(__filename, () => {
 
             const actual = await getDbConnectEnvVars(
                 instance(mockConnectionManager),
-                mockWorkspacePath
+                mockWorkspacePath,
+                instance(mockFeatureManager)
             );
 
             assert.deepEqual(actual, {
@@ -119,7 +128,8 @@ describe(__filename, () => {
             });
             const actual = await getDbConnectEnvVars(
                 instance(mockConnectionManager),
-                mockWorkspacePath
+                mockWorkspacePath,
+                instance(mockFeatureManager)
             );
 
             assert.deepEqual(actual, {

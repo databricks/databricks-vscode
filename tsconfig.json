@@ -8,7 +8,7 @@
             "path": "packages/databricks-vscode"
         },
         {
-            "path": "packages/databricks-sdk-js"
+            "path": "packages/databricks-vscode-types"
         }
     ]
 }
