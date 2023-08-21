@@ -9,19 +9,9 @@ on:
                 default: 0.0.0
                 type: string
 
-            sdk_version:
-                description: "SDK Release version"
-                required: true
-                default: 0.0.0
-                type: string
-
     workflow_call:
         inputs:
             extension_version:
-                default: 0.0.0
-                type: string
-
-            sdk_version:
                 default: 0.0.0
                 type: string
 
@@ -41,9 +31,6 @@ jobs:
             - name: Check Extension Version
               run: bash -c '$([[ "${{ inputs.extension_version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
 
-            - name: Check SDK Version
-              run: bash -c '$([[ "${{ inputs.sdk_version }}" =~ ^([0-9]+\.){2}[0-9]+ ]])'
-
             - run: |
                   git config --global user.name "releasebot"
                   git config --global user.email "noreply@github.com"
@@ -56,10 +43,6 @@ jobs:
 
             - run: yarn install --immutable
 
-            - name: Bump SDK version
-              if: ${{ inputs.sdk_version != '0.0.0' }}
-              run: yarn workspace @databricks/databricks-sdk version ${{ inputs.sdk_version }}
-
             - name: Bump Extension version
               if: ${{ inputs.extension_version != '0.0.0' }}
               run: |
@@ -71,22 +54,22 @@ jobs:
               id: create-changelog
               run: |
                   TMPFILE=$(mktemp /tmp/tmpfile.XXXX)
-                  bash scripts/generate_changelog.sh ${{ inputs.extension_version }} ${{ inputs.sdk_version }} $TMPFILE
+                  bash scripts/generate_changelog.sh ${{ inputs.extension_version }} $TMPFILE
 
                   cat $TMPFILE >> $GITHUB_STEP_SUMMARY
 
                   echo "changelog_file=$TMPFILE" >> $GITHUB_OUTPUT
 
             - name: Generate notice file
-              if: ${{ inputs.extension_version != '0.0.0' && inputs.sdk_version != '0.0.0' }}
+              if: ${{ inputs.extension_version != '0.0.0' }}
               run: yarn run generate-notice
 
             - name: lint fix
-              if: ${{ inputs.extension_version != '0.0.0' && inputs.sdk_version != '0.0.0' }}
+              if: ${{ inputs.extension_version != '0.0.0' }}
               run: yarn run fix
 
             - name: Create Branch
-              if: ${{ inputs.extension_version != '0.0.0' && inputs.sdk_version != '0.0.0' }}
+              if: ${{ inputs.extension_version != '0.0.0' }}
               id: create-branch
               run: |
                   COMMIT_SHA=$(git rev-parse --short HEAD)
@@ -99,7 +82,7 @@ jobs:
                   echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
 
             - name: Create PR
-              if: ${{ inputs.extension_version != '0.0.0' && inputs.sdk_version != '0.0.0'}}
+              if: ${{ inputs.extension_version != '0.0.0'}}
               run: |
                   gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.extension_version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
                   rm ${{ steps.create-changelog.outputs.changelog_file }}
