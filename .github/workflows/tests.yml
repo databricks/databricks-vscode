@@ -17,56 +17,6 @@ on:
                 type: string
 
 jobs:
-    test-sdk:
-        name: Test Databricks SDK
-        runs-on: ${{ inputs.os }}
-        environment:
-            name: azure-prod-usr
-
-        defaults:
-            run:
-                shell: bash
-                working-directory: packages/databricks-sdk-js
-        env:
-            DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-            DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-            TEST_DEFAULT_CLUSTER_ID: ${{ secrets.TEST_JS_SDK_CLUSTER_ID }}
-
-        steps:
-            - uses: actions/checkout@v3
-
-            - name: Use Node.js ${{ inputs.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ inputs.node-version }}
-                  cache: "yarn"
-
-            - run: yarn install --immutable
-
-            - name: Building packages
-              run: yarn run build
-
-            - name: Prettier and Linting
-              run: yarn run test:lint
-
-            - name: Unit Tests With Code Cov
-              run: yarn test:cov
-
-            - name: Upload unit test coverage reports to Codecov
-              uses: codecov/codecov-action@v3
-              with:
-                  directory: ./packages/databricks-sdk-js/coverage/unit
-                  flags: unit
-
-            - name: Integration Tests
-              run: yarn run test:integ:cov
-
-            - name: Upload unit test coverage reports to Codecov
-              uses: codecov/codecov-action@v3
-              with:
-                  directory: ./packages/databricks-sdk-js/coverage/integration
-                  flags: integration
-
     test-extension:
         name: Test VSCode Extension
         runs-on: ${{ inputs.os }}

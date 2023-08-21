@@ -28,10 +28,6 @@ process() {
 
 if [[ "$1" != "0.0.0" ]]; then
     for PACKAGE in "packages/databricks-vscode" "packages/databricks-vscode-types"; do
-        process $PACKAGE $1 $3
+        process $PACKAGE $1 $2
     done
-fi
-
-if [[ "$2" != "0.0.0" ]]; then
-    process "packages/databricks-sdk-js" $2 $3
 fi

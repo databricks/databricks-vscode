@@ -365,42 +365,41 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@databricks/databricks-sdk@workspace:^, @databricks/databricks-sdk@workspace:packages/databricks-sdk-js":
-  version: 0.0.0-use.local
-  resolution: "@databricks/databricks-sdk@workspace:packages/databricks-sdk-js"
+"@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
+  version: 0.3.16
+  resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
   dependencies:
-    "@istanbuljs/nyc-config-typescript": ^1.0.2
-    "@sinonjs/fake-timers": ^10.3.0
     "@types/ini": ^1.3.31
-    "@types/mocha": ^10.0.1
     "@types/node": ^20.4.2
     "@types/semver": ^7.5.0
-    "@types/sinonjs__fake-timers": ^8.1.2
-    "@types/tmp": ^0.2.3
-    "@types/uuid": ^9.0.2
-    eslint: ^8.44.0
     ini: ^4.1.1
     inversify: ^6.0.1
-    mocha: ^10.2.0
-    nyc: ^15.1.0
-    prettier: ^3.0.0
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-    tmp-promise: ^3.0.3
-    ts-loader: ^9.4.4
-    ts-mocha: ^10.0.0
-    ts-mockito: ^2.6.1
-    ts-node: ^10.9.1
-    typescript: ~5.1.6
-    uuid: ^9.0.0
-  languageName: unknown
-  linkType: soft
+  checksum: 2fbf7327009b6c0dd7e04ca2980c1a2245e115fcd60701d756824be128697b78307f4f857182810772df4a70e7fdab73313ff75a6034f153371f9f9434a73fa3
+  languageName: node
+  linkType: hard
+
+"@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
+  version: 0.3.16
+  resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
+  dependencies:
+    "@types/ini": ^1.3.31
+    "@types/node": ^20.4.2
+    "@types/semver": ^7.5.0
+    ini: ^4.1.1
+    inversify: ^6.0.1
+    reflect-metadata: ^0.1.13
+    semver: ^7.5.4
+  checksum: 2fbf7327009b6c0dd7e04ca2980c1a2245e115fcd60701d756824be128697b78307f4f857182810772df4a70e7fdab73313ff75a6034f153371f9f9434a73fa3
+  languageName: node
+  linkType: hard
 
 "@databricks/databricks-vscode-types@workspace:^, @databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types":
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
-    "@databricks/databricks-sdk": "workspace:^"
+    "@databricks/databricks-sdk": ../../vendor/databricks-sdk.tgz
     "@types/vscode": ^1.69.1
     eslint: ^8.44.0
     prettier: ^3.0.0
@@ -412,6 +411,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode@workspace:."
   dependencies:
+    "@types/node": ^20.5.0
     "@typescript-eslint/eslint-plugin": ^6.0.0
     "@typescript-eslint/parser": ^6.0.0
     conventional-changelog-cli: ^3.0.0
@@ -1478,13 +1478,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/json5@npm:^0.0.29":
-  version: 0.0.29
-  resolution: "@types/json5@npm:0.0.29"
-  checksum: e60b153664572116dfea673c5bda7778dbff150498f44f998e34b5886d8afc47f16799280e4b6e241c0472aef1bc36add771c569c68fc5125fc2ae519a3eb9ac
-  languageName: node
-  linkType: hard
-
 "@types/jsonfile@npm:*":
   version: 6.1.1
   resolution: "@types/jsonfile@npm:6.1.1"
@@ -1547,6 +1540,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^20.5.0":
+  version: 20.5.0
+  resolution: "@types/node@npm:20.5.0"
+  checksum: 659bc5fc93b5c02bd88ca4bfae4f6b9dc307d45884d1dd9d69df85819a9943cdc00cd3c87eec3048866df6a67f52297f74d170e47a44f61edb3e8f770d94e85e
+  languageName: node
+  linkType: hard
+
 "@types/normalize-package-data@npm:^2.4.0, @types/normalize-package-data@npm:^2.4.1":
   version: 2.4.1
   resolution: "@types/normalize-package-data@npm:2.4.1"
@@ -1602,13 +1602,6 @@ __metadata:
   version: 1.3.2
   resolution: "@types/triple-beam@npm:1.3.2"
   checksum: dd7b4a563fb710abc992e5d59eac481bed9e303fada2e276e37b00be31c392e03300ee468e57761e616512872e77935f92472877d0704a19688d15a726cee17b
-  languageName: node
-  linkType: hard
-
-"@types/uuid@npm:^9.0.2":
-  version: 9.0.2
-  resolution: "@types/uuid@npm:9.0.2"
-  checksum: 1754bcf3444e1e3aeadd6e774fc328eb53bc956665e2e8fb6ec127aa8e1f43d9a224c3d22a9a6233dca8dd81a12dc7fed4d84b8876dd5ec82d40f574f7ff8b68
   languageName: node
   linkType: hard
 
@@ -2533,7 +2526,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"arrify@npm:^1.0.0, arrify@npm:^1.0.1":
+"arrify@npm:^1.0.1":
   version: 1.0.1
   resolution: "arrify@npm:1.0.1"
   checksum: 745075dd4a4624ff0225c331dacb99be501a515d39bcb7c84d24660314a6ec28e68131b137e6f7e16318170842ce97538cd298fc4cd6b2cc798e0b957f2747e7
@@ -2755,13 +2748,6 @@ __metadata:
   version: 1.0.0
   resolution: "buffer-fill@npm:1.0.0"
   checksum: c29b4723ddeab01e74b5d3b982a0c6828f2ded49cef049ddca3dac661c874ecdbcecb5dd8380cf0f4adbeb8cff90a7de724126750a1f1e5ebd4eb6c59a1315b1
-  languageName: node
-  linkType: hard
-
-"buffer-from@npm:^1.0.0, buffer-from@npm:^1.1.0":
-  version: 1.1.2
-  resolution: "buffer-from@npm:1.1.2"
-  checksum: 0448524a562b37d4d7ed9efd91685a5b77a50672c556ea254ac9a6d30e3403a517d8981f10e565db24e8339413b43c97ca2951f10e399c6125a0d8911f5679bb
   languageName: node
   linkType: hard
 
@@ -3669,7 +3655,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
-    "@databricks/databricks-sdk": "workspace:^"
+    "@databricks/databricks-sdk": ../../vendor/databricks-sdk.tgz
     "@databricks/databricks-vscode-types": "workspace:^"
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@sinonjs/fake-timers": ^10.3.0
@@ -4093,13 +4079,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"diff@npm:^3.1.0":
-  version: 3.5.0
-  resolution: "diff@npm:3.5.0"
-  checksum: 00842950a6551e26ce495bdbce11047e31667deea546527902661f25cc2e73358967ebc78cf86b1a9736ec3e14286433225f9970678155753a6291c3bca5227b
-  languageName: node
-  linkType: hard
-
 "diff@npm:^4.0.1":
   version: 4.0.2
   resolution: "diff@npm:4.0.2"
@@ -4298,16 +4277,6 @@ __metadata:
   dependencies:
     once: ^1.4.0
   checksum: 530a5a5a1e517e962854a31693dbb5c0b2fc40b46dad2a56a2deec656ca040631124f4795823acc68238147805f8b021abbe221f4afed5ef3c8e8efc2024908b
-  languageName: node
-  linkType: hard
-
-"enhanced-resolve@npm:^5.0.0":
-  version: 5.12.0
-  resolution: "enhanced-resolve@npm:5.12.0"
-  dependencies:
-    graceful-fs: ^4.2.4
-    tapable: ^2.2.0
-  checksum: bf3f787facaf4ce3439bef59d148646344e372bef5557f0d37ea8aa02c51f50a925cd1f07b8d338f18992c29f544ec235a8c64bcdb56030196c48832a5494174
   languageName: node
   linkType: hard
 
@@ -5671,7 +5640,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graceful-fs@npm:^4.1.10, graceful-fs@npm:^4.1.15, graceful-fs@npm:^4.1.2, graceful-fs@npm:^4.1.6, graceful-fs@npm:^4.2.0, graceful-fs@npm:^4.2.4, graceful-fs@npm:^4.2.6, graceful-fs@npm:^4.2.9":
+"graceful-fs@npm:^4.1.10, graceful-fs@npm:^4.1.15, graceful-fs@npm:^4.1.2, graceful-fs@npm:^4.1.6, graceful-fs@npm:^4.2.0, graceful-fs@npm:^4.2.6, graceful-fs@npm:^4.2.9":
   version: 4.2.11
   resolution: "graceful-fs@npm:4.2.11"
   checksum: ac85f94da92d8eb6b7f5a8b20ce65e43d66761c55ce85ac96df6865308390da45a8d3f0296dd3a663de65d30ba497bd46c696cc1e248c72b13d6d567138a4fc7
@@ -7387,7 +7356,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"micromatch@npm:^4.0.0, micromatch@npm:^4.0.4":
+"micromatch@npm:^4.0.4":
   version: 4.0.5
   resolution: "micromatch@npm:4.0.5"
   dependencies:
@@ -7650,7 +7619,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mkdirp@npm:^0.5.1, mkdirp@npm:^0.5.5":
+"mkdirp@npm:^0.5.5":
   version: 0.5.6
   resolution: "mkdirp@npm:0.5.6"
   dependencies:
@@ -9636,17 +9605,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"source-map-support@npm:^0.5.6":
-  version: 0.5.21
-  resolution: "source-map-support@npm:0.5.21"
-  dependencies:
-    buffer-from: ^1.0.0
-    source-map: ^0.6.0
-  checksum: 43e98d700d79af1d36f859bdb7318e601dfc918c7ba2e98456118ebc4c4872b327773e5a1df09b0524e9e5063bb18f0934538eace60cca2710d1fa687645d137
-  languageName: node
-  linkType: hard
-
-"source-map@npm:^0.6.0, source-map@npm:^0.6.1":
+"source-map@npm:^0.6.1":
   version: 0.6.1
   resolution: "source-map@npm:0.6.1"
   checksum: 59ce8640cf3f3124f64ac289012c2b8bd377c238e316fb323ea22fbfe83da07d81e000071d7242cad7a23cd91c7de98e4df8830ec3f133cb6133a5f6e9f67bc2
@@ -10025,13 +9984,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tapable@npm:^2.2.0":
-  version: 2.2.1
-  resolution: "tapable@npm:2.2.1"
-  checksum: 3b7a1b4d86fa940aad46d9e73d1e8739335efd4c48322cb37d073eb6f80f5281889bf0320c6d8ffcfa1a0dd5bfdbd0f9d037e252ef972aca595330538aac4d51
-  languageName: node
-  linkType: hard
-
 "tar-fs@npm:2.1.1, tar-fs@npm:^2.0.0":
   version: 2.1.1
   resolution: "tar-fs@npm:2.1.1"
@@ -10288,62 +10240,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-loader@npm:^9.4.4":
-  version: 9.4.4
-  resolution: "ts-loader@npm:9.4.4"
-  dependencies:
-    chalk: ^4.1.0
-    enhanced-resolve: ^5.0.0
-    micromatch: ^4.0.0
-    semver: ^7.3.4
-  peerDependencies:
-    typescript: "*"
-    webpack: ^5.0.0
-  checksum: 8e5e6b839b0edfa40d2156c880d88ccab58226894ea5978221bc48c7db3215e2e856bfd0093f148e925a2befc42d6c94cafa9a994a7da274541efaa916012b63
-  languageName: node
-  linkType: hard
-
-"ts-mocha@npm:^10.0.0":
-  version: 10.0.0
-  resolution: "ts-mocha@npm:10.0.0"
-  dependencies:
-    ts-node: 7.0.1
-    tsconfig-paths: ^3.5.0
-  peerDependencies:
-    mocha: ^3.X.X || ^4.X.X || ^5.X.X || ^6.X.X || ^7.X.X || ^8.X.X || ^9.X.X || ^10.X.X
-  dependenciesMeta:
-    tsconfig-paths:
-      optional: true
-  bin:
-    ts-mocha: bin/ts-mocha
-  checksum: b11f2a8ceecf195b0db724da429159982fef12e4357088fe900289223587217e8c126ead7929679edd58bf19ad96c5da5911535d26f535386632e18fbff10c40
-  languageName: node
-  linkType: hard
-
 "ts-mockito@npm:^2.6.1":
   version: 2.6.1
   resolution: "ts-mockito@npm:2.6.1"
   dependencies:
     lodash: ^4.17.5
   checksum: c793da0e801565c7488501e3f5c0fe17879a04a62073b137d4c4b87161b4249aebdf35e905a372a6e06f39ba434f092325f4af6ce6339e71cdaa26f98f9d5fed
-  languageName: node
-  linkType: hard
-
-"ts-node@npm:7.0.1":
-  version: 7.0.1
-  resolution: "ts-node@npm:7.0.1"
-  dependencies:
-    arrify: ^1.0.0
-    buffer-from: ^1.1.0
-    diff: ^3.1.0
-    make-error: ^1.1.1
-    minimist: ^1.2.0
-    mkdirp: ^0.5.1
-    source-map-support: ^0.5.6
-    yn: ^2.0.0
-  bin:
-    ts-node: dist/bin.js
-  checksum: 07ed6ea1805361828737a767cfd6c57ea6e267ee8679282afb933610af02405e1a87c1f2aea1d38ed8e66b34fcbf6272b6021ab95d78849105d2e57fc283870b
   languageName: node
   linkType: hard
 
@@ -10382,18 +10284,6 @@ __metadata:
     ts-node-transpile-only: dist/bin-transpile.js
     ts-script: dist/bin-script-deprecated.js
   checksum: 090adff1302ab20bd3486e6b4799e90f97726ed39e02b39e566f8ab674fd5bd5f727f43615debbfc580d33c6d9d1c6b1b3ce7d8e3cca3e20530a145ffa232c35
-  languageName: node
-  linkType: hard
-
-"tsconfig-paths@npm:^3.5.0":
-  version: 3.14.2
-  resolution: "tsconfig-paths@npm:3.14.2"
-  dependencies:
-    "@types/json5": ^0.0.29
-    json5: ^1.0.2
-    minimist: ^1.2.6
-    strip-bom: ^3.0.0
-  checksum: a6162eaa1aed680537f93621b82399c7856afd10ec299867b13a0675e981acac4e0ec00896860480efc59fc10fd0b16fdc928c0b885865b52be62cadac692447
   languageName: node
   linkType: hard
 
@@ -11342,13 +11232,6 @@ __metadata:
   version: 3.1.1
   resolution: "yn@npm:3.1.1"
   checksum: 2c487b0e149e746ef48cda9f8bad10fc83693cd69d7f9dcd8be4214e985de33a29c9e24f3c0d6bcf2288427040a8947406ab27f7af67ee9456e6b84854f02dd6
-  languageName: node
-  linkType: hard
-
-"yn@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "yn@npm:2.0.0"
-  checksum: 9d49527cb3e9a0948cc057223810bf30607bf04b9ff7666cc1681a6501d660b60d90000c16f9e29311b0f28d8a06222ada565ccdca5f1049cdfefb1908217572
   languageName: node
   linkType: hard
 

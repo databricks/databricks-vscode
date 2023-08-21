@@ -10,7 +10,7 @@ import {
     MetadataServiceVersionHeader,
     ServerResponse,
 } from "@databricks/databricks-sdk";
-import {NamedLogger} from "@databricks/databricks-sdk/src/logging";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 
 export class MetadataService implements Disposable {
     private server:
