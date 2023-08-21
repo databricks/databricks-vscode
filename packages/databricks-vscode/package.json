@@ -697,7 +697,7 @@
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
-        "@sinonjs/fake-timers": "^10.3.0",
+        "@sinonjs/fake-timers": "^11.1.0",
         "@types/bcryptjs": "^2.4.2",
         "@types/chai": "^4.3.5",
         "@types/fs-extra": "^11.0.1",
