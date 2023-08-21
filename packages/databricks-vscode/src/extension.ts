@@ -49,7 +49,7 @@ import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
-import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialog";
+import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
 
 export async function activate(
     context: ExtensionContext
