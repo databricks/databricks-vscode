@@ -102,8 +102,14 @@ export class NotebookInitScriptManager implements Disposable {
                 ) {
                     return;
                 }
-                const localUri = new LocalUri(activeTextEditor?.document.uri);
-                if (await FileUtils.isNotebook(localUri)) {
+
+                if (
+                    activeTextEditor?.document.uri.scheme ===
+                        "vscode-notebook-cell" ||
+                    (await FileUtils.isNotebook(
+                        new LocalUri(activeTextEditor?.document.uri)
+                    ))
+                ) {
                     this.verifyInitScript();
                 }
             })

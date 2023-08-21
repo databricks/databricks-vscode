@@ -154,8 +154,12 @@ export const workspaceConfigs = {
     },
 
     get ipythonDir(): string | undefined {
-        return workspace
+        const dir = workspace
             .getConfiguration("databricks")
             .get<string>("ipythonDir");
+        if (dir === "") {
+            return undefined;
+        }
+        return dir;
     },
 };

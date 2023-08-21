@@ -640,7 +640,6 @@
                     },
                     "databricks.ipythonDir": {
                         "type": "string",
-                        "default": "",
                         "description": "Absolute path to a directory for storing IPython files. Defaults to IPYTHONDIR environment variable (if set) or ~/.ipython."
                     }
                 }

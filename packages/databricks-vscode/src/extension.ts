@@ -49,6 +49,7 @@ import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
+import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialog";
 
 export async function activate(
     context: ExtensionContext
@@ -314,13 +315,7 @@ export async function activate(
     databricksEnvFileManager.init();
     context.subscriptions.push(
         databricksEnvFileManager,
-        databricksEnvFileManager.onDidChangeEnvironmentVariables(() => {
-            if (workspace.notebookDocuments.length) {
-                window.showInformationMessage(
-                    "Environment variables have changed. Restart all jupyter kernels to pickup the latest environment variables."
-                );
-            }
-        })
+        showRestartNotebookDialogue(databricksEnvFileManager)
     );
     featureManager.isEnabled("debugging.dbconnect");
 

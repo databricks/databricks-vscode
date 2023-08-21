@@ -275,7 +275,7 @@ try:
 
     print(sys.modules[__name__])
     if not load_env_from_leaf(os.getcwd()):
-        exit(1)
+        sys.exit(1)
     cfg = LocalDatabricksNotebookConfig()
     create_and_register_databricks_globals()
     register_magics()
