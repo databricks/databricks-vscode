@@ -56,7 +56,7 @@ export async function getNotebookEnvVars(
 }
 
 function getUserAgent(connectionManager: ConnectionManager) {
-    const client = connectionManager.workspaceClient?.apiClient;
+    const client = connectionManager.apiClient;
     if (!client) {
         return;
     }
@@ -65,7 +65,7 @@ function getUserAgent(connectionManager: ConnectionManager) {
 
 export function getAuthEnvVars(connectionManager: ConnectionManager) {
     const cluster = connectionManager.cluster;
-    const host = connectionManager.databricksWorkspace?.host.authority;
+    const host = connectionManager.databricksWorkspace?.host.toString();
     if (!host || !connectionManager.metadataServiceUrl) {
         return;
     }
@@ -104,9 +104,7 @@ export function getDatabricksCliEnvVars(connectionManager: ConnectionManager) {
 
 async function getPatToken(connectionManager: ConnectionManager) {
     const headers: Record<string, string> = {};
-    await connectionManager.workspaceClient?.apiClient.config.authenticate(
-        headers
-    );
+    await connectionManager.apiClient?.config.authenticate(headers);
     return headers["Authorization"]?.split(" ")[1];
 }
 

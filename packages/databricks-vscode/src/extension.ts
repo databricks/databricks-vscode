@@ -87,8 +87,8 @@ export async function activate(
     const workspaceStateManager = new WorkspaceStateManager(context);
 
     // Add the databricks binary to the PATH environment variable in terminals
-    context.environmentVariableCollection.persistent = true;
-    context.environmentVariableCollection.prepend(
+    context.environmentVariableCollection.clear();
+    context.environmentVariableCollection.append(
         "PATH",
         `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
