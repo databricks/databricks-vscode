@@ -27,11 +27,15 @@ import {LocalUri} from "../../sync/SyncDestination";
 const execFile = promisify(ef);
 
 async function isDbnbTextEditor(editor?: TextEditor) {
-    return (
-        editor?.document.languageId === "python" &&
-        (await FileUtils.isNotebook(new LocalUri(editor.document.uri))) ===
-            "PY_DBNB"
-    );
+    try {
+        return (
+            editor?.document.languageId === "python" &&
+            (await FileUtils.isNotebook(new LocalUri(editor.document.uri))) ===
+                "PY_DBNB"
+        );
+    } catch (e) {
+        return false;
+    }
 }
 
 export class NotebookInitScriptManager implements Disposable {
@@ -62,7 +66,7 @@ export class NotebookInitScriptManager implements Disposable {
         });
         this.disposables.push(
             this.connectionManager.onDidChangeState(async (e) => {
-                if (e !== "CONNECTED" || (await this.isKnowEnvironment())) {
+                if (e !== "CONNECTED" || (await this.isKnownEnvironment())) {
                     return;
                 }
                 this.initScriptSuccessfullyVerified = false;
@@ -80,13 +84,13 @@ export class NotebookInitScriptManager implements Disposable {
                 this.verifyInitScript();
             }),
             workspace.onDidOpenNotebookDocument(async () => {
-                if (await this.isKnowEnvironment()) {
+                if (await this.isKnownEnvironment()) {
                     return;
                 }
                 this.verifyInitScript();
             }),
             window.onDidChangeActiveNotebookEditor(async (activeNotebook) => {
-                if ((await this.isKnowEnvironment()) || !activeNotebook) {
+                if ((await this.isKnownEnvironment()) || !activeNotebook) {
                     return;
                 }
                 this.verifyInitScript();
@@ -94,7 +98,7 @@ export class NotebookInitScriptManager implements Disposable {
             window.onDidChangeActiveTextEditor(async (activeTextEditor) => {
                 if (
                     activeTextEditor?.document.languageId !== "python" ||
-                    (await this.isKnowEnvironment())
+                    (await this.isKnownEnvironment())
                 ) {
                     return;
                 }
@@ -107,7 +111,11 @@ export class NotebookInitScriptManager implements Disposable {
     }
 
     get ipythonDir(): string {
-        return path.join(this.workspacePath.fsPath, ".databricks", "ipython");
+        return (
+            workspaceConfigs.ipythonDir ??
+            process.env.IPYTHONDIR ??
+            path.join(FileUtils.getHomedir(), ".ipython")
+        );
     }
 
     get startupDir(): string {
@@ -129,7 +137,7 @@ export class NotebookInitScriptManager implements Disposable {
         return readdir(this.generatedDir);
     }
 
-    async isKnowEnvironment() {
+    async isKnownEnvironment() {
         return (
             this.currentEnvPath ===
             (await this.pythonExtension.getPythonExecutable())
@@ -285,6 +293,8 @@ export class NotebookInitScriptManager implements Disposable {
         // If we are not in a jupyter notebook or a databricks notebook,
         // then we don't need to verify the init script
         if (
+            window.activeTextEditor?.document.uri.scheme !==
+                "vscode-notebook-cell" &&
             !isDbnbTextEditor(window.activeTextEditor) &&
             window.activeNotebookEditor === undefined
         ) {

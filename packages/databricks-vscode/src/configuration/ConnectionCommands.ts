@@ -3,7 +3,6 @@ import {
     WorkspaceFsEntity,
     WorkspaceFsUtils,
 } from "@databricks/databricks-sdk";
-import {homedir} from "node:os";
 import {
     Disposable,
     FileSystemError,
@@ -17,7 +16,7 @@ import {
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
-import {UrlUtils} from "../utils";
+import {FileUtils, UrlUtils} from "../utils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import path from "node:path";
@@ -76,7 +75,7 @@ export class ConnectionCommands implements Disposable {
 
     openDatabricksConfigFileCommand() {
         return async () => {
-            const homeDir = process.env.HOME ?? homedir();
+            const homeDir = FileUtils.getHomedir();
             let filePath =
                 workspaceConfigs.databrickscfgLocation ??
                 process.env.DATABRICKS_CONFIG_FILE ??

@@ -152,4 +152,10 @@ export const workspaceConfigs = {
                 .get<boolean>("wsfs.rearrangeCells") ?? true
         );
     },
+
+    get ipythonDir(): string | undefined {
+        return workspace
+            .getConfiguration("databricks")
+            .get<string>("ipythonDir");
+    },
 };
