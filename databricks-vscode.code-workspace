@@ -22,6 +22,15 @@
         },
         "[typescript]": {
             "editor.defaultFormatter": "esbenp.prettier-vscode"
-        }
+        },
+        "python.analysis.inlayHints.pytestParameters": true,
+        "python.analysis.inlayHints.variableTypes": true,
+        "python.analysis.inlayHints.functionReturnTypes": true,
+        "python.analysis.inlayHints.callArgumentNames": false,
+        "python.analysis.autoImportCompletions": true,
+        "pylint.importStrategy": "fromEnvironment",
+        "pylint.args": [
+            "--rcfile=/Users/kartik.gupta/databricks-vscode/packages/databricks-vscode/.pylintrc"
+        ]
     }
 }

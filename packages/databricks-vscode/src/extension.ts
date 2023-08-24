@@ -214,7 +214,9 @@ export async function activate(
     );
 
     context.subscriptions.push(wsfsAccessVerifier);
-    context.subscriptions.push(new DltLsp(context, pythonExtensionWrapper));
+    const lsp = new DltLsp(context, pythonExtensionWrapper, connectionManager);
+    context.subscriptions.push(lsp);
+    lsp.start();
 
     const dbConnectInstallPrompt = new DbConnectInstallPrompt(
         workspaceStateManager,
