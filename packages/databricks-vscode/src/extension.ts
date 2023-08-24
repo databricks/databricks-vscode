@@ -442,6 +442,11 @@ export async function activate(
             runCommands.runEditorContentsAsWorkflowCommand(),
             runCommands
         ),
+        telemetry.registerCommand(
+            "databricks.run.runConnectWithProgress",
+            runCommands.runConnectWithProgress(),
+            runCommands
+        ),
         debug.registerDebugAdapterDescriptorFactory("databricks", debugFactory),
         debugFactory,
         debug.registerDebugAdapterDescriptorFactory(

@@ -77,6 +77,24 @@ export class RunCommands {
         };
     }
 
+    runConnectWithProgress() {
+        return async (resource: Uri) => {
+            const targetResource = this.getTargetResource(resource);
+            if (targetResource) {
+                await debug.startDebugging(
+                    undefined,
+                    {
+                        type: "databricks-connect-progress",
+                        name: "Run File as Connect with Progress",
+                        request: "launch",
+                        program: targetResource.fsPath,
+                    },
+                    {noDebug: true}
+                );
+            }
+        };
+    }
+
     private getTargetResource(resource: Uri): Uri | undefined {
         if (!resource && window.activeTextEditor) {
             return window.activeTextEditor.document.uri;

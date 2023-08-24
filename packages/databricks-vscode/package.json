@@ -160,6 +160,13 @@
                 "icon": "$(play)"
             },
             {
+                "command": "databricks.run.runConnectWithProgress",
+                "title": "Run File as Connect with Progress",
+                "category": "Databricks",
+                "enablement": "!inDebugMode",
+                "icon": "$(play)"
+            },
+            {
                 "command": "databricks.quickstart.open",
                 "title": "Show Quickstart",
                 "category": "Databricks"
@@ -367,6 +374,11 @@
                     "group": "navigation@1"
                 },
                 {
+                    "command": "databricks.run.runConnectWithProgress",
+                    "when": "resourceLangId == python",
+                    "group": "navigation@1"
+                },
+                {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb",
                     "group": "navigation@1"
@@ -379,6 +391,10 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
+                    "when": "resourceLangId == python || resourceExtname == .ipynb"
+                },
+                {
+                    "command": "databricks.run.runConnectWithProgress",
                     "when": "resourceLangId == python || resourceExtname == .ipynb"
                 },
                 {
@@ -405,6 +421,10 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
+                    "when": "resourceLangId == python"
+                },
+                {
+                    "command": "databricks.run.runConnectWithProgress",
                     "when": "resourceLangId == python"
                 }
             ]
