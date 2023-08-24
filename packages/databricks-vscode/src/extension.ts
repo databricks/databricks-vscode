@@ -49,6 +49,7 @@ import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
+import {DltLsp} from "./language/DltLsp";
 
 export async function activate(
     context: ExtensionContext
@@ -213,6 +214,7 @@ export async function activate(
     );
 
     context.subscriptions.push(wsfsAccessVerifier);
+    context.subscriptions.push(new DltLsp(context, pythonExtensionWrapper));
 
     const dbConnectInstallPrompt = new DbConnectInstallPrompt(
         workspaceStateManager,

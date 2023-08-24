@@ -693,6 +693,7 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
         "triple-beam": "^1.4.1",
+        "vscode-languageclient": "^8.1.0",
         "winston": "^3.10.0"
     },
     "devDependencies": {
