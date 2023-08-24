@@ -1,4 +1,4 @@
-import {debug, Uri, window} from "vscode";
+import {debug, ProgressLocation, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForAttachingSyncDest} from "./prompts";
 import {FileUtils} from "../utils";
@@ -81,16 +81,31 @@ export class RunCommands {
         return async (resource: Uri) => {
             const targetResource = this.getTargetResource(resource);
             if (targetResource) {
-                await debug.startDebugging(
-                    undefined,
+                window.withProgress(
                     {
-                        type: "databricks-connect-progress",
-                        name: "Run File as Connect with Progress",
-                        request: "launch",
-                        program: targetResource.fsPath,
+                        title: "Nija Test Progress",
+                        location: ProgressLocation.Notification,
                     },
-                    {noDebug: true}
-                );
+                    async (progress, token) => {
+                        var prom = Promise.resolve()
+                        for (let i = 0; i < 10; i++) {
+                            prom = new Promise(r => setTimeout(r, 1000))
+                            await prom
+                            progress.report({ increment: 10 })
+                        }
+                        return "done"
+                    }
+                )
+                // await debug.startDebugging(
+                //     undefined,
+                //     {
+                //         type: "databricks-connect-progress",
+                //         name: "Run File as Connect with Progress",
+                //         request: "launch",
+                //         program: targetResource.fsPath,
+                //     },
+                //     {noDebug: true}
+                // );
             }
         };
     }

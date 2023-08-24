@@ -84,22 +84,6 @@ export async function activate(
         return undefined;
     }
 
-    window.withProgress(
-        {
-            title: "Nija Test Progress",
-            location: ProgressLocation.Notification,
-        },
-        async (progress, token) => {
-            var prom = Promise.resolve()
-            for (let i = 0; i < 10; i++) {
-                prom = new Promise(r => setTimeout(r, 1000))
-                await prom
-                progress.report({ increment: 10 })
-            }
-            return "done"
-        }
-    )
-
     const workspaceStateManager = new WorkspaceStateManager(context);
 
     // Add the databricks binary to the PATH environment variable in terminals
