@@ -80,20 +80,29 @@ export class RunCommands {
     runConnectWithProgress() {
         return async (resource: Uri) => {
             const targetResource = this.getTargetResource(resource);
-            if (targetResource) {
+            if (targetResource) {                
+                // setInterval(() => {
+                
+                
                 window.withProgress(
                     {
                         title: "Nija Test Progress",
                         location: ProgressLocation.Notification,
                     },
                     async (progress, token) => {
-                        var prom = Promise.resolve()
-                        for (let i = 0; i < 10; i++) {
-                            prom = new Promise(r => setTimeout(r, 1000))
-                            await prom
-                            progress.report({ increment: 10 })
-                        }
-                        return "done"
+                        var intervalId
+                        await new Promise((ok, ko) => {
+                            var count = 0;
+                            intervalId = setInterval(() => {
+                                progress.report({ increment: 10})
+                                count += 10
+
+                                if (count == 100) { 
+                                    ok("done")
+                                }
+                            }, 500)
+                        })
+                        clearInterval(intervalId)
                     }
                 )
                 // await debug.startDebugging(
