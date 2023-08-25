@@ -1,7 +1,7 @@
 
 from ast import List
 from functools import wraps
-import dlt
+import lsp_server.dlt_graph.dlt as dlt
 
 @dlt.table
 def table1():
