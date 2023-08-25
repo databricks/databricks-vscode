@@ -91,6 +91,7 @@ export class RunCommands {
             const queryProgress = new Map<string, number>()
             type ResolveType = (x: unknown) => void
             const resolves: ResolveType[] = []
+            const watchers: fs.FSWatcher[] = []
 
             async function getConnectProgress(file: string): Promise<ConnectProgress> {
                 const DEFAULT_PROGRESS: ConnectProgress = { completed: 0, total: 0 }
@@ -105,19 +106,19 @@ export class RunCommands {
                 queryProgress.set(file, 0)
 
                 window.withProgress(
-                    { location: ProgressLocation.Notification, title: `Query ${path.basename(file)} Progress` },
+                    { location: ProgressLocation.Notification, title: `Query ${path.basename(file)}` },
                     async (p, _) => {
                         await new Promise(async ok => {
                             resolves.push(ok)
                             updateProgress(file, p, ok)
 
-                            fs.watch(file, null, async (event, _) => {
+                            watchers.push(fs.watch(file, null, async (event, _) => {
                                 if (event == "change") {
                                     updateProgress(file, p, ok)
                                 } else if (event == "rename") { // file delete
                                     ok("done")
                                 }
-                            })
+                            }))
                         })
                     }
                 )
@@ -145,11 +146,11 @@ export class RunCommands {
             const targetResource = this.getTargetResource(resource);
             if (targetResource) {
 
-                fs.watch(PROGRESS_FOLDER, null, async (event, filename) => {
+                watchers.push(fs.watch(PROGRESS_FOLDER, null, async (event, filename) => {
                     if (event == 'rename' && filename != null && (await fs.exists(path.join(PROGRESS_FOLDER, filename)))) {
                         reportProgress(path.join(PROGRESS_FOLDER, filename))
                     }
-                })
+                }))
 
                 await debug.startDebugging(
                     undefined,
@@ -163,6 +164,7 @@ export class RunCommands {
                 );
 
                 debug.onDidTerminateDebugSession(() => {
+                    watchers.forEach(w => w.close())
                     resolves.forEach(r => r("done"))
                 })
             }
