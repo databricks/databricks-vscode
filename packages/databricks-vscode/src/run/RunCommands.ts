@@ -4,6 +4,11 @@ import {promptForAttachingSyncDest} from "./prompts";
 import {FileUtils} from "../utils";
 import {LocalUri} from "../sync/SyncDestination";
 
+import *  as fs from 'fs-extra'
+import * as path from 'path'
+
+type ConnectProgress = { completed: number, total: number }
+
 /**
  * Run related commands
  */
@@ -78,44 +83,62 @@ export class RunCommands {
     }
 
     runConnectWithProgress() {
-        return async (resource: Uri) => {
-            const targetResource = this.getTargetResource(resource);
-            if (targetResource) {                
-                // setInterval(() => {
-                
-                
-                window.withProgress(
-                    {
-                        title: "Nija Test Progress",
-                        location: ProgressLocation.Notification,
-                    },
-                    async (progress, token) => {
-                        var intervalId
-                        await new Promise((ok, ko) => {
-                            var count = 0;
-                            intervalId = setInterval(() => {
-                                progress.report({ increment: 10})
-                                count += 10
+        const PROGRESS_FOLDER = "/Users/niranjan.jayakar/Desktop/watch-folder"
 
-                                if (count == 100) { 
+        return async (resource: Uri) => {
+
+            const trackFiles = new Set<string>()
+
+            async function getConnectProgress(file: string): Promise<ConnectProgress> {
+                const DEFAULT_PROGRESS: ConnectProgress = { completed: 0, total: 0 }
+
+                const contents = await fs.readFile(file, { encoding: "utf-8" })
+                return contents.trim() == "" ? DEFAULT_PROGRESS : JSON.parse(contents)
+            }
+
+
+            async function reportProgress(file: string) {
+                if (trackFiles.has(file)) return
+                trackFiles.add(file)
+
+                window.withProgress(
+                    { location: ProgressLocation.Notification, title: `Query ${path.basename(file)} Progress` },
+                    async (p, _) => {
+                        await new Promise(async ok => {
+                            const contents = await getConnectProgress(file)
+                            p.report({ message: JSON.stringify(contents) })
+                            if (contents.completed == contents.total) {
+                                ok("done")
+                            }
+
+                            fs.watch(file, null, async (event, _) => {
+                                if (event == "change") {
+                                    const contents = await getConnectProgress(file)
+                                    p.report({ message: JSON.stringify(contents) })
+                                    if (contents.completed == contents.total) {
+                                        ok("done")
+                                    }
+                                } else if (event == "rename") { // file delete
                                     ok("done")
                                 }
-                            }, 500)
+                            })
                         })
-                        clearInterval(intervalId)
                     }
                 )
-                // await debug.startDebugging(
-                //     undefined,
-                //     {
-                //         type: "databricks-connect-progress",
-                //         name: "Run File as Connect with Progress",
-                //         request: "launch",
-                //         program: targetResource.fsPath,
-                //     },
-                //     {noDebug: true}
-                // );
             }
+
+            const targetResource = this.getTargetResource(resource);
+            if (targetResource) {
+
+                fs.watch(PROGRESS_FOLDER, null, async (event, filename) => {
+                    if (event == 'rename' && filename != null && (await fs.exists(path.join(PROGRESS_FOLDER, filename)))) {
+                        reportProgress(path.join(PROGRESS_FOLDER, filename))
+                    }
+                })
+            }
+
+            // FIXME: Run forever
+            await new Promise(r => {})
         };
     }
 
