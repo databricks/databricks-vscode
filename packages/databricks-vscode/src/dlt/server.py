@@ -23,8 +23,8 @@ class Dltutils:
         if source_path not in self.notebook_dependencies:
             self.get_graph(source_path)
         deps = self.notebook_dependencies[source_path]
-        ##TODO
-        pass
+        self.run(source_path, func_name)
+        
 
     # Runs a function without caring about dependencies
     def run(self, source_path, func_name):

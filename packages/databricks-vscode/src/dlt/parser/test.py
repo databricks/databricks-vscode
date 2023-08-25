@@ -5,14 +5,14 @@ import dlt
 
 @dlt.table
 def table1():
-    # some spark read
-    pass
+    return spark.read.table("table").doStuff()
+    
 
 
 @dlt.table
 def table2():
-    dlt.read("table1")
-    pass
+    return dlt.read("table1").doStuff()
+    
 
 
 def main():
