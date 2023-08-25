@@ -1,4 +1,4 @@
-import {debug, ProgressLocation, Uri, window} from "vscode";
+import {debug, Progress, ProgressLocation, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForAttachingSyncDest} from "./prompts";
 import {FileUtils} from "../utils";
@@ -87,7 +87,7 @@ export class RunCommands {
 
         return async (resource: Uri) => {
 
-            const trackFiles = new Set<string>()
+            const queryProgress = new Map<string, number>()
 
             async function getConnectProgress(file: string): Promise<ConnectProgress> {
                 const DEFAULT_PROGRESS: ConnectProgress = { completed: 0, total: 0 }
@@ -98,26 +98,18 @@ export class RunCommands {
 
 
             async function reportProgress(file: string) {
-                if (trackFiles.has(file)) return
-                trackFiles.add(file)
+                if (queryProgress.has(file)) return
+                queryProgress.set(file, 0)
 
                 window.withProgress(
                     { location: ProgressLocation.Notification, title: `Query ${path.basename(file)} Progress` },
                     async (p, _) => {
                         await new Promise(async ok => {
-                            const contents = await getConnectProgress(file)
-                            p.report({ message: JSON.stringify(contents) })
-                            if (contents.completed == contents.total) {
-                                ok("done")
-                            }
+                            updateProgress(file, p, ok)
 
                             fs.watch(file, null, async (event, _) => {
                                 if (event == "change") {
-                                    const contents = await getConnectProgress(file)
-                                    p.report({ message: JSON.stringify(contents) })
-                                    if (contents.completed == contents.total) {
-                                        ok("done")
-                                    }
+                                    updateProgress(file, p, ok)
                                 } else if (event == "rename") { // file delete
                                     ok("done")
                                 }
@@ -125,6 +117,16 @@ export class RunCommands {
                         })
                     }
                 )
+
+                async function updateProgress(file: string, p: Progress<{ message?: string, increment?: number }>, ok: any) {
+                    const contents = await getConnectProgress(file)
+                    p.report({
+                        message: `Progress: ${contents.completed} / ${contents.total}`,
+                    })
+                    if (contents.completed >= contents.total) {
+                        ok("done")
+                    }
+                }
             }
 
             const targetResource = this.getTargetResource(resource);
