@@ -120,8 +120,17 @@ export class RunCommands {
 
                 async function updateProgress(file: string, p: Progress<{ message?: string, increment?: number }>, ok: any) {
                     const contents = await getConnectProgress(file)
+
+                    const p100 = Math.round(100 * contents.completed / contents.total)
+                    const prevP100 = queryProgress.get(file)!
+
+                    const valUpdate = Math.max(p100 - prevP100, 0)
+
+                    queryProgress.set(file, prevP100 + valUpdate)
+
                     p.report({
                         message: `Progress: ${contents.completed} / ${contents.total}`,
+                        increment: valUpdate,
                     })
                     if (contents.completed >= contents.total) {
                         ok("done")
