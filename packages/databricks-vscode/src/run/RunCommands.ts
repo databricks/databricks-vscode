@@ -1,4 +1,4 @@
-import {debug, Progress, ProgressLocation, Uri, window} from "vscode";
+import {commands, debug, Progress, ProgressLocation, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {promptForAttachingSyncDest} from "./prompts";
 import {FileUtils} from "../utils";
@@ -6,6 +6,7 @@ import {LocalUri} from "../sync/SyncDestination";
 
 import *  as fs from 'fs-extra'
 import * as path from 'path'
+import * as os from 'os'
 
 type ConnectProgress = { completed: number, total: number }
 
@@ -83,7 +84,7 @@ export class RunCommands {
     }
 
     runConnectWithProgress() {
-        const PROGRESS_FOLDER = "/Users/niranjan.jayakar/Desktop/watch-folder"
+        const PROGRESS_FOLDER = path.join(os.homedir(), "query-progress")
 
         return async (resource: Uri) => {
 
@@ -141,15 +142,25 @@ export class RunCommands {
             const targetResource = this.getTargetResource(resource);
             if (targetResource) {
 
+                window.showInformationMessage(targetResource.fsPath)
+
                 fs.watch(PROGRESS_FOLDER, null, async (event, filename) => {
                     if (event == 'rename' && filename != null && (await fs.exists(path.join(PROGRESS_FOLDER, filename)))) {
                         reportProgress(path.join(PROGRESS_FOLDER, filename))
                     }
                 })
-            }
 
-            // FIXME: Run forever
-            await new Promise(r => {})
+                await debug.startDebugging(
+                    undefined,
+                    {
+                        type: "python",
+                        name: "Run",
+                        request: "launch",
+                        program: targetResource.fsPath,
+                    },
+                    {noDebug: true}
+                );
+            }
         };
     }
 
