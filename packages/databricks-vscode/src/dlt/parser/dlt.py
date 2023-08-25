@@ -16,7 +16,6 @@ class DLTDecorator:
         self.dependencies_set = set()
         self.dependencies = {}
         self.nodes = set()
-        print("starting")
     
     def print(self):
         print('Registered Tables: {0}'.format(self.nodes))
