@@ -107,10 +107,11 @@ class Document:
                 if str(inspect.signature(value)) == "(*args, **kwargs)":
                     value()
 
-            self.graph = nt.dlt.DLTDecorator().getDependencies()
+            result = nt.dlt.DLTDecorator()
+            self.graph = result.getDependencies()
             self.graph_version = self.version
 
-            plot(self.graph)
+            plot(self.graph, result.tables)
             
         except Exception as e:
             logging.error(e)
