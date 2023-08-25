@@ -89,6 +89,8 @@ export class RunCommands {
         return async (resource: Uri) => {
 
             const queryProgress = new Map<string, number>()
+            type ResolveType = (x: unknown) => void
+            const resolves: ResolveType[] = []
 
             async function getConnectProgress(file: string): Promise<ConnectProgress> {
                 const DEFAULT_PROGRESS: ConnectProgress = { completed: 0, total: 0 }
@@ -106,6 +108,7 @@ export class RunCommands {
                     { location: ProgressLocation.Notification, title: `Query ${path.basename(file)} Progress` },
                     async (p, _) => {
                         await new Promise(async ok => {
+                            resolves.push(ok)
                             updateProgress(file, p, ok)
 
                             fs.watch(file, null, async (event, _) => {
@@ -142,8 +145,6 @@ export class RunCommands {
             const targetResource = this.getTargetResource(resource);
             if (targetResource) {
 
-                window.showInformationMessage(targetResource.fsPath)
-
                 fs.watch(PROGRESS_FOLDER, null, async (event, filename) => {
                     if (event == 'rename' && filename != null && (await fs.exists(path.join(PROGRESS_FOLDER, filename)))) {
                         reportProgress(path.join(PROGRESS_FOLDER, filename))
@@ -160,6 +161,10 @@ export class RunCommands {
                     },
                     {noDebug: true}
                 );
+
+                debug.onDidTerminateDebugSession(() => {
+                    resolves.forEach(r => r("done"))
+                })
             }
         };
     }
