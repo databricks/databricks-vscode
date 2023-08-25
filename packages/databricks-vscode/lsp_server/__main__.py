@@ -6,6 +6,7 @@ from typing import Any, Generic, List, Protocol, TypeVar
 from pygls.server import LanguageServer
 from pygls import workspace, uris
 from lsprotocol import types
+from graph import plot
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.catalog import CatalogInfo, SchemaInfo, TableInfo
@@ -108,6 +109,8 @@ class Document:
 
             self.graph = nt.dlt.DLTDecorator().getDependencies()
             self.graph_version = self.version
+
+            plot(self.graph)
             
         except Exception as e:
             logging.error(e)
