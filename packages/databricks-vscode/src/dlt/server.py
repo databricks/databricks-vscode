@@ -26,14 +26,32 @@ class Dltutils:
             self.get_graph(source_path)
         functions = [func_name]
         result = None
+        processed = set()
+        graph = self.notebook_dependencies[source_path]
+        deps = graph.getDependencies()
         while len(functions) != 0:
             possible_next = functions.pop()
-            #dependencies
-        return self.run(source_path, func_name)
+            all_deps_met = True
+            if possible_next in deps:
+                dependencies = deps[possible_next]
+                for dependency in dependencies:
+                    if dependency not in processed:
+                        all_deps_met = False
+                if not all_deps_met:
+                    functions.append(possible_next)
+                    for dependency in dependencies:
+                        if dependency not in processed:
+                            functions.append(dependency)
+                    continue
+            processed.add(possible_next)
+            if possible_next not in graph.tables:
+                result = self.run(source_path, possible_next)
+        return result
         
 
     # Runs a function without caring about dependencies
     def run(self, source_path, func_name):
+        print("Running function {0}".format(func_name))
         if source_path not in self.notebook_dependencies:
             self.get_graph(source_path)
         path = self.prepare_files_for_run(source_path)
