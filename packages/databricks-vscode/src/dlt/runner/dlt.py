@@ -29,7 +29,6 @@ class Reader:
 class SparkWrapper:
     read = Reader()
        
-    
 class DltRunner:
     def __init__(self, name: str) -> None:
         self.name = name
