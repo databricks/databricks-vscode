@@ -219,6 +219,11 @@
                 "title": "Verify Databricks notebook init scripts",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.lsp.restart",
+                "title": "Restart LSP",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {

@@ -1,7 +1,10 @@
 
+import logging
 import networkx as nx
 import matplotlib.pyplot as plt
+import os
 
+plt.switch_backend('Agg')
 
 def plot(dependencies, tables):
     G = nx.DiGraph()
@@ -28,6 +31,9 @@ def plot(dependencies, tables):
 
     nx.draw(G, pos, with_labels=True, node_shape="s", node_size=1500, node_color=color_map)
 
-    plt.tight_layout()
+    logging.debug(f"drawing {dependencies}")
+    # plt.tight_layout()
+    plt.axis("off")
     plt.savefig("Graph.png", format="PNG")
-    plt.show()
+    plt.close()
+    return os.path.abspath("./Graph.png")

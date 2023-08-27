@@ -562,6 +562,12 @@ export async function activate(
         );
     });
 
+    context.subscriptions.push(
+        commands.registerCommand("databricks.lsp.restart", () => {
+            lsp.start();
+        })
+    );
+
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 

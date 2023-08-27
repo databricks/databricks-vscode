@@ -1,10 +1,12 @@
 import inspect
+import logging
 import os
 import pkgutil
 import importlib
 import random
 import shutil
 import sys
+from pyspark.sql.types import StructType
 
 
 class Dltutils:
@@ -12,6 +14,7 @@ class Dltutils:
     def __init__(self) -> None:
         self.notebook_dependencies = {}
         self.sessions = {}
+        self.tables = {}
 
     def get_graph(self, source_path):
         path = prepare_files_for_parse(source_path)
@@ -73,9 +76,15 @@ class Dltutils:
         self.sessions.pop(source_path)
         return 
 
-
+    def printSchema(self, func_name: str):
+        if func_name in self.tables and hasattr(self.tables[func_name], "schema"):
+            schema: StructType = self.tables[func_name].schema
+            data = [[field.name, field.dataType.simpleString()] for field in schema.fields]
+            import tabulate
+            print(tabulate.tabulate(data, headers=["Column", "Type"], tablefmt="github"))
+    
     def runFunction(self, source_path, path, func_name):
-        sys.path.append(path)
+        sys.path.insert(0,path)
         dataframe = None
         if source_path not in self.sessions:
             import dlt
@@ -86,12 +95,12 @@ class Dltutils:
         else:
             import dlt
             import nt
+        dlt.tables = self.tables
         all_functions = inspect.getmembers(nt, inspect.isfunction)
-        print(all_functions)
         for key, value in all_functions:
             if key == func_name:
                 dataframe = value()
-
+        self.tables = dlt.tables
         del nt, dlt
         sys.path.remove(path)
         
@@ -118,7 +127,7 @@ def prepare_files(source_path, type):
     file_path = "{0}/nt.py".format(module_path)
     init_path = "{0}/__init__.py".format(module_path)
     os.makedirs(module_path, exist_ok=True)
-    shutil.copy("./{0}/dlt.py".format(type), "{0}/dlt.py".format(module_path))
+    shutil.copy("./dlt_lib/{0}/dlt.py".format(type), "{0}/dlt.py".format(module_path))
     shutil.copy(source_path, file_path)
 
     open(init_path, "w").close()
