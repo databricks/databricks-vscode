@@ -137,7 +137,7 @@ export class RunCommands {
                         message: `Progress: ${contents.completed} / ${contents.total}`,
                         increment: valUpdate,
                     })
-                    if (contents.completed >= contents.total) {
+                    if (contents.completed >= contents.total && contents.total != 0) {
                         ok("done")
                     }
                 }
