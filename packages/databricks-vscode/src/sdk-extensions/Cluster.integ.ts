@@ -2,7 +2,7 @@
 
 import {CancellationToken, Cluster} from "@databricks/databricks-sdk";
 import assert from "node:assert";
-import {IntegrationTestSetup} from "@databricks/databricks-sdk/dist/test/IntegrationTestSetup";
+import {IntegrationTestSetup} from "./test/IntegrationTestSetup";
 
 describe(__filename, function () {
     let integSetup: IntegrationTestSetup;

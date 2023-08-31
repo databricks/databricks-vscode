@@ -1,16 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {
-    ApiClient,
-    Cluster,
-    Time,
-    TimeUnits,
-    compute,
-} from "@databricks/databricks-sdk";
+import {ApiClient, Time, TimeUnits, compute} from "@databricks/databricks-sdk";
+import {Cluster} from "./Cluster";
 import * as assert from "node:assert";
 import {mock, when, instance, deepEqual, verify, anything} from "ts-mockito";
-import {getMockTestCluster} from "@databricks/databricks-sdk/dist/test/fixtures/ClusterFixtures";
-import {TokenFixture} from "@databricks/databricks-sdk/dist/test/fixtures/TokenFixtures";
+import {getMockTestCluster} from "./test/ClusterFixtures";
+import {TokenFixture} from "./test/TokenFixtures";
 import FakeTimers from "@sinonjs/fake-timers";
 
 describe(__filename, function () {
