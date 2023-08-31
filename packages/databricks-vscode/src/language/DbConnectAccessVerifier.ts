@@ -1,4 +1,5 @@
-import {Cluster, logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import {window, commands} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {MultiStepAccessVerifier} from "../feature-manager/MultiStepAccessVerfier";

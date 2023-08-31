@@ -5,9 +5,8 @@ import {
     ProfileAuthProvider,
 } from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
-import {Config} from "@databricks/databricks-sdk";
+import {Config, logging} from "@databricks/databricks-sdk";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export interface ProjectConfig {
@@ -129,7 +128,7 @@ export class ProjectConfigFile {
                 authProvider = AuthProvider.fromJSON(config, cliPath);
             }
         } catch (e: any) {
-            NamedLogger.getOrCreate(Loggers.Extension).error(
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Error parsing project config file",
                 e
             );

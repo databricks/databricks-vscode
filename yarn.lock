@@ -376,7 +376,7 @@ __metadata:
     inversify: ^6.0.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 2e28fb154da0743e5b26cd3bdb1dba6f286e1f34f41d64291fca872ae25678f44a7780bd965f8166632f5a2303a00ecc6def5a9570d09e8d37bcd6546d489cd3
+  checksum: 2fbf7327009b6c0dd7e04ca2980c1a2245e115fcd60701d756824be128697b78307f4f857182810772df4a70e7fdab73313ff75a6034f153371f9f9434a73fa3
   languageName: node
   linkType: hard
 
@@ -391,7 +391,7 @@ __metadata:
     inversify: ^6.0.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 2e28fb154da0743e5b26cd3bdb1dba6f286e1f34f41d64291fca872ae25678f44a7780bd965f8166632f5a2303a00ecc6def5a9570d09e8d37bcd6546d489cd3
+  checksum: 2fbf7327009b6c0dd7e04ca2980c1a2245e115fcd60701d756824be128697b78307f4f857182810772df4a70e7fdab73313ff75a6034f153371f9f9434a73fa3
   languageName: node
   linkType: hard
 
@@ -401,6 +401,7 @@ __metadata:
   dependencies:
     "@databricks/databricks-sdk": ../../vendor/databricks-sdk.tgz
     "@types/vscode": ^1.69.1
+    databricks: "*"
     eslint: ^8.44.0
     prettier: ^3.0.0
     typescript: ~5.1.6
@@ -3651,7 +3652,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"databricks@workspace:packages/databricks-vscode":
+"databricks@*, databricks@workspace:packages/databricks-vscode":
   version: 0.0.0-use.local
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:

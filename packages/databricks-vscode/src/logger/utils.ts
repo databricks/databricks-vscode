@@ -1,4 +1,4 @@
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "./LoggerManager";
 
 export interface TryAndLogErrorOpts {
@@ -25,7 +25,10 @@ export async function tryAndLogErrorAsync<T>(
     try {
         return await fn();
     } catch (e) {
-        NamedLogger.getOrCreate(mergedOpts.logger).error(mergedOpts.message, e);
+        logging.NamedLogger.getOrCreate(mergedOpts.logger).error(
+            mergedOpts.message,
+            e
+        );
         if (mergedOpts.shouldThrow) {
             throw e;
         }
@@ -44,7 +47,10 @@ export function tryAndLogError<T>(
     try {
         return fn();
     } catch (e) {
-        NamedLogger.getOrCreate(mergedOpts.logger).error(mergedOpts.message, e);
+        logging.NamedLogger.getOrCreate(mergedOpts.logger).error(
+            mergedOpts.message,
+            e
+        );
         if (mergedOpts.shouldThrow) {
             throw e;
         }

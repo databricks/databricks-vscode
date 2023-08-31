@@ -3,11 +3,11 @@ import {ClusterManager} from "./ClusterManager";
 import {
     ApiClient,
     compute,
-    Cluster,
     Time,
     TimeUnits,
     retries,
 } from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import {ClusterFixture} from "@databricks/databricks-sdk/dist/test/fixtures";
 import {
     anything,

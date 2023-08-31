@@ -2,12 +2,8 @@
 
 import assert from "assert";
 import {mock, when, anything, anyString, instance, spy} from "ts-mockito";
-import {
-    ApiClient,
-    Cluster,
-    WorkspaceClient,
-    compute,
-} from "@databricks/databricks-sdk";
+import {ApiClient, WorkspaceClient, compute} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import {ClusterModel} from "./ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Disposable} from "vscode";

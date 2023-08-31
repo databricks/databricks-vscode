@@ -1,8 +1,4 @@
-import {
-    Cluster,
-    WorkspaceFsEntity,
-    WorkspaceFsUtils,
-} from "@databricks/databricks-sdk";
+import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
 import {homedir} from "node:os";
 import {
     Disposable,
@@ -292,9 +288,8 @@ export class ConnectionCommands implements Disposable {
                             );
                             return;
                         }
-                        const created = await this.wsfsCommands.createFolder(
-                            rootDir
-                        );
+                        const created =
+                            await this.wsfsCommands.createFolder(rootDir);
                         if (created === undefined) {
                             return;
                         }

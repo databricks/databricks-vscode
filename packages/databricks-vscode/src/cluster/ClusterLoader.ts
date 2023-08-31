@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {Cluster, Time, TimeUnits} from "@databricks/databricks-sdk";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {Time, TimeUnits, logging} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Loggers} from "../logger";
@@ -142,7 +142,9 @@ export class ClusterLoader implements Disposable {
                             resolve();
                         })
                         .catch((e) => {
-                            NamedLogger.getOrCreate(Loggers.Extension).error(
+                            logging.NamedLogger.getOrCreate(
+                                Loggers.Extension
+                            ).error(
                                 `Error fetching permission for cluster ${c.name}`,
                                 e
                             );
@@ -175,7 +177,7 @@ export class ClusterLoader implements Disposable {
             try {
                 await this._load();
             } catch (e) {
-                NamedLogger.getOrCreate(Loggers.Extension).error(
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                     "Error loading clusters",
                     e
                 );

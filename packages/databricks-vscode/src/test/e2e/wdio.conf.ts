@@ -8,13 +8,13 @@ import path from "node:path";
 import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
+import {WorkspaceClient} from "@databricks/databricks-sdk";
 import {
-    WorkspaceClient,
     Cluster,
     Repo,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
-} from "@databricks/databricks-sdk";
+} from "../../../src/sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile, ExecFileOptions} from "node:child_process";
 import {cpSync, mkdirSync, rmSync} from "node:fs";

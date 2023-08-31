@@ -5,7 +5,8 @@ import {mock, when, instance} from "ts-mockito";
 import {ClusterModel} from "./ClusterModel";
 import {Disposable} from "vscode";
 import {ClusterListDataProvider} from "./ClusterListDataProvider";
-import {ApiClient, Cluster, compute} from "@databricks/databricks-sdk";
+import {ApiClient, compute} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions/Cluster";
 import {resolveProviderResult} from "../test/utils";
 
 const mockListClustersResponse: compute.ListClustersResponse = {
@@ -113,9 +114,8 @@ describe(__filename, () => {
             mockListClustersResponse.clusters![0]
         );
 
-        const items = await ClusterListDataProvider.clusterNodeToTreeItems(
-            cluster
-        );
+        const items =
+            await ClusterListDataProvider.clusterNodeToTreeItems(cluster);
         assert.deepEqual(items, [
             {
                 description: "cluster-id-2",
