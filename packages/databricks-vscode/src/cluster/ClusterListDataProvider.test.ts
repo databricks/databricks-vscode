@@ -114,8 +114,9 @@ describe(__filename, () => {
             mockListClustersResponse.clusters![0]
         );
 
-        const items =
-            await ClusterListDataProvider.clusterNodeToTreeItems(cluster);
+        const items = await ClusterListDataProvider.clusterNodeToTreeItems(
+            cluster
+        );
         assert.deepEqual(items, [
             {
                 description: "cluster-id-2",

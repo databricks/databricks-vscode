@@ -288,8 +288,9 @@ export class ConnectionCommands implements Disposable {
                             );
                             return;
                         }
-                        const created =
-                            await this.wsfsCommands.createFolder(rootDir);
+                        const created = await this.wsfsCommands.createFolder(
+                            rootDir
+                        );
                         if (created === undefined) {
                             return;
                         }
