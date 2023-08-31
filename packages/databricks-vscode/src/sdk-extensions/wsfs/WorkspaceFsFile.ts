@@ -1,4 +1,4 @@
-import {WorkspaceFsEntity} from ".";
+import {WorkspaceFsEntity} from "./WorkspaceFsEntity";
 
 export class WorkspaceFsFile extends WorkspaceFsEntity {
     override get children() {

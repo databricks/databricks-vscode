@@ -7,12 +7,6 @@ import {
     logging,
 } from "@databricks/databricks-sdk";
 import {context, Context} from "@databricks/databricks-sdk/dist/context";
-import {
-    WorkspaceFsDir,
-    WorkspaceFsRepo,
-    WorkspaceFsFile,
-    WorkspaceFsNotebook,
-} from ".";
 
 const {ExposedLoggers, withLogContext} = logging;
 
@@ -25,13 +19,11 @@ export class ObjectInfoValidationError extends Error {
     }
 }
 
-/* eslint-disable @typescript-eslint/naming-convention */
 class RequiredFields {
     "object_id" = "";
     "object_type" = "";
     "path" = "";
 }
-/* eslint-enable @typescript-eslint/naming-convention */
 
 type RequiredObjectInfo = workspace.ObjectInfo & RequiredFields;
 
@@ -105,7 +97,7 @@ export abstract class WorkspaceFsEntity {
         for await (const child of this._workspaceFsService.list({
             path: this.path,
         })) {
-            const entity = entityFromObjInfo(this.wsClient, child);
+            const entity = await entityFromObjInfo(this.wsClient, child);
             if (entity) {
                 children.push(entity);
             }
@@ -181,10 +173,16 @@ export abstract class WorkspaceFsEntity {
     }
 }
 
-function entityFromObjInfo(
+async function entityFromObjInfo(
     wsClient: WorkspaceClient,
     details: workspace.ObjectInfo
 ) {
+    // lazy import to avoid circular dependency
+    const {WorkspaceFsDir, WorkspaceFsRepo} = await import("./WorkspaceFsDir");
+    const {WorkspaceFsFile, WorkspaceFsNotebook} = await import(
+        "./WorkspaceFsFile"
+    );
+
     switch (details.object_type) {
         case "DIRECTORY":
             return new WorkspaceFsDir(wsClient, details);

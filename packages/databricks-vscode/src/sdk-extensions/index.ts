@@ -1,7 +1,5 @@
-export * from "./WorkspaceFsEntity";
-export * from "./WorkspaceFsDir";
-export * from "./WorkspaceFsFile";
-export * as WorkspaceFsUtils from "./utils";
+export * from "./wsfs";
+export * as WorkspaceFsUtils from "./wsfs/utils";
 export * from "./Cluster";
 export * from "./Command";
 export * from "./ExecutionContext";
