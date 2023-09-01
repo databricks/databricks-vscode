@@ -2,12 +2,15 @@ import {
     ExecUtils,
     ProductVersion,
     WorkspaceClient,
+    logging,
 } from "@databricks/databricks-sdk";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const {NamedLogger} = logging;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../../package.json")
@@ -25,7 +28,7 @@ type AzureStepName =
 export class AzureCliCheck implements Disposable {
     private disposables: Disposable[] = [];
     private isCodeSpaces: boolean;
-    private logger: NamedLogger;
+    private logger: logging.NamedLogger;
 
     tenantId: string | undefined;
     azureLoginAppId: string | undefined;

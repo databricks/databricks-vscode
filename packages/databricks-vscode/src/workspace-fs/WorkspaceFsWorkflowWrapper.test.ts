@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiError, WorkspaceClient} from "@databricks/databricks-sdk";
-import {WorkspaceService} from "@databricks/databricks-sdk/dist/apis/workspace";
+import {ApiError, WorkspaceClient, workspace} from "@databricks/databricks-sdk";
 import {
     instance,
     mock,
@@ -18,7 +17,7 @@ import {readFile, writeFile} from "fs/promises";
 import {withFile} from "tmp-promise";
 
 describe(__filename, async () => {
-    let mockWorkspaceService: WorkspaceService;
+    let mockWorkspaceService: workspace.WorkspaceService;
     let mockConnectionManager: ConnectionManager;
     let mockExtensionContext: ExtensionContext;
     const testDirPath = "/Users/me/testdir";
@@ -45,7 +44,7 @@ describe(__filename, async () => {
     }
 
     function createMocks() {
-        mockWorkspaceService = mock(WorkspaceService);
+        mockWorkspaceService = mock(workspace.WorkspaceService);
         when(
             mockWorkspaceService.getStatus(
                 objectContaining({

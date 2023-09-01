@@ -23,7 +23,7 @@ import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
 import {LoggerManager, Loggers} from "./logger";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
@@ -100,7 +100,7 @@ export async function activate(
     const telemetry = Telemetry.createDefault();
 
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
-    NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
+    logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,
     });
 
@@ -299,7 +299,7 @@ export async function activate(
     );
 
     notebookInitScriptManager.updateInitScript().catch((e) => {
-        NamedLogger.getOrCreate(Loggers.Extension).error(
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
             "Failed to update init script",
             e
         );
@@ -517,7 +517,10 @@ export async function activate(
     );
 
     showQuickStartOnFirstUse(context).catch((e) => {
-        NamedLogger.getOrCreate("Extension").error("Quick Start error", e);
+        logging.NamedLogger.getOrCreate("Extension").error(
+            "Quick Start error",
+            e
+        );
     });
 
     // Utils
@@ -538,21 +541,24 @@ export async function activate(
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
     generateBundleSchema(cli).catch((e) => {
-        NamedLogger.getOrCreate("Extension").error(
+        logging.NamedLogger.getOrCreate("Extension").error(
             "Failed to load bundle schema: ",
             e
         );
     });
 
     connectionManager.login(false).catch((e) => {
-        NamedLogger.getOrCreate(Loggers.Extension).error("Login error", e);
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Login error",
+            e
+        );
     });
 
     setDbnbCellLimits(
         workspace.workspaceFolders[0].uri,
         connectionManager
     ).catch((e) => {
-        NamedLogger.getOrCreate(Loggers.Extension).error(
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
             "Error while setting jupyter configs for parsing databricks notebooks",
             e
         );

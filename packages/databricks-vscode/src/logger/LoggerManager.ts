@@ -1,12 +1,12 @@
-import {
-    NamedLogger,
-    ExposedLoggers,
-} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {env, ExtensionContext, window} from "vscode";
 import {loggers, format, transports} from "winston";
 import {getOutputConsoleTransport} from "./outputConsoleTransport";
 import {unlink, access, mkdir} from "fs/promises";
 import path from "path";
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const {NamedLogger, ExposedLoggers} = logging;
 
 export class LoggerManager {
     constructor(readonly context: ExtensionContext) {}

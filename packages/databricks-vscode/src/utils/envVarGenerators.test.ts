@@ -2,7 +2,8 @@
 import {anything, instance, mock, when} from "ts-mockito";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {ApiClient, Cluster, Config} from "@databricks/databricks-sdk";
+import {ApiClient, Config} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import {
     getAuthEnvVars,
     getDbConnectEnvVars,

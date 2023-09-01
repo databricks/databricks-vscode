@@ -9,7 +9,7 @@ import {
     TreeItem,
     TreeItemCollapsibleState,
 } from "vscode";
-import {Cluster} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import {ClusterModel} from "./ClusterModel";
 
 /**

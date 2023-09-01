@@ -1,6 +1,6 @@
 import {Uri, window} from "vscode";
 import path from "path";
-import {WorkspaceFsDir} from "@databricks/databricks-sdk";
+import {WorkspaceFsDir} from "../sdk-extensions";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export async function createDirWizard(
