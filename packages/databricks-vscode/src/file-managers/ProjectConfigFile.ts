@@ -2,7 +2,6 @@ import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {DatabricksYamlFile} from "./DatabricksYamlFile";
 import {ProjectJsonFile} from "./ProjectJsonFile";
 
@@ -78,9 +77,9 @@ export class ProjectConfigFile {
         );
     }
 
-    async write(rootPath: LocalUri, workspaceState: WorkspaceStateManager) {
+    async write(rootPath: LocalUri) {
         try {
-            await this.databricksYamlFile.write(rootPath, workspaceState);
+            await this.databricksYamlFile.write(rootPath);
             await this.projectJsonFile.write(rootPath);
         } catch (e) {
             NamedLogger.getOrCreate(Loggers.Extension).error(
@@ -92,17 +91,13 @@ export class ProjectConfigFile {
 
     static async load(
         rootPath: LocalUri,
-        cliPath: LocalUri,
-        workspaceState: WorkspaceStateManager
+        cliPath: LocalUri
     ): Promise<ProjectConfigFile> {
         // We try to load the databricks.yaml file. If it fails, we still continue on to load
         // project.json, but we log the error.
         let databricksYamlConfig: DatabricksYamlFile | undefined = undefined;
         try {
-            databricksYamlConfig = await DatabricksYamlFile.load(
-                rootPath,
-                workspaceState
-            );
+            databricksYamlConfig = await DatabricksYamlFile.load(rootPath);
         } catch (e: unknown) {
             NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Error parsing project config file (databricks.yaml)",

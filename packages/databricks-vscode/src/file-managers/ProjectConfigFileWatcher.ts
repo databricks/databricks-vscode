@@ -2,7 +2,6 @@ import {Disposable, workspace} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ProjectConfigFile} from "./ProjectConfigFile";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {DatabricksYamlFile} from "./DatabricksYamlFile";
 import {ProjectJsonFile} from "./ProjectJsonFile";
 
@@ -11,8 +10,7 @@ export class ProjectConfigFileWatcher implements Disposable {
     constructor(
         readonly connectionManager: ConnectionManager,
         rootPath: string,
-        cliPath: string,
-        workspaceState: WorkspaceStateManager
+        cliPath: string
     ) {
         const watchers = [
             workspace.createFileSystemWatcher(
@@ -43,8 +41,7 @@ export class ProjectConfigFileWatcher implements Disposable {
                 watcher.onDidChange(async () => {
                     const configFile = await ProjectConfigFile.load(
                         new LocalUri(rootPath),
-                        new LocalUri(cliPath),
-                        workspaceState
+                        new LocalUri(cliPath)
                     );
                     if (this.connectionManager.state === "CONNECTING") {
                         await this.connectionManager.waitForConnect();

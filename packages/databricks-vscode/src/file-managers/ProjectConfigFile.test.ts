@@ -36,7 +36,7 @@ describe(__filename, () => {
                 "testClusterId",
                 new RemoteUri("workspacePath")
             )
-        ).write(new LocalUri(tempDir), mockWorkspaceStateManager);
+        ).write(new LocalUri(tempDir));
 
         const packageJsonData = JSON.parse(
             await readFile(
@@ -114,8 +114,7 @@ describe(__filename, () => {
 
         const actual = await ProjectConfigFile.load(
             new LocalUri(tempDir),
-            new LocalUri("databricks"),
-            mockWorkspaceStateManager
+            new LocalUri("databricks")
         );
         assert.equal(actual.host.toString(), config.host);
         assert.ok(actual.authProvider instanceof ProfileAuthProvider);
@@ -149,8 +148,7 @@ describe(__filename, () => {
 
         const actual = await ProjectConfigFile.load(
             new LocalUri(tempDir),
-            new LocalUri("databricks"),
-            mockWorkspaceStateManager
+            new LocalUri("databricks")
         );
         assert.equal(actual.host.toString(), config.host);
         assert.ok(actual.authProvider instanceof ProfileAuthProvider);
@@ -196,8 +194,7 @@ describe(__filename, () => {
         );
         const actual = await ProjectConfigFile.load(
             new LocalUri(tempDir),
-            new LocalUri("databricks"),
-            mockWorkspaceStateManager
+            new LocalUri("databricks")
         );
         assert.equal(
             actual.host.toString(),

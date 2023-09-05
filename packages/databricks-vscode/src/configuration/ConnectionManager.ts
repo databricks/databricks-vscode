@@ -125,8 +125,7 @@ export class ConnectionManager {
             try {
                 projectConfigFile = await ProjectConfigFile.load(
                     this.workspaceRoot,
-                    new LocalUri(this.cli.cliPath),
-                    this.workspaceState
+                    new LocalUri(this.cli.cliPath)
                 );
             } catch (e: any) {
                 if (e.code === "ENOENT") {
@@ -324,7 +323,7 @@ export class ConnectionManager {
     private async writeConfigFile(config: ProjectConfig) {
         const projectConfigFile = ProjectConfigFile.fromConfig(config);
 
-        await projectConfigFile.write(this.workspaceRoot, this.workspaceState);
+        await projectConfigFile.write(this.workspaceRoot);
     }
 
     async attachCluster(
@@ -348,10 +347,7 @@ export class ConnectionManager {
 
             if (!skipWrite) {
                 this._projectConfigFile!.clusterId = cluster.id;
-                await this._projectConfigFile!.write(
-                    this.workspaceRoot,
-                    this.workspaceState
-                );
+                await this._projectConfigFile!.write(this.workspaceRoot);
             }
 
             if (cluster.state === "RUNNING") {
@@ -406,10 +402,7 @@ export class ConnectionManager {
 
         if (this._projectConfigFile) {
             this._projectConfigFile.clusterId = undefined;
-            await this._projectConfigFile.write(
-                this.workspaceRoot,
-                this.workspaceState
-            );
+            await this._projectConfigFile.write(this.workspaceRoot);
         }
 
         this.updateCluster(undefined);
@@ -435,10 +428,7 @@ export class ConnectionManager {
 
             if (!skipWrite) {
                 this._projectConfigFile!.workspacePath = remoteWorkspace;
-                await this._projectConfigFile!.write(
-                    this.workspaceRoot,
-                    this.workspaceState
-                );
+                await this._projectConfigFile!.write(this.workspaceRoot);
             }
 
             this.updateSyncDestination(
@@ -466,10 +456,7 @@ export class ConnectionManager {
 
         if (this._projectConfigFile) {
             this._projectConfigFile.workspacePath = undefined;
-            await this._projectConfigFile.write(
-                this.workspaceRoot,
-                this.workspaceState
-            );
+            await this._projectConfigFile.write(this.workspaceRoot);
         }
 
         this.updateSyncDestination(undefined);

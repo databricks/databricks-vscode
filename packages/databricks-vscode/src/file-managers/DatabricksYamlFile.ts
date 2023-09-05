@@ -1,7 +1,6 @@
 import path from "path";
 import {RemoteUri, LocalUri} from "../sync/SyncDestination";
 import {FileUtils} from "../utils";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import * as fs from "node:fs/promises";
 import YAML from "yaml";
 
@@ -27,10 +26,10 @@ export class DatabricksYamlFile {
         public workspacePath?: RemoteUri
     ) {}
 
-    private toYaml(workspaceState: WorkspaceStateManager) {
+    private toYaml() {
         const environments: DatabricksYaml["environments"] = {};
         /* eslint-disable @typescript-eslint/naming-convention */
-        environments[DatabricksYamlFile.getTargetName(workspaceState)] = {
+        environments[DatabricksYamlFile.getTargetName()] = {
             compute_id: this.clusterId,
             workspace: {
                 host: this.workspaceUrl.toString(),
@@ -44,19 +43,14 @@ export class DatabricksYamlFile {
         return doc.toString();
     }
 
-    static getTargetName(workspaceState: WorkspaceStateManager) {
-        return `databricks-vscode-${workspaceState.fixedUUID.slice(0, 8)}`;
+    static getTargetName() {
+        return `databricks-ide`;
     }
 
-    private static fromYaml(
-        yaml: string,
-        workspaceState: WorkspaceStateManager
-    ) {
+    private static fromYaml(yaml: string) {
         const parsedConfig: DatabricksYaml = YAML.parse(yaml);
         const target =
-            parsedConfig.environments[
-                DatabricksYamlFile.getTargetName(workspaceState)
-            ];
+            parsedConfig.environments[DatabricksYamlFile.getTargetName()];
         return new DatabricksYamlFile(
             new URL(target.workspace.host),
             target.compute_id,
@@ -70,30 +64,21 @@ export class DatabricksYamlFile {
         return localProjectRootPath.join(".databricks", "databricks.yaml");
     }
 
-    static async load(
-        localProjectRootPath: LocalUri,
-        workspaceState: WorkspaceStateManager
-    ) {
+    static async load(localProjectRootPath: LocalUri) {
         const databricksYamlPath =
             DatabricksYamlFile.getFilePath(localProjectRootPath);
         const rawConfig = await fs.readFile(databricksYamlPath.path, {
             encoding: "utf-8",
         });
-        return DatabricksYamlFile.fromYaml(rawConfig, workspaceState);
+        return DatabricksYamlFile.fromYaml(rawConfig);
     }
 
-    async write(
-        localProjectRootPath: LocalUri,
-        workspaceState: WorkspaceStateManager
-    ) {
+    async write(localProjectRootPath: LocalUri) {
         const databricksYamlPath =
             DatabricksYamlFile.getFilePath(localProjectRootPath);
         await fs.mkdir(path.dirname(databricksYamlPath.path), {
             recursive: true,
         });
-        await FileUtils.writeFileIfDiff(
-            databricksYamlPath.uri,
-            this.toYaml(workspaceState)
-        );
+        await FileUtils.writeFileIfDiff(databricksYamlPath.uri, this.toYaml());
     }
 }

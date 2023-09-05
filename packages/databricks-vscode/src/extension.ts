@@ -508,8 +508,7 @@ export async function activate(
         new ProjectConfigFileWatcher(
             connectionManager,
             workspace.rootPath!,
-            cli.cliPath,
-            workspaceStateManager
+            cli.cliPath
         )
     );
 
