@@ -26,7 +26,6 @@ import {SystemVariables} from "../../vscode-objs/SystemVariables";
 import {LocalUri} from "../../sync/SyncDestination";
 
 const execFile = promisify(ef);
-const withLogContext = logging.withLogContext;
 
 async function isDbnbTextEditor(editor?: TextEditor) {
     try {
@@ -229,7 +228,7 @@ export class NotebookInitScriptManager implements Disposable {
         this.verifyInitScript(true);
     }
 
-    @withLogContext(Loggers.Extension)
+    @logging.withLogContext(Loggers.Extension)
     private async executeAndVerifyInitScripts(
         executable: string,
         @context ctx?: Context
@@ -253,10 +252,8 @@ export class NotebookInitScriptManager implements Disposable {
                 executable,
                 ["-m", "IPython", file],
                 {
-                    //required for azure-cli auth to work
-                    //TODO: remove this when using metadata-service-auth
-                    shell: true,
                     env,
+                    cwd: this.workspacePath.fsPath,
                 }
             );
             const correctlyFormatttedErrors = stderr
@@ -293,7 +290,7 @@ export class NotebookInitScriptManager implements Disposable {
         return true;
     }
 
-    @withLogContext(Loggers.Extension)
+    @logging.withLogContext(Loggers.Extension)
     private async verifyInitScript(
         fromCommand = false,
         @context ctx?: Context
@@ -384,7 +381,6 @@ export class NotebookInitScriptManager implements Disposable {
                 return;
             }
             this.currentEnvPath = executable;
-
             await this.updateInitScript();
 
             this.initScriptSuccessfullyVerified = fromCommand
@@ -408,7 +404,9 @@ export class NotebookInitScriptManager implements Disposable {
                       }
                   )
                 : await this.executeAndVerifyInitScripts(executable);
-        } catch (e) {
+        } catch (e: any) {
+            this.outputWindow?.appendLine("=".repeat(30));
+            this.outputWindow?.appendLine(e.stdout);
             ctx?.logger?.error("Notebook Init Script Error", e);
         } finally {
             this.verifyInitScriptMutex.signal();
