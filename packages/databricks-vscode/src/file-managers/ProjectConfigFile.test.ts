@@ -7,7 +7,6 @@ import path from "path";
 import * as os from "os";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {DatabricksYamlFile} from "./DatabricksYamlFile";
 import {ProjectJsonFile} from "./ProjectJsonFile";
 import * as YAML from "yaml";
@@ -15,13 +14,8 @@ import {Uri} from "vscode";
 
 describe(__filename, () => {
     let tempDir: string;
-    let mockWorkspaceStateManager: WorkspaceStateManager;
     before(async () => {
         tempDir = await mkdtemp(path.join(os.tmpdir(), "ProjectConfTests-"));
-        const fixedUUID = "uuid1234-something";
-        mockWorkspaceStateManager = {
-            fixedUUID,
-        } as WorkspaceStateManager;
     });
 
     it("should write project.json and databricks.yaml config files", async () => {
@@ -60,7 +54,7 @@ describe(__filename, () => {
 
         assert.deepEqual(yamlData, {
             environments: {
-                "databricks-vscode-uuid1234": {
+                "databricks-ide": {
                     compute_id: "testClusterId",
                     mode: "development",
                     workspace: {
@@ -89,12 +83,7 @@ describe(__filename, () => {
         });
 
         const environments: any = {};
-        (environments[
-            `databricks-vscode-${mockWorkspaceStateManager.fixedUUID.slice(
-                0,
-                8
-            )}`
-        ] = {
+        (environments[`databricks-ide`] = {
             compute_id: "testClusterId",
             mode: "development",
             workspace: {
