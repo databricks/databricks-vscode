@@ -1,9 +1,7 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
 import {Uri} from "vscode";
-import {FeatureManager} from "../feature-manager/FeatureManager";
 import {logging} from "@databricks/databricks-sdk";
-import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 //Get env variables from user's .env file
@@ -35,21 +33,6 @@ export function getIdeEnvVars() {
     return {
         //https://github.com/fabioz/PyDev.Debugger/blob/main/_pydevd_bundle/pydevd_constants.py
         PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT: "10",
-    };
-    /* eslint-enable @typescript-eslint/naming-convention */
-}
-
-export async function getNotebookEnvVars(
-    featureManager: FeatureManager,
-    notebookInitScriptManager: NotebookInitScriptManager
-) {
-    if (!(await featureManager.isEnabled("notebooks.dbconnect")).avaliable) {
-        return;
-    }
-
-    /* eslint-disable @typescript-eslint/naming-convention */
-    return {
-        IPYTHONDIR: notebookInitScriptManager.ipythonDir,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }

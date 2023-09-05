@@ -159,13 +159,6 @@ export class DatabricksEnvFileManager implements Disposable {
         );
     }
 
-    private getNotebookEnvVars() {
-        return EnvVarGenerators.getNotebookEnvVars(
-            this.featureManager,
-            this.notebookInitScriptManager
-        );
-    }
-
     private getIdeEnvVars() {
         return EnvVarGenerators.getIdeEnvVars();
     }
@@ -187,7 +180,6 @@ export class DatabricksEnvFileManager implements Disposable {
             )) || {}),
             ...this.getIdeEnvVars(),
             ...((await this.getUserEnvVars()) || {}),
-            ...(await this.getNotebookEnvVars()),
         })
             .filter(([, value]) => value !== undefined)
             .map(([key, value]) => `${key}=${value}`);
@@ -225,7 +217,6 @@ export class DatabricksEnvFileManager implements Disposable {
                 this.connectionManager,
                 this.workspacePath
             )) || {}),
-            ...(await this.getNotebookEnvVars()),
         }).forEach(([key, value]) => {
             if (value === undefined) {
                 return;

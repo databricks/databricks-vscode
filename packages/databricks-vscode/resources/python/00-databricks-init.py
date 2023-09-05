@@ -47,6 +47,22 @@ def logErrorAndContinue(f):
 
     return wrapper
 
+@logErrorAndContinue
+@disposable
+def load_env_from_leaf(path: str) -> bool:
+    curdir = path if os.path.isdir(path) else os.path.dirname(path)
+    env_file_path = os.path.join(curdir, ".databricks", ".databricks.env")
+    if os.path.exists(os.path.dirname(env_file_path)):
+        with open(env_file_path, "r") as f:
+            for line in f.readlines():
+                key, value = line.strip().split("=", 1)
+                os.environ[key] = value
+        return True
+    
+    parent = os.path.dirname(curdir)
+    if parent == curdir:
+        return False
+    return load_env_from_leaf(parent)
 
 @logErrorAndContinue
 @disposable
@@ -347,6 +363,8 @@ try:
     import sys
 
     print(sys.modules[__name__])
+    if not load_env_from_leaf(os.getcwd()):
+        sys.exit(1)
     cfg = LocalDatabricksNotebookConfig()
     create_and_register_databricks_globals()
     register_magics(cfg)
