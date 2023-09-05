@@ -153,7 +153,7 @@ def strip_hash_magic(lines: List[str]) -> List[str]:
     if len(lines) == 0:
         return lines
     if lines[0].startswith("# MAGIC"):
-        return [line.partition("# MAGIC")[2] for line in lines]
+        return [line.partition("# MAGIC ")[2] for line in lines]
     return lines
 
 def convert_databricks_notebook_to_ipynb(py_file: str):
@@ -240,7 +240,7 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
         def get_cell_magic(lines: List[str]):
             if len(lines) == 0:
                 return
-            if lines[0].startswith("%%"):
+            if lines[0].strip().startswith("%%"):
                 return lines[0].split(" ")[0].strip()
             
         def handle(lines: List[str]):
@@ -258,7 +258,7 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
         def get_line_magic(lines: List[str]):
             if len(lines) == 0:
                 return
-            if lines[0].startswith("%"):
+            if lines[0].strip().startswith("%"):
                 return lines[0].split(" ")[0].strip().strip("%")
             
         def handle(lines: List[str]):
@@ -316,7 +316,14 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
     def parse_line_for_databricks_magics(lines: List[str]):
         if len(lines) == 0:
             return lines
+        
+        lines = [line for line in lines 
+                    if line.strip() != "# Databricks notebook source" and \
+                    line.strip() != "# COMMAND ----------"
+                ]
+        lines = ''.join(lines).strip().splitlines(keepends=True)
         lines = strip_hash_magic(lines)
+
         for magic_check in [is_cell_magic, is_line_magic]:
             if magic_check(lines):
                 return magic_check.handle(lines)

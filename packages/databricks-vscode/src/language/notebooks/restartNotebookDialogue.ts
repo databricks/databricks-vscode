@@ -18,8 +18,7 @@ export function showRestartNotebookDialogue(
                     {
                         modal: true,
                     },
-                    "Restart All Jupyter Kernels",
-                    "Cancel"
+                    "Restart All Jupyter Kernels"
                 );
 
                 if (choice === "Restart All Jupyter Kernels") {
@@ -27,11 +26,19 @@ export function showRestartNotebookDialogue(
                         if (doc.isClosed) {
                             return;
                         }
-                        await doc.save();
+
+                        if (doc.notebookType.includes("jupyter")) {
+                            await doc.save();
+                        }
                         await window.showNotebookDocument(doc);
                         await commands.executeCommand(
                             "workbench.action.closeActiveEditor"
                         );
+                        if (doc.notebookType.includes("jupyter")) {
+                            await window.showNotebookDocument(
+                                await workspace.openNotebookDocument(doc.uri)
+                            );
+                        }
                     }
                 }
             } finally {
