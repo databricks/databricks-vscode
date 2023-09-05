@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiClient, Cluster} from "@databricks/databricks-sdk";
+import {ApiClient} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import assert from "assert";
 import {mock} from "ts-mockito";
 import {formatQuickPickClusterDetails} from "./ConnectionCommands";

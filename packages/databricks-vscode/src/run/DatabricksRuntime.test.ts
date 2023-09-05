@@ -3,7 +3,7 @@
 import assert from "assert";
 import {mock, when, instance, anything, verify, capture} from "ts-mockito";
 import {Disposable, ExtensionContext, Uri} from "vscode";
-import {Cluster, Command, ExecutionContext} from "@databricks/databricks-sdk";
+import {Cluster, Command, ExecutionContext} from "../sdk-extensions";
 import {DatabricksRuntime, OutputEvent} from "./DatabricksRuntime";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {

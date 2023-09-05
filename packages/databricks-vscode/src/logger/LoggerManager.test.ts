@@ -1,6 +1,4 @@
-import "@databricks/databricks-sdk/dist";
-import {Time, TimeUnits} from "@databricks/databricks-sdk/dist";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {Time, TimeUnits, logging} from "@databricks/databricks-sdk";
 import assert from "assert";
 import {mkdtemp, readFile} from "fs/promises";
 import {remove} from "fs-extra";
@@ -25,8 +23,10 @@ describe(__filename, function () {
 
         const manager = new LoggerManager(instance(mockContext));
         await manager.initLoggers();
-        NamedLogger.getOrCreate(Loggers.Extension).debug("test message");
-        NamedLogger.getOrCreate(Loggers.CLI).debug("test message");
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            "test message"
+        );
+        logging.NamedLogger.getOrCreate(Loggers.CLI).debug("test message");
 
         await new Promise((resolve) =>
             setTimeout(

@@ -1,4 +1,4 @@
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 
 export type Step<S, N> = () => Promise<
     SuccessResult<S> | NextResult<N> | ErrorResult
@@ -31,7 +31,7 @@ export async function orchestrate<S, KEYS extends string>(
     steps: Record<KEYS, Step<S, KEYS>>,
     start: KEYS,
     maxSteps = 20,
-    logger?: NamedLogger
+    logger?: logging.NamedLogger
 ): Promise<S> {
     let counter = 0;
 

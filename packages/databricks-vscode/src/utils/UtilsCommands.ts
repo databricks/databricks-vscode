@@ -1,4 +1,4 @@
-import {Cluster} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import {Disposable} from "vscode";
 import {ConfigurationTreeItem} from "../configuration/ConfigurationDataProvider";
 import {openExternal} from "./urlUtils";

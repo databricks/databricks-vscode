@@ -5,6 +5,7 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import {exists} from "fs-extra";
 import path from "path";
 import {readFile, stat, writeFile} from "fs/promises";
+import {homedir} from "os";
 
 export type NotebookType = "IPYNB" | "PY_DBNB" | "OTHER_DBNB";
 export async function isNotebook(
@@ -60,4 +61,8 @@ export async function writeFileIfDiff(
         }
     } catch (e) {}
     await writeFile(uri.fsPath, content, {encoding});
+}
+
+export function getHomedir() {
+    return process.env.HOME ?? homedir();
 }

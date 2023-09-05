@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {MetadataService} from "./MetadataService";
-import {fetch} from "@databricks/databricks-sdk";
-
 import * as assert from "assert";
 import {
     ApiClient,
@@ -11,8 +9,10 @@ import {
     MetadataServiceVersion,
     MetadataServiceVersionHeader,
     RequestVisitor,
+    logging,
+    fetch,
 } from "@databricks/databricks-sdk";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+const {NamedLogger} = logging;
 
 describe(__filename, function () {
     this.timeout(10_000);

@@ -1,4 +1,5 @@
-import {Cluster, WorkflowRun, jobs} from "@databricks/databricks-sdk";
+import {jobs} from "@databricks/databricks-sdk";
+import {Cluster, WorkflowRun} from "../sdk-extensions";
 import * as fs from "node:fs/promises";
 import {Disposable, Uri, WebviewPanel} from "vscode";
 

@@ -1,10 +1,12 @@
-import {AuthProvider} from "../configuration/auth/AuthProvider";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
-import {Loggers} from "../logger";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
 import {DatabricksYamlFile} from "./DatabricksYamlFile";
 import {ProjectJsonFile} from "./ProjectJsonFile";
+import {AuthProvider} from "../configuration/auth/AuthProvider";
+import {Loggers} from "../logger";
+import {logging} from "@databricks/databricks-sdk";
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const {NamedLogger} = logging;
 export interface ProjectConfig {
     authProvider: AuthProvider;
     clusterId?: string;
