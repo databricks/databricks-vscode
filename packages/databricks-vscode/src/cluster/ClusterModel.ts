@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {Cluster, compute} from "@databricks/databricks-sdk";
+import {compute} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ClusterLoader} from "./ClusterLoader";

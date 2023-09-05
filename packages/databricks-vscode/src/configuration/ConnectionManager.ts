@@ -1,10 +1,5 @@
-import {
-    WorkspaceClient,
-    Cluster,
-    WorkspaceFsEntity,
-    WorkspaceFsUtils,
-    ApiClient,
-} from "@databricks/databricks-sdk";
+import {WorkspaceClient, ApiClient, logging} from "@databricks/databricks-sdk";
+import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
 import {
     env,
     EventEmitter,
@@ -26,12 +21,13 @@ import {
 import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const {NamedLogger} = logging;
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 
 /**

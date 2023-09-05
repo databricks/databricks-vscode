@@ -1,12 +1,6 @@
-import {
-    WorkspaceClient,
-    Cluster,
-    iam,
-    WorkspaceConf,
-    WorkspaceConfProps,
-} from "@databricks/databricks-sdk";
+import {WorkspaceClient, iam, logging} from "@databricks/databricks-sdk";
+import {Cluster, WorkspaceConf, WorkspaceConfProps} from "../sdk-extensions";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
-import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
@@ -93,7 +87,7 @@ export class DatabricksWorkspace {
         }
     }
 
-    @withLogContext(Loggers.Extension, "DatabricksWorkspace.load")
+    @logging.withLogContext(Loggers.Extension, "DatabricksWorkspace.load")
     static async load(
         client: WorkspaceClient,
         authProvider: AuthProvider,

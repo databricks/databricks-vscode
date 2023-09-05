@@ -15,7 +15,6 @@ import {SystemVariables} from "../vscode-objs/SystemVariables";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {EnvVarGenerators, FileUtils} from "../utils";
 import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
@@ -73,11 +72,14 @@ export class DatabricksEnvFileManager implements Disposable {
         this.userEnvPath = Uri.file(
             systemVariableResolver.resolve(this.unresolvedUserEnvFile)
         );
-        NamedLogger.getOrCreate(Loggers.Extension).debug("Env file locations", {
-            unresolvedDatabricksEnvFile: this.unresolvedDatabricksEnvFile,
-            unresolvedUserEnvFile: this.unresolvedUserEnvFile,
-            msEnvFile: workspaceConfigs.msPythonEnvFile,
-        });
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            "Env file locations",
+            {
+                unresolvedDatabricksEnvFile: this.unresolvedDatabricksEnvFile,
+                unresolvedUserEnvFile: this.unresolvedUserEnvFile,
+                msEnvFile: workspaceConfigs.msPythonEnvFile,
+            }
+        );
     }
 
     public async init() {

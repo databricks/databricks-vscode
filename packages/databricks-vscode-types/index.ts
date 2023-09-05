@@ -1,4 +1,5 @@
-import {ApiClient, WorkspaceClient, Cluster} from "@databricks/databricks-sdk";
+import {ApiClient, WorkspaceClient} from "@databricks/databricks-sdk";
+import {Cluster} from "databricks/src/sdk-extensions";
 import {Event} from "vscode";
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 

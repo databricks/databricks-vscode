@@ -14,12 +14,14 @@ import {CliWrapper, Command, SyncType} from "./CliWrapper";
 import {ChildProcess, spawn, SpawnOptions} from "node:child_process";
 import {SyncState} from "../sync/CodeSynchronizer";
 import {DatabricksCliSyncParser} from "./DatabricksCliSyncParser";
-import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {PackageMetaData} from "../utils/packageJsonUtils";
 import {RWLock} from "../locking";
 import {EnvVarGenerators} from "../utils";
+
+const {withLogContext} = logging;
 
 export const TASK_SYNC_TYPE = {
     syncFull: "sync-full",

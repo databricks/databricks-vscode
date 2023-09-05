@@ -1,9 +1,5 @@
-import {
-    WorkspaceClient,
-    WorkspaceFsEntity,
-    WorkspaceFsUtils,
-} from "@databricks/databricks-sdk";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {WorkspaceClient, logging} from "@databricks/databricks-sdk";
+import {WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
 import path = require("path");
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
@@ -40,7 +36,10 @@ export class RemoteUri extends DatabricksUri<RemoteUri> {
             const err = new Error(
                 `Remote file URI scheme must be wsfs. Found ${uri.scheme} (${uri.path})`
             );
-            NamedLogger.getOrCreate(Loggers.Extension).error(err.message, err);
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                err.message,
+                err
+            );
             throw err;
         }
 
@@ -125,7 +124,10 @@ export class LocalUri extends DatabricksUri<LocalUri> {
             const err = new Error(
                 `Local file URI scheme must be file. Found ${uri.scheme} (${uri.fsPath})`
             );
-            NamedLogger.getOrCreate(Loggers.Extension).error(err.message, err);
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                err.message,
+                err
+            );
             throw err;
         }
 

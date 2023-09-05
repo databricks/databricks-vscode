@@ -1,11 +1,10 @@
+import {ApiError, logging} from "@databricks/databricks-sdk";
 import {
-    ApiError,
     WorkspaceFsDir,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
-} from "@databricks/databricks-sdk";
+} from "../sdk-extensions";
 import {context, Context} from "@databricks/databricks-sdk/dist/context";
-import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
@@ -15,6 +14,8 @@ import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
 import path from "node:path";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+
+const withLogContext = logging.withLogContext;
 
 export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];

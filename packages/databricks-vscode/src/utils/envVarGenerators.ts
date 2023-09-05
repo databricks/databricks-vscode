@@ -1,7 +1,7 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
 import {Uri} from "vscode";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 //Get env variables from user's .env file
@@ -21,7 +21,7 @@ export async function getUserEnvVars(userEnvPath: Uri) {
                 return prev;
             }, {});
     } catch (e: unknown) {
-        NamedLogger.getOrCreate(Loggers.Extension).error(
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
             "Can't load .env file",
             e
         );

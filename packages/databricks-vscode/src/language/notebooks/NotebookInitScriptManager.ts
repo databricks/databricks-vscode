@@ -13,7 +13,7 @@ import {mkdir, cp, rm, readdir} from "fs/promises";
 import {glob} from "glob";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
-import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Mutex} from "../../locking";
@@ -24,7 +24,9 @@ import {EnvVarGenerators, FileUtils} from "../../utils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {SystemVariables} from "../../vscode-objs/SystemVariables";
 import {LocalUri} from "../../sync/SyncDestination";
+
 const execFile = promisify(ef);
+const withLogContext = logging.withLogContext;
 
 async function isDbnbTextEditor(editor?: TextEditor) {
     try {

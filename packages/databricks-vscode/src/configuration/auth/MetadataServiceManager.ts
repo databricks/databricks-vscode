@@ -1,4 +1,4 @@
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {Disposable} from "vscode";
 import {ConnectionManager} from "../ConnectionManager";
 import {MetadataService} from "./MetadataService";
@@ -10,7 +10,7 @@ export class MetadataServiceManager implements Disposable {
     constructor(private readonly connctionManager: ConnectionManager) {
         this.metadataSerivce = new MetadataService(
             undefined,
-            NamedLogger.getOrCreate("Extension")
+            logging.NamedLogger.getOrCreate("Extension")
         );
 
         this.disposables.push(
