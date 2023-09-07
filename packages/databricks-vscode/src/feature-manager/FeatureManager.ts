@@ -3,7 +3,7 @@ import {Mutex} from "../locking";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {DisabledFeature} from "./DisabledFeature";
 import {EnabledFeature} from "./EnabledFeature";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 
 export type FeatureEnableAction = (...args: any[]) => Promise<void>;
@@ -136,7 +136,7 @@ export class FeatureManager<T = FeatureId> implements Disposable {
                     reject(e);
                 });
             }).catch((e) => {
-                NamedLogger.getOrCreate(Loggers.Extension).error(
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                     `Error checking feature state ${id}`,
                     e
                 );

@@ -1,4 +1,5 @@
-import {compute, Cluster, Time, TimeUnits} from "@databricks/databricks-sdk";
+import {compute, Time, TimeUnits} from "@databricks/databricks-sdk";
+import {Cluster} from "../sdk-extensions";
 import {CancellationTokenSource, Disposable} from "vscode";
 
 export class ClusterManager implements Disposable {

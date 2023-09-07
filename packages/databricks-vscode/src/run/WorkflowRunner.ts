@@ -1,4 +1,5 @@
-import {Cluster, WorkflowRun, jobs, ApiError} from "@databricks/databricks-sdk";
+import {jobs, ApiError} from "@databricks/databricks-sdk";
+import {Cluster, WorkflowRun} from "../sdk-extensions";
 import {basename} from "node:path";
 import {
     CancellationToken,

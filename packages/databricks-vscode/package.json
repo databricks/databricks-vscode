@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "engines": {
         "vscode": "^1.78.0"
     },
@@ -632,6 +632,15 @@
                         "type": "string",
                         "default": "",
                         "description": "Similar to python.envFile. Absolute path to a file containing environment variable definitions."
+                    },
+                    "databricks.wsfs.rearrangeCells": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable rearranging cells in wrapper files created when using `workspace` as the sync destination. **Note:** It is recommended to NOT disable this setting. If you do disable it, you will need to manually handle sys.path for local imports in your notebooks."
+                    },
+                    "databricks.ipythonDir": {
+                        "type": "string",
+                        "description": "Absolute path to a directory for storing IPython files. Defaults to IPYTHONDIR environment variable (if set) or ~/.ipython."
                     }
                 }
             }
@@ -672,7 +681,8 @@
         "test:unit": "yarn run build && node ./out/test/runTest.js",
         "test:integ:prepare": "yarn run package",
         "test:integ:run": "wdio run src/test/e2e/wdio.conf.ts",
-        "test:integ": "yarn run test:integ:prepare && yarn run test:integ:run",
+        "test:integ:sdk": "ts-mocha --type-check 'src/**/*.integ.ts'",
+        "test:integ": "yarn run test:integ:prepare && yarn run test:integ:run && yarn run test:integ:sdk",
         "test:cov": "nyc yarn run test:unit",
         "test": "yarn run test:lint && yarn run test:unit",
         "clean": "rm -rf node_modules out .vscode-test",
@@ -680,7 +690,7 @@
         "generate-telemetry": "ts-node ./scripts/generateTelemetry.ts"
     },
     "dependencies": {
-        "@databricks/databricks-sdk": "workspace:^",
+        "@databricks/databricks-sdk": "../../vendor/databricks-sdk.tgz",
         "@databricks/databricks-vscode-types": "workspace:^",
         "@vscode/debugadapter": "^1.61.0",
         "@vscode/extension-telemetry": "^0.8.1",
@@ -723,6 +733,7 @@
         "nyc": "^15.1.0",
         "prettier": "^3.0.0",
         "tmp-promise": "^3.0.3",
+        "ts-mocha": "^10.0.0",
         "ts-mockito": "^2.6.1",
         "ts-node": "^10.9.1",
         "typescript": "~5.1.6",

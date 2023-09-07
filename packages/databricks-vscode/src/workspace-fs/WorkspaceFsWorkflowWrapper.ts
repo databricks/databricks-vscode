@@ -1,8 +1,5 @@
-import {
-    WorkspaceFsEntity,
-    logging,
-    WorkspaceFsUtils,
-} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/databricks-sdk";
+import {WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {readFile} from "fs/promises";
 import path from "path";
@@ -12,6 +9,7 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Loggers} from "../logger";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
 import {FileUtils} from "../utils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 function getWrapperPath(remoteFilePath: RemoteUri, extraParts: string[]) {
     return new RemoteUri(
@@ -42,6 +40,48 @@ async function readBootstrap(
             "{{DATABRICKS_PROJECT_ROOT}}",
             dbProjectRoot.workspacePrefixPath
         );
+}
+
+type Cell = {
+    source: string[];
+    type: "code" | "not_code";
+    originalCell?: any;
+};
+function rearrangeCells(cells: Cell[]) {
+    if (!workspaceConfigs.wsfsRearrangeCells) {
+        return cells;
+    }
+    const begingingCells: Cell[] = [];
+    const endingCells: Cell[] = [];
+
+    for (const cell of cells) {
+        if (cell.type === "not_code") {
+            endingCells.push(cell);
+            continue;
+        }
+        const newCell: Cell = {
+            source: [],
+            type: "code",
+            originalCell: cell.originalCell,
+        };
+        for (const line of cell.source) {
+            // Add each 0-indent line starting with %pip install or dbutils.library.restartPython(),
+            // as a new cell to the beginging and remove it from the original cell
+            if (
+                line.startsWith("%pip install") ||
+                line.startsWith("# MAGIC %pip install") ||
+                line.startsWith("dbutils.library.restartPython()")
+            ) {
+                begingingCells.push({source: [line], type: "code"});
+                continue;
+            }
+            newCell.source.push(line);
+        }
+        endingCells.push(newCell);
+    }
+    return [...begingingCells, ...endingCells].filter(
+        (cell) => cell.source.length !== 0
+    );
 }
 
 export class WorkspaceFsWorkflowWrapper {
@@ -90,8 +130,11 @@ export class WorkspaceFsWorkflowWrapper {
         dbProjectRoot: RemoteUri,
         @context ctx?: Context
     ) {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        type JupyterCell = {source: string[]; cell_type: string};
         const data = await readFile(localFilePath.path, "utf-8");
-        const originalJson: {cells: any[] | undefined} = JSON.parse(data);
+        const originalJson: {cells: JupyterCell[] | undefined} =
+            JSON.parse(data);
 
         const bootstrapPath = this.extensionContext.asAbsolutePath(
             path.join(
@@ -101,12 +144,30 @@ export class WorkspaceFsWorkflowWrapper {
                 "notebook.workflow-wrapper.json"
             )
         );
-        const bootstrapJson = JSON.parse(
+        const bootstrapJson: JupyterCell = JSON.parse(
             await readBootstrap(bootstrapPath, remoteFilePath, dbProjectRoot)
         );
-        originalJson["cells"] = [bootstrapJson].concat(
-            originalJson["cells"] ?? []
+        const cells = [bootstrapJson].concat(originalJson["cells"] ?? []).map(
+            // Since each cell.source is a string array where each string can be
+            // multiple lines, we need to split each string by \n and then flatten
+            (cell) =>
+                ({
+                    source: cell.source?.flatMap((line) =>
+                        line.trimEnd().split(/\r?\n/)
+                    ),
+                    type: cell.cell_type === "code" ? "code" : "not_code",
+                    originalCell: cell,
+                }) as Cell
         );
+        originalJson["cells"] = rearrangeCells(cells).map((cell) => {
+            if (cell.type === "not_code") {
+                return cell.originalCell;
+            }
+            return {
+                ...(cell.originalCell ?? bootstrapJson),
+                source: [cell.source.join("\n")],
+            };
+        });
         return this.createFile(
             getWrapperPath(remoteFilePath, [
                 "databricks",
@@ -136,10 +197,24 @@ export class WorkspaceFsWorkflowWrapper {
         const bootstrapCode = (
             await readBootstrap(bootstrapPath, remoteFilePath, dbProjectRoot)
         ).split(/\r?\n/);
-        const wrappedCode = ["# Databricks notebook source"]
-            .concat(bootstrapCode)
-            .concat(["# COMMAND ----------"])
-            .concat(originalCode);
+
+        // Split original code into cells by # COMMAND ----------\n
+        // and add the bootstrap code to the beginning as a new cell
+        const cells = [bootstrapCode]
+            .concat(
+                originalCode
+                    .join("\n")
+                    .split(/# COMMAND ----------\r?\n/)
+                    .map((cell) => cell.trimEnd().split(/\r?\n/))
+            )
+            .map((cell) => ({source: cell, type: "code"}) as Cell);
+        const rearrangedCells = rearrangeCells(cells);
+        // Add # Databricks notebook source to the beginning of the first cell
+        rearrangedCells.at(0)?.source.unshift("# Databricks notebook source");
+
+        const wrappedCode = rearrangedCells
+            .map((cell) => cell.source.join("\n"))
+            .join("\n# COMMAND ----------\n");
 
         return this.createFile(
             getWrapperPath(remoteFilePath, [
@@ -147,7 +222,7 @@ export class WorkspaceFsWorkflowWrapper {
                 "notebook",
                 "workflow-wrapper",
             ]),
-            wrappedCode.join("\n"),
+            wrappedCode,
             ctx
         );
     }

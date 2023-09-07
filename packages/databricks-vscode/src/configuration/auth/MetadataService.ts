@@ -9,8 +9,8 @@ import {
     MetadataServiceVersion,
     MetadataServiceVersionHeader,
     ServerResponse,
+    logging,
 } from "@databricks/databricks-sdk";
-import {NamedLogger} from "@databricks/databricks-sdk/src/logging";
 
 export class MetadataService implements Disposable {
     private server:
@@ -22,7 +22,7 @@ export class MetadataService implements Disposable {
 
     constructor(
         apiClient: ApiClient | undefined,
-        private logger: NamedLogger
+        private logger: logging.NamedLogger
     ) {
         this.updateMagic();
         this._apiClient = apiClient;

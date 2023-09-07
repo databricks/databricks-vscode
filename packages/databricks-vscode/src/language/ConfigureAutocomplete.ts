@@ -1,4 +1,4 @@
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {appendFile, mkdir, readdir, readFile} from "fs/promises";
 import path from "path";
 import {
@@ -75,7 +75,7 @@ export class ConfigureAutocomplete implements Disposable {
         try {
             return await fn();
         } catch (e) {
-            NamedLogger.getOrCreate(Loggers.Extension).error(
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Error configuring autocomplete",
                 e
             );

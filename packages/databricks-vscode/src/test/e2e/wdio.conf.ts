@@ -8,13 +8,7 @@ import path from "node:path";
 import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
-import {
-    WorkspaceClient,
-    Cluster,
-    Repo,
-    WorkspaceFsEntity,
-    WorkspaceFsUtils,
-} from "@databricks/databricks-sdk";
+import {Config, WorkspaceClient, workspace} from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile, ExecFileOptions} from "node:child_process";
 import {cpSync, mkdirSync, rmSync} from "node:fs";
@@ -251,10 +245,13 @@ export const config: Options.Testrunner = {
     onPrepare: async function () {
         try {
             mkdirSync(EXTENSION_DIR, {recursive: true});
-            assert(
-                process.env["DATABRICKS_TOKEN"],
-                "Environment variable DATABRICKS_TOKEN must be set"
-            );
+
+            const config = new Config({});
+            await config.ensureResolved();
+
+            assert(config.host, "Config host must be set");
+            assert(config.token, "Config token must be set");
+
             assert(
                 process.env["TEST_DEFAULT_CLUSTER_ID"],
                 "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
@@ -263,15 +260,13 @@ export const config: Options.Testrunner = {
             await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
             await fs.mkdir(WORKSPACE_PATH);
 
-            const client = getWorkspaceClient(
-                getHost(),
-                process.env["DATABRICKS_TOKEN"]
-            );
+            const client = getWorkspaceClient(config);
             const repoPath = await createRepo(client);
             const workspaceFolderPath = await createWsFolder(client);
-            const configFile = await writeDatabricksConfig();
+            const configFile = await writeDatabricksConfig(config);
             await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
 
+            process.env.DATABRICKS_HOST = config.host!;
             process.env.DATABRICKS_CONFIG_FILE = configFile;
             process.env.WORKSPACE_PATH = WORKSPACE_PATH;
             process.env.TEST_REPO_PATH = repoPath;
@@ -530,11 +525,7 @@ export const config: Options.Testrunner = {
     // }
 };
 
-async function writeDatabricksConfig() {
-    assert(
-        process.env["DATABRICKS_TOKEN"],
-        "Environment variable DATABRICKS_TOKEN must be set"
-    );
+async function writeDatabricksConfig(config: Config) {
     assert(
         process.env["TEST_DEFAULT_CLUSTER_ID"],
         "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
@@ -544,25 +535,18 @@ async function writeDatabricksConfig() {
     await fs.writeFile(
         configFile,
         `[DEFAULT]
-host = ${getHost()}
-token = ${process.env["DATABRICKS_TOKEN"]}`
+host = ${config.host!}
+token = ${config.token!}`
     );
 
     return configFile;
 }
 
-function getWorkspaceClient(host: string, token: string) {
-    const client = new WorkspaceClient(
-        {
-            host,
-            token,
-            authType: "pat",
-        },
-        {
-            product: "integration-tests",
-            productVersion: "0.0.1",
-        }
-    );
+function getWorkspaceClient(config: Config) {
+    const client = new WorkspaceClient(config, {
+        product: "integration-tests",
+        productVersion: "0.0.1",
+    });
 
     return client;
 }
@@ -576,18 +560,26 @@ async function createRepo(workspaceClient: WorkspaceClient): Promise<string> {
 
     console.log(`Creating test Repo: ${repoPath}`);
 
-    let repo: Repo;
+    let repo: workspace.RepoInfo | undefined;
     try {
-        repo = await Repo.fromPath(workspaceClient.apiClient, repoPath);
+        for await (const r of workspaceClient.repos.list({
+            path_prefix: repoPath,
+        })) {
+            if (r.path === repoPath) {
+                repo = r;
+                break;
+            }
+        }
+        assert(repo, `Couldn't find repo at ${repoPath}`);
     } catch (e) {
-        repo = await Repo.create(workspaceClient.apiClient, {
+        repo = await workspaceClient.repos.create({
             path: repoPath,
             url: "https://github.com/fjakobs/empty-repo.git",
             provider: "github",
         });
     }
 
-    return repo.path;
+    return repo.path!;
 }
 
 /**
@@ -602,14 +594,12 @@ async function createWsFolder(
     console.log(`Creating test Workspace Folder: ${wsFolderPath}`);
 
     await workspaceClient.workspace.mkdirs({path: wsFolderPath});
-    const repo = await WorkspaceFsEntity.fromPath(
-        workspaceClient,
-        wsFolderPath
-    );
-    if (WorkspaceFsUtils.isDirectory(repo)) {
-        return repo.path;
-    }
-    throw Error(`Couldn't create worspace folder at ${wsFolderPath}`);
+    const status = await workspaceClient.workspace.getStatus({
+        path: wsFolderPath,
+    });
+
+    assert.equal(status.object_type, "DIRECTORY");
+    return status.path!;
 }
 
 async function startCluster(
@@ -617,26 +607,18 @@ async function startCluster(
     clusterId: string
 ) {
     console.log(`Starting cluster: ${clusterId}`);
-    const cluster = await Cluster.fromClusterId(
-        workspaceClient.apiClient,
-        clusterId
-    );
-    await cluster.start(undefined, (state) =>
-        console.log(`Cluster state: ${state}`)
-    );
-    console.log(`Cluster started`);
-}
 
-function getHost() {
-    assert(
-        process.env["DATABRICKS_HOST"],
-        "Environment variable DATABRICKS_HOST must be set"
-    );
-
-    let host = process.env["DATABRICKS_HOST"];
-    if (!host.startsWith("http")) {
-        host = `https://${host}`;
+    try {
+        await (
+            await workspaceClient.clusters.start({
+                cluster_id: clusterId,
+            })
+        ).wait();
+    } catch (e: any) {
+        if (e.errorCode !== "INVALID_STATE") {
+            throw e;
+        }
     }
 
-    return host;
+    console.log(`Cluster started`);
 }

@@ -5,10 +5,7 @@
         "lib": ["ES2020", "ES2021.String", "DOM"],
         "rootDir": "src"
     },
-    "references": [
-        {"path": "../databricks-sdk-js"},
-        {"path": "../databricks-vscode-types"}
-    ],
+    "references": [{"path": "../databricks-vscode-types"}],
     "include": ["src"],
     "exclude": ["src/test/e2e/"]
 }

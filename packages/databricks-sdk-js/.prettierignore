@@ -1,6 +1,0 @@
-out/
-dist/
-.vscode-test/
-node_modules/
-package-lock.json
-all-internal.json

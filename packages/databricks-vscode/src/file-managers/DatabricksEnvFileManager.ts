@@ -15,7 +15,6 @@ import {SystemVariables} from "../vscode-objs/SystemVariables";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {EnvVarGenerators, FileUtils} from "../utils";
 import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
@@ -73,11 +72,14 @@ export class DatabricksEnvFileManager implements Disposable {
         this.userEnvPath = Uri.file(
             systemVariableResolver.resolve(this.unresolvedUserEnvFile)
         );
-        NamedLogger.getOrCreate(Loggers.Extension).debug("Env file locations", {
-            unresolvedDatabricksEnvFile: this.unresolvedDatabricksEnvFile,
-            unresolvedUserEnvFile: this.unresolvedUserEnvFile,
-            msEnvFile: workspaceConfigs.msPythonEnvFile,
-        });
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            "Env file locations",
+            {
+                unresolvedDatabricksEnvFile: this.unresolvedDatabricksEnvFile,
+                unresolvedUserEnvFile: this.unresolvedUserEnvFile,
+                msEnvFile: workspaceConfigs.msPythonEnvFile,
+            }
+        );
     }
 
     public async init() {
@@ -157,13 +159,6 @@ export class DatabricksEnvFileManager implements Disposable {
         );
     }
 
-    private getNotebookEnvVars() {
-        return EnvVarGenerators.getNotebookEnvVars(
-            this.featureManager,
-            this.notebookInitScriptManager
-        );
-    }
-
     private getIdeEnvVars() {
         return EnvVarGenerators.getIdeEnvVars();
     }
@@ -179,13 +174,12 @@ export class DatabricksEnvFileManager implements Disposable {
 
         const data = Object.entries({
             ...(this.getDatabrickseEnvVars() || {}),
-            ...(EnvVarGenerators.getDbConnectEnvVars(
+            ...((await EnvVarGenerators.getDbConnectEnvVars(
                 this.connectionManager,
                 this.workspacePath
-            ) || {}),
+            )) || {}),
             ...this.getIdeEnvVars(),
             ...((await this.getUserEnvVars()) || {}),
-            ...(await this.getNotebookEnvVars()),
         })
             .filter(([, value]) => value !== undefined)
             .map(([key, value]) => `${key}=${value}`);
@@ -219,11 +213,10 @@ export class DatabricksEnvFileManager implements Disposable {
         Object.entries({
             ...(this.getDatabrickseEnvVars() || {}),
             ...this.getIdeEnvVars(),
-            ...(EnvVarGenerators.getDbConnectEnvVars(
+            ...((await EnvVarGenerators.getDbConnectEnvVars(
                 this.connectionManager,
                 this.workspacePath
-            ) || {}),
-            ...(await this.getNotebookEnvVars()),
+            )) || {}),
         }).forEach(([key, value]) => {
             if (value === undefined) {
                 return;

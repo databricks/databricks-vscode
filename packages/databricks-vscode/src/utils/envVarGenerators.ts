@@ -1,9 +1,7 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
 import {Uri} from "vscode";
-import {FeatureManager} from "../feature-manager/FeatureManager";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
-import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
+import {logging} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 //Get env variables from user's .env file
@@ -23,7 +21,7 @@ export async function getUserEnvVars(userEnvPath: Uri) {
                 return prev;
             }, {});
     } catch (e: unknown) {
-        NamedLogger.getOrCreate(Loggers.Extension).error(
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
             "Can't load .env file",
             e
         );
@@ -39,23 +37,8 @@ export function getIdeEnvVars() {
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
-export async function getNotebookEnvVars(
-    featureManager: FeatureManager,
-    notebookInitScriptManager: NotebookInitScriptManager
-) {
-    if (!(await featureManager.isEnabled("notebooks.dbconnect")).avaliable) {
-        return;
-    }
-
-    /* eslint-disable @typescript-eslint/naming-convention */
-    return {
-        IPYTHONDIR: notebookInitScriptManager.ipythonDir,
-    };
-    /* eslint-enable @typescript-eslint/naming-convention */
-}
-
 function getUserAgent(connectionManager: ConnectionManager) {
-    const client = connectionManager.workspaceClient?.apiClient;
+    const client = connectionManager.apiClient;
     if (!client) {
         return;
     }
@@ -64,7 +47,7 @@ function getUserAgent(connectionManager: ConnectionManager) {
 
 export function getAuthEnvVars(connectionManager: ConnectionManager) {
     const cluster = connectionManager.cluster;
-    const host = connectionManager.databricksWorkspace?.host.authority;
+    const host = connectionManager.databricksWorkspace?.host.toString();
     if (!host || !connectionManager.metadataServiceUrl) {
         return;
     }
@@ -90,16 +73,42 @@ export function getCommonDatabricksEnvVars(
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
-export function getDbConnectEnvVars(
+async function getPatToken(connectionManager: ConnectionManager) {
+    const headers: Record<string, string> = {};
+    await connectionManager.apiClient?.config.authenticate(headers);
+    return headers["Authorization"]?.split(" ")[1];
+}
+
+async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {
+    const host = connectionManager.databricksWorkspace?.host.authority;
+    const authType =
+        connectionManager.databricksWorkspace?.authProvider.authType;
+
+    // We export spark remote only for profile auth type. This is to support
+    // SparkSession builder in oss spark connect (and also dbconnect).
+    // For all other auth types, we don't export spark remote and expect users
+    // to use DatabricksSession for full functionality.
+    if (host && connectionManager.cluster && authType === "profile") {
+        const pat = await getPatToken(connectionManager);
+        if (pat) {
+            return {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                SPARK_REMOTE: `sc://${host}:443/;token=${pat};use_ssl=true;x-databricks-cluster-id=${connectionManager.cluster.id}`,
+            };
+        }
+    }
+}
+
+export async function getDbConnectEnvVars(
     connectionManager: ConnectionManager,
     workspacePath: Uri
 ) {
     const userAgent = getUserAgent(connectionManager);
-
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         SPARK_CONNECT_USER_AGENT: userAgent,
         DATABRICKS_PROJECT_ROOT: workspacePath.fsPath,
+        ...((await getSparkRemoteEnvVar(connectionManager)) || {}),
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }

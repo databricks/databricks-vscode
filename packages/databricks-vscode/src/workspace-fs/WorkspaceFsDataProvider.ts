@@ -1,4 +1,4 @@
-import {WorkspaceFsEntity} from "@databricks/databricks-sdk";
+import {WorkspaceFsEntity} from "../sdk-extensions";
 import {posix} from "path";
 import {
     Disposable,

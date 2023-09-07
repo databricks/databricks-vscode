@@ -1,13 +1,13 @@
-import {LEVELS, NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {EventEmitter} from "vscode";
 import {Loggers} from "../logger";
 import {SyncState} from "../sync";
 
-const databricksLogLevelToSdk = new Map<string, LEVELS>([
-    ["DEBUG", LEVELS.debug],
-    ["INFO", LEVELS.info],
-    ["WARN", LEVELS.warn],
-    ["ERROR", LEVELS.error],
+const databricksLogLevelToSdk = new Map<string, logging.LEVELS>([
+    ["DEBUG", logging.LEVELS.debug],
+    ["INFO", logging.LEVELS.info],
+    ["WARN", logging.LEVELS.warn],
+    ["ERROR", logging.LEVELS.error],
 ]);
 
 type EventBase = {
@@ -96,7 +96,7 @@ export class DatabricksCliSyncParser {
 
     public processStderr(data: string) {
         const logLines = data.split("\n");
-        let currentLogLevel: LEVELS = LEVELS.info;
+        let currentLogLevel: logging.LEVELS = logging.LEVELS.info;
         for (let i = 0; i < logLines.length; i++) {
             const line = logLines[i].trim();
             if (line.length === 0) {
@@ -111,9 +111,13 @@ export class DatabricksCliSyncParser {
                     databricksLogLevelToSdk.get(typeMatch[1]) ??
                     currentLogLevel;
             }
-            NamedLogger.getOrCreate(Loggers.CLI).log(currentLogLevel, line, {
-                outfile: "stderr",
-            });
+            logging.NamedLogger.getOrCreate(Loggers.CLI).log(
+                currentLogLevel,
+                line,
+                {
+                    outfile: "stderr",
+                }
+            );
             this.writeEmitter.fire(line.trim() + "\r\n");
             if (this.matchForErrors(line)) {
                 return;
@@ -150,14 +154,14 @@ export class DatabricksCliSyncParser {
             if (line.length === 0) {
                 continue;
             }
-            NamedLogger.getOrCreate(Loggers.CLI).info(line, {
+            logging.NamedLogger.getOrCreate(Loggers.CLI).info(line, {
                 outfile: "stdout",
             });
 
             try {
                 this.processLine(line);
             } catch (error: any) {
-                NamedLogger.getOrCreate(Loggers.Extension).error(
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                     "Error parsing JSON line from databricks sync stdout: " +
                         error
                 );

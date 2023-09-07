@@ -5,10 +5,6 @@
             "name": "databricks-vscode.git"
         },
         {
-            "path": "packages/databricks-sdk-js",
-            "name": "SDK"
-        },
-        {
             "path": "packages/databricks-vscode",
             "name": "Extension"
         },

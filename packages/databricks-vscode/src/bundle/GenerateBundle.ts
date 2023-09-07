@@ -1,11 +1,18 @@
 import {CliWrapper} from "../cli/CliWrapper";
-import {extensions, Uri} from "vscode";
-import {workspace, RelativePattern, GlobPattern, Disposable} from "vscode";
+import {
+    ExtensionContext,
+    extensions,
+    Uri,
+    workspace,
+    RelativePattern,
+    GlobPattern,
+} from "vscode";
 import YAML from "yaml";
 
 export async function generateBundleSchema(
-    cli: CliWrapper
-): Promise<Disposable> {
+    cli: CliWrapper,
+    context: ExtensionContext
+) {
     // get freshly generated bundle schema
     const bundleSchema = await cli.getBundleSchema();
 
@@ -27,13 +34,15 @@ export async function generateBundleSchema(
 
     // file watcher on all YAML files
     const yamlWatcher = workspace.createFileSystemWatcher("**/*.{yml,yaml}");
-    yamlWatcher.onDidCreate(async () => {
-        await updateFileGlobs();
-    });
     const configWatcher = workspace.createFileSystemWatcher(configFilePattern);
-    configWatcher.onDidChange(async () => {
-        await updateFileGlobs();
-    });
+    context.subscriptions.push(
+        yamlWatcher.onDidCreate(async () => {
+            await updateFileGlobs();
+        }),
+        configWatcher.onDidChange(async () => {
+            await updateFileGlobs();
+        })
+    );
 
     let configFiles = new Set<string>();
     await updateFileGlobs();
@@ -93,10 +102,5 @@ export async function generateBundleSchema(
         );
     }
 
-    return {
-        dispose: () => {
-            yamlWatcher.dispose();
-            configWatcher.dispose();
-        },
-    };
+    context.subscriptions.push(yamlWatcher, configWatcher);
 }

@@ -13,7 +13,7 @@ import {writeFile} from "node:fs/promises";
 import {CliWrapper} from "./CliWrapper";
 import path from "node:path";
 import {Context} from "@databricks/databricks-sdk/dist/context";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 
 const execFile = promisify(execFileCb);
 
@@ -152,15 +152,18 @@ host = example.com
             const profiles = await cli.listProfiles(
                 path,
                 new Context({
-                    logger: NamedLogger.getOrCreate("cli-wrapper-test", {
-                        factory: () => {
-                            return {
-                                log: (level, msg, meta) => {
-                                    logs.push({level, msg, meta});
-                                },
-                            };
-                        },
-                    }),
+                    logger: logging.NamedLogger.getOrCreate(
+                        "cli-wrapper-test",
+                        {
+                            factory: () => {
+                                return {
+                                    log: (level, msg, meta) => {
+                                        logs.push({level, msg, meta});
+                                    },
+                                };
+                            },
+                        }
+                    ),
                 })
             );
             assert.equal(profiles.length, 2);

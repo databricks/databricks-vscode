@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiError, WorkspaceClient} from "@databricks/databricks-sdk";
-import {WorkspaceService} from "@databricks/databricks-sdk/dist/apis/workspace";
+import {ApiError, WorkspaceClient, workspace} from "@databricks/databricks-sdk";
 import {
     instance,
     mock,
@@ -18,7 +17,7 @@ import {readFile, writeFile} from "fs/promises";
 import {withFile} from "tmp-promise";
 
 describe(__filename, async () => {
-    let mockWorkspaceService: WorkspaceService;
+    let mockWorkspaceService: workspace.WorkspaceService;
     let mockConnectionManager: ConnectionManager;
     let mockExtensionContext: ExtensionContext;
     const testDirPath = "/Users/me/testdir";
@@ -29,8 +28,23 @@ describe(__filename, async () => {
         "python"
     );
 
-    beforeEach(async () => {
-        mockWorkspaceService = mock(WorkspaceService);
+    function verifyMockServiceCalledWithExpectedData(
+        expected: string,
+        wrappedFilePath: string
+    ) {
+        verify(
+            mockWorkspaceService.import(
+                objectContaining({
+                    content: Buffer.from(expected).toString("base64"),
+                    path: wrappedFilePath,
+                }),
+                anything()
+            )
+        ).once();
+    }
+
+    function createMocks() {
+        mockWorkspaceService = mock(workspace.WorkspaceService);
         when(
             mockWorkspaceService.getStatus(
                 objectContaining({
@@ -60,51 +74,58 @@ describe(__filename, async () => {
                 return path.resolve(extensionRootDirPath, relativePath);
             }
         );
-    });
+    }
 
-    it("should create wrapper for files", async () => {
-        const originalFilePath = posix.join(testDirPath, "remoteFile.py");
-        const wrappedFilePath = posix.join(
-            testDirPath,
-            "remoteFile.databricks.file.workflow-wrapper.py"
-        );
-        when(
-            mockWorkspaceService.getStatus(
-                objectContaining({
-                    path: wrappedFilePath,
-                }),
-                anything()
-            )
-        ).thenResolve({
-            path: wrappedFilePath,
-            object_type: "FILE",
-            object_id: 1235,
-        });
-
-        await new WorkspaceFsWorkflowWrapper(
-            instance(mockConnectionManager),
-            instance(mockExtensionContext)
-        ).createPythonFileWrapper(new RemoteUri(originalFilePath));
-
-        const wrapperData = await readFile(
-            path.join(resourceDirPath, "file.workflow-wrapper.py"),
-            "utf-8"
-        );
-        verify(
-            mockWorkspaceService.import(
-                objectContaining({
-                    content: Buffer.from(wrapperData).toString("base64"),
-                    path: wrappedFilePath,
-                }),
-                anything()
-            )
-        ).once();
-    });
-
-    it("should create wrapper for databricks python notebook", async () => {
-        await withFile(async (localFilePath) => {
+    describe("python files", () => {
+        beforeEach(createMocks);
+        it("should create wrapper for files", async () => {
             const originalFilePath = posix.join(testDirPath, "remoteFile.py");
             const wrappedFilePath = posix.join(
+                testDirPath,
+                "remoteFile.databricks.file.workflow-wrapper.py"
+            );
+            when(
+                mockWorkspaceService.getStatus(
+                    objectContaining({
+                        path: wrappedFilePath,
+                    }),
+                    anything()
+                )
+            ).thenResolve({
+                path: wrappedFilePath,
+                object_type: "FILE",
+                object_id: 1235,
+            });
+
+            await new WorkspaceFsWorkflowWrapper(
+                instance(mockConnectionManager),
+                instance(mockExtensionContext)
+            ).createPythonFileWrapper(new RemoteUri(originalFilePath));
+
+            const wrapperData = await readFile(
+                path.join(resourceDirPath, "file.workflow-wrapper.py"),
+                "utf-8"
+            );
+            verify(
+                mockWorkspaceService.import(
+                    objectContaining({
+                        content: Buffer.from(wrapperData).toString("base64"),
+                        path: wrappedFilePath,
+                    }),
+                    anything()
+                )
+            ).once();
+        });
+    });
+
+    describe("dbnb notebooks", () => {
+        let originalFilePath: string;
+        let wrappedFilePath: string;
+
+        beforeEach(() => {
+            createMocks();
+            originalFilePath = posix.join(testDirPath, "remoteFile.py");
+            wrappedFilePath = posix.join(
                 testDirPath,
                 "remoteFile.databricks.notebook.workflow-wrapper.py"
             );
@@ -141,26 +162,10 @@ describe(__filename, async () => {
                 object_type: "NOTEBOOK",
                 object_id: 1236,
             });
+        });
 
-            const comment = ["# Databricks notebook source"];
-            const data = ["print('hello')", "print('world')"];
-            writeFile(
-                localFilePath.path,
-                comment.concat(data).join("\n"),
-                "utf-8"
-            );
-
-            await new WorkspaceFsWorkflowWrapper(
-                instance(mockConnectionManager),
-                instance(mockExtensionContext)
-            ).createNotebookWrapper(
-                new LocalUri(localFilePath.path),
-                new RemoteUri(originalFilePath),
-                new RemoteUri(testDirPath),
-                "PY_DBNB"
-            );
-
-            const wrapperData = (
+        async function getWrapperData() {
+            return (
                 await readFile(
                     path.join(resourceDirPath, "notebook.workflow-wrapper.py"),
                     "utf-8"
@@ -174,31 +179,104 @@ describe(__filename, async () => {
                     "{{DATABRICKS_PROJECT_ROOT}}",
                     new RemoteUri(testDirPath).workspacePrefixPath
                 );
-            const expected = comment
-                .concat(wrapperData.split(/\r?\n/))
-                .concat(["# COMMAND ----------"])
-                .concat(data)
-                .join("\n");
+        }
 
-            verify(
-                mockWorkspaceService.import(
-                    objectContaining({
-                        content: Buffer.from(expected).toString("base64"),
-                        path: wrappedFilePath,
-                    }),
-                    anything()
-                )
-            ).once();
+        it("should create wrapper for databricks python notebook", async () => {
+            await withFile(async (localFilePath) => {
+                const comment = ["# Databricks notebook source"];
+                const data = ["print('hello')", "print('world')"];
+                writeFile(
+                    localFilePath.path,
+                    comment.concat(data).join("\n"),
+                    "utf-8"
+                );
+
+                await new WorkspaceFsWorkflowWrapper(
+                    instance(mockConnectionManager),
+                    instance(mockExtensionContext)
+                ).createNotebookWrapper(
+                    new LocalUri(localFilePath.path),
+                    new RemoteUri(originalFilePath),
+                    new RemoteUri(testDirPath),
+                    "PY_DBNB"
+                );
+
+                const wrapperData = await getWrapperData();
+                const expected = comment
+                    .concat(wrapperData.split(/\r?\n/))
+                    .concat(["# COMMAND ----------"])
+                    .concat(data)
+                    .join("\n");
+
+                verifyMockServiceCalledWithExpectedData(
+                    expected,
+                    wrappedFilePath
+                );
+            });
+        });
+
+        it("should rearrange kernel restart commands to the beginning", async () => {
+            await withFile(async (localFilePath) => {
+                const comment = ["# Databricks notebook source"];
+                const data = [
+                    "print('hello')",
+                    "print('world')",
+                    "# COMMAND ----------",
+                    "# MAGIC %pip install pandas",
+                    "# COMMAND ----------",
+                    "dbutils.library.restartPython()",
+                    "print('hello2')",
+                ];
+                writeFile(
+                    localFilePath.path,
+                    comment.concat(data).join("\n"),
+                    "utf-8"
+                );
+
+                await new WorkspaceFsWorkflowWrapper(
+                    instance(mockConnectionManager),
+                    instance(mockExtensionContext)
+                ).createNotebookWrapper(
+                    new LocalUri(localFilePath.path),
+                    new RemoteUri(originalFilePath),
+                    new RemoteUri(testDirPath),
+                    "PY_DBNB"
+                );
+
+                const wrapperData = await getWrapperData();
+                const expected = comment
+                    .concat([
+                        "# MAGIC %pip install pandas",
+                        "# COMMAND ----------",
+                        "dbutils.library.restartPython()",
+                        "# COMMAND ----------",
+                    ])
+                    .concat(wrapperData.split(/\r?\n/))
+                    .concat([
+                        "# COMMAND ----------",
+                        "print('hello')",
+                        "print('world')",
+                        "# COMMAND ----------",
+                        "print('hello2')",
+                    ])
+                    .join("\n");
+
+                verifyMockServiceCalledWithExpectedData(
+                    expected,
+                    wrappedFilePath
+                );
+            });
         });
     });
 
-    it("should create wrapper for databricks jupyter notebook", async () => {
-        await withFile(async (localFilePath) => {
-            const originalFilePath = posix.join(
-                testDirPath,
-                "remoteFile.ipynb"
-            );
-            const wrappedFilePath = posix.join(
+    describe("ipynb notebooks", () => {
+        let originalFilePath: string;
+        let wrappedFilePath: string;
+
+        beforeEach(() => {
+            createMocks();
+            originalFilePath = posix.join(testDirPath, "remoteFile.ipynb");
+            wrappedFilePath = posix.join(
                 testDirPath,
                 "remoteFile.databricks.notebook.workflow-wrapper.ipynb"
             );
@@ -235,91 +313,155 @@ describe(__filename, async () => {
                 object_type: "NOTEBOOK",
                 object_id: 1236,
             });
+        });
 
-            const originalData = {
-                metadata: {
-                    "application/vnd.databricks.v1+notebook": {
-                        notebookName: "something",
-                        dashboards: [],
-                        notebookMetadata: {
-                            pythonIndentUnit: 4,
-                        },
-                        language: "python",
-                        widgets: {},
-                        notebookOrigID: 2124901766713480,
-                    },
-                },
-                nbformat: 4,
-                nbformat_minor: 0,
-                cells: [
-                    {
-                        cell_type: "code",
-                        source: ["b = 2"],
-                        metadata: {
-                            "application/vnd.databricks.v1+cell": {
-                                showTitle: false,
-                                cellMetadata: {
-                                    rowLimit: 10000,
-                                    byteLimit: 2048000,
-                                },
-                                nuid: "1fb559af-eaf5-456f-9e12-c80b82a9baab",
-                                inputWidgets: {},
-                                title: "",
-                            },
-                        },
-                        outputs: [],
-                        execution_count: 0,
-                    },
-                ],
-            };
-            writeFile(
-                localFilePath.path,
-                JSON.stringify(originalData),
-                "utf-8"
-            );
-
-            await new WorkspaceFsWorkflowWrapper(
-                instance(mockConnectionManager),
-                instance(mockExtensionContext)
-            ).createNotebookWrapper(
-                new LocalUri(localFilePath.path),
-                new RemoteUri(originalFilePath),
-                new RemoteUri(testDirPath),
-                "IPYNB"
-            );
-
-            const wrapperData = (
-                await readFile(
-                    path.join(
-                        resourceDirPath,
-                        "generated",
-                        "notebook.workflow-wrapper.json"
-                    ),
-                    "utf-8"
-                )
-            )
-                .replace(
-                    "{{DATABRICKS_SOURCE_FILE}}",
-                    new RemoteUri(originalFilePath).workspacePrefixPath
-                )
-                .replace(
-                    "{{DATABRICKS_PROJECT_ROOT}}",
-                    new RemoteUri(testDirPath).workspacePrefixPath
-                );
-            const expected = originalData;
-            expected.cells = [JSON.parse(wrapperData)].concat(expected.cells);
-
-            verify(
-                mockWorkspaceService.import(
-                    objectContaining({
-                        content: Buffer.from(JSON.stringify(expected)).toString(
-                            "base64"
+        async function getWrapperData() {
+            const wrapperData = JSON.parse(
+                (
+                    await readFile(
+                        path.join(
+                            resourceDirPath,
+                            "generated",
+                            "notebook.workflow-wrapper.json"
                         ),
-                        path: wrappedFilePath,
-                    }),
-                    anything()
+                        "utf-8"
+                    )
                 )
-            ).once();
+                    .replace(
+                        "{{DATABRICKS_SOURCE_FILE}}",
+                        new RemoteUri(originalFilePath).workspacePrefixPath
+                    )
+                    .replace(
+                        "{{DATABRICKS_PROJECT_ROOT}}",
+                        new RemoteUri(testDirPath).workspacePrefixPath
+                    )
+            );
+
+            wrapperData.source = wrapperData.source.map((cell: string) =>
+                cell.trimEnd()
+            );
+            return wrapperData;
+        }
+
+        const notebookMetadata = {
+            metadata: {
+                "application/vnd.databricks.v1+notebook": {
+                    notebookName: "something",
+                    dashboards: [],
+                    notebookMetadata: {
+                        pythonIndentUnit: 4,
+                    },
+                    language: "python",
+                    widgets: {},
+                    notebookOrigID: 2124901766713480,
+                },
+            },
+            nbformat: 4,
+            nbformat_minor: 0,
+        };
+
+        const cellMetadata = {
+            cell_type: "code",
+            metadata: {
+                "application/vnd.databricks.v1+cell": {
+                    showTitle: false,
+                    cellMetadata: {
+                        rowLimit: 10000,
+                        byteLimit: 2048000,
+                    },
+                    nuid: "1fb559af-eaf5-456f-9e12-c80b82a9baab",
+                    inputWidgets: {},
+                    title: "",
+                },
+            },
+            outputs: [],
+            execution_count: 0,
+        };
+
+        it("should create wrapper for databricks jupyter notebook", async () => {
+            await withFile(async (localFilePath) => {
+                const originalData = {
+                    ...notebookMetadata,
+                    cells: [{...cellMetadata, source: ["b = 2"]}],
+                };
+                writeFile(
+                    localFilePath.path,
+                    JSON.stringify(originalData),
+                    "utf-8"
+                );
+
+                await new WorkspaceFsWorkflowWrapper(
+                    instance(mockConnectionManager),
+                    instance(mockExtensionContext)
+                ).createNotebookWrapper(
+                    new LocalUri(localFilePath.path),
+                    new RemoteUri(originalFilePath),
+                    new RemoteUri(testDirPath),
+                    "IPYNB"
+                );
+
+                const wrapperData = await getWrapperData();
+                const expected = originalData;
+                expected.cells = [wrapperData].concat(expected.cells);
+
+                verifyMockServiceCalledWithExpectedData(
+                    JSON.stringify(expected),
+                    wrappedFilePath
+                );
+            });
+        });
+
+        it("should rearrange kernel restart commands to the beginning", async () => {
+            await withFile(async (localFilePath) => {
+                const originalData = {
+                    ...notebookMetadata,
+                    cells: [
+                        {...cellMetadata, source: ["print('hello')"]},
+                        {...cellMetadata, source: ["%pip install x"]},
+                        {
+                            ...cellMetadata,
+                            source: [
+                                "dbutils.library.restartPython()\nprint('hello2')\n",
+                            ],
+                        },
+                    ],
+                };
+                writeFile(
+                    localFilePath.path,
+                    JSON.stringify(originalData),
+                    "utf-8"
+                );
+
+                await new WorkspaceFsWorkflowWrapper(
+                    instance(mockConnectionManager),
+                    instance(mockExtensionContext)
+                ).createNotebookWrapper(
+                    new LocalUri(localFilePath.path),
+                    new RemoteUri(originalFilePath),
+                    new RemoteUri(testDirPath),
+                    "IPYNB"
+                );
+
+                const wrapperData = await getWrapperData();
+                const expected = {
+                    ...notebookMetadata,
+                    cells: [
+                        {...wrapperData, source: ["%pip install x"]},
+                        {
+                            ...wrapperData,
+                            source: ["dbutils.library.restartPython()"],
+                        },
+                        wrapperData,
+                        {...cellMetadata, source: ["print('hello')"]},
+                        {...cellMetadata, source: ["print('hello2')"]},
+                    ],
+                };
+
+                verifyMockServiceCalledWithExpectedData(
+                    JSON.stringify(expected),
+                    wrappedFilePath
+                );
+            });
         });
     });
 });

@@ -4,6 +4,7 @@ import {LocalUri} from "../sync/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {exists} from "fs-extra";
 import path from "path";
+import {homedir} from "os";
 
 export type NotebookType = "IPYNB" | "PY_DBNB" | "OTHER_DBNB";
 export async function isNotebook(
@@ -42,4 +43,8 @@ export async function waitForDatabricksProject(
     if (!(await exists(path.join(workspacePath.fsPath, ".databricks")))) {
         await connectionManager.waitForConnect();
     }
+}
+
+export function getHomedir() {
+    return process.env.HOME ?? homedir();
 }

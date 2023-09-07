@@ -13,7 +13,7 @@ import {mkdir, cp, rm, readdir} from "fs/promises";
 import {glob} from "glob";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
-import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Mutex} from "../../locking";
@@ -24,14 +24,19 @@ import {EnvVarGenerators, FileUtils} from "../../utils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {SystemVariables} from "../../vscode-objs/SystemVariables";
 import {LocalUri} from "../../sync/SyncDestination";
+
 const execFile = promisify(ef);
 
 async function isDbnbTextEditor(editor?: TextEditor) {
-    return (
-        editor?.document.languageId === "python" &&
-        (await FileUtils.isNotebook(new LocalUri(editor.document.uri))) ===
-            "PY_DBNB"
-    );
+    try {
+        return (
+            editor?.document.languageId === "python" &&
+            (await FileUtils.isNotebook(new LocalUri(editor.document.uri))) ===
+                "PY_DBNB"
+        );
+    } catch (e) {
+        return false;
+    }
 }
 
 export class NotebookInitScriptManager implements Disposable {
@@ -62,7 +67,7 @@ export class NotebookInitScriptManager implements Disposable {
         });
         this.disposables.push(
             this.connectionManager.onDidChangeState(async (e) => {
-                if (e !== "CONNECTED" || (await this.isKnowEnvironment())) {
+                if (e !== "CONNECTED" || (await this.isKnownEnvironment())) {
                     return;
                 }
                 this.initScriptSuccessfullyVerified = false;
@@ -80,13 +85,13 @@ export class NotebookInitScriptManager implements Disposable {
                 this.verifyInitScript();
             }),
             workspace.onDidOpenNotebookDocument(async () => {
-                if (await this.isKnowEnvironment()) {
+                if (await this.isKnownEnvironment()) {
                     return;
                 }
                 this.verifyInitScript();
             }),
             window.onDidChangeActiveNotebookEditor(async (activeNotebook) => {
-                if ((await this.isKnowEnvironment()) || !activeNotebook) {
+                if ((await this.isKnownEnvironment()) || !activeNotebook) {
                     return;
                 }
                 this.verifyInitScript();
@@ -94,12 +99,18 @@ export class NotebookInitScriptManager implements Disposable {
             window.onDidChangeActiveTextEditor(async (activeTextEditor) => {
                 if (
                     activeTextEditor?.document.languageId !== "python" ||
-                    (await this.isKnowEnvironment())
+                    (await this.isKnownEnvironment())
                 ) {
                     return;
                 }
-                const localUri = new LocalUri(activeTextEditor?.document.uri);
-                if (await FileUtils.isNotebook(localUri)) {
+
+                if (
+                    activeTextEditor?.document.uri.scheme ===
+                        "vscode-notebook-cell" ||
+                    (await FileUtils.isNotebook(
+                        new LocalUri(activeTextEditor?.document.uri)
+                    ))
+                ) {
                     this.verifyInitScript();
                 }
             })
@@ -107,7 +118,11 @@ export class NotebookInitScriptManager implements Disposable {
     }
 
     get ipythonDir(): string {
-        return path.join(this.workspacePath.fsPath, ".databricks", "ipython");
+        return (
+            workspaceConfigs.ipythonDir ??
+            process.env.IPYTHONDIR ??
+            path.join(FileUtils.getHomedir(), ".ipython")
+        );
     }
 
     get startupDir(): string {
@@ -129,7 +144,7 @@ export class NotebookInitScriptManager implements Disposable {
         return readdir(this.generatedDir);
     }
 
-    async isKnowEnvironment() {
+    async isKnownEnvironment() {
         return (
             this.currentEnvPath ===
             (await this.pythonExtension.getPythonExecutable())
@@ -213,7 +228,7 @@ export class NotebookInitScriptManager implements Disposable {
         this.verifyInitScript(true);
     }
 
-    @withLogContext(Loggers.Extension)
+    @logging.withLogContext(Loggers.Extension)
     private async executeAndVerifyInitScripts(
         executable: string,
         @context ctx?: Context
@@ -226,10 +241,10 @@ export class NotebookInitScriptManager implements Disposable {
                 ...(EnvVarGenerators.getCommonDatabricksEnvVars(
                     this.connectionManager
                 ) ?? {}),
-                ...(EnvVarGenerators.getDbConnectEnvVars(
+                ...((await EnvVarGenerators.getDbConnectEnvVars(
                     this.connectionManager,
                     this.workspacePath
-                ) ?? {}),
+                )) ?? {}),
                 ...(EnvVarGenerators.getIdeEnvVars() ?? {}),
                 ...((await this.getUserEnvVars()) ?? {}),
             };
@@ -237,10 +252,8 @@ export class NotebookInitScriptManager implements Disposable {
                 executable,
                 ["-m", "IPython", file],
                 {
-                    //required for azure-cli auth to work
-                    //TODO: remove this when using metadata-service-auth
-                    shell: true,
                     env,
+                    cwd: this.workspacePath.fsPath,
                 }
             );
             const correctlyFormatttedErrors = stderr
@@ -277,7 +290,7 @@ export class NotebookInitScriptManager implements Disposable {
         return true;
     }
 
-    @withLogContext(Loggers.Extension)
+    @logging.withLogContext(Loggers.Extension)
     private async verifyInitScript(
         fromCommand = false,
         @context ctx?: Context
@@ -285,6 +298,8 @@ export class NotebookInitScriptManager implements Disposable {
         // If we are not in a jupyter notebook or a databricks notebook,
         // then we don't need to verify the init script
         if (
+            window.activeTextEditor?.document.uri.scheme !==
+                "vscode-notebook-cell" &&
             !isDbnbTextEditor(window.activeTextEditor) &&
             window.activeNotebookEditor === undefined
         ) {
@@ -366,7 +381,6 @@ export class NotebookInitScriptManager implements Disposable {
                 return;
             }
             this.currentEnvPath = executable;
-
             await this.updateInitScript();
 
             this.initScriptSuccessfullyVerified = fromCommand
@@ -390,7 +404,9 @@ export class NotebookInitScriptManager implements Disposable {
                       }
                   )
                 : await this.executeAndVerifyInitScripts(executable);
-        } catch (e) {
+        } catch (e: any) {
+            this.outputWindow?.appendLine("=".repeat(30));
+            this.outputWindow?.appendLine(e.stdout);
             ctx?.logger?.error("Notebook Init Script Error", e);
         } finally {
             this.verifyInitScriptMutex.signal();

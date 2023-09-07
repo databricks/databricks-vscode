@@ -2,12 +2,15 @@ import {
     ExecUtils,
     ProductVersion,
     WorkspaceClient,
+    logging,
 } from "@databricks/databricks-sdk";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const {NamedLogger} = logging;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../../package.json")
@@ -25,7 +28,7 @@ type AzureStepName =
 export class AzureCliCheck implements Disposable {
     private disposables: Disposable[] = [];
     private isCodeSpaces: boolean;
-    private logger: NamedLogger;
+    private logger: logging.NamedLogger;
 
     tenantId: string | undefined;
     azureLoginAppId: string | undefined;
@@ -54,6 +57,11 @@ export class AzureCliCheck implements Disposable {
                 const result = await this.tryLogin(this.authProvider.host);
                 if (result.iss) {
                     this.tenantId = result.iss;
+                    return {
+                        type: "next",
+                        next: "loginAzureCli",
+                    };
+                } else if (result.expired) {
                     return {
                         type: "next",
                         next: "loginAzureCli",
@@ -164,6 +172,7 @@ export class AzureCliCheck implements Disposable {
         iss?: string;
         aud?: string;
         canLogin: boolean;
+        expired: boolean;
         error?: Error;
     }> {
         const workspaceClient = new WorkspaceClient(
@@ -188,6 +197,18 @@ export class AzureCliCheck implements Disposable {
                 return {
                     iss: m[1],
                     canLogin: false,
+                    expired: false,
+                };
+            }
+
+            m = e.message.match(
+                /(Interactive authentication is needed). Please run:\naz login( --scope ([a-z0-9-]+?)\/\.default)?\n/s
+            );
+            if (m) {
+                return {
+                    canLogin: false,
+                    error: new Error(m[1]),
+                    expired: true,
                 };
             }
 
@@ -198,12 +219,13 @@ export class AzureCliCheck implements Disposable {
                 return {
                     aud: m[1],
                     canLogin: false,
+                    expired: false,
                 };
             }
 
-            return {canLogin: false, error: e};
+            return {canLogin: false, error: e, expired: false};
         }
-        return {canLogin: true};
+        return {canLogin: true, expired: false};
     }
 
     // check if Azure CLI is installed

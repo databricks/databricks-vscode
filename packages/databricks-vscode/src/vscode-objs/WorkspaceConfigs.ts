@@ -144,4 +144,22 @@ export const workspaceConfigs = {
                 ConfigurationTarget.Workspace
             );
     },
+
+    get wsfsRearrangeCells(): boolean {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<boolean>("wsfs.rearrangeCells") ?? true
+        );
+    },
+
+    get ipythonDir(): string | undefined {
+        const dir = workspace
+            .getConfiguration("databricks")
+            .get<string>("ipythonDir");
+        if (dir === "") {
+            return undefined;
+        }
+        return dir;
+    },
 };
