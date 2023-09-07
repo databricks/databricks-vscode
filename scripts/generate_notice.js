@@ -22,7 +22,9 @@ async function* crawlLicenses(start) {
         if (folder.startsWith(".")) {
             continue;
         }
-
+        if (folder === "databricks" || folder.startsWith("@databricks")) {
+            continue;
+        }
         if (folder.startsWith("@")) {
             yield* crawlLicenses(start + "/" + folder);
             continue;
