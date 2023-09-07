@@ -10,7 +10,7 @@ fi
 
 CLI_DIR=$(mktemp -d -t databricks-XXXXXXXXXX)
 pushd $CLI_DIR
-curl https://databricks-bricks.s3.amazonaws.com/v${CLI_VERSION}/databricks_cli_${CLI_VERSION}_${CLI_ARCH}.zip -o databricks_cli_${CLI_VERSION}_${CLI_ARCH}.zip
+gh release download v${CLI_VERSION} --pattern "databricks_cli_${CLI_VERSION}_${CLI_ARCH}.zip" --repo databricks/cli
 unzip databricks_*_$CLI_ARCH.zip
 rm databricks_*_$CLI_ARCH.zip
 ls
