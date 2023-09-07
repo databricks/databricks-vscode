@@ -13,12 +13,11 @@ jobs:
             matrix:
                 arch:
                     [
-                        {cli_arch: darwin_amd64, os: macos-latest},
-                        {cli_arch: windows_amd64, os: windows-latest},
+                        { cli_arch: darwin_amd64, os: macos-latest },
+                        { cli_arch: windows_amd64, os: windows-latest },
                     ]
                 node-version: [16.x]
                 vscode-version: [stable, insiders]
-
         uses: ./.github/workflows/tests.yml
         with:
             os: ${{ matrix.arch.os }}
@@ -46,6 +45,7 @@ jobs:
               working-directory: packages/databricks-vscode
               env:
                   CLI_ARCH: darwin_amd64
+                  GH_TOKEN: ${{ github.token }}
 
             - name: Building packages
               run: yarn run build
