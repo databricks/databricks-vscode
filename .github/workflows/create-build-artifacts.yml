@@ -23,6 +23,8 @@ jobs:
             - run: yarn run build
             - run: yarn run package:all
               working-directory: packages/databricks-vscode
+              env:
+                  GH_TOKEN: ${{ github.token }}
 
             - uses: actions/upload-artifact@v3
               with:
