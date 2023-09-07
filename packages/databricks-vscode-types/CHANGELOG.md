@@ -4,8 +4,8 @@
 
 ## <small>1.1.2 (2023-09-07)</small>
 
--   Move SDK into a separate repository (#838) ([58163ec](https://github.com/databricks/databricks-vscode/commit/58163ec)), closes [#838](https://github.com/databricks/databricks-vscode/issues/838)
--   Move sdk/services from the SDK to VS Code (#852) ([f544d6b](https://github.com/databricks/databricks-vscode/commit/f544d6b)), closes [#852](https://github.com/databricks/databricks-vscode/issues/852)
+-   Move SDK into a separate repository.
+-   Move sdk/services from the SDK to VS Code.
 
 # Release: v1.1.1
 

@@ -4,16 +4,15 @@
 
 ## <small>1.1.2 (2023-09-07)</small>
 
--   Append databricks cli path to the end of PATH (#833) ([cfe7d15](https://github.com/databricks/databricks-vscode/commit/cfe7d15)), closes [#833](https://github.com/databricks/databricks-vscode/issues/833)
--   Bump databricks cli to v0.204.0 (#861) ([b7e4909](https://github.com/databricks/databricks-vscode/commit/b7e4909)), closes [#861](https://github.com/databricks/databricks-vscode/issues/861)
--   Don't cache environment variables across restarts for a workspace (#835) ([71e1c55](https://github.com/databricks/databricks-vscode/commit/71e1c55)), closes [#835](https://github.com/databricks/databricks-vscode/issues/835)
--   Don't import `dbutils.widget` until use (#859) ([0a9e694](https://github.com/databricks/databricks-vscode/commit/0a9e694)), closes [#859](https://github.com/databricks/databricks-vscode/issues/859)
--   Export DATABRICKS_HOST env var with correct protocol (#841) ([2b62e41](https://github.com/databricks/databricks-vscode/commit/2b62e41)), closes [#841](https://github.com/databricks/databricks-vscode/issues/841) [#836](https://github.com/databricks/databricks-vscode/issues/836)
--   Fix `# MAGIC` commands and `restart kernels` dialog (#858) ([a5c26e3](https://github.com/databricks/databricks-vscode/commit/a5c26e3)), closes [#858](https://github.com/databricks/databricks-vscode/issues/858)
--   Move SDK into a separate repository (#838) ([58163ec](https://github.com/databricks/databricks-vscode/commit/58163ec)), closes [#838](https://github.com/databricks/databricks-vscode/issues/838)
--   Move sdk/services from the SDK to VS Code (#852) ([f544d6b](https://github.com/databricks/databricks-vscode/commit/f544d6b)), closes [#852](https://github.com/databricks/databricks-vscode/issues/852)
--   Support for %run magics and # MAGIC commands (#834) ([65ab0c2](https://github.com/databricks/databricks-vscode/commit/65ab0c2)), closes [#834](https://github.com/databricks/databricks-vscode/issues/834)
--   Traverse parent directories to find and load .databricks/.databricks.env from notebook init script ( ([7b43bd7](https://github.com/databricks/databricks-vscode/commit/7b43bd7)), closes [#845](https://github.com/databricks/databricks-vscode/issues/845)
+-   Fix: Append databricks cli path to the end of PATH. Now cli binary installed on the system takes priority over the binary packaged with the extension when running from the integrated terminal. 
+-   Feature: Bump databricks cli to v0.204.0
+-   Fix: Export DATABRICKS_HOST env var with correct protocol (#841) ([2b62e41](https://github.com/databricks/databricks-vscode/commit/2b62e41)), fixes [#836](https://github.com/databricks/databricks-vscode/issues/836)
+-   Feature(experimental): Support for %run magics and # MAGIC commands in databricks notebooks
+-   Feature(experimental): Find and load environment variables configured by the extension in notebooks. These variables are required to automatically configure DB Connect V2, dbutils (from databricks python SDK) etc. 
+
+CLI Changes
+
+-   Fix: The pattern .* in a .gitignore file can match the root directory. Never ignore root directory when syncing. Fixes [#837](https://github.com/databricks/databricks-vscode/issues/837).
 
 # Release: v1.1.1
 
