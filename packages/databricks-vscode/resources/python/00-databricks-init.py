@@ -75,7 +75,12 @@ def create_and_register_databricks_globals():
     # "table", "sc", "sqlContext" are missing
     spark: SparkSession = DatabricksSession.builder.getOrCreate()
     sql = spark.sql
-    getArgument = dbutils.widgets.getArgument
+
+    # We do this to prevent importing widgets implementation prematurely
+    # The widget import should prompt users to use the implementation
+    # which has ipywidget support.
+    def getArgument(*args, **kwargs):
+        return dbutils.widgets.getArgument(*args, **kwargs)
 
     globals()['dbutils'] = dbutils
     globals()['spark'] = spark
