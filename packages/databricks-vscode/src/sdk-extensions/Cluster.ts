@@ -11,10 +11,11 @@ import {
     compute,
     CancellationToken,
     logging,
+    Context,
+    context,
 } from "@databricks/databricks-sdk";
 import {ExecutionContext} from "./ExecutionContext";
 import {WorkflowRun} from "./WorkflowRun";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
 
 const {ExposedLoggers, withLogContext} = logging;
 

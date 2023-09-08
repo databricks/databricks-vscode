@@ -1,10 +1,9 @@
-import {ApiError, logging} from "@databricks/databricks-sdk";
+import {ApiError, logging, context, Context} from "@databricks/databricks-sdk";
 import {
     WorkspaceFsDir,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
 } from "../sdk-extensions";
-import {context, Context} from "@databricks/databricks-sdk/dist/context";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";

@@ -1,11 +1,10 @@
-import {logging} from "@databricks/databricks-sdk";
+import {logging, Context, context} from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
 import {window, commands} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {MultiStepAccessVerifier} from "../feature-manager/MultiStepAccessVerfier";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Loggers} from "../logger";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
 import {FeatureState} from "../feature-manager/FeatureManager";
 import {DATABRICKS_CONNECT_VERSION} from "../utils/constants";

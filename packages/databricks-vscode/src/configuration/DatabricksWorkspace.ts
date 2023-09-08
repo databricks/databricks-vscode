@@ -1,6 +1,11 @@
-import {WorkspaceClient, iam, logging} from "@databricks/databricks-sdk";
+import {
+    WorkspaceClient,
+    iam,
+    logging,
+    Context,
+    context,
+} from "@databricks/databricks-sdk";
 import {Cluster, WorkspaceConf, WorkspaceConfProps} from "../sdk-extensions";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";

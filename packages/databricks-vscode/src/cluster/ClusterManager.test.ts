@@ -8,7 +8,7 @@ import {
     retries,
 } from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
-import {ClusterFixtures} from "../sdk-extensions/test";
+import {getMockTestCluster} from "../sdk-extensions/test/ClusterFixtures";
 import {
     anything,
     deepEqual,
@@ -26,7 +26,7 @@ describe(__filename, async () => {
     let testClusterDetails: compute.ClusterDetails;
 
     beforeEach(async () => {
-        ({testClusterDetails} = await ClusterFixtures.getMockTestCluster());
+        ({testClusterDetails} = await getMockTestCluster());
         mockedClient = mock(ApiClient);
         when(
             mockedClient.request(

@@ -5,8 +5,9 @@ import {
     WorkspaceClient,
     ApiError,
     logging,
+    context,
+    Context,
 } from "@databricks/databricks-sdk";
-import {context, Context} from "@databricks/databricks-sdk/dist/context";
 
 const {ExposedLoggers, withLogContext} = logging;
 

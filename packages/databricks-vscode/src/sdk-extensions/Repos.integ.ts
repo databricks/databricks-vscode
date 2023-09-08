@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {CancellationToken, workspace} from "@databricks/databricks-sdk";
+import {
+    CancellationToken,
+    workspace,
+    Context,
+} from "@databricks/databricks-sdk";
 import {IntegrationTestSetup} from "./test/IntegrationTestSetup";
-import {Context} from "@databricks/databricks-sdk/dist/context";
 import * as assert from "node:assert";
 import {Repo} from "./Repos";
 import {randomUUID} from "node:crypto";

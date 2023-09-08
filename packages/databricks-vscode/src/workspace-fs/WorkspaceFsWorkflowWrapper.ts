@@ -1,6 +1,5 @@
-import {logging} from "@databricks/databricks-sdk";
+import {logging, Context, context} from "@databricks/databricks-sdk";
 import {WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {readFile} from "fs/promises";
 import path from "path";
 import posix from "path/posix";

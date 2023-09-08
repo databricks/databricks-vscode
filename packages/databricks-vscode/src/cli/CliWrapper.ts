@@ -3,9 +3,8 @@ import {ExtensionContext, window, commands} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
-import {logging} from "@databricks/databricks-sdk";
+import {logging, Context, context} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
 
 const withLogContext = logging.withLogContext;

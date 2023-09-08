@@ -1,5 +1,10 @@
-import {ApiClient, settings, logging} from "@databricks/databricks-sdk";
-import {context, Context} from "@databricks/databricks-sdk/dist/context";
+import {
+    ApiClient,
+    settings,
+    logging,
+    context,
+    Context,
+} from "@databricks/databricks-sdk";
 
 type StringBool = "true" | "false" | "";
 

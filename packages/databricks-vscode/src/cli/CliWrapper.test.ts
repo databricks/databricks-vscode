@@ -12,8 +12,7 @@ import {writeFile} from "node:fs/promises";
 
 import {CliWrapper} from "./CliWrapper";
 import path from "node:path";
-import {Context} from "@databricks/databricks-sdk/dist/context";
-import {logging} from "@databricks/databricks-sdk";
+import {logging, Context} from "@databricks/databricks-sdk";
 
 const execFile = promisify(execFileCb);
 
