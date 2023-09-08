@@ -4,15 +4,15 @@
 
 ## <small>1.1.2 (2023-09-07)</small>
 
--   Fix: Append databricks cli path to the end of PATH. Now cli binary installed on the system takes priority over the binary packaged with the extension when running from the integrated terminal. 
+-   Fix: Append databricks cli path to the end of PATH. Now cli binary installed on the system takes priority over the binary packaged with the extension when running from the integrated terminal.
 -   Feature: Bump databricks cli to v0.204.0
 -   Fix: Export DATABRICKS_HOST env var with correct protocol (#841) ([2b62e41](https://github.com/databricks/databricks-vscode/commit/2b62e41)), fixes [#836](https://github.com/databricks/databricks-vscode/issues/836)
 -   Feature(experimental): Support for %run magics and # MAGIC commands in databricks notebooks
--   Feature(experimental): Find and load environment variables configured by the extension in notebooks. These variables are required to automatically configure DB Connect V2, dbutils (from databricks python SDK) etc. 
+-   Feature(experimental): Find and load environment variables configured by the extension in notebooks. These variables are required to automatically configure DB Connect V2, dbutils (from databricks python SDK) etc.
 
 CLI Changes
 
--   Fix: The pattern .* in a .gitignore file can match the root directory. Never ignore root directory when syncing. Fixes [#837](https://github.com/databricks/databricks-vscode/issues/837).
+-   Fix: The pattern .\* in a .gitignore file can match the root directory. Never ignore root directory when syncing. Fixes [#837](https://github.com/databricks/databricks-vscode/issues/837).
 
 # Release: v1.1.1
 
