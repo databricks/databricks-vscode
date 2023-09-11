@@ -1,3 +1,12 @@
+# Release: v1.1.2
+
+## packages/databricks-vscode-types
+
+## <small>1.1.2 (2023-09-07)</small>
+
+-   Move SDK into a separate repository.
+-   Move sdk/services from the SDK to VS Code.
+
 # Release: v1.1.1
 
 ## packages/databricks-vscode-types
