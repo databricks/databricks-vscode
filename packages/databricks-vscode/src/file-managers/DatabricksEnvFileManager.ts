@@ -96,58 +96,39 @@ export class DatabricksEnvFileManager implements Disposable {
 
         this.disposables.push(
             userEnvFileWatcher,
-            userEnvFileWatcher.onDidChange(() => this.writeFile(), this),
-            userEnvFileWatcher.onDidDelete(() => this.writeFile(), this),
-            userEnvFileWatcher.onDidCreate(() => this.writeFile(), this),
+            userEnvFileWatcher.onDidChange(async () => {
+                await this.emitToTerminal();
+                await this.writeFile();
+            }, this),
+            userEnvFileWatcher.onDidDelete(async () => {
+                await this.emitToTerminal();
+                await this.writeFile();
+            }, this),
+            userEnvFileWatcher.onDidCreate(async () => {
+                await this.emitToTerminal();
+                await this.writeFile();
+            }, this),
             this.featureManager.onDidChangeState(
                 "notebooks.dbconnect",
                 async () => {
-                    await this.clearTerminalEnv();
                     await this.emitToTerminal();
                     await this.writeFile();
                 }
             ),
             this.featureManager.onDidChangeState(
                 "debugging.dbconnect",
-                (featureState) => {
-                    if (!featureState.avaliable) {
-                        this.clearTerminalEnv();
-                    } else {
-                        this.emitToTerminal();
-                    }
+                () => {
+                    this.emitToTerminal();
                     this.writeFile();
                 },
                 this
             ),
-            this.connectionManager.onDidChangeCluster(async (cluster) => {
-                if (
-                    !cluster ||
-                    this.connectionManager.state !== "CONNECTED" ||
-                    !(
-                        await this.featureManager.isEnabled(
-                            "debugging.dbconnect"
-                        )
-                    ).avaliable
-                ) {
-                    this.clearTerminalEnv();
-                } else {
-                    this.emitToTerminal();
-                }
+            this.connectionManager.onDidChangeCluster(async () => {
+                this.emitToTerminal();
                 this.writeFile();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
-                if (
-                    this.connectionManager.state !== "CONNECTED" ||
-                    !(
-                        await this.featureManager.isEnabled(
-                            "debugging.dbconnect"
-                        )
-                    ).avaliable
-                ) {
-                    this.clearTerminalEnv();
-                } else {
-                    this.emitToTerminal();
-                }
+                this.emitToTerminal();
                 this.writeFile();
             }, this)
         );

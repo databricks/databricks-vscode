@@ -15,9 +15,6 @@ export function showRestartNotebookDialogue(
             try {
                 const choice = await window.showInformationMessage(
                     "Environment variables have changed. Restart all jupyter kernels to pickup the latest environment variables. ",
-                    {
-                        modal: true,
-                    },
                     "Restart All Jupyter Kernels"
                 );
 
