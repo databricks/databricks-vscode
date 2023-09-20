@@ -194,7 +194,13 @@ export class ClusterLoader implements Disposable {
                     this.onStopRequested(() => {
                         clearInterval(timer);
                         resolve();
-                    })
+                    }),
+                    {
+                        dispose: () => {
+                            clearInterval(timer);
+                            resolve();
+                        },
+                    }
                 );
             });
         }

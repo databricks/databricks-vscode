@@ -88,6 +88,8 @@ describe(__filename, () => {
     describe("getDbConnectEnvVars", () => {
         const mockWorkspacePath = Uri.file("example");
         let mockAuthProvider: AuthProvider;
+        let existingEnv: any;
+
         beforeEach(() => {
             when(mockApiClient.product).thenReturn("test");
             when(mockApiClient.productVersion).thenReturn("0.0.1");
@@ -95,6 +97,11 @@ describe(__filename, () => {
             when(mockDatabricksWorkspace.authProvider).thenReturn(
                 instance(mockAuthProvider)
             );
+            existingEnv = Object.assign({}, process.env);
+        });
+
+        afterEach(() => {
+            process.env = existingEnv;
         });
 
         it("should generate correct dbconnect env vars when auth type is not profile", async () => {
@@ -107,6 +114,21 @@ describe(__filename, () => {
 
             assert.deepEqual(actual, {
                 SPARK_CONNECT_USER_AGENT: "test/0.0.1",
+                DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
+            });
+        });
+
+        it("should append our user agent any existing SPARK_CONNECT_USER_AGENT in VS Code parent env", async () => {
+            process.env.SPARK_CONNECT_USER_AGENT = "existing";
+            when(mockAuthProvider.authType).thenReturn("azure-cli");
+
+            const actual = await getDbConnectEnvVars(
+                instance(mockConnectionManager),
+                mockWorkspacePath
+            );
+
+            assert.deepEqual(actual, {
+                SPARK_CONNECT_USER_AGENT: "existing test/0.0.1",
                 DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
             });
         });
