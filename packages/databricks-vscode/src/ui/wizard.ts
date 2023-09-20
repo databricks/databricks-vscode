@@ -27,13 +27,19 @@ interface EditItem {
 }
 
 type InputStep = (input: MultiStepInput) => Thenable<InputStep | void>;
+export type ValidationMessageType = {
+    message: string;
+    type: "error" | "warning";
+};
 
 interface QuickAutoCompleteParameters {
     title: string;
     step: number;
     totalSteps: number;
     prompt: string;
-    validate: (value: string) => Promise<string | undefined>;
+    validate: (
+        value: string
+    ) => Promise<string | undefined | ValidationMessageType>;
     buttons?: QuickInputButton[];
     shouldResume: () => Thenable<boolean>;
     items: Array<QuickPickItem>;
@@ -46,17 +52,6 @@ interface QuickPickParameters<T extends QuickPickItem> {
     items: T[];
     activeItem?: T;
     placeholder: string;
-    buttons?: QuickInputButton[];
-    shouldResume: () => Thenable<boolean>;
-}
-
-interface InputBoxParameters {
-    title: string;
-    step: number;
-    totalSteps: number;
-    value: string;
-    prompt: string;
-    validate: (value: string) => Promise<string | undefined>;
     buttons?: QuickInputButton[];
     shouldResume: () => Thenable<boolean>;
 }
@@ -156,18 +151,25 @@ export class MultiStepInput {
                         ) {
                             input.items = [...items];
                         } else if (input.value !== "") {
-                            const validationMessage = validate
+                            let validationMessage = validate
                                 ? await validate(input.value)
                                 : undefined;
+
+                            if (typeof validationMessage === "string") {
+                                validationMessage = {
+                                    message: validationMessage,
+                                    type: "error",
+                                };
+                            }
 
                             input.items = [
                                 {
                                     label: input.value,
                                     detail: validationMessage
-                                        ? `$(error) ${validationMessage}`
+                                        ? `$(${validationMessage.type}) ${validationMessage.message}`
                                         : undefined,
                                     edit: true,
-                                    error: !!validationMessage,
+                                    error: validationMessage?.type === "error",
                                 } as EditItem,
                                 ...items,
                             ];
@@ -258,81 +260,6 @@ export class MultiStepInput {
                         }
                     }),
                     input.onDidChangeSelection((items) => resolve(items[0])),
-                    input.onDidHide(() => {
-                        (async () => {
-                            reject(
-                                shouldResume && (await shouldResume())
-                                    ? InputFlowAction.resume
-                                    : InputFlowAction.cancel
-                            );
-                        })().catch(reject);
-                    })
-                );
-                if (this.current) {
-                    this.current.dispose();
-                }
-                this.current = input;
-                this.current.show();
-            });
-        } finally {
-            disposables.forEach((d) => d.dispose());
-        }
-    }
-
-    async showInputBox<P extends InputBoxParameters>({
-        title,
-        step,
-        totalSteps,
-        value,
-        prompt,
-        validate,
-        buttons,
-        shouldResume,
-    }: P) {
-        const disposables: Disposable[] = [];
-        try {
-            return await new Promise<
-                string | (P extends {buttons: (infer I)[]} ? I : never)
-            >((resolve, reject) => {
-                const input = window.createInputBox();
-                input.title = title;
-                input.step = step;
-                input.totalSteps = totalSteps;
-                input.value = value || "";
-                input.prompt = prompt;
-                input.ignoreFocusOut = true;
-                input.buttons = [
-                    ...(this.steps.length > 1 ? [QuickInputButtons.Back] : []),
-                    ...(buttons || []),
-                ];
-                let validating = validate("");
-                disposables.push(
-                    input.onDidTriggerButton((item) => {
-                        if (item === QuickInputButtons.Back) {
-                            reject(InputFlowAction.back);
-                        } else {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            resolve(<any>item);
-                        }
-                    }),
-                    input.onDidAccept(async () => {
-                        const value = input.value;
-                        input.enabled = false;
-                        input.busy = true;
-                        if (!(await validate(value))) {
-                            resolve(value);
-                        }
-                        input.enabled = true;
-                        input.busy = false;
-                    }),
-                    input.onDidChangeValue(async (text) => {
-                        const current = validate(text);
-                        validating = current;
-                        const validationMessage = await current;
-                        if (current === validating) {
-                            input.validationMessage = validationMessage;
-                        }
-                    }),
                     input.onDidHide(() => {
                         (async () => {
                             reject(
