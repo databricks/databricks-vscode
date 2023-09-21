@@ -4,8 +4,12 @@
 
 ## <small>1.1.3 (2023-09-21)</small>
 
--   Always export env vars to the terminal (#869) ([deaaaf7](https://github.com/databricks/databricks-vscode/commit/deaaaf7)), closes [#869](https://github.com/databricks/databricks-vscode/issues/869)
--   Fix invalid access mode prompt (#873) ([3ba302c](https://github.com/databricks/databricks-vscode/commit/3ba302c)), closes [#873](https://github.com/databricks/databricks-vscode/issues/873)
+-   Fix: Environment variables are always exported to the terminal irrespective of DB Connect V2 being enabled or not.
+-   Fix: Invalid access mode prompt now explicitly states that it is for DB Connect V2
+
+CLI Changes
+
+-   Fix: Fixed a bug which was causing OAuth login flow to hang, when called from the extension.
 
 # Release: v1.1.2
 
