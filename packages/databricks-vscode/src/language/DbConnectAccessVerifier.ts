@@ -92,7 +92,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                 "checkCluster",
                 `Cluster doesn't have UC enabled.`,
                 this.promptForAttachingCluster(
-                    `Access mode should be "Single User" or "Shared"). Currently it is ${
+                    `Databricks Connect requires Access Mode to be "Single User" or "Shared"). Currently it is ${
                         cluster.accessMode ?? "custom"
                     }. Please attach a new cluster.`
                 )
