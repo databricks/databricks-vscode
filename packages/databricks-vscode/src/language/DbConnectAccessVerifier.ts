@@ -155,7 +155,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         try {
             const exists = await this.pythonExtension.findPackageInEnvironment(
                 "databricks-connect",
-                "latest"
+                "13.3.2"
             );
             if (exists) {
                 return this.acceptStep("checkDbConnectInstall");
