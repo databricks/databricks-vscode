@@ -60,20 +60,24 @@ describe(__filename, () => {
         it("should generate correct proxyEnvVars with lowerCase settings", () => {
             process.env.http_proxy = "http://example.com";
             process.env.https_proxy = "https://example.com";
+            process.env.no_proxy = "https://example.com";
             const actual = getProxyEnvVars();
             assert.deepEqual(actual, {
                 HTTP_PROXY: "http://example.com",
                 HTTPS_PROXY: "https://example.com",
+                NO_PROXY: "https://example.com",
             });
         });
 
         it("should generate correct proxyEnvVars with upperCase settings", () => {
             process.env.HTTP_PROXY = "http://example.com";
             process.env.HTTPS_PROXY = "https://example.com";
+            process.env.NO_PROXY = "https://example.com";
             const actual = getProxyEnvVars();
             assert.deepEqual(actual, {
                 HTTP_PROXY: "http://example.com",
                 HTTPS_PROXY: "https://example.com",
+                NO_PROXY: "https://example.com",
             });
         });
 

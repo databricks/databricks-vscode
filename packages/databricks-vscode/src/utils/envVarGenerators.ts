@@ -122,6 +122,7 @@ export function getProxyEnvVars() {
         /* eslint-disable @typescript-eslint/naming-convention */
         HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy,
         HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy,
+        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy,
         /* eslint-enable @typescript-eslint/naming-convention */
     };
 }
