@@ -1,6 +1,6 @@
 import {commands, QuickPickItem, QuickPickItemKind} from "vscode";
 import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
-import {MultiStepInput} from "../ui/wizard";
+import {MultiStepInput, ValidationMessageType} from "../ui/wizard";
 import {
     isAwsHost,
     isAzureHost,
@@ -220,9 +220,20 @@ async function listProfiles(cliWrapper: CliWrapper) {
 
 async function validateDatabricksHost(
     host: string
-): Promise<string | undefined> {
+): Promise<string | undefined | ValidationMessageType> {
     try {
-        normalizeHost(host);
+        const url = normalizeHost(host);
+        if (
+            !url.hostname.match(
+                /(\.databricks\.azure\.us|\.databricks\.azure\.cn|\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com|\.dev\.databricks\.com)$/
+            )
+        ) {
+            return {
+                message:
+                    "This is not a standard Databricks URL. Some features may not work as expected.",
+                type: "warning",
+            };
+        }
     } catch (e: any) {
         return e.message;
     }

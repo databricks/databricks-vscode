@@ -21,13 +21,6 @@ export function normalizeHost(host: string): URL {
     if (url.protocol !== "https:") {
         throw new Error("Invalid protocol");
     }
-    if (
-        !url.hostname.match(
-            /(\.databricks\.azure\.us|\.databricks\.azure\.cn|\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com|\.dev\.databricks\.com)$/
-        )
-    ) {
-        throw new Error("Not a Databricks host");
-    }
 
     return new URL(`https://${url.hostname}`);
 }
