@@ -1,3 +1,17 @@
+# Release: v1.1.4
+
+## packages/databricks-vscode
+
+## <small>1.1.4 (2023-09-29)</small>
+
+-   Allow custom databricks hosts (#872) ([b99918b](https://github.com/databricks/databricks-vscode/commit/b99918b)), closes [#872](https://github.com/databricks/databricks-vscode/issues/872) [#664](https://github.com/databricks/databricks-vscode/issues/664)
+-   Append to the end of existing `SPARK_CONNECT_USER_AGENT` instead of overwritting it (#870) ([ced4413](https://github.com/databricks/databricks-vscode/commit/ced4413)), closes [#870](https://github.com/databricks/databricks-vscode/issues/870)
+-   Bump databricks cli to 0.206.0 (#880) ([63014ae](https://github.com/databricks/databricks-vscode/commit/63014ae)), closes [#880](https://github.com/databricks/databricks-vscode/issues/880)
+-   Bump dependencies (#882) ([6082f0d](https://github.com/databricks/databricks-vscode/commit/6082f0d)), closes [#882](https://github.com/databricks/databricks-vscode/issues/882)
+-   Passthrough `no_proxy` env var (#879) ([8632699](https://github.com/databricks/databricks-vscode/commit/8632699)), closes [#879](https://github.com/databricks/databricks-vscode/issues/879)
+-   Pin dbconnect v2 version to 13.3.2 (#877) ([16615b1](https://github.com/databricks/databricks-vscode/commit/16615b1)), closes [#877](https://github.com/databricks/databricks-vscode/issues/877)
+-   Update Databricks Connect V2 setup prompts (#876) ([3594918](https://github.com/databricks/databricks-vscode/commit/3594918)), closes [#876](https://github.com/databricks/databricks-vscode/issues/876)
+
 # Release: v1.1.3
 
 ## packages/databricks-vscode

@@ -1,3 +1,11 @@
+# Release: v1.1.4
+
+## packages/databricks-vscode-types
+
+## <small>1.1.4 (2023-09-29)</small>
+
+-   Bump dependencies (#882) ([6082f0d](https://github.com/databricks/databricks-vscode/commit/6082f0d)), closes [#882](https://github.com/databricks/databricks-vscode/issues/882)
+
 # Release: v1.1.3
 
 ## packages/databricks-vscode-types
