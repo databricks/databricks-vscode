@@ -20,6 +20,7 @@ describe(__filename, () => {
     const mockClusterId = "clusterId";
     const mockHost = "http://example.com";
     let mockApiClient: ApiClient;
+    let existingEnv: any;
 
     beforeEach(() => {
         mockConnectionManager = mock(ConnectionManager);
@@ -39,6 +40,11 @@ describe(__filename, () => {
             instance(mockApiClient)
         );
         when(mockApiClient.host).thenResolve(new URL(mockHost));
+        existingEnv = Object.assign({}, process.env);
+    });
+
+    afterEach(() => {
+        process.env = existingEnv;
     });
 
     it("should generate correct authEnvVars", () => {
@@ -56,38 +62,34 @@ describe(__filename, () => {
         });
     });
 
-    describe("getProxyEnvVars", () => {
-        it("should generate correct proxyEnvVars with lowerCase settings", () => {
-            process.env.http_proxy = "http://example.com";
-            process.env.https_proxy = "https://example.com";
-            const actual = getProxyEnvVars();
-            assert.deepEqual(actual, {
-                HTTP_PROXY: "http://example.com",
-                HTTPS_PROXY: "https://example.com",
-            });
+    it("should generate correct proxyEnvVars with lowerCase settings", () => {
+        process.env.http_proxy = "http://example.com";
+        process.env.https_proxy = "https://example.com";
+        process.env.no_proxy = "https://example.com";
+        const actual = getProxyEnvVars();
+        assert.deepEqual(actual, {
+            HTTP_PROXY: "http://example.com",
+            HTTPS_PROXY: "https://example.com",
+            NO_PROXY: "https://example.com",
         });
+    });
 
-        it("should generate correct proxyEnvVars with upperCase settings", () => {
-            process.env.HTTP_PROXY = "http://example.com";
-            process.env.HTTPS_PROXY = "https://example.com";
-            const actual = getProxyEnvVars();
-            assert.deepEqual(actual, {
-                HTTP_PROXY: "http://example.com",
-                HTTPS_PROXY: "https://example.com",
-            });
-        });
-
-        after(() => {
-            delete process.env.http_proxy;
-            delete process.env.https_proxy;
-            delete process.env.HTTP_PROXY;
-            delete process.env.HTTPS_PROXY;
+    it("should generate correct proxyEnvVars with upperCase settings", () => {
+        process.env.HTTP_PROXY = "http://example.com";
+        process.env.HTTPS_PROXY = "https://example.com";
+        process.env.NO_PROXY = "https://example.com";
+        const actual = getProxyEnvVars();
+        assert.deepEqual(actual, {
+            HTTP_PROXY: "http://example.com",
+            HTTPS_PROXY: "https://example.com",
+            NO_PROXY: "https://example.com",
         });
     });
 
     describe("getDbConnectEnvVars", () => {
         const mockWorkspacePath = Uri.file("example");
         let mockAuthProvider: AuthProvider;
+
         beforeEach(() => {
             when(mockApiClient.product).thenReturn("test");
             when(mockApiClient.productVersion).thenReturn("0.0.1");
@@ -107,6 +109,21 @@ describe(__filename, () => {
 
             assert.deepEqual(actual, {
                 SPARK_CONNECT_USER_AGENT: "test/0.0.1",
+                DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
+            });
+        });
+
+        it("should append our user agent any existing SPARK_CONNECT_USER_AGENT in VS Code parent env", async () => {
+            process.env.SPARK_CONNECT_USER_AGENT = "existing";
+            when(mockAuthProvider.authType).thenReturn("azure-cli");
+
+            const actual = await getDbConnectEnvVars(
+                instance(mockConnectionManager),
+                mockWorkspacePath
+            );
+
+            assert.deepEqual(actual, {
+                SPARK_CONNECT_USER_AGENT: "existing test/0.0.1",
                 DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
             });
         });

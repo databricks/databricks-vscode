@@ -42,6 +42,7 @@ function getUserAgent(connectionManager: ConnectionManager) {
     if (!client) {
         return;
     }
+
     return `${client.product}/${client.productVersion}`;
 }
 
@@ -104,9 +105,12 @@ export async function getDbConnectEnvVars(
     workspacePath: Uri
 ) {
     const userAgent = getUserAgent(connectionManager);
+    const existingSparkUa = process.env.SPARK_CONNECT_USER_AGENT ?? "";
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
-        SPARK_CONNECT_USER_AGENT: userAgent,
+        //We append our user agent to any existing SPARK_CONNECT_USER_AGENT defined in the
+        //environment of the parent process of VS Code.
+        SPARK_CONNECT_USER_AGENT: [existingSparkUa, userAgent].join(" ").trim(),
         DATABRICKS_PROJECT_ROOT: workspacePath.fsPath,
         ...((await getSparkRemoteEnvVar(connectionManager)) || {}),
     };
@@ -118,6 +122,7 @@ export function getProxyEnvVars() {
         /* eslint-disable @typescript-eslint/naming-convention */
         HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy,
         HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy,
+        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy,
         /* eslint-enable @typescript-eslint/naming-convention */
     };
 }

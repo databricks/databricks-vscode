@@ -153,7 +153,10 @@ export class MsPythonExtensionWrapper implements Disposable {
         }
     }
 
-    async getPackageDetailsFromEnvironment(name: string, version?: string) {
+    async getPackageDetailsFromEnvironment(
+        name: string,
+        version?: string | RegExp
+    ) {
         const executable = await this.getPythonExecutable();
         if (!executable) {
             return undefined;
@@ -180,18 +183,19 @@ export class MsPythonExtensionWrapper implements Disposable {
         return data.find(
             (item) =>
                 item.name === name &&
-                (version === undefined || item.version === version)
+                (version === undefined ||
+                    item.version.match(version) !== undefined)
         );
     }
 
-    async findPackageInEnvironment(name: string, version?: string) {
+    async findPackageInEnvironment(name: string, version?: string | RegExp) {
         return (
             (await this.getPackageDetailsFromEnvironment(name, version)) !==
             undefined
         );
     }
 
-    async installPackageInEnvironment(name: string, version?: string) {
+    async installPackageInEnvironment(name: string, version?: string | RegExp) {
         const executable = await this.getPythonExecutable();
         if (!executable) {
             throw Error("No python executable found");

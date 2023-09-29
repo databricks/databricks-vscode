@@ -92,7 +92,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                 "checkCluster",
                 `Cluster doesn't have UC enabled.`,
                 this.promptForAttachingCluster(
-                    `Access mode should be "Single User" or "Shared"). Currently it is ${
+                    `Databricks Connect requires a Unity Catalog enabled cluster with Access Mode "Single User" or "Shared". Currently it is ${
                         cluster.accessMode ?? "custom"
                     }. Please attach a new cluster.`
                 )
@@ -155,7 +155,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         try {
             const exists = await this.pythonExtension.findPackageInEnvironment(
                 "databricks-connect",
-                "latest"
+                "13.3.2"
             );
             if (exists) {
                 return this.acceptStep("checkDbConnectInstall");
