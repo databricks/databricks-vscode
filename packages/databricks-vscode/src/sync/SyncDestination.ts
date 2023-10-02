@@ -4,6 +4,7 @@ import path = require("path");
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {readFile} from "fs/promises";
 
 export const REPO_NAME_SUFFIX = ".ide";
 export type SyncDestinationType = "repo" | "workspace";
@@ -148,6 +149,10 @@ export class LocalUri extends DatabricksUri<LocalUri> {
 
     relativePath(other: LocalUri) {
         return path.relative(this.path, other.path);
+    }
+
+    read() {
+        return readFile(this.path, "utf-8");
     }
 }
 

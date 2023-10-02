@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {compute} from "@databricks/databricks-sdk";
-import {Cluster} from "../sdk-extensions";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {ClusterLoader} from "./ClusterLoader";
+import {ClusterDetails} from "@databricks/databricks-sdk/dist/apis/compute";
 
 export type ClusterFilter = "ALL" | "ME" | "RUNNING";
 
@@ -21,96 +19,27 @@ export class ClusterModel implements Disposable {
     private _filter: ClusterFilter = "ALL";
     private disposables: Disposable[] = [];
 
-    private clusterLoader: ClusterLoader;
+    constructor(private connectionManager: ConnectionManager) {}
 
-    constructor(
-        private connectionManager: ConnectionManager,
-        clusterLoader?: ClusterLoader
-    ) {
-        this.clusterLoader =
-            clusterLoader ??
-            (() => {
-                return new ClusterLoader(this.connectionManager);
-            })();
-        this.disposables.push(
-            connectionManager.onDidChangeState(async (e) => {
-                switch (e) {
-                    case "CONNECTED":
-                        await this.clusterLoader.restart(true);
-                        break;
-                    case "DISCONNECTED":
-                        await this.clusterLoader.stop();
-                        this.clusterLoader.cleanup();
-                        break;
-                }
-            }),
-            this.clusterLoader,
-            this.clusterLoader.onDidChange(() => this._onDidChange.fire())
-        );
-        this.clusterLoader.start();
-    }
-
-    refresh() {
-        this.clusterLoader.restart();
-    }
-
-    set filter(filter: ClusterFilter) {
-        this._filter = filter;
-        this._onDidChange.fire();
-    }
-
-    public get roots(): Cluster[] | undefined {
-        return sortClusters(
-            this.applyFilter(
-                Array.from(this.clusterLoader.clusters.values())
-            ) ?? []
-        );
-    }
-
-    private applyFilter(nodes: Cluster[] | undefined): Cluster[] | undefined {
-        if (!nodes) {
-            return nodes;
-        }
-
-        return nodes.filter((node) => {
-            switch (this._filter) {
-                case "ALL":
-                    return true;
-
-                case "ME":
-                    return (
-                        node.creator ===
-                        this.connectionManager.databricksWorkspace?.userName
-                    );
-
-                case "RUNNING":
-                    return node.state === "RUNNING";
-            }
-        });
+    public clusters: ClusterDetails[] = [
+        {
+            cluster_name: "cluster-name-1",
+            cluster_id: "cluster-id-1",
+            state: "RUNNING",
+            creator_user_name: "user-1",
+        },
+        {
+            cluster_name: "cluster-name-2",
+            cluster_id: "cluster-id-2",
+            state: "TERMINATED",
+            creator_user_name: "user-2",
+        },
+    ];
+    getClusterDetails(clusterId: string) {
+        return this.clusters.find((e) => e.cluster_id === clusterId);
     }
 
     dispose() {
         this.disposables.forEach((e) => e.dispose());
     }
-}
-
-export function sortClusters(clusters: Cluster[]) {
-    return clusters.sort((a, b) => {
-        // Sort by descending state priority
-        const stateWeight: Record<compute.State, number> = {
-            RUNNING: 10,
-            PENDING: 9,
-            RESTARTING: 8,
-            RESIZING: 7,
-            TERMINATING: 6,
-            TERMINATED: 5,
-            ERROR: 4,
-            UNKNOWN: 3,
-        };
-
-        return stateWeight[a.state] > stateWeight[b.state] ||
-            (stateWeight[a.state] === stateWeight[b.state] && a.name < b.name)
-            ? -1
-            : 1;
-    });
 }

@@ -7,11 +7,8 @@ import {
     workspace,
 } from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
-import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
-import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
-import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
@@ -50,6 +47,11 @@ import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
+import {BundleTargetDataProvider} from "./bundle/BundleTargetsDataProvider";
+import {BundleFileSet} from "./bundle/BundleFileSet";
+import {BundleModel} from "./bundle/BundleModel";
+import {BundleCommands} from "./bundle/BundleCommands";
+import {ConfigurationCommands} from "./configuration/ConfigurationCommands";
 
 export async function activate(
     context: ExtensionContext
@@ -200,12 +202,6 @@ export async function activate(
     );
     const clusterModel = new ClusterModel(connectionManager);
 
-    const connectionCommands = new ConnectionCommands(
-        workspaceFsCommands,
-        connectionManager,
-        clusterModel
-    );
-
     const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
         connectionManager,
         workspaceStateManager,
@@ -335,65 +331,6 @@ export async function activate(
         )
     );
 
-    const configurationDataProvider = new ConfigurationDataProvider(
-        connectionManager,
-        synchronizer,
-        workspaceStateManager,
-        wsfsAccessVerifier,
-        featureManager,
-        telemetry
-    );
-
-    context.subscriptions.push(
-        configurationDataProvider,
-        synchronizer,
-
-        window.registerTreeDataProvider(
-            "configurationView",
-            configurationDataProvider
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.logout",
-            connectionCommands.logoutCommand,
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.configureWorkspace",
-            connectionCommands.configureWorkspaceCommand,
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.openDatabricksConfigFile",
-            connectionCommands.openDatabricksConfigFileCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.attachCluster",
-            connectionCommands.attachClusterCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.attachClusterQuickPick",
-            connectionCommands.attachClusterQuickPickCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.detachCluster",
-            connectionCommands.detachClusterCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.attachSyncDestination",
-            connectionCommands.attachSyncDestinationCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.detachSyncDestination",
-            connectionCommands.detachWorkspaceCommand,
-            connectionCommands
-        )
-    );
-
     // Run/debug group
     const runCommands = new RunCommands(connectionManager);
     const debugFactory = new DatabricksDebugAdapterFactory(
@@ -429,47 +366,65 @@ export async function activate(
         debugWorkflowFactory
     );
 
-    // Cluster group
-    const clusterTreeDataProvider = new ClusterListDataProvider(clusterModel);
-    const clusterCommands = new ClusterCommands(
-        clusterModel,
-        connectionManager
+    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
+    await bundleFileSet.init();
+    const bundleModel = new BundleModel(bundleFileSet, context);
+    await bundleModel.init();
+    const configurationDataProvider = new ConfigurationDataProvider(
+        bundleModel,
+        clusterModel
     );
-
     context.subscriptions.push(
-        clusterModel,
-        clusterTreeDataProvider,
-        window.registerTreeDataProvider("clusterView", clusterTreeDataProvider),
+        configurationDataProvider,
+        synchronizer,
 
-        telemetry.registerCommand(
-            "databricks.cluster.refresh",
-            clusterCommands.refreshCommand,
-            clusterCommands
+        window.registerTreeDataProvider(
+            "configurationView",
+            configurationDataProvider
+        )
+    );
+    const bundleCommands = new BundleCommands(bundleModel);
+    const bundleTargetDataProvider = new BundleTargetDataProvider(bundleModel);
+    const configurationCommands = new ConfigurationCommands(
+        bundleModel,
+        clusterModel
+    );
+    context.subscriptions.push(
+        bundleFileSet,
+        bundleTargetDataProvider,
+        window.registerTreeDataProvider(
+            "bundleTargetsView",
+            bundleTargetDataProvider
         ),
-        telemetry.registerCommand(
-            "databricks.cluster.filterByAll",
-            clusterCommands.filterCommand("ALL"),
-            clusterCommands
+        commands.registerCommand(
+            "databricks.bundle.selectTarget",
+            bundleCommands.selectTarget,
+            bundleCommands
         ),
-        telemetry.registerCommand(
-            "databricks.cluster.filterByRunning",
-            clusterCommands.filterCommand("RUNNING"),
-            clusterCommands
+        commands.registerCommand(
+            "databricks.configuration.configureAuthType",
+            configurationCommands.updateAuthType,
+            configurationCommands
         ),
-        telemetry.registerCommand(
-            "databricks.cluster.filterByMe",
-            clusterCommands.filterCommand("ME"),
-            clusterCommands
+        commands.registerCommand(
+            "databricks.configuration.configureCluster",
+            configurationCommands.updateComputeId,
+            configurationCommands
         ),
-        telemetry.registerCommand(
-            "databricks.cluster.start",
-            clusterCommands.startClusterCommand,
-            clusterCommands
+        commands.registerCommand(
+            "databricks.configuration.resetAuthTypeOverride",
+            configurationCommands.resetAuthTypeOverride,
+            configurationCommands
         ),
-        telemetry.registerCommand(
-            "databricks.cluster.stop",
-            clusterCommands.stopClusterCommand,
-            clusterCommands
+        commands.registerCommand(
+            "databricks.configuration.resetClusterOverride",
+            configurationCommands.resetClusterOverride,
+            configurationCommands
+        ),
+        commands.registerCommand(
+            "databricks.configuration.resetAllOverrides",
+            configurationCommands.resetAllOverrides,
+            configurationCommands
         )
     );
 

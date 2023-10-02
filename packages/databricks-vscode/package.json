@@ -219,6 +219,42 @@
                 "title": "Verify Databricks notebook init scripts",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.selectTarget",
+                "title": "Select Target",
+                "category": "Databricks",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.configuration.configureAuthType",
+                "title": "Configure authentication type",
+                "category": "Databricks",
+                "icon": "$(gear)"
+            },
+            {
+                "command": "databricks.configuration.configureCluster",
+                "title": "Configure cluster",
+                "category": "Databricks",
+                "icon": "$(gear)"
+            },
+            {
+                "command": "databricks.configuration.resetAuthTypeOverride",
+                "title": "Reset authentication type override",
+                "category": "Databricks",
+                "icon": "$(timeline-open)"
+            },
+            {
+                "command": "databricks.configuration.resetClusterOverride",
+                "title": "Reset cluster override",
+                "category": "Databricks",
+                "icon": "$(timeline-open)"
+            },
+            {
+                "command": "databricks.configuration.resetAllOverrides",
+                "title": "Reset all overrides",
+                "category": "Databricks",
+                "icon": "$(timeline-open)"
             }
         ],
         "viewsContainers": {
@@ -232,6 +268,10 @@
         },
         "views": {
             "databricksBar": [
+                {
+                    "id": "bundleTargetsView",
+                    "name": "Bundle Targets"
+                },
                 {
                     "id": "configurationView",
                     "name": "Configuration"
@@ -263,32 +303,12 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "databricks.connection.configureWorkspace",
-                    "when": "view == configurationView",
-                    "group": "navigation@3"
-                },
-                {
                     "command": "databricks.quickstart.open",
                     "when": "view == configurationView"
                 },
                 {
-                    "when": "view == clusterView",
-                    "group": "navigation@1",
-                    "submenu": "databricks.cluster.filter"
-                },
-                {
-                    "command": "databricks.cluster.refresh",
-                    "when": "view == clusterView",
-                    "group": "navigation@2"
-                },
-                {
-                    "command": "databricks.wsfs.refresh",
-                    "when": "view == workspaceFsView",
-                    "group": "navigation@1"
-                },
-                {
-                    "command": "databricks.wsfs.createFolder",
-                    "when": "view == workspaceFsView",
+                    "command": "databricks.configuration.resetAllOverrides",
+                    "when": "view == configurationView",
                     "group": "navigation@1"
                 }
             ],
@@ -305,24 +325,24 @@
             ],
             "view/item/context": [
                 {
-                    "command": "databricks.utils.openExternal",
-                    "when": "view == configurationView && viewItem == workspace || view == configurationView && viewItem =~ /^.*cluster.*$/ || view == configurationView && viewItem =~ /^sync.*$/",
-                    "group": "inline@1"
-                },
-                {
-                    "command": "databricks.utils.openExternal",
-                    "when": "view == clusterView && viewItem == cluster",
-                    "group": "inline@1"
-                },
-                {
-                    "command": "databricks.connection.attachCluster",
-                    "when": "view == clusterView",
+                    "command": "databricks.configuration.configureAuthType",
+                    "when": "view == configurationView && viewItem == databricks.configuration.authType",
                     "group": "inline@2"
                 },
                 {
-                    "command": "databricks.connection.configureWorkspace",
-                    "when": "view == configurationView && viewItem == workspace",
+                    "command": "databricks.configuration.resetAuthTypeOverride",
+                    "when": "view == configurationView && viewItem == databricks.configuration.authType",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.configuration.configureCluster",
+                    "when": "view == configurationView && viewItem == databricks.configuration.cluster",
                     "group": "inline@2"
+                },
+                {
+                    "command": "databricks.configuration.resetClusterOverride",
+                    "when": "view == configurationView && viewItem == databricks.configuration.cluster",
+                    "group": "inline@1"
                 },
                 {
                     "command": "databricks.connection.attachClusterQuickPick",
@@ -358,6 +378,11 @@
                     "command": "databricks.cluster.start",
                     "when": "view == configurationView && viewItem == databricks.cluster.terminated",
                     "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.selectTarget",
+                    "when": "view == bundleTargetsView && viewItem != databricks.bundle.target.selected",
+                    "group": "inline@2"
                 }
             ],
             "editor/title/run": [
@@ -395,6 +420,10 @@
                 },
                 {
                     "command": "databricks.call",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.selectTarget",
                     "when": "false"
                 }
             ],
@@ -698,7 +727,8 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
         "triple-beam": "^1.4.1",
-        "winston": "^3.10.0"
+        "winston": "^3.10.0",
+        "yaml": "^2.3.2"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
@@ -727,6 +757,7 @@
         "eslint": "^8.44.0",
         "fs-extra": "^11.1.1",
         "glob": "^10.3.3",
+        "json-schema-to-typescript": "^13.1.1",
         "mocha": "^10.2.0",
         "mock-require": "^3.0.3",
         "nyc": "^15.1.0",
