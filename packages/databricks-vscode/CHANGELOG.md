@@ -4,8 +4,11 @@
 
 ## <small>1.1.5 (2023-10-05)</small>
 
--   Bump databricks cli to v0.207.0 (#889) ([a20da2c](https://github.com/databricks/databricks-vscode/commit/a20da2c)), closes [#889](https://github.com/databricks/databricks-vscode/issues/889)
--   Fix path delimiter when appending cli binary path to PATH (#888) ([212a0d7](https://github.com/databricks/databricks-vscode/commit/212a0d7)), closes [#888](https://github.com/databricks/databricks-vscode/issues/888) [#885](https://github.com/databricks/databricks-vscode/issues/885)
+-   Fix: Path delimiter when appending cli binary path to PATH. Fixes [#885](https://github.com/databricks/databricks-vscode/issues/885)
+
+CLI Changes
+
+-   Fix: Infinite syncing issue when 2 files of the same name but different extensions are created.
 
 # Release: v1.1.4
 
