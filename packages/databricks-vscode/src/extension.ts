@@ -90,7 +90,7 @@ export async function activate(
     context.environmentVariableCollection.clear();
     context.environmentVariableCollection.append(
         "PATH",
-        `${context.asAbsolutePath("./bin")}${path.delimiter}`
+        `${path.delimiter}${context.asAbsolutePath("./bin")}`
     );
 
     const loggerManager = new LoggerManager(context);
