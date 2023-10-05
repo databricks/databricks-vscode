@@ -671,6 +671,7 @@
         "package:cli:link": "rm -f ./bin/databricks && mkdir -p bin && ln -s ../../../../cli/cli bin/databricks",
         "package:wrappers:write": "ts-node ./scripts/writeIpynbWrapper.ts -s ./resources/python/notebook.workflow-wrapper.py -o ./resources/python/generated/notebook.workflow-wrapper.json",
         "package:jupyter-init-script:write": "ts-node ./scripts/writeJupyterInitFileWithVersion.ts",
+        "package:bundle-schema:write": "yarn package:cli:fetch && ts-node ./scripts/writeBundleSchema.ts ./bin/databricks ./src/bundle/BundleSchema.d.ts",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
@@ -697,6 +698,7 @@
         "@vscode/webview-ui-toolkit": "^1.2.2",
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
+        "minimatch": "^9.0.3",
         "triple-beam": "^1.4.1",
         "winston": "^3.10.0"
     },

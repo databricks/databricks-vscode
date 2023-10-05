@@ -3703,6 +3703,7 @@ __metadata:
     eslint: ^8.44.0
     fs-extra: ^11.1.1
     glob: ^10.3.3
+    minimatch: ^9.0.3
     mocha: ^10.2.0
     mock-require: ^3.0.3
     nyc: ^15.1.0
@@ -7507,6 +7508,15 @@ __metadata:
   dependencies:
     brace-expansion: ^2.0.1
   checksum: 97f5f5284bb57dc65b9415dec7f17a0f6531a33572193991c60ff18450dcfad5c2dad24ffeaf60b5261dccd63aae58cc3306e2209d57e7f88c51295a532d8ec3
+  languageName: node
+  linkType: hard
+
+"minimatch@npm:^9.0.3":
+  version: 9.0.3
+  resolution: "minimatch@npm:9.0.3"
+  dependencies:
+    brace-expansion: ^2.0.1
+  checksum: 253487976bf485b612f16bf57463520a14f512662e592e95c571afdab1442a6a6864b6c88f248ce6fc4ff0b6de04ac7aa6c8bb51e868e99d1d65eb0658a708b5
   languageName: node
   linkType: hard
 
