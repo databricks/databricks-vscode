@@ -24,7 +24,9 @@ export class CachedValue<T> {
         return Promise.resolve(this._value);
     }
 
-    invalidate() {
+    async invalidate() {
+        await this.mutex.wait();
         this._dirty = true;
+        this.mutex.signal();
     }
 }

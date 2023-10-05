@@ -1,8 +1,14 @@
 import {CliWrapper} from "../cli/CliWrapper";
-import {extensions, Uri} from "vscode";
-import path from "node:path";
+import {ExtensionContext, extensions, Uri} from "vscode";
+import {BundleFileSet} from "./BundleFileSet";
+import {BundleWatcher} from "../file-managers/BundleWatcher";
 
-export async function generateBundleSchema(cli: CliWrapper) {
+export async function generateBundleSchema(
+    cli: CliWrapper,
+    bundleFileSet: BundleFileSet,
+    bundleWatcher: BundleWatcher,
+    context: ExtensionContext
+) {
     // get freshly generated bundle schema
     const bundleSchema = await cli.getBundleSchema();
 
@@ -18,21 +24,22 @@ export async function generateBundleSchema(cli: CliWrapper) {
 
         // We use the API exposed from teh activate() function of the redhat.vscode-yaml
         // extension to registor a custom schema provider
+        let bundleFileList = await bundleFileSet.allFiles();
+        context.subscriptions.push(
+            bundleWatcher.onDidChange(async () => {
+                bundleFileList = await bundleFileSet.allFiles();
+            })
+        );
         redHatYamlSchemaApi.registerContributor(
             "dabs",
             (resource: string) => {
-                const validFileNames: string[] = [
-                    "databricks.yml",
-                    "databricks.yaml",
-                    "bundle.yml",
-                    "bundle.yaml",
-                ];
-                for (const name of validFileNames) {
-                    if (path.basename(resource) === name) {
-                        return rootConfigSchemaUri;
-                    }
+                if (
+                    bundleFileList.find(
+                        (i) => i.fsPath === Uri.parse(resource).fsPath
+                    ) !== undefined
+                ) {
+                    return rootConfigSchemaUri;
                 }
-                return undefined;
             },
             (uri: string) => {
                 // Any JSON schemas with URI scheme = "dabs" resolves here

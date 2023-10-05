@@ -693,14 +693,15 @@
     "dependencies": {
         "@databricks/databricks-sdk": "../../vendor/databricks-sdk.tgz",
         "@databricks/databricks-vscode-types": "workspace:^",
+        "@types/lodash": "^4.14.199",
         "@vscode/debugadapter": "^1.61.0",
         "@vscode/extension-telemetry": "^0.8.1",
         "@vscode/webview-ui-toolkit": "^1.2.2",
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
-        "minimatch": "^9.0.3",
         "triple-beam": "^1.4.1",
-        "winston": "^3.10.0"
+        "winston": "^3.10.0",
+        "yaml": "^2.3.2"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
@@ -726,9 +727,10 @@
         "@wdio/types": "^8.10.4",
         "chai": "^4.3.7",
         "esbuild": "^0.19.4",
-        "eslint": "^8.44.0",
+        "eslint": "^8.50.0",
         "fs-extra": "^11.1.1",
         "glob": "^10.3.3",
+        "json-schema-to-typescript": "^13.1.1",
         "mocha": "^10.2.0",
         "mock-require": "^3.0.3",
         "nyc": "^15.1.0",
