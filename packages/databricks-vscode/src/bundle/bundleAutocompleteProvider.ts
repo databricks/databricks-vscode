@@ -3,7 +3,7 @@ import {ExtensionContext, extensions, Uri} from "vscode";
 import {BundleFileSet} from "./BundleFileSet";
 import {BundleWatcher} from "../file-managers/BundleWatcher";
 
-export async function generateBundleSchema(
+export async function registerBundleAutocompleteProvider(
     cli: CliWrapper,
     bundleFileSet: BundleFileSet,
     bundleWatcher: BundleWatcher,
