@@ -26,7 +26,7 @@ export async function registerBundleAutocompleteProvider(
         // extension to registor a custom schema provider
         let bundleFileList = await bundleFileSet.allFiles();
         context.subscriptions.push(
-            bundleWatcher.onDidChange(async () => {
+            bundleWatcher.onDidChangeRootFile(async () => {
                 bundleFileList = await bundleFileSet.allFiles();
             })
         );

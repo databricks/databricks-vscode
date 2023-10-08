@@ -9,6 +9,9 @@ export class BundleWatcher implements Disposable {
     private readonly _onDidChange = new EventEmitter<BundleFileSet>();
     public readonly onDidChange = this._onDidChange.event;
 
+    private readonly _onDidChangeRootFile = new EventEmitter<BundleFileSet>();
+    public readonly onDidChangeRootFile = this._onDidChangeRootFile.event;
+
     private bundleFileSet = new WithMutex(
         new BundleFileSet(this.workspaceRoot)
     );
@@ -33,13 +36,14 @@ export class BundleWatcher implements Disposable {
     }
 
     private async yamlFileChangeHandler(e: Uri) {
-        // eslint-disable-next-line no-console
-        console.error("asdad");
         await this.bundleFileSet.mutex.wait();
         try {
             if (await this.bundleFileSet.value.isBundleFile(e)) {
                 await this.bundleFileSet.value.invalidateMergedBundleCache();
                 this._onDidChange.fire(this.bundleFileSet.value);
+            }
+            if (this.bundleFileSet.value.isRootBundleFile(e)) {
+                this._onDidChangeRootFile.fire(this.bundleFileSet.value);
             }
         } finally {
             this.bundleFileSet.mutex.signal();

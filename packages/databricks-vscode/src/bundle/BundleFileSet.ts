@@ -26,6 +26,13 @@ export class BundleFileSet {
 
     constructor(private readonly workspaceRoot: Uri) {}
 
+    getAbsolutePath(path: string | Uri) {
+        if (typeof path === "string") {
+            return Uri.joinPath(this.workspaceRoot, path);
+        }
+        return Uri.joinPath(this.workspaceRoot, path.fsPath);
+    }
+
     async getRootFile() {
         const rootFile = await glob.glob(
             this.getAbsolutePath(this.rootFilePattern).fsPath
@@ -86,21 +93,14 @@ export class BundleFileSet {
         }
     }
 
-    getAbsolutePath(path: string | Uri) {
-        if (typeof path === "string") {
-            return Uri.joinPath(this.workspaceRoot, path);
-        }
-        return Uri.joinPath(this.workspaceRoot, path.fsPath);
-    }
-
-    public isRootBundleFile(e: Uri) {
+    isRootBundleFile(e: Uri) {
         return minimatch(
             e.fsPath,
             this.getAbsolutePath(this.rootFilePattern).fsPath
         );
     }
 
-    public async isIncludedBundleFile(e: Uri) {
+    async isIncludedBundleFile(e: Uri) {
         let includedFilesGlob = await this.getIncludedFilesGlob();
         if (includedFilesGlob === undefined) {
             return false;
@@ -109,7 +109,7 @@ export class BundleFileSet {
         return minimatch(e.fsPath, includedFilesGlob);
     }
 
-    public async isBundleFile(e: Uri) {
+    async isBundleFile(e: Uri) {
         return this.isRootBundleFile(e) || (await this.isIncludedBundleFile(e));
     }
 

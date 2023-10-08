@@ -540,13 +540,7 @@ export async function activate(
         workspace.workspaceFolders[0].uri,
         bundleFileSet
     );
-    context.subscriptions.push(
-        bundleFileWatcher,
-        bundleFileWatcher.onDidChange(async (b) => {
-            // eslint-disable-next-line no-console
-            console.log(await b.mergedBundle);
-        })
-    );
+    context.subscriptions.push(bundleFileWatcher);
 
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
