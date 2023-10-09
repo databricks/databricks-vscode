@@ -1,3 +1,15 @@
+# Release: v1.1.5
+
+## packages/databricks-vscode
+
+## <small>1.1.5 (2023-10-05)</small>
+
+-   Fix: Path delimiter when appending cli binary path to PATH. Fixes [#885](https://github.com/databricks/databricks-vscode/issues/885)
+
+CLI Changes
+
+-   Fix: Infinite syncing issue when 2 files of the same name but different extensions are created.
+
 # Release: v1.1.4
 
 ## packages/databricks-vscode
