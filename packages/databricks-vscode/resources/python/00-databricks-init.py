@@ -301,10 +301,14 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
             
             if lmagic == "run":
                 rest = lines[0].strip().split(" ")[1:]
-                filename = ""
-                for arg in rest:
-                    if arg.endswith((".py", ".ipy", ".ipynb")):
-                        filename = arg
+                if len(rest) == 0:
+                    return lines
+                
+                filename = rest[0]
+
+                for suffix in ["", ".py", ".ipynb", ".ipy"]:
+                    if os.path.exists(os.path.join(os.getcwd(), filename + suffix)):
+                        filename = filename + suffix
                         break
                 
                 return [
