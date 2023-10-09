@@ -8,6 +8,7 @@ import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
 import {FeatureState} from "../feature-manager/FeatureManager";
+import {DATABRICKS_CONNECT_VERSION} from "../utils/constants";
 
 export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
     constructor(
@@ -155,7 +156,7 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         try {
             const exists = await this.pythonExtension.findPackageInEnvironment(
                 "databricks-connect",
-                "13.3.2"
+                DATABRICKS_CONNECT_VERSION
             );
             if (exists) {
                 return this.acceptStep("checkDbConnectInstall");
