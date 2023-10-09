@@ -22,18 +22,6 @@ describe(__filename, () => {
         );
     });
 
-    it("should reject invalid Databricks urls", () => {
-        const invalidHosts = [
-            "https://google.com/",
-            "https://adb-123456789012345.2.azure.com/",
-        ];
-        invalidHosts.forEach((host) => {
-            assert.throws(() => {
-                normalizeHost(host);
-            });
-        });
-    });
-
     it("should accept valid Databricks urls", () => {
         const validHosts = [
             "https://adb-123456789012345.2.azuredatabricks.net/",

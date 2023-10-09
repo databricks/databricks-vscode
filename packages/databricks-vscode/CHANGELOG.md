@@ -1,3 +1,15 @@
+# Release: v1.1.4
+
+## packages/databricks-vscode
+
+## <small>1.1.4 (2023-09-29)</small>
+
+-   Feature: Allow custom databricks hosts. Fixes [#664](https://github.com/databricks/databricks-vscode/issues/664)
+-   Feature: Append to the end of existing `SPARK_CONNECT_USER_AGENT` instead of overwritting it. Closes [#854](https://github.com/databricks/databricks-vscode/issues/854)
+-   Feature: Passthrough `no_proxy` env var. Closes [#847](https://github.com/databricks/databricks-vscode/issues/847)
+-   Fix: Pin DB Connect V2 version to 13.3.2.
+-   Fix: Update Databricks Connect V2 setup prompts.
+
 # Release: v1.1.3
 
 ## packages/databricks-vscode

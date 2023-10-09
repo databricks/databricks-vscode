@@ -18,6 +18,7 @@ export class DbConnectInstallPrompt implements Disposable {
     async show(advertisement = false, cb: () => void = () => {}) {
         const executable = await this.pythonExtension.getPythonExecutable();
         if (
+            advertisement &&
             executable &&
             this.workspaceState.skippedEnvsForDbConnect.includes(executable)
         ) {
@@ -53,12 +54,13 @@ export class DbConnectInstallPrompt implements Disposable {
             : "";
         const message = `${mainMessagePart} ${envMessagePart}. ${pkgUpdateMessagePart}`;
 
-        const choice = await window.showInformationMessage(
-            message,
+        const choices = [
             "Install",
             "Change environment",
-            "Never for this environment"
-        );
+            advertisement ? "Never for this environment" : undefined,
+        ].filter((value) => value !== undefined) as string[];
+
+        const choice = await window.showInformationMessage(message, ...choices);
 
         switch (choice) {
             case "Install":
