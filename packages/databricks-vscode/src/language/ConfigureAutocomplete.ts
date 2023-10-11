@@ -111,7 +111,7 @@ export class ConfigureAutocomplete implements Disposable {
     }
 
     private async configure(force = false) {
-        if (!force || this.workspaceState.skipAutocompleteConfigure) {
+        if (!force && this.workspaceState.skipAutocompleteConfigure) {
             return;
         }
 
