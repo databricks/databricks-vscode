@@ -86,6 +86,20 @@ export class WorkspaceStateManager {
         );
     }
 
+    get lastInstalledExtensionVersion() {
+        return this.context.workspaceState.get<string>(
+            "databricks.lastInstalledExtensionVersion",
+            "0.0.0"
+        );
+    }
+
+    set lastInstalledExtensionVersion(value: string) {
+        this.context.workspaceState.update(
+            "databricks.lastInstalledExtensionVersion",
+            value
+        );
+    }
+
     get fixedUUID() {
         let uuid = this.context.workspaceState.get<string>(
             "databricks.fixedUUID"
