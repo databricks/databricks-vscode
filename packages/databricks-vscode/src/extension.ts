@@ -567,8 +567,7 @@ export async function activate(
         );
     });
 
-    workspaceStateManager.lastInstalledExtensionVersion =
-        packageMetadata.version;
+    workspaceStateManager.lastInstalledExtensionVersion = "0.0.0";
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 

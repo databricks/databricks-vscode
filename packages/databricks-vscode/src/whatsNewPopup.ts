@@ -1,58 +1,14 @@
 import {ExtensionContext, Uri, commands, window} from "vscode";
 import {PackageJsonUtils} from "./utils";
-import {logging} from "@databricks/databricks-sdk";
-import {Loggers} from "./logger";
 import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
 import path from "path";
 import {exists} from "fs-extra";
+import * as semver from "semver";
 
-interface SemvVer {
-    major: number;
-    minor: number;
-    patch: number;
-}
-
-function parseSemvVer(version?: string) {
-    if (version === undefined) {
-        return undefined;
-    }
-
-    try {
-        const [major, minor, patch] = version.split(".");
-        return {
-            major: parseInt(major),
-            minor: parseInt(minor),
-            patch: parseInt(patch),
-        };
-    } catch (e: unknown) {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Failed to parse version",
-            e
-        );
-        return undefined;
-    }
-}
-
-function compare(a: SemvVer, b: SemvVer) {
-    if (a.major !== b.major) {
-        return a.major > b.major ? 1 : -1;
-    }
-
-    if (a.minor !== b.minor) {
-        return a.minor > b.minor ? 1 : -1;
-    }
-
-    if (a.patch !== b.patch) {
-        return a.patch > b.patch ? 1 : -1;
-    }
-
-    return 0;
-}
-
-async function findFileFowWhatsNew(
+export async function findFileFowWhatsNew(
     context: ExtensionContext,
-    previousVersion: SemvVer,
-    currentVersion: SemvVer
+    previousVersion: semver.SemVer,
+    currentVersion: semver.SemVer
 ) {
     const markdownFile = context.asAbsolutePath(
         path.join(
@@ -68,7 +24,7 @@ async function findFileFowWhatsNew(
     previousVersion.patch = 0;
 
     if (
-        compare(currentVersion, previousVersion) > 0 &&
+        semver.compare(currentVersion, previousVersion) > 0 &&
         (await exists(markdownFile))
     ) {
         return markdownFile;
@@ -82,17 +38,17 @@ export async function showWhatsNewPopup(
     workspaceState: WorkspaceStateManager
 ) {
     const packageJsonMetadata = await PackageJsonUtils.getMetadata(context);
-    const currentVersion = parseSemvVer(packageJsonMetadata.version);
-    if (currentVersion === undefined) {
+    const currentVersion = semver.parse(packageJsonMetadata.version);
+    if (currentVersion === null) {
         return;
     }
 
-    const previousVersion = parseSemvVer(
-        workspaceState.lastInstalledExtensionVersion
-    ) ?? {major: 0, minor: 0, patch: 0};
+    const previousVersion =
+        semver.parse(workspaceState.lastInstalledExtensionVersion) ??
+        new semver.SemVer("0.0.0");
 
     // if the extension is downgraded, we do not want to show the popup
-    if (compare(currentVersion, previousVersion) <= 0) {
+    if (semver.compare(currentVersion, previousVersion) <= 0) {
         return;
     }
 
