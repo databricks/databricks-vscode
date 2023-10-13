@@ -4,7 +4,7 @@ import {merge} from "lodash";
 import * as yaml from "yaml";
 import path from "path";
 import {BundleSchema} from "./BundleSchema";
-import {readFile} from "fs/promises";
+import {readFile, readdir} from "fs/promises";
 import {CachedValue} from "../utils/CachedValue";
 import minimatch from "minimatch";
 
@@ -36,6 +36,8 @@ export class BundleFileSet {
     async getRootFile() {
         // eslint-disable-next-line no-console
         console.error(this.getAbsolutePath(this.rootFilePattern).fsPath);
+        // eslint-disable-next-line no-console
+        console.error(await readdir(this.workspaceRoot.fsPath));
         const rootFile = await glob.glob(
             this.getAbsolutePath(this.rootFilePattern).fsPath
         );
