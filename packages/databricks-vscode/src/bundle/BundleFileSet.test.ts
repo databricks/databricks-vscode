@@ -15,7 +15,7 @@ describe(__filename, async function () {
     });
 
     afterEach(async () => {
-        tmpdir.cleanup();
+        await tmpdir.cleanup();
     });
 
     it("should return the correct absolute path", () => {
