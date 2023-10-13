@@ -20,6 +20,7 @@ describe(__filename, async function () {
 
     it("should return the correct absolute path", () => {
         const tmpdirUri = Uri.file(tmpdir.path);
+
         const bundleFileSet = new BundleFileSet(tmpdirUri);
 
         expect(bundleFileSet.getAbsolutePath("test.txt").fsPath).to.equal(
@@ -85,23 +86,31 @@ describe(__filename, async function () {
                 `{included.yaml,${path.join("includes", "**", "*.yaml")}}`
             );
 
-            expect(await bundleFileSet.getIncludedFiles()).to.deep.equal([
+            const actual = (await bundleFileSet.getIncludedFiles())?.map(
+                (v) => v.fsPath
+            );
+            const expected = [
                 Uri.file(path.join(tmpdirUri.fsPath, "included.yaml")),
                 Uri.file(
                     path.join(tmpdirUri.fsPath, "includes", "included.yaml")
                 ),
-            ]);
+            ].map((v) => v.fsPath);
+            expect(actual).to.deep.equal(expected);
         });
 
         it("should return all bundle files", async () => {
             const tmpdirUri = Uri.file(tmpdir.path);
             const bundleFileSet = new BundleFileSet(tmpdirUri);
 
-            expect(await bundleFileSet.allFiles()).to.deep.equal([
+            const actual = (await bundleFileSet.allFiles()).map(
+                (v) => v.fsPath
+            );
+            const expected = [
                 Uri.joinPath(tmpdirUri, "bundle.yaml"),
                 Uri.joinPath(tmpdirUri, "included.yaml"),
                 Uri.joinPath(tmpdirUri, "includes", "included.yaml"),
-            ]);
+            ].map((v) => v.fsPath);
+            expect(actual).to.deep.equal(expected);
         });
 
         it("isRootBundleFile should return true only for root bundle file", async () => {
