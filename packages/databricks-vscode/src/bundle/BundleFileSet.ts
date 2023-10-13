@@ -37,7 +37,9 @@ export class BundleFileSet {
         // eslint-disable-next-line no-console
         console.error(this.getAbsolutePath(this.rootFilePattern).fsPath);
         // eslint-disable-next-line no-console
-        console.error(await readdir(this.workspaceRoot.fsPath));
+        console.error(
+            `lsdir ${JSON.stringify(await readdir(this.workspaceRoot.fsPath))}`
+        );
         const rootFile = await glob.glob(
             this.getAbsolutePath(this.rootFilePattern).fsPath
         );
