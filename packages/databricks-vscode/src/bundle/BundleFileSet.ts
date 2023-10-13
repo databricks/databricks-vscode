@@ -15,15 +15,7 @@ export async function parseBundleYaml(file: Uri) {
 
 function toGlobPath(path: string) {
     if (process.platform === "win32") {
-        const normalized = path.replace(/\\/g, "/");
-        const driveLetterMatch = normalized.match(/^([A-Za-z]):/);
-        if (driveLetterMatch) {
-            return normalized.replace(
-                driveLetterMatch[1],
-                `${driveLetterMatch[1].toLowerCase()}`
-            );
-        }
-        return normalized;
+        return path.replace(/\\/g, "/");
     }
     return path;
 }
@@ -60,7 +52,8 @@ export class BundleFileSet {
             )}`
         );
         const rootFile = await glob.glob(
-            toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
+            toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath),
+            {nocase: process.platform === "win32"}
         );
         if (rootFile.length !== 1) {
             return undefined;
