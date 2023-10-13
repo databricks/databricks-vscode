@@ -54,10 +54,10 @@ export class BundleFileSet {
         );
         // eslint-disable-next-line no-console
         console.error(
-            minimatch(
+            `minimatch, ${minimatch(
                 path.join(this.workspaceRoot.fsPath, "bundle.yaml"),
                 toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
-            )
+            )}`
         );
         const rootFile = await glob.glob(
             toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
