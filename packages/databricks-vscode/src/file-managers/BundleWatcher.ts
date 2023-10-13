@@ -6,15 +6,13 @@ import path from "path";
 export class BundleWatcher implements Disposable {
     private disposables: Disposable[] = [];
 
-    private readonly _onDidChange = new EventEmitter<BundleFileSet>();
+    private readonly _onDidChange = new EventEmitter<void>();
     public readonly onDidChange = this._onDidChange.event;
 
-    private readonly _onDidChangeRootFile = new EventEmitter<BundleFileSet>();
+    private readonly _onDidChangeRootFile = new EventEmitter<void>();
     public readonly onDidChangeRootFile = this._onDidChangeRootFile.event;
 
-    private bundleFileSet = new WithMutex(
-        new BundleFileSet(this.workspaceRoot)
-    );
+    private bundleFileSet: WithMutex<BundleFileSet>;
 
     constructor(
         private readonly workspaceRoot: Uri,
@@ -36,19 +34,14 @@ export class BundleWatcher implements Disposable {
     }
 
     private async yamlFileChangeHandler(e: Uri) {
-        await this.bundleFileSet.mutex.wait();
-        try {
-            if (await this.bundleFileSet.value.isBundleFile(e)) {
-                await this.bundleFileSet.value.invalidateMergedBundleCache();
-                this._onDidChange.fire(this.bundleFileSet.value);
-            }
-            if (this.bundleFileSet.value.isRootBundleFile(e)) {
-                this._onDidChangeRootFile.fire(this.bundleFileSet.value);
-            }
-        } finally {
-            this.bundleFileSet.mutex.signal();
+        if (await this.bundleFileSet.value.isBundleFile(e)) {
+            await this.bundleFileSet.value.invalidateMergedBundleCache();
+            this._onDidChange.fire();
         }
-        return;
+        // to provide additional granularity, we also fire an event when the root bundle file changes
+        if (this.bundleFileSet.value.isRootBundleFile(e)) {
+            this._onDidChangeRootFile.fire();
+        }
     }
 
     dispose() {
