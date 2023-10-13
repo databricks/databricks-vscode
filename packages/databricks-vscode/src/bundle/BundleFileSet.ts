@@ -52,6 +52,13 @@ export class BundleFileSet {
         console.error(
             toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
         );
+        // eslint-disable-next-line no-console
+        console.error(
+            minimatch(
+                path.join(this.workspaceRoot.fsPath, "bundle.yaml"),
+                toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
+            )
+        );
         const rootFile = await glob.glob(
             toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
         );
