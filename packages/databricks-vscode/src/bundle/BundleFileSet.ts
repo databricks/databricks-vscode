@@ -40,7 +40,7 @@ export class BundleFileSet {
             this.getAbsolutePath(this.rootFilePattern).fsPath
         );
         // eslint-disable-next-line no-console
-        console.error(rootFile);
+        console.error(`rootfile ${rootFile}`);
         if (rootFile.length !== 1) {
             return undefined;
         }
