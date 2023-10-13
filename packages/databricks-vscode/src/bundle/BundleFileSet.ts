@@ -40,17 +40,6 @@ export class BundleFileSet {
     }
 
     async getRootFile() {
-        // eslint-disable-next-line no-console
-        console.error(
-            toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
-        );
-        // eslint-disable-next-line no-console
-        console.error(
-            `minimatch, ${minimatch(
-                path.join(this.workspaceRoot.fsPath, "bundle.yaml"),
-                toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
-            )}`
-        );
         const rootFile = await glob.glob(
             toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath),
             {nocase: process.platform === "win32"}
@@ -82,7 +71,8 @@ export class BundleFileSet {
                 await glob.glob(
                     toGlobPath(
                         path.join(this.workspaceRoot.fsPath, includedFilesGlob)
-                    )
+                    ),
+                    {nocase: process.platform === "win32"}
                 )
             ).map((i) => Uri.file(i));
         }
