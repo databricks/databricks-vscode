@@ -3,6 +3,7 @@ import {window} from "vscode";
 import {Disposable} from "vscode";
 import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
+import {DATABRICKS_CONNECT_VERSION} from "../utils/constants";
 
 export class DbConnectInstallPrompt implements Disposable {
     private disposables: Disposable[] = [];
@@ -73,7 +74,7 @@ export class DbConnectInstallPrompt implements Disposable {
                     );
                     await this.pythonExtension.installPackageInEnvironment(
                         "databricks-connect",
-                        "latest"
+                        DATABRICKS_CONNECT_VERSION
                     );
                     cb();
                 } catch (e: unknown) {
