@@ -34,9 +34,13 @@ export class BundleFileSet {
     }
 
     async getRootFile() {
+        // eslint-disable-next-line no-console
+        console.error(this.getAbsolutePath(this.rootFilePattern).fsPath);
         const rootFile = await glob.glob(
             this.getAbsolutePath(this.rootFilePattern).fsPath
         );
+        // eslint-disable-next-line no-console
+        console.error(rootFile);
         if (rootFile.length !== 1) {
             return undefined;
         }

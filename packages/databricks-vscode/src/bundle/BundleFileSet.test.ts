@@ -82,7 +82,7 @@ describe(__filename, async function () {
             const bundleFileSet = new BundleFileSet(tmpdirUri);
 
             expect(await bundleFileSet.getIncludedFilesGlob()).to.equal(
-                "{included.yaml,includes/**/*.yaml}"
+                `{included.yaml,${path.join("includes", "**", "*.yaml")}}`
             );
 
             expect(await bundleFileSet.getIncludedFiles()).to.deep.equal([
