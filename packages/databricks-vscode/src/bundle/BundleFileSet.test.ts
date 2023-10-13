@@ -57,7 +57,10 @@ describe(__filename, async function () {
     describe("file listing", async () => {
         beforeEach(async () => {
             const rootBundleData: BundleSchema = {
-                include: ["included.yaml", "includes/**/*.yaml"],
+                include: [
+                    "included.yaml",
+                    path.join("includes", "**", "*.yaml"),
+                ],
             };
 
             await fs.writeFile(
@@ -164,7 +167,7 @@ describe(__filename, async function () {
                 "databricks.yaml",
                 "databricks.yml",
                 "included.yaml",
-                "includes/included.yaml",
+                path.join("includes", "included.yaml"),
             ];
 
             for (const bundleFile of possibleBundleFiles) {
