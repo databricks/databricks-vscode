@@ -4,7 +4,7 @@ import {merge} from "lodash";
 import * as yaml from "yaml";
 import path from "path";
 import {BundleSchema} from "./BundleSchema";
-import {readFile, readdir} from "fs/promises";
+import {readFile} from "fs/promises";
 import {CachedValue} from "../utils/CachedValue";
 import minimatch from "minimatch";
 
@@ -13,6 +13,12 @@ export async function parseBundleYaml(file: Uri) {
     return data as BundleSchema;
 }
 
+function toGlobPath(path: string) {
+    if (process.platform === "win32") {
+        return path.replace(/\\/g, "/");
+    }
+    return path;
+}
 export class BundleFileSet {
     private rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
     private _mergedBundle: CachedValue<BundleSchema> =
@@ -34,17 +40,9 @@ export class BundleFileSet {
     }
 
     async getRootFile() {
-        // eslint-disable-next-line no-console
-        console.error(this.getAbsolutePath(this.rootFilePattern).fsPath);
-        // eslint-disable-next-line no-console
-        console.error(
-            `lsdir ${JSON.stringify(await readdir(this.workspaceRoot.fsPath))}`
-        );
         const rootFile = await glob.glob(
-            this.getAbsolutePath(this.rootFilePattern).fsPath
+            toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
         );
-        // eslint-disable-next-line no-console
-        console.error(`rootfile ${rootFile}`);
         if (rootFile.length !== 1) {
             return undefined;
         }
@@ -70,7 +68,9 @@ export class BundleFileSet {
         if (includedFilesGlob !== undefined) {
             return (
                 await glob.glob(
-                    path.join(this.workspaceRoot.fsPath, includedFilesGlob)
+                    toGlobPath(
+                        path.join(this.workspaceRoot.fsPath, includedFilesGlob)
+                    )
                 )
             ).map((i) => Uri.file(i));
         }
@@ -104,7 +104,7 @@ export class BundleFileSet {
     isRootBundleFile(e: Uri) {
         return minimatch(
             e.fsPath,
-            this.getAbsolutePath(this.rootFilePattern).fsPath
+            toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
         );
     }
 
@@ -114,7 +114,7 @@ export class BundleFileSet {
             return false;
         }
         includedFilesGlob = this.getAbsolutePath(includedFilesGlob).fsPath;
-        return minimatch(e.fsPath, includedFilesGlob);
+        return minimatch(e.fsPath, toGlobPath(includedFilesGlob));
     }
 
     async isBundleFile(e: Uri) {
