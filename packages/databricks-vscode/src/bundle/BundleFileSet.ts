@@ -42,7 +42,7 @@ export class BundleFileSet {
     async getRootFile() {
         const rootFile = await glob.glob(
             toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath),
-            {nocase: process.platform === "win32"}
+            {nocase: process.platform === "win32", realpath: true}
         );
         if (rootFile.length !== 1) {
             return undefined;
@@ -72,7 +72,7 @@ export class BundleFileSet {
                     toGlobPath(
                         path.join(this.workspaceRoot.fsPath, includedFilesGlob)
                     ),
-                    {nocase: process.platform === "win32"}
+                    {nocase: process.platform === "win32", realpath: true}
                 )
             ).map((i) => Uri.file(i));
         }

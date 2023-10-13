@@ -98,11 +98,9 @@ describe(__filename, async function () {
             const bundleFileSet = new BundleFileSet(tmpdirUri);
 
             expect(await bundleFileSet.allFiles()).to.deep.equal([
-                Uri.file(path.join(tmpdirUri.fsPath, "bundle.yaml")),
-                Uri.file(path.join(tmpdirUri.fsPath, "included.yaml")),
-                Uri.file(
-                    path.join(tmpdirUri.fsPath, "includes", "included.yaml")
-                ),
+                Uri.joinPath(tmpdirUri, "bundle.yaml"),
+                Uri.joinPath(tmpdirUri, "included.yaml"),
+                Uri.joinPath(tmpdirUri, "includes", "included.yaml"),
             ]);
         });
 
