@@ -6,7 +6,7 @@
     "license": "LicenseRef-LICENSE",
     "version": "1.1.5",
     "engines": {
-        "vscode": "^1.78.0"
+        "vscode": "^1.83.0"
     },
     "categories": [
         "Data Science",
@@ -724,7 +724,7 @@
         "@wdio/types": "^8.10.4",
         "chai": "^4.3.7",
         "esbuild": "^0.19.4",
-        "eslint": "^8.44.0",
+        "eslint": "^8.51.0",
         "fs-extra": "^11.1.1",
         "glob": "^10.3.3",
         "mocha": "^10.2.0",
