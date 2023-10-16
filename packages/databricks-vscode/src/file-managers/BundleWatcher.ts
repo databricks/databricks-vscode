@@ -35,7 +35,7 @@ export class BundleWatcher implements Disposable {
 
     private async yamlFileChangeHandler(e: Uri) {
         if (await this.bundleFileSet.value.isBundleFile(e)) {
-            await this.bundleFileSet.value.invalidateMergedBundleCache();
+            await this.bundleFileSet.value.bundleDataCache.invalidate();
             this._onDidChange.fire();
         }
         // to provide additional granularity, we also fire an event when the root bundle file changes

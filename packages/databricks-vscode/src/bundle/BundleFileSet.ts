@@ -21,7 +21,7 @@ function toGlobPath(path: string) {
 }
 export class BundleFileSet {
     private rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
-    private _mergedBundle: CachedValue<BundleSchema> =
+    public readonly bundleDataCache: CachedValue<BundleSchema> =
         new CachedValue<BundleSchema>(async () => {
             let bundle = {};
             await this.forEach(async (data) => {
@@ -121,13 +121,5 @@ export class BundleFileSet {
 
     async isBundleFile(e: Uri) {
         return this.isRootBundleFile(e) || (await this.isIncludedBundleFile(e));
-    }
-
-    async invalidateMergedBundleCache() {
-        await this._mergedBundle.invalidate();
-    }
-
-    get mergedBundle() {
-        return this._mergedBundle.value;
     }
 }
