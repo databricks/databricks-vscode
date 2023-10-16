@@ -5,7 +5,7 @@ import * as yaml from "yaml";
 import path from "path";
 import {BundleSchema} from "./BundleSchema";
 import {readFile} from "fs/promises";
-import {CachedValue} from "../utils/CachedValue";
+import {CachedValue} from "../locking/CachedValue";
 import minimatch from "minimatch";
 
 export async function parseBundleYaml(file: Uri) {

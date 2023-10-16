@@ -1,4 +1,4 @@
-import {Mutex} from "../locking";
+import {Mutex} from ".";
 
 export class CachedValue<T> {
     private _value: T | null = null;
