@@ -691,12 +691,13 @@
         "generate-telemetry": "ts-node ./scripts/generateTelemetry.ts"
     },
     "dependencies": {
-        "@databricks/databricks-sdk": "../../vendor/databricks-sdk.tgz",
+        "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz",
         "@databricks/databricks-vscode-types": "workspace:^",
         "@types/lodash": "^4.14.199",
         "@vscode/debugadapter": "^1.61.0",
         "@vscode/extension-telemetry": "^0.8.1",
         "@vscode/webview-ui-toolkit": "^1.2.2",
+        "add": "^2.0.6",
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
         "triple-beam": "^1.4.1",
