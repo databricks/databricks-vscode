@@ -10,7 +10,7 @@ import {ConnectionManager} from "./ConnectionManager";
 import {resolveProviderResult} from "../test/utils";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {Telemetry} from "../telemetry";
@@ -71,7 +71,7 @@ describe(__filename, () => {
         const provider = new ConfigurationDataProvider(
             connectionManager,
             sync,
-            instance(mock(WorkspaceStateManager)),
+            instance(mock(StateStorage)),
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
             instance(mock(Telemetry))
@@ -95,7 +95,7 @@ describe(__filename, () => {
         const provider = new ConfigurationDataProvider(
             connectionManager,
             sync,
-            instance(mock(WorkspaceStateManager)),
+            instance(mock(StateStorage)),
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
             instance(mock(Telemetry))
@@ -119,7 +119,7 @@ describe(__filename, () => {
         const provider = new ConfigurationDataProvider(
             connectionManager,
             sync,
-            instance(mock(WorkspaceStateManager)),
+            instance(mock(StateStorage)),
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
             instance(mock(Telemetry))
@@ -152,7 +152,7 @@ describe(__filename, () => {
         const provider = new ConfigurationDataProvider(
             connectionManager,
             sync,
-            instance(mock(WorkspaceStateManager)),
+            instance(mock(StateStorage)),
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
             instance(mock(Telemetry))

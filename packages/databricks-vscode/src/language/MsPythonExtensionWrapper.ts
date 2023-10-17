@@ -9,7 +9,7 @@ import {
     Terminal,
     commands,
 } from "vscode";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {StateStorage} from "../vscode-objs/StateStorage";
 import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -27,7 +27,7 @@ export class MsPythonExtensionWrapper implements Disposable {
     constructor(
         pythonExtension: Extension<MsPythonExtensionApi>,
         private readonly workspaceFolder: Uri,
-        private readonly workspaceStateManager: WorkspaceStateManager
+        private readonly stateStorage: StateStorage
     ) {
         this.api = pythonExtension.exports as MsPythonExtensionApi;
         this.onDidChangePythonExecutable(async () => {
@@ -45,7 +45,7 @@ export class MsPythonExtensionWrapper implements Disposable {
         if (this._terminal) {
             return this._terminal;
         }
-        const terminalName = `databricks-pip-${this.workspaceStateManager.fixedUUID.slice(
+        const terminalName = `databricks-pip-${this.stateStorage.fixedUUID.slice(
             0,
             8
         )}`;
