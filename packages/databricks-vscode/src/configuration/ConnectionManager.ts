@@ -151,7 +151,7 @@ export class ConnectionManager {
             workspaceClient =
                 projectConfigFile.authProvider.getWorkspaceClient();
 
-            await workspaceClient.config.authenticate({});
+            await workspaceClient.config.authenticate(new Headers());
 
             this._databricksWorkspace = await DatabricksWorkspace.load(
                 workspaceClient,
@@ -285,7 +285,7 @@ export class ConnectionManager {
                 const workspaceClient =
                     config.authProvider.getWorkspaceClient();
 
-                await workspaceClient.config.authenticate({});
+                await workspaceClient.config.authenticate(new Headers());
 
                 await DatabricksWorkspace.load(
                     workspaceClient,

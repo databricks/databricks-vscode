@@ -50,7 +50,7 @@ describe(__filename, function () {
                         name: "pat",
                         async configure(): Promise<RequestVisitor> {
                             return async (headers: Headers) => {
-                                headers["Authorization"] = `Bearer XXXX`;
+                                headers.set("Authorization", "Bearer XXXX");
                             };
                         },
                     },
@@ -93,7 +93,7 @@ describe(__filename, function () {
                         name: "pat",
                         async configure(): Promise<RequestVisitor> {
                             return async (headers: Headers) => {
-                                headers["Authorization"] = `Bearer XXXX`;
+                                headers.set("Authorization", "Bearer XXXX");
                             };
                         },
                     },
@@ -109,9 +109,9 @@ describe(__filename, function () {
 
         const apiClient = new ApiClient(config);
 
-        const headers: Record<string, string> = {};
+        const headers = new Headers();
         await apiClient.config.authenticate(headers);
 
-        assert.equal(headers["Authorization"], "Bearer XXXX");
+        assert.equal(headers.get("Authorization"), "Bearer XXXX");
     });
 });
