@@ -29,7 +29,7 @@
         "typescript": "5.1.6"
     },
     "dependencies": {
-        "@databricks/databricks-sdk": "../../vendor/databricks-sdk.tgz",
+        "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz",
         "databricks": "*"
     }
 }
