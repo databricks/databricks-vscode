@@ -1439,9 +1439,9 @@ __metadata:
   linkType: hard
 
 "@types/ini@npm:^1.3.31":
-  version: 1.3.31
-  resolution: "@types/ini@npm:1.3.31"
-  checksum: aca4fed0cd68f6693fd64e1b7d188a9c8c6f5823b2e3501b0570135555d4184d7d0dfba2c1afb3514c94cb21ece732f4467ea98c827d1b1b98716827ac9de680
+  version: 1.3.32
+  resolution: "@types/ini@npm:1.3.32"
+  checksum: 2f11a5d77f901472f3c7d4701c99deaebd4959490ee2d27dd647b4059f07e03a8361d4be4ee9efec5f6440309bb1c92f6108fe50be6bc4af2937cb33cea49e0b
   languageName: node
   linkType: hard
 
@@ -1554,11 +1554,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^20.6.0":
-  version: 20.8.6
-  resolution: "@types/node@npm:20.8.6"
+  version: 20.8.7
+  resolution: "@types/node@npm:20.8.7"
   dependencies:
     undici-types: ~5.25.1
-  checksum: ccfb7ac482c5a96edeb239893c5c099f5257fcc2ed9ae62fefdfbc782b79e16dbc2af9a85b379665237bf759904b44ca2be68e75d239e0297882aad42f61905c
+  checksum: 2173c0c03daefcb60c03a61b1371b28c8fe412e7a40dc6646458b809d14a85fbc7aeb369d957d57f0aaaafd99964e77436f29b3b579232d8f2b20c58abbd1d25
   languageName: node
   linkType: hard
 
