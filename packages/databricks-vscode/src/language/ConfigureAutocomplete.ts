@@ -9,7 +9,7 @@ import {
     ConfigurationTarget,
 } from "vscode";
 import {Loggers} from "../logger";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {StateStorage} from "../vscode-objs/StateStorage";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
 
@@ -42,7 +42,7 @@ export class ConfigureAutocomplete implements Disposable {
 
     constructor(
         private readonly context: ExtensionContext,
-        private readonly workspaceState: WorkspaceStateManager,
+        private readonly stateStorage: StateStorage,
         private readonly workspaceFolder: string,
         private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly dbConnectInstallPrompt: DbConnectInstallPrompt
@@ -106,12 +106,12 @@ export class ConfigureAutocomplete implements Disposable {
     }
 
     async configureCommand() {
-        this.workspaceState.skipAutocompleteConfigure = false;
+        this.stateStorage.skipAutocompleteConfigure = false;
         return this.configure(true);
     }
 
     private async configure(force = false) {
-        if (!force && this.workspaceState.skipAutocompleteConfigure) {
+        if (!force || this.stateStorage.skipAutocompleteConfigure) {
             return;
         }
 
@@ -142,7 +142,7 @@ export class ConfigureAutocomplete implements Disposable {
         }
 
         if (choice === "Never for this workspace") {
-            this.workspaceState.skipAutocompleteConfigure = true;
+            this.stateStorage.skipAutocompleteConfigure = true;
             return;
         }
 

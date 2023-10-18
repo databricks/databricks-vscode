@@ -1,7 +1,7 @@
 import {randomUUID} from "crypto";
 import {ExtensionContext} from "vscode";
 
-export class WorkspaceStateManager {
+export class StateStorage {
     constructor(private context: ExtensionContext) {}
 
     get fixedRandom() {
