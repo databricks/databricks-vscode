@@ -558,14 +558,18 @@ export async function activate(
         );
     });
 
-    showWhatsNewPopup(context, stateStorage).catch((e) => {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Error while showing popup for what's new",
-            e
-        );
-    });
+    showWhatsNewPopup(context, stateStorage)
+        .catch((e) => {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Error while showing popup for what's new",
+                e
+            );
+        })
+        .finally(() => {
+            stateStorage.lastInstalledExtensionVersion =
+                packageMetadata.version;
+        });
 
-    stateStorage.lastInstalledExtensionVersion = packageMetadata.version;
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 
