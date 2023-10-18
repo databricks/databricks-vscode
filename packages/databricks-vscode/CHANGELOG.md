@@ -1,3 +1,13 @@
+# Release: v1.2.0
+
+## packages/databricks-vscode
+
+## 1.2.0 (2023-10-18)
+
+-   Feature: Enable advanced notebook support by default.
+-   Feature: Show 'What's New' popup on first start after upgrade to a new version.
+-   Feature: Upgrade minimum supported VS Code version to 1.83.0.
+
 # Release: v1.1.5
 
 ## packages/databricks-vscode

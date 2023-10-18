@@ -1,3 +1,12 @@
+# Release: v1.2.0
+
+## packages/databricks-vscode-types
+
+## 1.2.0 (2023-10-18)
+
+-   Pin typescript to v5.1.6 to enable eslint.
+-   Upgrade minimum supported VS Code version to 1.83.0.
+
 # Release: v1.1.5
 
 ## packages/databricks-vscode-types
