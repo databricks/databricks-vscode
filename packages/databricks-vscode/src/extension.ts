@@ -220,9 +220,7 @@ export async function activate(
         stateStorage,
         pythonExtensionWrapper
     );
-    const featureManager = new FeatureManager<FeatureId>([
-        "notebooks.dbconnect",
-    ]);
+    const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
         "debugging.dbconnect",
         () =>
