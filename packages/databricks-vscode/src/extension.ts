@@ -50,6 +50,7 @@ import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
+import {showWhatsNewPopup} from "./whatsNewPopup";
 
 export async function activate(
     context: ExtensionContext
@@ -559,6 +560,14 @@ export async function activate(
         );
     });
 
+    showWhatsNewPopup(context, stateStorage).catch((e) => {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Error while showing popup for what's new",
+            e
+        );
+    });
+
+    stateStorage.lastInstalledExtensionVersion = packageMetadata.version;
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 

@@ -47,11 +47,7 @@ export class DbConnectInstallPrompt implements Disposable {
         const pkgUpdateMessagePart = hasPyspark
             ? "(pyspark will be uninstalled)"
             : hasDbConnect
-            ? `(databricks-connect will be updated to the latest version: ${
-                  dbConnectDetails.version
-              } -> ${await this.pythonExtension.getLatestPackageVersion(
-                  "databricks-connect"
-              )} )`
+            ? `(databricks-connect will be updated to the latest version: ${dbConnectDetails.version} -> ${DATABRICKS_CONNECT_VERSION} )`
             : "";
         const message = `${mainMessagePart} ${envMessagePart}. ${pkgUpdateMessagePart}`;
 

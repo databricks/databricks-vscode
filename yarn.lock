@@ -376,7 +376,7 @@ __metadata:
     inversify: ^6.0.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 2e28fb154da0743e5b26cd3bdb1dba6f286e1f34f41d64291fca872ae25678f44a7780bd965f8166632f5a2303a00ecc6def5a9570d09e8d37bcd6546d489cd3
+  checksum: b33948b1c9bb7ff37fe5d34eefedf78ac1df594b311aa2f3cbc7b5cf888c64512d06acb646635653c63fa7dc7634c09cfe7d0ff3cf0bda616c3f0b3494f50dde
   languageName: node
   linkType: hard
 
@@ -391,7 +391,7 @@ __metadata:
     inversify: ^6.0.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 2e28fb154da0743e5b26cd3bdb1dba6f286e1f34f41d64291fca872ae25678f44a7780bd965f8166632f5a2303a00ecc6def5a9570d09e8d37bcd6546d489cd3
+  checksum: b33948b1c9bb7ff37fe5d34eefedf78ac1df594b311aa2f3cbc7b5cf888c64512d06acb646635653c63fa7dc7634c09cfe7d0ff3cf0bda616c3f0b3494f50dde
   languageName: node
   linkType: hard
 
@@ -3717,6 +3717,7 @@ __metadata:
     wdio-video-reporter: ^4.0.3
     wdio-vscode-service: ^5.2.0
     winston: ^3.10.0
+    yaml: ^2.3.2
     yargs: ^17.7.2
   languageName: unknown
   linkType: soft
@@ -11181,6 +11182,13 @@ __metadata:
   version: 4.0.0
   resolution: "yallist@npm:4.0.0"
   checksum: 343617202af32df2a15a3be36a5a8c0c8545208f3d3dfbc6bb7c3e3b7e8c6f8e7485432e4f3b88da3031a6e20afa7c711eded32ddfb122896ac5d914e75848d5
+  languageName: node
+  linkType: hard
+
+"yaml@npm:^2.3.2":
+  version: 2.3.2
+  resolution: "yaml@npm:2.3.2"
+  checksum: acd80cc24df12c808c6dec8a0176d404ef9e6f08ad8786f746ecc9d8974968c53c6e8a67fdfabcc5f99f3dc59b6bb0994b95646ff03d18e9b1dcd59eccc02146
   languageName: node
   linkType: hard
 
