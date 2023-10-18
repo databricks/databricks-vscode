@@ -620,10 +620,7 @@ async function startCluster(
             })
         ).wait();
     } catch (e: unknown) {
-        if (
-            e instanceof ApiError &&
-            e.response.error_code !== "INVALID_STATE"
-        ) {
+        if (!(e instanceof ApiError && e.message.includes("INVALID_STATE"))) {
             throw e;
         }
     }
