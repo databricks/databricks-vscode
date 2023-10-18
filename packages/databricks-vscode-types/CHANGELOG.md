@@ -4,8 +4,8 @@
 
 ## 1.2.0 (2023-10-18)
 
--   Pin typescript to v5.1.6 to enable eslint (#897) ([00dc384](https://github.com/databricks/databricks-vscode/commit/00dc384)), closes [#897](https://github.com/databricks/databricks-vscode/issues/897)
--   Upgrade minimum supported VS Code version to 1.83.0 (#896) ([60d198b](https://github.com/databricks/databricks-vscode/commit/60d198b)), closes [#896](https://github.com/databricks/databricks-vscode/issues/896)
+-   Pin typescript to v5.1.6 to enable eslint.
+-   Upgrade minimum supported VS Code version to 1.83.0.
 
 # Release: v1.1.5
 

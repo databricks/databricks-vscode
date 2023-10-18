@@ -4,11 +4,9 @@
 
 ## 1.2.0 (2023-10-18)
 
--   Enable advanced notebook support by default (#903) ([0e473c3](https://github.com/databricks/databricks-vscode/commit/0e473c3)), closes [#903](https://github.com/databricks/databricks-vscode/issues/903)
--   Pin typescript to v5.1.6 to enable eslint (#897) ([00dc384](https://github.com/databricks/databricks-vscode/commit/00dc384)), closes [#897](https://github.com/databricks/databricks-vscode/issues/897)
--   Rename WorkspaceStateManager to StateStorage (#900) ([ab06f56](https://github.com/databricks/databricks-vscode/commit/ab06f56)), closes [#900](https://github.com/databricks/databricks-vscode/issues/900)
--   Show 'What's New' popup on first start after upgrade to a new version (#895) ([c89658f](https://github.com/databricks/databricks-vscode/commit/c89658f)), closes [#895](https://github.com/databricks/databricks-vscode/issues/895)
--   Upgrade minimum supported VS Code version to 1.83.0 (#896) ([60d198b](https://github.com/databricks/databricks-vscode/commit/60d198b)), closes [#896](https://github.com/databricks/databricks-vscode/issues/896)
+-   Feature: Enable advanced notebook support by default.
+-   Feature: Show 'What's New' popup on first start after upgrade to a new version.
+-   Feature: Upgrade minimum supported VS Code version to 1.83.0.
 
 # Release: v1.1.5
 
