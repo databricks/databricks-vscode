@@ -1,6 +1,6 @@
 import {ExtensionContext, Uri, commands, window} from "vscode";
 import {PackageJsonUtils} from "./utils";
-import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
+import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "path";
 import {exists} from "fs-extra";
 import * as semver from "semver";
@@ -35,7 +35,7 @@ export async function findFileFowWhatsNew(
 
 export async function showWhatsNewPopup(
     context: ExtensionContext,
-    workspaceState: WorkspaceStateManager
+    storage: StateStorage
 ) {
     const packageJsonMetadata = await PackageJsonUtils.getMetadata(context);
     const currentVersion = semver.parse(packageJsonMetadata.version);
@@ -44,7 +44,7 @@ export async function showWhatsNewPopup(
     }
 
     const previousVersion =
-        semver.parse(workspaceState.lastInstalledExtensionVersion) ??
+        semver.parse(storage.lastInstalledExtensionVersion) ??
         new semver.SemVer("0.0.0");
 
     // if the extension is downgraded, we do not want to show the popup
