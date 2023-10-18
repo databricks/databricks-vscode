@@ -43,7 +43,7 @@ export async function switchToWorkspacePrompt(
     });
 
     if (selection === "Don't show again") {
-        stateStorage.skipSwitchToWorkspace = true;
+        stateStorage.set("databricks.wsfs.skipSwitchToWorkspace", true);
         return;
     }
 
@@ -142,7 +142,7 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             if (
                 workspaceConfigs.enableFilesInWorkspace ||
                 !(await this.isEnabledForWorkspace()) ||
-                this.stateStorage.skipSwitchToWorkspace
+                this.stateStorage.get("databricks.wsfs.skipSwitchToWorkspace")
             ) {
                 return;
             }

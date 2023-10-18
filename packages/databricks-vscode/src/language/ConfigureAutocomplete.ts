@@ -106,12 +106,15 @@ export class ConfigureAutocomplete implements Disposable {
     }
 
     async configureCommand() {
-        this.stateStorage.skipAutocompleteConfigure = false;
+        this.stateStorage.set("databricks.autocompletion.skipConfigure", false);
         return this.configure(true);
     }
 
     private async configure(force = false) {
-        if (!force || this.stateStorage.skipAutocompleteConfigure) {
+        if (
+            !force ||
+            this.stateStorage.get("databricks.autocompletion.skipConfigure")
+        ) {
             return;
         }
 
@@ -142,7 +145,10 @@ export class ConfigureAutocomplete implements Disposable {
         }
 
         if (choice === "Never for this workspace") {
-            this.stateStorage.skipAutocompleteConfigure = true;
+            this.stateStorage.set(
+                "databricks.autocompletion.skipConfigure",
+                true
+            );
             return;
         }
 
