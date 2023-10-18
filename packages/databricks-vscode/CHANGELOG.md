@@ -1,3 +1,11 @@
+# Release: v1.2.1
+
+## packages/databricks-vscode
+
+## <small>1.2.1 (2023-10-18)</small>
+
+-   Fix the what's new popup so that it actually shows on a version update (#905) ([0fa1396](https://github.com/databricks/databricks-vscode/commit/0fa1396)), closes [#905](https://github.com/databricks/databricks-vscode/issues/905)
+
 # Release: v1.2.0
 
 ## packages/databricks-vscode
