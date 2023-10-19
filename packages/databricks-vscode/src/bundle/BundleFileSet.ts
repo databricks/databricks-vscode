@@ -4,13 +4,17 @@ import {merge} from "lodash";
 import * as yaml from "yaml";
 import path from "path";
 import {BundleSchema} from "./BundleSchema";
-import {readFile} from "fs/promises";
+import {readFile, writeFile} from "fs/promises";
 import {CachedValue} from "../locking/CachedValue";
 import minimatch from "minimatch";
 
 export async function parseBundleYaml(file: Uri) {
     const data = yaml.parse(await readFile(file.fsPath, "utf-8"));
     return data as BundleSchema;
+}
+
+export async function writeBundleYaml(file: Uri, data: BundleSchema) {
+    await writeFile(file.fsPath, yaml.stringify(data));
 }
 
 function toGlobPath(path: string) {
@@ -87,13 +91,15 @@ export class BundleFileSet {
         return [rootFile, ...((await this.getIncludedFiles()) ?? [])];
     }
 
-    async findFileWithPredicate(predicate: (file: Uri) => Promise<boolean>) {
-        const matchedFiles: Uri[] = [];
-        for (const file of await this.allFiles()) {
-            if (await predicate(file)) {
-                matchedFiles.push(file);
+    async findFile(
+        predicate: (data: BundleSchema, file: Uri) => Promise<boolean>
+    ) {
+        const matchedFiles: {data: BundleSchema; file: Uri}[] = [];
+        this.forEach(async (data, file) => {
+            if (await predicate(data, file)) {
+                matchedFiles.push({data, file});
             }
-        }
+        });
         return matchedFiles;
     }
 

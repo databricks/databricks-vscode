@@ -1,11 +1,3 @@
-export interface BundleTarget {
-    name: string;
-    // reconcile with actual bundle mode strings
-    mode: "dev" | "staging" | "prod";
-}
+import {BundleSchema} from "./BundleSchema";
 
-export interface OverrideableConfigs {
-    clusterId?: string;
-    authType?: string;
-    workspaceFsPath?: string;
-}
+export type BundleTarget = Required<BundleSchema>["targets"][string];

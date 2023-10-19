@@ -1,6 +1,6 @@
 import {randomUUID} from "crypto";
 import {ExtensionContext} from "vscode";
-import {OverrideableConfigs} from "../bundle/types";
+import {OverrideableConfigs} from "../configuration/types";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 type KeyInfo<V> = {
