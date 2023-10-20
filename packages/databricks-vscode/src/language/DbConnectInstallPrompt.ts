@@ -28,9 +28,8 @@ export class DbConnectInstallPrompt implements Disposable {
             return;
         }
 
-        const hasPyspark = await this.pythonExtension.findPackageInEnvironment(
-            "pyspark"
-        );
+        const hasPyspark =
+            await this.pythonExtension.findPackageInEnvironment("pyspark");
 
         const dbConnectDetails =
             await this.pythonExtension.getPackageDetailsFromEnvironment(
