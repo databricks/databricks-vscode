@@ -25,14 +25,17 @@ export class IntegrationTestSetup {
                 }
             );
 
-            if (!process.env["TEST_DEFAULT_CLUSTER_ID"]) {
+            let clusterId =
+                client.apiClient.config.clusterId ||
+                process.env["TEST_DEFAULT_CLUSTER_ID"];
+
+            if (!clusterId) {
                 throw new Error(
                     "Environment variable 'TEST_DEFAULT_CLUSTER_ID' must be set"
                 );
             }
 
-            const clusterId =
-                process.env["TEST_DEFAULT_CLUSTER_ID"]!.split("'").join("");
+            clusterId = clusterId.split("'").join("");
 
             const cluster = await Cluster.fromClusterId(
                 client.apiClient,

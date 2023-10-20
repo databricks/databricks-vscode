@@ -291,6 +291,12 @@ export class ConnectionManager {
                     workspaceClient,
                     config.authProvider
                 );
+
+                if (workspaceClient.apiClient.config.clusterId) {
+                    await this.attachCluster(
+                        workspaceClient.apiClient.config.clusterId
+                    );
+                }
             } catch (e: any) {
                 NamedLogger.getOrCreate("Extension").error(
                     `Connection using "${config.authProvider.describe()}" failed`,

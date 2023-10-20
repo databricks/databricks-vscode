@@ -257,10 +257,15 @@ export const config: Options.Testrunner = {
             assert(config.host, "Config host must be set");
             assert(config.token, "Config token must be set");
 
+            const clusterId =
+                config.clusterId || process.env["TEST_DEFAULT_CLUSTER_ID"];
+
             assert(
-                process.env["TEST_DEFAULT_CLUSTER_ID"],
+                clusterId,
                 "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
             );
+
+            config.clientId = clusterId;
 
             await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
             await fs.mkdir(WORKSPACE_PATH);
@@ -269,7 +274,7 @@ export const config: Options.Testrunner = {
             const repoPath = await createRepo(client);
             const workspaceFolderPath = await createWsFolder(client);
             const configFile = await writeDatabricksConfig(config);
-            await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
+            await startCluster(client, clusterId);
 
             process.env.DATABRICKS_HOST = config.host!;
             process.env.DATABRICKS_CONFIG_FILE = configFile;
@@ -531,11 +536,6 @@ export const config: Options.Testrunner = {
 };
 
 async function writeDatabricksConfig(config: Config) {
-    assert(
-        process.env["TEST_DEFAULT_CLUSTER_ID"],
-        "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
-    );
-
     const configFile = path.join(WORKSPACE_PATH, ".databrickscfg");
     await fs.writeFile(
         configFile,
