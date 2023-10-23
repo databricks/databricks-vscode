@@ -8,7 +8,12 @@ import path from "node:path";
 import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
-import {Config, WorkspaceClient, workspace} from "@databricks/databricks-sdk";
+import {
+    ApiError,
+    Config,
+    WorkspaceClient,
+    workspace,
+} from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile, ExecFileOptions} from "node:child_process";
 import {cpSync, mkdirSync, rmSync} from "node:fs";
@@ -614,8 +619,8 @@ async function startCluster(
                 cluster_id: clusterId,
             })
         ).wait();
-    } catch (e: any) {
-        if (e.errorCode !== "INVALID_STATE") {
+    } catch (e: unknown) {
+        if (!(e instanceof ApiError && e.message.includes("INVALID_STATE"))) {
             throw e;
         }
     }

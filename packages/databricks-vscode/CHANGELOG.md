@@ -1,3 +1,21 @@
+# Release: v1.2.1
+
+## packages/databricks-vscode
+
+## <small>1.2.1 (2023-10-18)</small>
+
+-   Fix: Fix the "what's new" popup so that it actually shows on a version update.
+
+# Release: v1.2.0
+
+## packages/databricks-vscode
+
+## 1.2.0 (2023-10-18)
+
+-   Feature: Enable advanced notebook support by default.
+-   Feature: Show 'What's New' popup on first start after upgrade to a new version.
+-   Feature: Upgrade minimum supported VS Code version to 1.83.0.
+
 # Release: v1.1.5
 
 ## packages/databricks-vscode

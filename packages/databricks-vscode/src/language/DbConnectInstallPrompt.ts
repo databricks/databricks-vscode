@@ -1,7 +1,7 @@
 import {window} from "vscode";
 
 import {Disposable} from "vscode";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {StateStorage} from "../vscode-objs/StateStorage";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {DATABRICKS_CONNECT_VERSION} from "../utils/constants";
 
@@ -9,7 +9,7 @@ export class DbConnectInstallPrompt implements Disposable {
     private disposables: Disposable[] = [];
 
     constructor(
-        private readonly workspaceState: WorkspaceStateManager,
+        private readonly stateStorage: StateStorage,
         private readonly pythonExtension: MsPythonExtensionWrapper
     ) {}
 
@@ -21,7 +21,7 @@ export class DbConnectInstallPrompt implements Disposable {
         if (
             advertisement &&
             executable &&
-            this.workspaceState.skippedEnvsForDbConnect.includes(executable)
+            this.stateStorage.skippedEnvsForDbConnect.includes(executable)
         ) {
             return;
         }
@@ -47,11 +47,7 @@ export class DbConnectInstallPrompt implements Disposable {
         const pkgUpdateMessagePart = hasPyspark
             ? "(pyspark will be uninstalled)"
             : hasDbConnect
-            ? `(databricks-connect will be updated to the latest version: ${
-                  dbConnectDetails.version
-              } -> ${await this.pythonExtension.getLatestPackageVersion(
-                  "databricks-connect"
-              )} )`
+            ? `(databricks-connect will be updated to the latest version: ${dbConnectDetails.version} -> ${DATABRICKS_CONNECT_VERSION} )`
             : "";
         const message = `${mainMessagePart} ${envMessagePart}. ${pkgUpdateMessagePart}`;
 
@@ -86,7 +82,7 @@ export class DbConnectInstallPrompt implements Disposable {
 
             case "Never for this environment":
                 if (executable) {
-                    this.workspaceState.skipDbConnectInstallForEnv(executable);
+                    this.stateStorage.skipDbConnectInstallForEnv(executable);
                 }
                 break;
 

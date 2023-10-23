@@ -3,7 +3,7 @@ import {commands, Disposable, window, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {CodeSynchronizer} from "../sync";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {StateStorage} from "../vscode-objs/StateStorage";
 import {Events, Telemetry} from "../telemetry";
 
 export async function switchToRepos() {
@@ -27,7 +27,7 @@ async function dbrBelowThreshold(cluster: Cluster) {
 }
 
 export async function switchToWorkspacePrompt(
-    workspaceState: WorkspaceStateManager,
+    stateStorage: StateStorage,
     telemetry: Telemetry
 ) {
     const message =
@@ -43,7 +43,7 @@ export async function switchToWorkspacePrompt(
     });
 
     if (selection === "Don't show again") {
-        workspaceState.skipSwitchToWorkspace = true;
+        stateStorage.skipSwitchToWorkspace = true;
         return;
     }
 
@@ -73,27 +73,27 @@ export class WorkspaceFsAccessVerifier implements Disposable {
     }
 
     constructor(
-        private _connectionManager: ConnectionManager,
-        private readonly workspaceState: WorkspaceStateManager,
-        private _sync: CodeSynchronizer,
+        private connectionManager: ConnectionManager,
+        private readonly stateStorage: StateStorage,
+        private codeSynchroniser: CodeSynchronizer,
         private readonly telemetry: Telemetry
     ) {
         this.disposables.push(
-            this._connectionManager.onDidChangeCluster(async (cluster) => {
+            this.connectionManager.onDidChangeCluster(async (cluster) => {
                 if (this.currentCluster?.name === cluster?.name) {
                     return;
                 }
                 this.currentCluster = cluster;
                 this.verifyCluster(cluster);
             }),
-            this._connectionManager.onDidChangeState(async (state) => {
+            this.connectionManager.onDidChangeState(async (state) => {
                 if (state === "CONNECTED") {
                     await this.verifyWorkspaceConfigs();
                 } else {
                     this.isEnabled = undefined;
                 }
             }),
-            this._sync.onDidChangeState(async (state) => {
+            this.codeSynchroniser.onDidChangeState(async (state) => {
                 if (
                     workspaceConfigs.syncDestinationType === "repo" &&
                     state === "FILES_IN_REPOS_DISABLED"
@@ -142,30 +142,30 @@ export class WorkspaceFsAccessVerifier implements Disposable {
             if (
                 workspaceConfigs.enableFilesInWorkspace ||
                 !(await this.isEnabledForWorkspace()) ||
-                this.workspaceState.skipSwitchToWorkspace
+                this.stateStorage.skipSwitchToWorkspace
             ) {
                 return;
             }
-            switchToWorkspacePrompt(this.workspaceState, this.telemetry);
+            switchToWorkspacePrompt(this.stateStorage, this.telemetry);
         }
     }
 
     async isEnabledForWorkspace() {
-        if (this._connectionManager.state === "DISCONNECTED") {
+        if (this.connectionManager.state === "DISCONNECTED") {
             return false;
         }
-        await this._connectionManager.waitForConnect();
+        await this.connectionManager.waitForConnect();
         if (this.isEnabled !== undefined) {
             return this.isEnabled;
         }
         const rootPath =
-            this._connectionManager.databricksWorkspace?.workspaceFsRoot;
-        if (!rootPath || !this._connectionManager.workspaceClient) {
+            this.connectionManager.databricksWorkspace?.workspaceFsRoot;
+        if (!rootPath || !this.connectionManager.workspaceClient) {
             return false;
         }
 
         const rootDir = await WorkspaceFsEntity.fromPath(
-            this._connectionManager.workspaceClient,
+            this.connectionManager.workspaceClient,
             rootPath.path
         );
 

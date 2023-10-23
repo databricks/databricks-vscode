@@ -146,7 +146,8 @@ describe(__filename, async () => {
                     "RESOURCE_DOES_NOT_EXIST",
                     "RESOURCE_DOES_NOT_EXIST",
                     404,
-                    {}
+                    {},
+                    []
                 )
             );
 
@@ -297,7 +298,8 @@ describe(__filename, async () => {
                     "RESOURCE_DOES_NOT_EXIST",
                     "RESOURCE_DOES_NOT_EXIST",
                     404,
-                    {}
+                    {},
+                    []
                 )
             );
 

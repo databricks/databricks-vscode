@@ -1,6 +1,6 @@
 {
     "name": "@databricks/databricks-vscode",
-    "version": "1.1.5",
+    "version": "1.2.1",
     "private": true,
     "workspaces": [
         "packages/*"
@@ -13,7 +13,8 @@
         "yarn": ">=3.2.0"
     },
     "scripts": {
-        "fetch:sdk": "rm -rf vendor && mkdir vendor && gh release download -R databricks/databricks-sdk-js v0.4.0 -p '*.tgz' && mv *.tgz vendor/databricks-sdk.tgz",
+        "install:sdk": "yarn fetch:sdk && chmod a+x scripts/install_sdk.sh && scripts/install_sdk.sh",
+        "fetch:sdk": "rm -rf vendor && mkdir vendor && gh release download -R databricks/databricks-sdk-js v0.5.2 -p '*.tgz' && mv *.tgz vendor/databricks-sdk.tgz",
         "test": "yarn workspaces foreach run test",
         "test:integ": "yarn workspaces foreach run test:integ",
         "build": "yarn workspaces foreach run build",
@@ -41,7 +42,7 @@
         "eslint-config-prettier": "^8.8.0",
         "eslint-plugin-no-only-tests": "^3.1.0",
         "ts-mockito": "^2.6.1",
-        "typescript": "^5.2.2"
+        "typescript": "5.1.6"
     },
     "resolutions": {
         "json5": "2.2.2"

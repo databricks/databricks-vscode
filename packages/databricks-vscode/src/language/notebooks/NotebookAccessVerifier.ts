@@ -2,13 +2,13 @@ import {window} from "vscode";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {MultiStepAccessVerifier} from "../../feature-manager/MultiStepAccessVerfier";
 import {MsPythonExtensionWrapper} from "../MsPythonExtensionWrapper";
-import {WorkspaceStateManager} from "../../vscode-objs/WorkspaceState";
+import {StateStorage} from "../../vscode-objs/StateStorage";
 
 export class NotebookAccessVerifier extends MultiStepAccessVerifier {
     constructor(
         private readonly featureManager: FeatureManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly workspaceState: WorkspaceStateManager
+        private readonly stateStorage: StateStorage
     ) {
         super(["isPythonSdkInstalled", "isDbConnectEnabled"]);
 
@@ -68,9 +68,7 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
 
             case "Never for this environment":
                 if (env?.path) {
-                    this.workspaceState.skipDatabricksSdkInstallForEnv(
-                        env?.path
-                    );
+                    this.stateStorage.skipDatabricksSdkInstallForEnv(env?.path);
                 }
         }
         return false;

@@ -132,9 +132,11 @@ describe(__filename, () => {
             when(mockAuthProvider.authType).thenReturn("profile");
             const mockConfig = mock(Config);
             when(mockApiClient.config).thenReturn(instance(mockConfig));
-            when(mockConfig.authenticate(anything())).thenCall((headers) => {
-                headers["Authorization"] = "Bearer token";
-            });
+            when(mockConfig.authenticate(anything())).thenCall(
+                (headers: Headers) => {
+                    headers.set("Authorization", "Bearer token");
+                }
+            );
             const actual = await getDbConnectEnvVars(
                 instance(mockConnectionManager),
                 mockWorkspacePath

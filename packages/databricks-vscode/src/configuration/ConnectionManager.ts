@@ -24,7 +24,7 @@ import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {StateStorage} from "../vscode-objs/StateStorage";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -62,7 +62,7 @@ export class ConnectionManager {
 
     constructor(
         private cli: CliWrapper,
-        private workspaceState: WorkspaceStateManager
+        private stateStorage: StateStorage
     ) {}
 
     get state(): ConnectionState {
@@ -151,7 +151,7 @@ export class ConnectionManager {
             workspaceClient =
                 projectConfigFile.authProvider.getWorkspaceClient();
 
-            await workspaceClient.config.authenticate({});
+            await workspaceClient.config.authenticate(new Headers());
 
             this._databricksWorkspace = await DatabricksWorkspace.load(
                 workspaceClient,
@@ -285,7 +285,7 @@ export class ConnectionManager {
                 const workspaceClient =
                     config.authProvider.getWorkspaceClient();
 
-                await workspaceClient.config.authenticate({});
+                await workspaceClient.config.authenticate(new Headers());
 
                 await DatabricksWorkspace.load(
                     workspaceClient,
