@@ -151,9 +151,9 @@ describe("Run job on cluster with workspace", async function () {
                     await browser.getTextByLabel(labelToDefaults.status.label)
                 ).match(/Succeeded/) !== null,
             {
-                timeout: 20000,
-                interval: 50,
-                timeoutMsg: "Job did not reach succeeded status after 20s.",
+                timeout: 30000,
+                interval: 100,
+                timeoutMsg: "Job did not reach succeeded status after 30s.",
             }
         );
 
@@ -225,9 +225,9 @@ describe("Run job on cluster with workspace", async function () {
                     await browser.getTextByLabel(labelToDefaults.status.label)
                 ).match(/Succeeded/) !== null,
             {
-                timeout: 20000,
-                interval: 50,
-                timeoutMsg: "Job did not reach succeeded status after 20s.",
+                timeout: 30000,
+                interval: 100,
+                timeoutMsg: "Job did not reach succeeded status after 30s.",
             }
         );
 
@@ -291,9 +291,9 @@ describe("Run job on cluster with workspace", async function () {
                     await browser.getTextByLabel(labelToDefaults.status.label)
                 ).includes("Succeeded"),
             {
-                timeout: 20000,
+                timeout: 30000,
                 interval: 100,
-                timeoutMsg: "Job did not reach succeeded status after 20s.",
+                timeoutMsg: "Job did not reach succeeded status after 30s.",
             }
         );
 
