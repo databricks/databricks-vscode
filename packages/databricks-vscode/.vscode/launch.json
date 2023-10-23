@@ -9,12 +9,8 @@
             "name": "Run Extension",
             "type": "extensionHost",
             "request": "launch",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
                 "DATABRICKS_DEBUG_HEADERS": "false",
@@ -29,9 +25,7 @@
                 "--extensionDevelopmentPath=${workspaceFolder}",
                 "--extensionTestsPath=${workspaceFolder}/out/test/suite"
             ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
                 "DATABRICKS_DEBUG_HEADERS": "false",
@@ -56,39 +50,6 @@
             "autoAttachChildProcesses": true,
             "program": "${workspaceRoot}/node_modules/.bin/wdio",
             "console": "integratedTerminal",
-            "skipFiles": [
-                "${workspaceFolder}/node_modules/**/*.js",
-                "${workspaceFolder}/lib/**/*.js",
-                "<node_internals>/**/*.js"
-            ]
-        },
-        {
-            "name": "Run selected SDK integration test",
-            "type": "node",
-            "request": "launch",
-            "args": [
-                "-r",
-                "ts-node/register",
-                "-r",
-                "tsconfig-paths/register",
-                "./node_modules/.bin/ts-mocha",
-                "--colors",
-                "${file}"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "NODE_ENV": "test",
-                "DATABRICKS_TOKEN": "${input:token}",
-                "DATABRICKS_HOST": "${input:host}",
-                "TEST_DEFAULT_CLUSTER_ID": "${input:clusterId}"
-            },
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen",
-            "sourceMaps": true,
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ],
-            "preLaunchTask": "${defaultBuildTask}",
             "skipFiles": [
                 "${workspaceFolder}/node_modules/**/*.js",
                 "${workspaceFolder}/lib/**/*.js",
