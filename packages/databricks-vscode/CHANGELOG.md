@@ -4,8 +4,7 @@
 
 ## <small>1.2.2 (2023-10-23)</small>
 
--   Bump databricks cli to v0.208.2 (#914) ([9e8076b](https://github.com/databricks/databricks-vscode/commit/9e8076b)), closes [#914](https://github.com/databricks/databricks-vscode/issues/914)
--   Bump databricks-sdk-js to v0.5.2 (#898) ([06d308c](https://github.com/databricks/databricks-vscode/commit/06d308c)), closes [#898](https://github.com/databricks/databricks-vscode/issues/898)
+-   Fix: 'Error 403 Token is expiring within 30 seconds.' error when authenticating to an Azure workspace using Azure CLI authentication type.
 
 # Release: v1.2.1
 
