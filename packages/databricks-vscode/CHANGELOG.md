@@ -1,3 +1,12 @@
+# Release: v1.2.2
+
+## packages/databricks-vscode
+
+## <small>1.2.2 (2023-10-23)</small>
+
+-   Bump databricks cli to v0.208.2 (#914) ([9e8076b](https://github.com/databricks/databricks-vscode/commit/9e8076b)), closes [#914](https://github.com/databricks/databricks-vscode/issues/914)
+-   Bump databricks-sdk-js to v0.5.2 (#898) ([06d308c](https://github.com/databricks/databricks-vscode/commit/06d308c)), closes [#898](https://github.com/databricks/databricks-vscode/issues/898)
+
 # Release: v1.2.1
 
 ## packages/databricks-vscode
