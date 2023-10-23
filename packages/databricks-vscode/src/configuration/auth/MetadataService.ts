@@ -100,12 +100,12 @@ export class MetadataService implements Disposable {
                     res.end(JSON.stringify({bad_version: true}));
                 }
 
-                const headers: Record<string, string> = {};
+                const headers = new Headers();
                 await this._apiClient.config.authenticate(headers);
 
                 res.writeHead(200, {"Content-Type": "text/json"});
 
-                const auth = headers["Authorization"].split(" ");
+                const auth = headers.get("Authorization")!.split(" ");
                 const response: ServerResponse = {
                     access_token: auth[1],
                     expires_on: Math.floor(

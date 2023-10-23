@@ -75,9 +75,9 @@ export function getCommonDatabricksEnvVars(
 }
 
 async function getPatToken(connectionManager: ConnectionManager) {
-    const headers: Record<string, string> = {};
+    const headers: Headers = new Headers();
     await connectionManager.apiClient?.config.authenticate(headers);
-    return headers["Authorization"]?.split(" ")[1];
+    return headers.get("Authorization")?.split(" ")[1];
 }
 
 async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {

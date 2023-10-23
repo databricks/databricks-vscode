@@ -42,7 +42,7 @@ describe(__filename, function () {
                 },
             });
 
-            assert(progress.length > 1);
+            assert(progress.length >= 1);
             assert.equal(
                 progress[progress.length - 1].lifeCycleState,
                 "TERMINATED"

@@ -38,7 +38,10 @@ export class IntegrationTestSetup {
                 client.apiClient,
                 clusterId
             );
-            await cluster.start();
+            await cluster.start(undefined, (state) =>
+                // eslint-disable-next-line no-console
+                console.log(`Cluster state: ${state}`)
+            );
 
             this._instance = new IntegrationTestSetup(client, cluster);
         }

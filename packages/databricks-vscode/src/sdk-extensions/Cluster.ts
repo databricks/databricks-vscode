@@ -427,7 +427,9 @@ export class Cluster {
         });
 
         await this.waitForWorkflowCompletion(run, onProgress, token);
-        return await run.getOutput();
+        const output = await run.getOutput();
+        onProgress && onProgress(run.lifeCycleState!, run);
+        return output;
     }
 
     private async waitForWorkflowCompletion(

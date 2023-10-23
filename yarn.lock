@@ -366,32 +366,30 @@ __metadata:
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
-  version: 0.3.16
+  version: 0.5.2
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
   dependencies:
     "@types/ini": ^1.3.31
-    "@types/node": ^20.4.2
-    "@types/semver": ^7.5.0
+    "@types/node": ^20.6.0
+    "@types/semver": ^7.5.1
     ini: ^4.1.1
-    inversify: ^6.0.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: b33948b1c9bb7ff37fe5d34eefedf78ac1df594b311aa2f3cbc7b5cf888c64512d06acb646635653c63fa7dc7634c09cfe7d0ff3cf0bda616c3f0b3494f50dde
+  checksum: 073b22dcce69646833a0722f9952c0c51879c6f46b34a8c81f2fac15171d1ce1e379b360c7c1a4c4d6994e4d97e1de26c415f4e46d6a4d7c29fa0090cb9ca085
   languageName: node
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
-  version: 0.3.16
+  version: 0.5.2
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
   dependencies:
     "@types/ini": ^1.3.31
-    "@types/node": ^20.4.2
-    "@types/semver": ^7.5.0
+    "@types/node": ^20.6.0
+    "@types/semver": ^7.5.1
     ini: ^4.1.1
-    inversify: ^6.0.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: b33948b1c9bb7ff37fe5d34eefedf78ac1df594b311aa2f3cbc7b5cf888c64512d06acb646635653c63fa7dc7634c09cfe7d0ff3cf0bda616c3f0b3494f50dde
+  checksum: 073b22dcce69646833a0722f9952c0c51879c6f46b34a8c81f2fac15171d1ce1e379b360c7c1a4c4d6994e4d97e1de26c415f4e46d6a4d7c29fa0090cb9ca085
   languageName: node
   linkType: hard
 
@@ -399,7 +397,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
-    "@databricks/databricks-sdk": ../../vendor/databricks-sdk.tgz
+    "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz"
     "@types/vscode": ^1.69.1
     databricks: "*"
     eslint: ^8.51.0
@@ -1441,9 +1439,9 @@ __metadata:
   linkType: hard
 
 "@types/ini@npm:^1.3.31":
-  version: 1.3.31
-  resolution: "@types/ini@npm:1.3.31"
-  checksum: aca4fed0cd68f6693fd64e1b7d188a9c8c6f5823b2e3501b0570135555d4184d7d0dfba2c1afb3514c94cb21ece732f4467ea98c827d1b1b98716827ac9de680
+  version: 1.3.32
+  resolution: "@types/ini@npm:1.3.32"
+  checksum: 2f11a5d77f901472f3c7d4701c99deaebd4959490ee2d27dd647b4059f07e03a8361d4be4ee9efec5f6440309bb1c92f6108fe50be6bc4af2937cb33cea49e0b
   languageName: node
   linkType: hard
 
@@ -1555,6 +1553,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^20.6.0":
+  version: 20.8.7
+  resolution: "@types/node@npm:20.8.7"
+  dependencies:
+    undici-types: ~5.25.1
+  checksum: 2173c0c03daefcb60c03a61b1371b28c8fe412e7a40dc6646458b809d14a85fbc7aeb369d957d57f0aaaafd99964e77436f29b3b579232d8f2b20c58abbd1d25
+  languageName: node
+  linkType: hard
+
 "@types/normalize-package-data@npm:^2.4.0, @types/normalize-package-data@npm:^2.4.1":
   version: 2.4.1
   resolution: "@types/normalize-package-data@npm:2.4.1"
@@ -1578,10 +1585,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/semver@npm:^7.5.0":
-  version: 7.5.0
-  resolution: "@types/semver@npm:7.5.0"
-  checksum: 0a64b9b9c7424d9a467658b18dd70d1d781c2d6f033096a6e05762d20ebbad23c1b69b0083b0484722aabf35640b78ccc3de26368bcae1129c87e9df028a22e2
+"@types/semver@npm:^7.5.1":
+  version: 7.5.4
+  resolution: "@types/semver@npm:7.5.4"
+  checksum: 120c0189f6fec5f2d12d0d71ac8a4cfa952dc17fa3d842e8afddb82bba8828a4052f8799c1653e2b47ae1977435f38e8985658fde971905ce5afb8e23ee97ecf
   languageName: node
   linkType: hard
 
@@ -2202,6 +2209,13 @@ __metadata:
   version: 1.0.0
   resolution: "add-stream@npm:1.0.0"
   checksum: 3e9e8b0b8f0170406d7c3a9a39bfbdf419ccccb0fd2a396338c0fda0a339af73bf738ad414fc520741de74517acf0dd92b4a36fd3298a47fd5371eee8f2c5a06
+  languageName: node
+  linkType: hard
+
+"add@npm:^2.0.6":
+  version: 2.0.6
+  resolution: "add@npm:2.0.6"
+  checksum: e2d23d40494565dfed4acd65e478570c444db5ac6c053551ed429c39ea0f2c99d83df63e7befec936df601827d2254d06a2fb6f7dcfd2022e810b25eab818b8c
   languageName: node
   linkType: hard
 
@@ -3670,7 +3684,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
-    "@databricks/databricks-sdk": ../../vendor/databricks-sdk.tgz
+    "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz"
     "@databricks/databricks-vscode-types": "workspace:^"
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@sinonjs/fake-timers": ^10.3.0
@@ -3696,6 +3710,7 @@ __metadata:
     "@wdio/mocha-framework": ^8.12.1
     "@wdio/spec-reporter": ^8.12.2
     "@wdio/types": ^8.10.4
+    add: ^2.0.6
     ansi-to-html: ^0.7.2
     bcryptjs: ^2.4.3
     chai: ^4.3.7
@@ -6115,13 +6130,6 @@ __metadata:
     from2: ^2.1.1
     p-is-promise: ^1.1.0
   checksum: e6e1a202227b20c446c251ef95348b3e8503cdc75aa2a09076f8821fc42c1b7fd43fabaeb8ed3cf9eb875942cfa4510b66949c5317997aa640921cc9bbadcd17
-  languageName: node
-  linkType: hard
-
-"inversify@npm:^6.0.1":
-  version: 6.0.1
-  resolution: "inversify@npm:6.0.1"
-  checksum: b6c9b56ef7817a71534b06101c2b0a0130b67c47a769f58794d9c0643591a83ac02be30a48c00cb729c0c83ece96dde369c419d48c32d0201c6cc7407629fbc5
   languageName: node
   linkType: hard
 
@@ -10549,6 +10557,13 @@ __metadata:
   version: 1.13.6
   resolution: "underscore@npm:1.13.6"
   checksum: d5cedd14a9d0d91dd38c1ce6169e4455bb931f0aaf354108e47bd46d3f2da7464d49b2171a5cf786d61963204a42d01ea1332a903b7342ad428deaafaf70ec36
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~5.25.1":
+  version: 5.25.3
+  resolution: "undici-types@npm:5.25.3"
+  checksum: ec9d2cc36520cbd9fbe3b3b6c682a87fe5be214699e1f57d1e3d9a2cb5be422e62735f06e0067dc325fd3dd7404c697e4d479f9147dc8a804e049e29f357f2ff
   languageName: node
   linkType: hard
 
