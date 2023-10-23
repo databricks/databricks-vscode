@@ -45,10 +45,9 @@ export class MsPythonExtensionWrapper implements Disposable {
         if (this._terminal) {
             return this._terminal;
         }
-        const terminalName = `databricks-pip-${this.stateStorage.fixedUUID.slice(
-            0,
-            8
-        )}`;
+        const terminalName = `databricks-pip-${this.stateStorage
+            .get("databricks.fixedUUID")
+            .slice(0, 8)}`;
 
         this._terminal = window.createTerminal({
             name: terminalName,

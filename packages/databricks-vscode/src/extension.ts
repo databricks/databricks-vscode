@@ -580,8 +580,10 @@ export async function activate(
             );
         })
         .finally(() => {
-            stateStorage.lastInstalledExtensionVersion =
-                packageMetadata.version;
+            stateStorage.set(
+                "databricks.lastInstalledExtensionVersion",
+                packageMetadata.version
+            );
         });
 
     CustomWhenContext.setActivated(true);

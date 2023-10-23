@@ -44,7 +44,7 @@ export async function showWhatsNewPopup(
     }
 
     const previousVersion =
-        semver.parse(storage.lastInstalledExtensionVersion) ??
+        semver.parse(storage.get("databricks.lastInstalledExtensionVersion")) ??
         new semver.SemVer("0.0.0");
 
     // if the extension is downgraded, we do not want to show the popup

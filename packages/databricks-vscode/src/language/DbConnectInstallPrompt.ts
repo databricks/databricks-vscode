@@ -21,7 +21,9 @@ export class DbConnectInstallPrompt implements Disposable {
         if (
             advertisement &&
             executable &&
-            this.stateStorage.skippedEnvsForDbConnect.includes(executable)
+            this.stateStorage
+                .get("databricks.debugging.skipDbConnectInstallForEnvs")
+                .includes(executable)
         ) {
             return;
         }
@@ -82,7 +84,10 @@ export class DbConnectInstallPrompt implements Disposable {
 
             case "Never for this environment":
                 if (executable) {
-                    this.stateStorage.skipDbConnectInstallForEnv(executable);
+                    this.stateStorage.set(
+                        "databricks.debugging.skipDbConnectInstallForEnvs",
+                        [executable]
+                    );
                 }
                 break;
 

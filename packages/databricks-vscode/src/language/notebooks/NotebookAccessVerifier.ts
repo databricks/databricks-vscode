@@ -60,7 +60,6 @@ export class NotebookAccessVerifier extends MultiStepAccessVerifier {
                     "latest"
                 );
                 return true;
-                break;
 
             case "Change environment":
                 await this.pythonExtension.selectPythonInterpreter();
