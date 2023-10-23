@@ -366,7 +366,7 @@ __metadata:
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
-  version: 0.5.1
+  version: 0.5.2
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
   dependencies:
     "@types/ini": ^1.3.31
@@ -375,12 +375,12 @@ __metadata:
     ini: ^4.1.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 0c2850f6218d3afb74d1dedff9ee66ddd5df1c15d4114fbce9ead59d6534fa6eaab7cc9d77ee0093ba1b1613fd007da0c7de884bcf9515139a66109d22fdaecf
+  checksum: 073b22dcce69646833a0722f9952c0c51879c6f46b34a8c81f2fac15171d1ce1e379b360c7c1a4c4d6994e4d97e1de26c415f4e46d6a4d7c29fa0090cb9ca085
   languageName: node
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
-  version: 0.5.1
+  version: 0.5.2
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
   dependencies:
     "@types/ini": ^1.3.31
@@ -389,7 +389,7 @@ __metadata:
     ini: ^4.1.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 0c2850f6218d3afb74d1dedff9ee66ddd5df1c15d4114fbce9ead59d6534fa6eaab7cc9d77ee0093ba1b1613fd007da0c7de884bcf9515139a66109d22fdaecf
+  checksum: 073b22dcce69646833a0722f9952c0c51879c6f46b34a8c81f2fac15171d1ce1e379b360c7c1a4c4d6994e4d97e1de26c415f4e46d6a4d7c29fa0090cb9ca085
   languageName: node
   linkType: hard
 
@@ -1586,9 +1586,9 @@ __metadata:
   linkType: hard
 
 "@types/semver@npm:^7.5.1":
-  version: 7.5.3
-  resolution: "@types/semver@npm:7.5.3"
-  checksum: 349fdd1ab6c213bac5c991bac766bd07b8b12e63762462bb058740dcd2eb09c8193d068bb226f134661275f2022976214c0e727a4e5eb83ec1b131127c980d3e
+  version: 7.5.4
+  resolution: "@types/semver@npm:7.5.4"
+  checksum: 120c0189f6fec5f2d12d0d71ac8a4cfa952dc17fa3d842e8afddb82bba8828a4052f8799c1653e2b47ae1977435f38e8985658fde971905ce5afb8e23ee97ecf
   languageName: node
   linkType: hard
 
