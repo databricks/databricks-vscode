@@ -44,7 +44,9 @@ export class WorkspaceFsCommands implements Disposable {
                 const element = await root?.mkdir(
                     `${path.basename(
                         this.workspaceFolder.fsPath
-                    )}-${this.stateStorage.fixedUUID.slice(0, 8)}`
+                    )}-${this.stateStorage
+                        .get("databricks.fixedUUID")
+                        .slice(0, 8)}`
                 );
                 if (element) {
                     await this.connectionManager.attachSyncDestination(
