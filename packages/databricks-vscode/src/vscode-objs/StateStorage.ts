@@ -76,6 +76,11 @@ const Keys = {
     "databricks.bundle.target": withType<string>()({
         location: "workspace",
     }),
+
+    "databricks.lastInstalledExtensionVersion": withType<string>()({
+        location: "workspace",
+        defaultValue: "0.0.0",
+    }),
 };
 
 type ValueType<K extends keyof typeof Keys> = (typeof Keys)[K]["_type"];

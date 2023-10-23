@@ -10,7 +10,6 @@ import {
     MetadataServiceVersionHeader,
     RequestVisitor,
     logging,
-    fetch,
 } from "@databricks/databricks-sdk";
 const {NamedLogger} = logging;
 

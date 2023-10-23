@@ -17,7 +17,7 @@ jobs:
                         { cli_arch: windows_amd64, os: windows-latest },
                     ]
                 node-version: [18.x]
-                vscode-version: [stable, insiders]
+                vscode-version: [stable]
         uses: ./.github/workflows/tests.yml
         with:
             os: ${{ matrix.arch.os }}

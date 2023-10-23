@@ -52,6 +52,7 @@ import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScript
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
 import {BundleWatcher} from "./file-managers/BundleWatcher";
 import {BundleFileSet} from "./bundle/BundleFileSet";
+import {showWhatsNewPopup} from "./whatsNewPopup";
 
 export async function activate(
     context: ExtensionContext
@@ -226,9 +227,7 @@ export async function activate(
         stateStorage,
         pythonExtensionWrapper
     );
-    const featureManager = new FeatureManager<FeatureId>([
-        "notebooks.dbconnect",
-    ]);
+    const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
         "debugging.dbconnect",
         () =>
@@ -577,6 +576,20 @@ export async function activate(
             e
         );
     });
+
+    showWhatsNewPopup(context, stateStorage)
+        .catch((e) => {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Error while showing popup for what's new",
+                e
+            );
+        })
+        .finally(() => {
+            stateStorage.set(
+                "databricks.lastInstalledExtensionVersion",
+                packageMetadata.version
+            );
+        });
 
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
