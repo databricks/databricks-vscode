@@ -102,11 +102,6 @@ export async function activate(
     }
 
     const telemetry = Telemetry.createDefault();
-    telemetry.recordEvent(Events.COMMAND_EXECUTION, {
-        command: "something",
-        duration: 100,
-        success: true,
-    });
 
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
