@@ -1,7 +1,7 @@
 import {randomUUID} from "crypto";
 import {ExtensionContext} from "vscode";
 
-export class WorkspaceStateManager {
+export class StateStorage {
     constructor(private context: ExtensionContext) {}
 
     get fixedRandom() {
@@ -83,6 +83,20 @@ export class WorkspaceStateManager {
         this.context.globalState.update(
             "databricks.debugging.skipDatabricksSdkInstallForEnvs",
             currentEnvs
+        );
+    }
+
+    get lastInstalledExtensionVersion() {
+        return this.context.workspaceState.get<string>(
+            "databricks.lastInstalledExtensionVersion",
+            "0.0.0"
+        );
+    }
+
+    set lastInstalledExtensionVersion(value: string) {
+        this.context.workspaceState.update(
+            "databricks.lastInstalledExtensionVersion",
+            value
         );
     }
 

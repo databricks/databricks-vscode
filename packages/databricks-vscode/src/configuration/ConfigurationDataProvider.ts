@@ -13,7 +13,7 @@ import {
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {ConnectionManager} from "./ConnectionManager";
-import {WorkspaceStateManager} from "../vscode-objs/WorkspaceState";
+import {StateStorage} from "../vscode-objs/StateStorage";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {
     WorkspaceFsAccessVerifier,
@@ -44,7 +44,7 @@ export class ConfigurationDataProvider
     constructor(
         private connectionManager: ConnectionManager,
         private sync: CodeSynchronizer,
-        private readonly workspaceState: WorkspaceStateManager,
+        private readonly stateStorage: StateStorage,
         private readonly wsfsAccessVerifier: WorkspaceFsAccessVerifier,
         private readonly featureManager: FeatureManager,
         private readonly telemetry: Telemetry
@@ -313,7 +313,7 @@ export class ConfigurationDataProvider
                         arguments: [
                             () => {
                                 switchToWorkspacePrompt(
-                                    this.workspaceState,
+                                    this.stateStorage,
                                     this.telemetry
                                 );
                             },

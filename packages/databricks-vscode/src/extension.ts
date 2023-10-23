@@ -34,7 +34,7 @@ import {
 } from "./workspace-fs";
 import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
-import {WorkspaceStateManager} from "./vscode-objs/WorkspaceState";
+import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
 import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManager";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
@@ -50,6 +50,7 @@ import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
+import {showWhatsNewPopup} from "./whatsNewPopup";
 
 export async function activate(
     context: ExtensionContext
@@ -84,7 +85,7 @@ export async function activate(
         return undefined;
     }
 
-    const workspaceStateManager = new WorkspaceStateManager(context);
+    const stateStorage = new StateStorage(context);
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
@@ -119,7 +120,7 @@ export async function activate(
     const pythonExtensionWrapper = new MsPythonExtensionWrapper(
         pythonExtension,
         workspace.workspaceFolders[0].uri,
-        workspaceStateManager
+        stateStorage
     );
 
     context.subscriptions.push(
@@ -143,7 +144,7 @@ export async function activate(
 
     // Configuration group
     const cli = new CliWrapper(context);
-    const connectionManager = new ConnectionManager(cli, workspaceStateManager);
+    const connectionManager = new ConnectionManager(cli, stateStorage);
     context.subscriptions.push(
         connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
@@ -170,7 +171,7 @@ export async function activate(
     );
     const workspaceFsCommands = new WorkspaceFsCommands(
         workspace.workspaceFolders[0].uri,
-        workspaceStateManager,
+        stateStorage,
         connectionManager,
         workspaceFsDataProvider
     );
@@ -208,7 +209,7 @@ export async function activate(
 
     const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
         connectionManager,
-        workspaceStateManager,
+        stateStorage,
         synchronizer,
         telemetry
     );
@@ -216,12 +217,10 @@ export async function activate(
     context.subscriptions.push(wsfsAccessVerifier);
 
     const dbConnectInstallPrompt = new DbConnectInstallPrompt(
-        workspaceStateManager,
+        stateStorage,
         pythonExtensionWrapper
     );
-    const featureManager = new FeatureManager<FeatureId>([
-        "notebooks.dbconnect",
-    ]);
+    const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
         "debugging.dbconnect",
         () =>
@@ -238,7 +237,7 @@ export async function activate(
             new NotebookAccessVerifier(
                 featureManager,
                 pythonExtensionWrapper,
-                workspaceStateManager
+                stateStorage
             )
     );
 
@@ -321,7 +320,7 @@ export async function activate(
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
-        workspaceStateManager,
+        stateStorage,
         workspace.workspaceFolders[0].uri.fsPath,
         pythonExtensionWrapper,
         dbConnectInstallPrompt
@@ -338,7 +337,7 @@ export async function activate(
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         synchronizer,
-        workspaceStateManager,
+        stateStorage,
         wsfsAccessVerifier,
         featureManager,
         telemetry
@@ -558,6 +557,18 @@ export async function activate(
             e
         );
     });
+
+    showWhatsNewPopup(context, stateStorage)
+        .catch((e) => {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Error while showing popup for what's new",
+                e
+            );
+        })
+        .finally(() => {
+            stateStorage.lastInstalledExtensionVersion =
+                packageMetadata.version;
+        });
 
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
