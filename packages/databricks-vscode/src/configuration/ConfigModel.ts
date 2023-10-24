@@ -10,6 +10,7 @@ import {BundleConfigReaderWriter} from "./BundleConfigReaderWriter";
 import {Mutex} from "../locking";
 import {BundleWatcher} from "../file-managers/BundleWatcher";
 import {CachedValue} from "../locking/CachedValue";
+import {StateStorage} from "../vscode-objs/StateStorage";
 
 function isDirectToBundleConfig(
     key: keyof BundleConfigs,
@@ -22,6 +23,9 @@ function isDirectToBundleConfig(
     return directToBundleConfigs.includes(key);
 }
 
+const defaults: DatabricksConfigs = {
+    mode: "dev",
+};
 /**
  * In memory view of the databricks configs loaded from overrides and bundle.
  */
@@ -43,32 +47,55 @@ export class ConfigModel implements Disposable {
             if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
                 this.onDidChangeEmitter.fire();
             }
+
             return newValue;
         }
     );
 
     private readonly onDidChangeEmitter = new EventEmitter<void>();
-    private readonly onDidChange = this.onDidChangeEmitter.event;
+    public readonly onDidChange = this.onDidChangeEmitter.event;
 
     private _target: string | undefined;
 
     constructor(
         public readonly overrideReaderWriter: ConfigOverrideReaderWriter,
         public readonly bundleConfigReaderWriter: BundleConfigReaderWriter,
+        private readonly stateStorage: StateStorage,
         private readonly bundleWatcher: BundleWatcher
     ) {
         this.disposables.push(
             this.overrideReaderWriter.onDidChange(async () => {
-                await this.configsMutex.synchronise(async () => {
-                    await this.configCache.invalidate();
-                });
+                await this.configCache.invalidate();
+                //try to access the value to trigger cache update and onDidChange event
+                this.configCache.value;
             }),
             this.bundleWatcher.onDidChange(async () => {
-                await this.configsMutex.synchronise(async () => {
-                    await this.configCache.invalidate();
-                });
+                await this.readTarget();
+                await this.configCache.invalidate();
+                //try to access the value to trigger cache update and onDidChange event
+                this.configCache.value;
             })
         );
+    }
+
+    public async readTarget() {
+        const targets = Object.keys(
+            (await this.bundleConfigReaderWriter.targets) ?? {}
+        );
+        if (targets.includes(this.target ?? "")) {
+            return;
+        }
+
+        let savedTarget: string | undefined;
+        await this.configsMutex.synchronise(async () => {
+            savedTarget = this.stateStorage.get("databricks.bundle.target");
+
+            if (savedTarget !== undefined && targets.includes(savedTarget)) {
+                return;
+            }
+            savedTarget = await this.bundleConfigReaderWriter.defaultTarget;
+        });
+        await this.setTarget(savedTarget);
     }
 
     public get target() {
@@ -82,15 +109,16 @@ export class ConfigModel implements Disposable {
 
         await this.configsMutex.synchronise(async () => {
             this._target = target;
-            await this.configCache.invalidate();
+            await this.stateStorage.set("databricks.bundle.target", target);
         });
+        await this.configCache.invalidate();
+        this.onDidChangeEmitter.fire();
     }
 
-    @Mutex.synchronise("configsMutex")
     public async get<T extends keyof DatabricksConfigs>(
         key: T
     ): Promise<DatabricksConfigs[T] | undefined> {
-        return (await this.configCache.value)[key];
+        return (await this.configCache.value)[key] ?? defaults[key];
     }
 
     @Mutex.synchronise("configsMutex")

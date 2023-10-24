@@ -104,6 +104,23 @@ export class BundleConfigReaderWriter {
         );
     }
 
+    get defaultTarget() {
+        return this.targets.then((targets) => {
+            if (targets === undefined) {
+                return undefined;
+            }
+            const defaultTarget = Object.keys(targets).find(
+                (target) => targets[target].default
+            );
+            return (
+                defaultTarget ??
+                Object.keys(targets).find(
+                    (target) => targets[target].mode === "dev"
+                )
+            );
+        });
+    }
+
     async getFileToWrite<T extends keyof BundleConfigs>(
         key: T,
         target: string
