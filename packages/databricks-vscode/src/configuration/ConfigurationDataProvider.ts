@@ -21,6 +21,7 @@ import {
 } from "../workspace-fs";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {Telemetry} from "../telemetry";
+import {ConfigModel} from "./ConfigModel";
 
 export type ConfigurationTreeItem = TreeItem & {
     url?: string;
@@ -47,7 +48,8 @@ export class ConfigurationDataProvider
         private readonly stateStorage: StateStorage,
         private readonly wsfsAccessVerifier: WorkspaceFsAccessVerifier,
         private readonly featureManager: FeatureManager,
-        private readonly telemetry: Telemetry
+        private readonly telemetry: Telemetry,
+        private readonly configModel: ConfigModel
     ) {
         this.disposables.push(
             this.connectionManager.onDidChangeState(() => {
@@ -63,6 +65,9 @@ export class ConfigurationDataProvider
                 this._onDidChangeTreeData.fire();
             }),
             this.wsfsAccessVerifier.onDidChangeState(() => {
+                this._onDidChangeTreeData.fire();
+            }),
+            this.configModel.onDidChange(() => {
                 this._onDidChangeTreeData.fire();
             })
         );
@@ -96,14 +101,52 @@ export class ConfigurationDataProvider
 
         if (!element) {
             const children: Array<ConfigurationTreeItem> = [];
-            children.push({
-                label: `Workspace`,
-                iconPath: new ThemeIcon("account"),
-                id: "WORKSPACE",
-                collapsibleState: TreeItemCollapsibleState.Expanded,
-                contextValue: "workspace",
-                url: this.connectionManager.databricksWorkspace?.host?.toString(),
-            });
+            children.push(
+                {
+                    label:
+                        this.configModel.target !== undefined
+                            ? `Bundle Target - ${this.configModel.target}`
+                            : `Bundle Target - "None selected"`,
+                    id: "BUNDLE-TARGET",
+                    collapsibleState: TreeItemCollapsibleState.Expanded,
+                    contextValue: "bundleTarget",
+                    command: {
+                        title: "Call",
+                        command: "databricks.call",
+                        arguments: [
+                            async () => {
+                                const targets = await this.configModel
+                                    .bundleConfigReaderWriter.targets;
+                                if (targets === undefined) {
+                                    return;
+                                }
+
+                                const selectedTarget =
+                                    await window.showQuickPick(
+                                        Object.keys(targets),
+                                        {title: "Select bundle target"}
+                                    );
+                                if (selectedTarget === undefined) {
+                                    return;
+                                }
+                                const currentTarget = this.configModel.target;
+                                if (currentTarget !== selectedTarget) {
+                                    this._onDidChangeTreeData.fire();
+                                }
+                                this.configModel.setTarget(selectedTarget);
+                            },
+                        ],
+                    },
+                },
+                {
+                    label: `Workspace`,
+                    iconPath: new ThemeIcon("account"),
+                    id: "WORKSPACE",
+                    collapsibleState: TreeItemCollapsibleState.Expanded,
+                    contextValue: "workspace",
+                    url: this.connectionManager.databricksWorkspace?.host?.toString(),
+                }
+            );
 
             if (cluster) {
                 let contextValue:
@@ -360,6 +403,23 @@ export class ConfigurationDataProvider
             );
 
             return children;
+        }
+
+        if (element.id === "BUNDLE-TARGET") {
+            if (this.configModel.target === undefined) {
+                return [];
+            } else {
+                return [
+                    {
+                        label: "Host",
+                        description: await this.configModel.get("host"),
+                    },
+                    {
+                        label: "Mode",
+                        description: await this.configModel.get("mode"),
+                    },
+                ];
+            }
         }
 
         return [];
