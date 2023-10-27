@@ -1,41 +1,42 @@
 import {expect} from "chai";
 import {CachedValue} from "./CachedValue";
-import {spy, instance, verify} from "ts-mockito";
 
 describe(__filename, () => {
-    let st: CachedValue<string>;
-    class Getter {
+    class GetterSpy {
         value: string = "test";
+        callCount: number = 0;
         get(): Promise<string> {
+            this.callCount += 1;
             return Promise.resolve(this.value);
         }
     }
 
-    let getterSpy: Getter;
+    let getterSpy: GetterSpy;
+    let st: CachedValue<string>;
 
     beforeEach(() => {
-        getterSpy = spy(new Getter());
-        st = new CachedValue(instance(getterSpy).get);
+        getterSpy = new GetterSpy();
+        st = new CachedValue(getterSpy.get.bind(getterSpy));
     });
 
     it("should use getter to lazily fetch value initially", async () => {
         expect(await st.value).to.equal("test");
-        verify(getterSpy.get()).once();
+        expect(getterSpy.callCount).to.equal(1);
     });
 
     it("should use cached value if not dirty", async () => {
         expect(await st.value).to.equal("test");
         expect(await st.value).to.equal("test");
-        verify(getterSpy.get()).once();
+        expect(getterSpy.callCount).to.equal(1);
     });
 
     it("should use getter if dirty", async () => {
         expect(await st.value).to.equal("test");
-        instance(getterSpy).value = "test2";
-        verify(getterSpy.get()).once();
+        getterSpy.value = "test2";
+        expect(getterSpy.callCount).to.equal(1);
 
         await st.invalidate();
         expect(await st.value).to.equal("test2");
-        verify(getterSpy.get()).twice();
+        expect(getterSpy.callCount).to.equal(2);
     });
 });
