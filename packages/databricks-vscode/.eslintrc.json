@@ -1,0 +1,6 @@
+{
+    "plugins": ["eslint-plugin-local-rules"],
+    "rules": {
+        "local-rules/mutex-synchronised-decorator": "error"
+    }
+}
