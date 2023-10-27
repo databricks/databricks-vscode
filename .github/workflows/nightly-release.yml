@@ -2,7 +2,7 @@ name: Publish nightly release
 
 on:
     push:
-        branches: [main]
+        branches: [main, bundle-integ]
     workflow_dispatch:
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
             - name: Update nightly release
               uses: softprops/action-gh-release@v1
               with:
-                  name: Nightly
+                  name: Nightly - $ {{ github.ref_name }}
                   prerelease: true
                   tag_name: nightly
                   token: ${{ secrets.GITHUB_TOKEN }}
