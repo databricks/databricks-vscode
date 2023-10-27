@@ -2,9 +2,9 @@ name: VSCode Extensions CI
 
 on:
     push:
-        branches: [main]
+        branches: [main, bundle-integ]
     pull_request:
-        branches: [main]
+        branches: [main, bundle-integ]
 
 jobs:
     run-tests:
