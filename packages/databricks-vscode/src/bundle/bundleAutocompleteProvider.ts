@@ -39,9 +39,10 @@ export async function registerBundleAutocompleteProvider(
         redHatYamlSchemaApi.registerContributor(
             "dabs",
             (resource: string) => {
+                const resourceUri = Uri.parse(resource);
                 if (
                     bundleFileList.find(
-                        (i) => i.fsPath === Uri.parse(resource).fsPath
+                        (i) => i.fsPath === resourceUri.fsPath
                     ) !== undefined
                 ) {
                     return rootConfigSchemaUri;
