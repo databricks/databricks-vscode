@@ -13,11 +13,6 @@ import {
     RemoteUri,
     LocalUri,
 } from "../sync/SyncDestination";
-import {
-    ConfigFileError,
-    ProjectConfig,
-    ProjectConfigFile,
-} from "../file-managers/ProjectConfigFile";
 import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
@@ -120,52 +115,31 @@ export class ConnectionManager {
         }
         this.updateState("CONNECTING");
 
-        let projectConfigFile: ProjectConfigFile;
         let workspaceClient: WorkspaceClient;
 
-        try {
-            try {
-                projectConfigFile = await ProjectConfigFile.load(
-                    vscodeWorkspace.rootPath!,
-                    this.cli.cliPath
-                );
-            } catch (e) {
-                if (
-                    e instanceof ConfigFileError &&
-                    e.message.startsWith("Project config file does not exist")
-                ) {
-                    this.updateState("DISCONNECTED");
-                    await this.logout();
-                    return;
-                } else {
-                    throw e;
-                }
-            }
-
-            if (!(await projectConfigFile.authProvider.check(true))) {
-                throw new Error(
-                    `Can't login with ${projectConfigFile.authProvider.describe()}.`
-                );
-            }
-
-            workspaceClient =
-                projectConfigFile.authProvider.getWorkspaceClient();
-
-            await workspaceClient.config.authenticate(new Headers());
-
-            this._databricksWorkspace = await DatabricksWorkspace.load(
-                workspaceClient,
-                projectConfigFile.authProvider
+        if (!(await projectConfigFile.authProvider.check(true))) {
+            throw new Error(
+                `Can't login with ${projectConfigFile.authProvider.describe()}.`
             );
-        } catch (e: any) {
-            const message = `Can't login to Databricks: ${e.message}`;
-            NamedLogger.getOrCreate("Extension").error(message, e);
-            window.showErrorMessage(message);
-
-            this.updateState("DISCONNECTED");
-            await this.logout();
-            return;
         }
+
+        workspaceClient = projectConfigFile.authProvider.getWorkspaceClient();
+
+        await workspaceClient.config.authenticate(new Headers());
+
+        this._databricksWorkspace = await DatabricksWorkspace.load(
+            workspaceClient,
+            projectConfigFile.authProvider
+        );
+        // } catch (e: any) {
+        //     const message = `Can't login to Databricks: ${e.message}`;
+        //     NamedLogger.getOrCreate("Extension").error(message, e);
+        //     window.showErrorMessage(message);
+
+        //     this.updateState("DISCONNECTED");
+        //     await this.logout();
+        //     return;
+        // }
 
         if (
             workspaceConfigs.syncDestinationType === "repo" &&
