@@ -60,12 +60,13 @@ export class BundleFileSet {
             return undefined;
         }
         const bundle = await parseBundleYaml(Uri.file(rootFile.fsPath));
-        const includedFilesGlob =
-            bundle?.include === undefined || bundle?.include.length === 0
-                ? undefined
-                : `{${bundle.include?.join(",")}}`;
-
-        return includedFilesGlob;
+        if (bundle?.include === undefined || bundle?.include.length === 0) {
+            return undefined;
+        }
+        if (bundle?.include.length === 1) {
+            return bundle.include[0];
+        }
+        return `{${bundle.include.join(",")}}`;
     }
 
     async getIncludedFiles() {
