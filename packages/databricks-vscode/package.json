@@ -211,8 +211,12 @@
             {
                 "command": "databricks.call",
                 "title": "Call",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.internal.clearOverrides",
+                "title": "Clear workspace overrides"
             },
             {
                 "command": "databricks.notebookInitScript.verify",

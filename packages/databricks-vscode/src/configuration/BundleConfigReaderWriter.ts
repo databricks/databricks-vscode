@@ -7,9 +7,15 @@ import {
 import {BundleTarget} from "../bundle/types";
 import {Mutex} from "../locking";
 import {RemoteUri} from "../sync/SyncDestination";
-import {BundleConfigs, isBundleConfig} from "./types";
+import {BundleConfigs, ConfigReaderWriter, isBundleConfig} from "./types";
 
-export class BundleConfigReaderWriter {
+/**
+ * Reads and writes bundle configs. This class does not notify when the configs change.
+ * We use the BundleWatcher to notify when the configs change.
+ */
+export class BundleConfigReaderWriter
+    implements ConfigReaderWriter<keyof BundleConfigs>
+{
     private readonly writeMutex = new Mutex();
 
     private readonly writerMapping: Record<
@@ -17,7 +23,7 @@ export class BundleConfigReaderWriter {
         (t: BundleTarget, v: any) => BundleTarget
     > = {
         clusterId: this.setClusterId,
-        authType: this.setAuthType,
+        authParams: this.setAuthParams,
         mode: this.setMode,
         host: this.setHost,
         workspaceFsPath: this.setWorkspaceFsPath,
@@ -30,7 +36,7 @@ export class BundleConfigReaderWriter {
         ) => Promise<BundleConfigs[keyof BundleConfigs] | undefined>
     > = {
         clusterId: this.getClusterId,
-        authType: this.getAuthType,
+        authParams: this.getAuthParams,
         mode: this.getMode,
         host: this.getHost,
         workspaceFsPath: this.getWorkspaceFsPath,
@@ -80,23 +86,23 @@ export class BundleConfigReaderWriter {
         target.workspace = {
             ...target.workspace,
             // eslint-disable-next-line @typescript-eslint/naming-convention
-            file_path: value?.path,
+            file_path: value,
         };
         return target;
     }
 
-    public async getAuthType(target?: BundleTarget) {
-        return target?.workspace?.auth_type;
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+
+    public async getAuthParams(target?: BundleTarget) {
+        return undefined;
     }
-    public setAuthType(target: BundleTarget, value: BundleConfigs["authType"]) {
-        target = {...target};
-        target.workspace = {
-            ...target.workspace,
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            auth_type: value,
-        };
-        return target;
+    public setAuthParams(
+        target: BundleTarget,
+        value: BundleConfigs["authParams"]
+    ): BundleTarget {
+        throw new Error("Not implemented");
     }
+    /* eslint-enable @typescript-eslint/no-unused-vars */
 
     get targets() {
         return this.bundleFileSet.bundleDataCache.value.then(
@@ -168,19 +174,22 @@ export class BundleConfigReaderWriter {
     ) {
         const file = await this.getFileToWrite(key, target);
         if (file === undefined) {
-            return false;
+            throw new Error(
+                `Can't find a file to write property '${key}' of target '${target}'.`
+            );
         }
         const data = await parseBundleYaml(file);
         const targetData = data.targets?.[target];
         if (targetData === undefined) {
-            return false;
+            throw new Error(`No target '${target}' for writing '${key}.`);
         }
 
         const newTargetData = this.writerMapping[key](targetData, value);
+        if (JSON.stringify(newTargetData) === JSON.stringify(targetData)) {
+            return;
+        }
         data.targets = {...data.targets, [target]: newTargetData};
         await writeBundleYaml(file, data);
-
-        return true;
     }
 
     /**

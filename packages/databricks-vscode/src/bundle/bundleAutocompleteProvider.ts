@@ -1,7 +1,7 @@
 import {CliWrapper} from "../cli/CliWrapper";
 import {ExtensionContext, extensions, Uri} from "vscode";
 import {BundleFileSet} from "./BundleFileSet";
-import {BundleWatcher} from "../file-managers/BundleWatcher";
+import {BundleWatcher} from "./BundleWatcher";
 
 export async function registerBundleAutocompleteProvider(
     cli: CliWrapper,

@@ -1,4 +1,4 @@
-import {Disposable, EventEmitter, Uri} from "vscode";
+import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {
     BundleConfigs,
     DatabricksConfigs,
@@ -8,7 +8,7 @@ import {
 import {ConfigOverrideReaderWriter} from "./ConfigOverrideReaderWriter";
 import {BundleConfigReaderWriter} from "./BundleConfigReaderWriter";
 import {Mutex} from "../locking";
-import {BundleWatcher} from "../file-managers/BundleWatcher";
+import {BundleWatcher} from "../bundle/BundleWatcher";
 import {CachedValue} from "../locking/CachedValue";
 import {StateStorage} from "../vscode-objs/StateStorage";
 
@@ -38,22 +38,42 @@ export class ConfigModel implements Disposable {
             if (this.target === undefined) {
                 return {};
             }
-            const overrides = this.overrideReaderWriter.readAll(this.target);
+            const overrides = await this.overrideReaderWriter.readAll(
+                this.target
+            );
             const bundleConfigs = await this.bundleConfigReaderWriter.readAll(
                 this.target
             );
-            const newValue = {...bundleConfigs, ...overrides};
+            const newValue: DatabricksConfigs = {
+                ...bundleConfigs,
+                ...overrides,
+            };
 
-            if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-                this.onDidChangeEmitter.fire();
+            for (const key of <(keyof DatabricksConfigs)[]>(
+                Object.keys(newValue)
+            )) {
+                if (
+                    oldValue === null ||
+                    JSON.stringify(oldValue[key]) !==
+                        JSON.stringify(newValue[key])
+                ) {
+                    this.changeEmitters.get(key)?.emitter.fire();
+                    this.onDidChangeAnyEmitter.fire();
+                }
             }
 
             return newValue;
         }
     );
 
-    private readonly onDidChangeEmitter = new EventEmitter<void>();
-    public readonly onDidChange = this.onDidChangeEmitter.event;
+    private readonly changeEmitters = new Map<
+        keyof DatabricksConfigs | "target",
+        {
+            emitter: EventEmitter<void>;
+            onDidEmit: Event<void>;
+        }
+    >();
+    private onDidChangeAnyEmitter: EventEmitter<void> = new EventEmitter();
 
     private _target: string | undefined;
 
@@ -77,6 +97,25 @@ export class ConfigModel implements Disposable {
             })
         );
     }
+
+    public onDidChange<T extends keyof DatabricksConfigs | "target">(
+        key: T,
+        fn: () => any,
+        thisArgs?: any
+    ) {
+        if (!this.changeEmitters.has(key)) {
+            const emitter = new EventEmitter<void>();
+            this.changeEmitters.set(key, {
+                emitter: emitter,
+                onDidEmit: emitter.event,
+            });
+        }
+
+        const {onDidEmit} = this.changeEmitters.get(key)!;
+        return onDidEmit(fn, thisArgs);
+    }
+
+    onDidChangeAny = this.onDidChangeAnyEmitter.event;
 
     public async readTarget() {
         const targets = Object.keys(
@@ -112,7 +151,8 @@ export class ConfigModel implements Disposable {
             await this.stateStorage.set("databricks.bundle.target", target);
         });
         await this.configCache.invalidate();
-        this.onDidChangeEmitter.fire();
+        this.changeEmitters.get("target")?.emitter.fire();
+        this.onDidChangeAnyEmitter.fire();
     }
 
     public async get<T extends keyof DatabricksConfigs>(
@@ -126,7 +166,7 @@ export class ConfigModel implements Disposable {
         key: T,
         value?: DatabricksConfigs[T],
         handleInteractiveWrite?: (file: Uri | undefined) => any
-    ): Promise<boolean> {
+    ): Promise<void> {
         // We work with 1 set of configs throughout the function.
         // No changes to the cache can happen when the global mutex is held.
         // The assumption is that user doesn't change the target mode in the middle of
@@ -134,11 +174,14 @@ export class ConfigModel implements Disposable {
         const {mode} = {...(await this.configCache.value)};
 
         if (this.target === undefined) {
-            return false;
+            throw new Error(
+                `Can't set configuration '${key}' without selecting a target`
+            );
         }
         if (isOverrideableConfig(key)) {
             return this.overrideReaderWriter.write(key, this.target, value);
-        } else if (isBundleConfig(key)) {
+        }
+        if (isBundleConfig(key)) {
             const isInteractive = handleInteractiveWrite !== undefined;
 
             // write to bundle if not interactive and the config can be safely written to bundle
@@ -158,7 +201,6 @@ export class ConfigModel implements Disposable {
                 handleInteractiveWrite(file);
             }
         }
-        return true;
     }
 
     dispose() {

@@ -1,12 +1,6 @@
 import {WorkspaceClient, ApiClient, logging} from "@databricks/databricks-sdk";
 import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
-import {
-    env,
-    EventEmitter,
-    Uri,
-    window,
-    workspace as vscodeWorkspace,
-} from "vscode";
+import {EventEmitter, Uri, window, Disposable} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {
     SyncDestinationMapper,
@@ -20,6 +14,9 @@ import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {StateStorage} from "../vscode-objs/StateStorage";
+import {ConfigModel} from "./ConfigModel";
+import {onError} from "../utils/onErrorDecorator";
+import {AuthProvider} from "./auth/AuthProvider";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -31,11 +28,11 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
  * It's responsible for reading and validating the project configuration
  * and for providing instances of the APIClient, Cluster and Workspace classes
  */
-export class ConnectionManager {
+export class ConnectionManager implements Disposable {
+    private disposables: Disposable[] = [];
     private _state: ConnectionState = "DISCONNECTED";
     private _workspaceClient?: WorkspaceClient;
     private _syncDestinationMapper?: SyncDestinationMapper;
-    private _projectConfigFile?: ProjectConfigFile;
     private _clusterManager?: ClusterManager;
     private _databricksWorkspace?: DatabricksWorkspace;
 
@@ -55,10 +52,62 @@ export class ConnectionManager {
 
     public metadataServiceUrl?: string;
 
+    private async setSyncDestinationMapper() {
+        const workspacePath = await this.configModel.get("workspaceFsPath");
+        const remoteUri = workspacePath
+            ? new RemoteUri(workspacePath)
+            : undefined;
+        if (remoteUri?.path === this._syncDestinationMapper?.remoteUri.path) {
+            return;
+        }
+        this._syncDestinationMapper =
+            remoteUri !== undefined
+                ? new SyncDestinationMapper(
+                      new LocalUri(this.workspaceUri),
+                      remoteUri
+                  )
+                : undefined;
+        this.onDidChangeSyncDestinationEmitter.fire(
+            this._syncDestinationMapper
+        );
+    }
+
+    private async setClusterManager() {
+        const clusterId = await this.configModel.get("clusterId");
+        if (clusterId === this._clusterManager?.cluster?.id) {
+            return;
+        }
+        this._clusterManager?.dispose();
+        this._clusterManager =
+            clusterId !== undefined && this.apiClient !== undefined
+                ? new ClusterManager(
+                      await Cluster.fromClusterId(this.apiClient, clusterId),
+                      () => {
+                          this.onDidChangeClusterEmitter.fire(this.cluster);
+                      }
+                  )
+                : undefined;
+        this.onDidChangeClusterEmitter.fire(this.cluster);
+    }
     constructor(
         private cli: CliWrapper,
-        private stateStorage: StateStorage
-    ) {}
+        private stateStorage: StateStorage,
+        private readonly configModel: ConfigModel,
+        private readonly workspaceUri: Uri
+    ) {
+        this.disposables.push(
+            this.configModel.onDidChange(
+                "workspaceFsPath",
+                this.setSyncDestinationMapper,
+                this
+            ),
+            this.configModel.onDidChange(
+                "clusterId",
+                this.setClusterManager,
+                this
+            )
+        );
+    }
 
     get state(): ConnectionState {
         return this._state;
@@ -93,20 +142,11 @@ export class ConnectionManager {
         return this._workspaceClient?.apiClient;
     }
 
-    async login(interactive = false, force = false): Promise<void> {
-        try {
-            await this._login(interactive, force);
-        } catch (e) {
-            NamedLogger.getOrCreate("Extension").error("Login Error:", e);
-            if (interactive && e instanceof Error) {
-                window.showErrorMessage(`Login error: ${e.message}`);
-            }
-            this.updateState("DISCONNECTED");
-            await this.logout();
-        }
-    }
-
-    private async _login(interactive = false, force = false): Promise<void> {
+    private async login(
+        authProvider: AuthProvider,
+        databricksWorkspace: DatabricksWorkspace,
+        force = false
+    ): Promise<void> {
         if (force) {
             await this.logout();
         }
@@ -115,82 +155,27 @@ export class ConnectionManager {
         }
         this.updateState("CONNECTING");
 
-        let workspaceClient: WorkspaceClient;
-
-        if (!(await projectConfigFile.authProvider.check(true))) {
-            throw new Error(
-                `Can't login with ${projectConfigFile.authProvider.describe()}.`
-            );
-        }
-
-        workspaceClient = projectConfigFile.authProvider.getWorkspaceClient();
-
-        await workspaceClient.config.authenticate(new Headers());
-
-        this._databricksWorkspace = await DatabricksWorkspace.load(
-            workspaceClient,
-            projectConfigFile.authProvider
+        this._databricksWorkspace = databricksWorkspace;
+        this._workspaceClient = authProvider.getWorkspaceClient();
+        await this._databricksWorkspace.optionalEnableFilesInReposPopup(
+            this._workspaceClient
         );
-        // } catch (e: any) {
-        //     const message = `Can't login to Databricks: ${e.message}`;
-        //     NamedLogger.getOrCreate("Extension").error(message, e);
-        //     window.showErrorMessage(message);
 
-        //     this.updateState("DISCONNECTED");
-        //     await this.logout();
-        //     return;
-        // }
-
-        if (
-            workspaceConfigs.syncDestinationType === "repo" &&
-            (!this._databricksWorkspace.isReposEnabled ||
-                !this._databricksWorkspace.isFilesInReposEnabled)
-        ) {
-            let message = "";
-            if (!this._databricksWorkspace.isReposEnabled) {
-                message =
-                    "Repos are not enabled for this workspace. Please enable it in the Databricks UI.";
-            } else if (!this._databricksWorkspace.isFilesInReposEnabled) {
-                message =
-                    "Files in Repos is not enabled for this workspace. Please enable it in the Databricks UI.";
-            }
-            NamedLogger.getOrCreate("Extension").error(message);
-            if (interactive) {
-                const result = await window.showWarningMessage(
-                    message,
-                    "Open Databricks UI"
-                );
-                if (result === "Open Databricks UI") {
-                    const host = await workspaceClient.apiClient.host;
-                    await env.openExternal(
-                        Uri.parse(
-                            host.toString() +
-                                "#setting/accounts/workspace-settings"
-                        )
-                    );
-                }
-            }
-        }
-
-        this._workspaceClient = workspaceClient;
-        this._projectConfigFile = projectConfigFile;
-
-        if (projectConfigFile.clusterId) {
-            await this.attachCluster(projectConfigFile.clusterId, true);
-        } else {
-            this.updateCluster(undefined);
-        }
-
-        if (projectConfigFile.workspacePath) {
-            await this.attachSyncDestination(
-                new RemoteUri(projectConfigFile.workspacePath),
-                true
+        const workspacePath = await this.configModel.get("workspaceFsPath");
+        const remoteUri = workspacePath
+            ? new RemoteUri(this.workspaceUri)
+            : undefined;
+        if (remoteUri !== undefined && !(await remoteUri.validate(this))) {
+            window.showErrorMessage(
+                `Invalid sync destination ${workspacePath}`
             );
-        } else {
-            this.updateSyncDestination(undefined);
+            this.detachSyncDestination();
         }
 
-        await this.createWsFsRootDirectory(workspaceClient);
+        await this.createWsFsRootDirectory(this._workspaceClient);
+        await this.setSyncDestinationMapper();
+        await this.setClusterManager();
+
         this.updateState("CONNECTED");
     }
 
@@ -230,21 +215,26 @@ export class ConnectionManager {
             await this.waitForConnect();
         }
 
-        this._projectConfigFile = undefined;
         this._workspaceClient = undefined;
         this._databricksWorkspace = undefined;
-        this.updateCluster(undefined);
-        this.updateSyncDestination(undefined);
+        await this.setClusterManager();
+        await this.setSyncDestinationMapper();
         this.updateState("DISCONNECTED");
     }
 
     async configureWorkspace() {
-        let config: ProjectConfig | undefined;
+        let config:
+            | {
+                  authProvider: AuthProvider;
+              }
+            | undefined;
         while (true) {
+            if ((await this.configModel.get("host")) === undefined) {
+                return;
+            }
             config = await configureWorkspaceWizard(
                 this.cli,
-                this.databricksWorkspace?.host?.toString() ||
-                    config?.authProvider?.host.toString()
+                await this.configModel.get("host")
             );
 
             if (!config) {
@@ -261,9 +251,18 @@ export class ConnectionManager {
 
                 await workspaceClient.config.authenticate(new Headers());
 
-                await DatabricksWorkspace.load(
+                const databricksWorkspace = await DatabricksWorkspace.load(
                     workspaceClient,
                     config.authProvider
+                );
+
+                window.showInformationMessage(
+                    `connected to: ${config.authProvider.host}`
+                );
+
+                this.login(
+                    databricksWorkspace.authProvider,
+                    databricksWorkspace
                 );
             } catch (e: any) {
                 NamedLogger.getOrCreate("Extension").error(
@@ -290,167 +289,48 @@ export class ConnectionManager {
 
             break;
         }
-
-        await this.writeConfigFile(config);
-        window.showInformationMessage(
-            `connected to: ${config.authProvider.host}`
-        );
-
-        await this.login(true, true);
     }
 
-    private async writeConfigFile(config: ProjectConfig) {
-        const projectConfigFile = new ProjectConfigFile(
-            config,
-            vscodeWorkspace.rootPath!,
-            this.cli.cliPath
-        );
-
-        await projectConfigFile.write();
-    }
-
-    async attachCluster(
-        cluster: Cluster | string,
-        skipWrite = false
-    ): Promise<void> {
-        try {
-            if (typeof cluster === "string") {
-                cluster = await Cluster.fromClusterId(
-                    this._workspaceClient!.apiClient,
-                    cluster
-                );
-            }
-
-            if (
-                JSON.stringify(this.cluster?.details) ===
-                JSON.stringify(cluster.details)
-            ) {
-                return;
-            }
-
-            if (!skipWrite) {
-                this._projectConfigFile!.clusterId = cluster.id;
-                await this._projectConfigFile!.write();
-            }
-
-            if (cluster.state === "RUNNING") {
-                cluster
-                    .canExecute()
-                    .then(() => {
-                        this.onDidChangeClusterEmitter.fire(this.cluster);
-                    })
-                    .catch((e) => {
-                        NamedLogger.getOrCreate(Loggers.Extension).error(
-                            `Error while running code on cluster ${
-                                (cluster as Cluster).id
-                            }`,
-                            e
-                        );
-                    });
-            }
-
-            cluster
-                .hasExecutePerms(this.databricksWorkspace?.user)
-                .then(() => {
-                    this.onDidChangeClusterEmitter.fire(this.cluster);
-                })
-                .catch((e) => {
-                    NamedLogger.getOrCreate(Loggers.Extension).error(
-                        `Error while fetching permission for cluster ${
-                            (cluster as Cluster).id
-                        }`,
-                        e
-                    );
-                });
-
-            this.updateCluster(cluster);
-        } catch (e) {
-            NamedLogger.getOrCreate("Extension").error(
-                "Attach Cluster error",
-                e
-            );
-            window.showErrorMessage(
-                `Error in attaching cluster ${
-                    typeof cluster === "string" ? cluster : cluster.id
-                }`
-            );
-            await this.detachCluster();
+    @onError({
+        popup: {prefix: "Can't attach cluster: "},
+        log: {logger: Loggers.Extension},
+    })
+    async attachCluster(clusterId: string): Promise<void> {
+        if (this.cluster?.id === clusterId) {
+            return;
         }
+        this.configModel.set("clusterId", clusterId);
     }
 
+    @onError({
+        popup: {prefix: "Can't detach cluster: "},
+        log: {logger: Loggers.Extension},
+    })
     async detachCluster(): Promise<void> {
-        if (!this.cluster && this._projectConfigFile?.clusterId === undefined) {
-            return;
-        }
-
-        if (this._projectConfigFile) {
-            this._projectConfigFile.clusterId = undefined;
-            await this._projectConfigFile.write();
-        }
-
-        this.updateCluster(undefined);
+        this.configModel.set("clusterId", undefined);
     }
 
-    async attachSyncDestination(
-        remoteWorkspace: RemoteUri,
-        skipWrite = false
-    ): Promise<void> {
-        try {
-            if (
-                !vscodeWorkspace.workspaceFolders ||
-                !vscodeWorkspace.workspaceFolders.length
-            ) {
-                // TODO how do we handle this?
-                return;
-            }
-            if (
-                this.workspaceClient === undefined ||
-                this.databricksWorkspace === undefined
-            ) {
-                throw new Error(
-                    "Can't attach a Sync Destination when profile is not connected"
-                );
-            }
-            if (!(await remoteWorkspace.validate(this))) {
-                await this.detachSyncDestination();
-                return;
-            }
-
-            if (!skipWrite) {
-                this._projectConfigFile!.workspacePath = remoteWorkspace.uri;
-                await this._projectConfigFile!.write();
-            }
-
-            const wsUri = vscodeWorkspace.workspaceFolders[0].uri;
-            this.updateSyncDestination(
-                new SyncDestinationMapper(new LocalUri(wsUri), remoteWorkspace)
-            );
-        } catch (e) {
-            NamedLogger.getOrCreate("Extension").error(
-                "Attach Sync Destination error",
-                e
-            );
-            window.showErrorMessage(
-                `Error in attaching sync destination ${remoteWorkspace.path}`
-            );
+    @onError({
+        popup: {prefix: "Can't attach sync destination: "},
+        log: {logger: Loggers.Extension},
+    })
+    async attachSyncDestination(remoteWorkspace: RemoteUri): Promise<void> {
+        if (!(await remoteWorkspace.validate(this))) {
             await this.detachSyncDestination();
-        }
-    }
-
-    async detachSyncDestination(): Promise<void> {
-        if (
-            !this._syncDestinationMapper &&
-            this._projectConfigFile?.workspacePath === undefined
-        ) {
+            window.showErrorMessage(
+                `Can't attach sync destination ${remoteWorkspace.path}`
+            );
             return;
         }
+        this.configModel.set("workspaceFsPath", remoteWorkspace.path);
+    }
 
-        if (this._projectConfigFile) {
-            this._projectConfigFile.workspacePath = undefined;
-            await this._projectConfigFile.write();
-        }
-
-        this.updateSyncDestination(undefined);
+    @onError({
+        popup: {prefix: "Can't detach sync destination: "},
+        log: {logger: Loggers.Extension},
+    })
+    async detachSyncDestination(): Promise<void> {
+        this.configModel.set("workspaceFsPath", undefined);
     }
 
     private updateState(newState: ConnectionState) {
@@ -462,29 +342,6 @@ export class ConnectionManager {
             this.onDidChangeStateEmitter.fire(this._state);
         }
         CustomWhenContext.setLoggedIn(this._state === "CONNECTED");
-    }
-
-    private updateCluster(newCluster: Cluster | undefined) {
-        if (this.cluster !== newCluster) {
-            this._clusterManager?.dispose();
-            this._clusterManager = newCluster
-                ? new ClusterManager(newCluster, () => {
-                      this.onDidChangeClusterEmitter.fire(this.cluster);
-                  })
-                : undefined;
-            this.onDidChangeClusterEmitter.fire(this.cluster);
-        }
-    }
-
-    private updateSyncDestination(
-        newSyncDestination: SyncDestinationMapper | undefined
-    ) {
-        if (this._syncDestinationMapper !== newSyncDestination) {
-            this._syncDestinationMapper = newSyncDestination;
-            this.onDidChangeSyncDestinationEmitter.fire(
-                this._syncDestinationMapper
-            );
-        }
     }
 
     async startCluster() {
@@ -510,5 +367,9 @@ export class ConnectionManager {
                 }, this);
             });
         }
+    }
+
+    async dispose() {
+        this.disposables.forEach((d) => d.dispose());
     }
 }

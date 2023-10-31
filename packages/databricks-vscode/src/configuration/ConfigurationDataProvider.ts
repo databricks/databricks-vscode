@@ -67,7 +67,7 @@ export class ConfigurationDataProvider
             this.wsfsAccessVerifier.onDidChangeState(() => {
                 this._onDidChangeTreeData.fire();
             }),
-            this.configModel.onDidChange(() => {
+            this.configModel.onDidChangeAny(() => {
                 this._onDidChangeTreeData.fire();
             })
         );
@@ -87,13 +87,12 @@ export class ConfigurationDataProvider
         element?: ConfigurationTreeItem | undefined
     ): Promise<Array<ConfigurationTreeItem>> {
         switch (this.connectionManager.state) {
+            case "DISCONNECTED":
             case "CONNECTED":
                 break;
             case "CONNECTING":
                 await this.connectionManager.waitForConnect();
                 break;
-            case "DISCONNECTED":
-                return [];
         }
 
         const cluster = this.connectionManager.cluster;

@@ -18,7 +18,6 @@ import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
-import {ProjectConfigFileWatcher} from "./file-managers/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
@@ -50,7 +49,7 @@ import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
-import {BundleWatcher} from "./file-managers/BundleWatcher";
+import {BundleWatcher} from "./bundle/BundleWatcher";
 import {BundleFileSet} from "./bundle/BundleFileSet";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {ConfigModel} from "./configuration/ConfigModel";
@@ -90,6 +89,7 @@ export async function activate(
         return undefined;
     }
 
+    const workspaceUri = workspace.workspaceFolders[0].uri;
     const stateStorage = new StateStorage(context);
 
     // Add the databricks binary to the PATH environment variable in terminals
@@ -147,9 +147,30 @@ export async function activate(
         workspace.onDidChangeConfiguration(updateFeatureContexts)
     );
 
+    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
+    const bundleFileWatcher = new BundleWatcher(bundleFileSet);
+    context.subscriptions.push(bundleFileWatcher);
+
+    const overrideReaderWriter = new ConfigOverrideReaderWriter(stateStorage);
+    const bundleConfigReaderWriter = new BundleConfigReaderWriter(
+        bundleFileSet
+    );
+    const confgiModel = new ConfigModel(
+        overrideReaderWriter,
+        bundleConfigReaderWriter,
+        stateStorage,
+        bundleFileWatcher
+    );
+    confgiModel.readTarget();
+
     // Configuration group
     const cli = new CliWrapper(context);
-    const connectionManager = new ConnectionManager(cli, stateStorage);
+    const connectionManager = new ConnectionManager(
+        cli,
+        stateStorage,
+        confgiModel,
+        workspaceUri
+    );
     context.subscriptions.push(
         connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
@@ -338,24 +359,6 @@ export async function activate(
             configureAutocomplete
         )
     );
-    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
-    const bundleFileWatcher = new BundleWatcher(
-        workspace.workspaceFolders[0].uri,
-        bundleFileSet
-    );
-    context.subscriptions.push(bundleFileWatcher);
-
-    const overrideReaderWriter = new ConfigOverrideReaderWriter(stateStorage);
-    const bundleConfigReaderWriter = new BundleConfigReaderWriter(
-        bundleFileSet
-    );
-    const confgiModel = new ConfigModel(
-        overrideReaderWriter,
-        bundleConfigReaderWriter,
-        stateStorage,
-        bundleFileWatcher
-    );
-    confgiModel.readTarget();
 
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
@@ -516,14 +519,6 @@ export async function activate(
         )
     );
 
-    context.subscriptions.push(
-        new ProjectConfigFileWatcher(
-            connectionManager,
-            workspace.rootPath!,
-            cli.cliPath
-        )
-    );
-
     // Quickstart
     const quickstartCommands = new QuickstartCommands(context);
     context.subscriptions.push(
@@ -569,13 +564,6 @@ export async function activate(
         );
     });
 
-    connectionManager.login(false).catch((e) => {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Login error",
-            e
-        );
-    });
-
     setDbnbCellLimits(
         workspace.workspaceFolders[0].uri,
         connectionManager
@@ -599,6 +587,12 @@ export async function activate(
                 packageMetadata.version
             );
         });
+
+    context.subscriptions.push(
+        commands.registerCommand("databricks.internal.clearOverrides", () => {
+            stateStorage.set("databricks.bundle.overrides", undefined);
+        })
+    );
 
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
