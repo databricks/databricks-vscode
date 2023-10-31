@@ -5,18 +5,38 @@ import {
     RemoteUri,
     SyncDestinationMapper,
 } from "../sync/SyncDestination";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
-import {writeFile} from "node:fs/promises";
-
+import {writeFile, readFile} from "node:fs/promises";
+import {when, spy, reset} from "ts-mockito";
 import {CliWrapper} from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
+import crypto from "node:crypto";
 import {Context} from "@databricks/databricks-sdk/dist/context";
 import {logging} from "@databricks/databricks-sdk";
 
 const execFile = promisify(execFileCb);
+
+function getTempLogFilePath() {
+    return path.join(
+        os.tmpdir(),
+        `databricks-cli-logs-${crypto.randomUUID()}.json`
+    );
+}
+
+function createCliWrapper(logFilePath?: string, absolutePrefix?: string) {
+    return new CliWrapper(
+        {
+            asAbsolutePath(relativePath: string) {
+                return path.join(absolutePrefix || "", relativePath);
+            },
+        } as any,
+        logFilePath
+    );
+}
 
 describe(__filename, () => {
     it("should embed a working databricks CLI", async () => {
@@ -25,33 +45,49 @@ describe(__filename, () => {
         assert.ok(result.stdout.indexOf("databricks") > 0);
     });
 
+    let mocks: any[] = [];
+    afterEach(() => {
+        mocks.forEach((mock) => reset(mock));
+        mocks = [];
+    });
+
+    it("should tell CLI to log its output to a file", async () => {
+        const logFilePath = getTempLogFilePath();
+        const configsSpy = spy(workspaceConfigs);
+        mocks.push(configsSpy);
+        when(configsSpy.loggingEnabled).thenReturn(true);
+        when(configsSpy.cliVerboseMode).thenReturn(true);
+        const cli = createCliWrapper(
+            logFilePath,
+            path.join(__dirname, "../..")
+        );
+        await execFile(cli.cliPath, ["version", ...cli.loggingArguments]);
+        const file = await readFile(logFilePath);
+        // Just checking if the file is not empty to avoid depending on internal CLI log patterns
+        assert.ok(file.toString().length > 0);
+    });
+
     it("should create sync commands", async () => {
-        const logUri = Uri.file(os.tmpdir());
-        const cli = new CliWrapper({
-            asAbsolutePath(path: string) {
-                return path;
-            },
-            logUri,
-        } as any);
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
         const mapper = new SyncDestinationMapper(
-            new LocalUri(
-                Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
-            ),
+            new LocalUri(Uri.file("/user/project")),
             new RemoteUri(
                 Uri.from({
                     scheme: "wsfs",
-                    path: "/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
+                    path: "/Repos/user@databricks.com/project",
                 })
             )
         );
 
-        const logFile = path.join(logUri.fsPath, "databricks-cli-logs.json");
+        const syncCommand =
+            "bin/databricks sync . /Repos/user@databricks.com/project --watch --output json";
         let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
             [
-                "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json",
-                `--log-level error --log-file ${logFile} --log-format json`,
+                syncCommand,
+                `--log-level error --log-file ${logFilePath} --log-format json`,
             ].join(" ")
         );
 
@@ -59,19 +95,32 @@ describe(__filename, () => {
         assert.equal(
             [command, ...args].join(" "),
             [
-                "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json",
-                `--log-level error --log-file ${logFile} --log-format json`,
+                syncCommand,
+                `--log-level error --log-file ${logFilePath} --log-format json`,
                 "--full",
+            ].join(" ")
+        );
+
+        const configsSpy = spy(workspaceConfigs);
+        mocks.push(configsSpy);
+        when(configsSpy.loggingEnabled).thenReturn(false);
+        ({command, args} = cli.getSyncCommand(mapper, "incremental"));
+        assert.equal([command, ...args].join(" "), syncCommand);
+
+        when(configsSpy.loggingEnabled).thenReturn(true);
+        when(configsSpy.cliVerboseMode).thenReturn(true);
+        ({command, args} = cli.getSyncCommand(mapper, "incremental"));
+        assert.equal(
+            [command, ...args].join(" "),
+            [
+                syncCommand,
+                `--log-level debug --log-file ${logFilePath} --log-format json`,
             ].join(" ")
         );
     });
 
     it("should create an 'add profile' command", () => {
-        const cli = new CliWrapper({
-            asAbsolutePath(path: string) {
-                return path;
-            },
-        } as any);
+        const cli = createCliWrapper();
 
         const {command, args} = cli.getAddProfileCommand(
             "DEFAULT",
@@ -80,27 +129,20 @@ describe(__filename, () => {
 
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/databricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
+            "bin/databricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
         );
     });
 
     it("should list profiles when no config file exists", async () => {
-        const cli = new CliWrapper({
-            asAbsolutePath(p: string) {
-                return path.join(__dirname, "..", "..", p);
-            },
-        } as any);
-
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
         const profiles = await cli.listProfiles("/tmp/does-not-exist");
         assert.equal(profiles.length, 0);
     });
 
     it("should list profiles", async function () {
-        const cli = new CliWrapper({
-            asAbsolutePath(p: string) {
-                return path.join(__dirname, "..", "..", p);
-            },
-        } as any);
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
 
         await withFile(async ({path}) => {
             await writeFile(
@@ -132,11 +174,8 @@ describe(__filename, () => {
     });
 
     it("should load all valid profiles and return errors for rest", async () => {
-        const cli = new CliWrapper({
-            asAbsolutePath(p: string) {
-                return path.join(__dirname, "..", "..", p);
-            },
-        } as any);
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
 
         await withFile(async ({path}) => {
             await writeFile(

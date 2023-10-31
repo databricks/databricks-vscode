@@ -12,6 +12,7 @@ export class LoggerManager {
     constructor(readonly context: ExtensionContext) {}
 
     async getLogFile(prefix: string) {
+        await mkdir(this.context.logUri.fsPath, {recursive: true});
         const logFile = path.join(
             this.context.logUri.fsPath,
             `${prefix}-logs.json`
@@ -39,8 +40,6 @@ export class LoggerManager {
     }
 
     async initLoggers() {
-        await mkdir(this.context.logUri.fsPath, {recursive: true});
-
         const outputChannel = window.createOutputChannel("Databricks Logs");
         outputChannel.clear();
 

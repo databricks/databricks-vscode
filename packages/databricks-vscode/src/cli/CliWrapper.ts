@@ -1,5 +1,5 @@
 import {execFile as execFileCb, spawn} from "child_process";
-import {ExtensionContext, window, commands, Uri} from "vscode";
+import {ExtensionContext, window, commands} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -41,7 +41,10 @@ function getValidHost(host: string) {
  * of the databricks CLI
  */
 export class CliWrapper {
-    constructor(private extensionContext: ExtensionContext) {}
+    constructor(
+        private extensionContext: ExtensionContext,
+        private logFilePath?: string
+    ) {}
 
     get cliPath(): string {
         return this.extensionContext.asAbsolutePath("./bin/databricks");
@@ -51,15 +54,11 @@ export class CliWrapper {
         if (!workspaceConfigs.loggingEnabled) {
             return [];
         }
-        const logFileUri = Uri.joinPath(
-            this.extensionContext.logUri,
-            "databricks-cli-logs.json"
-        );
         return [
             "--log-level",
             workspaceConfigs.cliVerboseMode ? "debug" : "error",
             "--log-file",
-            logFileUri.fsPath,
+            this.logFilePath ?? "stderr",
             "--log-format",
             "json",
         ];
@@ -90,7 +89,12 @@ export class CliWrapper {
     private getListProfilesCommand(): Command {
         return {
             command: this.cliPath,
-            args: ["auth", "profiles", "--skip-validate"],
+            args: [
+                "auth",
+                "profiles",
+                "--skip-validate",
+                ...this.loggingArguments,
+            ],
         };
     }
 
