@@ -56,7 +56,6 @@ describe(__filename, () => {
         const configsSpy = spy(workspaceConfigs);
         mocks.push(configsSpy);
         when(configsSpy.loggingEnabled).thenReturn(true);
-        when(configsSpy.cliVerboseMode).thenReturn(true);
         const cli = createCliWrapper(logFilePath);
         await execFile(cli.cliPath, ["version", ...cli.loggingArguments]);
         const file = await readFile(logFilePath);
@@ -78,23 +77,17 @@ describe(__filename, () => {
         );
 
         const syncCommand = `${cliPath} sync . /Repos/user@databricks.com/project --watch --output json`;
+        const loggingArgs = `--log-level debug --log-file ${logFilePath} --log-format json`;
         let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
-            [
-                syncCommand,
-                `--log-level error --log-file ${logFilePath} --log-format json`,
-            ].join(" ")
+            [syncCommand, loggingArgs].join(" ")
         );
 
         ({command, args} = cli.getSyncCommand(mapper, "full"));
         assert.equal(
             [command, ...args].join(" "),
-            [
-                syncCommand,
-                `--log-level error --log-file ${logFilePath} --log-format json`,
-                "--full",
-            ].join(" ")
+            [syncCommand, loggingArgs, "--full"].join(" ")
         );
 
         const configsSpy = spy(workspaceConfigs);
@@ -102,17 +95,6 @@ describe(__filename, () => {
         when(configsSpy.loggingEnabled).thenReturn(false);
         ({command, args} = cli.getSyncCommand(mapper, "incremental"));
         assert.equal([command, ...args].join(" "), syncCommand);
-
-        when(configsSpy.loggingEnabled).thenReturn(true);
-        when(configsSpy.cliVerboseMode).thenReturn(true);
-        ({command, args} = cli.getSyncCommand(mapper, "incremental"));
-        assert.equal(
-            [command, ...args].join(" "),
-            [
-                syncCommand,
-                `--log-level debug --log-file ${logFilePath} --log-format json`,
-            ].join(" ")
-        );
     });
 
     it("should create an 'add profile' command", () => {

@@ -56,7 +56,7 @@ export class CliWrapper {
         }
         return [
             "--log-level",
-            workspaceConfigs.cliVerboseMode ? "debug" : "error",
+            "debug",
             "--log-file",
             this.logFilePath ?? "stderr",
             "--log-format",
