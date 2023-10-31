@@ -3,16 +3,16 @@ import {Mutex} from ".";
 export class CachedValue<T> {
     private _value: T | null = null;
     private _dirty = true;
-    private mutex = new Mutex();
+    private readonly mutex = new Mutex();
 
-    constructor(private readonly getter: () => Promise<T>) {}
+    constructor(private readonly getter: (value: T | null) => Promise<T>) {}
 
     get value(): Promise<T> {
         if (this._dirty || this._value === null) {
             return this.mutex
                 .wait()
                 .then(async () => {
-                    this._value = await this.getter();
+                    this._value = await this.getter(this._value);
                     this._dirty = false;
                     return this._value;
                 })

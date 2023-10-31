@@ -4,13 +4,17 @@ import {merge} from "lodash";
 import * as yaml from "yaml";
 import path from "path";
 import {BundleSchema} from "./BundleSchema";
-import {readFile} from "fs/promises";
+import {readFile, writeFile} from "fs/promises";
 import {CachedValue} from "../locking/CachedValue";
 import minimatch from "minimatch";
 
 export async function parseBundleYaml(file: Uri) {
     const data = yaml.parse(await readFile(file.fsPath, "utf-8"));
     return data as BundleSchema;
+}
+
+export async function writeBundleYaml(file: Uri, data: BundleSchema) {
+    await writeFile(file.fsPath, yaml.stringify(data));
 }
 
 function toGlobPath(path: string) {
@@ -21,7 +25,7 @@ function toGlobPath(path: string) {
 }
 export class BundleFileSet {
     private rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
-    private _mergedBundle: CachedValue<BundleSchema> =
+    public readonly bundleDataCache: CachedValue<BundleSchema> =
         new CachedValue<BundleSchema>(async () => {
             let bundle = {};
             await this.forEach(async (data) => {
@@ -88,13 +92,15 @@ export class BundleFileSet {
         return [rootFile, ...((await this.getIncludedFiles()) ?? [])];
     }
 
-    async findFileWithPredicate(predicate: (file: Uri) => Promise<boolean>) {
-        const matchedFiles: Uri[] = [];
-        for (const file of await this.allFiles()) {
-            if (await predicate(file)) {
-                matchedFiles.push(file);
+    async findFile(
+        predicate: (data: BundleSchema, file: Uri) => Promise<boolean>
+    ) {
+        const matchedFiles: {data: BundleSchema; file: Uri}[] = [];
+        this.forEach(async (data, file) => {
+            if (await predicate(data, file)) {
+                matchedFiles.push({data, file});
             }
-        }
+        });
         return matchedFiles;
     }
 
@@ -122,13 +128,5 @@ export class BundleFileSet {
 
     async isBundleFile(e: Uri) {
         return this.isRootBundleFile(e) || (await this.isIncludedBundleFile(e));
-    }
-
-    async invalidateMergedBundleCache() {
-        await this._mergedBundle.invalidate();
-    }
-
-    get mergedBundle() {
-        return this._mergedBundle.value;
     }
 }
