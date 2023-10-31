@@ -16,7 +16,7 @@ export async function registerBundleAutocompleteProvider(
     const dabsUriScheme = "dabs";
 
     // URI for bundle root config json schema
-    const rootConfigSchemaUri = `${dabsUriScheme}:///root.json`;
+    const rootConfigSchemaUri = `${dabsUriScheme}:///databricks-asset-bundles.json`;
 
     const extensionYaml = extensions.getExtension("redhat.vscode-yaml");
     if (extensionYaml) {
@@ -28,14 +28,21 @@ export async function registerBundleAutocompleteProvider(
         context.subscriptions.push(
             bundleWatcher.onDidChangeRootFile(async () => {
                 bundleFileList = await bundleFileSet.allFiles();
+            }),
+            bundleWatcher.onDidCreate(async (e) => {
+                bundleFileList.push(e);
+            }),
+            bundleWatcher.onDidDelete(async (e) => {
+                bundleFileList.push(e);
             })
         );
         redHatYamlSchemaApi.registerContributor(
             "dabs",
             (resource: string) => {
+                const resourceUri = Uri.parse(resource);
                 if (
                     bundleFileList.find(
-                        (i) => i.fsPath === Uri.parse(resource).fsPath
+                        (i) => i.fsPath === resourceUri.fsPath
                     ) !== undefined
                 ) {
                     return rootConfigSchemaUri;

@@ -53,6 +53,9 @@ import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookD
 import {BundleWatcher} from "./file-managers/BundleWatcher";
 import {BundleFileSet} from "./bundle/BundleFileSet";
 import {showWhatsNewPopup} from "./whatsNewPopup";
+import {ConfigModel} from "./configuration/ConfigModel";
+import {ConfigOverrideReaderWriter} from "./configuration/ConfigOverrideReaderWriter";
+import {BundleConfigReaderWriter} from "./configuration/BundleConfigReaderWriter";
 
 export async function activate(
     context: ExtensionContext
@@ -335,6 +338,24 @@ export async function activate(
             configureAutocomplete
         )
     );
+    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
+    const bundleFileWatcher = new BundleWatcher(
+        workspace.workspaceFolders[0].uri,
+        bundleFileSet
+    );
+    context.subscriptions.push(bundleFileWatcher);
+
+    const overrideReaderWriter = new ConfigOverrideReaderWriter(stateStorage);
+    const bundleConfigReaderWriter = new BundleConfigReaderWriter(
+        bundleFileSet
+    );
+    const confgiModel = new ConfigModel(
+        overrideReaderWriter,
+        bundleConfigReaderWriter,
+        stateStorage,
+        bundleFileWatcher
+    );
+    confgiModel.readTarget();
 
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
@@ -342,7 +363,8 @@ export async function activate(
         stateStorage,
         wsfsAccessVerifier,
         featureManager,
-        telemetry
+        telemetry,
+        confgiModel
     );
 
     context.subscriptions.push(
@@ -533,14 +555,6 @@ export async function activate(
             }
         })
     );
-
-    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
-    const bundleFileWatcher = new BundleWatcher(
-        workspace.workspaceFolders[0].uri,
-        bundleFileSet
-    );
-    context.subscriptions.push(bundleFileWatcher);
-
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
     registerBundleAutocompleteProvider(

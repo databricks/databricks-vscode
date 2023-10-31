@@ -14,6 +14,7 @@ import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {Telemetry} from "../telemetry";
+import {ConfigModel} from "./ConfigModel";
 
 describe(__filename, () => {
     let connectionManagerMock: ConnectionManager;
@@ -74,7 +75,8 @@ describe(__filename, () => {
             instance(mock(StateStorage)),
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
-            instance(mock(Telemetry))
+            instance(mock(Telemetry)),
+            instance(mock(ConfigModel))
         );
         disposables.push(provider);
 
@@ -98,7 +100,8 @@ describe(__filename, () => {
             instance(mock(StateStorage)),
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
-            instance(mock(Telemetry))
+            instance(mock(Telemetry)),
+            instance(mock(ConfigModel))
         );
         disposables.push(provider);
 
@@ -122,7 +125,8 @@ describe(__filename, () => {
             instance(mock(StateStorage)),
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
-            instance(mock(Telemetry))
+            instance(mock(Telemetry)),
+            instance(mock(ConfigModel))
         );
         disposables.push(provider);
 
@@ -155,7 +159,8 @@ describe(__filename, () => {
             instance(mock(StateStorage)),
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
-            instance(mock(Telemetry))
+            instance(mock(Telemetry)),
+            instance(mock(ConfigModel))
         );
         disposables.push(provider);
 
