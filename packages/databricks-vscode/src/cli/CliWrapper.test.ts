@@ -19,6 +19,7 @@ import {Context} from "@databricks/databricks-sdk/dist/context";
 import {logging} from "@databricks/databricks-sdk";
 
 const execFile = promisify(execFileCb);
+const cliPath = path.join(__dirname, "../../bin/databricks");
 
 function getTempLogFilePath() {
     return path.join(
@@ -27,12 +28,11 @@ function getTempLogFilePath() {
     );
 }
 
-function createCliWrapper(logFilePath?: string, absolutePrefix?: string) {
+function createCliWrapper(logFilePath?: string) {
     return new CliWrapper(
         {
             asAbsolutePath(relativePath: string) {
-                if (!absolutePrefix) return relativePath;
-                return path.join(absolutePrefix, relativePath);
+                return path.join(__dirname, "../..", relativePath);
             },
         } as any,
         logFilePath
@@ -41,7 +41,6 @@ function createCliWrapper(logFilePath?: string, absolutePrefix?: string) {
 
 describe(__filename, () => {
     it("should embed a working databricks CLI", async () => {
-        const cliPath = __dirname + "/../../bin/databricks";
         const result = await execFile(cliPath, ["--help"]);
         assert.ok(result.stdout.indexOf("databricks") > 0);
     });
@@ -58,10 +57,7 @@ describe(__filename, () => {
         mocks.push(configsSpy);
         when(configsSpy.loggingEnabled).thenReturn(true);
         when(configsSpy.cliVerboseMode).thenReturn(true);
-        const cli = createCliWrapper(
-            logFilePath,
-            path.join(__dirname, "../..")
-        );
+        const cli = createCliWrapper(logFilePath);
         await execFile(cli.cliPath, ["version", ...cli.loggingArguments]);
         const file = await readFile(logFilePath);
         // Just checking if the file is not empty to avoid depending on internal CLI log patterns
@@ -81,8 +77,7 @@ describe(__filename, () => {
             )
         );
 
-        const syncCommand =
-            "./bin/databricks sync . /Repos/user@databricks.com/project --watch --output json";
+        const syncCommand = `${cliPath} sync . /Repos/user@databricks.com/project --watch --output json`;
         let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
@@ -130,7 +125,7 @@ describe(__filename, () => {
 
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/databricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
+            `${cliPath} configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token`
         );
     });
 
