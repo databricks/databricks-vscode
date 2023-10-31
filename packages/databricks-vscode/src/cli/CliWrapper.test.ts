@@ -31,7 +31,8 @@ function createCliWrapper(logFilePath?: string, absolutePrefix?: string) {
     return new CliWrapper(
         {
             asAbsolutePath(relativePath: string) {
-                return path.join(absolutePrefix || "", relativePath);
+                if (!absolutePrefix) return relativePath;
+                return path.join(absolutePrefix, relativePath);
             },
         } as any,
         logFilePath
@@ -81,7 +82,7 @@ describe(__filename, () => {
         );
 
         const syncCommand =
-            "bin/databricks sync . /Repos/user@databricks.com/project --watch --output json";
+            "./bin/databricks sync . /Repos/user@databricks.com/project --watch --output json";
         let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
@@ -129,7 +130,7 @@ describe(__filename, () => {
 
         assert.equal(
             [command, ...args].join(" "),
-            "bin/databricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
+            "./bin/databricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
         );
     });
 
