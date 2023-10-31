@@ -45,12 +45,13 @@ describe(__filename, () => {
             )
         );
 
+        const logFile = path.join(logUri.fsPath, "databricks-cli-logs.json");
         let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
             [
                 "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json",
-                `--log-level error --log-file ${logUri.fsPath}/databricks-cli-logs.json --log-format json`,
+                `--log-level error --log-file ${logFile} --log-format json`,
             ].join(" ")
         );
 
@@ -59,7 +60,7 @@ describe(__filename, () => {
             [command, ...args].join(" "),
             [
                 "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json",
-                `--log-level error --log-file ${logUri.fsPath}/databricks-cli-logs.json --log-format json`,
+                `--log-level error --log-file ${logFile} --log-format json`,
                 "--full",
             ].join(" ")
         );
