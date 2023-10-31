@@ -68,7 +68,7 @@ export class LoggerManager {
 
         // This logger collects all the logs in the extension.
         NamedLogger.getOrCreate(
-            "Extension",
+            Loggers.Extension,
             {
                 factory: (name) => {
                     return loggers.add(name, {
