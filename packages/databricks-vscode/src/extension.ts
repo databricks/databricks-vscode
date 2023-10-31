@@ -535,10 +535,7 @@ export async function activate(
     );
 
     const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
-    const bundleFileWatcher = new BundleWatcher(
-        workspace.workspaceFolders[0].uri,
-        bundleFileSet
-    );
+    const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);
 
     // generate a json schema for bundle root and load a custom provider into
