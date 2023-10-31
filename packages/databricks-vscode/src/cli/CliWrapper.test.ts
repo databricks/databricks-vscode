@@ -12,6 +12,7 @@ import {writeFile} from "node:fs/promises";
 
 import {CliWrapper} from "./CliWrapper";
 import path from "node:path";
+import os from "node:os";
 import {Context} from "@databricks/databricks-sdk/dist/context";
 import {logging} from "@databricks/databricks-sdk";
 
@@ -25,10 +26,12 @@ describe(__filename, () => {
     });
 
     it("should create sync commands", async () => {
+        const logUri = Uri.file(os.tmpdir());
         const cli = new CliWrapper({
             asAbsolutePath(path: string) {
                 return path;
             },
+            logUri,
         } as any);
         const mapper = new SyncDestinationMapper(
             new LocalUri(
@@ -45,13 +48,20 @@ describe(__filename, () => {
         let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json"
+            [
+                "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json",
+                `--log-level error --log-file ${logUri.fsPath}/databricks-cli-logs.json --log-format json`,
+            ].join(" ")
         );
 
         ({command, args} = cli.getSyncCommand(mapper, "full"));
         assert.equal(
             [command, ...args].join(" "),
-            "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json --full"
+            [
+                "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json",
+                `--log-level error --log-file ${logUri.fsPath}/databricks-cli-logs.json --log-format json`,
+                "--full",
+            ].join(" ")
         );
     });
 

@@ -3,13 +3,6 @@ import {EventEmitter} from "vscode";
 import {Loggers} from "../logger";
 import {SyncState} from "../sync";
 
-const databricksLogLevelToSdk = new Map<string, logging.LEVELS>([
-    ["DEBUG", logging.LEVELS.debug],
-    ["INFO", logging.LEVELS.info],
-    ["WARN", logging.LEVELS.warn],
-    ["ERROR", logging.LEVELS.error],
-]);
-
 type EventBase = {
     timestamp: string;
     seq: number;
@@ -96,28 +89,11 @@ export class DatabricksCliSyncParser {
 
     public processStderr(data: string) {
         const logLines = data.split("\n");
-        let currentLogLevel: logging.LEVELS = logging.LEVELS.info;
         for (let i = 0; i < logLines.length; i++) {
             const line = logLines[i].trim();
             if (line.length === 0) {
                 continue;
             }
-
-            const typeMatch = line.match(
-                /[0-9]+(?:\/[0-9]+)+ [0-9]+(?::[0-9]+)+ \[(.+)\]/
-            );
-            if (typeMatch) {
-                currentLogLevel =
-                    databricksLogLevelToSdk.get(typeMatch[1]) ??
-                    currentLogLevel;
-            }
-            logging.NamedLogger.getOrCreate(Loggers.CLI).log(
-                currentLogLevel,
-                line,
-                {
-                    outfile: "stderr",
-                }
-            );
             this.writeEmitter.fire(line.trim() + "\r\n");
             if (this.matchForErrors(line)) {
                 return;
@@ -154,9 +130,6 @@ export class DatabricksCliSyncParser {
             if (line.length === 0) {
                 continue;
             }
-            logging.NamedLogger.getOrCreate(Loggers.CLI).info(line, {
-                outfile: "stdout",
-            });
 
             try {
                 this.processLine(line);

@@ -1,5 +1,5 @@
 import {execFile as execFileCb, spawn} from "child_process";
-import {ExtensionContext, window, commands} from "vscode";
+import {ExtensionContext, window, commands, Uri} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -47,6 +47,24 @@ export class CliWrapper {
         return this.extensionContext.asAbsolutePath("./bin/databricks");
     }
 
+    get loggingArguments(): string[] {
+        if (!workspaceConfigs.loggingEnabled) {
+            return [];
+        }
+        const logFileUri = Uri.joinPath(
+            this.extensionContext.logUri,
+            "databricks-cli-logs.json"
+        );
+        return [
+            "--log-level",
+            workspaceConfigs.cliVerboseMode ? "debug" : "error",
+            "--log-file",
+            logFileUri.fsPath,
+            "--log-format",
+            "json",
+        ];
+    }
+
     /**
      * Constructs the databricks sync command
      */
@@ -61,12 +79,10 @@ export class CliWrapper {
             "--watch",
             "--output",
             "json",
+            ...this.loggingArguments,
         ];
         if (syncType === "full") {
             args.push("--full");
-        }
-        if (workspaceConfigs.cliVerboseMode) {
-            args.push("--log-level", "debug", "--log-file", "stderr");
         }
         return {command: this.cliPath, args};
     }
@@ -83,7 +99,7 @@ export class CliWrapper {
         configfilePath?: string,
         @context ctx?: Context
     ): Promise<Array<ConfigEntry>> {
-        const cmd = await this.getListProfilesCommand();
+        const cmd = this.getListProfilesCommand();
         const res = await execFile(cmd.command, cmd.args, {
             env: {
                 /*  eslint-disable @typescript-eslint/naming-convention */
