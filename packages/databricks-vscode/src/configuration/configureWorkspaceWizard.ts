@@ -75,6 +75,7 @@ export async function configureWorkspaceWizard(
                 return false;
             },
             items,
+            ignoreFocusOut: true,
         });
 
         state.host = normalizeHost(host);
@@ -158,6 +159,7 @@ export async function configureWorkspaceWizard(
             totalSteps: 2,
             placeholder: "Select authentication method",
             items,
+            ignoreFocusOut: true,
             shouldResume: async () => {
                 return false;
             },
