@@ -22,7 +22,7 @@ describe(__filename, () => {
     let onChangeClusterListener: (e: Cluster) => void;
     let onChangeSyncDestinationListener: (e: SyncDestinationMapper) => void;
     let sync: CodeSynchronizer;
-
+    let mockConfigModel: ConfigModel;
     beforeEach(() => {
         disposables = [];
         connectionManagerMock = mock(ConnectionManager);
@@ -57,6 +57,11 @@ describe(__filename, () => {
             dispose() {},
         });
         sync = instance(syncMock);
+
+        mockConfigModel = mock(ConfigModel);
+        when(mockConfigModel.onDidChangeAny(anything())).thenReturn({
+            dispose() {},
+        });
     });
 
     afterEach(() => {
@@ -76,7 +81,7 @@ describe(__filename, () => {
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
             instance(mock(Telemetry)),
-            instance(mock(ConfigModel))
+            instance(mockConfigModel)
         );
         disposables.push(provider);
 
