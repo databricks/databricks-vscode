@@ -5,6 +5,10 @@ import {
     extensions,
     window,
     workspace,
+    DebugConfigurationProvider,
+    DebugConfiguration,
+    ProviderResult,
+    WorkspaceFolder,
 } from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
@@ -574,12 +578,49 @@ export async function activate(
 
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
-
+    context.subscriptions.push(
+        debug.registerDebugConfigurationProvider(
+            "python",
+            new DatabricksDebugConfigProvider(context)
+        )
+    );
     const publicApi: PublicApi = {
         version: 1,
         connectionManager: connectionManager,
     };
     return publicApi;
+}
+
+class DatabricksDebugConfigProvider implements DebugConfigurationProvider {
+    constructor(private readonly context: ExtensionContext) {}
+
+    // async provideDebugConfigurations() {
+    //     return [
+    //         {
+    //             type: "databricks",
+    //             name: `Databricks: File`,
+    //             program: "${file}",
+    //             request: "launch",
+    //         },
+    //     ];
+    // }
+
+    resolveDebugConfigurationWithSubstitutedVariables(
+        folder: WorkspaceFolder | undefined,
+        debugConfiguration: DebugConfiguration
+    ): ProviderResult<DebugConfiguration> {
+        if (debugConfiguration.type !== "python") {
+            return debugConfiguration;
+        }
+        // eslint-disable-next-line no-console
+        console.log("debugConfiguration", debugConfiguration);
+        const program: string = debugConfiguration.program;
+        debugConfiguration.env.DATABRICKS_SOURCE_FILE = program;
+        debugConfiguration.program = this.context.asAbsolutePath(
+            "./resources/python/local-runner.py"
+        );
+        return debugConfiguration;
+    }
 }
 
 // this method is called when your extension is deactivated

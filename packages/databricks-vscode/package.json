@@ -360,7 +360,14 @@
                     "group": "inline@0"
                 }
             ],
-            "editor/title/run": [
+            "editor/title": [
+                {
+                    "submenu": "databricks.run",
+                    "group": "navigation@0",
+                    "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb"
+                }
+            ],
+            "databricks.run": [
                 {
                     "command": "databricks.run.runEditorContents",
                     "when": "resourceLangId == python",
@@ -414,6 +421,14 @@
                 "id": "databricks.cluster.filter",
                 "label": "Filter clusters ...",
                 "icon": "$(filter)"
+            },
+            {
+                "id": "databricks.run",
+                "label": "Run on Databricks",
+                "icon": {
+                    "dark": "resources/dark/logo.svg",
+                    "light": "resources/light/logo.svg"
+                }
             }
         ],
         "taskDefinitions": [
