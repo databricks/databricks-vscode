@@ -59,9 +59,11 @@ describe(__filename, () => {
         sync = instance(syncMock);
 
         mockConfigModel = mock(ConfigModel);
-        when(mockConfigModel.onDidChangeAny(anything())).thenReturn({
-            dispose() {},
-        });
+        mockConfigModel.onDidChangeAny = () => {
+            return {
+                dispose() {},
+            };
+        };
     });
 
     afterEach(() => {
@@ -81,7 +83,7 @@ describe(__filename, () => {
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
             instance(mock(Telemetry)),
-            instance(mockConfigModel)
+            mockConfigModel
         );
         disposables.push(provider);
 
@@ -106,7 +108,7 @@ describe(__filename, () => {
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
             instance(mock(Telemetry)),
-            instance(mock(ConfigModel))
+            mockConfigModel
         );
         disposables.push(provider);
 
@@ -131,7 +133,7 @@ describe(__filename, () => {
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
             instance(mock(Telemetry)),
-            instance(mock(ConfigModel))
+            mockConfigModel
         );
         disposables.push(provider);
 
@@ -165,7 +167,7 @@ describe(__filename, () => {
             instance(mock(WorkspaceFsAccessVerifier)),
             instance(mock(FeatureManager<"debugging.dbconnect">)),
             instance(mock(Telemetry)),
-            instance(mock(ConfigModel))
+            mockConfigModel
         );
         disposables.push(provider);
 

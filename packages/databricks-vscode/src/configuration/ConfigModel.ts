@@ -74,6 +74,7 @@ export class ConfigModel implements Disposable {
         }
     >();
     private onDidChangeAnyEmitter = new EventEmitter<void>();
+    public onDidChangeAny = this.onDidChangeAnyEmitter.event;
 
     private _target: string | undefined;
 
@@ -114,8 +115,6 @@ export class ConfigModel implements Disposable {
         const {onDidEmit} = this.changeEmitters.get(key)!;
         return onDidEmit(fn, thisArgs);
     }
-
-    readonly onDidChangeAny: Event<void> = this.onDidChangeAnyEmitter.event;
 
     public async readTarget() {
         const targets = Object.keys(
