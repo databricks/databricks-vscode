@@ -41,10 +41,27 @@ function getValidHost(host: string) {
  * of the databricks CLI
  */
 export class CliWrapper {
-    constructor(private extensionContext: ExtensionContext) {}
+    constructor(
+        private extensionContext: ExtensionContext,
+        private logFilePath?: string
+    ) {}
 
     get cliPath(): string {
         return this.extensionContext.asAbsolutePath("./bin/databricks");
+    }
+
+    get loggingArguments(): string[] {
+        if (!workspaceConfigs.loggingEnabled) {
+            return [];
+        }
+        return [
+            "--log-level",
+            "debug",
+            "--log-file",
+            this.logFilePath ?? "stderr",
+            "--log-format",
+            "json",
+        ];
     }
 
     /**
@@ -61,12 +78,10 @@ export class CliWrapper {
             "--watch",
             "--output",
             "json",
+            ...this.loggingArguments,
         ];
         if (syncType === "full") {
             args.push("--full");
-        }
-        if (workspaceConfigs.cliVerboseMode) {
-            args.push("--log-level", "debug", "--log-file", "stderr");
         }
         return {command: this.cliPath, args};
     }
@@ -74,7 +89,12 @@ export class CliWrapper {
     private getListProfilesCommand(): Command {
         return {
             command: this.cliPath,
-            args: ["auth", "profiles", "--skip-validate"],
+            args: [
+                "auth",
+                "profiles",
+                "--skip-validate",
+                ...this.loggingArguments,
+            ],
         };
     }
 
@@ -83,7 +103,7 @@ export class CliWrapper {
         configfilePath?: string,
         @context ctx?: Context
     ): Promise<Array<ConfigEntry>> {
-        const cmd = await this.getListProfilesCommand();
+        const cmd = this.getListProfilesCommand();
         const res = await execFile(cmd.command, cmd.args, {
             env: {
                 /*  eslint-disable @typescript-eslint/naming-convention */

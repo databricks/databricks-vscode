@@ -586,11 +586,6 @@
                         "default": false,
                         "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
                     },
-                    "databricks.cli.verboseMode": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "Enable verbose logging for databricks CLI (sync mode)."
-                    },
                     "databricks.sync.destinationType": {
                         "type": "string",
                         "default": "workspace",
