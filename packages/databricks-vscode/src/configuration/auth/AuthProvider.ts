@@ -3,7 +3,9 @@ import {
     Config,
     ProductVersion,
     WorkspaceClient,
+    logging,
 } from "@databricks/databricks-sdk";
+import {window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
@@ -13,6 +15,7 @@ const extensionVersion = require("../../../package.json")
 
 import {AzureCliCheck} from "./AzureCliCheck";
 import {DatabricksCliCheck} from "./DatabricksCliCheck";
+import {Loggers} from "../../logger";
 
 // TODO: Resolve this with SDK's AuthType.
 export type AuthType = "azure-cli" | "google-id" | "databricks-cli" | "profile";
@@ -47,10 +50,12 @@ export abstract class AuthProvider {
         });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async check(silent: boolean): Promise<boolean> {
-        return true;
-    }
+    /**
+     * Check if the currently selected auth method can be used to login to Databricks.
+     * This function should not throw an error and each implementing class must
+     * handle it's own error messages and retry loops.
+     */
+    abstract check(): Promise<boolean>;
 
     protected abstract getSdkConfig(): Config;
 
@@ -129,6 +134,25 @@ export class ProfileAuthProvider extends AuthProvider {
             env: {},
         });
     }
+
+    async check() {
+        try {
+            const workspaceClient = this.getWorkspaceClient();
+            await workspaceClient.currentUser.me();
+            return true;
+        } catch (e) {
+            let message: string = `Can't login with config profile ${this.profile}`;
+            if (e instanceof Error) {
+                message = `Can't login with config profile ${this.profile}: ${e.message}`;
+            }
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                message,
+                e
+            );
+            window.showErrorMessage(message);
+            return false;
+        }
+    }
 }
 
 export class DatabricksCliAuthProvider extends AuthProvider {
@@ -167,9 +191,9 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         };
     }
 
-    async check(silent: boolean): Promise<boolean> {
+    async check(): Promise<boolean> {
         const databricksCliCheck = new DatabricksCliCheck(this);
-        return databricksCliCheck.check(silent);
+        return databricksCliCheck.check();
     }
 }
 
@@ -225,9 +249,9 @@ export class AzureCliAuthProvider extends AuthProvider {
         return envVars;
     }
 
-    async check(silent: boolean): Promise<boolean> {
+    async check(): Promise<boolean> {
         const cliCheck = new AzureCliCheck(this);
-        const result = await cliCheck.check(silent);
+        const result = await cliCheck.check();
         this._tenantId = cliCheck.tenantId;
         this._appId = cliCheck.azureLoginAppId;
         return result;

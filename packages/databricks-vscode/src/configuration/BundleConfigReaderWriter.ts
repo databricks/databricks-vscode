@@ -6,7 +6,6 @@ import {
 } from "../bundle/BundleFileSet";
 import {BundleTarget} from "../bundle/types";
 import {Mutex} from "../locking";
-import {RemoteUri} from "../sync/SyncDestination";
 import {BundleConfigs, ConfigReaderWriter, isBundleConfig} from "./types";
 
 /**
@@ -74,9 +73,10 @@ export class BundleConfigReaderWriter
         return target;
     }
 
-    public async getWorkspaceFsPath(target?: BundleTarget) {
-        const filePath = target?.workspace?.file_path;
-        return filePath ? new RemoteUri(filePath) : undefined;
+    public async getWorkspaceFsPath(
+        target?: BundleTarget
+    ): Promise<BundleConfigs["workspaceFsPath"]> {
+        return target?.workspace?.file_path;
     }
     public setWorkspaceFsPath(
         target: BundleTarget,

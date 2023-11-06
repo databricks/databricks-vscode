@@ -46,7 +46,7 @@ export class AzureCliCheck implements Disposable {
         this.disposables = [];
     }
 
-    public async check(silent = false): Promise<boolean> {
+    public async check(): Promise<boolean> {
         this.tenantId = this.authProvider.tenantId;
 
         let loginAttempts = 0;
@@ -156,11 +156,12 @@ export class AzureCliCheck implements Disposable {
                 message = e.message;
             }
 
+            NamedLogger.getOrCreate(Loggers.Extension).error(message, e);
             window.showErrorMessage(message);
             return false;
         }
 
-        if (result && !silent) {
+        if (result) {
             window.showInformationMessage(
                 "Databricks: Successfully logged in with Azure CLI"
             );

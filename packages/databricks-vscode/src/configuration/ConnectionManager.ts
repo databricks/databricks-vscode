@@ -13,7 +13,6 @@ import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {StateStorage} from "../vscode-objs/StateStorage";
 import {ConfigModel} from "./ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider} from "./auth/AuthProvider";
@@ -91,7 +90,6 @@ export class ConnectionManager implements Disposable {
     }
     constructor(
         private cli: CliWrapper,
-        private stateStorage: StateStorage,
         private readonly configModel: ConfigModel,
         private readonly workspaceUri: Uri
     ) {
@@ -106,7 +104,20 @@ export class ConnectionManager implements Disposable {
                 this.setClusterManager,
                 this
             )
+            // We DO NOT react to auth parameter changes, because ideally all
+            // auth parameter changes MUST pass through this class and are only
+            // set after a successful login. We do not want to relogin.
         );
+    }
+
+    public async init() {
+        await this.configModel.init();
+        const authParams = await this.configModel.get("authParams");
+        if (authParams !== undefined) {
+            await this.login(
+                AuthProvider.fromJSON(authParams, this.cli.cliPath)
+            );
+        }
     }
 
     get state(): ConnectionState {
@@ -144,7 +155,6 @@ export class ConnectionManager implements Disposable {
 
     private async login(
         authProvider: AuthProvider,
-        databricksWorkspace: DatabricksWorkspace,
         force = false
     ): Promise<void> {
         if (force) {
@@ -153,17 +163,30 @@ export class ConnectionManager implements Disposable {
         if (this.state !== "DISCONNECTED") {
             return;
         }
+
+        if (!(await authProvider.check())) {
+            // We return without any state changes. This ensures that
+            // if users move from a working auth type to an invalid
+            // auth, the old auth will continue working and they will not
+            // have to re authenticate even the old one.
+            return;
+        }
         this.updateState("CONNECTING");
 
+        const databricksWorkspace = await DatabricksWorkspace.load(
+            authProvider.getWorkspaceClient(),
+            authProvider
+        );
         this._databricksWorkspace = databricksWorkspace;
         this._workspaceClient = authProvider.getWorkspaceClient();
+
         await this._databricksWorkspace.optionalEnableFilesInReposPopup(
             this._workspaceClient
         );
 
         const workspacePath = await this.configModel.get("workspaceFsPath");
         const remoteUri = workspacePath
-            ? new RemoteUri(this.workspaceUri)
+            ? new RemoteUri(workspacePath)
             : undefined;
         if (remoteUri !== undefined && !(await remoteUri.validate(this))) {
             window.showErrorMessage(
@@ -175,6 +198,7 @@ export class ConnectionManager implements Disposable {
         await this.createWsFsRootDirectory(this._workspaceClient);
         await this.setSyncDestinationMapper();
         await this.setClusterManager();
+        await this.configModel.set("authParams", authProvider.toJSON());
 
         this.updateState("CONNECTED");
     }
@@ -219,75 +243,34 @@ export class ConnectionManager implements Disposable {
         this._databricksWorkspace = undefined;
         await this.setClusterManager();
         await this.setSyncDestinationMapper();
+        await this.configModel.set("authParams", undefined);
         this.updateState("DISCONNECTED");
     }
 
     async configureWorkspace() {
-        let config:
-            | {
-                  authProvider: AuthProvider;
-              }
-            | undefined;
-        while (true) {
-            if ((await this.configModel.get("host")) === undefined) {
-                return;
-            }
-            config = await configureWorkspaceWizard(
-                this.cli,
-                await this.configModel.get("host")
+        const host = await this.configModel.get("host");
+        if (host === undefined) {
+            return;
+        }
+
+        const config = await configureWorkspaceWizard(this.cli, host);
+        if (!config) {
+            return;
+        }
+
+        try {
+            this.login(config.authProvider);
+        } catch (e: any) {
+            NamedLogger.getOrCreate("Extension").error(
+                `Connection using "${config.authProvider.describe()}" failed`,
+                e
             );
 
-            if (!config) {
-                return;
-            }
-
-            if (!(await config.authProvider.check(false))) {
-                return;
-            }
-
-            try {
-                const workspaceClient =
-                    config.authProvider.getWorkspaceClient();
-
-                await workspaceClient.config.authenticate(new Headers());
-
-                const databricksWorkspace = await DatabricksWorkspace.load(
-                    workspaceClient,
-                    config.authProvider
-                );
-
-                window.showInformationMessage(
-                    `connected to: ${config.authProvider.host}`
-                );
-
-                this.login(
-                    databricksWorkspace.authProvider,
-                    databricksWorkspace
-                );
-            } catch (e: any) {
-                NamedLogger.getOrCreate("Extension").error(
-                    `Connection using "${config.authProvider.describe()}" failed`,
-                    e
-                );
-
-                const response = await window.showWarningMessage(
-                    `Connection using "${config.authProvider.describe()}" failed with error: "${
-                        e.message
-                    }"."`,
-                    "Retry",
-                    "Cancel"
-                );
-
-                switch (response) {
-                    case "Retry":
-                        continue;
-
-                    case "Cancel":
-                        return;
-                }
-            }
-
-            break;
+            await window.showWarningMessage(
+                `Connection using "${config.authProvider.describe()}" failed with error: "${
+                    e.message
+                }"."`
+            );
         }
     }
 

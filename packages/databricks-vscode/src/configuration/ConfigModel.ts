@@ -98,6 +98,9 @@ export class ConfigModel implements Disposable {
             })
         );
     }
+    public async init() {
+        await this.readTarget();
+    }
 
     public onDidChange<T extends keyof DatabricksConfigs | "target">(
         key: T,
@@ -115,7 +118,11 @@ export class ConfigModel implements Disposable {
         const {onDidEmit} = this.changeEmitters.get(key)!;
         return onDidEmit(fn, thisArgs);
     }
-
+    /**
+     * Try to read target from bundle config.
+     * If not found, try to read from state storage.
+     * If not found, try to read the default target from bundle.
+     */
     public async readTarget() {
         const targets = Object.keys(
             (await this.bundleConfigReaderWriter.targets) ?? {}
@@ -140,6 +147,9 @@ export class ConfigModel implements Disposable {
         return this._target;
     }
 
+    /**
+     * Set target in the state storage and invalidate the configs cache.
+     */
     public async setTarget(target: string | undefined) {
         if (target === this._target) {
             return;

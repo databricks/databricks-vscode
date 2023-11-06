@@ -161,13 +161,11 @@ export async function activate(
         stateStorage,
         bundleFileWatcher
     );
-    confgiModel.readTarget();
 
     // Configuration group
     const cli = new CliWrapper(context);
     const connectionManager = new ConnectionManager(
         cli,
-        stateStorage,
         confgiModel,
         workspaceUri
     );
@@ -594,6 +592,9 @@ export async function activate(
         })
     );
 
+    connectionManager.init().catch((e) => {
+        window.showErrorMessage(e);
+    });
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 
