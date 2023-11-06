@@ -4,9 +4,9 @@
 
 ## <small>1.2.3 (2023-11-06)</small>
 
--   Make configuration wizard sticky (#925) ([7a4fb31](https://github.com/databricks/databricks-vscode/commit/7a4fb31)), closes [#925](https://github.com/databricks/databricks-vscode/issues/925)
--   Refactor `StateStore` to make keys more explicit at the point of use. (#913) ([5b8fb23](https://github.com/databricks/databricks-vscode/commit/5b8fb23)), closes [#913](https://github.com/databricks/databricks-vscode/issues/913)
--   Use databricks CLI log-file option to capture the logs (#923) ([18283bb](https://github.com/databricks/databricks-vscode/commit/18283bb)), closes [#923](https://github.com/databricks/databricks-vscode/issues/923)
+-   Fix: Make configuration wizard sticky
+-   Feature: Use databricks CLI log-file option to capture the logs. This deprecates the `databricks.cli.verboseMode` option. 
+-   Feature: Upgrade databricks cli to `v0.209.0`.
 
 # Release: v1.2.2
 
