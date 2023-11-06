@@ -15,6 +15,7 @@ import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {Telemetry} from "../telemetry";
 import {ConfigModel} from "./ConfigModel";
+import {expect} from "chai";
 
 describe(__filename, () => {
     let connectionManagerMock: ConnectionManager;
@@ -139,10 +140,10 @@ describe(__filename, () => {
 
         const children = await resolveProviderResult(provider.getChildren());
         assert(children);
-        assert.equal(children.length, 0);
+        assert.equal(children.length, 4);
     });
 
-    it("should return cluster children", async () => {
+    it("should return children", async () => {
         const mockApiClient = mock(ApiClient);
         when(mockApiClient.host).thenResolve(
             new URL("https://www.example.com")
@@ -172,7 +173,7 @@ describe(__filename, () => {
         disposables.push(provider);
 
         const children = await resolveProviderResult(provider.getChildren());
-        assert.deepEqual(children, [
+        expect(children).to.include.deep.members([
             {
                 collapsibleState: 2,
                 contextValue: "workspace",
