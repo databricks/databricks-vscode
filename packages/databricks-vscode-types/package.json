@@ -1,6 +1,6 @@
 {
     "name": "@databricks/databricks-vscode-types",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "description": "Package with types and interfaces to develop extensions to the Databricks VSCode plugin",
     "main": "index.js",
     "types": "index.d.ts",
