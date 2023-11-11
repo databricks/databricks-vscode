@@ -24,4 +24,32 @@ export class Mutex {
     get locked() {
         return this._locked;
     }
+
+    async synchronise(fn: () => Promise<void>) {
+        await this.wait();
+        try {
+            await fn();
+        } finally {
+            this.signal();
+        }
+    }
+
+    static synchronise(mutexKey: string) {
+        return function (
+            target: any,
+            key: string,
+            descriptor: PropertyDescriptor
+        ) {
+            const original = descriptor.value;
+            descriptor.value = async function (...args: any[]) {
+                const mutex = (this as any)[mutexKey] as Mutex;
+                await mutex.wait();
+                try {
+                    return await original.apply(this, args);
+                } finally {
+                    mutex.signal();
+                }
+            };
+        };
+    }
 }

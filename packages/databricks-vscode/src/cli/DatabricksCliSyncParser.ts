@@ -99,6 +99,7 @@ export class DatabricksCliSyncParser {
                 return;
             }
         }
+        this.syncStateCallback("ERROR", data);
     }
 
     private matchForErrors(line: string) {
