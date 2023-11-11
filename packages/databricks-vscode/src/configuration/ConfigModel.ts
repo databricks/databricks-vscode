@@ -8,7 +8,7 @@ import {
 import {ConfigOverrideReaderWriter} from "./ConfigOverrideReaderWriter";
 import {BundleConfigReaderWriter} from "./BundleConfigReaderWriter";
 import {Mutex} from "../locking";
-import {BundleWatcher} from "../bundle/BundleWatcher";
+import {BundleWatcher} from "../bundle";
 import {CachedValue} from "../locking/CachedValue";
 import {StateStorage} from "../vscode-objs/StateStorage";
 

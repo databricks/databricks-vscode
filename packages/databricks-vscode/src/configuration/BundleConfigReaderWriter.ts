@@ -1,9 +1,5 @@
 import {Uri} from "vscode";
-import {
-    BundleFileSet,
-    parseBundleYaml,
-    writeBundleYaml,
-} from "../bundle/BundleFileSet";
+import {BundleFileSet, parseBundleYaml, writeBundleYaml} from "../bundle";
 import {BundleTarget} from "../bundle/types";
 import {Mutex} from "../locking";
 import {BundleConfigs, ConfigReaderWriter, isBundleConfig} from "./types";

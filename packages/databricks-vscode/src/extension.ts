@@ -31,7 +31,6 @@ import {
     WorkspaceFsCommands,
     WorkspaceFsDataProvider,
 } from "./workspace-fs";
-import {registerBundleAutocompleteProvider} from "./bundle/bundleAutocompleteProvider";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
@@ -49,8 +48,11 @@ import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
-import {BundleWatcher} from "./bundle/BundleWatcher";
-import {BundleFileSet} from "./bundle/BundleFileSet";
+import {
+    BundleWatcher,
+    BundleFileSet,
+    registerBundleAutocompleteProvider,
+} from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {ConfigModel} from "./configuration/ConfigModel";
 import {ConfigOverrideReaderWriter} from "./configuration/ConfigOverrideReaderWriter";

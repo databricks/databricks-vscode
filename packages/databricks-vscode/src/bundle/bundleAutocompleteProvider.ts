@@ -33,7 +33,12 @@ export async function registerBundleAutocompleteProvider(
                 bundleFileList.push(e);
             }),
             bundleWatcher.onDidDelete(async (e) => {
-                bundleFileList.push(e);
+                const idx = bundleFileList.findIndex(
+                    (v) => v.fsPath === e.fsPath
+                );
+                if (idx !== -1) {
+                    bundleFileList.splice(idx, 1);
+                }
             })
         );
         redHatYamlSchemaApi.registerContributor(
