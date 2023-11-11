@@ -9,6 +9,10 @@ export type DatabricksConfigs = {
     workspaceFsPath?: string;
 };
 
+export type DatabricksConfigSource = {
+    [key in keyof DatabricksConfigs]: "bundle" | "override";
+};
+
 export const OVERRIDEABLE_CONFIGS = [
     "clusterId",
     "authParams",
@@ -33,6 +37,10 @@ export type BundleConfigs = Pick<
     DatabricksConfigs,
     (typeof BUNDLE_CONFIGS)[number]
 >;
+
+export const DATABRICKS_CONFIGS = Array.from(
+    new Set([...OVERRIDEABLE_CONFIGS, ...BUNDLE_CONFIGS])
+);
 
 export function isOverrideableConfig(
     key: any
