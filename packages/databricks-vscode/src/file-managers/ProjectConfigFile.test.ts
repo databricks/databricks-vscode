@@ -75,6 +75,7 @@ describe(__filename, () => {
         const configFile = ProjectConfigFile.getProjectConfigFilePath(tempDir);
         await mkdir(path.dirname(configFile), {recursive: true});
 
+        console.log(configFile);
         const config = {
             profile: "testProfile",
             workspacePath: "workspacePath",
