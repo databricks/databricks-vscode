@@ -1,5 +1,5 @@
 import {Disposable, EventEmitter, Uri, workspace} from "vscode";
-import {BundleFileSet} from "../bundle/BundleFileSet";
+import {BundleFileSet} from "./BundleFileSet";
 import {WithMutex} from "../locking";
 import path from "path";
 
