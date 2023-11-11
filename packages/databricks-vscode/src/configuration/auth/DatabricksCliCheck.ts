@@ -2,10 +2,12 @@ import {
     ExecUtils,
     ProductVersion,
     WorkspaceClient,
+    logging,
 } from "@databricks/databricks-sdk";
 import {Disposable, window} from "vscode";
 import {DatabricksCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
+import {Loggers} from "../../logger";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../../package.json")
@@ -23,7 +25,7 @@ export class DatabricksCliCheck implements Disposable {
         this.disposables = [];
     }
 
-    async check(silent: boolean): Promise<boolean> {
+    async check(): Promise<boolean> {
         const steps: Record<StepName, Step<boolean, StepName>> = {
             tryLogin: async () => {
                 if (await this.tryLogin()) {
@@ -55,12 +57,15 @@ export class DatabricksCliCheck implements Disposable {
             } else {
                 message = e.message;
             }
-
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                message,
+                e
+            );
             window.showErrorMessage(message);
             return false;
         }
 
-        if (result && !silent) {
+        if (result) {
             window.showInformationMessage(
                 "Databricks: Successfully logged in with Databricks CLI"
             );
