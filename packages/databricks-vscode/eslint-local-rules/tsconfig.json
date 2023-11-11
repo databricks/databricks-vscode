@@ -1,6 +1,0 @@
-{
-    "transpileOnly": true,
-    "compilerOptions": {
-        "module": "Node16"
-    }
-}

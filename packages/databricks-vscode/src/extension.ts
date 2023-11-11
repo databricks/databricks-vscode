@@ -32,7 +32,7 @@ import {
     WorkspaceFsCommands,
     WorkspaceFsDataProvider,
 } from "./workspace-fs";
-import {registerBundleAutocompleteProvider} from "./bundle/bundleAutocompleteProvider";
+import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
@@ -50,8 +50,6 @@ import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
-import {BundleWatcher} from "./file-managers/BundleWatcher";
-import {BundleFileSet} from "./bundle/BundleFileSet";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 
 export async function activate(
@@ -543,18 +541,9 @@ export async function activate(
         })
     );
 
-    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
-    const bundleFileWatcher = new BundleWatcher(bundleFileSet);
-    context.subscriptions.push(bundleFileWatcher);
-
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
-    registerBundleAutocompleteProvider(
-        cli,
-        bundleFileSet,
-        bundleFileWatcher,
-        context
-    ).catch((e) => {
+    generateBundleSchema(cli).catch((e) => {
         logging.NamedLogger.getOrCreate("Extension").error(
             "Failed to load bundle schema: ",
             e

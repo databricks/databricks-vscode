@@ -1,6 +1,5 @@
 import {randomUUID} from "crypto";
 import {ExtensionContext} from "vscode";
-import {OverrideableConfigs} from "../configuration/types";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 type KeyInfo<V> = {
@@ -17,11 +16,8 @@ function withType<V>() {
 }
 
 const Keys = {
-    "databricks.bundle.overrides": withType<{
-        [k: string]: OverrideableConfigs;
-    }>()({
+    "databricks.clusterId": withType<string>()({
         location: "workspace",
-        defaultValue: {},
     }),
 
     "databricks.wsfs.skipSwitchToWorkspace": withType<boolean>()({
@@ -71,10 +67,6 @@ const Keys = {
             }
             return currentEnvs;
         },
-    }),
-
-    "databricks.bundle.target": withType<string>()({
-        location: "workspace",
     }),
 
     "databricks.lastInstalledExtensionVersion": withType<string>()({

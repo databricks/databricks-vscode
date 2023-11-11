@@ -142,7 +142,7 @@ export class ConnectionManager {
                 }
             }
 
-            if (!(await projectConfigFile.authProvider.check())) {
+            if (!(await projectConfigFile.authProvider.check(true))) {
                 throw new Error(
                     `Can't login with ${projectConfigFile.authProvider.describe()}.`
                 );
@@ -277,7 +277,7 @@ export class ConnectionManager {
                 return;
             }
 
-            if (!(await config.authProvider.check())) {
+            if (!(await config.authProvider.check(false))) {
                 return;
             }
 
