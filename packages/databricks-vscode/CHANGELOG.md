@@ -1,3 +1,13 @@
+# Release: v1.2.3
+
+## packages/databricks-vscode
+
+## <small>1.2.3 (2023-11-06)</small>
+
+-   Fix: Make configuration wizard sticky
+-   Feature: Use databricks CLI log-file option to capture the logs. This deprecates the `databricks.cli.verboseMode` option.
+-   Feature: Upgrade databricks cli to `v0.209.0`.
+
 # Release: v1.2.2
 
 ## packages/databricks-vscode
