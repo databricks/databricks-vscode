@@ -2,7 +2,7 @@ import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {
     BundleConfigs,
     DATABRICKS_CONFIGS,
-    DatabricksConfigSource,
+    DatabricksConfigSourceMap,
     DatabricksConfigs,
     isBundleConfig,
     isOverrideableConfig,
@@ -38,7 +38,7 @@ export class ConfigModel implements Disposable {
     private readonly configsMutex = new Mutex();
     private readonly configCache = new CachedValue<{
         config: DatabricksConfigs;
-        source: DatabricksConfigSource;
+        source: DatabricksConfigSourceMap;
     }>(async (oldValue) => {
         if (this.target === undefined) {
             return {config: {}, source: {}};
@@ -52,7 +52,7 @@ export class ConfigModel implements Disposable {
             ...overrides,
         };
 
-        const source: DatabricksConfigSource = {};
+        const source: DatabricksConfigSourceMap = {};
         DATABRICKS_CONFIGS.forEach((key) => {
             source[key] = key in overrides ? "override" : "bundle";
         });
@@ -138,7 +138,7 @@ export class ConfigModel implements Disposable {
      * If not found, try to read from state storage.
      * If not found, try to read the default target from bundle.
      */
-    public async readTarget() {
+    private async readTarget() {
         const targets = Object.keys(
             (await this.bundleConfigReaderWriter.targets) ?? {}
         );
@@ -194,7 +194,7 @@ export class ConfigModel implements Disposable {
     ): Promise<
         | {
               config: DatabricksConfigs[T];
-              source: DatabricksConfigSource[T] | "default";
+              source: DatabricksConfigSourceMap[T];
           }
         | undefined
     > {

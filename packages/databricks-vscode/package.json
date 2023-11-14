@@ -184,7 +184,7 @@
             {
                 "command": "databricks.cluster.stop",
                 "title": "Stop Cluster",
-                "icon": "$(debug-stop)",
+                "icon": "$(stop-circle)",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             },
@@ -221,6 +221,13 @@
             {
                 "command": "databricks.notebookInitScript.verify",
                 "title": "Verify Databricks notebook init scripts",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.connection.bundle.selectTarget",
+                "icon": "$(gear)",
+                "title": "Select a Databricks Asset Bundle target.",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             }
@@ -324,13 +331,18 @@
                     "group": "inline@2"
                 },
                 {
+                    "command": "databricks.connection.bundle.selectTarget",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/",
+                    "group": "inline@2"
+                },
+                {
                     "command": "databricks.connection.configureWorkspace",
-                    "when": "view == configurationView && viewItem == workspace",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.authType.*$/",
                     "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.attachClusterQuickPick",
-                    "when": "view == configurationView && viewItem == clusterDetached || view == configurationView && viewItem =~ /^databricks.cluster.*$/",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.*$/",
                     "group": "inline@2"
                 },
                 {
@@ -355,12 +367,12 @@
                 },
                 {
                     "command": "databricks.cluster.stop",
-                    "when": "view == configurationView && viewItem =~ /^databricks.cluster.(running|pending)$/",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.(running|pending)$/",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.cluster.start",
-                    "when": "view == configurationView && viewItem == databricks.cluster.terminated",
+                    "when": "view == configurationView && viewItem == databricks.configuration.cluster.terminated",
                     "group": "inline@0"
                 }
             ],

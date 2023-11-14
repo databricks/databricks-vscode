@@ -17,6 +17,7 @@ import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import path from "node:path";
 import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
+import {ConfigModel} from "./ConfigModel";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -55,7 +56,8 @@ export class ConnectionCommands implements Disposable {
     constructor(
         private wsfsCommands: WorkspaceFsCommands,
         private connectionManager: ConnectionManager,
-        private readonly clusterModel: ClusterModel
+        private readonly clusterModel: ClusterModel,
+        private readonly configModel: ConfigModel
     ) {}
 
     /**
@@ -321,6 +323,28 @@ export class ConnectionCommands implements Disposable {
      */
     async detachWorkspaceCommand() {
         this.connectionManager.detachSyncDestination();
+    }
+
+    async selectTarget() {
+        const targets = await this.configModel.bundleConfigReaderWriter.targets;
+        if (targets === undefined) {
+            return;
+        }
+
+        const selectedTarget = await window.showQuickPick(
+            Object.keys(targets).map((t) => {
+                return {
+                    label: t,
+                    description: targets[t].mode ?? "dev",
+                    detail: targets[t].workspace?.host,
+                };
+            }),
+            {title: "Select bundle target"}
+        );
+        if (selectedTarget === undefined) {
+            return;
+        }
+        this.configModel.setTarget(selectedTarget.label);
     }
 
     dispose() {

@@ -12,7 +12,7 @@ import {ConnectionManager} from "./configuration/ConnectionManager";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
-import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
+import {ConfigurationDataProvider} from "./configuration/ui/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
@@ -227,12 +227,6 @@ export async function activate(
     );
     const clusterModel = new ClusterModel(connectionManager);
 
-    const connectionCommands = new ConnectionCommands(
-        workspaceFsCommands,
-        connectionManager,
-        clusterModel
-    );
-
     const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
         connectionManager,
         stateStorage,
@@ -362,11 +356,13 @@ export async function activate(
 
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
-        synchronizer,
-        stateStorage,
-        wsfsAccessVerifier,
-        featureManager,
-        telemetry,
+        confgiModel
+    );
+
+    const connectionCommands = new ConnectionCommands(
+        workspaceFsCommands,
+        connectionManager,
+        clusterModel,
         confgiModel
     );
 
@@ -377,6 +373,11 @@ export async function activate(
         window.registerTreeDataProvider(
             "configurationView",
             configurationDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.connection.bundle.selectTarget",
+            connectionCommands.selectTarget,
+            connectionCommands
         ),
         telemetry.registerCommand(
             "databricks.connection.logout",

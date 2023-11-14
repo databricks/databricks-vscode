@@ -1,6 +1,6 @@
 import {Cluster} from "../sdk-extensions";
 import {Disposable} from "vscode";
-import {ConfigurationTreeItem} from "../configuration/ConfigurationDataProvider";
+import {ConfigurationTreeItem} from "../configuration/ui/types";
 import {openExternal} from "./urlUtils";
 
 export class UtilsCommands implements Disposable {
