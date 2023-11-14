@@ -327,18 +327,21 @@ export class ConnectionCommands implements Disposable {
 
     async selectTarget() {
         const targets = await this.configModel.bundleConfigReaderWriter.targets;
+        const currentTarget = this.configModel.target;
         if (targets === undefined) {
             return;
         }
 
         const selectedTarget = await window.showQuickPick(
-            Object.keys(targets).map((t) => {
-                return {
-                    label: t,
-                    description: targets[t].mode ?? "dev",
-                    detail: targets[t].workspace?.host,
-                };
-            }),
+            Object.keys(targets)
+                .map((t) => {
+                    return {
+                        label: t,
+                        description: targets[t].mode ?? "dev",
+                        detail: targets[t].workspace?.host,
+                    };
+                })
+                .sort((a) => (a.label === currentTarget ? -1 : 1)),
             {title: "Select bundle target"}
         );
         if (selectedTarget === undefined) {

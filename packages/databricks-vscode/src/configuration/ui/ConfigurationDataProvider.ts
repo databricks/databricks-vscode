@@ -4,6 +4,8 @@ import {
     EventEmitter,
     TreeDataProvider,
     TreeItem,
+    ThemeIcon,
+    ThemeColor,
 } from "vscode";
 
 import {ConnectionManager} from "../ConnectionManager";
@@ -13,6 +15,8 @@ import {ConfigurationTreeItem} from "./types";
 import {BundleTargetComponent} from "./BundleTargetComponent";
 import {AuthTypeComponent} from "./AuthTypeComponent";
 import {ClusterComponent} from "./ClusterComponent";
+import {WorkspaceComponent} from "./WorkspaceComponent";
+import {CodeSynchronizer} from "../../sync";
 
 /**
  * Data provider for the cluster tree view
@@ -31,12 +35,18 @@ export class ConfigurationDataProvider
     private components: Array<BaseComponent> = [];
     constructor(
         private readonly connectionManager: ConnectionManager,
+        private readonly codeSynchronizer: CodeSynchronizer,
         private readonly configModel: ConfigModel
     ) {
         this.components.push(
             new BundleTargetComponent(this.configModel),
             new AuthTypeComponent(this.connectionManager, this.configModel),
-            new ClusterComponent(this.connectionManager, this.configModel)
+            new ClusterComponent(this.connectionManager, this.configModel),
+            new WorkspaceComponent(
+                this.codeSynchronizer,
+                this.connectionManager,
+                this.configModel
+            )
         );
 
         this.disposables.push(
@@ -71,7 +81,46 @@ export class ConfigurationDataProvider
 
         return (
             await Promise.all(this.components.map((c) => c.getChildren(parent)))
-        ).flat();
+        )
+            .map((items) => {
+                if (
+                    parent?.source === undefined ||
+                    parent.source === "default" ||
+                    items.length === 0
+                ) {
+                    return items;
+                }
+
+                const tooltip = {
+                    bundle: "This configuration is loaded from a Databricks Asset Bundle.",
+                    override:
+                        "This configuration is a workspace only override.",
+                }[parent.source];
+                return [
+                    {
+                        label: "Source",
+                        description: parent.source,
+                        iconPath: new ThemeIcon("info", new ThemeColor("info")),
+                        tooltip,
+                    },
+                    ...items,
+                ];
+            })
+            .flat()
+            .map((item) => {
+                if (item.source === undefined || item.source === "default") {
+                    return item;
+                }
+                const tooltip = {
+                    bundle: "This configuration is loaded from a Databricks Asset Bundle.",
+                    override:
+                        "This configuration is a workspace only override.",
+                }[item.source];
+                return {
+                    ...item,
+                    tooltip,
+                };
+            });
         // if (element.id === "SYNC-DESTINATION" && syncDestination) {
         //     const children: Array<TreeItem> = [
         //         {

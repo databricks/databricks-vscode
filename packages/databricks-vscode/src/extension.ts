@@ -356,6 +356,7 @@ export async function activate(
 
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
+        synchronizer,
         confgiModel
     );
 
@@ -595,9 +596,7 @@ export async function activate(
         })
     );
 
-    connectionManager.init().catch((e) => {
-        window.showErrorMessage(e);
-    });
+    await confgiModel.init();
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 

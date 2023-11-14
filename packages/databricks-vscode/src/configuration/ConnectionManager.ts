@@ -92,6 +92,7 @@ export class ConnectionManager implements Disposable {
                 : undefined;
         this.onDidChangeClusterEmitter.fire(this.cluster);
     }
+
     constructor(
         private cli: CliWrapper,
         private readonly configModel: ConfigModel,
@@ -107,21 +108,23 @@ export class ConnectionManager implements Disposable {
                 "clusterId",
                 this.setClusterManager,
                 this
-            )
+            ),
+            this.configModel.onDidChange("target", async () => {
+                await this.loginWithSavedAuth();
+            })
             // We DO NOT react to auth parameter changes, because ideally all
             // auth parameter changes MUST pass through this class and are only
             // set after a successful login. We do not want to relogin.
         );
     }
 
+    @onError({
+        log: {logger: Loggers.Extension},
+        popup: {prefix: "Error initialising connection: "},
+    })
     public async init() {
         await this.configModel.init();
-        const authParams = await this.configModel.get("authParams");
-        if (authParams !== undefined) {
-            await this.login(
-                AuthProvider.fromJSON(authParams, this.cli.cliPath)
-            );
-        }
+        this.loginWithSavedAuth();
     }
 
     get state(): ConnectionState {
@@ -157,15 +160,22 @@ export class ConnectionManager implements Disposable {
         return this._workspaceClient?.apiClient;
     }
 
-    private async login(
-        authProvider: AuthProvider,
-        force = false
-    ): Promise<void> {
-        if (force) {
+    @onError({
+        popup: {prefix: "Can't login with saved auth: "},
+        log: {logger: Loggers.Extension},
+    })
+    private async loginWithSavedAuth() {
+        const authParams = await this.configModel.get("authParams");
+        if (authParams === undefined) {
             await this.logout();
-        }
-        if (this.state !== "DISCONNECTED") {
             return;
+        }
+        await this.login(AuthProvider.fromJSON(authParams, this.cli.cliPath));
+    }
+
+    private async login(authProvider: AuthProvider): Promise<void> {
+        if (this.state !== "DISCONNECTED") {
+            await this.logout();
         }
 
         if (!(await authProvider.check())) {

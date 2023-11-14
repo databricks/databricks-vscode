@@ -94,7 +94,7 @@
                 "title": "Start synchronization",
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(sync)"
+                "icon": "$(debug-start)"
             },
             {
                 "command": "databricks.sync.startFull",
@@ -108,7 +108,7 @@
                 "title": "Stop synchronization",
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(sync-ignored)"
+                "icon": "$(stop-circle)"
             },
             {
                 "command": "databricks.cluster.filterByAll",
@@ -228,7 +228,7 @@
                 "command": "databricks.connection.bundle.selectTarget",
                 "icon": "$(gear)",
                 "title": "Select a Databricks Asset Bundle target.",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             }
         ],
@@ -352,17 +352,17 @@
                 },
                 {
                     "command": "databricks.connection.attachSyncDestination",
-                    "when": "view == configurationView && viewItem == syncStopped || view == configurationView && viewItem == syncRunning",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.workspaceFsPath.*$/",
                     "group": "inline@2"
                 },
                 {
                     "command": "databricks.sync.start",
-                    "when": "view == configurationView && viewItem == syncStopped",
+                    "when": "view == configurationView && viewItem == databricks.configuration.workspaceFsPath.stopped",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.sync.stop",
-                    "when": "view == configurationView && viewItem == syncRunning",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.workspaceFsPath.(?!error|stopped|selected).*$/",
                     "group": "inline@0"
                 },
                 {

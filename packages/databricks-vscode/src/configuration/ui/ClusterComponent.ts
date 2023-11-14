@@ -25,13 +25,16 @@ function getTreeItemsForClusterState(cluster: Cluster) {
 
         case "RESTARTING":
         case "PENDING":
-            icon = new ThemeIcon("debug-restart");
+            icon = new ThemeIcon(
+                "sync~spin",
+                new ThemeColor("debugIcon.startForeground")
+            );
             contextValue = "databricks.configuration.cluster.pending";
             break;
 
         case "TERMINATING":
             icon = new ThemeIcon(
-                "debug-restart",
+                "sync~spin",
                 new ThemeColor("notificationsErrorIcon.foreground")
             );
             contextValue = "databricks.configuration.cluster.terminating";
@@ -82,7 +85,7 @@ export class ClusterComponent extends BaseComponent {
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
         const config = await this.configModel.getS("clusterId");
 
-        if (config === undefined) {
+        if (config?.config === undefined) {
             // Cluster is not set in bundle and override
             // We are not logged in
             if (this.connectionManager.state !== "CONNECTED") {
@@ -91,12 +94,15 @@ export class ClusterComponent extends BaseComponent {
 
             // Cluster is not set in bundle and override
             // We are logged in
+            const label = "Select a cluster";
             return [
                 {
-                    label: "Select a cluster",
-                    description: "Select a cluster",
+                    label: {
+                        label,
+                        highlights: [[0, label.length]],
+                    },
                     collapsibleState: TreeItemCollapsibleState.Expanded,
-                    contextValue: "cluster",
+                    contextValue: "databricks.configuration.cluster.none",
                     iconPath: new ThemeIcon(
                         "server",
                         new ThemeColor("notificationsErrorIcon.foreground")
@@ -116,7 +122,7 @@ export class ClusterComponent extends BaseComponent {
                     label: "Cluster",
                     description: clusterId,
                     collapsibleState: TreeItemCollapsibleState.Expanded,
-                    contextValue: "databricks.configuration.cluster.none",
+                    contextValue: "databricks.configuration.cluster.selected",
                     iconPath: new ThemeIcon(
                         "server",
                         new ThemeColor("notificationsErrorIcon.foreground")
