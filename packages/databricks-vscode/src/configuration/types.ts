@@ -1,19 +1,17 @@
-import {RemoteUri} from "../sync/SyncDestination";
-
 export type DatabricksConfigs = {
     host?: string;
 
     // reconcile with actual mode and auth type enums from bundle
     mode?: "dev" | "staging" | "prod";
-    authType?: string;
+    authParams?: Record<string, any>;
 
     clusterId?: string;
-    workspaceFsPath?: RemoteUri;
+    workspaceFsPath?: string;
 };
 
 export const OVERRIDEABLE_CONFIGS = [
     "clusterId",
-    "authType",
+    "authParams",
     "workspaceFsPath",
 ] as const;
 
@@ -24,7 +22,7 @@ export type OverrideableConfigs = Pick<
 
 export const BUNDLE_CONFIGS = [
     "clusterId",
-    "authType",
+    "authParams",
     "workspaceFsPath",
     "mode",
     "host",
@@ -44,4 +42,9 @@ export function isOverrideableConfig(
 
 export function isBundleConfig(key: any): key is keyof BundleConfigs {
     return BUNDLE_CONFIGS.includes(key);
+}
+
+export interface ConfigReaderWriter<T extends keyof DatabricksConfigs> {
+    read(key: T, target: string): Promise<DatabricksConfigs[T] | undefined>;
+    write(key: T, target: string, value?: DatabricksConfigs[T]): Promise<void>;
 }
