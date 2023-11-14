@@ -71,6 +71,10 @@ export class ConnectionManager implements Disposable {
         );
     }
 
+    @onError({
+        log: {logger: Loggers.Extension},
+        popup: {prefix: "Error attaching cluster: "},
+    })
     private async setClusterManager() {
         const clusterId = await this.configModel.get("clusterId");
         if (clusterId === this._clusterManager?.cluster?.id) {

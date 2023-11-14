@@ -53,8 +53,16 @@ export class ConfigModel implements Disposable {
         };
 
         const source: DatabricksConfigSource = {};
+
+        /* By default undefined values are considered to have come from bundle. 
+        This is because when override for a key is undefined, it means that the key
+        is not overridden and we want to get the value from bundle. 
+        */
         DATABRICKS_CONFIGS.forEach((key) => {
-            source[key] = key in overrides ? "override" : "bundle";
+            source[key] =
+                overrides !== undefined && key in overrides
+                    ? "override"
+                    : "bundle";
         });
 
         let didAnyConfigChange = false;
