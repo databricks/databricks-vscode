@@ -2,19 +2,19 @@ import {Uri} from "vscode";
 import {BundleFileSet, parseBundleYaml, writeBundleYaml} from "../bundle";
 import {BundleTarget} from "../bundle/types";
 import {Mutex} from "../locking";
-import {BundleConfigs, ConfigReaderWriter, isBundleConfig} from "./types";
+import {BundleConfig, ConfigReaderWriter, isBundleConfigKey} from "./types";
 
 /**
  * Reads and writes bundle configs. This class does not notify when the configs change.
  * We use the BundleWatcher to notify when the configs change.
  */
 export class BundleConfigReaderWriter
-    implements ConfigReaderWriter<keyof BundleConfigs>
+    implements ConfigReaderWriter<keyof BundleConfig>
 {
     private readonly writeMutex = new Mutex();
 
     private readonly writerMapping: Record<
-        keyof BundleConfigs,
+        keyof BundleConfig,
         (t: BundleTarget, v: any) => BundleTarget
     > = {
         clusterId: this.setClusterId,
@@ -25,10 +25,10 @@ export class BundleConfigReaderWriter
     };
 
     private readonly readerMapping: Record<
-        keyof BundleConfigs,
+        keyof BundleConfig,
         (
             t?: BundleTarget
-        ) => Promise<BundleConfigs[keyof BundleConfigs] | undefined>
+        ) => Promise<BundleConfig[keyof BundleConfig] | undefined>
     > = {
         clusterId: this.getClusterId,
         authParams: this.getAuthParams,
@@ -42,7 +42,7 @@ export class BundleConfigReaderWriter
     public async getHost(target?: BundleTarget) {
         return target?.workspace?.host;
     }
-    public setHost(target: BundleTarget, value: BundleConfigs["host"]) {
+    public setHost(target: BundleTarget, value: BundleConfig["host"]) {
         target = {...target}; // create an explicit copy so as to not modify the original object
         target.workspace = {...target.workspace, host: value};
         return target;
@@ -51,7 +51,7 @@ export class BundleConfigReaderWriter
     public async getMode(target?: BundleTarget) {
         return target?.mode;
     }
-    public setMode(target: BundleTarget, value: BundleConfigs["mode"]) {
+    public setMode(target: BundleTarget, value: BundleConfig["mode"]) {
         target = {...target};
         target.mode = value;
         return target;
@@ -62,7 +62,7 @@ export class BundleConfigReaderWriter
     }
     public setClusterId(
         target: BundleTarget,
-        value: BundleConfigs["clusterId"]
+        value: BundleConfig["clusterId"]
     ) {
         target = {...target};
         target.compute_id = value;
@@ -71,12 +71,12 @@ export class BundleConfigReaderWriter
 
     public async getWorkspaceFsPath(
         target?: BundleTarget
-    ): Promise<BundleConfigs["workspaceFsPath"]> {
+    ): Promise<BundleConfig["workspaceFsPath"]> {
         return target?.workspace?.file_path;
     }
     public setWorkspaceFsPath(
         target: BundleTarget,
-        value: BundleConfigs["workspaceFsPath"]
+        value: BundleConfig["workspaceFsPath"]
     ) {
         target = {...target};
         target.workspace = {
@@ -94,7 +94,7 @@ export class BundleConfigReaderWriter
     }
     public setAuthParams(
         target: BundleTarget,
-        value: BundleConfigs["authParams"]
+        value: BundleConfig["authParams"]
     ): BundleTarget {
         throw new Error("Not implemented");
     }
@@ -123,10 +123,7 @@ export class BundleConfigReaderWriter
         });
     }
 
-    async getFileToWrite<T extends keyof BundleConfigs>(
-        key: T,
-        target: string
-    ) {
+    async getFileToWrite<T extends keyof BundleConfig>(key: T, target: string) {
         const priorityList: {uri: Uri; priority: number}[] = [];
         await this.bundleFileSet.forEach(async (data, file) => {
             // try to find a file which has the config
@@ -163,10 +160,10 @@ export class BundleConfigReaderWriter
      * @returns status of the write
      */
     @Mutex.synchronise("writeMutex")
-    async write<T extends keyof BundleConfigs>(
+    async write<T extends keyof BundleConfig>(
         key: T,
         target: string,
-        value?: BundleConfigs[T]
+        value?: BundleConfig[T]
     ) {
         const file = await this.getFileToWrite(key, target);
         if (file === undefined) {
@@ -194,22 +191,22 @@ export class BundleConfigReaderWriter
      * @param target target to read from
      * @returns value of the config
      */
-    async read<T extends keyof BundleConfigs>(key: T, target: string) {
+    async read<T extends keyof BundleConfig>(key: T, target: string) {
         const targetObject = (await this.bundleFileSet.bundleDataCache.value)
             .targets?.[target];
         return (await this.readerMapping[key](targetObject)) as
-            | BundleConfigs[T]
+            | BundleConfig[T]
             | undefined;
     }
 
     async readAll(target: string) {
         const configs = {} as any;
         for (const key of Object.keys(this.readerMapping)) {
-            if (!isBundleConfig(key)) {
+            if (!isBundleConfigKey(key)) {
                 continue;
             }
             configs[key] = await this.read(key, target);
         }
-        return configs as BundleConfigs;
+        return configs as BundleConfig;
     }
 }
