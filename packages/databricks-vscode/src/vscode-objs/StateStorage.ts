@@ -1,6 +1,6 @@
 import {randomUUID} from "crypto";
 import {ExtensionContext} from "vscode";
-import {OverrideableConfigs} from "../configuration/types";
+import {OverrideableConfig} from "../configuration/types";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 type KeyInfo<V> = {
@@ -18,7 +18,7 @@ function withType<V>() {
 
 const Keys = {
     "databricks.bundle.overrides": withType<{
-        [k: string]: OverrideableConfigs;
+        [k: string]: OverrideableConfig;
     }>()({
         location: "workspace",
         defaultValue: {},
