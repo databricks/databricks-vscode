@@ -1,6 +1,8 @@
 import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {
     BundleConfigs,
+    DATABRICKS_CONFIGS,
+    DatabricksConfigSource,
     DatabricksConfigs,
     isBundleConfig,
     isOverrideableConfig,
@@ -26,6 +28,7 @@ function isDirectToBundleConfig(
 const defaults: DatabricksConfigs = {
     mode: "dev",
 };
+
 /**
  * In memory view of the databricks configs loaded from overrides and bundle.
  */
@@ -33,38 +36,58 @@ export class ConfigModel implements Disposable {
     private disposables: Disposable[] = [];
 
     private readonly configsMutex = new Mutex();
-    private readonly configCache = new CachedValue<DatabricksConfigs>(
-        async (oldValue) => {
-            if (this.target === undefined) {
-                return {};
-            }
-            const overrides = await this.overrideReaderWriter.readAll(
-                this.target
-            );
-            const bundleConfigs = await this.bundleConfigReaderWriter.readAll(
-                this.target
-            );
-            const newValue: DatabricksConfigs = {
-                ...bundleConfigs,
-                ...overrides,
-            };
-
-            for (const key of <(keyof DatabricksConfigs)[]>(
-                Object.keys(newValue)
-            )) {
-                if (
-                    oldValue === null ||
-                    JSON.stringify(oldValue[key]) !==
-                        JSON.stringify(newValue[key])
-                ) {
-                    this.changeEmitters.get(key)?.emitter.fire();
-                    this.onDidChangeAnyEmitter.fire();
-                }
-            }
-
-            return newValue;
+    private readonly configCache = new CachedValue<{
+        config: DatabricksConfigs;
+        source: DatabricksConfigSource;
+    }>(async (oldValue) => {
+        if (this.target === undefined) {
+            return {config: {}, source: {}};
         }
-    );
+        const overrides = await this.overrideReaderWriter.readAll(this.target);
+        const bundleConfigs = await this.bundleConfigReaderWriter.readAll(
+            this.target
+        );
+        const newValue: DatabricksConfigs = {
+            ...bundleConfigs,
+            ...overrides,
+        };
+
+        const source: DatabricksConfigSource = {};
+
+        /* By default undefined values are considered to have come from bundle. 
+        This is because when override for a key is undefined, it means that the key
+        is not overridden and we want to get the value from bundle. 
+        */
+        DATABRICKS_CONFIGS.forEach((key) => {
+            source[key] =
+                overrides !== undefined && key in overrides
+                    ? "override"
+                    : "bundle";
+        });
+
+        let didAnyConfigChange = false;
+        for (const key of DATABRICKS_CONFIGS) {
+            if (
+                // Old value is null, but new value has the key
+                (oldValue === null && newValue[key] !== undefined) ||
+                // Old value is not null, and old and new values for the key are different
+                (oldValue !== null &&
+                    JSON.stringify(oldValue.config[key]) !==
+                        JSON.stringify(newValue[key]))
+            ) {
+                this.changeEmitters.get(key)?.emitter.fire();
+                didAnyConfigChange = true;
+            }
+        }
+
+        if (didAnyConfigChange) {
+            this.onDidChangeAnyEmitter.fire();
+        }
+        return {
+            config: newValue,
+            source: source,
+        };
+    });
 
     private readonly changeEmitters = new Map<
         keyof DatabricksConfigs | "target",
@@ -167,7 +190,33 @@ export class ConfigModel implements Disposable {
     public async get<T extends keyof DatabricksConfigs>(
         key: T
     ): Promise<DatabricksConfigs[T] | undefined> {
-        return (await this.configCache.value)[key] ?? defaults[key];
+        return (await this.configCache.value).config[key] ?? defaults[key];
+    }
+
+    /**
+     * Return config value along with source of the config.
+     * Refer to {@link DatabricksConfigSource} for possible values.
+     */
+    public async getS<T extends keyof DatabricksConfigs>(
+        key: T
+    ): Promise<
+        | {
+              config: DatabricksConfigs[T];
+              source: DatabricksConfigSource[T] | "default";
+          }
+        | undefined
+    > {
+        const {config: fullConfig, source: fullSource} = await this.configCache
+            .value;
+        const config = fullConfig[key] ?? defaults[key];
+        const source =
+            fullConfig[key] !== undefined ? fullSource[key] : "default";
+        return config
+            ? {
+                  config,
+                  source,
+              }
+            : undefined;
     }
 
     @Mutex.synchronise("configsMutex")
@@ -180,7 +229,7 @@ export class ConfigModel implements Disposable {
         // No changes to the cache can happen when the global mutex is held.
         // The assumption is that user doesn't change the target mode in the middle of
         // writing a new config.
-        const {mode} = {...(await this.configCache.value)};
+        const {mode} = {...(await this.configCache.value).config};
 
         if (this.target === undefined) {
             throw new Error(
