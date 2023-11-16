@@ -1,4 +1,4 @@
-export type DatabricksConfigs = {
+export type DatabricksConfig = {
     host?: string;
 
     // reconcile with actual mode and auth type enums from bundle
@@ -9,18 +9,22 @@ export type DatabricksConfigs = {
     workspaceFsPath?: string;
 };
 
-export const OVERRIDEABLE_CONFIGS = [
+export type DatabricksConfigSource = {
+    [key in keyof DatabricksConfig]: "bundle" | "override";
+};
+
+export const OVERRIDEABLE_CONFIG_KEYS = [
     "clusterId",
     "authParams",
     "workspaceFsPath",
 ] as const;
 
-export type OverrideableConfigs = Pick<
-    DatabricksConfigs,
-    (typeof OVERRIDEABLE_CONFIGS)[number]
+export type OverrideableConfig = Pick<
+    DatabricksConfig,
+    (typeof OVERRIDEABLE_CONFIG_KEYS)[number]
 >;
 
-export const BUNDLE_CONFIGS = [
+export const BUNDLE_CONFIG_KEYS = [
     "clusterId",
     "authParams",
     "workspaceFsPath",
@@ -29,22 +33,26 @@ export const BUNDLE_CONFIGS = [
 ] as const;
 
 /** These are configs which can be loaded from the bundle */
-export type BundleConfigs = Pick<
-    DatabricksConfigs,
-    (typeof BUNDLE_CONFIGS)[number]
+export type BundleConfig = Pick<
+    DatabricksConfig,
+    (typeof BUNDLE_CONFIG_KEYS)[number]
 >;
 
-export function isOverrideableConfig(
+export const DATABRICKS_CONFIG_KEYS = Array.from(
+    new Set([...OVERRIDEABLE_CONFIG_KEYS, ...BUNDLE_CONFIG_KEYS])
+);
+
+export function isOverrideableConfigKey(
     key: any
-): key is keyof OverrideableConfigs {
-    return OVERRIDEABLE_CONFIGS.includes(key);
+): key is keyof OverrideableConfig {
+    return OVERRIDEABLE_CONFIG_KEYS.includes(key);
 }
 
-export function isBundleConfig(key: any): key is keyof BundleConfigs {
-    return BUNDLE_CONFIGS.includes(key);
+export function isBundleConfigKey(key: any): key is keyof BundleConfig {
+    return BUNDLE_CONFIG_KEYS.includes(key);
 }
 
-export interface ConfigReaderWriter<T extends keyof DatabricksConfigs> {
-    read(key: T, target: string): Promise<DatabricksConfigs[T] | undefined>;
-    write(key: T, target: string, value?: DatabricksConfigs[T]): Promise<void>;
+export interface ConfigReaderWriter<T extends keyof DatabricksConfig> {
+    read(key: T, target: string): Promise<DatabricksConfig[T] | undefined>;
+    write(key: T, target: string, value?: DatabricksConfig[T]): Promise<void>;
 }
