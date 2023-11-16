@@ -111,20 +111,32 @@ export class ConnectionManager implements Disposable {
                 "clusterId",
                 this.updateClusterManager,
                 this
-            )
-            // TODO: React to auth changes ONLY when changes are made to auth parameters in the bundle.
-            // If an override is set, then all settings must go through this class, so we don't double login.
+            ),
+            this.configModel.onDidChange(
+                "target",
+                this.loginWithSavedAuth,
+                this
+            ),
+            this.configModel.onDidChange("authParams", async () => {
+                const config = await this.configModel.getS("authParams");
+                if (config === undefined) {
+                    return;
+                }
+
+                // We only react to auth changes coming from the bundle.
+                // If an override is set, then all settings must have gone
+                // through this class, which means that we have already logged in
+                // using those settings, so we don't double login.
+                if (config.source === "bundle") {
+                    await this.loginWithSavedAuth();
+                }
+            })
         );
     }
 
     public async init() {
         await this.configModel.init();
-        const authParams = await this.configModel.get("authParams");
-        if (authParams !== undefined) {
-            await this.login(
-                AuthProvider.fromJSON(authParams, this.cli.cliPath)
-            );
-        }
+        await this.loginWithSavedAuth();
     }
 
     get state(): ConnectionState {
@@ -158,6 +170,19 @@ export class ConnectionManager implements Disposable {
 
     get apiClient(): ApiClient | undefined {
         return this._workspaceClient?.apiClient;
+    }
+
+    @onError({
+        popup: {prefix: "Can't login with saved auth: "},
+        log: true,
+    })
+    private async loginWithSavedAuth() {
+        const authParams = await this.configModel.get("authParams");
+        if (authParams === undefined) {
+            await this.logout();
+            return;
+        }
+        await this.login(AuthProvider.fromJSON(authParams, this.cli.cliPath));
     }
 
     private async login(
