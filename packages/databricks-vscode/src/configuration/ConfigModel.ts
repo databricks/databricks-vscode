@@ -13,6 +13,7 @@ import {Mutex} from "../locking";
 import {BundleWatcher} from "../bundle";
 import {CachedValue} from "../locking/CachedValue";
 import {StateStorage} from "../vscode-objs/StateStorage";
+import _ from "lodash";
 
 function isDirectToBundleConfig(
     key: keyof BundleConfig,
@@ -72,8 +73,7 @@ export class ConfigModel implements Disposable {
                 (oldValue === null && newValue[key] !== undefined) ||
                 // Old value is not null, and old and new values for the key are different
                 (oldValue !== null &&
-                    JSON.stringify(oldValue.config[key]) !==
-                        JSON.stringify(newValue[key]))
+                    !_.isEqual(oldValue.config[key], newValue[key]))
             ) {
                 this.changeEmitters.get(key)?.emitter.fire();
                 didAnyConfigChange = true;
