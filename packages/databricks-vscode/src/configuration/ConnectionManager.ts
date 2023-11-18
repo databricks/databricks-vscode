@@ -31,7 +31,7 @@ export class ConnectionManager implements Disposable {
     private disposables: Disposable[] = [];
 
     private _state: ConnectionState = "DISCONNECTED";
-    private stateMutex: Mutex = new Mutex();
+    private loginLogoutMutex: Mutex = new Mutex();
 
     private _workspaceClient?: WorkspaceClient;
     private _syncDestinationMapper?: SyncDestinationMapper;
@@ -207,7 +207,7 @@ export class ConnectionManager implements Disposable {
             return;
         }
         try {
-            await this.stateMutex.synchronise(async () => {
+            await this.loginLogoutMutex.synchronise(async () => {
                 this.updateState("CONNECTING");
 
                 const databricksWorkspace = await DatabricksWorkspace.load(
@@ -269,7 +269,7 @@ export class ConnectionManager implements Disposable {
     }
 
     @onError({popup: {prefix: "Can't logout. "}})
-    @Mutex.synchronise("stateMutex")
+    @Mutex.synchronise("loginLogoutMutex")
     async logout() {
         this._workspaceClient = undefined;
         this._databricksWorkspace = undefined;
@@ -335,7 +335,7 @@ export class ConnectionManager implements Disposable {
     }
 
     private updateState(newState: ConnectionState) {
-        if (!this.stateMutex.locked) {
+        if (!this.loginLogoutMutex.locked) {
             throw new Error(
                 "updateState must be called after aquireing the state mutex"
             );
