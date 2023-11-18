@@ -15,6 +15,7 @@ import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {ConfigModel} from "./ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider} from "./auth/AuthProvider";
+import {Mutex} from "../locking";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -28,7 +29,10 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
  */
 export class ConnectionManager implements Disposable {
     private disposables: Disposable[] = [];
+
     private _state: ConnectionState = "DISCONNECTED";
+    private stateMutex: Mutex = new Mutex();
+
     private _workspaceClient?: WorkspaceClient;
     private _syncDestinationMapper?: SyncDestinationMapper;
     private _clusterManager?: ClusterManager;
@@ -173,8 +177,7 @@ export class ConnectionManager implements Disposable {
     }
 
     @onError({
-        popup: {prefix: "Can't login with saved auth: "},
-        log: true,
+        popup: {prefix: "Can't login with saved auth. "},
     })
     private async loginWithSavedAuth() {
         const authParams = await this.configModel.get("authParams");
@@ -204,25 +207,27 @@ export class ConnectionManager implements Disposable {
             return;
         }
         try {
-            this.updateState("CONNECTING");
+            await this.stateMutex.synchronise(async () => {
+                this.updateState("CONNECTING");
 
-            const databricksWorkspace = await DatabricksWorkspace.load(
-                authProvider.getWorkspaceClient(),
-                authProvider
-            );
-            this._databricksWorkspace = databricksWorkspace;
-            this._workspaceClient = authProvider.getWorkspaceClient();
+                const databricksWorkspace = await DatabricksWorkspace.load(
+                    authProvider.getWorkspaceClient(),
+                    authProvider
+                );
+                this._databricksWorkspace = databricksWorkspace;
+                this._workspaceClient = authProvider.getWorkspaceClient();
 
-            await this._databricksWorkspace.optionalEnableFilesInReposPopup(
-                this._workspaceClient
-            );
+                await this._databricksWorkspace.optionalEnableFilesInReposPopup(
+                    this._workspaceClient
+                );
 
-            await this.createWsFsRootDirectory(this._workspaceClient);
-            await this.updateSyncDestinationMapper();
-            await this.updateClusterManager();
-            await this.configModel.set("authParams", authProvider.toJSON());
+                await this.createWsFsRootDirectory(this._workspaceClient);
+                await this.updateSyncDestinationMapper();
+                await this.updateClusterManager();
+                await this.configModel.set("authParams", authProvider.toJSON());
 
-            this.updateState("CONNECTED");
+                this.updateState("CONNECTED");
+            });
         } catch (e) {
             NamedLogger.getOrCreate("Extension").error(`Login failed`, e);
             if (e instanceof Error) {
@@ -263,13 +268,9 @@ export class ConnectionManager implements Disposable {
         }
     }
 
+    @onError({popup: {prefix: "Can't logout. "}})
+    @Mutex.synchronise("stateMutex")
     async logout() {
-        if (this._state === "DISCONNECTED") {
-            return;
-        } else {
-            await this.waitForConnect();
-        }
-
         this._workspaceClient = undefined;
         this._databricksWorkspace = undefined;
         await this.updateClusterManager();
@@ -278,6 +279,9 @@ export class ConnectionManager implements Disposable {
         this.updateState("DISCONNECTED");
     }
 
+    @onError({
+        popup: {prefix: "Can't configure workspace. "},
+    })
     async configureWorkspace() {
         const host = await this.configModel.get("host");
         if (host === undefined) {
@@ -293,8 +297,7 @@ export class ConnectionManager implements Disposable {
     }
 
     @onError({
-        popup: {prefix: "Can't attach cluster: "},
-        log: true,
+        popup: {prefix: "Can't attach cluster. "},
     })
     async attachCluster(clusterId: string): Promise<void> {
         if (this.cluster?.id === clusterId) {
@@ -304,16 +307,14 @@ export class ConnectionManager implements Disposable {
     }
 
     @onError({
-        popup: {prefix: "Can't detach cluster: "},
-        log: true,
+        popup: {prefix: "Can't detach cluster. "},
     })
     async detachCluster(): Promise<void> {
         await this.configModel.set("clusterId", undefined);
     }
 
     @onError({
-        popup: {prefix: "Can't attach sync destination: "},
-        log: true,
+        popup: {prefix: "Can't attach sync destination. "},
     })
     async attachSyncDestination(remoteWorkspace: RemoteUri): Promise<void> {
         if (!(await remoteWorkspace.validate(this))) {
@@ -327,16 +328,17 @@ export class ConnectionManager implements Disposable {
     }
 
     @onError({
-        popup: {prefix: "Can't detach sync destination: "},
-        log: true,
+        popup: {prefix: "Can't detach sync destination. "},
     })
     async detachSyncDestination(): Promise<void> {
         await this.configModel.set("workspaceFsPath", undefined);
     }
 
     private updateState(newState: ConnectionState) {
-        if (newState === "DISCONNECTED") {
-            this._databricksWorkspace = undefined;
+        if (!this.stateMutex.locked) {
+            throw new Error(
+                "updateState must be called after aquireing the state mutex"
+            );
         }
         if (this._state !== newState) {
             this._state = newState;

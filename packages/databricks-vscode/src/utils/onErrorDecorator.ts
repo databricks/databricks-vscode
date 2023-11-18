@@ -18,7 +18,13 @@ interface Props {
           }
         | true;
 }
+
+const defaultProps: Props = {
+    log: true,
+};
+
 export function onError(props: Props) {
+    props = {...defaultProps, ...props};
     return function showErrorDecorator(
         target: any,
         propertyKey: string,
