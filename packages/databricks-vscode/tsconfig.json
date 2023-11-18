@@ -3,9 +3,10 @@
     "compilerOptions": {
         "outDir": "out",
         "lib": ["ES2020", "ES2021.String", "DOM"],
-        "rootDir": "src"
+        "rootDir": "src",
+        "resolveJsonModule": true
     },
     "references": [{"path": "../databricks-vscode-types"}],
-    "include": ["src"],
+    "include": ["src", "src/chat/functions.json"],
     "exclude": ["src/test/e2e/"]
 }

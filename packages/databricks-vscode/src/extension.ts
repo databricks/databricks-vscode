@@ -6,6 +6,7 @@ import {
     window,
     workspace,
 } from "vscode";
+import * as vscode from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -51,6 +52,7 @@ import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifie
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
 import {showWhatsNewPopup} from "./whatsNewPopup";
+import {initChatFeatures} from "./chat";
 
 export async function activate(
     context: ExtensionContext
@@ -508,6 +510,8 @@ export async function activate(
             cli.cliPath
         )
     );
+
+    await initChatFeatures(context, connectionManager);
 
     // Quickstart
     const quickstartCommands = new QuickstartCommands(context);

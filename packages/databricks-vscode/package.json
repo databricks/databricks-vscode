@@ -643,7 +643,21 @@
     },
     "extensionDependencies": [
         "ms-python.python",
-        "ms-toolsai.jupyter"
+        "ms-toolsai.jupyter",
+        "github.copilot-chat"
+    ],
+    "enabledApiProposals": [
+        "chat",
+        "chatAgents2",
+        "chatAgents2Additions",
+        "chatRequestAccess",
+        "chatProvider",
+        "chatTab",
+        "chatVariables",
+        "interactive",
+        "interactiveUserActions",
+        "interactiveWindow",
+        "readonlyMessage"
     ],
     "vsce": {
         "dependencies": false,
