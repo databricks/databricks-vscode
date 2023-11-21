@@ -39,7 +39,7 @@ import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
-import {Telemetry, toUserMetadata} from "./telemetry";
+import {getContextMetadata, Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
@@ -107,6 +107,7 @@ export async function activate(
     }
 
     const telemetry = Telemetry.createDefault();
+    telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
 
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
