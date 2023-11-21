@@ -3,7 +3,7 @@ import {BundleFileSet, parseBundleYaml, writeBundleYaml} from "../bundle";
 import {BundleTarget} from "../bundle/types";
 import {Mutex} from "../locking";
 import {BundleConfig, ConfigReaderWriter, isBundleConfigKey} from "./types";
-
+import _ from "lodash";
 /**
  * Reads and writes bundle configs. This class does not notify when the configs change.
  * We use the BundleWatcher to notify when the configs change.
@@ -178,7 +178,8 @@ export class BundleConfigReaderWriter
         }
 
         const newTargetData = this.writerMapping[key](targetData, value);
-        if (JSON.stringify(newTargetData) === JSON.stringify(targetData)) {
+
+        if (_.isEqual(newTargetData, targetData)) {
             return;
         }
         data.targets = {...data.targets, [target]: newTargetData};
