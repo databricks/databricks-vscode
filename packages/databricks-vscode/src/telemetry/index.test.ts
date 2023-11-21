@@ -12,9 +12,13 @@ import {ApiClient, Config} from "@databricks/databricks-sdk";
 describe(__filename, () => {
     let reporter: TelemetryReporter;
     let telemetry: Telemetry;
+    const defaultClusterId = process.env["TEST_DEFAULT_CLUSTER_ID"];
     beforeEach(async () => {
         reporter = mock(TelemetryReporter);
         telemetry = new Telemetry(instance(reporter));
+    });
+    afterEach(() => {
+        process.env["TEST_DEFAULT_CLUSTER_ID"] = defaultClusterId;
     });
     it("should record expected properties and metrics", async () => {
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
@@ -37,6 +41,7 @@ describe(__filename, () => {
     });
 
     it("sets context metadata with prod env type", async () => {
+        delete process.env["TEST_DEFAULT_CLUSTER_ID"];
         telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
             command: "testCommand",
@@ -69,7 +74,6 @@ describe(__filename, () => {
             "event.success": "true",
             "context.environmentType": "tests",
         });
-        delete process.env["TEST_DEFAULT_CLUSTER_ID"];
     });
 
     it("sets user metadata correctly after logged in", async () => {
