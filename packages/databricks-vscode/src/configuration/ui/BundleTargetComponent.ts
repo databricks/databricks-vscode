@@ -1,7 +1,7 @@
 import {ThemeIcon, ThemeColor, TreeItemCollapsibleState, window} from "vscode";
 import {ConfigModel} from "../ConfigModel";
 import {BaseComponent} from "./BaseComponent";
-import {DatabricksConfigs} from "../types";
+import {DatabricksConfig} from "../types";
 import {ConfigurationTreeItem} from "./types";
 
 const TREE_ICON_ID = "TARGET";
@@ -10,7 +10,7 @@ function getTreeIconId(key: string) {
     return `${TREE_ICON_ID}.${key}`;
 }
 
-function humaniseMode(mode: DatabricksConfigs["mode"]) {
+function humaniseMode(mode: DatabricksConfig["mode"]) {
     switch (mode) {
         case "prod":
             return "Production";

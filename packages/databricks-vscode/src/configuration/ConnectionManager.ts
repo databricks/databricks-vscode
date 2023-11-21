@@ -10,12 +10,12 @@ import {
 import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
-import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {ConfigModel} from "./ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider} from "./auth/AuthProvider";
+import {Mutex} from "../locking";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -30,6 +30,8 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 export class ConnectionManager implements Disposable {
     private disposables: Disposable[] = [];
     private _state: ConnectionState = "DISCONNECTED";
+    private loginLogoutMutex: Mutex = new Mutex();
+
     private _workspaceClient?: WorkspaceClient;
     private _syncDestinationMapper?: SyncDestinationMapper;
     private _clusterManager?: ClusterManager;
@@ -51,7 +53,10 @@ export class ConnectionManager implements Disposable {
 
     public metadataServiceUrl?: string;
 
-    private async setSyncDestinationMapper() {
+    @onError({
+        popup: {prefix: "Error attaching sync destination: "},
+    })
+    private async updateSyncDestinationMapper() {
         const workspacePath = await this.configModel.get("workspaceFsPath");
         const remoteUri = workspacePath
             ? new RemoteUri(workspacePath)
@@ -59,23 +64,30 @@ export class ConnectionManager implements Disposable {
         if (remoteUri?.path === this._syncDestinationMapper?.remoteUri.path) {
             return;
         }
-        this._syncDestinationMapper =
-            remoteUri !== undefined
-                ? new SyncDestinationMapper(
-                      new LocalUri(this.workspaceUri),
-                      remoteUri
-                  )
-                : undefined;
-        this.onDidChangeSyncDestinationEmitter.fire(
-            this._syncDestinationMapper
+        if (remoteUri === undefined) {
+            this._syncDestinationMapper = undefined;
+            this.onDidChangeSyncDestinationEmitter.fire(
+                this._syncDestinationMapper
+            );
+            return;
+        }
+        if (!(await remoteUri.validate(this))) {
+            window.showErrorMessage(
+                `Invalid sync destination ${workspacePath}`
+            );
+            this.detachSyncDestination();
+            return;
+        }
+        this._syncDestinationMapper = new SyncDestinationMapper(
+            new LocalUri(this.workspaceUri),
+            remoteUri
         );
     }
 
     @onError({
-        log: {logger: Loggers.Extension},
         popup: {prefix: "Error attaching cluster: "},
     })
-    private async setClusterManager() {
+    private async updateClusterManager() {
         const clusterId = await this.configModel.get("clusterId");
         if (clusterId === this._clusterManager?.cluster?.id) {
             return;
@@ -101,30 +113,39 @@ export class ConnectionManager implements Disposable {
         this.disposables.push(
             this.configModel.onDidChange(
                 "workspaceFsPath",
-                this.setSyncDestinationMapper,
+                this.updateSyncDestinationMapper,
                 this
             ),
             this.configModel.onDidChange(
                 "clusterId",
-                this.setClusterManager,
+                this.updateClusterManager,
                 this
             ),
-            this.configModel.onDidChange("target", async () => {
-                await this.loginWithSavedAuth();
+            this.configModel.onDidChange(
+                "target",
+                this.loginWithSavedAuth,
+                this
+            ),
+            this.configModel.onDidChange("authParams", async () => {
+                const config = await this.configModel.getS("authParams");
+                if (config === undefined) {
+                    return;
+                }
+
+                // We only react to auth changes coming from the bundle.
+                // If an override is set, then all settings must have gone
+                // through this class, which means that we have already logged in
+                // using those settings, so we don't double login.
+                if (config.source === "bundle") {
+                    await this.loginWithSavedAuth();
+                }
             })
-            // We DO NOT react to auth parameter changes, because ideally all
-            // auth parameter changes MUST pass through this class and are only
-            // set after a successful login. We do not want to relogin.
         );
     }
 
-    @onError({
-        log: {logger: Loggers.Extension},
-        popup: {prefix: "Error initialising connection: "},
-    })
     public async init() {
         await this.configModel.init();
-        this.loginWithSavedAuth();
+        await this.loginWithSavedAuth();
     }
 
     get state(): ConnectionState {
@@ -161,8 +182,7 @@ export class ConnectionManager implements Disposable {
     }
 
     @onError({
-        popup: {prefix: "Can't login with saved auth: "},
-        log: {logger: Loggers.Extension},
+        popup: {prefix: "Can't login with saved auth. "},
     })
     private async loginWithSavedAuth() {
         const authParams = await this.configModel.get("authParams");
@@ -173,8 +193,11 @@ export class ConnectionManager implements Disposable {
         await this.login(AuthProvider.fromJSON(authParams, this.cli.cliPath));
     }
 
-    private async login(authProvider: AuthProvider): Promise<void> {
-        if (this.state !== "DISCONNECTED") {
+    private async login(
+        authProvider: AuthProvider,
+        force = false
+    ): Promise<void> {
+        if (force) {
             await this.logout();
         }
 
@@ -185,36 +208,38 @@ export class ConnectionManager implements Disposable {
             // have to re authenticate even the old one.
             return;
         }
-        this.updateState("CONNECTING");
 
-        const databricksWorkspace = await DatabricksWorkspace.load(
-            authProvider.getWorkspaceClient(),
-            authProvider
-        );
-        this._databricksWorkspace = databricksWorkspace;
-        this._workspaceClient = authProvider.getWorkspaceClient();
+        try {
+            await this.loginLogoutMutex.synchronise(async () => {
+                this.updateState("CONNECTING");
 
-        await this._databricksWorkspace.optionalEnableFilesInReposPopup(
-            this._workspaceClient
-        );
+                const databricksWorkspace = await DatabricksWorkspace.load(
+                    authProvider.getWorkspaceClient(),
+                    authProvider
+                );
+                this._databricksWorkspace = databricksWorkspace;
+                this._workspaceClient = authProvider.getWorkspaceClient();
 
-        const workspacePath = await this.configModel.get("workspaceFsPath");
-        const remoteUri = workspacePath
-            ? new RemoteUri(workspacePath)
-            : undefined;
-        if (remoteUri !== undefined && !(await remoteUri.validate(this))) {
-            window.showErrorMessage(
-                `Invalid sync destination ${workspacePath}`
-            );
-            this.detachSyncDestination();
+                await this._databricksWorkspace.optionalEnableFilesInReposPopup(
+                    this._workspaceClient
+                );
+
+                await this.createWsFsRootDirectory(this._workspaceClient);
+                await this.updateSyncDestinationMapper();
+                await this.updateClusterManager();
+                await this.configModel.set("authParams", authProvider.toJSON());
+
+                this.updateState("CONNECTED");
+            });
+        } catch (e) {
+            NamedLogger.getOrCreate("Extension").error(`Login failed`, e);
+            if (e instanceof Error) {
+                await window.showWarningMessage(
+                    `Login failed with error: "${e.message}"."`
+                );
+            }
+            await this.logout();
         }
-
-        await this.createWsFsRootDirectory(this._workspaceClient);
-        await this.setSyncDestinationMapper();
-        await this.setClusterManager();
-        await this.configModel.set("authParams", authProvider.toJSON());
-
-        this.updateState("CONNECTED");
     }
 
     async createWsFsRootDirectory(wsClient: WorkspaceClient) {
@@ -246,21 +271,20 @@ export class ConnectionManager implements Disposable {
         }
     }
 
+    @onError({popup: {prefix: "Can't logout. "}})
+    @Mutex.synchronise("loginLogoutMutex")
     async logout() {
-        if (this._state === "DISCONNECTED") {
-            return;
-        } else {
-            await this.waitForConnect();
-        }
-
         this._workspaceClient = undefined;
         this._databricksWorkspace = undefined;
-        await this.setClusterManager();
-        await this.setSyncDestinationMapper();
+        await this.updateClusterManager();
+        await this.updateSyncDestinationMapper();
         await this.configModel.set("authParams", undefined);
         this.updateState("DISCONNECTED");
     }
 
+    @onError({
+        popup: {prefix: "Can't configure workspace. "},
+    })
     async configureWorkspace() {
         const host = await this.configModel.get("host");
         if (host === undefined) {
@@ -272,44 +296,28 @@ export class ConnectionManager implements Disposable {
             return;
         }
 
-        try {
-            this.login(config.authProvider);
-        } catch (e: any) {
-            NamedLogger.getOrCreate("Extension").error(
-                `Connection using "${config.authProvider.describe()}" failed`,
-                e
-            );
-
-            await window.showWarningMessage(
-                `Connection using "${config.authProvider.describe()}" failed with error: "${
-                    e.message
-                }"."`
-            );
-        }
+        await this.login(config.authProvider);
     }
 
     @onError({
-        popup: {prefix: "Can't attach cluster: "},
-        log: {logger: Loggers.Extension},
+        popup: {prefix: "Can't attach cluster. "},
     })
     async attachCluster(clusterId: string): Promise<void> {
         if (this.cluster?.id === clusterId) {
             return;
         }
-        this.configModel.set("clusterId", clusterId);
+        await this.configModel.set("clusterId", clusterId);
     }
 
     @onError({
-        popup: {prefix: "Can't detach cluster: "},
-        log: {logger: Loggers.Extension},
+        popup: {prefix: "Can't detach cluster. "},
     })
     async detachCluster(): Promise<void> {
-        this.configModel.set("clusterId", undefined);
+        await this.configModel.set("clusterId", undefined);
     }
 
     @onError({
-        popup: {prefix: "Can't attach sync destination: "},
-        log: {logger: Loggers.Extension},
+        popup: {prefix: "Can't attach sync destination. "},
     })
     async attachSyncDestination(remoteWorkspace: RemoteUri): Promise<void> {
         if (!(await remoteWorkspace.validate(this))) {
@@ -319,20 +327,21 @@ export class ConnectionManager implements Disposable {
             );
             return;
         }
-        this.configModel.set("workspaceFsPath", remoteWorkspace.path);
+        await this.configModel.set("workspaceFsPath", remoteWorkspace.path);
     }
 
     @onError({
-        popup: {prefix: "Can't detach sync destination: "},
-        log: {logger: Loggers.Extension},
+        popup: {prefix: "Can't detach sync destination. "},
     })
     async detachSyncDestination(): Promise<void> {
-        this.configModel.set("workspaceFsPath", undefined);
+        await this.configModel.set("workspaceFsPath", undefined);
     }
 
     private updateState(newState: ConnectionState) {
-        if (newState === "DISCONNECTED") {
-            this._databricksWorkspace = undefined;
+        if (!this.loginLogoutMutex.locked) {
+            throw new Error(
+                "updateState must be called after aquireing the state mutex"
+            );
         }
         if (this._state !== newState) {
             this._state = newState;

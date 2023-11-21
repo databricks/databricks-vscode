@@ -10,7 +10,6 @@ import {
 import {ConfigurationTreeItem} from "./types";
 import {Cluster} from "../../sdk-extensions";
 import {onError} from "../../utils/onErrorDecorator";
-import {Loggers} from "../../logger";
 
 const TREE_ICON_ID = "CLUSTER";
 
@@ -81,7 +80,7 @@ export class ClusterComponent extends BaseComponent {
         );
     }
 
-    @onError({log: {logger: Loggers.Extension}, popup: true})
+    @onError({popup: true})
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
         const config = await this.configModel.getS("clusterId");
 

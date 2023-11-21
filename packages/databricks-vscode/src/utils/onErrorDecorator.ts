@@ -4,6 +4,7 @@ import {
     logging,
     Context,
 } from "@databricks/databricks-sdk";
+import {Loggers} from "../logger";
 
 interface Props {
     popup?:
@@ -11,21 +12,29 @@ interface Props {
               prefix?: string;
           }
         | true;
-    log?: {
-        logger: string;
-        prefix?: string;
-    };
+    log?:
+        | {
+              prefix?: string;
+          }
+        | true;
 }
+
+const defaultProps: Props = {
+    log: true,
+};
+
 export function onError(props: Props) {
+    props = {...defaultProps, ...props};
     return function showErrorDecorator(
         target: any,
         propertyKey: string,
         descriptor: PropertyDescriptor
     ) {
         let contextParamIndex: number = -1;
+        // Find the @context if it exists. We want to use it for logging whenever possible.
         if (props.log !== undefined) {
             try {
-                logging.withLogContext(props.log.logger)(
+                logging.withLogContext(Loggers.Extension)(
                     target,
                     propertyKey,
                     descriptor
@@ -56,8 +65,13 @@ export function onError(props: Props) {
                     const logger =
                         contextParamIndex !== -1
                             ? (args[contextParamIndex] as Context).logger
-                            : logging.NamedLogger.getOrCreate(props.log.logger);
-                    prefix = props.log.prefix ?? prefix;
+                            : logging.NamedLogger.getOrCreate(
+                                  Loggers.Extension
+                              );
+                    prefix =
+                        props.log === true
+                            ? prefix
+                            : props.log.prefix ?? prefix;
                     logger?.error(prefix + e.message, e);
                 }
                 return;

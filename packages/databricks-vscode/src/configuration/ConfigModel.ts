@@ -1,11 +1,11 @@
 import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {
-    BundleConfigs,
-    DATABRICKS_CONFIGS,
+    BundleConfig,
+    DATABRICKS_CONFIG_KEYS,
+    DatabricksConfig,
+    isBundleConfigKey,
+    isOverrideableConfigKey,
     DatabricksConfigSourceMap,
-    DatabricksConfigs,
-    isBundleConfig,
-    isOverrideableConfig,
 } from "./types";
 import {ConfigOverrideReaderWriter} from "./ConfigOverrideReaderWriter";
 import {BundleConfigReaderWriter} from "./BundleConfigReaderWriter";
@@ -13,19 +13,21 @@ import {Mutex} from "../locking";
 import {BundleWatcher} from "../bundle";
 import {CachedValue} from "../locking/CachedValue";
 import {StateStorage} from "../vscode-objs/StateStorage";
+import _ from "lodash";
+import {onError} from "../utils/onErrorDecorator";
 
 function isDirectToBundleConfig(
-    key: keyof BundleConfigs,
-    mode?: BundleConfigs["mode"]
+    key: keyof BundleConfig,
+    mode?: BundleConfig["mode"]
 ) {
-    const directToBundleConfigs: (keyof BundleConfigs)[] = [];
+    const directToBundleConfigs: (keyof BundleConfig)[] = [];
     if (mode !== undefined) {
         // filter by mode
     }
     return directToBundleConfigs.includes(key);
 }
 
-const defaults: DatabricksConfigs = {
+const defaults: DatabricksConfig = {
     mode: "dev",
 };
 
@@ -37,7 +39,7 @@ export class ConfigModel implements Disposable {
 
     private readonly configsMutex = new Mutex();
     private readonly configCache = new CachedValue<{
-        config: DatabricksConfigs;
+        config: DatabricksConfig;
         source: DatabricksConfigSourceMap;
     }>(async (oldValue) => {
         if (this.target === undefined) {
@@ -47,7 +49,7 @@ export class ConfigModel implements Disposable {
         const bundleConfigs = await this.bundleConfigReaderWriter.readAll(
             this.target
         );
-        const newValue: DatabricksConfigs = {
+        const newValue: DatabricksConfig = {
             ...bundleConfigs,
             ...overrides,
         };
@@ -58,7 +60,7 @@ export class ConfigModel implements Disposable {
         This is because when override for a key is undefined, it means that the key
         is not overridden and we want to get the value from bundle. 
         */
-        DATABRICKS_CONFIGS.forEach((key) => {
+        DATABRICKS_CONFIG_KEYS.forEach((key) => {
             source[key] =
                 overrides !== undefined && key in overrides
                     ? "override"
@@ -66,14 +68,13 @@ export class ConfigModel implements Disposable {
         });
 
         let didAnyConfigChange = false;
-        for (const key of DATABRICKS_CONFIGS) {
+        for (const key of DATABRICKS_CONFIG_KEYS) {
             if (
                 // Old value is null, but new value has the key
                 (oldValue === null && newValue[key] !== undefined) ||
                 // Old value is not null, and old and new values for the key are different
                 (oldValue !== null &&
-                    JSON.stringify(oldValue.config[key]) !==
-                        JSON.stringify(newValue[key]))
+                    !_.isEqual(oldValue.config[key], newValue[key]))
             ) {
                 this.changeEmitters.get(key)?.emitter.fire();
                 didAnyConfigChange = true;
@@ -90,7 +91,7 @@ export class ConfigModel implements Disposable {
     });
 
     private readonly changeEmitters = new Map<
-        keyof DatabricksConfigs | "target",
+        keyof DatabricksConfig | "target",
         {
             emitter: EventEmitter<void>;
             onDidEmit: Event<void>;
@@ -121,11 +122,13 @@ export class ConfigModel implements Disposable {
             })
         );
     }
+
+    @onError({popup: {prefix: "Failed to initialize configs."}})
     public async init() {
         await this.readTarget();
     }
 
-    public onDidChange<T extends keyof DatabricksConfigs | "target">(
+    public onDidChange<T extends keyof DatabricksConfig | "target">(
         key: T,
         fn: () => any,
         thisArgs?: any
@@ -187,9 +190,9 @@ export class ConfigModel implements Disposable {
         this.onDidChangeAnyEmitter.fire();
     }
 
-    public async get<T extends keyof DatabricksConfigs>(
+    public async get<T extends keyof DatabricksConfig>(
         key: T
-    ): Promise<DatabricksConfigs[T] | undefined> {
+    ): Promise<DatabricksConfig[T] | undefined> {
         return (await this.configCache.value).config[key] ?? defaults[key];
     }
 
@@ -197,11 +200,11 @@ export class ConfigModel implements Disposable {
      * Return config value along with source of the config.
      * Refer to {@link DatabricksConfigSource} for possible values.
      */
-    public async getS<T extends keyof DatabricksConfigs>(
+    public async getS<T extends keyof DatabricksConfig>(
         key: T
     ): Promise<
         | {
-              config: DatabricksConfigs[T];
+              config: DatabricksConfig[T];
               source: DatabricksConfigSourceMap[T];
           }
         | undefined
@@ -220,9 +223,9 @@ export class ConfigModel implements Disposable {
     }
 
     @Mutex.synchronise("configsMutex")
-    public async set<T extends keyof DatabricksConfigs>(
+    public async set<T extends keyof DatabricksConfig>(
         key: T,
-        value?: DatabricksConfigs[T],
+        value?: DatabricksConfig[T],
         handleInteractiveWrite?: (file: Uri | undefined) => any
     ): Promise<void> {
         // We work with 1 set of configs throughout the function.
@@ -236,10 +239,10 @@ export class ConfigModel implements Disposable {
                 `Can't set configuration '${key}' without selecting a target`
             );
         }
-        if (isOverrideableConfig(key)) {
+        if (isOverrideableConfigKey(key)) {
             return this.overrideReaderWriter.write(key, this.target, value);
         }
-        if (isBundleConfig(key)) {
+        if (isBundleConfigKey(key)) {
             const isInteractive = handleInteractiveWrite !== undefined;
 
             // write to bundle if not interactive and the config can be safely written to bundle
