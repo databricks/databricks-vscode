@@ -704,6 +704,7 @@
         "add": "^2.0.6",
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
+        "lodash": "^4.17.21",
         "triple-beam": "^1.4.1",
         "winston": "^3.10.0",
         "yaml": "^2.3.2"
