@@ -25,10 +25,10 @@ export class Mutex {
         return this._locked;
     }
 
-    async synchronise(fn: () => Promise<void>) {
+    async synchronise<T>(fn: () => Promise<T>) {
         await this.wait();
         try {
-            await fn();
+            return await fn();
         } finally {
             this.signal();
         }
@@ -43,12 +43,9 @@ export class Mutex {
             const original = descriptor.value;
             descriptor.value = async function (...args: any[]) {
                 const mutex = (this as any)[mutexKey] as Mutex;
-                await mutex.wait();
-                try {
+                mutex.synchronise(async () => {
                     return await original.apply(this, args);
-                } finally {
-                    mutex.signal();
-                }
+                });
             };
         };
     }

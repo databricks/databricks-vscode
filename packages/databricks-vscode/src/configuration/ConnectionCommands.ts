@@ -104,7 +104,7 @@ export class ConnectionCommands implements Disposable {
      */
     attachClusterCommand() {
         return async (cluster: Cluster) => {
-            await this.connectionManager.attachCluster(cluster);
+            await this.connectionManager.attachCluster(cluster.id);
         };
     }
 
@@ -168,7 +168,7 @@ export class ConnectionCommands implements Disposable {
                 const selectedItem = quickPick.selectedItems[0];
                 if ("cluster" in selectedItem) {
                     const cluster = selectedItem.cluster;
-                    await this.connectionManager.attachCluster(cluster);
+                    await this.connectionManager.attachCluster(cluster.id);
                 } else {
                     await UrlUtils.openExternal(
                         `${

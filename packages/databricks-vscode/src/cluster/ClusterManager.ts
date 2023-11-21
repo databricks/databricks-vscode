@@ -16,8 +16,13 @@ export class ClusterManager implements Disposable {
 
     private setInterval() {
         this.refreshTimer = setInterval(async () => {
+            const oldState = this.cluster.state;
             await this.cluster.refresh();
-            this.onChange(this.cluster.state);
+            if (
+                JSON.stringify(oldState) !== JSON.stringify(this.cluster.state)
+            ) {
+                this.onChange(this.cluster.state);
+            }
         }, this.refreshTimeout.toMillSeconds().value);
     }
 
