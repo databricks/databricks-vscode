@@ -1,0 +1,39 @@
+name: update-cli-version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: true
+
+jobs:
+  update-cli-version:
+    runs-on: ubuntu-latest
+
+    strategy:
+        matrix:
+            node-version: [18.x]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install JQ
+        run: sudo apt-get install jq
+
+      - name: Update CLI version
+        run: jq '.cli.version = "{{ github.event.inputs.version }}"' packages/databricks-vscode/package.json --indent 4 > tmp.json && mv tmp.json packages/databricks-vscode/package.json
+
+      - name: Create a pull request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: Update Databricks CLI to v${{ github.event.inputs.version }}
+          body: Update Databricks CLI to v${{ github.event.inputs.version }}
+          committer: GitHub <noreply@github.com>
+          branch: update-cli-v${{ github.event.inputs.version }}
+          title: 'Update Databricks CLI to v${{ github.event.inputs.version }}'
+          team-reviewers: eng-dev-ecosystem
+          draft: false
