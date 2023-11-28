@@ -24,7 +24,7 @@ jobs:
         run: sudo apt-get install jq
 
       - name: Update CLI version
-        run: jq '.cli.version = "{{ github.event.inputs.version }}"' packages/databricks-vscode/package.json --indent 4 > tmp.json && mv tmp.json packages/databricks-vscode/package.json
+        run: jq '.cli.version = "${{ github.event.inputs.version }}"' packages/databricks-vscode/package.json --indent 4 > tmp.json && mv tmp.json packages/databricks-vscode/package.json
 
       - name: Create a pull request
         uses: peter-evans/create-pull-request@v5
