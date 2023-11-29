@@ -104,16 +104,32 @@ export class CliWrapper {
         @context ctx?: Context
     ): Promise<Array<ConfigEntry>> {
         const cmd = this.getListProfilesCommand();
-        const res = await execFile(cmd.command, cmd.args, {
-            env: {
-                /*  eslint-disable @typescript-eslint/naming-convention */
-                HOME: process.env.HOME,
-                DATABRICKS_CONFIG_FILE:
-                    configfilePath || process.env.DATABRICKS_CONFIG_FILE,
-                DATABRICKS_OUTPUT_FORMAT: "json",
-                /*  eslint-enable @typescript-eslint/naming-convention */
-            },
-        });
+
+        let res;
+        try {
+            res = await execFile(cmd.command, cmd.args, {
+                env: {
+                    /*  eslint-disable @typescript-eslint/naming-convention */
+                    HOME: process.env.HOME,
+                    DATABRICKS_CONFIG_FILE:
+                        configfilePath || process.env.DATABRICKS_CONFIG_FILE,
+                    DATABRICKS_OUTPUT_FORMAT: "json",
+                    /*  eslint-enable @typescript-eslint/naming-convention */
+                },
+            });
+        } catch (e) {
+            let msg = "Failed to load Databricks Config File";
+            if (e instanceof Error) {
+                if (e.message.includes("cannot parse config file")) {
+                    msg =
+                        "Failed to parse Databricks Config File, please make sure it's in the correct ini format";
+                }
+            }
+            ctx?.logger?.error(msg, e);
+            this.showConfigFileWarning(msg);
+            return [];
+        }
+
         const profiles = JSON.parse(res.stdout).profiles || [];
         const result = [];
 
@@ -135,22 +151,24 @@ export class CliWrapper {
                     msg = `Error parsing profile ${profile.name}`;
                 }
                 ctx?.logger?.error(msg, e);
-                window
-                    .showWarningMessage(
-                        msg,
-                        "Open Databricks Config File",
-                        "Ignore"
-                    )
-                    .then((choice) => {
-                        if (choice === "Open Databricks Config File") {
-                            commands.executeCommand(
-                                "databricks.connection.openDatabricksConfigFile"
-                            );
-                        }
-                    });
+                this.showConfigFileWarning(msg);
             }
         }
         return result;
+    }
+
+    private async showConfigFileWarning(msg: string) {
+        const openAction = "Open Databricks Config File";
+        const choice = await window.showWarningMessage(
+            msg,
+            openAction,
+            "Ignore"
+        );
+        if (choice === openAction) {
+            commands.executeCommand(
+                "databricks.connection.openDatabricksConfigFile"
+            );
+        }
     }
 
     public async getBundleSchema(): Promise<string> {
