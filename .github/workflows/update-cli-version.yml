@@ -29,7 +29,7 @@ jobs:
       - name: Create a pull request
         uses: peter-evans/create-pull-request@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.DECO_GITHUB_TOKEN }}
           commit-message: Update Databricks CLI to v${{ github.event.inputs.version }}
           body: Update Databricks CLI to v${{ github.event.inputs.version }}
           committer: GitHub <noreply@github.com>
