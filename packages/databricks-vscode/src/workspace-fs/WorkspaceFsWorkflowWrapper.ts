@@ -26,20 +26,8 @@ function getWrapperPath(remoteFilePath: RemoteUri, extraParts: string[]) {
     );
 }
 
-async function readBootstrap(
-    bootstrapPath: string,
-    remoteFilePath: RemoteUri,
-    dbProjectRoot: RemoteUri
-) {
-    return (await readFile(bootstrapPath, "utf-8"))
-        .replace(
-            "{{DATABRICKS_SOURCE_FILE}}",
-            remoteFilePath.workspacePrefixPath
-        )
-        .replace(
-            "{{DATABRICKS_PROJECT_ROOT}}",
-            dbProjectRoot.workspacePrefixPath
-        );
+async function readBootstrap(bootstrapPath: string) {
+    return await readFile(bootstrapPath, "utf-8");
 }
 
 type Cell = {
@@ -69,9 +57,18 @@ function rearrangeCells(cells: Cell[]) {
             // as a new cell to the beginging and remove it from the original cell
             if (
                 line.startsWith("%pip install") ||
-                line.startsWith("# MAGIC %pip install") ||
-                line.startsWith("dbutils.library.restartPython()")
+                line.startsWith("# MAGIC %pip install")
             ) {
+                begingingCells.push({
+                    source: [
+                        "import os",
+                        "os.chdir(os.path.dirname('{{DATABRICKS_SOURCE_FILE}}'))",
+                        line,
+                    ],
+                    type: "code",
+                });
+                continue;
+            } else if (line.startsWith("dbutils.library.restartPython()")) {
                 begingingCells.push({source: [line], type: "code"});
                 continue;
             }
@@ -79,6 +76,7 @@ function rearrangeCells(cells: Cell[]) {
         }
         endingCells.push(newCell);
     }
+
     return [...begingingCells, ...endingCells].filter(
         (cell) => cell.source.length !== 0
     );
@@ -93,6 +91,7 @@ export class WorkspaceFsWorkflowWrapper {
     @logging.withLogContext(Loggers.Extension)
     private async createFile(
         remoteFilePath: RemoteUri,
+        dbProjectRoot: RemoteUri,
         content: string,
         @context ctx?: Context
     ) {
@@ -109,6 +108,15 @@ export class WorkspaceFsWorkflowWrapper {
         if (!WorkspaceFsUtils.isDirectory(rootDir)) {
             throw new Error(`${dirpath} is not a directory`);
         }
+        content = content
+            .replace(
+                "{{DATABRICKS_SOURCE_FILE}}",
+                remoteFilePath.workspacePrefixPath
+            )
+            .replace(
+                "{{DATABRICKS_PROJECT_ROOT}}",
+                dbProjectRoot.workspacePrefixPath
+            );
         const wrappedFile = await rootDir.createFile(
             remoteFilePath.path,
             content,
@@ -145,7 +153,7 @@ export class WorkspaceFsWorkflowWrapper {
             )
         );
         const bootstrapJson: JupyterCell = JSON.parse(
-            await readBootstrap(bootstrapPath, remoteFilePath, dbProjectRoot)
+            await readBootstrap(bootstrapPath)
         );
         const cells = [bootstrapJson].concat(originalJson["cells"] ?? []).map(
             // Since each cell.source is a string array where each string can be
@@ -174,6 +182,7 @@ export class WorkspaceFsWorkflowWrapper {
                 "notebook",
                 "workflow-wrapper",
             ]),
+            dbProjectRoot,
             JSON.stringify(originalJson),
             ctx
         );
@@ -194,9 +203,9 @@ export class WorkspaceFsWorkflowWrapper {
         const bootstrapPath = this.extensionContext.asAbsolutePath(
             path.join("resources", "python", "notebook.workflow-wrapper.py")
         );
-        const bootstrapCode = (
-            await readBootstrap(bootstrapPath, remoteFilePath, dbProjectRoot)
-        ).split(/\r?\n/);
+        const bootstrapCode = (await readBootstrap(bootstrapPath)).split(
+            /\r?\n/
+        );
 
         // Split original code into cells by # COMMAND ----------\n
         // and add the bootstrap code to the beginning as a new cell
@@ -222,6 +231,7 @@ export class WorkspaceFsWorkflowWrapper {
                 "notebook",
                 "workflow-wrapper",
             ]),
+            dbProjectRoot,
             wrappedCode,
             ctx
         );
@@ -268,6 +278,7 @@ export class WorkspaceFsWorkflowWrapper {
                 "file",
                 "workflow-wrapper",
             ]),
+            remoteFilePath,
             bootstrap,
             ctx
         );
