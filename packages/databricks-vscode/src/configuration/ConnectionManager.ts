@@ -109,7 +109,12 @@ export class ConnectionManager implements Disposable {
         private cli: CliWrapper,
         private readonly configModel: ConfigModel,
         private readonly workspaceUri: Uri
-    ) {
+    ) {}
+
+    public async init() {
+        await this.configModel.init();
+        await this.loginWithSavedAuth();
+
         this.disposables.push(
             this.configModel.onDidChange(
                 "workspaceFsPath",
@@ -141,11 +146,6 @@ export class ConnectionManager implements Disposable {
                 }
             })
         );
-    }
-
-    public async init() {
-        await this.configModel.init();
-        await this.loginWithSavedAuth();
     }
 
     get state(): ConnectionState {

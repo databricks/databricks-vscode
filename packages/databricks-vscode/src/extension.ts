@@ -157,7 +157,7 @@ export async function activate(
     const bundleConfigReaderWriter = new BundleConfigReaderWriter(
         bundleFileSet
     );
-    const confgiModel = new ConfigModel(
+    const configModel = new ConfigModel(
         overrideReaderWriter,
         bundleConfigReaderWriter,
         stateStorage,
@@ -168,7 +168,7 @@ export async function activate(
     const cli = new CliWrapper(context);
     const connectionManager = new ConnectionManager(
         cli,
-        confgiModel,
+        configModel,
         workspaceUri
     );
     context.subscriptions.push(
@@ -357,14 +357,14 @@ export async function activate(
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         synchronizer,
-        confgiModel
+        configModel
     );
 
     const connectionCommands = new ConnectionCommands(
         workspaceFsCommands,
         connectionManager,
         clusterModel,
-        confgiModel
+        configModel
     );
 
     context.subscriptions.push(
@@ -596,7 +596,9 @@ export async function activate(
         })
     );
 
-    await confgiModel.init();
+    connectionManager.init().catch((e) => {
+        window.showErrorMessage(e);
+    });
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 
