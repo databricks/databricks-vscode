@@ -1,3 +1,14 @@
+# Release: v1.2.4
+
+## packages/databricks-vscode
+
+## <small>1.2.4 (2023-12-05)</small>
+
+-   Send environment type (tests, prod) in telemetry events (#944) ([1ce3ef0](https://github.com/databricks/databricks-vscode/commit/1ce3ef0)), closes [#944](https://github.com/databricks/databricks-vscode/issues/944)
+-   Set notebook directory as current directory for pip installs from workspace fs (#961) ([eec87b8](https://github.com/databricks/databricks-vscode/commit/eec87b8)), closes [#961](https://github.com/databricks/databricks-vscode/issues/961) [#958](https://github.com/databricks/databricks-vscode/issues/958)
+-   Show error for a corrupted config file (#955) ([8b5a944](https://github.com/databricks/databricks-vscode/commit/8b5a944)), closes [#955](https://github.com/databricks/databricks-vscode/issues/955)
+-   Update Databricks CLI to v0.210.1 (#957) ([c9864e1](https://github.com/databricks/databricks-vscode/commit/c9864e1)), closes [#957](https://github.com/databricks/databricks-vscode/issues/957)
+
 # Release: v1.2.3
 
 ## packages/databricks-vscode
