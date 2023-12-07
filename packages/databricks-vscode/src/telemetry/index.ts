@@ -79,6 +79,14 @@ export async function toUserMetadata(
     return {...dbWorkspaceMetadata, ...authType};
 }
 
+export function getContextMetadata(): ExtraMetadata[Metadata.CONTEXT] {
+    return {
+        environmentType: process.env["TEST_DEFAULT_CLUSTER_ID"]
+            ? "tests"
+            : "prod",
+    };
+}
+
 function getTelemetryKey(): string {
     if (isDevExtension()) {
         return DEV_APP_INSIGHTS_CONFIGURATION_STRING;

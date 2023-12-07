@@ -9,7 +9,6 @@ import {
 } from "../utils/urlUtils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider, AuthType} from "./auth/AuthProvider";
-import {ProjectConfig} from "../file-managers/ProjectConfigFile";
 
 interface AuthTypeQuickPickItem extends QuickPickItem {
     authType: AuthType | "new-profile" | "none";
@@ -27,7 +26,7 @@ interface State {
 export async function configureWorkspaceWizard(
     cliWrapper: CliWrapper,
     host?: string
-): Promise<ProjectConfig | undefined> {
+): Promise<{authProvider: AuthProvider} | undefined> {
     const title = "Configure Databricks Workspace";
 
     async function collectInputs(): Promise<State> {
@@ -42,10 +41,8 @@ export async function configureWorkspaceWizard(
         const items: Array<QuickPickItem> = [];
 
         if (state.host) {
-            items.push({
-                label: state.host.toString(),
-                detail: "Currently selected host",
-            });
+            state.host = normalizeHost(state.host.toString());
+            return (input: MultiStepInput) => selectAuthMethod(input, state);
         }
 
         if (process.env.DATABRICKS_HOST) {

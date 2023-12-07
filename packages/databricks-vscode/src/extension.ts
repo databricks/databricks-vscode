@@ -18,7 +18,6 @@ import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
-import {ProjectConfigFileWatcher} from "./file-managers/ProjectConfigFileWatcher";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
@@ -40,7 +39,7 @@ import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
-import {Telemetry, toUserMetadata} from "./telemetry";
+import {getContextMetadata, Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
@@ -55,6 +54,9 @@ import {
     registerBundleAutocompleteProvider,
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
+import {ConfigModel} from "./configuration/ConfigModel";
+import {ConfigOverrideReaderWriter} from "./configuration/ConfigOverrideReaderWriter";
+import {BundleConfigReaderWriter} from "./configuration/BundleConfigReaderWriter";
 
 export async function activate(
     context: ExtensionContext
@@ -89,6 +91,7 @@ export async function activate(
         return undefined;
     }
 
+    const workspaceUri = workspace.workspaceFolders[0].uri;
     const stateStorage = new StateStorage(context);
 
     // Add the databricks binary to the PATH environment variable in terminals
@@ -104,6 +107,7 @@ export async function activate(
     }
 
     const telemetry = Telemetry.createDefault();
+    telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
 
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
@@ -146,9 +150,28 @@ export async function activate(
         workspace.onDidChangeConfiguration(updateFeatureContexts)
     );
 
+    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
+    const bundleFileWatcher = new BundleWatcher(bundleFileSet);
+    context.subscriptions.push(bundleFileWatcher);
+
+    const overrideReaderWriter = new ConfigOverrideReaderWriter(stateStorage);
+    const bundleConfigReaderWriter = new BundleConfigReaderWriter(
+        bundleFileSet
+    );
+    const confgiModel = new ConfigModel(
+        overrideReaderWriter,
+        bundleConfigReaderWriter,
+        stateStorage,
+        bundleFileWatcher
+    );
+
     // Configuration group
     const cli = new CliWrapper(context);
-    const connectionManager = new ConnectionManager(cli, stateStorage);
+    const connectionManager = new ConnectionManager(
+        cli,
+        confgiModel,
+        workspaceUri
+    );
     context.subscriptions.push(
         connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
@@ -344,7 +367,8 @@ export async function activate(
         stateStorage,
         wsfsAccessVerifier,
         featureManager,
-        telemetry
+        telemetry,
+        confgiModel
     );
 
     context.subscriptions.push(
@@ -496,14 +520,6 @@ export async function activate(
         )
     );
 
-    context.subscriptions.push(
-        new ProjectConfigFileWatcher(
-            connectionManager,
-            workspace.rootPath!,
-            cli.cliPath
-        )
-    );
-
     // Quickstart
     const quickstartCommands = new QuickstartCommands(context);
     context.subscriptions.push(
@@ -535,11 +551,6 @@ export async function activate(
             }
         })
     );
-
-    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
-    const bundleFileWatcher = new BundleWatcher(bundleFileSet);
-    context.subscriptions.push(bundleFileWatcher);
-
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
     registerBundleAutocompleteProvider(
@@ -550,13 +561,6 @@ export async function activate(
     ).catch((e) => {
         logging.NamedLogger.getOrCreate("Extension").error(
             "Failed to load bundle schema: ",
-            e
-        );
-    });
-
-    connectionManager.login(false).catch((e) => {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Login error",
             e
         );
     });
@@ -585,6 +589,15 @@ export async function activate(
             );
         });
 
+    context.subscriptions.push(
+        commands.registerCommand("databricks.internal.clearOverrides", () => {
+            stateStorage.set("databricks.bundle.overrides", undefined);
+        })
+    );
+
+    connectionManager.init().catch((e) => {
+        window.showErrorMessage(e);
+    });
     CustomWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 
