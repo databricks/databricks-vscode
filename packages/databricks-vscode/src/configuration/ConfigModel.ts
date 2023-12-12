@@ -2,10 +2,10 @@ import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {
     BundleConfig,
     DATABRICKS_CONFIG_KEYS,
-    DatabricksConfigSource,
     DatabricksConfig,
     isBundleConfigKey,
     isOverrideableConfigKey,
+    DatabricksConfigSourceMap,
 } from "./types";
 import {ConfigOverrideReaderWriter} from "./ConfigOverrideReaderWriter";
 import {BundleConfigReaderWriter} from "./BundleConfigReaderWriter";
@@ -14,6 +14,7 @@ import {BundleWatcher} from "../bundle";
 import {CachedValue} from "../locking/CachedValue";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import _ from "lodash";
+import {onError} from "../utils/onErrorDecorator";
 
 function isDirectToBundleConfig(
     key: keyof BundleConfig,
@@ -39,7 +40,7 @@ export class ConfigModel implements Disposable {
     private readonly configsMutex = new Mutex();
     private readonly configCache = new CachedValue<{
         config: DatabricksConfig;
-        source: DatabricksConfigSource;
+        source: DatabricksConfigSourceMap;
     }>(async (oldValue) => {
         if (this.target === undefined) {
             return {config: {}, source: {}};
@@ -53,7 +54,7 @@ export class ConfigModel implements Disposable {
             ...overrides,
         };
 
-        const source: DatabricksConfigSource = {};
+        const source: DatabricksConfigSourceMap = {};
 
         /* By default undefined values are considered to have come from bundle. 
         This is because when override for a key is undefined, it means that the key
@@ -121,6 +122,8 @@ export class ConfigModel implements Disposable {
             })
         );
     }
+
+    @onError({popup: {prefix: "Failed to initialize configs."}})
     public async init() {
         await this.readTarget();
     }
@@ -146,7 +149,7 @@ export class ConfigModel implements Disposable {
      * If not found, try to read from state storage.
      * If not found, try to read the default target from bundle.
      */
-    public async readTarget() {
+    private async readTarget() {
         const targets = Object.keys(
             (await this.bundleConfigReaderWriter.targets) ?? {}
         );
@@ -202,7 +205,7 @@ export class ConfigModel implements Disposable {
     ): Promise<
         | {
               config: DatabricksConfig[T];
-              source: DatabricksConfigSource[T] | "default";
+              source: DatabricksConfigSourceMap[T];
           }
         | undefined
     > {

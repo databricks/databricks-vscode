@@ -29,7 +29,6 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
  */
 export class ConnectionManager implements Disposable {
     private disposables: Disposable[] = [];
-
     private _state: ConnectionState = "DISCONNECTED";
     private loginLogoutMutex: Mutex = new Mutex();
 
@@ -54,6 +53,9 @@ export class ConnectionManager implements Disposable {
 
     public metadataServiceUrl?: string;
 
+    @onError({
+        popup: {prefix: "Error attaching sync destination: "},
+    })
     private async updateSyncDestinationMapper() {
         const workspacePath = await this.configModel.get("workspaceFsPath");
         const remoteUri = workspacePath
@@ -82,6 +84,9 @@ export class ConnectionManager implements Disposable {
         );
     }
 
+    @onError({
+        popup: {prefix: "Error attaching cluster: "},
+    })
     private async updateClusterManager() {
         const clusterId = await this.configModel.get("clusterId");
         if (clusterId === this._clusterManager?.cluster?.id) {
@@ -104,7 +109,12 @@ export class ConnectionManager implements Disposable {
         private cli: CliWrapper,
         private readonly configModel: ConfigModel,
         private readonly workspaceUri: Uri
-    ) {
+    ) {}
+
+    public async init() {
+        await this.configModel.init();
+        await this.loginWithSavedAuth();
+
         this.disposables.push(
             this.configModel.onDidChange(
                 "workspaceFsPath",
@@ -136,11 +146,6 @@ export class ConnectionManager implements Disposable {
                 }
             })
         );
-    }
-
-    public async init() {
-        await this.configModel.init();
-        await this.loginWithSavedAuth();
     }
 
     get state(): ConnectionState {
@@ -195,9 +200,6 @@ export class ConnectionManager implements Disposable {
         if (force) {
             await this.logout();
         }
-        if (this.state !== "DISCONNECTED") {
-            return;
-        }
 
         if (!(await authProvider.check())) {
             // We return without any state changes. This ensures that
@@ -206,6 +208,7 @@ export class ConnectionManager implements Disposable {
             // have to re authenticate even the old one.
             return;
         }
+
         try {
             await this.loginLogoutMutex.synchronise(async () => {
                 this.updateState("CONNECTING");

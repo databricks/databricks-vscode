@@ -9,8 +9,10 @@ export type DatabricksConfig = {
     workspaceFsPath?: string;
 };
 
-export type DatabricksConfigSource = {
-    [key in keyof DatabricksConfig]: "bundle" | "override";
+export type DatabricksConfigSource = "bundle" | "override" | "default";
+
+export type DatabricksConfigSourceMap = {
+    [key in keyof DatabricksConfig]: DatabricksConfigSource;
 };
 
 export const OVERRIDEABLE_CONFIG_KEYS = [

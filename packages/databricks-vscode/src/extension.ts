@@ -12,7 +12,7 @@ import {ConnectionManager} from "./configuration/ConnectionManager";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
-import {ConfigurationDataProvider} from "./configuration/ConfigurationDataProvider";
+import {ConfigurationDataProvider} from "./configuration/ui/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
@@ -158,7 +158,7 @@ export async function activate(
     const bundleConfigReaderWriter = new BundleConfigReaderWriter(
         bundleFileSet
     );
-    const confgiModel = new ConfigModel(
+    const configModel = new ConfigModel(
         overrideReaderWriter,
         bundleConfigReaderWriter,
         stateStorage,
@@ -169,7 +169,7 @@ export async function activate(
     const cli = new CliWrapper(context);
     const connectionManager = new ConnectionManager(
         cli,
-        confgiModel,
+        configModel,
         workspaceUri
     );
     context.subscriptions.push(
@@ -227,12 +227,6 @@ export async function activate(
         packageMetadata
     );
     const clusterModel = new ClusterModel(connectionManager);
-
-    const connectionCommands = new ConnectionCommands(
-        workspaceFsCommands,
-        connectionManager,
-        clusterModel
-    );
 
     const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
         connectionManager,
@@ -364,11 +358,14 @@ export async function activate(
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         synchronizer,
-        stateStorage,
-        wsfsAccessVerifier,
-        featureManager,
-        telemetry,
-        confgiModel
+        configModel
+    );
+
+    const connectionCommands = new ConnectionCommands(
+        workspaceFsCommands,
+        connectionManager,
+        clusterModel,
+        configModel
     );
 
     context.subscriptions.push(
@@ -378,6 +375,11 @@ export async function activate(
         window.registerTreeDataProvider(
             "configurationView",
             configurationDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.connection.bundle.selectTarget",
+            connectionCommands.selectTarget,
+            connectionCommands
         ),
         telemetry.registerCommand(
             "databricks.connection.logout",
