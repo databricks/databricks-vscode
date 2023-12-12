@@ -147,14 +147,14 @@
             },
             {
                 "command": "databricks.run.runEditorContentsAsWorkflow",
-                "title": "Run File as Workflow on Databricks",
+                "title": "Run File as Workflow",
                 "category": "Databricks",
                 "enablement": "!inDebugMode",
                 "icon": "$(play)"
             },
             {
                 "command": "databricks.run.runEditorContents",
-                "title": "Upload and Run File on Databricks",
+                "title": "Upload and Run File",
                 "category": "Databricks",
                 "enablement": "!inDebugMode",
                 "icon": "$(play)"
@@ -376,16 +376,23 @@
                     "group": "inline@0"
                 }
             ],
-            "editor/title/run": [
+            "editor/title": [
+                {
+                    "submenu": "databricks.run",
+                    "group": "navigation@0",
+                    "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb"
+                }
+            ],
+            "databricks.run": [
                 {
                     "command": "databricks.run.runEditorContents",
                     "when": "resourceLangId == python",
-                    "group": "navigation@1"
+                    "group": "1_remote@1"
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb",
-                    "group": "navigation@1"
+                    "group": "1_remote@2"
                 }
             ],
             "commandPalette": [
@@ -430,6 +437,14 @@
                 "id": "databricks.cluster.filter",
                 "label": "Filter clusters ...",
                 "icon": "$(filter)"
+            },
+            {
+                "id": "databricks.run",
+                "label": "Run on Databricks",
+                "icon": {
+                    "dark": "resources/dark/logo.svg",
+                    "light": "resources/light/logo.svg"
+                }
             }
         ],
         "taskDefinitions": [
