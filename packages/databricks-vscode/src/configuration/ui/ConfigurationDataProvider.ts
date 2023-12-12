@@ -110,7 +110,8 @@ export class ConfigurationDataProvider
             })
             .flat()
             .map((item) => {
-                // Add config source tooltip to the parent config, if the  config is not a default
+                // Add config source tooltip to the config root item, if the  config is not a default
+                // and parent is undefined.
                 if (item.source === undefined || item.source === "default") {
                     return item;
                 }
