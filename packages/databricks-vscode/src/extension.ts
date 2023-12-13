@@ -198,7 +198,6 @@ export async function activate(
     );
     const workspaceFsCommands = new WorkspaceFsCommands(
         workspace.workspaceFolders[0].uri,
-        stateStorage,
         connectionManager,
         workspaceFsDataProvider
     );
