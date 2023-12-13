@@ -410,16 +410,6 @@ export async function activate(
             "databricks.connection.detachCluster",
             connectionCommands.detachClusterCommand(),
             connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.attachSyncDestination",
-            connectionCommands.attachSyncDestinationCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.detachSyncDestination",
-            connectionCommands.detachWorkspaceCommand,
-            connectionCommands
         )
     );
 
