@@ -64,11 +64,11 @@ export class DatabricksEnvFileManager implements Disposable {
         )
             ? workspaceConfigs.userEnvFile
             : isValidUserEnvPath(workspaceConfigs.msPythonEnvFile, [
-                  this.unresolvedDatabricksEnvFile,
-                  this.databricksEnvPath.fsPath,
-              ])
-            ? workspaceConfigs.msPythonEnvFile
-            : path.join("${workspaceFolder}", ".env");
+                    this.unresolvedDatabricksEnvFile,
+                    this.databricksEnvPath.fsPath,
+                ])
+              ? workspaceConfigs.msPythonEnvFile
+              : path.join("${workspaceFolder}", ".env");
         this.userEnvPath = Uri.file(
             systemVariableResolver.resolve(this.unresolvedUserEnvFile)
         );

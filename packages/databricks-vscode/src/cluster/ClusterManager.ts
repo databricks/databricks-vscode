@@ -1,10 +1,10 @@
 import {compute, Time, TimeUnits} from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
 import {CancellationTokenSource, Disposable} from "vscode";
-import _ from "lodash";
+import * as lodash from "lodash";
 export class ClusterManager implements Disposable {
     private cancellationTokenSource?: CancellationTokenSource;
-    private refreshTimer?: NodeJS.Timer;
+    private refreshTimer?: NodeJS.Timeout;
 
     constructor(
         readonly cluster: Cluster,
@@ -18,7 +18,7 @@ export class ClusterManager implements Disposable {
         this.refreshTimer = setInterval(async () => {
             const oldState = this.cluster.state;
             await this.cluster.refresh();
-            if (!_.isEqual(oldState, this.cluster.state)) {
+            if (!lodash.isEqual(oldState, this.cluster.state)) {
                 this.onChange(this.cluster.state);
             }
         }, this.refreshTimeout.toMillSeconds().value);

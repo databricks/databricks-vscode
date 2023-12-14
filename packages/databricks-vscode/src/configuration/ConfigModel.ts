@@ -13,7 +13,7 @@ import {Mutex} from "../locking";
 import {BundleWatcher} from "../bundle";
 import {CachedValue} from "../locking/CachedValue";
 import {StateStorage} from "../vscode-objs/StateStorage";
-import _ from "lodash";
+import * as lodash from "lodash";
 import {onError} from "../utils/onErrorDecorator";
 
 function isDirectToBundleConfig(
@@ -74,7 +74,7 @@ export class ConfigModel implements Disposable {
                 (oldValue === null && newValue[key] !== undefined) ||
                 // Old value is not null, and old and new values for the key are different
                 (oldValue !== null &&
-                    !_.isEqual(oldValue.config[key], newValue[key]))
+                    !lodash.isEqual(oldValue.config[key], newValue[key]))
             ) {
                 this.changeEmitters.get(key)?.emitter.fire();
                 didAnyConfigChange = true;
@@ -209,8 +209,8 @@ export class ConfigModel implements Disposable {
           }
         | undefined
     > {
-        const {config: fullConfig, source: fullSource} = await this.configCache
-            .value;
+        const {config: fullConfig, source: fullSource} =
+            await this.configCache.value;
         const config = fullConfig[key] ?? defaults[key];
         const source =
             fullConfig[key] !== undefined ? fullSource[key] : "default";

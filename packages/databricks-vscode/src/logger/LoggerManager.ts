@@ -43,9 +43,8 @@ export class LoggerManager {
         const outputChannel = window.createOutputChannel("Databricks Logs");
         outputChannel.clear();
 
-        const sdkAndExtensionLogfile = await this.getLogFile(
-            "sdk-and-extension"
-        );
+        const sdkAndExtensionLogfile =
+            await this.getLogFile("sdk-and-extension");
 
         NamedLogger.getOrCreate(
             ExposedLoggers.SDK,
