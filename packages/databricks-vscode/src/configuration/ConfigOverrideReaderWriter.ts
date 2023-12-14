@@ -1,11 +1,9 @@
 import {EventEmitter} from "vscode";
 import {Mutex} from "../locking";
 import {StateStorage} from "../vscode-objs/StateStorage";
-import {OverrideableConfig, ConfigReaderWriter} from "./types";
+import {OverrideableConfig} from "./types";
 
-export class ConfigOverrideReaderWriter
-    implements ConfigReaderWriter<keyof OverrideableConfig>
-{
+export class ConfigOverrideReaderWriter {
     private writeMutex = new Mutex();
     private onDidChangeEmitter = new EventEmitter<void>();
     public readonly onDidChange = this.onDidChangeEmitter.event;
@@ -38,21 +36,7 @@ export class ConfigOverrideReaderWriter
         this.onDidChangeEmitter.fire();
     }
 
-    /**
-     * Read the value from storage overrides.
-     * @param key the key to read
-     * @param target the bundle target to read from
-     * @returns the value id override
-     */
-
     async readAll(target: string) {
         return this.storage.get("databricks.bundle.overrides")[target];
-    }
-
-    async read<T extends keyof OverrideableConfig>(
-        key: T,
-        target: string
-    ): Promise<OverrideableConfig[T] | undefined> {
-        return this.storage.get("databricks.bundle.overrides")[target]?.[key];
     }
 }

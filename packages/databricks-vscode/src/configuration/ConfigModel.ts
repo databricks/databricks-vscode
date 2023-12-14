@@ -13,7 +13,7 @@ import {Mutex} from "../locking";
 import {BundleWatcher} from "../bundle";
 import {CachedValue} from "../locking/CachedValue";
 import {StateStorage} from "../vscode-objs/StateStorage";
-import _ from "lodash";
+import lodash from "lodash";
 import {onError} from "../utils/onErrorDecorator";
 
 function isDirectToBundleConfig(
@@ -41,7 +41,7 @@ export class ConfigModel implements Disposable {
     private readonly configCache = new CachedValue<{
         config: DatabricksConfig;
         source: DatabricksConfigSourceMap;
-    }>(async (oldValue) => {
+    }>(async () => {
         if (this.target === undefined) {
             return {config: {}, source: {}};
         }
@@ -67,23 +67,6 @@ export class ConfigModel implements Disposable {
                     : "bundle";
         });
 
-        let didAnyConfigChange = false;
-        for (const key of DATABRICKS_CONFIG_KEYS) {
-            if (
-                // Old value is null, but new value has the key
-                (oldValue === null && newValue[key] !== undefined) ||
-                // Old value is not null, and old and new values for the key are different
-                (oldValue !== null &&
-                    !_.isEqual(oldValue.config[key], newValue[key]))
-            ) {
-                this.changeEmitters.get(key)?.emitter.fire();
-                didAnyConfigChange = true;
-            }
-        }
-
-        if (didAnyConfigChange) {
-            this.onDidChangeAnyEmitter.fire();
-        }
         return {
             config: newValue,
             source: source,
@@ -110,15 +93,29 @@ export class ConfigModel implements Disposable {
     ) {
         this.disposables.push(
             this.overrideReaderWriter.onDidChange(async () => {
-                await this.configCache.invalidate();
                 //try to access the value to trigger cache update and onDidChange event
-                this.configCache.value;
+                await this.configCache.refresh();
             }),
+            //TODO: depend on bundleConfigLoader here instead of bundleWatcher
             this.bundleWatcher.onDidChange(async () => {
                 await this.readTarget();
-                await this.configCache.invalidate();
                 //try to access the value to trigger cache update and onDidChange event
-                this.configCache.value;
+                await this.configCache.refresh();
+            }),
+            this.configCache.onDidChange(({oldValue, newValue}) => {
+                this.onDidChangeAnyEmitter.fire();
+
+                DATABRICKS_CONFIG_KEYS.forEach((key) => {
+                    if (
+                        oldValue === null ||
+                        !lodash.isEqual(
+                            oldValue.config[key],
+                            newValue.config[key]
+                        )
+                    ) {
+                        this.changeEmitters.get(key)?.emitter.fire();
+                    }
+                });
             })
         );
     }
@@ -128,11 +125,7 @@ export class ConfigModel implements Disposable {
         await this.readTarget();
     }
 
-    public onDidChange<T extends keyof DatabricksConfig | "target">(
-        key: T,
-        fn: () => any,
-        thisArgs?: any
-    ) {
+    public onDidChange<T extends keyof DatabricksConfig | "target">(key: T) {
         if (!this.changeEmitters.has(key)) {
             const emitter = new EventEmitter<void>();
             this.changeEmitters.set(key, {
@@ -141,8 +134,7 @@ export class ConfigModel implements Disposable {
             });
         }
 
-        const {onDidEmit} = this.changeEmitters.get(key)!;
-        return onDidEmit(fn, thisArgs);
+        return this.changeEmitters.get(key)!.onDidEmit;
     }
     /**
      * Try to read target from bundle config.
@@ -176,20 +168,36 @@ export class ConfigModel implements Disposable {
     /**
      * Set target in the state storage and invalidate the configs cache.
      */
+    @onError({popup: {prefix: "Failed to set target."}})
     public async setTarget(target: string | undefined) {
         if (target === this._target) {
             return;
         }
 
+        if (
+            this.target !== undefined &&
+            !(
+                this.target in
+                ((await this.bundleConfigReaderWriter.targets) ?? {})
+            )
+        ) {
+            throw new Error(
+                `Target '${this.target}' doesn't exist in the bundle`
+            );
+        }
         await this.configsMutex.synchronise(async () => {
             this._target = target;
             await this.stateStorage.set("databricks.bundle.target", target);
+            this.changeEmitters.get("target")?.emitter.fire();
+            //We call invalidate here and not refresh because we know that invalidate is a simple operation
+            //and it is not going to be in a circular dependency with configsMutex ever. Calling refresh here instead can
+            //cause circular dependency in the future if we add a dependency on configsMutex in the refresh callback.
+            await this.configCache.invalidate();
         });
-        await this.configCache.invalidate();
-        this.changeEmitters.get("target")?.emitter.fire();
-        this.onDidChangeAnyEmitter.fire();
+        await this.configCache.refresh();
     }
 
+    @Mutex.synchronise("configsMutex")
     public async get<T extends keyof DatabricksConfig>(
         key: T
     ): Promise<DatabricksConfig[T] | undefined> {
@@ -200,6 +208,7 @@ export class ConfigModel implements Disposable {
      * Return config value along with source of the config.
      * Refer to {@link DatabricksConfigSource} for possible values.
      */
+    @Mutex.synchronise("configsMutex")
     public async getS<T extends keyof DatabricksConfig>(
         key: T
     ): Promise<
@@ -209,8 +218,8 @@ export class ConfigModel implements Disposable {
           }
         | undefined
     > {
-        const {config: fullConfig, source: fullSource} = await this.configCache
-            .value;
+        const {config: fullConfig, source: fullSource} =
+            await this.configCache.value;
         const config = fullConfig[key] ?? defaults[key];
         const source =
             fullConfig[key] !== undefined ? fullSource[key] : "default";

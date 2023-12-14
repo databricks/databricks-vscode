@@ -116,22 +116,19 @@ export class ConnectionManager implements Disposable {
         await this.loginWithSavedAuth();
 
         this.disposables.push(
-            this.configModel.onDidChange(
-                "workspaceFsPath",
+            this.configModel.onDidChange("workspaceFsPath")(
                 this.updateSyncDestinationMapper,
                 this
             ),
-            this.configModel.onDidChange(
-                "clusterId",
+            this.configModel.onDidChange("clusterId")(
                 this.updateClusterManager,
                 this
             ),
-            this.configModel.onDidChange(
-                "target",
+            this.configModel.onDidChange("target")(
                 this.loginWithSavedAuth,
                 this
             ),
-            this.configModel.onDidChange("authParams", async () => {
+            this.configModel.onDidChange("authParams")(async () => {
                 const config = await this.configModel.getS("authParams");
                 if (config === undefined) {
                     return;

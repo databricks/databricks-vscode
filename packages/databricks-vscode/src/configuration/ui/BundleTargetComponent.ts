@@ -27,7 +27,7 @@ export class BundleTargetComponent extends BaseComponent {
     constructor(private readonly configModel: ConfigModel) {
         super();
         this.disposables.push(
-            this.configModel.onDidChange("target", () => {
+            this.configModel.onDidChange("target")(() => {
                 this.onDidChangeEmitter.fire();
             })
         );

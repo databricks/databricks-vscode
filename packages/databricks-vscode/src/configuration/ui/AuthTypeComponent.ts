@@ -15,7 +15,7 @@ export class AuthTypeComponent extends BaseComponent {
             this.connectionManager.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChange("target", () => {
+            this.configModel.onDidChange("target")(() => {
                 this.onDidChangeEmitter.fire();
             })
         );

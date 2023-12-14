@@ -61,7 +61,7 @@ export class WorkspaceComponent extends BaseComponent {
             this.codeSynchronizer.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChange("workspaceFsPath", () => {
+            this.configModel.onDidChange("workspaceFsPath")(() => {
                 this.onDidChangeEmitter.fire();
             })
         );

@@ -1,6 +1,8 @@
 import {randomUUID} from "crypto";
-import {ExtensionContext} from "vscode";
+import {EventEmitter, ExtensionContext, Event} from "vscode";
 import {OverrideableConfig} from "../configuration/types";
+import {Mutex} from "../locking";
+import lodash from "lodash";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 type KeyInfo<V> = {
@@ -16,7 +18,7 @@ function withType<V>() {
     };
 }
 
-const Keys = {
+const StorageConfigurations = {
     "databricks.bundle.overrides": withType<{
         [k: string]: OverrideableConfig;
     }>()({
@@ -83,17 +85,18 @@ const Keys = {
     }),
 };
 
-type ValueType<K extends keyof typeof Keys> = (typeof Keys)[K]["_type"];
+type Keys = keyof typeof StorageConfigurations;
+type ValueType<K extends Keys> = (typeof StorageConfigurations)[K]["_type"];
 type GetterReturnType<D extends KeyInfo<any>> = D extends {getter: infer G}
     ? G extends (...args: any[]) => any
         ? ReturnType<G>
         : undefined
     : undefined;
 
-type DefaultValue<K extends keyof typeof Keys> =
-    "defaultValue" extends keyof (typeof Keys)[K]
+type DefaultValue<K extends Keys> =
+    "defaultValue" extends keyof (typeof StorageConfigurations)[K]
         ? ValueType<K>
-        : GetterReturnType<(typeof Keys)[K]>;
+        : GetterReturnType<(typeof StorageConfigurations)[K]>;
 
 type KeyInfoWithType<V> = KeyInfo<V> & {
     _type: V;
@@ -102,6 +105,15 @@ type KeyInfoWithType<V> = KeyInfo<V> & {
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export class StateStorage {
+    private mutex = new Mutex();
+    private readonly changeEmitters = new Map<
+        Keys,
+        {
+            emitter: EventEmitter<void>;
+            onDidEmit: Event<void>;
+        }
+    >();
+
     constructor(private context: ExtensionContext) {}
     get skippedEnvsForDatabricksSdk() {
         return this.context.globalState.get<string[]>(
@@ -129,8 +141,21 @@ export class StateStorage {
         }
     }
 
-    get<K extends keyof typeof Keys>(key: K): ValueType<K> | DefaultValue<K> {
-        const details = Keys[key] as KeyInfoWithType<ValueType<K>>;
+    onDidChange<K extends Keys>(key: K): Event<void> {
+        if (!this.changeEmitters.has(key)) {
+            const emitter = new EventEmitter<void>();
+            this.changeEmitters.set(key, {
+                emitter,
+                onDidEmit: emitter.event,
+            });
+        }
+        return this.changeEmitters.get(key)!.onDidEmit;
+    }
+
+    get<K extends Keys>(key: K): ValueType<K> | DefaultValue<K> {
+        const details = StorageConfigurations[key] as KeyInfoWithType<
+            ValueType<K>
+        >;
 
         const value =
             this.getStateObject(details.location).get<ValueType<K>>(key) ??
@@ -141,14 +166,18 @@ export class StateStorage {
         ) as ValueType<K> | DefaultValue<K>;
     }
 
-    async set<K extends keyof typeof Keys>(
-        key: K,
-        value: ValueType<K> | undefined
-    ) {
-        const details = Keys[key] as KeyInfoWithType<ValueType<K>>;
+    @Mutex.synchronise("mutex")
+    async set<K extends Keys>(key: K, value: ValueType<K> | undefined) {
+        const details = StorageConfigurations[key] as KeyInfoWithType<
+            ValueType<K>
+        >;
         value =
             details.setter !== undefined ? details.setter(this, value) : value;
+        const oldValue = this.get(key);
+        if (lodash.isEqual(oldValue, value)) {
+            return;
+        }
         await this.getStateObject(details.location).update(key, value);
-        return;
+        this.changeEmitters.get(key)?.emitter.fire();
     }
 }
