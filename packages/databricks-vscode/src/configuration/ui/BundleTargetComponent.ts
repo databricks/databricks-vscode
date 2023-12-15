@@ -12,11 +12,11 @@ function getTreeIconId(key: string) {
 
 function humaniseMode(mode: DatabricksConfig["mode"]) {
     switch (mode) {
-        case "prod":
+        case "production":
             return "Production";
         case "staging":
             return "Staging";
-        case "dev":
+        case "development":
             return "Development";
         default:
             return mode;

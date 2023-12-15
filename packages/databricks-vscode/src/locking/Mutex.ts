@@ -43,7 +43,7 @@ export class Mutex {
             const original = descriptor.value;
             descriptor.value = async function (...args: any[]) {
                 const mutex = (this as any)[mutexKey] as Mutex;
-                mutex.synchronise(async () => {
+                return await mutex.synchronise(async () => {
                     return await original.apply(this, args);
                 });
             };

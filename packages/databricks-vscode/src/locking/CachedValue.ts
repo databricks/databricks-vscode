@@ -44,7 +44,7 @@ export class CachedValue<T> {
     }
 
     async refresh() {
-        this.invalidate();
+        await this.invalidate();
         await this.value;
     }
 }

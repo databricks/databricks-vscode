@@ -1,8 +1,7 @@
 export type DatabricksConfig = {
     host?: string;
 
-    // reconcile with actual mode and auth type enums from bundle
-    mode?: "dev" | "staging" | "prod";
+    mode?: "development" | "staging" | "production";
     authParams?: Record<string, any>;
 
     clusterId?: string;

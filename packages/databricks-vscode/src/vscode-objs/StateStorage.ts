@@ -161,9 +161,14 @@ export class StateStorage {
             this.getStateObject(details.location).get<ValueType<K>>(key) ??
             details.defaultValue;
 
-        return (
+        const returnValue = (
             details.getter !== undefined ? details.getter(this, value) : value
         ) as ValueType<K> | DefaultValue<K>;
+
+        if (typeof value === "object") {
+            return lodash.cloneDeep(returnValue);
+        }
+        return returnValue;
     }
 
     @Mutex.synchronise("mutex")

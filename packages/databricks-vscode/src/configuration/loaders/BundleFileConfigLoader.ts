@@ -7,7 +7,7 @@ import {BundleFileConfig, isBundleConfigKey} from "../types";
  * Reads and writes bundle configs. This class does not notify when the configs change.
  * We use the BundleWatcher to notify when the configs change.
  */
-export class BundlFileConfigLoader implements Disposable {
+export class BundleFileConfigLoader implements Disposable {
     private disposables: Disposable[] = [];
 
     private readonly bundleFileConfigCache = new CachedValue<

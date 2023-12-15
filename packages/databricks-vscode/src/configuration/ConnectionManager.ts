@@ -268,14 +268,16 @@ export class ConnectionManager implements Disposable {
         }
     }
 
-    @onError({popup: {prefix: "Can't logout. "}})
+    @onError({popup: {prefix: "Can't logout"}})
     @Mutex.synchronise("loginLogoutMutex")
     async logout() {
         this._workspaceClient = undefined;
         this._databricksWorkspace = undefined;
         await this.updateClusterManager();
         await this.updateSyncDestinationMapper();
-        await this.configModel.set("authParams", undefined);
+        if (this.configModel.target !== undefined) {
+            await this.configModel.set("authParams", undefined);
+        }
         this.updateState("DISCONNECTED");
     }
 

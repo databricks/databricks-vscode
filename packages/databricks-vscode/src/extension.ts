@@ -56,7 +56,9 @@ import {
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {ConfigModel} from "./configuration/ConfigModel";
 import {OverrideableConfigWriter} from "./configuration/writers/OverrideConfigWriter";
-import {BundleConfigReaderWriter} from "./configuration/writers/BundleFileConfigWriter";
+import {BundleFileConfigWriter} from "./configuration/writers/BundleFileConfigWriter";
+import {OverrideableConfigLoader} from "./configuration/loaders/OverrideableConfigLoader";
+import {BundleFileConfigLoader} from "./configuration/loaders/BundleFileConfigLoader";
 
 export async function activate(
     context: ExtensionContext
@@ -154,15 +156,19 @@ export async function activate(
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);
 
-    const overrideReaderWriter = new OverrideableConfigWriter(stateStorage);
-    const bundleConfigReaderWriter = new BundleConfigReaderWriter(
-        bundleFileSet
-    );
-    const configModel = new ConfigModel(
-        overrideReaderWriter,
-        bundleConfigReaderWriter,
-        stateStorage,
+    const overrideableConfigWriter = new OverrideableConfigWriter(stateStorage);
+    const overrideableConfigLoader = new OverrideableConfigLoader(stateStorage);
+    const bundleFileConfigLoader = new BundleFileConfigLoader(
+        bundleFileSet,
         bundleFileWatcher
+    );
+    const bundleFileConfigWriter = new BundleFileConfigWriter(bundleFileSet);
+    const configModel = new ConfigModel(
+        overrideableConfigLoader,
+        overrideableConfigWriter,
+        bundleFileConfigLoader,
+        bundleFileConfigWriter,
+        stateStorage
     );
 
     // Configuration group

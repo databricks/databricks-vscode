@@ -12,7 +12,7 @@ import {CachedValue} from "../locking/CachedValue";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import lodash from "lodash";
 import {onError} from "../utils/onErrorDecorator";
-import {BundlFileConfigLoader} from "./loaders/BundleFileConfigLoader";
+import {BundleFileConfigLoader} from "./loaders/BundleFileConfigLoader";
 import {BundleFileConfigWriter} from "./writers/BundleFileConfigWriter";
 import {OverrideableConfigLoader} from "./loaders/OverrideableConfigLoader";
 import {OverrideableConfigWriter} from "./writers/OverrideConfigWriter";
@@ -29,7 +29,7 @@ function isDirectToBundleConfig(
 }
 
 const defaults: DatabricksConfig = {
-    mode: "dev",
+    mode: "development",
 };
 
 /**
@@ -86,7 +86,7 @@ export class ConfigModel implements Disposable {
     constructor(
         private readonly overrideableConfigLoader: OverrideableConfigLoader,
         private readonly overrideableConfigWriter: OverrideableConfigWriter,
-        private readonly bundleFileConfigLoader: BundlFileConfigLoader,
+        public readonly bundleFileConfigLoader: BundleFileConfigLoader,
         private readonly bundleFileConfigWriter: BundleFileConfigWriter,
         private readonly stateStorage: StateStorage
     ) {
