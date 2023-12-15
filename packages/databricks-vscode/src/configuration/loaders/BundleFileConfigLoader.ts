@@ -95,11 +95,14 @@ export class BundleFileConfigLoader implements Disposable {
 
     private async readAll(target: string) {
         const configs = {} as any;
+        const targetObject = (await this.bundleFileSet.bundleDataCache.value)
+            .targets?.[target];
+
         for (const key of Object.keys(this.readerMapping)) {
             if (!isBundleConfigKey(key)) {
                 continue;
             }
-            configs[key] = await this.read(key, target);
+            configs[key] = await this.readerMapping[key](targetObject);
         }
         return configs as BundleFileConfig;
     }

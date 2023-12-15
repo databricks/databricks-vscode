@@ -225,7 +225,7 @@ export class ConnectionManager implements Disposable {
                 await this.updateSyncDestinationMapper();
                 await this.updateClusterManager();
                 await this.configModel.set("authParams", authProvider.toJSON());
-
+                await this.configModel.setAuthProvider(authProvider);
                 this.updateState("CONNECTED");
             });
         } catch (e) {

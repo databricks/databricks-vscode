@@ -16,6 +16,8 @@ import {BundleFileConfigLoader} from "./loaders/BundleFileConfigLoader";
 import {BundleFileConfigWriter} from "./writers/BundleFileConfigWriter";
 import {OverrideableConfigLoader} from "./loaders/OverrideableConfigLoader";
 import {OverrideableConfigWriter} from "./writers/OverrideConfigWriter";
+import {AuthenticatedBundleConfigLoader} from "./loaders/AuthenticatedBundleConfigLoader";
+import {AuthProvider} from "./auth/AuthProvider";
 
 function isDirectToBundleConfig(
     key: keyof BundleFileConfig,
@@ -48,8 +50,11 @@ export class ConfigModel implements Disposable {
         }
         const overrides = await this.overrideableConfigLoader.load();
         const bundleConfigs = await this.bundleFileConfigLoader.load();
+        const authenticatedBundleConfig =
+            await this.authenticatedBundleConfigLoader.load();
         const newValue: DatabricksConfig = {
             ...bundleConfigs,
+            ...authenticatedBundleConfig,
             ...overrides,
         };
 
@@ -88,6 +93,7 @@ export class ConfigModel implements Disposable {
         private readonly overrideableConfigWriter: OverrideableConfigWriter,
         public readonly bundleFileConfigLoader: BundleFileConfigLoader,
         private readonly bundleFileConfigWriter: BundleFileConfigWriter,
+        private readonly authenticatedBundleConfigLoader: AuthenticatedBundleConfigLoader,
         private readonly stateStorage: StateStorage
     ) {
         this.disposables.push(
@@ -99,6 +105,10 @@ export class ConfigModel implements Disposable {
                 await this.readTarget();
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
+            }),
+            this.authenticatedBundleConfigLoader.onDidChange(async () => {
+                //refresh cache to trigger onDidChange event
+                this.configCache.refresh();
             }),
             this.configCache.onDidChange(({oldValue, newValue}) => {
                 DATABRICKS_CONFIG_KEYS.forEach((key) => {
@@ -188,8 +198,16 @@ export class ConfigModel implements Disposable {
             await Promise.all([
                 this.bundleFileConfigLoader.setTarget(target),
                 this.overrideableConfigLoader.setTarget(target),
+                this.authenticatedBundleConfigLoader.setTarget(target),
             ]);
         });
+    }
+
+    @onError({popup: {prefix: "Failed to set auth provider."}})
+    public async setAuthProvider(authProvider: AuthProvider | undefined) {
+        await this.authenticatedBundleConfigLoader.setAuthProvider(
+            authProvider
+        );
     }
 
     @Mutex.synchronise("configsMutex")

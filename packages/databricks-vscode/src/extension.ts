@@ -59,6 +59,8 @@ import {OverrideableConfigWriter} from "./configuration/writers/OverrideConfigWr
 import {BundleFileConfigWriter} from "./configuration/writers/BundleFileConfigWriter";
 import {OverrideableConfigLoader} from "./configuration/loaders/OverrideableConfigLoader";
 import {BundleFileConfigLoader} from "./configuration/loaders/BundleFileConfigLoader";
+import {AuthenticatedBundleConfigLoader} from "./configuration/loaders/AuthenticatedBundleConfigLoader";
+import {AuthenticatedBundleModel} from "./bundle/AuthenticatedBundleModel";
 
 export async function activate(
     context: ExtensionContext
@@ -152,9 +154,15 @@ export async function activate(
         workspace.onDidChangeConfiguration(updateFeatureContexts)
     );
 
+    const cli = new CliWrapper(context);
     const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);
+    const authenticatedBundleModel = new AuthenticatedBundleModel(
+        bundleFileWatcher,
+        cli,
+        workspaceUri
+    );
 
     const overrideableConfigWriter = new OverrideableConfigWriter(stateStorage);
     const overrideableConfigLoader = new OverrideableConfigLoader(stateStorage);
@@ -163,16 +171,18 @@ export async function activate(
         bundleFileWatcher
     );
     const bundleFileConfigWriter = new BundleFileConfigWriter(bundleFileSet);
+    const authenticatedBundleConfigLoader = new AuthenticatedBundleConfigLoader(
+        authenticatedBundleModel
+    );
     const configModel = new ConfigModel(
         overrideableConfigLoader,
         overrideableConfigWriter,
         bundleFileConfigLoader,
         bundleFileConfigWriter,
+        authenticatedBundleConfigLoader,
         stateStorage
     );
 
-    // Configuration group
-    const cli = new CliWrapper(context);
     const connectionManager = new ConnectionManager(
         cli,
         configModel,

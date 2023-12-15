@@ -33,8 +33,23 @@ export type BundleFileConfig = Pick<
     (typeof BUNDLE_FILE_CONFIG_KEYS)[number]
 >;
 
-export const DATABRICKS_CONFIG_KEYS = Array.from(
-    new Set([...OVERRIDEABLE_CONFIG_KEYS, ...BUNDLE_FILE_CONFIG_KEYS])
+export const AUTHENTICATED_BUNDLE_CONFIG = [
+    "clusterId",
+    "workspaceFsPath",
+] as const;
+
+/** These are configs which can be loaded from the bundle */
+export type AuthenticatedBundleConfig = Pick<
+    DatabricksConfig,
+    (typeof AUTHENTICATED_BUNDLE_CONFIG)[number]
+>;
+
+export const DATABRICKS_CONFIG_KEYS: (keyof DatabricksConfig)[] = Array.from(
+    new Set([
+        ...OVERRIDEABLE_CONFIG_KEYS,
+        ...BUNDLE_FILE_CONFIG_KEYS,
+        ...AUTHENTICATED_BUNDLE_CONFIG,
+    ])
 );
 
 export function isOverrideableConfigKey(
@@ -47,7 +62,8 @@ export function isBundleConfigKey(key: any): key is keyof BundleFileConfig {
     return BUNDLE_FILE_CONFIG_KEYS.includes(key);
 }
 
-export interface ConfigReaderWriter<T extends keyof DatabricksConfig> {
-    read(key: T, target: string): Promise<DatabricksConfig[T] | undefined>;
-    write(key: T, target: string, value?: DatabricksConfig[T]): Promise<void>;
+export function isAuthenticatedBundleConfigKey(
+    key: any
+): key is keyof AuthenticatedBundleConfig {
+    return AUTHENTICATED_BUNDLE_CONFIG.includes(key);
 }
