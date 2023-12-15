@@ -26,22 +26,16 @@ export type OverrideableConfig = Pick<
     (typeof OVERRIDEABLE_CONFIG_KEYS)[number]
 >;
 
-export const BUNDLE_CONFIG_KEYS = [
-    "clusterId",
-    "authParams",
-    "workspaceFsPath",
-    "mode",
-    "host",
-] as const;
+export const BUNDLE_FILE_CONFIG_KEYS = ["authParams", "mode", "host"] as const;
 
 /** These are configs which can be loaded from the bundle */
-export type BundleConfig = Pick<
+export type BundleFileConfig = Pick<
     DatabricksConfig,
-    (typeof BUNDLE_CONFIG_KEYS)[number]
+    (typeof BUNDLE_FILE_CONFIG_KEYS)[number]
 >;
 
 export const DATABRICKS_CONFIG_KEYS = Array.from(
-    new Set([...OVERRIDEABLE_CONFIG_KEYS, ...BUNDLE_CONFIG_KEYS])
+    new Set([...OVERRIDEABLE_CONFIG_KEYS, ...BUNDLE_FILE_CONFIG_KEYS])
 );
 
 export function isOverrideableConfigKey(
@@ -50,8 +44,8 @@ export function isOverrideableConfigKey(
     return OVERRIDEABLE_CONFIG_KEYS.includes(key);
 }
 
-export function isBundleConfigKey(key: any): key is keyof BundleConfig {
-    return BUNDLE_CONFIG_KEYS.includes(key);
+export function isBundleConfigKey(key: any): key is keyof BundleFileConfig {
+    return BUNDLE_FILE_CONFIG_KEYS.includes(key);
 }
 
 export interface ConfigReaderWriter<T extends keyof DatabricksConfig> {

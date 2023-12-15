@@ -55,8 +55,8 @@ import {
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {ConfigModel} from "./configuration/ConfigModel";
-import {ConfigOverrideReaderWriter} from "./configuration/ConfigOverrideReaderWriter";
-import {BundleConfigReaderWriter} from "./configuration/BundleConfigReaderWriter";
+import {OverrideableConfigWriter} from "./configuration/writers/OverrideConfigWriter";
+import {BundleConfigReaderWriter} from "./configuration/writers/BundleFileConfigWriter";
 
 export async function activate(
     context: ExtensionContext
@@ -154,7 +154,7 @@ export async function activate(
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);
 
-    const overrideReaderWriter = new ConfigOverrideReaderWriter(stateStorage);
+    const overrideReaderWriter = new OverrideableConfigWriter(stateStorage);
     const bundleConfigReaderWriter = new BundleConfigReaderWriter(
         bundleFileSet
     );

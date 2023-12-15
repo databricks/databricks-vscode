@@ -15,7 +15,6 @@ export class CachedValue<T> {
     constructor(private readonly getter: (value: T | null) => Promise<T>) {}
 
     get value(): Promise<T> {
-        //TODO: Fire an event if the returned value and the cached value are different
         if (this._dirty || this._value === null) {
             return this.mutex
                 .wait()

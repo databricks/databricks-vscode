@@ -1,12 +1,9 @@
-import {EventEmitter} from "vscode";
-import {Mutex} from "../locking";
-import {StateStorage} from "../vscode-objs/StateStorage";
-import {OverrideableConfig} from "./types";
+import {Mutex} from "../../locking";
+import {StateStorage} from "../../vscode-objs/StateStorage";
+import {OverrideableConfig} from "../types";
 
-export class ConfigOverrideReaderWriter {
+export class OverrideableConfigWriter {
     private writeMutex = new Mutex();
-    private onDidChangeEmitter = new EventEmitter<void>();
-    public readonly onDidChange = this.onDidChangeEmitter.event;
 
     constructor(private readonly storage: StateStorage) {}
 
@@ -33,10 +30,5 @@ export class ConfigOverrideReaderWriter {
         }
         data[target][key] = value;
         await this.storage.set("databricks.bundle.overrides", data);
-        this.onDidChangeEmitter.fire();
-    }
-
-    async readAll(target: string) {
-        return this.storage.get("databricks.bundle.overrides")[target];
     }
 }

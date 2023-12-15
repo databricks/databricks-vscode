@@ -1,26 +1,27 @@
 import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {
-    BundleConfig,
+    BundleFileConfig,
     DATABRICKS_CONFIG_KEYS,
     DatabricksConfig,
     isBundleConfigKey,
     isOverrideableConfigKey,
     DatabricksConfigSourceMap,
 } from "./types";
-import {ConfigOverrideReaderWriter} from "./ConfigOverrideReaderWriter";
-import {BundleConfigReaderWriter} from "./BundleConfigReaderWriter";
 import {Mutex} from "../locking";
-import {BundleWatcher} from "../bundle";
 import {CachedValue} from "../locking/CachedValue";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import lodash from "lodash";
 import {onError} from "../utils/onErrorDecorator";
+import {BundlFileConfigLoader} from "./loaders/BundleFileConfigLoader";
+import {BundleFileConfigWriter} from "./writers/BundleFileConfigWriter";
+import {OverrideableConfigLoader} from "./loaders/OverrideableConfigLoader";
+import {OverrideableConfigWriter} from "./writers/OverrideConfigWriter";
 
 function isDirectToBundleConfig(
-    key: keyof BundleConfig,
-    mode?: BundleConfig["mode"]
+    key: keyof BundleFileConfig,
+    mode?: BundleFileConfig["mode"]
 ) {
-    const directToBundleConfigs: (keyof BundleConfig)[] = [];
+    const directToBundleConfigs: (keyof BundleFileConfig)[] = [];
     if (mode !== undefined) {
         // filter by mode
     }
@@ -45,10 +46,8 @@ export class ConfigModel implements Disposable {
         if (this.target === undefined) {
             return {config: {}, source: {}};
         }
-        const overrides = await this.overrideReaderWriter.readAll(this.target);
-        const bundleConfigs = await this.bundleConfigReaderWriter.readAll(
-            this.target
-        );
+        const overrides = await this.overrideableConfigLoader.load();
+        const bundleConfigs = await this.bundleFileConfigLoader.load();
         const newValue: DatabricksConfig = {
             ...bundleConfigs,
             ...overrides,
@@ -80,31 +79,28 @@ export class ConfigModel implements Disposable {
             onDidEmit: Event<void>;
         }
     >();
-    private onDidChangeAnyEmitter = new EventEmitter<void>();
-    public onDidChangeAny = this.onDidChangeAnyEmitter.event;
+    public onDidChangeAny = this.configCache.onDidChange;
 
     private _target: string | undefined;
 
     constructor(
-        public readonly overrideReaderWriter: ConfigOverrideReaderWriter,
-        public readonly bundleConfigReaderWriter: BundleConfigReaderWriter,
-        private readonly stateStorage: StateStorage,
-        private readonly bundleWatcher: BundleWatcher
+        private readonly overrideableConfigLoader: OverrideableConfigLoader,
+        private readonly overrideableConfigWriter: OverrideableConfigWriter,
+        private readonly bundleFileConfigLoader: BundlFileConfigLoader,
+        private readonly bundleFileConfigWriter: BundleFileConfigWriter,
+        private readonly stateStorage: StateStorage
     ) {
         this.disposables.push(
-            this.overrideReaderWriter.onDidChange(async () => {
-                //try to access the value to trigger cache update and onDidChange event
+            this.overrideableConfigLoader.onDidChange(async () => {
+                //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
-            //TODO: depend on bundleConfigLoader here instead of bundleWatcher
-            this.bundleWatcher.onDidChange(async () => {
+            this.bundleFileConfigLoader.onDidChange(async () => {
                 await this.readTarget();
-                //try to access the value to trigger cache update and onDidChange event
+                //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
             this.configCache.onDidChange(({oldValue, newValue}) => {
-                this.onDidChangeAnyEmitter.fire();
-
                 DATABRICKS_CONFIG_KEYS.forEach((key) => {
                     if (
                         oldValue === null ||
@@ -143,7 +139,7 @@ export class ConfigModel implements Disposable {
      */
     private async readTarget() {
         const targets = Object.keys(
-            (await this.bundleConfigReaderWriter.targets) ?? {}
+            (await this.bundleFileConfigLoader.targets) ?? {}
         );
         if (targets.includes(this.target ?? "")) {
             return;
@@ -156,7 +152,7 @@ export class ConfigModel implements Disposable {
             if (savedTarget !== undefined && targets.includes(savedTarget)) {
                 return;
             }
-            savedTarget = await this.bundleConfigReaderWriter.defaultTarget;
+            savedTarget = await this.bundleFileConfigLoader.defaultTarget;
         });
         await this.setTarget(savedTarget);
     }
@@ -178,7 +174,7 @@ export class ConfigModel implements Disposable {
             this.target !== undefined &&
             !(
                 this.target in
-                ((await this.bundleConfigReaderWriter.targets) ?? {})
+                ((await this.bundleFileConfigLoader.targets) ?? {})
             )
         ) {
             throw new Error(
@@ -189,12 +185,11 @@ export class ConfigModel implements Disposable {
             this._target = target;
             await this.stateStorage.set("databricks.bundle.target", target);
             this.changeEmitters.get("target")?.emitter.fire();
-            //We call invalidate here and not refresh because we know that invalidate is a simple operation
-            //and it is not going to be in a circular dependency with configsMutex ever. Calling refresh here instead can
-            //cause circular dependency in the future if we add a dependency on configsMutex in the refresh callback.
-            await this.configCache.invalidate();
+            await Promise.all([
+                this.bundleFileConfigLoader.setTarget(target),
+                this.overrideableConfigLoader.setTarget(target),
+            ]);
         });
-        await this.configCache.refresh();
     }
 
     @Mutex.synchronise("configsMutex")
@@ -236,7 +231,7 @@ export class ConfigModel implements Disposable {
         key: T,
         value?: DatabricksConfig[T],
         handleInteractiveWrite?: (file: Uri | undefined) => any
-    ): Promise<void> {
+    ) {
         // We work with 1 set of configs throughout the function.
         // No changes to the cache can happen when the global mutex is held.
         // The assumption is that user doesn't change the target mode in the middle of
@@ -249,14 +244,14 @@ export class ConfigModel implements Disposable {
             );
         }
         if (isOverrideableConfigKey(key)) {
-            return this.overrideReaderWriter.write(key, this.target, value);
+            return this.overrideableConfigWriter.write(key, this.target, value);
         }
         if (isBundleConfigKey(key)) {
             const isInteractive = handleInteractiveWrite !== undefined;
 
             // write to bundle if not interactive and the config can be safely written to bundle
             if (!isInteractive && isDirectToBundleConfig(key, mode)) {
-                return await this.bundleConfigReaderWriter.write(
+                return await this.bundleFileConfigWriter.write(
                     key,
                     this.target,
                     value
@@ -264,7 +259,7 @@ export class ConfigModel implements Disposable {
             }
 
             if (isInteractive) {
-                const file = await this.bundleConfigReaderWriter.getFileToWrite(
+                const file = await this.bundleFileConfigWriter.getFileToWrite(
                     key,
                     this.target
                 );
