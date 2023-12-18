@@ -23,13 +23,13 @@
         "test": "yarn run test:lint && yarn run test:unit"
     },
     "devDependencies": {
-        "@types/vscode": "^1.69.1",
-        "eslint": "^8.51.0",
-        "prettier": "^3.0.0",
-        "typescript": "5.1.6"
+        "@types/vscode": "^1.85.0",
+        "eslint": "^8.55.0",
+        "prettier": "^3.1.1",
+        "typescript": "^5.3.3"
     },
     "dependencies": {
         "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz",
-        "databricks": "*"
+        "databricks": "workspace:^"
     }
 }

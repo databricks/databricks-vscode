@@ -7,3 +7,5 @@ package-lock.json
 src/test/e2e/workspace/.databricks/
 extension/
 resources/python/generated/
+.venv
+*.vsix
