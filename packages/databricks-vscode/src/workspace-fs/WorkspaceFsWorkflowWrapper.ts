@@ -11,35 +11,26 @@ import {LocalUri, RemoteUri} from "../sync/SyncDestination";
 import {FileUtils} from "../utils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
-function getWrapperPath(remoteFilePath: RemoteUri, extraParts: string[]) {
+function getWrapperPath(
+    remoteOriginalFilePath: RemoteUri,
+    extraParts: string[]
+) {
     return new RemoteUri(
         posix.format({
-            dir: posix.dirname(remoteFilePath.path),
+            dir: posix.dirname(remoteOriginalFilePath.path),
             name: posix
-                .basename(remoteFilePath.path)
+                .basename(remoteOriginalFilePath.path)
                 .split(".")
                 .slice(0, -1)
                 .concat(extraParts)
                 .join("."),
-            ext: posix.extname(remoteFilePath.path),
+            ext: posix.extname(remoteOriginalFilePath.path),
         })
     );
 }
 
-async function readBootstrap(
-    bootstrapPath: string,
-    remoteFilePath: RemoteUri,
-    dbProjectRoot: RemoteUri
-) {
-    return (await readFile(bootstrapPath, "utf-8"))
-        .replace(
-            "{{DATABRICKS_SOURCE_FILE}}",
-            remoteFilePath.workspacePrefixPath
-        )
-        .replace(
-            "{{DATABRICKS_PROJECT_ROOT}}",
-            dbProjectRoot.workspacePrefixPath
-        );
+async function readBootstrap(bootstrapPath: string) {
+    return await readFile(bootstrapPath, "utf-8");
 }
 
 type Cell = {
@@ -47,6 +38,7 @@ type Cell = {
     type: "code" | "not_code";
     originalCell?: any;
 };
+
 function rearrangeCells(cells: Cell[]) {
     if (!workspaceConfigs.wsfsRearrangeCells) {
         return cells;
@@ -69,9 +61,18 @@ function rearrangeCells(cells: Cell[]) {
             // as a new cell to the beginging and remove it from the original cell
             if (
                 line.startsWith("%pip install") ||
-                line.startsWith("# MAGIC %pip install") ||
-                line.startsWith("dbutils.library.restartPython()")
+                line.startsWith("# MAGIC %pip install")
             ) {
+                begingingCells.push({
+                    source: [
+                        "import os",
+                        "os.chdir(os.path.dirname('{{DATABRICKS_SOURCE_FILE}}'))",
+                        line,
+                    ],
+                    type: "code",
+                });
+                continue;
+            } else if (line.startsWith("dbutils.library.restartPython()")) {
                 begingingCells.push({source: [line], type: "code"});
                 continue;
             }
@@ -79,6 +80,7 @@ function rearrangeCells(cells: Cell[]) {
         }
         endingCells.push(newCell);
     }
+
     return [...begingingCells, ...endingCells].filter(
         (cell) => cell.source.length !== 0
     );
@@ -92,11 +94,13 @@ export class WorkspaceFsWorkflowWrapper {
 
     @logging.withLogContext(Loggers.Extension)
     private async createFile(
-        remoteFilePath: RemoteUri,
+        wrapperPath: RemoteUri,
+        remoteOriginalFilePath: RemoteUri,
+        dbProjectRoot: RemoteUri,
         content: string,
         @context ctx?: Context
     ) {
-        const dirpath = posix.dirname(remoteFilePath.path);
+        const dirpath = posix.dirname(wrapperPath.path);
 
         if (!this.connectionManager.workspaceClient) {
             throw new Error(`Not logged in`);
@@ -109,15 +113,24 @@ export class WorkspaceFsWorkflowWrapper {
         if (!WorkspaceFsUtils.isDirectory(rootDir)) {
             throw new Error(`${dirpath} is not a directory`);
         }
+        content = content
+            .replace(
+                /{{DATABRICKS_SOURCE_FILE}}/g,
+                remoteOriginalFilePath.workspacePrefixPath
+            )
+            .replace(
+                /{{DATABRICKS_PROJECT_ROOT}}/g,
+                dbProjectRoot.workspacePrefixPath
+            );
         const wrappedFile = await rootDir.createFile(
-            remoteFilePath.path,
+            wrapperPath.path,
             content,
             true,
             ctx
         );
         if (!WorkspaceFsUtils.isFile(wrappedFile)) {
             throw new Error(
-                `Cannot create workflow wrapper for ${remoteFilePath.path}`
+                `Cannot create workflow wrapper for ${remoteOriginalFilePath.path}`
             );
         }
         return wrappedFile;
@@ -126,7 +139,7 @@ export class WorkspaceFsWorkflowWrapper {
     @logging.withLogContext(Loggers.Extension)
     private async createIpynbWrapper(
         localFilePath: LocalUri,
-        remoteFilePath: RemoteUri,
+        remoteOriginalFilePath: RemoteUri,
         dbProjectRoot: RemoteUri,
         @context ctx?: Context
     ) {
@@ -145,7 +158,7 @@ export class WorkspaceFsWorkflowWrapper {
             )
         );
         const bootstrapJson: JupyterCell = JSON.parse(
-            await readBootstrap(bootstrapPath, remoteFilePath, dbProjectRoot)
+            await readBootstrap(bootstrapPath)
         );
         const cells = [bootstrapJson].concat(originalJson["cells"] ?? []).map(
             // Since each cell.source is a string array where each string can be
@@ -169,11 +182,13 @@ export class WorkspaceFsWorkflowWrapper {
             };
         });
         return this.createFile(
-            getWrapperPath(remoteFilePath, [
+            getWrapperPath(remoteOriginalFilePath, [
                 "databricks",
                 "notebook",
                 "workflow-wrapper",
             ]),
+            remoteOriginalFilePath,
+            dbProjectRoot,
             JSON.stringify(originalJson),
             ctx
         );
@@ -182,7 +197,7 @@ export class WorkspaceFsWorkflowWrapper {
     @logging.withLogContext(Loggers.Extension)
     private async createDbnbWrapper(
         localFilePath: LocalUri,
-        remoteFilePath: RemoteUri,
+        remoteOriginalFilePath: RemoteUri,
         dbProjectRoot: RemoteUri,
         @context ctx?: Context
     ) {
@@ -194,9 +209,9 @@ export class WorkspaceFsWorkflowWrapper {
         const bootstrapPath = this.extensionContext.asAbsolutePath(
             path.join("resources", "python", "notebook.workflow-wrapper.py")
         );
-        const bootstrapCode = (
-            await readBootstrap(bootstrapPath, remoteFilePath, dbProjectRoot)
-        ).split(/\r?\n/);
+        const bootstrapCode = (await readBootstrap(bootstrapPath)).split(
+            /\r?\n/
+        );
 
         // Split original code into cells by # COMMAND ----------\n
         // and add the bootstrap code to the beginning as a new cell
@@ -217,11 +232,13 @@ export class WorkspaceFsWorkflowWrapper {
             .join("\n# COMMAND ----------\n");
 
         return this.createFile(
-            getWrapperPath(remoteFilePath, [
+            getWrapperPath(remoteOriginalFilePath, [
                 "databricks",
                 "notebook",
                 "workflow-wrapper",
             ]),
+            remoteOriginalFilePath,
+            dbProjectRoot,
             wrappedCode,
             ctx
         );
@@ -230,7 +247,7 @@ export class WorkspaceFsWorkflowWrapper {
     @logging.withLogContext(Loggers.Extension)
     async createNotebookWrapper(
         localFilePath: LocalUri,
-        remoteFilePath: RemoteUri,
+        remoteOriginalFilePath: RemoteUri,
         dbProjectRoot: RemoteUri,
         notebookType: FileUtils.NotebookType,
         @context ctx?: Context
@@ -239,14 +256,14 @@ export class WorkspaceFsWorkflowWrapper {
             case "PY_DBNB":
                 return this.createDbnbWrapper(
                     localFilePath,
-                    remoteFilePath,
+                    remoteOriginalFilePath,
                     dbProjectRoot,
                     ctx
                 );
             case "IPYNB":
                 return this.createIpynbWrapper(
                     localFilePath,
-                    remoteFilePath,
+                    remoteOriginalFilePath,
                     dbProjectRoot,
                     ctx
                 );
@@ -255,7 +272,8 @@ export class WorkspaceFsWorkflowWrapper {
 
     @logging.withLogContext(Loggers.Extension)
     async createPythonFileWrapper(
-        remoteFilePath: RemoteUri,
+        remoteOriginalFilePath: RemoteUri,
+        dbProjectRoot: RemoteUri,
         @context ctx?: Context
     ) {
         const bootstrapPath = this.extensionContext.asAbsolutePath(
@@ -263,11 +281,13 @@ export class WorkspaceFsWorkflowWrapper {
         );
         const bootstrap = await readFile(bootstrapPath, "utf-8");
         return this.createFile(
-            getWrapperPath(remoteFilePath, [
+            getWrapperPath(remoteOriginalFilePath, [
                 "databricks",
                 "file",
                 "workflow-wrapper",
             ]),
+            remoteOriginalFilePath,
+            dbProjectRoot,
             bootstrap,
             ctx
         );
