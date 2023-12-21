@@ -124,8 +124,7 @@ export class CliWrapper {
                     msg =
                         "Failed to parse Databricks Config File, please make sure it's in the correct ini format";
                 } else if (e.message.includes("spawn UNKNOWN")) {
-                    msg =
-                        `Failed to parse Databricks Config File using databricks CLI, please make sure you have permissions to execute this binary: "${this.cliPath}"`;
+                    msg = `Failed to parse Databricks Config File using databricks CLI, please make sure you have permissions to execute this binary: "${this.cliPath}"`;
                 }
             }
             ctx?.logger?.error(msg, e);
