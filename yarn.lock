@@ -1665,6 +1665,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@vscode/test-electron@npm:^2.3.8":
+  version: 2.3.8
+  resolution: "@vscode/test-electron@npm:2.3.8"
+  dependencies:
+    http-proxy-agent: ^4.0.1
+    https-proxy-agent: ^5.0.0
+    jszip: ^3.10.1
+    semver: ^7.5.2
+  checksum: cee9e9e9396949a1cdd1ba60b91eb8f9c6a04808a4ba18a19ba4b55a13eea08f6aff28ffe856e526224e5b97b3cbe1fe175e498f5619b81bd029889c998a2191
+  languageName: node
+  linkType: hard
+
 "@vscode/webview-ui-toolkit@npm:^1.2.2":
   version: 1.2.2
   resolution: "@vscode/webview-ui-toolkit@npm:1.2.2"
@@ -3444,7 +3456,7 @@ __metadata:
     "@typescript-eslint/parser": ^6.0.0
     "@vscode/debugadapter": ^1.61.0
     "@vscode/extension-telemetry": ^0.9.0
-    "@vscode/test-electron": ^2.3.3
+    "@vscode/test-electron": ^2.3.8
     "@vscode/webview-ui-toolkit": ^1.2.2
     "@wdio/cli": ^8.12.2
     "@wdio/local-runner": ^8.12.1
@@ -9055,7 +9067,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.0.0, semver@npm:^7.5.0, semver@npm:^7.5.4":
+"semver@npm:^7.0.0, semver@npm:^7.5.0, semver@npm:^7.5.2, semver@npm:^7.5.4":
   version: 7.5.4
   resolution: "semver@npm:7.5.4"
   dependencies:
