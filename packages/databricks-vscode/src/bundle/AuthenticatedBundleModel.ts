@@ -62,10 +62,10 @@ export class AuthenticatedBundleModel implements Disposable {
 
     @Mutex.synchronise("mutex")
     public async setAuthProvider(authProvider: AuthProvider | undefined) {
-        this.authProvider = authProvider;
         if (
-            lodash.isEqual(this.authProvider?.toJSON(), authProvider?.toJSON())
+            !lodash.isEqual(this.authProvider?.toJSON(), authProvider?.toJSON())
         ) {
+            this.authProvider = authProvider;
             await this.configCache.refresh();
         }
     }
