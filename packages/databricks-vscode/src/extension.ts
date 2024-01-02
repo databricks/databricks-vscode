@@ -55,9 +55,8 @@ import {
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {ConfigModel} from "./configuration/ConfigModel";
-import {OverrideableConfigWriter} from "./configuration/writers/OverrideConfigWriter";
 import {BundleFileConfigWriter} from "./configuration/writers/BundleFileConfigWriter";
-import {OverrideableConfigLoader} from "./configuration/loaders/OverrideableConfigLoader";
+import {OverrideableConfigLoaderWriter} from "./configuration/loaders/OverrideableConfigLoaderWriter";
 import {BundleFileConfigLoader} from "./configuration/loaders/BundleFileConfigLoader";
 import {AuthenticatedBundleConfigLoader} from "./configuration/loaders/AuthenticatedBundleConfigLoader";
 import {AuthenticatedBundleModel} from "./bundle/AuthenticatedBundleModel";
@@ -164,8 +163,9 @@ export async function activate(
         workspaceUri
     );
 
-    const overrideableConfigWriter = new OverrideableConfigWriter(stateStorage);
-    const overrideableConfigLoader = new OverrideableConfigLoader(stateStorage);
+    const overrideableConfigLoaderWriter = new OverrideableConfigLoaderWriter(
+        stateStorage
+    );
     const bundleFileConfigLoader = new BundleFileConfigLoader(
         bundleFileSet,
         bundleFileWatcher
@@ -175,8 +175,7 @@ export async function activate(
         authenticatedBundleModel
     );
     const configModel = new ConfigModel(
-        overrideableConfigLoader,
-        overrideableConfigWriter,
+        overrideableConfigLoaderWriter,
         bundleFileConfigLoader,
         bundleFileConfigWriter,
         authenticatedBundleConfigLoader,

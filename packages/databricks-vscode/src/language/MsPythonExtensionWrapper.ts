@@ -15,9 +15,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {mkdtemp, readFile} from "fs/promises";
 import {Mutex} from "../locking";
-import * as child_process from "node:child_process";
+import * as childProcess from "node:child_process";
 import {promisify} from "node:util";
-export const execFile = promisify(child_process.execFile);
+export const execFile = promisify(childProcess.execFile);
 
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;

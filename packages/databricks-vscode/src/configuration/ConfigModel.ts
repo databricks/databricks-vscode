@@ -14,10 +14,9 @@ import lodash from "lodash";
 import {onError} from "../utils/onErrorDecorator";
 import {BundleFileConfigLoader} from "./loaders/BundleFileConfigLoader";
 import {BundleFileConfigWriter} from "./writers/BundleFileConfigWriter";
-import {OverrideableConfigLoader} from "./loaders/OverrideableConfigLoader";
-import {OverrideableConfigWriter} from "./writers/OverrideConfigWriter";
 import {AuthenticatedBundleConfigLoader} from "./loaders/AuthenticatedBundleConfigLoader";
 import {AuthProvider} from "./auth/AuthProvider";
+import {OverrideableConfigLoaderWriter} from "./loaders/OverrideableConfigLoaderWriter";
 
 function isDirectToBundleConfig(
     key: keyof BundleFileConfig,
@@ -48,7 +47,7 @@ export class ConfigModel implements Disposable {
         if (this.target === undefined) {
             return {config: {}, source: {}};
         }
-        const overrides = await this.overrideableConfigLoader.load();
+        const overrides = await this.overrideableConfigLoaderWriter.load();
         const bundleConfigs = await this.bundleFileConfigLoader.load();
         const authenticatedBundleConfig =
             await this.authenticatedBundleConfigLoader.load();
@@ -89,15 +88,14 @@ export class ConfigModel implements Disposable {
     private _target: string | undefined;
 
     constructor(
-        private readonly overrideableConfigLoader: OverrideableConfigLoader,
-        private readonly overrideableConfigWriter: OverrideableConfigWriter,
+        private readonly overrideableConfigLoaderWriter: OverrideableConfigLoaderWriter,
         public readonly bundleFileConfigLoader: BundleFileConfigLoader,
         private readonly bundleFileConfigWriter: BundleFileConfigWriter,
         private readonly authenticatedBundleConfigLoader: AuthenticatedBundleConfigLoader,
         private readonly stateStorage: StateStorage
     ) {
         this.disposables.push(
-            this.overrideableConfigLoader.onDidChange(async () => {
+            this.overrideableConfigLoaderWriter.onDidChange(async () => {
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
@@ -197,8 +195,8 @@ export class ConfigModel implements Disposable {
             this.changeEmitters.get("target")?.emitter.fire();
             await Promise.all([
                 this.bundleFileConfigLoader.setTarget(target),
-                this.overrideableConfigLoader.setTarget(target),
                 this.authenticatedBundleConfigLoader.setTarget(target),
+                this.overrideableConfigLoaderWriter.setTarget(target),
             ]);
         });
     }
@@ -262,7 +260,11 @@ export class ConfigModel implements Disposable {
             );
         }
         if (isOverrideableConfigKey(key)) {
-            return this.overrideableConfigWriter.write(key, this.target, value);
+            return this.overrideableConfigLoaderWriter.write(
+                key,
+                this.target,
+                value
+            );
         }
         if (isBundleConfigKey(key)) {
             const isInteractive = handleInteractiveWrite !== undefined;

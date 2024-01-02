@@ -16,23 +16,18 @@ export class CachedValue<T> {
 
     get value(): Promise<T> {
         if (this._dirty || this._value === null) {
-            return this.mutex
-                .wait()
-                .then(async () => {
-                    const newValue = await this.getter(this._value);
-                    if (!lodash.isEqual(newValue, this._value)) {
-                        this.onDidChangeEmitter.fire({
-                            oldValue: this._value,
-                            newValue: newValue,
-                        });
-                    }
-                    this._value = newValue;
-                    this._dirty = false;
-                    return this._value;
-                })
-                .finally(() => {
-                    this.mutex.signal();
-                });
+            return this.mutex.synchronise(async () => {
+                const newValue = await this.getter(this._value);
+                if (!lodash.isEqual(newValue, this._value)) {
+                    this.onDidChangeEmitter.fire({
+                        oldValue: this._value,
+                        newValue: newValue,
+                    });
+                }
+                this._value = newValue;
+                this._dirty = false;
+                return this._value;
+            });
         }
 
         return Promise.resolve(this._value);
