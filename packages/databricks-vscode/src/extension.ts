@@ -55,9 +55,8 @@ import {
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {ConfigModel} from "./configuration/ConfigModel";
-import {OverrideableConfigWriter} from "./configuration/writers/OverrideConfigWriter";
 import {BundleFileConfigWriter} from "./configuration/writers/BundleFileConfigWriter";
-import {OverrideableConfigLoader} from "./configuration/loaders/OverrideableConfigLoader";
+import {OverrideableConfigLoaderWriter} from "./configuration/loaders/OverrideableConfigLoaderWriter";
 import {BundleFileConfigLoader} from "./configuration/loaders/BundleFileConfigLoader";
 
 export async function activate(
@@ -156,16 +155,16 @@ export async function activate(
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);
 
-    const overrideableConfigWriter = new OverrideableConfigWriter(stateStorage);
-    const overrideableConfigLoader = new OverrideableConfigLoader(stateStorage);
+    const overrideableConfigLoaderWriter = new OverrideableConfigLoaderWriter(
+        stateStorage
+    );
     const bundleFileConfigLoader = new BundleFileConfigLoader(
         bundleFileSet,
         bundleFileWatcher
     );
     const bundleFileConfigWriter = new BundleFileConfigWriter(bundleFileSet);
     const configModel = new ConfigModel(
-        overrideableConfigLoader,
-        overrideableConfigWriter,
+        overrideableConfigLoaderWriter,
         bundleFileConfigLoader,
         bundleFileConfigWriter,
         stateStorage

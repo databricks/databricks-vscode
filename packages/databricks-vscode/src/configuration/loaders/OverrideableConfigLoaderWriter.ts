@@ -2,8 +2,11 @@ import {StateStorage} from "../../vscode-objs/StateStorage";
 import {OverrideableConfig} from "../types";
 import {CachedValue} from "../../locking/CachedValue";
 import {Disposable} from "vscode";
+import {Mutex} from "../../locking";
 
-export class OverrideableConfigLoader implements Disposable {
+export class OverrideableConfigLoaderWriter implements Disposable {
+    private writeMutex = new Mutex();
+
     private disposables: Disposable[] = [];
 
     private readonly overrideableCofigCache = new CachedValue<
@@ -37,6 +40,31 @@ export class OverrideableConfigLoader implements Disposable {
 
     public async load() {
         return this.overrideableCofigCache.value;
+    }
+
+    /**
+     * Write the config as an override to the bundle.
+     * @param key the key to write
+     * @param target the bundle target to write to
+     * @param value the value to write. If undefined, the override is removed.
+     * @returns status of the write
+     */
+    @Mutex.synchronise("writeMutex")
+    async write<T extends keyof OverrideableConfig>(
+        key: T,
+        target: string,
+        value?: OverrideableConfig[T]
+    ) {
+        const data = this.storage.get("databricks.bundle.overrides");
+        if (data[target] === undefined) {
+            data[target] = {};
+        }
+        const oldValue = JSON.stringify(data[target][key]);
+        if (oldValue === JSON.stringify(value)) {
+            return;
+        }
+        data[target][key] = value;
+        await this.storage.set("databricks.bundle.overrides", data);
     }
 
     public dispose() {
