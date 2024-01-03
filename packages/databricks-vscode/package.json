@@ -734,7 +734,7 @@
         "ts-node": "^10.9.1",
         "typescript": "5.1.6",
         "vsce": "^2.15.0",
-        "wdio-video-reporter": "^4.0.3",
+        "wdio-video-reporter": "^5.0.0",
         "wdio-vscode-service": "^5.2.0",
         "winston": "^3.10.0",
         "yargs": "^17.7.2"
