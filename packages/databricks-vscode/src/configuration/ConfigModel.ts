@@ -211,8 +211,8 @@ export class ConfigModel implements Disposable {
           }
         | undefined
     > {
-        const {config: fullConfig, source: fullSource} = await this.configCache
-            .value;
+        const {config: fullConfig, source: fullSource} =
+            await this.configCache.value;
         const config = fullConfig[key] ?? defaults[key];
         const source =
             fullConfig[key] !== undefined ? fullSource[key] : "default";
