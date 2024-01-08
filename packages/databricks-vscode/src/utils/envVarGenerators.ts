@@ -131,6 +131,7 @@ export function getEnvVarsForCli(configfilePath?: string) {
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         HOME: process.env.HOME,
+        PATH: process.env.PATH,
         DATABRICKS_CONFIG_FILE:
             configfilePath ?? process.env.DATABRICKS_CONFIG_FILE,
         DATABRICKS_OUTPUT_FORMAT: "json",
