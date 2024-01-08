@@ -33,7 +33,8 @@ export type ValidationMessageType = {
     type: "error" | "warning";
 };
 
-const ValudationMessageTypeToInputBoxSeverity = {
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const ValidationMessageTypeToInputBoxSeverity = {
     error: InputBoxValidationSeverity.Error,
     warning: InputBoxValidationSeverity.Warning,
 };
@@ -349,7 +350,7 @@ export class MultiStepInput {
                             input.validationMessage = {
                                 message: validationMessage.message,
                                 severity:
-                                    ValudationMessageTypeToInputBoxSeverity[
+                                    ValidationMessageTypeToInputBoxSeverity[
                                         validationMessage.type
                                     ],
                             };
