@@ -1,4 +1,4 @@
-import {ConfigModel} from "../ConfigModel";
+import {ConfigModel} from "../models/ConfigModel";
 import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {

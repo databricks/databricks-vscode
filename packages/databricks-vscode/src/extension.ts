@@ -54,10 +54,9 @@ import {
     registerBundleAutocompleteProvider,
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
-import {ConfigModel} from "./configuration/ConfigModel";
-import {BundleFileConfigWriter} from "./configuration/writers/BundleFileConfigWriter";
-import {OverrideableConfigLoaderWriter} from "./configuration/loaders/OverrideableConfigLoaderWriter";
-import {BundleFileConfigLoader} from "./configuration/loaders/BundleFileConfigLoader";
+import {ConfigModel} from "./configuration/models/ConfigModel";
+import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
+import {BundleFileConfigModel} from "./configuration/models/BundleFileConfigModel";
 
 export async function activate(
     context: ExtensionContext
@@ -155,18 +154,14 @@ export async function activate(
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);
 
-    const overrideableConfigLoaderWriter = new OverrideableConfigLoaderWriter(
-        stateStorage
-    );
-    const bundleFileConfigLoader = new BundleFileConfigLoader(
+    const overrideableConfigModel = new OverrideableConfigModel(stateStorage);
+    const bundleFileConfigModel = new BundleFileConfigModel(
         bundleFileSet,
         bundleFileWatcher
     );
-    const bundleFileConfigWriter = new BundleFileConfigWriter(bundleFileSet);
     const configModel = new ConfigModel(
-        overrideableConfigLoaderWriter,
-        bundleFileConfigLoader,
-        bundleFileConfigWriter,
+        overrideableConfigModel,
+        bundleFileConfigModel,
         stateStorage
     );
 

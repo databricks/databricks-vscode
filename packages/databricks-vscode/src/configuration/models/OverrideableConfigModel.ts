@@ -4,12 +4,12 @@ import {CachedValue} from "../../locking/CachedValue";
 import {Disposable} from "vscode";
 import {Mutex} from "../../locking";
 
-export class OverrideableConfigLoaderWriter implements Disposable {
+export class OverrideableConfigModel implements Disposable {
     private writeMutex = new Mutex();
 
     private disposables: Disposable[] = [];
 
-    private readonly overrideableCofigCache = new CachedValue<
+    private readonly overrideableConfigCache = new CachedValue<
         OverrideableConfig | undefined
     >(async () => {
         if (this.target === undefined) {
@@ -18,14 +18,14 @@ export class OverrideableConfigLoaderWriter implements Disposable {
         return this.readAll(this.target);
     });
 
-    public readonly onDidChange = this.overrideableCofigCache.onDidChange;
+    public readonly onDidChange = this.overrideableConfigCache.onDidChange;
 
     private target: string | undefined;
 
     constructor(private readonly storage: StateStorage) {
         this.disposables.push(
             this.storage.onDidChange("databricks.bundle.overrides")(
-                async () => await this.overrideableCofigCache.refresh()
+                async () => await this.overrideableConfigCache.refresh()
             )
         );
     }
@@ -39,7 +39,7 @@ export class OverrideableConfigLoaderWriter implements Disposable {
     }
 
     public async load() {
-        return this.overrideableCofigCache.value;
+        return this.overrideableConfigCache.value;
     }
 
     /**
