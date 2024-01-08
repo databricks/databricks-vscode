@@ -12,7 +12,7 @@ import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {ConfigModel} from "./ConfigModel";
+import {ConfigModel} from "./models/ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";

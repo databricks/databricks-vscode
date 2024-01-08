@@ -1,33 +1,20 @@
 import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {
-    BundleFileConfig,
     DATABRICKS_CONFIG_KEYS,
     DatabricksConfig,
     isBundleConfigKey,
     isOverrideableConfigKey,
     DatabricksConfigSourceMap,
-} from "./types";
-import {Mutex} from "../locking";
-import {CachedValue} from "../locking/CachedValue";
-import {StateStorage} from "../vscode-objs/StateStorage";
+} from "../types";
+import {Mutex} from "../../locking";
+import {CachedValue} from "../../locking/CachedValue";
+import {StateStorage} from "../../vscode-objs/StateStorage";
 import lodash from "lodash";
-import {onError} from "../utils/onErrorDecorator";
-import {BundleFileConfigLoader} from "./loaders/BundleFileConfigLoader";
-import {BundleFileConfigWriter} from "./writers/BundleFileConfigWriter";
-import {AuthenticatedBundleConfigLoader} from "./loaders/AuthenticatedBundleConfigLoader";
-import {AuthProvider} from "./auth/AuthProvider";
-import {OverrideableConfigLoaderWriter} from "./loaders/OverrideableConfigLoaderWriter";
-
-function isDirectToBundleConfig(
-    key: keyof BundleFileConfig,
-    mode?: BundleFileConfig["mode"]
-) {
-    const directToBundleConfigs: (keyof BundleFileConfig)[] = [];
-    if (mode !== undefined) {
-        // filter by mode
-    }
-    return directToBundleConfigs.includes(key);
-}
+import {onError} from "../../utils/onErrorDecorator";
+import {AuthenticatedBundleConfigLoader} from "./AuthenticatedBundleConfigLoader";
+import {AuthProvider} from "../auth/AuthProvider";
+import {OverrideableConfigModel} from "./OverrideableConfigModel";
+import {BundleFileConfigModel} from "./BundleFileConfigModel";
 
 const defaults: DatabricksConfig = {
     mode: "development",
@@ -47,10 +34,10 @@ export class ConfigModel implements Disposable {
         if (this.target === undefined) {
             return {config: {}, source: {}};
         }
-        const overrides = await this.overrideableConfigLoaderWriter.load();
-        const bundleConfigs = await this.bundleFileConfigLoader.load();
         const authenticatedBundleConfig =
             await this.authenticatedBundleConfigLoader.load();
+        const overrides = await this.overrideableConfigModel.load();
+        const bundleConfigs = await this.bundleFileConfigModel.load();
         const newValue: DatabricksConfig = {
             ...bundleConfigs,
             ...authenticatedBundleConfig,
@@ -88,18 +75,17 @@ export class ConfigModel implements Disposable {
     private _target: string | undefined;
 
     constructor(
-        private readonly overrideableConfigLoaderWriter: OverrideableConfigLoaderWriter,
-        public readonly bundleFileConfigLoader: BundleFileConfigLoader,
-        private readonly bundleFileConfigWriter: BundleFileConfigWriter,
         private readonly authenticatedBundleConfigLoader: AuthenticatedBundleConfigLoader,
+        private readonly overrideableConfigModel: OverrideableConfigModel,
+        public readonly bundleFileConfigModel: BundleFileConfigModel,
         private readonly stateStorage: StateStorage
     ) {
         this.disposables.push(
-            this.overrideableConfigLoaderWriter.onDidChange(async () => {
+            this.overrideableConfigModel.onDidChange(async () => {
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
-            this.bundleFileConfigLoader.onDidChange(async () => {
+            this.bundleFileConfigModel.onDidChange(async () => {
                 await this.readTarget();
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
@@ -147,7 +133,7 @@ export class ConfigModel implements Disposable {
      */
     private async readTarget() {
         const targets = Object.keys(
-            (await this.bundleFileConfigLoader.targets) ?? {}
+            (await this.bundleFileConfigModel.targets) ?? {}
         );
         if (targets.includes(this.target ?? "")) {
             return;
@@ -160,7 +146,7 @@ export class ConfigModel implements Disposable {
             if (savedTarget !== undefined && targets.includes(savedTarget)) {
                 return;
             }
-            savedTarget = await this.bundleFileConfigLoader.defaultTarget;
+            savedTarget = await this.bundleFileConfigModel.defaultTarget;
         });
         await this.setTarget(savedTarget);
     }
@@ -180,10 +166,7 @@ export class ConfigModel implements Disposable {
 
         if (
             this.target !== undefined &&
-            !(
-                this.target in
-                ((await this.bundleFileConfigLoader.targets) ?? {})
-            )
+            !(this.target in ((await this.bundleFileConfigModel.targets) ?? {}))
         ) {
             throw new Error(
                 `Target '${this.target}' doesn't exist in the bundle`
@@ -194,9 +177,9 @@ export class ConfigModel implements Disposable {
             await this.stateStorage.set("databricks.bundle.target", target);
             this.changeEmitters.get("target")?.emitter.fire();
             await Promise.all([
-                this.bundleFileConfigLoader.setTarget(target),
+                this.bundleFileConfigModel.setTarget(target),
                 this.authenticatedBundleConfigLoader.setTarget(target),
-                this.overrideableConfigLoaderWriter.setTarget(target),
+                this.overrideableConfigModel.setTarget(target),
             ]);
         });
     }
@@ -242,49 +225,25 @@ export class ConfigModel implements Disposable {
             : undefined;
     }
 
+    @onError({popup: {prefix: "Failed to set config."}})
     @Mutex.synchronise("configsMutex")
     public async set<T extends keyof DatabricksConfig>(
         key: T,
         value?: DatabricksConfig[T],
-        handleInteractiveWrite?: (file: Uri | undefined) => any
+        handleInteractiveWrite?: (file: Uri) => Promise<void>
     ) {
-        // We work with 1 set of configs throughout the function.
-        // No changes to the cache can happen when the global mutex is held.
-        // The assumption is that user doesn't change the target mode in the middle of
-        // writing a new config.
-        const {mode} = {...(await this.configCache.value).config};
-
         if (this.target === undefined) {
             throw new Error(
                 `Can't set configuration '${key}' without selecting a target`
             );
         }
         if (isOverrideableConfigKey(key)) {
-            return this.overrideableConfigLoaderWriter.write(
-                key,
-                this.target,
-                value
-            );
+            return this.overrideableConfigModel.write(key, this.target, value);
         }
-        if (isBundleConfigKey(key)) {
-            const isInteractive = handleInteractiveWrite !== undefined;
-
-            // write to bundle if not interactive and the config can be safely written to bundle
-            if (!isInteractive && isDirectToBundleConfig(key, mode)) {
-                return await this.bundleFileConfigWriter.write(
-                    key,
-                    this.target,
-                    value
-                );
-            }
-
-            if (isInteractive) {
-                const file = await this.bundleFileConfigWriter.getFileToWrite(
-                    key,
-                    this.target
-                );
-                handleInteractiveWrite(file);
-            }
+        if (isBundleConfigKey(key) && handleInteractiveWrite) {
+            await handleInteractiveWrite(
+                await this.bundleFileConfigModel.getFileToWrite(key)
+            );
         }
     }
 

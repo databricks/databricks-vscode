@@ -1,5 +1,5 @@
 import {ThemeIcon, ThemeColor, TreeItemCollapsibleState, window} from "vscode";
-import {ConfigModel} from "../ConfigModel";
+import {ConfigModel} from "../models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {DatabricksConfig} from "../types";
 import {ConfigurationTreeItem} from "./types";

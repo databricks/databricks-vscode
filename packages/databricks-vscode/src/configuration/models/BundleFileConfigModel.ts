@@ -1,4 +1,4 @@
-import {Disposable} from "vscode";
+import {Disposable, Uri} from "vscode";
 import {BundleFileSet, BundleWatcher} from "../../bundle";
 import {BundleTarget} from "../../bundle/types";
 import {CachedValue} from "../../locking/CachedValue";
@@ -7,7 +7,7 @@ import {BundleFileConfig, isBundleConfigKey} from "../types";
  * Reads and writes bundle configs. This class does not notify when the configs change.
  * We use the BundleWatcher to notify when the configs change.
  */
-export class BundleFileConfigLoader implements Disposable {
+export class BundleFileConfigModel implements Disposable {
     private disposables: Disposable[] = [];
 
     private readonly bundleFileConfigCache = new CachedValue<
@@ -82,17 +82,6 @@ export class BundleFileConfigLoader implements Disposable {
         await this.bundleFileConfigCache.refresh();
     }
 
-    private async read<T extends keyof BundleFileConfig>(
-        key: T,
-        target: string
-    ) {
-        const targetObject = (await this.bundleFileSet.bundleDataCache.value)
-            .targets?.[target];
-        return (await this.readerMapping[key](targetObject)) as
-            | BundleFileConfig[T]
-            | undefined;
-    }
-
     private async readAll(target: string) {
         const configs = {} as any;
         const targetObject = (await this.bundleFileSet.bundleDataCache.value)
@@ -105,6 +94,38 @@ export class BundleFileConfigLoader implements Disposable {
             configs[key] = await this.readerMapping[key](targetObject);
         }
         return configs as BundleFileConfig;
+    }
+
+    public async getFileToWrite<T extends keyof BundleFileConfig>(key: T) {
+        const filesWithTarget: Uri[] = [];
+        const filesWithConfig = (
+            await this.bundleFileSet.findFile(async (data, file) => {
+                const bundleTarget = data.targets?.[this.target ?? ""];
+                if (bundleTarget) {
+                    filesWithTarget.push(file);
+                }
+                if (
+                    (await this.readerMapping[key](bundleTarget)) === undefined
+                ) {
+                    return false;
+                }
+                return true;
+            })
+        ).map((file) => file.file);
+
+        if (filesWithConfig.length > 1) {
+            throw new Error(
+                `Multiple files found to write the config ${key} for target ${this.target}`
+            );
+        }
+
+        if (filesWithConfig.length === 0 && filesWithTarget.length === 0) {
+            throw new Error(
+                `No files found to write the config ${key} for target ${this.target}`
+            );
+        }
+
+        return [...filesWithConfig, ...filesWithTarget][0];
     }
 
     public async load() {
