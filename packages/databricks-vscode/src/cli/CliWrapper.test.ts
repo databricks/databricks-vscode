@@ -55,24 +55,6 @@ describe(__filename, () => {
         );
     });
 
-    it("should create an 'add profile' command", () => {
-        const cli = new CliWrapper({
-            asAbsolutePath(path: string) {
-                return path;
-            },
-        } as any);
-
-        const {command, args} = cli.getAddProfileCommand(
-            "DEFAULT",
-            new URL("https://databricks.com")
-        );
-
-        assert.equal(
-            [command, ...args].join(" "),
-            "./bin/databricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
-        );
-    });
-
     it("should list profiles when no config file exists", async () => {
         const cli = new CliWrapper({
             asAbsolutePath(p: string) {

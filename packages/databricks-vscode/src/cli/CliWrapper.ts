@@ -1,4 +1,4 @@
-import {execFile as execFileCb, spawn} from "child_process";
+import {execFile as execFileCb} from "child_process";
 import {ExtensionContext, window, commands} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
@@ -129,42 +129,7 @@ export class CliWrapper {
     }
 
     public async getBundleSchema(): Promise<string> {
-        const execFile = promisify(execFileCb);
         const {stdout} = await execFile(this.cliPath, ["bundle", "schema"]);
         return stdout;
-    }
-
-    getAddProfileCommand(profile: string, host: URL): Command {
-        return {
-            command: this.cliPath,
-            args: [
-                "configure",
-                "--no-interactive",
-                "--profile",
-                profile,
-                "--host",
-                host.href,
-                "--token",
-            ],
-        };
-    }
-
-    async addProfile(
-        name: string,
-        host: URL,
-        token: string
-    ): Promise<{stdout: string; stderr: string}> {
-        return new Promise((resolve, reject) => {
-            const {command, args} = this.getAddProfileCommand(name, host);
-            const child = spawn(command, args, {
-                stdio: ["pipe", 0, 0],
-            });
-
-            child.stdin!.write(`${token}\n`);
-            child.stdin!.end();
-
-            child.on("error", reject);
-            child.on("exit", resolve);
-        });
     }
 }
