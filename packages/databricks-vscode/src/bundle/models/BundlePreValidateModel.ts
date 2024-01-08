@@ -1,33 +1,38 @@
 import {Disposable, Uri} from "vscode";
-import {BundleFileSet, BundleWatcher} from "../../bundle";
-import {BundleTarget} from "../../bundle/types";
+import {BundleFileSet, BundleWatcher} from "..";
+import {BundleTarget} from "../types";
 import {CachedValue} from "../../locking/CachedValue";
-import {BundleFileConfig, isBundleConfigKey} from "../types";
+import {
+    BundlePreValidateConfig,
+    isBundlePreValidateConfigKey,
+} from "../../configuration/types";
 /**
  * Reads and writes bundle configs. This class does not notify when the configs change.
  * We use the BundleWatcher to notify when the configs change.
  */
-export class BundleFileConfigModel implements Disposable {
+export class BundlePreValidateModel implements Disposable {
     private disposables: Disposable[] = [];
 
-    private readonly bundleFileConfigCache = new CachedValue<
-        BundleFileConfig | undefined
+    private readonly stateCache = new CachedValue<
+        BundlePreValidateConfig | undefined
     >(async () => {
         if (this.target === undefined) {
             return undefined;
         }
-        return this.readAll(this.target);
+        return this.readState(this.target);
     });
 
-    public readonly onDidChange = this.bundleFileConfigCache.onDidChange;
+    public readonly onDidChange = this.stateCache.onDidChange;
 
     private target: string | undefined;
 
     private readonly readerMapping: Record<
-        keyof BundleFileConfig,
+        keyof BundlePreValidateConfig,
         (
             t?: BundleTarget
-        ) => Promise<BundleFileConfig[keyof BundleFileConfig] | undefined>
+        ) => Promise<
+            BundlePreValidateConfig[keyof BundlePreValidateConfig] | undefined
+        >
     > = {
         authParams: this.getAuthParams,
         mode: this.getMode,
@@ -40,7 +45,7 @@ export class BundleFileConfigModel implements Disposable {
     ) {
         this.disposables.push(
             this.bunldeFileWatcher.onDidChange(async () => {
-                await this.bundleFileConfigCache.refresh();
+                await this.stateCache.refresh();
             })
         );
     }
@@ -79,24 +84,26 @@ export class BundleFileConfigModel implements Disposable {
 
     public async setTarget(target: string | undefined) {
         this.target = target;
-        await this.bundleFileConfigCache.refresh();
+        await this.stateCache.refresh();
     }
 
-    private async readAll(target: string) {
+    private async readState(target: string) {
         const configs = {} as any;
         const targetObject = (await this.bundleFileSet.bundleDataCache.value)
             .targets?.[target];
 
         for (const key of Object.keys(this.readerMapping)) {
-            if (!isBundleConfigKey(key)) {
+            if (!isBundlePreValidateConfigKey(key)) {
                 continue;
             }
             configs[key] = await this.readerMapping[key](targetObject);
         }
-        return configs as BundleFileConfig;
+        return configs as BundlePreValidateConfig;
     }
 
-    public async getFileToWrite<T extends keyof BundleFileConfig>(key: T) {
+    public async getFileToWrite<T extends keyof BundlePreValidateConfig>(
+        key: T
+    ) {
         const filesWithTarget: Uri[] = [];
         const filesWithConfig = (
             await this.bundleFileSet.findFile(async (data, file) => {
@@ -129,7 +136,7 @@ export class BundleFileConfigModel implements Disposable {
     }
 
     public async load() {
-        return await this.bundleFileConfigCache.value;
+        return await this.stateCache.value;
     }
 
     public dispose() {

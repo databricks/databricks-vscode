@@ -9,23 +9,23 @@ export class OverrideableConfigModel implements Disposable {
 
     private disposables: Disposable[] = [];
 
-    private readonly overrideableConfigCache = new CachedValue<
+    private readonly stateCache = new CachedValue<
         OverrideableConfig | undefined
     >(async () => {
         if (this.target === undefined) {
             return undefined;
         }
-        return this.readAll(this.target);
+        return this.readState(this.target);
     });
 
-    public readonly onDidChange = this.overrideableConfigCache.onDidChange;
+    public readonly onDidChange = this.stateCache.onDidChange;
 
     private target: string | undefined;
 
     constructor(private readonly storage: StateStorage) {
         this.disposables.push(
             this.storage.onDidChange("databricks.bundle.overrides")(
-                async () => await this.overrideableConfigCache.refresh()
+                async () => await this.stateCache.refresh()
             )
         );
     }
@@ -34,12 +34,12 @@ export class OverrideableConfigModel implements Disposable {
         this.target = target;
     }
 
-    private async readAll(target: string) {
+    private async readState(target: string) {
         return this.storage.get("databricks.bundle.overrides")[target];
     }
 
     public async load() {
-        return this.overrideableConfigCache.value;
+        return this.stateCache.value;
     }
 
     /**

@@ -54,11 +54,10 @@ import {
     registerBundleAutocompleteProvider,
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
-import {AuthenticatedBundleConfigLoader} from "./configuration/models/AuthenticatedBundleConfigLoader";
-import {AuthenticatedBundleModel} from "./bundle/AuthenticatedBundleModel";
+import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
 import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
-import {BundleFileConfigModel} from "./configuration/models/BundleFileConfigModel";
+import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 
 export async function activate(
     context: ExtensionContext
@@ -156,24 +155,21 @@ export async function activate(
     const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);
-    const authenticatedBundleModel = new AuthenticatedBundleModel(
+    const bundleValidateModel = new BundleValidateModel(
         bundleFileWatcher,
         cli,
         workspaceUri
     );
-    const authenticatedBundleConfigLoader = new AuthenticatedBundleConfigLoader(
-        authenticatedBundleModel
-    );
 
     const overrideableConfigModel = new OverrideableConfigModel(stateStorage);
-    const bundleFileConfigModel = new BundleFileConfigModel(
+    const bundlePreValidateModel = new BundlePreValidateModel(
         bundleFileSet,
         bundleFileWatcher
     );
     const configModel = new ConfigModel(
-        authenticatedBundleConfigLoader,
+        bundleValidateModel,
         overrideableConfigModel,
-        bundleFileConfigModel,
+        bundlePreValidateModel,
         stateStorage
     );
 

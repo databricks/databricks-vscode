@@ -21,30 +21,34 @@ export type OverrideableConfig = Pick<
     (typeof OVERRIDEABLE_CONFIG_KEYS)[number]
 >;
 
-export const BUNDLE_FILE_CONFIG_KEYS = ["authParams", "mode", "host"] as const;
+export const BUNDLE_PRE_VALIDATE_CONFIG_KEYS = [
+    "authParams",
+    "mode",
+    "host",
+] as const;
 
 /** These are configs which can be loaded from the bundle */
-export type BundleFileConfig = Pick<
+export type BundlePreValidateConfig = Pick<
     DatabricksConfig,
-    (typeof BUNDLE_FILE_CONFIG_KEYS)[number]
+    (typeof BUNDLE_PRE_VALIDATE_CONFIG_KEYS)[number]
 >;
 
-export const AUTHENTICATED_BUNDLE_CONFIG = [
+export const BUNDLE_VALIDATE_CONFIG_KEYS = [
     "clusterId",
     "workspaceFsPath",
 ] as const;
 
 /** These are configs which can be loaded from the bundle */
-export type AuthenticatedBundleConfig = Pick<
+export type BundleValidateConfig = Pick<
     DatabricksConfig,
-    (typeof AUTHENTICATED_BUNDLE_CONFIG)[number]
+    (typeof BUNDLE_VALIDATE_CONFIG_KEYS)[number]
 >;
 
 export const DATABRICKS_CONFIG_KEYS: (keyof DatabricksConfig)[] = Array.from(
     new Set([
         ...OVERRIDEABLE_CONFIG_KEYS,
-        ...BUNDLE_FILE_CONFIG_KEYS,
-        ...AUTHENTICATED_BUNDLE_CONFIG,
+        ...BUNDLE_PRE_VALIDATE_CONFIG_KEYS,
+        ...BUNDLE_VALIDATE_CONFIG_KEYS,
     ])
 );
 
@@ -54,12 +58,14 @@ export function isOverrideableConfigKey(
     return OVERRIDEABLE_CONFIG_KEYS.includes(key);
 }
 
-export function isBundleConfigKey(key: any): key is keyof BundleFileConfig {
-    return BUNDLE_FILE_CONFIG_KEYS.includes(key);
+export function isBundlePreValidateConfigKey(
+    key: any
+): key is keyof BundlePreValidateConfig {
+    return BUNDLE_PRE_VALIDATE_CONFIG_KEYS.includes(key);
 }
 
-export function isAuthenticatedBundleConfigKey(
+export function isBundleValidateConfigKey(
     key: any
-): key is keyof AuthenticatedBundleConfig {
-    return AUTHENTICATED_BUNDLE_CONFIG.includes(key);
+): key is keyof BundleValidateConfig {
+    return BUNDLE_VALIDATE_CONFIG_KEYS.includes(key);
 }
