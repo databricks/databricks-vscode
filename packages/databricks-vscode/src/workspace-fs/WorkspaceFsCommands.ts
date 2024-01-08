@@ -7,13 +7,11 @@ import {
 import {context, Context} from "@databricks/databricks-sdk/dist/context";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
+import {REPO_NAME_SUFFIX} from "../sync/SyncDestination";
 import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
-import path from "node:path";
-import {StateStorage} from "../vscode-objs/StateStorage";
 
 const withLogContext = logging.withLogContext;
 
@@ -22,40 +20,9 @@ export class WorkspaceFsCommands implements Disposable {
 
     constructor(
         private workspaceFolder: Uri,
-        private readonly stateStorage: StateStorage,
         private connectionManager: ConnectionManager,
         private workspaceFsDataProvider: WorkspaceFsDataProvider
-    ) {
-        this.disposables.push(
-            this.connectionManager.onDidChangeState(async (state) => {
-                if (
-                    state !== "CONNECTED" ||
-                    !workspaceConfigs.enableFilesInWorkspace ||
-                    this.connectionManager.syncDestinationMapper !== undefined
-                ) {
-                    return;
-                }
-
-                const root = await this.getValidRoot(
-                    this.connectionManager.databricksWorkspace?.currentFsRoot
-                        .path
-                );
-
-                const element = await root?.mkdir(
-                    `${path.basename(
-                        this.workspaceFolder.fsPath
-                    )}-${this.stateStorage
-                        .get("databricks.fixedUUID")
-                        .slice(0, 8)}`
-                );
-                if (element) {
-                    await this.connectionManager.attachSyncDestination(
-                        new RemoteUri(element.path)
-                    );
-                }
-            })
-        );
-    }
+    ) {}
 
     @withLogContext(Loggers.Extension)
     async getValidRoot(

@@ -15,11 +15,7 @@ export type DatabricksConfigSourceMap = {
     [key in keyof DatabricksConfig]: DatabricksConfigSource;
 };
 
-export const OVERRIDEABLE_CONFIG_KEYS = [
-    "clusterId",
-    "authParams",
-    "workspaceFsPath",
-] as const;
+export const OVERRIDEABLE_CONFIG_KEYS = ["clusterId", "authParams"] as const;
 
 export type OverrideableConfig = Pick<
     DatabricksConfig,
@@ -55,6 +51,6 @@ export function isBundleConfigKey(key: any): key is keyof BundleConfig {
 }
 
 export interface ConfigReaderWriter<T extends keyof DatabricksConfig> {
-    read(key: T, target: string): Promise<DatabricksConfig[T] | undefined>;
+    readAll(target: string): Promise<DatabricksConfig | undefined>;
     write(key: T, target: string, value?: DatabricksConfig[T]): Promise<void>;
 }
