@@ -12,6 +12,9 @@ import {Cluster} from "../../sdk-extensions";
 import {onError} from "../../utils/onErrorDecorator";
 
 const TREE_ICON_ID = "CLUSTER";
+function getContextValue(key: string) {
+    return `databricks.configuration.cluster.${key}`;
+}
 
 function getTreeItemsForClusterState(cluster: Cluster) {
     let icon, contextValue;
@@ -19,7 +22,7 @@ function getTreeItemsForClusterState(cluster: Cluster) {
         case "RESIZING":
         case "RUNNING":
             icon = new ThemeIcon("debug-start");
-            contextValue = "databricks.configuration.cluster.running";
+            contextValue = getContextValue("running");
             break;
 
         case "RESTARTING":
@@ -28,7 +31,7 @@ function getTreeItemsForClusterState(cluster: Cluster) {
                 "sync~spin",
                 new ThemeColor("debugIcon.startForeground")
             );
-            contextValue = "databricks.configuration.cluster.pending";
+            contextValue = getContextValue("pending");
             break;
 
         case "TERMINATING":
@@ -36,7 +39,7 @@ function getTreeItemsForClusterState(cluster: Cluster) {
                 "sync~spin",
                 new ThemeColor("notificationsErrorIcon.foreground")
             );
-            contextValue = "databricks.configuration.cluster.terminating";
+            contextValue = getContextValue("terminating");
             break;
 
         case "TERMINATED":
@@ -44,7 +47,7 @@ function getTreeItemsForClusterState(cluster: Cluster) {
                 "stop-circle",
                 new ThemeColor("notificationsErrorIcon.foreground")
             );
-            contextValue = "databricks.configuration.cluster.terminated";
+            contextValue = getContextValue("terminated");
             break;
 
         case "ERROR":
@@ -52,12 +55,12 @@ function getTreeItemsForClusterState(cluster: Cluster) {
                 "testing-error-icon",
                 new ThemeColor("notificationsErrorIcon.foreground")
             );
-            contextValue = "databricks.configuration.cluster.error";
+            contextValue = getContextValue("error");
             break;
 
         default:
             icon = new ThemeIcon("question");
-            contextValue = "databricks.configuration.cluster.unknown";
+            contextValue = getContextValue("unknown");
             break;
     }
 
@@ -86,13 +89,7 @@ export class ClusterComponent extends BaseComponent {
 
         if (config?.config === undefined) {
             // Cluster is not set in bundle and override
-            // We are not logged in
-            if (this.connectionManager.state !== "CONNECTED") {
-                return [];
-            }
-
-            // Cluster is not set in bundle and override
-            // We are logged in
+            // We are logged in -> Select cluster prompt
             const label = "Select a cluster";
             return [
                 {
@@ -101,7 +98,7 @@ export class ClusterComponent extends BaseComponent {
                         highlights: [[0, label.length]],
                     },
                     collapsibleState: TreeItemCollapsibleState.Expanded,
-                    contextValue: "databricks.configuration.cluster.none",
+                    contextValue: getContextValue("none"),
                     iconPath: new ThemeIcon(
                         "server",
                         new ThemeColor("notificationsErrorIcon.foreground")
@@ -111,29 +108,8 @@ export class ClusterComponent extends BaseComponent {
             ];
         }
 
-        const {config: clusterId, source} = config;
-
         // Cluster is set in bundle / override
-        // We are not logged in
-        if (this.connectionManager.state !== "CONNECTED") {
-            return [
-                {
-                    label: "Cluster",
-                    description: clusterId,
-                    collapsibleState: TreeItemCollapsibleState.Expanded,
-                    contextValue: "databricks.configuration.cluster.selected",
-                    iconPath: new ThemeIcon(
-                        "server",
-                        new ThemeColor("notificationsErrorIcon.foreground")
-                    ),
-                    source: source,
-                    id: TREE_ICON_ID,
-                },
-            ];
-        }
-
-        // Cluster is set in bundle / override
-        // We are logged in
+        // We are logged in -> load cluster details
         const cluster = this.connectionManager.cluster;
         if (cluster === undefined) {
             // can never happen. Just need it for typescript type coercing.
@@ -148,7 +124,7 @@ export class ClusterComponent extends BaseComponent {
                 collapsibleState: TreeItemCollapsibleState.Expanded,
                 contextValue: contextValue,
                 iconPath: icon,
-                source: source,
+                source: config.source,
                 id: TREE_ICON_ID,
             },
         ];
@@ -157,6 +133,14 @@ export class ClusterComponent extends BaseComponent {
     public async getChildren(
         parent?: TreeItem
     ): Promise<ConfigurationTreeItem[]> {
+        // Only show cluster details when we are connected and in dev mode. In other modes
+        // there is no concept of a global interactive cluster
+        if (
+            this.connectionManager.state !== "CONNECTED" ||
+            (await this.configModel.get("mode")) !== "development"
+        ) {
+            return [];
+        }
         if (parent === undefined) {
             return this.getRoot();
         }
@@ -165,13 +149,10 @@ export class ClusterComponent extends BaseComponent {
             return [];
         }
 
-        if (
-            this.connectionManager.state !== "CONNECTED" ||
-            this.connectionManager.cluster === undefined
-        ) {
+        // If there is no cluster, we don't have to show cluster details
+        if (this.connectionManager.cluster === undefined) {
             return [];
         }
-
         const cluster = this.connectionManager.cluster;
         const children: TreeItem[] = [
             {

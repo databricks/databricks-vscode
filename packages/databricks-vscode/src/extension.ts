@@ -213,7 +213,6 @@ export async function activate(
     );
     const workspaceFsCommands = new WorkspaceFsCommands(
         workspace.workspaceFolders[0].uri,
-        stateStorage,
         connectionManager,
         workspaceFsDataProvider
     );
@@ -424,16 +423,6 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.connection.detachCluster",
             connectionCommands.detachClusterCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.attachSyncDestination",
-            connectionCommands.attachSyncDestinationCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.detachSyncDestination",
-            connectionCommands.detachWorkspaceCommand,
             connectionCommands
         )
     );

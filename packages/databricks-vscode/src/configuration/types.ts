@@ -14,11 +14,7 @@ export type DatabricksConfigSourceMap = {
     [key in keyof DatabricksConfig]: DatabricksConfigSource;
 };
 
-export const OVERRIDEABLE_CONFIG_KEYS = [
-    "clusterId",
-    "authParams",
-    "workspaceFsPath",
-] as const;
+export const OVERRIDEABLE_CONFIG_KEYS = ["clusterId", "authParams"] as const;
 
 export type OverrideableConfig = Pick<
     DatabricksConfig,
