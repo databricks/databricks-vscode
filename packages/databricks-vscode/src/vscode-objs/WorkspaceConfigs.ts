@@ -37,20 +37,6 @@ export const workspaceConfigs = {
                 .get<boolean>("clusters.onlyShowAccessibleClusters") ?? false
         );
     },
-    get cliVerboseMode() {
-        const legacyVerboseMode =
-            workspace
-                .getConfiguration("databricks")
-                .get<boolean>("bricks.verboseMode") ?? false;
-
-        const verboseMode =
-            workspace
-                .getConfiguration("databricks")
-                .get<boolean>("cli.verboseMode") ?? false;
-
-        return verboseMode || legacyVerboseMode;
-    },
-
     get syncDestinationType() {
         return (
             workspace

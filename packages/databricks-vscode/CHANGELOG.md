@@ -1,3 +1,23 @@
+# Release: v1.2.4
+
+## packages/databricks-vscode
+
+## <small>1.2.4 (2023-12-05)</small>
+
+-   Fix: set notebook directory as current directory for pip installs from workspace fs, closes [#958](https://github.com/databricks/databricks-vscode/issues/958)
+-   Fix: show error for a corrupted config file
+-   Feature: update Databricks CLI to v0.210.1
+
+# Release: v1.2.3
+
+## packages/databricks-vscode
+
+## <small>1.2.3 (2023-11-06)</small>
+
+-   Fix: Make configuration wizard sticky
+-   Feature: Use databricks CLI log-file option to capture the logs. This deprecates the `databricks.cli.verboseMode` option.
+-   Feature: Upgrade databricks cli to `v0.209.0`.
+
 # Release: v1.2.2
 
 ## packages/databricks-vscode

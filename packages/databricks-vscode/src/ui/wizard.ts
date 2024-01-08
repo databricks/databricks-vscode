@@ -43,6 +43,7 @@ interface QuickAutoCompleteParameters {
     buttons?: QuickInputButton[];
     shouldResume: () => Thenable<boolean>;
     items: Array<QuickPickItem>;
+    ignoreFocusOut: boolean;
 }
 
 interface QuickPickParameters<T extends QuickPickItem> {
@@ -54,6 +55,7 @@ interface QuickPickParameters<T extends QuickPickItem> {
     placeholder: string;
     buttons?: QuickInputButton[];
     shouldResume: () => Thenable<boolean>;
+    ignoreFocusOut: boolean;
 }
 
 export class MultiStepInput {
@@ -107,6 +109,7 @@ export class MultiStepInput {
         buttons,
         shouldResume,
         items,
+        ignoreFocusOut,
     }: QuickAutoCompleteParameters): Promise<
         | string
         | (QuickAutoCompleteParameters extends {buttons: (infer I)[]}
@@ -129,6 +132,7 @@ export class MultiStepInput {
                 input.totalSteps = totalSteps;
                 input.placeholder = prompt;
                 input.items = [...items];
+                input.ignoreFocusOut = ignoreFocusOut;
 
                 disposables.push(
                     input.onDidChangeValue(async () => {
@@ -231,6 +235,7 @@ export class MultiStepInput {
         placeholder,
         buttons,
         shouldResume,
+        ignoreFocusOut,
     }: P) {
         const disposables: Disposable[] = [];
         try {
@@ -243,6 +248,7 @@ export class MultiStepInput {
                 input.totalSteps = totalSteps;
                 input.placeholder = placeholder;
                 input.items = items;
+                input.ignoreFocusOut = ignoreFocusOut;
                 if (activeItem) {
                     input.activeItems = [activeItem];
                 }

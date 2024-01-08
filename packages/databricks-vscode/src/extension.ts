@@ -166,7 +166,16 @@ export async function activate(
     );
 
     // Configuration group
-    const cli = new CliWrapper(context);
+    let cliLogFilePath;
+    try {
+        cliLogFilePath = await loggerManager.getLogFile("databricks-cli");
+    } catch (e) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to create a log file for the CLI",
+            e
+        );
+    }
+    const cli = new CliWrapper(context, cliLogFilePath);
     const connectionManager = new ConnectionManager(
         cli,
         configModel,
