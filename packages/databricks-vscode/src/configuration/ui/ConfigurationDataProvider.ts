@@ -15,7 +15,7 @@ import {ConfigurationTreeItem} from "./types";
 import {BundleTargetComponent} from "./BundleTargetComponent";
 import {AuthTypeComponent} from "./AuthTypeComponent";
 import {ClusterComponent} from "./ClusterComponent";
-import {WorkspaceComponent} from "./WorkspaceComponent";
+import {SyncDestinationComponent} from "./SyncDestinationComponent";
 import {CodeSynchronizer} from "../../sync";
 
 /**
@@ -42,7 +42,7 @@ export class ConfigurationDataProvider
             new BundleTargetComponent(this.configModel),
             new AuthTypeComponent(this.connectionManager, this.configModel),
             new ClusterComponent(this.connectionManager, this.configModel),
-            new WorkspaceComponent(
+            new SyncDestinationComponent(
                 this.codeSynchronizer,
                 this.connectionManager,
                 this.configModel

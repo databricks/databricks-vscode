@@ -317,12 +317,7 @@
             "view/item/context": [
                 {
                     "command": "databricks.utils.openExternal",
-                    "when": "view == configurationView && viewItem == workspace || view == configurationView && viewItem =~ /^.*cluster.*$/ || view == configurationView && viewItem =~ /^sync.*$/",
-                    "group": "inline@1"
-                },
-                {
-                    "command": "databricks.utils.openExternal",
-                    "when": "view == clusterView && viewItem == cluster",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.(cluster|sync).*$/",
                     "group": "inline@1"
                 },
                 {
@@ -346,23 +341,13 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "databricks.connection.attachSyncDestination",
-                    "when": "view == configurationView && viewItem == syncDetached",
-                    "group": "inline@2"
-                },
-                {
-                    "command": "databricks.connection.attachSyncDestination",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.workspaceFsPath.*$/",
-                    "group": "inline@2"
-                },
-                {
                     "command": "databricks.sync.start",
-                    "when": "view == configurationView && viewItem == databricks.configuration.workspaceFsPath.stopped",
+                    "when": "view == configurationView && viewItem == databricks.configuration.sync.stopped",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.sync.stop",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.workspaceFsPath.(?!error|stopped|selected).*$/",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.sync.(?!error|stopped|selected).*$/",
                     "group": "inline@0"
                 },
                 {
