@@ -137,7 +137,7 @@ export class ClusterComponent extends BaseComponent {
         // there is no concept of a global interactive cluster
         if (
             this.connectionManager.state !== "CONNECTED" ||
-            (await this.configModel.get("mode")) !== "dev"
+            (await this.configModel.get("mode")) !== "development"
         ) {
             return [];
         }

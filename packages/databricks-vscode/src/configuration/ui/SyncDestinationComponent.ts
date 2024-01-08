@@ -130,7 +130,7 @@ export class SyncDestinationComponent extends BaseComponent {
         ];
 
         // Only show details uptil here if not in dev mode.
-        if ((await this.configModel.get("mode")) !== "dev") {
+        if ((await this.configModel.get("mode")) !== "development") {
             return children;
         }
 
