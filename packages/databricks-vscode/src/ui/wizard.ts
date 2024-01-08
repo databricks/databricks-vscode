@@ -11,6 +11,7 @@ import {
     Disposable,
     window,
     QuickInputButtons,
+    InputBoxValidationSeverity,
 } from "vscode";
 
 class InputFlowAction {
@@ -26,17 +27,22 @@ interface EditItem {
     error: boolean;
 }
 
-type InputStep = (input: MultiStepInput) => Thenable<InputStep | void>;
+export type InputStep = (input: MultiStepInput) => Thenable<InputStep | void>;
 export type ValidationMessageType = {
     message: string;
     type: "error" | "warning";
+};
+
+const ValudationMessageTypeToInputBoxSeverity = {
+    error: InputBoxValidationSeverity.Error,
+    warning: InputBoxValidationSeverity.Warning,
 };
 
 interface QuickAutoCompleteParameters {
     title: string;
     step: number;
     totalSteps: number;
-    prompt: string;
+    placeholder: string;
     validate: (
         value: string
     ) => Promise<string | undefined | ValidationMessageType>;
@@ -54,6 +60,19 @@ interface QuickPickParameters<T extends QuickPickItem> {
     placeholder: string;
     buttons?: QuickInputButton[];
     shouldResume: () => Thenable<boolean>;
+}
+
+interface InputBoxParameters {
+    title: string;
+    step: number;
+    totalSteps: number;
+    placeholder: string;
+    initialValue?: string;
+    validate: (
+        value: string
+    ) => Promise<string | undefined | ValidationMessageType>;
+    buttons?: QuickInputButton[];
+    ignoreFocusOut: boolean;
 }
 
 export class MultiStepInput {
@@ -102,7 +121,7 @@ export class MultiStepInput {
         title,
         step,
         totalSteps,
-        prompt,
+        placeholder,
         validate,
         buttons,
         shouldResume,
@@ -127,7 +146,7 @@ export class MultiStepInput {
                 input.title = title;
                 input.step = step;
                 input.totalSteps = totalSteps;
-                input.placeholder = prompt;
+                input.placeholder = placeholder;
                 input.items = [...items];
 
                 disposables.push(
@@ -270,6 +289,77 @@ export class MultiStepInput {
                         })().catch(reject);
                     })
                 );
+                if (this.current) {
+                    this.current.dispose();
+                }
+                this.current = input;
+                this.current.show();
+            });
+        } finally {
+            disposables.forEach((d) => d.dispose());
+        }
+    }
+
+    async showInputBox({
+        title,
+        step,
+        totalSteps,
+        placeholder,
+        initialValue,
+        buttons,
+        validate,
+        ignoreFocusOut,
+    }: InputBoxParameters) {
+        const disposables: Disposable[] = [];
+        try {
+            return await new Promise<string | undefined>((resolve, reject) => {
+                const input = window.createInputBox();
+                input.title = title;
+                input.step = step;
+                input.totalSteps = totalSteps;
+                input.placeholder = placeholder;
+                input.ignoreFocusOut = ignoreFocusOut;
+                input.value = initialValue ?? "";
+                input.buttons = [
+                    ...(this.steps.length > 1 ? [QuickInputButtons.Back] : []),
+                    ...(buttons || []),
+                ];
+
+                disposables.push(
+                    input.onDidTriggerButton((item) => {
+                        if (item === QuickInputButtons.Back) {
+                            reject(InputFlowAction.back);
+                        } else {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            resolve(<any>item);
+                        }
+                    }),
+                    input.onDidHide(() => reject(InputFlowAction.cancel)),
+                    input.onDidChangeValue(async (value) => {
+                        const validationMessage = validate
+                            ? await validate(value)
+                            : undefined;
+
+                        if (
+                            validationMessage === undefined ||
+                            typeof validationMessage === "string"
+                        ) {
+                            input.validationMessage = validationMessage;
+                        } else {
+                            input.validationMessage = {
+                                message: validationMessage.message,
+                                severity:
+                                    ValudationMessageTypeToInputBoxSeverity[
+                                        validationMessage.type
+                                    ],
+                            };
+                        }
+                    }),
+                    input.onDidAccept(() => {
+                        resolve(input.value);
+                    })
+                );
+
                 if (this.current) {
                     this.current.dispose();
                 }

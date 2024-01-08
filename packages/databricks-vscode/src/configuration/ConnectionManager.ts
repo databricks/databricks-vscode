@@ -7,7 +7,7 @@ import {
     RemoteUri,
     LocalUri,
 } from "../sync/SyncDestination";
-import {configureWorkspaceWizard} from "./configureWorkspaceWizard";
+import {ConfigureWorkspaceWizard} from "./ConfigureWorkspaceWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
@@ -193,14 +193,7 @@ export class ConnectionManager implements Disposable {
         await this.login(AuthProvider.fromJSON(authParams, this.cli.cliPath));
     }
 
-    private async login(
-        authProvider: AuthProvider,
-        force = false
-    ): Promise<void> {
-        if (force) {
-            await this.logout();
-        }
-
+    private async login(authProvider: AuthProvider): Promise<void> {
         if (!(await authProvider.check())) {
             // We return without any state changes. This ensures that
             // if users move from a working auth type to an invalid
@@ -286,17 +279,15 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Can't configure workspace. "},
     })
     async configureWorkspace() {
-        const host = await this.configModel.get("host");
-        if (host === undefined) {
+        const authProvider = await ConfigureWorkspaceWizard.run(
+            this.cli,
+            this.configModel
+        );
+        if (!authProvider) {
             return;
         }
 
-        const config = await configureWorkspaceWizard(this.cli, host);
-        if (!config) {
-            return;
-        }
-
-        await this.login(config.authProvider);
+        await this.login(authProvider);
     }
 
     @onError({

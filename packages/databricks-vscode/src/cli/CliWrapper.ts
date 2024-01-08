@@ -7,6 +7,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
+import {UrlUtils} from "../utils";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -27,13 +28,6 @@ export interface ConfigEntry {
 
 export type SyncType = "full" | "incremental";
 
-function getValidHost(host: string) {
-    if (host.match(/^(?:(?:https?):\/\/)?(.(?!:\/\/))+$/) !== null) {
-        return new URL(host);
-    } else {
-        throw new TypeError("Invalid type for host");
-    }
-}
 /**
  * Entrypoint for all wrapped CLI commands
  *
@@ -93,6 +87,7 @@ export class CliWrapper {
                 DATABRICKS_OUTPUT_FORMAT: "json",
                 /*  eslint-enable @typescript-eslint/naming-convention */
             },
+            shell: true,
         });
         const profiles = JSON.parse(res.stdout).profiles || [];
         const result = [];
@@ -101,7 +96,7 @@ export class CliWrapper {
             try {
                 result.push({
                     name: profile.name,
-                    host: getValidHost(profile.host),
+                    host: UrlUtils.normalizeHost(profile.host),
                     accountId: profile.account_id,
                     cloud: profile.cloud,
                     authType: profile.auth_type,
