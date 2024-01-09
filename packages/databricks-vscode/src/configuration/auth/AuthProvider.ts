@@ -38,7 +38,7 @@ export abstract class AuthProvider {
      * Used to display the auth method in the UI
      */
     abstract describe(): string;
-    abstract toJSON(): Record<string, unknown>;
+    abstract toJSON(): Record<string, string | undefined>;
     abstract toEnv(): Record<string, string>;
 
     getWorkspaceClient(): WorkspaceClient {
@@ -110,7 +110,7 @@ export class ProfileAuthProvider extends AuthProvider {
         return `Profile '${this.profile}'`;
     }
 
-    toJSON(): Record<string, unknown> {
+    toJSON(): Record<string, string | undefined> {
         return {
             host: this.host.toString(),
             authType: this.authType,
@@ -167,7 +167,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return "OAuth U2M";
     }
 
-    toJSON(): Record<string, unknown> {
+    toJSON(): Record<string, string | undefined> {
         return {
             host: this.host.toString(),
             authType: this.authType,
@@ -220,7 +220,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         return "Azure CLI";
     }
 
-    toJSON(): Record<string, unknown> {
+    toJSON(): Record<string, string | undefined> {
         return {
             host: this.host.toString(),
             authType: this.authType,

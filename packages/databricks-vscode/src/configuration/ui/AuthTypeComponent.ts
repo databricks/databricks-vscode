@@ -18,7 +18,7 @@ export class AuthTypeComponent extends BaseComponent {
             this.connectionManager.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChange("target")(() => {
+            this.configModel.onDidChangeTarget(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
@@ -54,7 +54,9 @@ export class AuthTypeComponent extends BaseComponent {
             ];
         }
 
-        const config = await this.configModel.getS("authParams");
+        const config =
+            (await this.configModel.getS("authProfile")) ??
+            (await this.configModel.getS("authParams"));
         if (config === undefined) {
             // This case can never happen. This is just to make ts happy.
             return [];

@@ -1,68 +1,36 @@
-import {Disposable, Uri} from "vscode";
+import {Uri} from "vscode";
 import {BundleFileSet, BundleWatcher} from "..";
 import {BundleTarget} from "../types";
-import {CachedValue} from "../../locking/CachedValue";
-import {
-    BundlePreValidateConfig,
-    isBundlePreValidateConfigKey,
-} from "../../configuration/types";
+import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
+import {UrlUtils} from "../../utils";
+import {onError} from "../../utils/onErrorDecorator";
+import {Mutex} from "../../locking";
+
+export type BundlePreValidateState = {
+    host?: URL;
+    mode?: "development" | "staging" | "production";
+    authParams?: Record<string, string | undefined>;
+} & BundleTarget;
+
 /**
  * Reads and writes bundle configs. This class does not notify when the configs change.
  * We use the BundleWatcher to notify when the configs change.
  */
-export class BundlePreValidateModel implements Disposable {
-    private disposables: Disposable[] = [];
-
-    private readonly stateCache = new CachedValue<
-        BundlePreValidateConfig | undefined
-    >(async () => {
-        if (this.target === undefined) {
-            return undefined;
-        }
-        return this.readState(this.target);
-    });
-
-    public readonly onDidChange = this.stateCache.onDidChange;
-
+export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreValidateState> {
+    protected mutex = new Mutex();
     private target: string | undefined;
-
-    private readonly readerMapping: Record<
-        keyof BundlePreValidateConfig,
-        (
-            t?: BundleTarget
-        ) => Promise<
-            BundlePreValidateConfig[keyof BundlePreValidateConfig] | undefined
-        >
-    > = {
-        authParams: this.getAuthParams,
-        mode: this.getMode,
-        host: this.getHost,
-    };
 
     constructor(
         private readonly bundleFileSet: BundleFileSet,
         private readonly bunldeFileWatcher: BundleWatcher
     ) {
+        super();
         this.disposables.push(
             this.bunldeFileWatcher.onDidChange(async () => {
                 await this.stateCache.refresh();
             })
         );
     }
-
-    private async getHost(target?: BundleTarget) {
-        return target?.workspace?.host;
-    }
-
-    private async getMode(target?: BundleTarget) {
-        return target?.mode;
-    }
-
-    /* eslint-disable @typescript-eslint/no-unused-vars */
-    private async getAuthParams(target?: BundleTarget) {
-        return undefined;
-    }
-    /* eslint-enable @typescript-eslint/no-unused-vars */
 
     get targets() {
         return this.bundleFileSet.bundleDataCache.value.then(
@@ -87,33 +55,41 @@ export class BundlePreValidateModel implements Disposable {
         await this.stateCache.refresh();
     }
 
-    private async readState(target: string) {
-        const configs = {} as any;
-        const targetObject = (await this.bundleFileSet.bundleDataCache.value)
-            .targets?.[target];
-
-        for (const key of Object.keys(this.readerMapping)) {
-            if (!isBundlePreValidateConfigKey(key)) {
-                continue;
-            }
-            configs[key] = await this.readerMapping[key](targetObject);
-        }
-        return configs as BundlePreValidateConfig;
+    protected readStateFromTarget(
+        target: BundleTarget
+    ): BundlePreValidateState {
+        return {
+            ...target,
+            host: UrlUtils.normalizeHost(target?.workspace?.host ?? ""),
+            mode: target?.mode as BundlePreValidateState["mode"],
+            authParams: undefined,
+        };
     }
 
-    public async getFileToWrite<T extends keyof BundlePreValidateConfig>(
-        key: T
-    ) {
+    @onError({popup: {prefix: "Failed to parse bundle yaml"}})
+    @Mutex.synchronise("mutex")
+    protected async readState() {
+        if (this.target === undefined) {
+            return {};
+        }
+
+        const targetObject = (await this.bundleFileSet.bundleDataCache.value)
+            .targets?.[this.target];
+
+        return this.readStateFromTarget(targetObject ?? {});
+    }
+
+    public async getFileToWrite(key: string) {
         const filesWithTarget: Uri[] = [];
         const filesWithConfig = (
             await this.bundleFileSet.findFile(async (data, file) => {
                 const bundleTarget = data.targets?.[this.target ?? ""];
-                if (bundleTarget) {
-                    filesWithTarget.push(file);
+                if (bundleTarget === undefined) {
+                    return false;
                 }
-                if (
-                    (await this.readerMapping[key](bundleTarget)) === undefined
-                ) {
+                filesWithTarget.push(file);
+
+                if (this.readStateFromTarget(bundleTarget) === undefined) {
                     return false;
                 }
                 return true;
@@ -133,10 +109,6 @@ export class BundlePreValidateModel implements Disposable {
         }
 
         return [...filesWithConfig, ...filesWithTarget][0];
-    }
-
-    public async load() {
-        return await this.stateCache.value;
     }
 
     public dispose() {
