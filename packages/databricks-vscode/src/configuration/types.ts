@@ -2,7 +2,7 @@ export type DatabricksConfig = {
     host?: string;
 
     mode?: "development" | "staging" | "production";
-    authParams?: Record<string, any>;
+    authProfile?: string;
 
     clusterId?: string;
     workspaceFsPath?: string;
@@ -14,7 +14,7 @@ export type DatabricksConfigSourceMap = {
     [key in keyof DatabricksConfig]: DatabricksConfigSource;
 };
 
-export const OVERRIDEABLE_CONFIG_KEYS = ["clusterId", "authParams"] as const;
+export const OVERRIDEABLE_CONFIG_KEYS = ["clusterId", "authProfile"] as const;
 
 export type OverrideableConfig = Pick<
     DatabricksConfig,
@@ -22,7 +22,7 @@ export type OverrideableConfig = Pick<
 >;
 
 export const BUNDLE_PRE_VALIDATE_CONFIG_KEYS = [
-    "authParams",
+    "authProfile",
     "mode",
     "host",
 ] as const;

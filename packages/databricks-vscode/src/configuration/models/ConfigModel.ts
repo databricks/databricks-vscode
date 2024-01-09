@@ -66,7 +66,7 @@ export class ConfigModel implements Disposable {
     });
 
     private readonly changeEmitters = new Map<
-        keyof DatabricksConfig | "target",
+        keyof DatabricksConfig | "target" | "authProvider",
         {
             emitter: EventEmitter<void>;
             onDidEmit: Event<void>;
@@ -75,6 +75,7 @@ export class ConfigModel implements Disposable {
     public onDidChangeAny = this.configCache.onDidChange;
 
     private _target: string | undefined;
+    private _authProvider: AuthProvider | undefined;
 
     constructor(
         private readonly bundleValidateModel: BundleValidateModel,
@@ -192,8 +193,15 @@ export class ConfigModel implements Disposable {
     }
 
     @onError({popup: {prefix: "Failed to set auth provider."}})
+    @Mutex.synchronise("configsMutex")
     public async setAuthProvider(authProvider: AuthProvider | undefined) {
         await this.bundleValidateModel.setAuthProvider(authProvider);
+        this._authProvider = authProvider;
+        this.changeEmitters.get("authProvider")?.emitter.fire();
+    }
+
+    get authProvider(): AuthProvider | undefined {
+        return this._authProvider;
     }
 
     @Mutex.synchronise("configsMutex")

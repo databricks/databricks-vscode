@@ -31,7 +31,7 @@ interface State {
     authProvider?: AuthProvider;
 }
 
-export class ConfigureWorkspaceWizard {
+export class LoginWizard {
     private state = {} as Partial<State>;
     private readonly title = "Configure Databricks Workspace";
     constructor(
@@ -186,8 +186,8 @@ export class ConfigureWorkspaceWizard {
         }
 
         if (pick.profile !== undefined) {
-            // TODO: If the profile has an auth type with deeper support in the Extension, (azure-cli, databricks-cli),
-            // then run the necessary checks to validate the profile and help user fix any errors.
+            // We assume that the profile is setup correctly (even for the auth types that have a deeper integration with vscode such as azure-cli).
+            // To fix errors, users can create a new profile.
             const authProvider = new ProfileAuthProvider(
                 this.state.host!,
                 pick.profile
@@ -304,7 +304,7 @@ export class ConfigureWorkspaceWizard {
         cliWrapper: CliWrapper,
         configModel: ConfigModel
     ): Promise<AuthProvider | undefined> {
-        const wizard = new ConfigureWorkspaceWizard(cliWrapper, configModel);
+        const wizard = new LoginWizard(cliWrapper, configModel);
         const hostStr = await configModel.get("host");
         wizard.state.host = hostStr
             ? UrlUtils.normalizeHost(hostStr)

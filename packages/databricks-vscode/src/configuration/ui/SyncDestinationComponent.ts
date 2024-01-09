@@ -119,7 +119,6 @@ export class SyncDestinationComponent extends BaseComponent {
             return [];
         }
         //TODO: Disable syncing for prod/staging
-        //TODO: Read sync destination from bundle. Infer from CLI if not set.
 
         const children: ConfigurationTreeItem[] = [
             {

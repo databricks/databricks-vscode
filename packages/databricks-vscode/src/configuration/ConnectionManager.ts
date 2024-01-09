@@ -7,15 +7,17 @@ import {
     RemoteUri,
     LocalUri,
 } from "../sync/SyncDestination";
-import {ConfigureWorkspaceWizard} from "./ConfigureWorkspaceWizard";
+import {LoginWizard} from "./LoginWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {ConfigModel} from "./models/ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
-import {AuthProvider} from "./auth/AuthProvider";
+import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
+import {OverrideableConfigModel} from "./models/OverrideableConfigModel";
+import {BundlePreValidateModel} from "../bundle/models/BundlePreValidateModel";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -127,21 +129,9 @@ export class ConnectionManager implements Disposable {
             this.configModel.onDidChange("target")(
                 this.loginWithSavedAuth,
                 this
-            ),
-            this.configModel.onDidChange("authParams")(async () => {
-                const config = await this.configModel.getS("authParams");
-                if (config === undefined) {
-                    return;
-                }
-
-                // We only react to auth changes coming from the bundle.
-                // If an override is set, then all settings must have gone
-                // through this class, which means that we have already logged in
-                // using those settings, so we don't double login.
-                if (config.source === "bundle") {
-                    await this.loginWithSavedAuth();
-                }
-            })
+            )
+            // TODO: We don't react to changes in authProfile from the config model. We instead listen to changes
+            // in individual models to react to (Overrides and BundlePreValidate)
         );
     }
 
@@ -182,8 +172,14 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Can't login with saved auth. "},
     })
     private async loginWithSavedAuth() {
-        const authParams = await this.configModel.get("authParams");
-        if (authParams === undefined) {
+        // TODO: Handle the new auth resolution flow here. Set the value of the auth profile if found
+        // 1. Load from saved profile
+        // 2. Load from bundle
+        // 3. Match a unqiue profile (host based auth)
+
+        /** The case for host based resolution with multiple matching profiles is handled by the @see {LoginWizard} */
+        const authProfile = await this.configModel.get("authProfile");
+        if (authProfile === undefined) {
             await this.logout();
             return;
         }
@@ -214,10 +210,12 @@ export class ConnectionManager implements Disposable {
                     this._workspaceClient
                 );
 
-                await this.createWsFsRootDirectory(this._workspaceClient);
                 await this.updateSyncDestinationMapper();
                 await this.updateClusterManager();
-                await this.configModel.set("authParams", authProvider.toJSON());
+                await this.configModel.set(
+                    "authProfile",
+                    authProvider.toJSON().authProfile as string | undefined
+                );
                 await this.configModel.setAuthProvider(authProvider);
                 this.updateState("CONNECTED");
             });
@@ -232,35 +230,6 @@ export class ConnectionManager implements Disposable {
         }
     }
 
-    async createWsFsRootDirectory(wsClient: WorkspaceClient) {
-        if (
-            !this.databricksWorkspace ||
-            !workspaceConfigs.enableFilesInWorkspace
-        ) {
-            return;
-        }
-        const rootDirPath = this.databricksWorkspace.workspaceFsRoot;
-        const me = this.databricksWorkspace.userName;
-        let rootDir = await WorkspaceFsEntity.fromPath(
-            wsClient,
-            rootDirPath.path
-        );
-        if (rootDir) {
-            return;
-        }
-        const meDir = await WorkspaceFsEntity.fromPath(
-            wsClient,
-            `/Users/${me}`
-        );
-        if (WorkspaceFsUtils.isDirectory(meDir)) {
-            rootDir = await meDir.mkdir(rootDirPath.path);
-        }
-        if (!rootDir) {
-            window.showErrorMessage(`Can't find or create ${rootDirPath.path}`);
-            return;
-        }
-    }
-
     @onError({popup: {prefix: "Can't logout"}})
     @Mutex.synchronise("loginLogoutMutex")
     async logout() {
@@ -269,7 +238,7 @@ export class ConnectionManager implements Disposable {
         await this.updateClusterManager();
         await this.updateSyncDestinationMapper();
         if (this.configModel.target !== undefined) {
-            await this.configModel.set("authParams", undefined);
+            await this.configModel.set("authProfile", undefined);
         }
         this.updateState("DISCONNECTED");
     }
@@ -277,11 +246,8 @@ export class ConnectionManager implements Disposable {
     @onError({
         popup: {prefix: "Can't configure workspace. "},
     })
-    async configureWorkspace() {
-        const authProvider = await ConfigureWorkspaceWizard.run(
-            this.cli,
-            this.configModel
-        );
+    async configureLogin() {
+        const authProvider = await LoginWizard.run(this.cli, this.configModel);
         if (!authProvider) {
             return;
         }
@@ -363,6 +329,23 @@ export class ConnectionManager implements Disposable {
                 }, this);
             });
         }
+    }
+
+    async resolveAuthForTarget(
+        overrideableConfigModel: OverrideableConfigModel,
+        bundlePreValidateModel: BundlePreValidateModel
+    ) {
+        // TODO: Handle the new auth resolution flow here. Set the value of the auth profile if found
+        // 1. Load from saved profile
+        // 2. Load from bundle
+        // 3. Match a unqiue profile (host based auth)
+
+        const savedProfile = (await overrideableConfigModel.load())
+            ?.authProfile;
+
+        if (savedProfile !== undefined) {
+            new ProfileAuthProvider(this.configModel.get("host"), savedProfile)
+            
     }
 
     async dispose() {

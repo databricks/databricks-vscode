@@ -305,7 +305,7 @@ __metadata:
     ini: ^4.1.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 073b22dcce69646833a0722f9952c0c51879c6f46b34a8c81f2fac15171d1ce1e379b360c7c1a4c4d6994e4d97e1de26c415f4e46d6a4d7c29fa0090cb9ca085
+  checksum: 5b0ff4ebb6555ec2a4f03a71db5016369e44cf015428437d37d403491f6039e1869853a59b5d9901d2abfd74e2b54940509113c6baf5b84cbdd42eb7db025cfc
   languageName: node
   linkType: hard
 
@@ -319,7 +319,7 @@ __metadata:
     ini: ^4.1.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 073b22dcce69646833a0722f9952c0c51879c6f46b34a8c81f2fac15171d1ce1e379b360c7c1a4c4d6994e4d97e1de26c415f4e46d6a4d7c29fa0090cb9ca085
+  checksum: 5b0ff4ebb6555ec2a4f03a71db5016369e44cf015428437d37d403491f6039e1869853a59b5d9901d2abfd74e2b54940509113c6baf5b84cbdd42eb7db025cfc
   languageName: node
   linkType: hard
 
@@ -1513,11 +1513,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^20.6.0":
-  version: 20.10.7
-  resolution: "@types/node@npm:20.10.7"
+  version: 20.10.8
+  resolution: "@types/node@npm:20.10.8"
   dependencies:
     undici-types: ~5.26.4
-  checksum: 86f4f96f5169538f47bbd652ab8e3712cd307701481ff3e9ce0c1ea7d8424a38b5ac4a1d33088cdd9ea1bfe68fd27bbae005a21969aa6d9a36295904da6f09f2
+  checksum: ce9b7ee545b3605f667be2ea900e38ab58d7b561192a7342443e5d7f61c44fd9d016eac48e95d3011f090ceea65a727e83a31d51fabdd9fc20ff9992edcbc682
   languageName: node
   linkType: hard
 
