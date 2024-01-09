@@ -60,7 +60,7 @@ export function onError(props: Props) {
                             ? props.popup.prefix ?? ""
                             : "";
                     window.showErrorMessage(
-                        prefix.trimEnd() + ": " + e.message.trimStart()
+                        prefix.trimEnd() + " " + e.message.trimStart()
                     );
                 }
                 if (props.log !== undefined && props.log !== false) {
@@ -76,7 +76,7 @@ export function onError(props: Props) {
                             ? prefix
                             : props.log.prefix;
                     logger?.error(
-                        prefix.trimEnd() + ": " + e.message.trimStart(),
+                        prefix.trimEnd() + " " + e.message.trimStart(),
                         e
                     );
                 }

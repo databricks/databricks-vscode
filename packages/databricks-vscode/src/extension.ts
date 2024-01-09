@@ -54,9 +54,10 @@ import {
     registerBundleAutocompleteProvider,
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
+import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
 import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
-import {BundleFileConfigModel} from "./configuration/models/BundleFileConfigModel";
+import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 
 export async function activate(
     context: ExtensionContext
@@ -150,23 +151,28 @@ export async function activate(
         workspace.onDidChangeConfiguration(updateFeatureContexts)
     );
 
+    const cli = new CliWrapper(context);
     const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);
+    const bundleValidateModel = new BundleValidateModel(
+        bundleFileWatcher,
+        cli,
+        workspaceUri
+    );
 
     const overrideableConfigModel = new OverrideableConfigModel(stateStorage);
-    const bundleFileConfigModel = new BundleFileConfigModel(
+    const bundlePreValidateModel = new BundlePreValidateModel(
         bundleFileSet,
         bundleFileWatcher
     );
     const configModel = new ConfigModel(
+        bundleValidateModel,
         overrideableConfigModel,
-        bundleFileConfigModel,
+        bundlePreValidateModel,
         stateStorage
     );
 
-    // Configuration group
-    const cli = new CliWrapper(context);
     const connectionManager = new ConnectionManager(
         cli,
         configModel,

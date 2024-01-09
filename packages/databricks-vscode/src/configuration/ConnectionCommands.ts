@@ -200,7 +200,7 @@ export class ConnectionCommands implements Disposable {
     }
 
     async selectTarget() {
-        const targets = await this.configModel.bundleFileConfigModel.targets;
+        const targets = await this.configModel.bundlePreValidateModel.targets;
         const currentTarget = this.configModel.target;
         if (targets === undefined) {
             return;

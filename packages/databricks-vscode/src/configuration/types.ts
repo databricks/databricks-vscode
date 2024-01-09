@@ -21,16 +21,35 @@ export type OverrideableConfig = Pick<
     (typeof OVERRIDEABLE_CONFIG_KEYS)[number]
 >;
 
-export const BUNDLE_FILE_CONFIG_KEYS = ["authParams", "mode", "host"] as const;
+export const BUNDLE_PRE_VALIDATE_CONFIG_KEYS = [
+    "authParams",
+    "mode",
+    "host",
+] as const;
 
 /** These are configs which can be loaded from the bundle */
-export type BundleFileConfig = Pick<
+export type BundlePreValidateConfig = Pick<
     DatabricksConfig,
-    (typeof BUNDLE_FILE_CONFIG_KEYS)[number]
+    (typeof BUNDLE_PRE_VALIDATE_CONFIG_KEYS)[number]
 >;
 
-export const DATABRICKS_CONFIG_KEYS = Array.from(
-    new Set([...OVERRIDEABLE_CONFIG_KEYS, ...BUNDLE_FILE_CONFIG_KEYS])
+export const BUNDLE_VALIDATE_CONFIG_KEYS = [
+    "clusterId",
+    "workspaceFsPath",
+] as const;
+
+/** These are configs which can be loaded from the bundle */
+export type BundleValidateConfig = Pick<
+    DatabricksConfig,
+    (typeof BUNDLE_VALIDATE_CONFIG_KEYS)[number]
+>;
+
+export const DATABRICKS_CONFIG_KEYS: (keyof DatabricksConfig)[] = Array.from(
+    new Set([
+        ...OVERRIDEABLE_CONFIG_KEYS,
+        ...BUNDLE_PRE_VALIDATE_CONFIG_KEYS,
+        ...BUNDLE_VALIDATE_CONFIG_KEYS,
+    ])
 );
 
 export function isOverrideableConfigKey(
@@ -39,11 +58,14 @@ export function isOverrideableConfigKey(
     return OVERRIDEABLE_CONFIG_KEYS.includes(key);
 }
 
-export function isBundleConfigKey(key: any): key is keyof BundleFileConfig {
-    return BUNDLE_FILE_CONFIG_KEYS.includes(key);
+export function isBundlePreValidateConfigKey(
+    key: any
+): key is keyof BundlePreValidateConfig {
+    return BUNDLE_PRE_VALIDATE_CONFIG_KEYS.includes(key);
 }
 
-export interface ConfigReaderWriter<T extends keyof DatabricksConfig> {
-    readAll(target: string): Promise<DatabricksConfig | undefined>;
-    write(key: T, target: string, value?: DatabricksConfig[T]): Promise<void>;
+export function isBundleValidateConfigKey(
+    key: any
+): key is keyof BundleValidateConfig {
+    return BUNDLE_VALIDATE_CONFIG_KEYS.includes(key);
 }

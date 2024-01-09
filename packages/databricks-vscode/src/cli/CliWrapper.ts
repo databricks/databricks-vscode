@@ -1,5 +1,5 @@
 import {execFile as execFileCb, spawn} from "child_process";
-import {ExtensionContext, window, commands} from "vscode";
+import {ExtensionContext, window, commands, Uri} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -7,6 +7,8 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
+import {AuthProvider} from "../configuration/auth/AuthProvider";
+import {EnvVarGenerators} from "../utils";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -86,12 +88,8 @@ export class CliWrapper {
         const cmd = await this.getListProfilesCommand();
         const res = await execFile(cmd.command, cmd.args, {
             env: {
-                /*  eslint-disable @typescript-eslint/naming-convention */
-                HOME: process.env.HOME,
-                DATABRICKS_CONFIG_FILE:
-                    configfilePath || process.env.DATABRICKS_CONFIG_FILE,
-                DATABRICKS_OUTPUT_FORMAT: "json",
-                /*  eslint-enable @typescript-eslint/naming-convention */
+                ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                ...EnvVarGenerators.getProxyEnvVars(),
             },
         });
         const profiles = JSON.parse(res.stdout).profiles || [];
@@ -134,7 +132,6 @@ export class CliWrapper {
     }
 
     public async getBundleSchema(): Promise<string> {
-        const execFile = promisify(execFileCb);
         const {stdout} = await execFile(this.cliPath, ["bundle", "schema"]);
         return stdout;
     }
@@ -171,5 +168,31 @@ export class CliWrapper {
             child.on("error", reject);
             child.on("exit", resolve);
         });
+    }
+
+    async bundleValidate(
+        target: string,
+        authProvider: AuthProvider,
+        workspaceFolder: Uri,
+        configfilePath?: string
+    ) {
+        const {stdout, stderr} = await execFile(
+            this.cliPath,
+            ["bundle", "validate", "--target", target],
+            {
+                cwd: workspaceFolder.fsPath,
+                env: {
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getProxyEnvVars(),
+                    ...authProvider.toEnv(),
+                },
+                shell: true,
+            }
+        );
+
+        if (stderr !== "") {
+            throw new Error(stderr);
+        }
+        return stdout;
     }
 }
