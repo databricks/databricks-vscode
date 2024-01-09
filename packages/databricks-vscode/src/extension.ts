@@ -54,9 +54,10 @@ import {
     registerBundleAutocompleteProvider,
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
-import {ConfigModel} from "./configuration/ConfigModel";
-import {ConfigOverrideReaderWriter} from "./configuration/ConfigOverrideReaderWriter";
-import {BundleConfigReaderWriter} from "./configuration/BundleConfigReaderWriter";
+import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
+import {ConfigModel} from "./configuration/models/ConfigModel";
+import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
+import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 
 export async function activate(
     context: ExtensionContext
@@ -150,21 +151,6 @@ export async function activate(
         workspace.onDidChangeConfiguration(updateFeatureContexts)
     );
 
-    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
-    const bundleFileWatcher = new BundleWatcher(bundleFileSet);
-    context.subscriptions.push(bundleFileWatcher);
-
-    const overrideReaderWriter = new ConfigOverrideReaderWriter(stateStorage);
-    const bundleConfigReaderWriter = new BundleConfigReaderWriter(
-        bundleFileSet
-    );
-    const configModel = new ConfigModel(
-        overrideReaderWriter,
-        bundleConfigReaderWriter,
-        stateStorage,
-        bundleFileWatcher
-    );
-
     // Configuration group
     let cliLogFilePath;
     try {
@@ -176,6 +162,27 @@ export async function activate(
         );
     }
     const cli = new CliWrapper(context, cliLogFilePath);
+    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
+    const bundleFileWatcher = new BundleWatcher(bundleFileSet);
+    context.subscriptions.push(bundleFileWatcher);
+    const bundleValidateModel = new BundleValidateModel(
+        bundleFileWatcher,
+        cli,
+        workspaceUri
+    );
+
+    const overrideableConfigModel = new OverrideableConfigModel(stateStorage);
+    const bundlePreValidateModel = new BundlePreValidateModel(
+        bundleFileSet,
+        bundleFileWatcher
+    );
+    const configModel = new ConfigModel(
+        bundleValidateModel,
+        overrideableConfigModel,
+        bundlePreValidateModel,
+        stateStorage
+    );
+
     const connectionManager = new ConnectionManager(
         cli,
         configModel,

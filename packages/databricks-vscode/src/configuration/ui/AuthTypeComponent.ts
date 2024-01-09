@@ -1,4 +1,4 @@
-import {ConfigModel} from "../ConfigModel";
+import {ConfigModel} from "../models/ConfigModel";
 import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
@@ -18,7 +18,7 @@ export class AuthTypeComponent extends BaseComponent {
             this.connectionManager.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChange("target", () => {
+            this.configModel.onDidChange("target")(() => {
                 this.onDidChangeEmitter.fire();
             })
         );

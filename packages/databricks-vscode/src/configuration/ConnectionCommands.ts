@@ -16,7 +16,7 @@ import {FileUtils, UrlUtils} from "../utils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import path from "node:path";
-import {ConfigModel} from "./ConfigModel";
+import {ConfigModel} from "./models/ConfigModel";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -200,7 +200,7 @@ export class ConnectionCommands implements Disposable {
     }
 
     async selectTarget() {
-        const targets = await this.configModel.bundleConfigReaderWriter.targets;
+        const targets = await this.configModel.bundlePreValidateModel.targets;
         const currentTarget = this.configModel.target;
         if (targets === undefined) {
             return;

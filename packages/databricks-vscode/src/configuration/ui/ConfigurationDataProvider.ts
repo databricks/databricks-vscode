@@ -9,7 +9,7 @@ import {
 } from "vscode";
 
 import {ConnectionManager} from "../ConnectionManager";
-import {ConfigModel} from "../ConfigModel";
+import {ConfigModel} from "../models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {BundleTargetComponent} from "./BundleTargetComponent";
