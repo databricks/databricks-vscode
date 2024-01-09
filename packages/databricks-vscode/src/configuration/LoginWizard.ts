@@ -305,10 +305,7 @@ export class LoginWizard {
         configModel: ConfigModel
     ): Promise<AuthProvider | undefined> {
         const wizard = new LoginWizard(cliWrapper, configModel);
-        const hostStr = await configModel.get("host");
-        wizard.state.host = hostStr
-            ? UrlUtils.normalizeHost(hostStr)
-            : undefined;
+        wizard.state.host = await configModel.get("host");
         await MultiStepInput.run(wizard.inputHost.bind(wizard));
         if (!wizard.state.host || !wizard.state.authProvider) {
             return;
@@ -339,7 +336,7 @@ function humaniseSdkAuthType(sdkAuthType: string) {
     }
 }
 
-async function listProfiles(cliWrapper: CliWrapper) {
+export async function listProfiles(cliWrapper: CliWrapper) {
     const profiles = (
         await cliWrapper.listProfiles(workspaceConfigs.databrickscfgLocation)
     ).filter((profile) => {

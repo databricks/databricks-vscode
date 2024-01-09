@@ -1,28 +1,25 @@
 import {StateStorage} from "../../vscode-objs/StateStorage";
-import {OverrideableConfig} from "../types";
-import {CachedValue} from "../../locking/CachedValue";
-import {Disposable} from "vscode";
 import {Mutex} from "../../locking";
+import {BaseModelWithStateCache} from "./BaseModelWithStateCache";
+import {onError} from "../../utils/onErrorDecorator";
 
-export class OverrideableConfigModel implements Disposable {
-    private writeMutex = new Mutex();
+export type OverrideableConfigState = {
+    authProfile?: string;
+    clusterId?: string;
+};
 
-    private disposables: Disposable[] = [];
+export function isOverrideableConfigKey(
+    key: string
+): key is keyof OverrideableConfigState {
+    return ["authProfile", "clusterId"].includes(key);
+}
 
-    private readonly stateCache = new CachedValue<
-        OverrideableConfig | undefined
-    >(async () => {
-        if (this.target === undefined) {
-            return undefined;
-        }
-        return this.readState(this.target);
-    });
-
-    public readonly onDidChange = this.stateCache.onDidChange;
-
+export class OverrideableConfigModel extends BaseModelWithStateCache<OverrideableConfigState> {
+    protected mutex = new Mutex();
     private target: string | undefined;
 
     constructor(private readonly storage: StateStorage) {
+        super();
         this.disposables.push(
             this.storage.onDidChange("databricks.bundle.overrides")(
                 async () => await this.stateCache.refresh()
@@ -34,12 +31,14 @@ export class OverrideableConfigModel implements Disposable {
         this.target = target;
     }
 
-    private async readState(target: string) {
-        return this.storage.get("databricks.bundle.overrides")[target];
-    }
-
-    public async load() {
-        return this.stateCache.value;
+    @onError({popup: {prefix: "Error while reading config overrides"}})
+    protected async readState() {
+        if (this.target === undefined) {
+            return {};
+        }
+        return (
+            this.storage.get("databricks.bundle.overrides")[this.target] ?? {}
+        );
     }
 
     /**
@@ -49,19 +48,15 @@ export class OverrideableConfigModel implements Disposable {
      * @param value the value to write. If undefined, the override is removed.
      * @returns status of the write
      */
-    @Mutex.synchronise("writeMutex")
-    async write<T extends keyof OverrideableConfig>(
+    @Mutex.synchronise("mutex")
+    async write<T extends keyof OverrideableConfigState>(
         key: T,
         target: string,
-        value?: OverrideableConfig[T]
+        value?: OverrideableConfigState[T]
     ) {
         const data = this.storage.get("databricks.bundle.overrides");
         if (data[target] === undefined) {
             data[target] = {};
-        }
-        const oldValue = JSON.stringify(data[target][key]);
-        if (oldValue === JSON.stringify(value)) {
-            return;
         }
         data[target][key] = value;
         await this.storage.set("databricks.bundle.overrides", data);

@@ -1,5 +1,5 @@
 import {WorkspaceClient, ApiClient, logging} from "@databricks/databricks-sdk";
-import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
+import {Cluster} from "../sdk-extensions";
 import {EventEmitter, Uri, window, Disposable} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {
@@ -7,17 +7,14 @@ import {
     RemoteUri,
     LocalUri,
 } from "../sync/SyncDestination";
-import {LoginWizard} from "./LoginWizard";
+import {LoginWizard, listProfiles} from "./LoginWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {ConfigModel} from "./models/ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
-import {OverrideableConfigModel} from "./models/OverrideableConfigModel";
-import {BundlePreValidateModel} from "../bundle/models/BundlePreValidateModel";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -59,7 +56,7 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Error attaching sync destination: "},
     })
     private async updateSyncDestinationMapper() {
-        const workspacePath = await this.configModel.get("workspaceFsPath");
+        const workspacePath = await this.configModel.get("remoteRootPath");
         const remoteUri = workspacePath
             ? new RemoteUri(workspacePath)
             : undefined;
@@ -118,18 +115,15 @@ export class ConnectionManager implements Disposable {
         await this.loginWithSavedAuth();
 
         this.disposables.push(
-            this.configModel.onDidChange("workspaceFsPath")(
+            this.configModel.onDidChangeKey("remoteRootPath")(
                 this.updateSyncDestinationMapper,
                 this
             ),
-            this.configModel.onDidChange("clusterId")(
+            this.configModel.onDidChangeKey("clusterId")(
                 this.updateClusterManager,
                 this
             ),
-            this.configModel.onDidChange("target")(
-                this.loginWithSavedAuth,
-                this
-            )
+            this.configModel.onDidChangeTarget(this.loginWithSavedAuth, this)
             // TODO: We don't react to changes in authProfile from the config model. We instead listen to changes
             // in individual models to react to (Overrides and BundlePreValidate)
         );
@@ -168,22 +162,54 @@ export class ConnectionManager implements Disposable {
         return this._workspaceClient?.apiClient;
     }
 
+    async resolveAuth() {
+        const host = await this.configModel.get("host");
+        const target = this.configModel.target;
+        if (host === undefined || target === undefined) {
+            return;
+        }
+
+        // Try to load a profile user had previously selected for this target
+        const savedProfile = (
+            await this.configModel.overrideableConfigModel.load(["authProfile"])
+        )?.authProfile;
+        if (savedProfile !== undefined) {
+            const authProvider = new ProfileAuthProvider(host, savedProfile);
+            if (await authProvider.check()) {
+                return authProvider;
+            }
+        }
+
+        // Try to load any parameters that are hard coded in the bundle
+        const bundleAuthParams =
+            await this.configModel.bundlePreValidateModel.load(["authParams"]);
+        if (bundleAuthParams?.authParams !== undefined) {
+            throw new Error("Bundle auth params not implemented");
+        }
+
+        // Try to load a unique profile that matches the host
+        const profiles = (await listProfiles(this.cli)).filter(
+            (p) => p.host?.toString() === host.toString()
+        );
+        if (profiles.length !== 1) {
+            return;
+        }
+        const authProvider = new ProfileAuthProvider(host, profiles[0].name);
+        if (await authProvider.check()) {
+            return authProvider;
+        }
+    }
+
     @onError({
-        popup: {prefix: "Can't login with saved auth. "},
+        popup: {prefix: "Can't login with saved auth."},
     })
     private async loginWithSavedAuth() {
-        // TODO: Handle the new auth resolution flow here. Set the value of the auth profile if found
-        // 1. Load from saved profile
-        // 2. Load from bundle
-        // 3. Match a unqiue profile (host based auth)
-
-        /** The case for host based resolution with multiple matching profiles is handled by the @see {LoginWizard} */
-        const authProfile = await this.configModel.get("authProfile");
-        if (authProfile === undefined) {
+        const authProvider = await this.resolveAuth();
+        if (authProvider === undefined) {
             await this.logout();
             return;
         }
-        await this.login(AuthProvider.fromJSON(authParams, this.cli.cliPath));
+        await this.login(authProvider);
     }
 
     private async login(authProvider: AuthProvider): Promise<void> {
@@ -214,7 +240,7 @@ export class ConnectionManager implements Disposable {
                 await this.updateClusterManager();
                 await this.configModel.set(
                     "authProfile",
-                    authProvider.toJSON().authProfile as string | undefined
+                    authProvider.toJSON().profile as string | undefined
                 );
                 await this.configModel.setAuthProvider(authProvider);
                 this.updateState("CONNECTED");
@@ -283,14 +309,14 @@ export class ConnectionManager implements Disposable {
             );
             return;
         }
-        await this.configModel.set("workspaceFsPath", remoteWorkspace.path);
+        await this.configModel.set("remoteRootPath", remoteWorkspace.path);
     }
 
     @onError({
         popup: {prefix: "Can't detach sync destination. "},
     })
     async detachSyncDestination(): Promise<void> {
-        await this.configModel.set("workspaceFsPath", undefined);
+        await this.configModel.set("remoteRootPath", undefined);
     }
 
     private updateState(newState: ConnectionState) {
@@ -329,23 +355,6 @@ export class ConnectionManager implements Disposable {
                 }, this);
             });
         }
-    }
-
-    async resolveAuthForTarget(
-        overrideableConfigModel: OverrideableConfigModel,
-        bundlePreValidateModel: BundlePreValidateModel
-    ) {
-        // TODO: Handle the new auth resolution flow here. Set the value of the auth profile if found
-        // 1. Load from saved profile
-        // 2. Load from bundle
-        // 3. Match a unqiue profile (host based auth)
-
-        const savedProfile = (await overrideableConfigModel.load())
-            ?.authProfile;
-
-        if (savedProfile !== undefined) {
-            new ProfileAuthProvider(this.configModel.get("host"), savedProfile)
-            
     }
 
     async dispose() {

@@ -1,6 +1,6 @@
 import {randomUUID} from "crypto";
 import {EventEmitter, ExtensionContext, Event} from "vscode";
-import {OverrideableConfig} from "../configuration/types";
+import {OverrideableConfigState} from "../configuration/models/OverrideableConfigModel";
 import {Mutex} from "../locking";
 import lodash from "lodash";
 
@@ -20,7 +20,7 @@ function withType<V>() {
 
 const StorageConfigurations = {
     "databricks.bundle.overrides": withType<{
-        [k: string]: OverrideableConfig;
+        [k: string]: OverrideableConfigState;
     }>()({
         location: "workspace",
         defaultValue: {},
