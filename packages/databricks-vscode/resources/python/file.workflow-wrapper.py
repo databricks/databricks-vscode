@@ -4,26 +4,8 @@ import runpy
 import sys
 import os
 
-databricks_arg_idx = []
-for i, arg in enumerate(sys.argv):
-    if i == 0:
-        continue
-    if sys.argv[i-1] == "--databricks-source-file":
-        python_file = arg
-    elif sys.argv[i-1] == "--databricks-project-root":
-        project_root = arg
-    else:
-        continue
-    databricks_arg_idx.extend([i, i-1])
-
-if python_file is None:
-    raise Exception("--databricks-source-file argument not specified")
-
-if project_root is None:
-    raise Exception("--databricks-project-root argument not specified")
-
-#remove databricks args from argv
-sys.argv = [value for i,value in enumerate(sys.argv) if i not in databricks_arg_idx]
+python_file = '{{DATABRICKS_SOURCE_FILE}}'
+project_root = '{{DATABRICKS_PROJECT_ROOT}}'
 
 # change working directory
 os.chdir(os.path.dirname(python_file))

@@ -54,9 +54,10 @@ import {
     registerBundleAutocompleteProvider,
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
-import {ConfigModel} from "./configuration/ConfigModel";
-import {ConfigOverrideReaderWriter} from "./configuration/ConfigOverrideReaderWriter";
-import {BundleConfigReaderWriter} from "./configuration/BundleConfigReaderWriter";
+import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
+import {ConfigModel} from "./configuration/models/ConfigModel";
+import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
+import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 
 export async function activate(
     context: ExtensionContext
@@ -150,23 +151,38 @@ export async function activate(
         workspace.onDidChangeConfiguration(updateFeatureContexts)
     );
 
+    // Configuration group
+    let cliLogFilePath;
+    try {
+        cliLogFilePath = await loggerManager.getLogFile("databricks-cli");
+    } catch (e) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to create a log file for the CLI",
+            e
+        );
+    }
+    const cli = new CliWrapper(context, cliLogFilePath);
     const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);
-
-    const overrideReaderWriter = new ConfigOverrideReaderWriter(stateStorage);
-    const bundleConfigReaderWriter = new BundleConfigReaderWriter(
-        bundleFileSet
+    const bundleValidateModel = new BundleValidateModel(
+        bundleFileWatcher,
+        cli,
+        workspaceUri
     );
-    const configModel = new ConfigModel(
-        overrideReaderWriter,
-        bundleConfigReaderWriter,
-        stateStorage,
+
+    const overrideableConfigModel = new OverrideableConfigModel(stateStorage);
+    const bundlePreValidateModel = new BundlePreValidateModel(
+        bundleFileSet,
         bundleFileWatcher
     );
+    const configModel = new ConfigModel(
+        bundleValidateModel,
+        overrideableConfigModel,
+        bundlePreValidateModel,
+        stateStorage
+    );
 
-    // Configuration group
-    const cli = new CliWrapper(context);
     const connectionManager = new ConnectionManager(
         cli,
         configModel,
@@ -198,7 +214,6 @@ export async function activate(
     );
     const workspaceFsCommands = new WorkspaceFsCommands(
         workspace.workspaceFolders[0].uri,
-        stateStorage,
         connectionManager,
         workspaceFsDataProvider
     );
@@ -409,16 +424,6 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.connection.detachCluster",
             connectionCommands.detachClusterCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.attachSyncDestination",
-            connectionCommands.attachSyncDestinationCommand(),
-            connectionCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.connection.detachSyncDestination",
-            connectionCommands.detachWorkspaceCommand,
             connectionCommands
         )
     );

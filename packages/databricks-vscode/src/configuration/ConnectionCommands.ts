@@ -1,4 +1,4 @@
-import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
+import {Cluster} from "../sdk-extensions";
 import {
     Disposable,
     FileSystemError,
@@ -16,8 +16,7 @@ import {FileUtils, UrlUtils} from "../utils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import path from "node:path";
-import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
-import {ConfigModel} from "./ConfigModel";
+import {ConfigModel} from "./models/ConfigModel";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -200,132 +199,8 @@ export class ConnectionCommands implements Disposable {
         };
     }
 
-    attachSyncDestinationCommand() {
-        return async () => {
-            const wsClient = this.connectionManager.workspaceClient;
-            const me = this.connectionManager.databricksWorkspace?.userName;
-            const rootDirPath =
-                this.connectionManager.databricksWorkspace?.currentFsRoot;
-            if (!wsClient || !me || !rootDirPath) {
-                // TODO
-                return;
-            }
-
-            const rootDir = await WorkspaceFsEntity.fromPath(
-                wsClient,
-                rootDirPath.path
-            );
-
-            type WorkspaceFsQuickPickItem = QuickPickItem & {
-                path?: string;
-            };
-            const children: WorkspaceFsQuickPickItem[] = [
-                {
-                    label: "Create New Sync Destination",
-                    alwaysShow: true,
-                    detail: workspaceConfigs.enableFilesInWorkspace
-                        ? `Create a new folder under /Workspace/${me}/.ide as sync destination`
-                        : `Create a new Repo under /Repos/${me} as sync destination`,
-                },
-                {
-                    label: "Sync Destinations",
-                    kind: QuickPickItemKind.Separator,
-                },
-            ];
-
-            const input = window.createQuickPick();
-            input.busy = true;
-            input.show();
-            input.items = children;
-            if (workspaceConfigs.enableFilesInWorkspace) {
-                children.push(
-                    ...((await rootDir?.children) ?? [])
-                        .filter((entity) =>
-                            WorkspaceFsUtils.isDirectory(entity)
-                        )
-                        .map((entity) => {
-                            return {
-                                label: entity.basename,
-                                detail: entity.path,
-                                path: entity.path,
-                            };
-                        })
-                );
-            } else {
-                const repos = (await rootDir?.children) ?? [];
-
-                children.push(
-                    ...repos
-                        .filter((entity) => {
-                            return entity.basename.endsWith(REPO_NAME_SUFFIX);
-                        })
-                        .map((entity) => {
-                            return {
-                                label: entity.basename.slice(
-                                    0,
-                                    -REPO_NAME_SUFFIX.length
-                                ),
-                                detail: entity.path,
-                                path: entity.path,
-                            };
-                        })
-                );
-            }
-            input.items = children;
-            input.busy = false;
-
-            const disposables = [
-                input,
-                input.onDidAccept(async () => {
-                    const fn = async () => {
-                        const selection = input
-                            .selectedItems[0] as WorkspaceFsQuickPickItem;
-                        if (
-                            selection.label !== "Create New Sync Destination" &&
-                            selection.path
-                        ) {
-                            this.connectionManager.attachSyncDestination(
-                                new RemoteUri(selection.path)
-                            );
-                            return;
-                        }
-                        const created =
-                            await this.wsfsCommands.createFolder(rootDir);
-                        if (created === undefined) {
-                            return;
-                        }
-                        this.connectionManager.attachSyncDestination(
-                            new RemoteUri(created.path)
-                        );
-                    };
-                    try {
-                        await fn();
-                    } catch (e: unknown) {
-                        if (e instanceof Error) {
-                            window.showErrorMessage(
-                                `Error while creating a new directory: ${e.message}`
-                            );
-                        }
-                    } finally {
-                        disposables.forEach((i) => i.dispose());
-                    }
-                }),
-                input.onDidHide(() => {
-                    disposables.forEach((i) => i.dispose());
-                }),
-            ];
-        };
-    }
-
-    /**
-     * Set workspace to undefined and remove workspace path from settings file.
-     */
-    async detachWorkspaceCommand() {
-        this.connectionManager.detachSyncDestination();
-    }
-
     async selectTarget() {
-        const targets = await this.configModel.bundleConfigReaderWriter.targets;
+        const targets = await this.configModel.bundlePreValidateModel.targets;
         const currentTarget = this.configModel.target;
         if (targets === undefined) {
             return;

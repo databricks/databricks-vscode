@@ -1,5 +1,5 @@
 import {execFile as execFileCb} from "child_process";
-import {ExtensionContext, window, commands} from "vscode";
+import {ExtensionContext, window, commands, Uri} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -7,7 +7,8 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
-import {UrlUtils} from "../utils";
+import {EnvVarGenerators, UrlUtils} from "../utils";
+import {AuthProvider} from "../configuration/auth/AuthProvider";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -35,10 +36,27 @@ export type SyncType = "full" | "incremental";
  * of the databricks CLI
  */
 export class CliWrapper {
-    constructor(private extensionContext: ExtensionContext) {}
+    constructor(
+        private extensionContext: ExtensionContext,
+        private logFilePath?: string
+    ) {}
 
     get cliPath(): string {
         return this.extensionContext.asAbsolutePath("./bin/databricks");
+    }
+
+    get loggingArguments(): string[] {
+        if (!workspaceConfigs.loggingEnabled) {
+            return [];
+        }
+        return [
+            "--log-level",
+            "debug",
+            "--log-file",
+            this.logFilePath ?? "stderr",
+            "--log-format",
+            "json",
+        ];
     }
 
     /**
@@ -55,12 +73,10 @@ export class CliWrapper {
             "--watch",
             "--output",
             "json",
+            ...this.loggingArguments,
         ];
         if (syncType === "full") {
             args.push("--full");
-        }
-        if (workspaceConfigs.cliVerboseMode) {
-            args.push("--log-level", "debug", "--log-file", "stderr");
         }
         return {command: this.cliPath, args};
     }
@@ -68,7 +84,12 @@ export class CliWrapper {
     private getListProfilesCommand(): Command {
         return {
             command: this.cliPath,
-            args: ["auth", "profiles", "--skip-validate"],
+            args: [
+                "auth",
+                "profiles",
+                "--skip-validate",
+                ...this.loggingArguments,
+            ],
         };
     }
 
@@ -77,18 +98,31 @@ export class CliWrapper {
         configfilePath?: string,
         @context ctx?: Context
     ): Promise<Array<ConfigEntry>> {
-        const cmd = await this.getListProfilesCommand();
-        const res = await execFile(cmd.command, cmd.args, {
-            env: {
-                /*  eslint-disable @typescript-eslint/naming-convention */
-                HOME: process.env.HOME,
-                DATABRICKS_CONFIG_FILE:
-                    configfilePath || process.env.DATABRICKS_CONFIG_FILE,
-                DATABRICKS_OUTPUT_FORMAT: "json",
-                /*  eslint-enable @typescript-eslint/naming-convention */
-            },
-            shell: true,
-        });
+        const cmd = this.getListProfilesCommand();
+
+        let res;
+        try {
+            res = await execFile(cmd.command, cmd.args, {
+                env: {
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getProxyEnvVars(),
+                },
+            });
+        } catch (e) {
+            let msg = "Failed to load Databricks Config File";
+            if (e instanceof Error) {
+                if (e.message.includes("cannot parse config file")) {
+                    msg =
+                        "Failed to parse Databricks Config File, please make sure it's in the correct ini format";
+                } else if (e.message.includes("spawn UNKNOWN")) {
+                    msg = `Failed to parse Databricks Config File using databricks CLI, please make sure you have permissions to execute this binary: "${this.cliPath}"`;
+                }
+            }
+            ctx?.logger?.error(msg, e);
+            this.showConfigFileWarning(msg);
+            return [];
+        }
+
         const profiles = JSON.parse(res.stdout).profiles || [];
         const result = [];
 
@@ -110,26 +144,54 @@ export class CliWrapper {
                     msg = `Error parsing profile ${profile.name}`;
                 }
                 ctx?.logger?.error(msg, e);
-                window
-                    .showWarningMessage(
-                        msg,
-                        "Open Databricks Config File",
-                        "Ignore"
-                    )
-                    .then((choice) => {
-                        if (choice === "Open Databricks Config File") {
-                            commands.executeCommand(
-                                "databricks.connection.openDatabricksConfigFile"
-                            );
-                        }
-                    });
+                this.showConfigFileWarning(msg);
             }
         }
         return result;
     }
 
+    private async showConfigFileWarning(msg: string) {
+        const openAction = "Open Databricks Config File";
+        const choice = await window.showWarningMessage(
+            msg,
+            openAction,
+            "Ignore"
+        );
+        if (choice === openAction) {
+            commands.executeCommand(
+                "databricks.connection.openDatabricksConfigFile"
+            );
+        }
+    }
+
     public async getBundleSchema(): Promise<string> {
         const {stdout} = await execFile(this.cliPath, ["bundle", "schema"]);
+        return stdout;
+    }
+
+    async bundleValidate(
+        target: string,
+        authProvider: AuthProvider,
+        workspaceFolder: Uri,
+        configfilePath?: string
+    ) {
+        const {stdout, stderr} = await execFile(
+            this.cliPath,
+            ["bundle", "validate", "--target", target],
+            {
+                cwd: workspaceFolder.fsPath,
+                env: {
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getProxyEnvVars(),
+                    ...authProvider.toEnv(),
+                },
+                shell: true,
+            }
+        );
+
+        if (stderr !== "") {
+            throw new Error(stderr);
+        }
         return stdout;
     }
 }

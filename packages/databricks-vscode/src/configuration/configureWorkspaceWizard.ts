@@ -14,7 +14,7 @@ import {
     loadConfigFile,
     AuthType as SdkAuthType,
 } from "@databricks/databricks-sdk";
-import {ConfigModel} from "./ConfigModel";
+import {ConfigModel} from "./models/ConfigModel";
 import {randomUUID} from "crypto";
 import ini from "ini";
 import {copyFile, writeFile} from "fs/promises";
@@ -73,6 +73,7 @@ export class ConfigureWorkspaceWizard {
                 return false;
             },
             items,
+            ignoreFocusOut: true,
         });
 
         this.state.host = UrlUtils.normalizeHost(host);
@@ -171,6 +172,7 @@ export class ConfigureWorkspaceWizard {
             totalSteps: 2,
             placeholder: "Select authentication method",
             items,
+            ignoreFocusOut: true,
             shouldResume: async () => {
                 return false;
             },

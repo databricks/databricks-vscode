@@ -1,9 +1,12 @@
-import {ConfigModel} from "../ConfigModel";
+import {ConfigModel} from "../models/ConfigModel";
 import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {ThemeIcon, ThemeColor} from "vscode";
 const TREE_ICON_ID = "AUTH-TYPE";
+function getContextValue(key: string) {
+    return `databricks.configuration.authType.${key}`;
+}
 
 export class AuthTypeComponent extends BaseComponent {
     constructor(
@@ -15,7 +18,7 @@ export class AuthTypeComponent extends BaseComponent {
             this.connectionManager.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChange("target", () => {
+            this.configModel.onDidChange("target")(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
@@ -41,7 +44,7 @@ export class AuthTypeComponent extends BaseComponent {
                         "account",
                         new ThemeColor("notificationsErrorIcon.foreground")
                     ),
-                    contextValue: "databricks.configuration.authType.none",
+                    contextValue: getContextValue("none"),
                     id: TREE_ICON_ID,
                     command: {
                         title: "Login to Databricks",
@@ -65,7 +68,7 @@ export class AuthTypeComponent extends BaseComponent {
                     new ThemeColor("debugIcon.startForeground")
                 ),
                 description: authProvider.describe(),
-                contextValue: `databricks.configuration.authType.${authProvider.authType}`,
+                contextValue: getContextValue(authProvider.authType),
                 id: TREE_ICON_ID,
                 source: config.source,
             },
