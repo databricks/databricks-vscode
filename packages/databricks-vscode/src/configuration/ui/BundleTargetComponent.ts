@@ -1,5 +1,5 @@
 import {ThemeIcon, ThemeColor, TreeItemCollapsibleState, window} from "vscode";
-import {ConfigModel} from "../ConfigModel";
+import {ConfigModel} from "../models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {DatabricksConfig} from "../types";
 import {ConfigurationTreeItem} from "./types";
@@ -12,11 +12,11 @@ function getTreeIconId(key: string) {
 
 function humaniseMode(mode: DatabricksConfig["mode"]) {
     switch (mode) {
-        case "prod":
+        case "production":
             return "Production";
         case "staging":
             return "Staging";
-        case "dev":
+        case "development":
             return "Development";
         default:
             return mode;
@@ -27,7 +27,7 @@ export class BundleTargetComponent extends BaseComponent {
     constructor(private readonly configModel: ConfigModel) {
         super();
         this.disposables.push(
-            this.configModel.onDidChange("target", () => {
+            this.configModel.onDidChange("target")(() => {
                 this.onDidChangeEmitter.fire();
             })
         );

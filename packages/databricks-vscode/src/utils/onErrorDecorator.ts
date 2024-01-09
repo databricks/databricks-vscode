@@ -11,15 +11,16 @@ interface Props {
         | {
               prefix?: string;
           }
-        | true;
+        | boolean; // default false
     log?:
         | {
               prefix?: string;
           }
-        | true;
+        | boolean; // default true
 }
 
 const defaultProps: Props = {
+    popup: false,
     log: true,
 };
 
@@ -32,7 +33,7 @@ export function onError(props: Props) {
     ) {
         let contextParamIndex: number = -1;
         // Find the @context if it exists. We want to use it for logging whenever possible.
-        if (props.log !== undefined) {
+        if (props.log !== undefined && props.log !== false) {
             try {
                 logging.withLogContext(Loggers.Extension)(
                     target,
@@ -53,14 +54,16 @@ export function onError(props: Props) {
                 }
 
                 let prefix = "";
-                if (props.popup !== undefined) {
+                if (props.popup !== undefined && props.popup !== false) {
                     prefix =
                         typeof props.popup !== "boolean"
                             ? props.popup.prefix ?? ""
                             : "";
-                    window.showErrorMessage(prefix + e.message);
+                    window.showErrorMessage(
+                        prefix.trimEnd() + ": " + e.message.trimStart()
+                    );
                 }
-                if (props.log !== undefined) {
+                if (props.log !== undefined && props.log !== false) {
                     // If we do not have a context, we create a new logger.
                     const logger =
                         contextParamIndex !== -1
@@ -69,10 +72,13 @@ export function onError(props: Props) {
                                   Loggers.Extension
                               );
                     prefix =
-                        props.log === true
+                        props.log === true || props.log.prefix === undefined
                             ? prefix
-                            : props.log.prefix ?? prefix;
-                    logger?.error(prefix + e.message, e);
+                            : props.log.prefix;
+                    logger?.error(
+                        prefix.trimEnd() + ": " + e.message.trimStart(),
+                        e
+                    );
                 }
                 return;
             }

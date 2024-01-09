@@ -12,7 +12,7 @@ import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {ConfigModel} from "./ConfigModel";
+import {ConfigModel} from "./models/ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
@@ -116,22 +116,19 @@ export class ConnectionManager implements Disposable {
         await this.loginWithSavedAuth();
 
         this.disposables.push(
-            this.configModel.onDidChange(
-                "workspaceFsPath",
+            this.configModel.onDidChange("workspaceFsPath")(
                 this.updateSyncDestinationMapper,
                 this
             ),
-            this.configModel.onDidChange(
-                "clusterId",
+            this.configModel.onDidChange("clusterId")(
                 this.updateClusterManager,
                 this
             ),
-            this.configModel.onDidChange(
-                "target",
+            this.configModel.onDidChange("target")(
                 this.loginWithSavedAuth,
                 this
             ),
-            this.configModel.onDidChange("authParams", async () => {
+            this.configModel.onDidChange("authParams")(async () => {
                 const config = await this.configModel.getS("authParams");
                 if (config === undefined) {
                     return;
@@ -271,14 +268,16 @@ export class ConnectionManager implements Disposable {
         }
     }
 
-    @onError({popup: {prefix: "Can't logout. "}})
+    @onError({popup: {prefix: "Can't logout"}})
     @Mutex.synchronise("loginLogoutMutex")
     async logout() {
         this._workspaceClient = undefined;
         this._databricksWorkspace = undefined;
         await this.updateClusterManager();
         await this.updateSyncDestinationMapper();
-        await this.configModel.set("authParams", undefined);
+        if (this.configModel.target !== undefined) {
+            await this.configModel.set("authParams", undefined);
+        }
         this.updateState("DISCONNECTED");
     }
 

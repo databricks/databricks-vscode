@@ -1,6 +1,6 @@
 import {posix} from "path/posix";
 import {CodeSynchronizer} from "../../sync";
-import {ConfigModel} from "../ConfigModel";
+import {ConfigModel} from "../models/ConfigModel";
 import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
@@ -65,7 +65,7 @@ export class SyncDestinationComponent extends BaseComponent {
             this.codeSynchronizer.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChange("workspaceFsPath", () => {
+            this.configModel.onDidChange("workspaceFsPath")(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
@@ -130,7 +130,7 @@ export class SyncDestinationComponent extends BaseComponent {
         ];
 
         // Only show details uptil here if not in dev mode.
-        if ((await this.configModel.get("mode")) !== "dev") {
+        if ((await this.configModel.get("mode")) !== "development") {
             return children;
         }
 
