@@ -15,8 +15,6 @@ Currently, we have the following packages:
     The VSCode extension for Databricks published to the VSCode marketplace.
 -   [databricks-vscode-types](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-vscode-types)
     Type definition of the public API of the VSCode extension.
--   [databricks-sdk-js](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-sdk-js)
-    JavaScript and TypeScript SDK for the Databricks REST API.
 
 ### Getting Started
 
@@ -26,6 +24,20 @@ Prepare yarn:
 npm install -g yarn@2
 yarn install
 ```
+
+Prepare Databricks JavaScript SDK:
+
+```
+yarn run install:sdk
+```
+
+Prepare Databricks CLI:
+
+```
+yarn workspace databricks run package:cli:fetch
+```
+
+After that you are ready to build and test the `databricks-vscode` extension.
 
 ### Found an issue?
 

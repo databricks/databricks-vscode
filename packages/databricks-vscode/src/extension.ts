@@ -151,7 +151,17 @@ export async function activate(
         workspace.onDidChangeConfiguration(updateFeatureContexts)
     );
 
-    const cli = new CliWrapper(context);
+    // Configuration group
+    let cliLogFilePath;
+    try {
+        cliLogFilePath = await loggerManager.getLogFile("databricks-cli");
+    } catch (e) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to create a log file for the CLI",
+            e
+        );
+    }
+    const cli = new CliWrapper(context, cliLogFilePath);
     const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
     context.subscriptions.push(bundleFileWatcher);

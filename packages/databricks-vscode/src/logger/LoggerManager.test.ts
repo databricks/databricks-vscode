@@ -26,7 +26,6 @@ describe(__filename, function () {
         logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
             "test message"
         );
-        logging.NamedLogger.getOrCreate(Loggers.CLI).debug("test message");
 
         await new Promise((resolve) =>
             setTimeout(
@@ -34,17 +33,12 @@ describe(__filename, function () {
                 new Time(0.5, TimeUnits.seconds).toMillSeconds().value
             )
         );
-        ["sdk-and-extension-logs.json", "databricks-cli-logs.json"].forEach(
-            async (logfile) => {
-                const rawLogs = await readFile(path.join(tempDir, logfile), {
-                    encoding: "utf-8",
-                });
+        const logfile = path.join(tempDir, "sdk-and-extension-logs.json");
+        const rawLogs = await readFile(logfile, {encoding: "utf-8"});
 
-                const logs = rawLogs.split("\n");
-                assert.ok(logs.length !== 0);
-                assert.ok(logs[0].includes("test message"));
-            }
-        );
+        const logs = rawLogs.split("\n");
+        assert.ok(logs.length !== 0);
+        assert.ok(logs[0].includes("test message"));
     });
 
     afterEach(async () => {

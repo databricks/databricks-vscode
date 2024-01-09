@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "1.2.2",
+    "version": "1.2.4",
     "engines": {
         "vscode": "^1.83.0"
     },
@@ -602,11 +602,6 @@
                         "default": false,
                         "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
                     },
-                    "databricks.cli.verboseMode": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "Enable verbose logging for databricks CLI (sync mode)."
-                    },
                     "databricks.sync.destinationType": {
                         "type": "string",
                         "default": "workspace",
@@ -671,7 +666,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.208.2"
+        "version": "0.210.3"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
