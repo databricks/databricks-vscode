@@ -62,6 +62,9 @@ export abstract class AuthProvider {
         if (force) {
             this.checked = false;
         }
+        if (this.checked) {
+            return true;
+        }
         this.checked = await this._check();
         return this.checked;
     }
