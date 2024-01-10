@@ -2,6 +2,23 @@
 
 ## packages/databricks-vscode
 
+## <small>1.2.4 (2024-01-10)</small>
+
+-   Explicitly clear terminal environment variables before injecting new ones (#996) ([2491287](https://github.com/databricks/databricks-vscode/commit/2491287)), closes [#996](https://github.com/databricks/databricks-vscode/issues/996)
+-   Permissions warning (#983) ([00c2834](https://github.com/databricks/databricks-vscode/commit/00c2834)), closes [#983](https://github.com/databricks/databricks-vscode/issues/983)
+-   Rollback telemetry package (#989) ([c0abaf7](https://github.com/databricks/databricks-vscode/commit/c0abaf7)), closes [#989](https://github.com/databricks/databricks-vscode/issues/989)
+-   Store `lastInstalledExtensionVersion` in the global storage so we only show `what's new` once (#971) ([0b19816](https://github.com/databricks/databricks-vscode/commit/0b19816)), closes [#971](https://github.com/databricks/databricks-vscode/issues/971)
+-   Update all the licenses (#981) ([66cf3c3](https://github.com/databricks/databricks-vscode/commit/66cf3c3)), closes [#981](https://github.com/databricks/databricks-vscode/issues/981)
+-   Update Databricks CLI to v0.210.2 (#967) ([f309b5e](https://github.com/databricks/databricks-vscode/commit/f309b5e)), closes [#967](https://github.com/databricks/databricks-vscode/issues/967)
+-   Update Databricks CLI to v0.210.3 (#973) ([bc340cf](https://github.com/databricks/databricks-vscode/commit/bc340cf)), closes [#973](https://github.com/databricks/databricks-vscode/issues/973)
+-   Update Databricks CLI to v0.211.0 (#982) ([25d0ef2](https://github.com/databricks/databricks-vscode/commit/25d0ef2)), closes [#982](https://github.com/databricks/databricks-vscode/issues/982)
+-   Update metadata url before emitting connection change events (#992) ([0cd590e](https://github.com/databricks/databricks-vscode/commit/0cd590e)), closes [#992](https://github.com/databricks/databricks-vscode/issues/992)
+-   Update vscode test package (#984) ([bad500f](https://github.com/databricks/databricks-vscode/commit/bad500f)), closes [#984](https://github.com/databricks/databricks-vscode/issues/984)
+
+# Release: v1.2.4
+
+## packages/databricks-vscode
+
 ## <small>1.2.4 (2023-12-05)</small>
 
 -   Fix: set notebook directory as current directory for pip installs from workspace fs, closes [#958](https://github.com/databricks/databricks-vscode/issues/958)
