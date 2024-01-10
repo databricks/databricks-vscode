@@ -40,6 +40,7 @@ export abstract class AuthProvider {
      */
     abstract describe(): string;
     abstract toJSON(): Record<string, string | undefined>;
+    abstract toJSON(): Record<string, string | undefined>;
     abstract toEnv(): Record<string, string>;
 
     getWorkspaceClient(): WorkspaceClient {

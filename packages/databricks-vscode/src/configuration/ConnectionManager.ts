@@ -310,6 +310,7 @@ export class ConnectionManager implements Disposable {
             return;
         }
         await this.configModel.set("remoteRootPath", remoteWorkspace.path);
+        await this.configModel.set("remoteRootPath", remoteWorkspace.path);
     }
 
     @onError({
