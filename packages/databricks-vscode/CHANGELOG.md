@@ -5,13 +5,12 @@
 ## <small>1.2.5 (2024-01-10)</small>
 
 -   Explicitly clear terminal environment variables before injecting new ones.
--   Fix race conditions around setting environment variable for the metadata url. 
+-   Fix race conditions around setting environment variable for the metadata url.
 -   Show warning when the extension doesn't have permissions to execute the CLI.
 -   Store `lastInstalledExtensionVersion` in the global storage so we only show `what's new` once.
 -   Update the license.
 -   Update Databricks CLI to v0.211.0.
 -   Fix the telemetry.
-
 
 # Release: v1.2.4
 
