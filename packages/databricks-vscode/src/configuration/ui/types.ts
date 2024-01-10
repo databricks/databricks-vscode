@@ -1,7 +1,7 @@
 import {TreeItem} from "vscode";
-import {DatabricksConfigSource} from "../types";
+import {ConfigSource} from "../models/ConfigModel";
 
 export interface ConfigurationTreeItem extends TreeItem {
-    source?: DatabricksConfigSource;
+    source?: ConfigSource;
     url?: string;
 }

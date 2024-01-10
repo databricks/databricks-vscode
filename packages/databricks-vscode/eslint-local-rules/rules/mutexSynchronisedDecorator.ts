@@ -33,8 +33,10 @@ const rule = ESLintUtils.RuleCreator.withoutDocs({
 
                     const exists = node.parent.parent.body.some((element) => {
                         return (
-                            element.type ===
-                                AST_NODE_TYPES.PropertyDefinition &&
+                            (element.type ===
+                                AST_NODE_TYPES.PropertyDefinition ||
+                                element.type ===
+                                    AST_NODE_TYPES.TSAbstractPropertyDefinition) &&
                             element.key.type === AST_NODE_TYPES.Identifier &&
                             element.key.name === mutexName
                         );
