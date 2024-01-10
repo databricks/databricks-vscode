@@ -18,6 +18,7 @@ import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {EnvVarGenerators, FileUtils} from "../utils";
 import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
+import {Mutex} from "../locking/Mutex";
 
 function isValidUserEnvPath(
     path: string | undefined,
@@ -27,7 +28,7 @@ function isValidUserEnvPath(
 }
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
-
+    private mutex = new Mutex();
     private readonly unresolvedDatabricksEnvFile: string;
     private readonly databricksEnvPath: Uri;
     private readonly unresolvedUserEnvFile: string;
@@ -97,38 +98,31 @@ export class DatabricksEnvFileManager implements Disposable {
         this.disposables.push(
             userEnvFileWatcher,
             userEnvFileWatcher.onDidChange(async () => {
-                await this.emitToTerminal();
                 await this.writeFile();
             }, this),
             userEnvFileWatcher.onDidDelete(async () => {
-                await this.emitToTerminal();
                 await this.writeFile();
             }, this),
             userEnvFileWatcher.onDidCreate(async () => {
-                await this.emitToTerminal();
                 await this.writeFile();
             }, this),
             this.featureManager.onDidChangeState(
                 "notebooks.dbconnect",
                 async () => {
-                    await this.emitToTerminal();
                     await this.writeFile();
                 }
             ),
             this.featureManager.onDidChangeState(
                 "debugging.dbconnect",
                 () => {
-                    this.emitToTerminal();
                     this.writeFile();
                 },
                 this
             ),
             this.connectionManager.onDidChangeCluster(async () => {
-                this.emitToTerminal();
                 this.writeFile();
             }, this),
             this.connectionManager.onDidChangeState(async () => {
-                this.emitToTerminal();
                 this.writeFile();
             }, this)
         );
@@ -153,44 +147,51 @@ export class DatabricksEnvFileManager implements Disposable {
     async writeFile(@context ctx?: Context) {
         await this.connectionManager.waitForConnect();
 
-        const data = Object.entries({
-            ...(this.getDatabrickseEnvVars() || {}),
-            ...((await EnvVarGenerators.getDbConnectEnvVars(
-                this.connectionManager,
-                this.workspacePath
-            )) || {}),
-            ...this.getIdeEnvVars(),
-            ...((await this.getUserEnvVars()) || {}),
-        })
-            .filter(([, value]) => value !== undefined)
-            .map(([key, value]) => `${key}=${value}`);
-        data.sort();
+        await this.mutex.wait();
         try {
-            const oldData = await readFile(
-                this.databricksEnvPath.fsPath,
-                "utf-8"
-            );
-            if (oldData !== data.join(os.EOL)) {
-                this.onDidChangeEnvironmentVariablesEmitter.fire();
+            const data = Object.entries({
+                ...(this.getDatabrickseEnvVars() || {}),
+                ...((await EnvVarGenerators.getDbConnectEnvVars(
+                    this.connectionManager,
+                    this.workspacePath
+                )) || {}),
+                ...this.getIdeEnvVars(),
+                ...((await this.getUserEnvVars()) || {}),
+            })
+                .filter(([, value]) => value !== undefined)
+                .map(([key, value]) => `${key}=${value}`);
+            data.sort();
+            try {
+                const oldData = await readFile(
+                    this.databricksEnvPath.fsPath,
+                    "utf-8"
+                );
+                if (oldData === data.join(os.EOL)) {
+                    return;
+                }
+            } catch (e) {
+                ctx?.logger?.info("Error reading old databricks.env file", e);
             }
-        } catch (e) {
-            ctx?.logger?.info("Error reading old databricks.env file", e);
-        }
-        try {
-            await writeFile(
-                this.databricksEnvPath.fsPath,
-                data.join(os.EOL),
-                "utf-8"
-            );
-            this.dbConnectStatusBarButton.update();
-        } catch (e) {
-            ctx?.logger?.info("Error writing databricks.env file", e);
+            this.onDidChangeEnvironmentVariablesEmitter.fire();
+            try {
+                await writeFile(
+                    this.databricksEnvPath.fsPath,
+                    data.join(os.EOL),
+                    "utf-8"
+                );
+                this.dbConnectStatusBarButton.update();
+                await this.emitToTerminal();
+            } catch (e) {
+                ctx?.logger?.info("Error writing databricks.env file", e);
+            }
+        } finally {
+            this.mutex.signal();
         }
     }
 
     async emitToTerminal() {
-        await this.connectionManager.waitForConnect();
-
+        this.clearTerminalEnv();
+        this.extensionContext.environmentVariableCollection.persistent = false;
         Object.entries({
             ...(this.getDatabrickseEnvVars() || {}),
             ...this.getIdeEnvVars(),
@@ -207,6 +208,10 @@ export class DatabricksEnvFileManager implements Disposable {
                 value
             );
         });
+        this.extensionContext.environmentVariableCollection.prepend(
+            "PATH",
+            `${this.extensionContext.asAbsolutePath("./bin")}${path.delimiter}`
+        );
     }
 
     async clearTerminalEnv() {
