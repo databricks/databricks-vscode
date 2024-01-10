@@ -27,8 +27,10 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         );
     }
 
+    @Mutex.synchronise("mutex")
     public async setTarget(target: string | undefined) {
         this.target = target;
+        await this.stateCache.refresh();
     }
 
     @onError({popup: {prefix: "Error while reading config overrides"}})

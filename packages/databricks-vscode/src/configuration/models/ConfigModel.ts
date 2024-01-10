@@ -59,41 +59,47 @@ export class ConfigModel implements Disposable {
     private disposables: Disposable[] = [];
 
     private readonly configsMutex = new Mutex();
+    /** Used to lock state updates until certain actions complete. Aquire this always
+     * after configsMutex to avoid deadlocks.
+     */
+    private readonly readStateMutex = new Mutex();
     private readonly configCache = new CachedValue<ConfigSourceMap>(
-        async () => {
-            if (this.target === undefined) {
-                return {config: {}, source: {}};
-            }
-            const bundleValidateConfig = await this.bundleValidateModel.load([
-                ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS,
-            ]);
-            const overrides = await this.overrideableConfigModel.load();
-            const bundleConfigs = await this.bundlePreValidateModel.load([
-                ...SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS,
-            ]);
-            const newConfigs = {
-                ...bundleConfigs,
-                ...bundleValidateConfig,
-                ...overrides,
-            };
-
-            const newValue: any = {};
-            (Object.keys(newConfigs) as (keyof typeof newConfigs)[]).forEach(
-                (key) => {
-                    newValue[key] = {
-                        config: newConfigs[key],
-                        source:
-                            overrides !== undefined && key in overrides
-                                ? "override"
-                                : "bundle",
-                    };
-                }
-            );
-
-            return newValue;
-        }
+        this.readState.bind(this)
     );
 
+    @Mutex.synchronise("readStateMutex")
+    async readState() {
+        if (this.target === undefined) {
+            return {config: {}, source: {}};
+        }
+        const bundleValidateConfig = await this.bundleValidateModel.load([
+            ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS,
+        ]);
+        const overrides = await this.overrideableConfigModel.load();
+        const bundleConfigs = await this.bundlePreValidateModel.load([
+            ...SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS,
+        ]);
+        const newConfigs = {
+            ...bundleConfigs,
+            ...bundleValidateConfig,
+            ...overrides,
+        };
+
+        const newValue: any = {};
+        (Object.keys(newConfigs) as (keyof typeof newConfigs)[]).forEach(
+            (key) => {
+                newValue[key] = {
+                    config: newConfigs[key],
+                    source:
+                        overrides !== undefined && key in overrides
+                            ? "override"
+                            : "bundle",
+                };
+            }
+        );
+
+        return newValue;
+    }
     public onDidChange = this.configCache.onDidChange.bind(this.configCache);
     public onDidChangeKey = this.configCache.onDidChangeKey.bind(
         this.configCache
@@ -191,20 +197,26 @@ export class ConfigModel implements Disposable {
         await this.configsMutex.synchronise(async () => {
             this._target = target;
             await this.stateStorage.set("databricks.bundle.target", target);
+            // We want to wait for all the configs to be loaded before we emit any change events from the
+            // configStateCache.
+            await this.readStateMutex.synchronise(async () => {
+                await Promise.all([
+                    this.bundlePreValidateModel.setTarget(target),
+                    this.bundleValidateModel.setTarget(target),
+                    this.overrideableConfigModel.setTarget(target),
+                ]);
+            });
             this.onDidChangeTargetEmitter.fire();
-            await Promise.all([
-                this.bundlePreValidateModel.setTarget(target),
-                this.bundleValidateModel.setTarget(target),
-                this.overrideableConfigModel.setTarget(target),
-            ]);
         });
     }
 
     @onError({popup: {prefix: "Failed to set auth provider."}})
     @Mutex.synchronise("configsMutex")
     public async setAuthProvider(authProvider: AuthProvider | undefined) {
-        await this.bundleValidateModel.setAuthProvider(authProvider);
         this._authProvider = authProvider;
+        await this.readStateMutex.synchronise(async () => {
+            await this.bundleValidateModel.setAuthProvider(authProvider);
+        });
         this.onDidChangeAuthProviderEmitter.fire();
     }
 
@@ -230,8 +242,8 @@ export class ConfigModel implements Disposable {
         const config = (await this.configCache.value)[key];
         return config
             ? ({
-                config: config.config ?? defaults[key],
-                source: config.source ?? "default",
+                  config: config.config ?? defaults[key],
+                  source: config.source ?? "default",
               } as ConfigSourceMap[T])
             : undefined;
     }
