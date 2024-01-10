@@ -65,12 +65,6 @@ export class DatabricksCliCheck implements Disposable {
             return false;
         }
 
-        if (result) {
-            window.showInformationMessage(
-                "Databricks: Successfully logged in with Databricks CLI"
-            );
-        }
-
         return result;
     }
 
