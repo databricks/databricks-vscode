@@ -5,7 +5,7 @@ import {
     WorkspaceClient,
     logging,
 } from "@databricks/databricks-sdk";
-import {window} from "vscode";
+import {ProgressLocation, window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
@@ -65,7 +65,16 @@ export abstract class AuthProvider {
         if (this.checked) {
             return true;
         }
-        this.checked = await this._check();
+
+        window.withProgress(
+            {
+                location: ProgressLocation.Notification,
+                title: `Trying to login using ${this.describe()}`,
+            },
+            async () => {
+                this.checked = await this._check();
+            }
+        );
         return this.checked;
     }
     protected abstract getSdkConfig(): Config;

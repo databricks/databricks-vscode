@@ -253,12 +253,16 @@ export class ConfigureWorkspaceWizard {
                 authProvider = new AzureCliAuthProvider(this.state.host!);
                 break;
 
-            default:
-                // This is the only other case possible right now. We are not explicitly checking for databricks-cli
-                // to make typescript happy.
+            case "databricks-cli":
                 authProvider = new DatabricksCliAuthProvider(
                     this.state.host!,
                     this.cliWrapper.cliPath
+                );
+                break;
+
+            default:
+                throw new Error(
+                    `Unknown auth type: ${pick.authType} for profile creation`
                 );
         }
 
@@ -305,10 +309,7 @@ export class ConfigureWorkspaceWizard {
         configModel: ConfigModel
     ): Promise<AuthProvider | undefined> {
         const wizard = new ConfigureWorkspaceWizard(cliWrapper, configModel);
-        const hostStr = await configModel.get("host");
-        wizard.state.host = hostStr
-            ? UrlUtils.normalizeHost(hostStr)
-            : undefined;
+        wizard.state.host = await configModel.get("host");
         await MultiStepInput.run(wizard.inputHost.bind(wizard));
         if (!wizard.state.host || !wizard.state.authProvider) {
             return;
