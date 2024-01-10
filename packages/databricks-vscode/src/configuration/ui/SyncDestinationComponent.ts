@@ -62,17 +62,20 @@ export class SyncDestinationComponent extends BaseComponent {
     ) {
         super();
         this.disposables.push(
-            this.codeSynchronizer.onDidChangeState(() => {
+            this.configModel.onDidChangeTarget(() => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChange("workspaceFsPath")(() => {
+            this.connectionManager.onDidChangeState(() => {
+                this.onDidChangeEmitter.fire();
+            }),
+            this.configModel.onDidChangeKey("remoteRootPath")(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
     }
 
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
-        const config = await this.configModel.get("workspaceFsPath");
+        const config = await this.configModel.get("remoteRootPath");
         if (config === undefined) {
             // Workspace folder is not set in bundle and override
             // We are not logged in
@@ -86,7 +89,7 @@ export class SyncDestinationComponent extends BaseComponent {
         return [
             {
                 label: "Sync",
-                description: posix.basename(config),
+                description: posix.basename(posix.dirname(config)),
                 collapsibleState: TreeItemCollapsibleState.Expanded,
                 contextValue: contextValue,
                 iconPath: icon,
@@ -113,18 +116,17 @@ export class SyncDestinationComponent extends BaseComponent {
         if (parent.id !== TREE_ICON_ID) {
             return [];
         }
-        const workspaceFsPath = await this.configModel.get("workspaceFsPath");
+        const workspaceFsPath = await this.configModel.get("remoteRootPath");
 
         if (workspaceFsPath === undefined) {
             return [];
         }
-        //TODO: Disable syncing for prod/staging
-        //TODO: Read sync destination from bundle. Infer from CLI if not set.
+        //TODO: Disable syncing for all targets (dev/staging/prod)
 
         const children: ConfigurationTreeItem[] = [
             {
                 label: "Workspace Folder",
-                description: posix.basename(workspaceFsPath),
+                description: workspaceFsPath,
                 collapsibleState: TreeItemCollapsibleState.None,
             },
         ];

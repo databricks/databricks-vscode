@@ -57,7 +57,7 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Error attaching sync destination: "},
     })
     private async updateSyncDestinationMapper() {
-        const workspacePath = await this.configModel.get("workspaceFsPath");
+        const workspacePath = await this.configModel.get("remoteRootPath");
         const remoteUri = workspacePath
             ? new RemoteUri(workspacePath)
             : undefined;
@@ -116,19 +116,16 @@ export class ConnectionManager implements Disposable {
         await this.loginWithSavedAuth();
 
         this.disposables.push(
-            this.configModel.onDidChange("workspaceFsPath")(
+            this.configModel.onDidChangeKey("remoteRootPath")(
                 this.updateSyncDestinationMapper,
                 this
             ),
-            this.configModel.onDidChange("clusterId")(
+            this.configModel.onDidChangeKey("clusterId")(
                 this.updateClusterManager,
                 this
             ),
-            this.configModel.onDidChange("target")(
-                this.loginWithSavedAuth,
-                this
-            ),
-            this.configModel.onDidChange("authParams")(async () => {
+            this.configModel.onDidChangeTarget(this.loginWithSavedAuth, this),
+            this.configModel.onDidChangeKey("authParams")(async () => {
                 const config = await this.configModel.getS("authParams");
                 if (config === undefined) {
                     return;
@@ -317,14 +314,14 @@ export class ConnectionManager implements Disposable {
             );
             return;
         }
-        await this.configModel.set("workspaceFsPath", remoteWorkspace.path);
+        await this.configModel.set("remoteRootPath", remoteWorkspace.path);
     }
 
     @onError({
         popup: {prefix: "Can't detach sync destination. "},
     })
     async detachSyncDestination(): Promise<void> {
-        await this.configModel.set("workspaceFsPath", undefined);
+        await this.configModel.set("remoteRootPath", undefined);
     }
 
     private updateState(newState: ConnectionState) {

@@ -1,77 +1,36 @@
-import {Disposable, Uri, EventEmitter} from "vscode";
+import {Uri} from "vscode";
 import {BundleWatcher} from "../BundleWatcher";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {Mutex} from "../../locking";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {BundleTarget} from "../types";
-import {CachedValue} from "../../locking/CachedValue";
 import {onError} from "../../utils/onErrorDecorator";
 import lodash from "lodash";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
-import {BundleValidateConfig} from "../../configuration/types";
+import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 
-type BundleValidateState = BundleValidateConfig & BundleTarget;
+export type BundleValidateState = {
+    clusterId?: string;
+    remoteRootPath?: string;
+} & BundleTarget;
 
-export class BundleValidateModel implements Disposable {
-    private disposables: Disposable[] = [];
-    private mutex = new Mutex();
-
+export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateState> {
     private target: string | undefined;
     private authProvider: AuthProvider | undefined;
-
-    private readonly stateCache = new CachedValue<
-        BundleValidateState | undefined
-    >(this.readState.bind(this));
-
-    private readonly onDidChangeKeyEmitters = new Map<
-        keyof BundleValidateState,
-        EventEmitter<void>
-    >();
-
-    onDidChangeKey(key: keyof BundleValidateState) {
-        if (!this.onDidChangeKeyEmitters.has(key)) {
-            this.onDidChangeKeyEmitters.set(key, new EventEmitter());
-        }
-        return this.onDidChangeKeyEmitters.get(key)!.event;
-    }
-
-    public onDidChange = this.stateCache.onDidChange;
+    protected mutex = new Mutex();
 
     constructor(
         private readonly bundleWatcher: BundleWatcher,
         private readonly cli: CliWrapper,
         private readonly workspaceFolder: Uri
     ) {
+        super();
         this.disposables.push(
             this.bundleWatcher.onDidChange(async () => {
                 await this.stateCache.refresh();
-            }),
-            // Emit an event for each key that changes
-            this.stateCache.onDidChange(async ({oldValue, newValue}) => {
-                for (const key of Object.keys({
-                    ...oldValue,
-                    ...newValue,
-                }) as (keyof BundleValidateState)[]) {
-                    if (
-                        oldValue === null ||
-                        !lodash.isEqual(oldValue?.[key], newValue?.[key])
-                    ) {
-                        this.onDidChangeKeyEmitters.get(key)?.fire();
-                    }
-                }
             })
         );
     }
-
-    private readerMapping: {
-        [K in keyof BundleValidateState]: (
-            t?: BundleTarget
-        ) => BundleValidateState[K];
-    } = {
-        clusterId: (target) => target?.bundle?.compute_id,
-        workspaceFsPath: (target) => target?.workspace?.file_path,
-        resources: (target) => target?.resources,
-    };
 
     @Mutex.synchronise("mutex")
     public async setTarget(target: string | undefined) {
@@ -93,14 +52,13 @@ export class BundleValidateModel implements Disposable {
         }
     }
 
-    @onError({popup: {prefix: "Failed to read bundle config."}})
-    @Mutex.synchronise("mutex")
-    private async readState() {
+    @onError({popup: {prefix: "Failed to parse bundle validate ouput"}})
+    protected async readState(): Promise<BundleValidateState> {
         if (this.target === undefined || this.authProvider === undefined) {
-            return;
+            return {};
         }
 
-        const targetObject = JSON.parse(
+        const validateOutput = JSON.parse(
             await this.cli.bundleValidate(
                 this.target,
                 this.authProvider,
@@ -109,35 +67,11 @@ export class BundleValidateModel implements Disposable {
             )
         ) as BundleTarget;
 
-        const configs: any = {};
-
-        for (const key of Object.keys(
-            this.readerMapping
-        ) as (keyof BundleValidateState)[]) {
-            configs[key] = this.readerMapping[key]?.(targetObject);
-        }
-
-        return {...configs, ...targetObject} as BundleValidateState;
-    }
-
-    @Mutex.synchronise("mutex")
-    public async load<T extends keyof BundleValidateState>(
-        keys: T[] = []
-    ): Promise<Partial<Pick<BundleValidateState, T>> | undefined> {
-        if (keys.length === 0) {
-            return await this.stateCache.value;
-        }
-
-        const target = await this.stateCache.value;
-        const configs: Partial<{
-            [K in T]: BundleValidateState[K];
-        }> = {};
-
-        for (const key of keys) {
-            configs[key] = this.readerMapping[key]?.(target);
-        }
-
-        return configs;
+        return {
+            clusterId: validateOutput?.bundle?.compute_id,
+            remoteRootPath: validateOutput?.workspace?.file_path,
+            ...validateOutput,
+        };
     }
 
     dispose() {

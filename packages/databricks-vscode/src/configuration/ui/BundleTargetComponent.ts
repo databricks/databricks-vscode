@@ -1,7 +1,6 @@
 import {ThemeIcon, ThemeColor, TreeItemCollapsibleState, window} from "vscode";
 import {ConfigModel} from "../models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
-import {DatabricksConfig} from "../types";
 import {ConfigurationTreeItem} from "./types";
 
 const TREE_ICON_ID = "TARGET";
@@ -10,24 +9,18 @@ function getTreeIconId(key: string) {
     return `${TREE_ICON_ID}.${key}`;
 }
 
-function humaniseMode(mode: DatabricksConfig["mode"]) {
-    switch (mode) {
-        case "production":
-            return "Production";
-        case "staging":
-            return "Staging";
-        case "development":
-            return "Development";
-        default:
-            return mode;
+function humaniseMode(mode?: string) {
+    if (mode === undefined) {
+        return "";
     }
+    return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
 export class BundleTargetComponent extends BaseComponent {
     constructor(private readonly configModel: ConfigModel) {
         super();
         this.disposables.push(
-            this.configModel.onDidChange("target")(() => {
+            this.configModel.onDidChangeTarget(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
@@ -98,9 +91,9 @@ export class BundleTargetComponent extends BaseComponent {
             {
                 label: "Host",
                 id: getTreeIconId("host"),
-                description: host,
+                description: host?.toString(),
                 collapsibleState: TreeItemCollapsibleState.None,
-                url: host,
+                url: host?.toString(),
             },
             {
                 label: "Mode",
