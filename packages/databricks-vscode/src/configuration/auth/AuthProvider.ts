@@ -66,7 +66,7 @@ export abstract class AuthProvider {
             return true;
         }
 
-        window.withProgress(
+        await window.withProgress(
             {
                 location: ProgressLocation.Notification,
                 title: `Trying to login using ${this.describe()}`,

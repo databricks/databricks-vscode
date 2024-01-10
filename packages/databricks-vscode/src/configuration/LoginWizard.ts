@@ -1,6 +1,11 @@
 import {commands, QuickPickItem, QuickPickItemKind, window} from "vscode";
 import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
-import {InputStep, MultiStepInput, ValidationMessageType} from "../ui/wizard";
+import {
+    InputFlowAction,
+    InputStep,
+    MultiStepInput,
+    ValidationMessageType,
+} from "../ui/wizard";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {
     AuthProvider,
@@ -84,16 +89,18 @@ export class LoginWizard {
         authProvider: AuthProvider,
         authDescription: string
     ): Promise<InputStep | undefined> {
-        if (!(await authProvider.check())) {
-            const choice = await window.showErrorMessage(
-                `Authentication using ${authDescription} failed. Select another authentication method?`,
-                "Yes",
-                "No"
-            );
-            if (choice === "Yes") {
-                return this.selectAuthMethod.bind(this);
-            }
+        if (await authProvider.check()) {
+            return;
         }
+        const choice = await window.showErrorMessage(
+            `Authentication using ${authDescription} failed. Select another authentication method?`,
+            "Yes",
+            "No"
+        );
+        if (choice === "Yes") {
+            return this.selectAuthMethod.bind(this);
+        }
+        throw InputFlowAction.cancel;
     }
 
     private async selectAuthMethod(
