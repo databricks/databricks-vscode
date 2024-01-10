@@ -88,9 +88,10 @@ export async function activate(
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
-    context.environmentVariableCollection.append(
+    context.environmentVariableCollection.persistent = false;
+    context.environmentVariableCollection.prepend(
         "PATH",
-        `${path.delimiter}${context.asAbsolutePath("./bin")}`
+        `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
 
     const loggerManager = new LoggerManager(context);
