@@ -177,7 +177,6 @@ export class ConfigModel implements Disposable {
     /**
      * Set target in the state storage and invalidate the configs cache.
      */
-    @onError({popup: {prefix: "Failed to set target."}})
     public async setTarget(target: string | undefined) {
         if (target === this._target) {
             return;
@@ -248,7 +247,6 @@ export class ConfigModel implements Disposable {
             : undefined;
     }
 
-    @onError({popup: {prefix: "Failed to set config."}})
     @Mutex.synchronise("configsMutex")
     public async set<T extends keyof ConfigState>(
         key: T,
