@@ -227,13 +227,11 @@ export class ConfigModel implements Disposable {
     public async getS<T extends keyof ConfigState>(
         key: T
     ): Promise<ConfigSourceMap[T] | undefined> {
-        let {config, source} = (await this.configCache.value)[key];
-        config = config ?? defaults[key];
-        source = source ?? "default";
+        const config = (await this.configCache.value)[key];
         return config
             ? ({
-                  config,
-                  source,
+                config: config.config ?? defaults[key],
+                source: config.source ?? "default",
               } as ConfigSourceMap[T])
             : undefined;
     }
