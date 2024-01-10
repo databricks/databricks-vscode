@@ -1,3 +1,11 @@
+# Release: v1.2.5
+
+## packages/databricks-vscode-types
+
+## <small>1.2.5 (2024-01-10)</small>
+
+-   Update all the licenses (#981) ([66cf3c3](https://github.com/databricks/databricks-vscode/commit/66cf3c3)), closes [#981](https://github.com/databricks/databricks-vscode/issues/981)
+
 # Release: v1.2.4
 
 ## packages/databricks-vscode-types
