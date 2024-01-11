@@ -171,8 +171,8 @@ export class ConnectionManager implements Disposable {
 
         // Try to load a profile user had previously selected for this target
         const savedProfile = (
-            await this.configModel.overrideableConfigModel.load(["authProfile"])
-        )?.authProfile;
+            await this.configModel.overrideableConfigModel.load()
+        ).authProfile;
         if (savedProfile !== undefined) {
             const authProvider = new ProfileAuthProvider(host, savedProfile);
             if (await authProvider.check()) {
@@ -182,8 +182,8 @@ export class ConnectionManager implements Disposable {
 
         // Try to load any parameters that are hard coded in the bundle
         const bundleAuthParams =
-            await this.configModel.bundlePreValidateModel.load(["authParams"]);
-        if (bundleAuthParams?.authParams !== undefined) {
+            await this.configModel.bundlePreValidateModel.load();
+        if (bundleAuthParams.authParams !== undefined) {
             throw new Error("Bundle auth params not implemented");
         }
 
