@@ -1,4 +1,4 @@
-import {execFile as execFileCb, spawn} from "child_process";
+import {execFile as execFileCb} from "child_process";
 import {ExtensionContext, window, commands, Uri} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
@@ -7,8 +7,8 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
+import {EnvVarGenerators, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
-import {EnvVarGenerators} from "../utils";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -29,13 +29,6 @@ export interface ConfigEntry {
 
 export type SyncType = "full" | "incremental";
 
-function getValidHost(host: string) {
-    if (host.match(/^(?:(?:https?):\/\/)?(.(?!:\/\/))+$/) !== null) {
-        return new URL(host);
-    } else {
-        throw new TypeError("Invalid type for host");
-    }
-}
 /**
  * Entrypoint for all wrapped CLI commands
  *
@@ -137,7 +130,7 @@ export class CliWrapper {
             try {
                 result.push({
                     name: profile.name,
-                    host: getValidHost(profile.host),
+                    host: UrlUtils.normalizeHost(profile.host),
                     accountId: profile.account_id,
                     cloud: profile.cloud,
                     authType: profile.auth_type,
@@ -174,40 +167,6 @@ export class CliWrapper {
     public async getBundleSchema(): Promise<string> {
         const {stdout} = await execFile(this.cliPath, ["bundle", "schema"]);
         return stdout;
-    }
-
-    getAddProfileCommand(profile: string, host: URL): Command {
-        return {
-            command: this.cliPath,
-            args: [
-                "configure",
-                "--no-interactive",
-                "--profile",
-                profile,
-                "--host",
-                host.href,
-                "--token",
-            ],
-        };
-    }
-
-    async addProfile(
-        name: string,
-        host: URL,
-        token: string
-    ): Promise<{stdout: string; stderr: string}> {
-        return new Promise((resolve, reject) => {
-            const {command, args} = this.getAddProfileCommand(name, host);
-            const child = spawn(command, args, {
-                stdio: ["pipe", 0, 0],
-            });
-
-            child.stdin!.write(`${token}\n`);
-            child.stdin!.end();
-
-            child.on("error", reject);
-            child.on("exit", resolve);
-        });
     }
 
     async bundleValidate(

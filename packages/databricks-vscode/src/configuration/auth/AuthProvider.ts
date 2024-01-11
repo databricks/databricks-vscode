@@ -5,7 +5,7 @@ import {
     WorkspaceClient,
     logging,
 } from "@databricks/databricks-sdk";
-import {window} from "vscode";
+import {ProgressLocation, window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
@@ -18,12 +18,13 @@ import {DatabricksCliCheck} from "./DatabricksCliCheck";
 import {Loggers} from "../../logger";
 
 // TODO: Resolve this with SDK's AuthType.
-export type AuthType = "azure-cli" | "google-id" | "databricks-cli" | "profile";
+export type AuthType = "azure-cli" | "databricks-cli" | "profile" | "pat";
 
 export abstract class AuthProvider {
     constructor(
         private readonly _host: URL,
-        private readonly _authType: AuthType
+        private readonly _authType: AuthType,
+        private checked: boolean = false
     ) {}
 
     get host(): URL {
@@ -55,8 +56,27 @@ export abstract class AuthProvider {
      * This function should not throw an error and each implementing class must
      * handle it's own error messages and retry loops.
      */
-    abstract check(): Promise<boolean>;
+    protected abstract _check(): Promise<boolean>;
 
+    public async check(force = false): Promise<boolean> {
+        if (force) {
+            this.checked = false;
+        }
+        if (this.checked) {
+            return true;
+        }
+
+        window.withProgress(
+            {
+                location: ProgressLocation.Notification,
+                title: `Trying to login using ${this.describe()}`,
+            },
+            async () => {
+                this.checked = await this._check();
+            }
+        );
+        return this.checked;
+    }
     protected abstract getSdkConfig(): Config;
 
     static fromJSON(
@@ -101,9 +121,10 @@ export abstract class AuthProvider {
 export class ProfileAuthProvider extends AuthProvider {
     constructor(
         host: URL,
-        private readonly profile: string
+        private readonly profile: string,
+        checked = false
     ) {
-        super(host, "profile");
+        super(host, "profile", checked);
     }
 
     describe(): string {
@@ -135,22 +156,31 @@ export class ProfileAuthProvider extends AuthProvider {
         });
     }
 
-    async check() {
-        try {
-            const workspaceClient = this.getWorkspaceClient();
-            await workspaceClient.currentUser.me();
-            return true;
-        } catch (e) {
-            let message: string = `Can't login with config profile ${this.profile}`;
-            if (e instanceof Error) {
-                message = `Can't login with config profile ${this.profile}: ${e.message}`;
+    protected async _check() {
+        while (true) {
+            try {
+                const workspaceClient = this.getWorkspaceClient();
+                await workspaceClient.currentUser.me();
+                return true;
+            } catch (e) {
+                let message: string = `Can't login with config profile ${this.profile}`;
+                if (e instanceof Error) {
+                    message = `Can't login with config profile ${this.profile}: ${e.message}`;
+                }
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    message,
+                    e
+                );
+                const choice = await window.showErrorMessage(
+                    message,
+                    "Retry",
+                    "Cancel"
+                );
+                if (choice === "Retry") {
+                    continue;
+                }
+                return false;
             }
-            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                message,
-                e
-            );
-            window.showErrorMessage(message);
-            return false;
         }
     }
 }
@@ -187,11 +217,18 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: "databricks-cli",
-            DATABRICKS_CLI_PATH: this.databricksPath,
         };
     }
 
-    async check(): Promise<boolean> {
+    toIni() {
+        return {
+            host: this.host.toString(),
+            auth_type: "databricks-cli",
+            databricks_cli_path: this.databricksPath,
+        };
+    }
+
+    protected async _check(): Promise<boolean> {
         const databricksCliCheck = new DatabricksCliCheck(this);
         return databricksCliCheck.check();
     }
@@ -238,6 +275,14 @@ export class AzureCliAuthProvider extends AuthProvider {
         });
     }
 
+    toIni() {
+        return {
+            host: this.host.toString(),
+            auth_type: "azure-cli",
+            azure_login_app_id: this.appId,
+        };
+    }
+
     toEnv(): Record<string, string> {
         const envVars: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
@@ -249,7 +294,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         return envVars;
     }
 
-    async check(): Promise<boolean> {
+    protected async _check(): Promise<boolean> {
         const cliCheck = new AzureCliCheck(this);
         const result = await cliCheck.check();
         this._tenantId = cliCheck.tenantId;
