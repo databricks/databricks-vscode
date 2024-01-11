@@ -52,7 +52,6 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
         }
     }
 
-    @onError({popup: {prefix: "Failed to parse bundle validate ouput"}})
     protected async readState(): Promise<BundleValidateState> {
         if (this.target === undefined || this.authProvider === undefined) {
             return {};

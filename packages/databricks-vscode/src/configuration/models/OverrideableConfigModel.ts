@@ -33,7 +33,6 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         await this.stateCache.refresh();
     }
 
-    @onError({popup: {prefix: "Error while reading config overrides"}})
     protected async readState() {
         if (this.target === undefined) {
             return {};
