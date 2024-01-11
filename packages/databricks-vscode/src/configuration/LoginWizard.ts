@@ -1,11 +1,11 @@
 import {commands, QuickPickItem, QuickPickItemKind, window} from "vscode";
-import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
 import {
     InputFlowAction,
     InputStep,
     MultiStepInput,
     ValidationMessageType,
 } from "../ui/wizard";
+import {CliWrapper} from "../cli/CliWrapper";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {
     AuthProvider,
@@ -107,7 +107,6 @@ export class LoginWizard {
         input: MultiStepInput
     ): Promise<InputStep | void> {
         const items: Array<AuthTypeQuickPickItem> = [];
-        let profiles: Array<ConfigEntry> = [];
 
         for (const authMethod of authMethodsForHostname(this.state.host!)) {
             switch (authMethod) {
@@ -128,15 +127,8 @@ export class LoginWizard {
                     break;
 
                 case "profile":
-                    items.push({
-                        label: "Existing Databricks CLI Profiles",
-                        kind: QuickPickItemKind.Separator,
-                    });
-
-                    profiles = await listProfiles(this.cliWrapper);
-
-                    items.push(
-                        ...profiles
+                    {
+                        const profiles = (await listProfiles(this.cliWrapper))
                             .filter((profile) => {
                                 return (
                                     profile.host?.hostname ===
@@ -152,19 +144,29 @@ export class LoginWizard {
                                     authType: profile.authType as SdkAuthType,
                                     profile: profile.name,
                                 };
-                            })
-                    );
+                            });
 
-                    items.push({
-                        label: "",
-                        kind: QuickPickItemKind.Separator,
-                    });
+                        if (profiles.length !== 0) {
+                            items.push(
+                                {
+                                    label: "Existing Databricks CLI Profiles",
+                                    kind: QuickPickItemKind.Separator,
+                                },
+                                ...profiles
+                            );
+                        }
 
-                    items.push({
-                        label: "Edit Databricks profiles",
-                        detail: "Open ~/.databrickscfg to create or edit profiles",
-                        openDatabricksConfigFile: true,
-                    });
+                        items.push({
+                            label: "",
+                            kind: QuickPickItemKind.Separator,
+                        });
+
+                        items.push({
+                            label: "Edit Databricks profiles",
+                            detail: "Open ~/.databrickscfg to create or edit profiles",
+                            openDatabricksConfigFile: true,
+                        });
+                    }
 
                     break;
 

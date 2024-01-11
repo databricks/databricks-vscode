@@ -296,7 +296,7 @@ __metadata:
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
-  version: 0.5.2
+  version: 0.5.3
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
   dependencies:
     "@types/ini": ^1.3.31
@@ -305,12 +305,12 @@ __metadata:
     ini: ^4.1.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 073b22dcce69646833a0722f9952c0c51879c6f46b34a8c81f2fac15171d1ce1e379b360c7c1a4c4d6994e4d97e1de26c415f4e46d6a4d7c29fa0090cb9ca085
+  checksum: ed92ea29cec06c61ea029d250db13ac7bf0ccd4ccd2e1120406365c35823d3520ac332c78fb68419d33604acab2cfdd9b05b95894f7f45d69fd13235d2a90e22
   languageName: node
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
-  version: 0.5.2
+  version: 0.5.3
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
   dependencies:
     "@types/ini": ^1.3.31
@@ -319,7 +319,7 @@ __metadata:
     ini: ^4.1.1
     reflect-metadata: ^0.1.13
     semver: ^7.5.4
-  checksum: 073b22dcce69646833a0722f9952c0c51879c6f46b34a8c81f2fac15171d1ce1e379b360c7c1a4c4d6994e4d97e1de26c415f4e46d6a4d7c29fa0090cb9ca085
+  checksum: ed92ea29cec06c61ea029d250db13ac7bf0ccd4ccd2e1120406365c35823d3520ac332c78fb68419d33604acab2cfdd9b05b95894f7f45d69fd13235d2a90e22
   languageName: node
   linkType: hard
 
@@ -1513,11 +1513,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^20.6.0":
-  version: 20.10.7
-  resolution: "@types/node@npm:20.10.7"
+  version: 20.11.0
+  resolution: "@types/node@npm:20.11.0"
   dependencies:
     undici-types: ~5.26.4
-  checksum: 86f4f96f5169538f47bbd652ab8e3712cd307701481ff3e9ce0c1ea7d8424a38b5ac4a1d33088cdd9ea1bfe68fd27bbae005a21969aa6d9a36295904da6f09f2
+  checksum: 1bd6890db7e0404d11c33d28f46f19f73256f0ba35d19f0ef2a0faba09f366f188915fb9338eebebcc472075c1c4941e17c7002786aa69afa44980737846b200
   languageName: node
   linkType: hard
 

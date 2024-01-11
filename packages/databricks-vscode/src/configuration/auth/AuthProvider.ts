@@ -69,12 +69,17 @@ export abstract class AuthProvider {
         await window.withProgress(
             {
                 location: ProgressLocation.Notification,
-                title: `Trying to login using ${this.describe()}`,
+                title: `Databricks: Trying to login using ${this.describe()}`,
             },
             async () => {
                 this.checked = await this._check();
             }
         );
+        if (this.checked) {
+            window.showInformationMessage(
+                `Databricks: Successfully logged in using ${this.describe()}`
+            );
+        }
         return this.checked;
     }
     protected abstract getSdkConfig(): Config;
