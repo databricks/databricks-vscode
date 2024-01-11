@@ -1,5 +1,5 @@
 import {WorkspaceClient, ApiClient, logging} from "@databricks/databricks-sdk";
-import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
+import {Cluster} from "../sdk-extensions";
 import {EventEmitter, Uri, window, Disposable} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {
@@ -7,14 +7,13 @@ import {
     RemoteUri,
     LocalUri,
 } from "../sync/SyncDestination";
-import {ConfigureWorkspaceWizard} from "./ConfigureWorkspaceWizard";
+import {LoginWizard, listProfiles} from "./LoginWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {ConfigModel} from "./models/ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
-import {AuthProvider} from "./auth/AuthProvider";
+import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -124,21 +123,9 @@ export class ConnectionManager implements Disposable {
                 this.updateClusterManager,
                 this
             ),
-            this.configModel.onDidChangeTarget(this.loginWithSavedAuth, this),
-            this.configModel.onDidChangeKey("authParams")(async () => {
-                const config = await this.configModel.getS("authParams");
-                if (config === undefined) {
-                    return;
-                }
-
-                // We only react to auth changes coming from the bundle.
-                // If an override is set, then all settings must have gone
-                // through this class, which means that we have already logged in
-                // using those settings, so we don't double login.
-                if (config.source === "bundle") {
-                    await this.loginWithSavedAuth();
-                }
-            })
+            this.configModel.onDidChangeTarget(this.loginWithSavedAuth, this)
+            // TODO: We don't react to changes in authProfile from the config model. We instead listen to changes
+            // in individual models to react to (Overrides and BundlePreValidate)
         );
     }
 
@@ -175,16 +162,54 @@ export class ConnectionManager implements Disposable {
         return this._workspaceClient?.apiClient;
     }
 
+    async resolveAuth() {
+        const host = await this.configModel.get("host");
+        const target = this.configModel.target;
+        if (host === undefined || target === undefined) {
+            return;
+        }
+
+        // Try to load a profile user had previously selected for this target
+        const savedProfile = (
+            await this.configModel.overrideableConfigModel.load()
+        ).authProfile;
+        if (savedProfile !== undefined) {
+            const authProvider = new ProfileAuthProvider(host, savedProfile);
+            if (await authProvider.check()) {
+                return authProvider;
+            }
+        }
+
+        // Try to load any parameters that are hard coded in the bundle
+        const bundleAuthParams =
+            await this.configModel.bundlePreValidateModel.load();
+        if (bundleAuthParams.authParams !== undefined) {
+            throw new Error("Bundle auth params not implemented");
+        }
+
+        // Try to load a unique profile that matches the host
+        const profiles = (await listProfiles(this.cli)).filter(
+            (p) => p.host?.toString() === host.toString()
+        );
+        if (profiles.length !== 1) {
+            return;
+        }
+        const authProvider = new ProfileAuthProvider(host, profiles[0].name);
+        if (await authProvider.check()) {
+            return authProvider;
+        }
+    }
+
     @onError({
-        popup: {prefix: "Can't login with saved auth. "},
+        popup: {prefix: "Can't login with saved auth."},
     })
     private async loginWithSavedAuth() {
-        const authParams = await this.configModel.get("authParams");
-        if (authParams === undefined) {
+        const authProvider = await this.resolveAuth();
+        if (authProvider === undefined) {
             await this.logout();
             return;
         }
-        await this.login(AuthProvider.fromJSON(authParams, this.cli.cliPath));
+        await this.login(authProvider);
     }
 
     private async login(authProvider: AuthProvider): Promise<void> {
@@ -211,10 +236,12 @@ export class ConnectionManager implements Disposable {
                     this._workspaceClient
                 );
 
-                await this.createWsFsRootDirectory(this._workspaceClient);
                 await this.updateSyncDestinationMapper();
                 await this.updateClusterManager();
-                await this.configModel.set("authParams", authProvider.toJSON());
+                await this.configModel.set(
+                    "authProfile",
+                    authProvider.toJSON().profile as string | undefined
+                );
                 await this.configModel.setAuthProvider(authProvider);
                 this.updateState("CONNECTED");
             });
@@ -229,35 +256,6 @@ export class ConnectionManager implements Disposable {
         }
     }
 
-    async createWsFsRootDirectory(wsClient: WorkspaceClient) {
-        if (
-            !this.databricksWorkspace ||
-            !workspaceConfigs.enableFilesInWorkspace
-        ) {
-            return;
-        }
-        const rootDirPath = this.databricksWorkspace.workspaceFsRoot;
-        const me = this.databricksWorkspace.userName;
-        let rootDir = await WorkspaceFsEntity.fromPath(
-            wsClient,
-            rootDirPath.path
-        );
-        if (rootDir) {
-            return;
-        }
-        const meDir = await WorkspaceFsEntity.fromPath(
-            wsClient,
-            `/Users/${me}`
-        );
-        if (WorkspaceFsUtils.isDirectory(meDir)) {
-            rootDir = await meDir.mkdir(rootDirPath.path);
-        }
-        if (!rootDir) {
-            window.showErrorMessage(`Can't find or create ${rootDirPath.path}`);
-            return;
-        }
-    }
-
     @onError({popup: {prefix: "Can't logout"}})
     @Mutex.synchronise("loginLogoutMutex")
     async logout() {
@@ -266,7 +264,7 @@ export class ConnectionManager implements Disposable {
         await this.updateClusterManager();
         await this.updateSyncDestinationMapper();
         if (this.configModel.target !== undefined) {
-            await this.configModel.set("authParams", undefined);
+            await this.configModel.set("authProfile", undefined);
         }
         this.updateState("DISCONNECTED");
     }
@@ -274,11 +272,8 @@ export class ConnectionManager implements Disposable {
     @onError({
         popup: {prefix: "Can't configure workspace. "},
     })
-    async configureWorkspace() {
-        const authProvider = await ConfigureWorkspaceWizard.run(
-            this.cli,
-            this.configModel
-        );
+    async configureLogin() {
+        const authProvider = await LoginWizard.run(this.cli, this.configModel);
         if (!authProvider) {
             return;
         }
@@ -314,6 +309,7 @@ export class ConnectionManager implements Disposable {
             );
             return;
         }
+        await this.configModel.set("remoteRootPath", remoteWorkspace.path);
         await this.configModel.set("remoteRootPath", remoteWorkspace.path);
     }
 

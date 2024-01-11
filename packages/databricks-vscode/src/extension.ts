@@ -599,6 +599,8 @@ export async function activate(
     context.subscriptions.push(
         commands.registerCommand("databricks.internal.clearOverrides", () => {
             stateStorage.set("databricks.bundle.overrides", undefined);
+            configModel.setTarget(undefined);
+            configModel.setAuthProvider(undefined);
         })
     );
 

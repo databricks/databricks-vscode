@@ -67,7 +67,7 @@ export class ConnectionCommands implements Disposable {
     }
 
     async configureWorkspaceCommand() {
-        await this.connectionManager.configureWorkspace();
+        await this.connectionManager.configureLogin();
     }
 
     openDatabricksConfigFileCommand() {

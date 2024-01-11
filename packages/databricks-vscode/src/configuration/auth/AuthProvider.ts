@@ -66,15 +66,20 @@ export abstract class AuthProvider {
             return true;
         }
 
-        window.withProgress(
+        await window.withProgress(
             {
                 location: ProgressLocation.Notification,
-                title: `Trying to login using ${this.describe()}`,
+                title: `Databricks: Trying to login using ${this.describe()}`,
             },
             async () => {
                 this.checked = await this._check();
             }
         );
+        if (this.checked) {
+            window.showInformationMessage(
+                `Databricks: Successfully logged in using ${this.describe()}`
+            );
+        }
         return this.checked;
     }
     protected abstract getSdkConfig(): Config;
@@ -131,7 +136,7 @@ export class ProfileAuthProvider extends AuthProvider {
         return `Profile '${this.profile}'`;
     }
 
-    toJSON(): Record<string, string | undefined> {
+    toJSON() {
         return {
             host: this.host.toString(),
             authType: this.authType,
@@ -197,7 +202,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return "OAuth U2M";
     }
 
-    toJSON(): Record<string, string | undefined> {
+    toJSON() {
         return {
             host: this.host.toString(),
             authType: this.authType,
@@ -257,7 +262,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         return "Azure CLI";
     }
 
-    toJSON(): Record<string, string | undefined> {
+    toJSON() {
         return {
             host: this.host.toString(),
             authType: this.authType,

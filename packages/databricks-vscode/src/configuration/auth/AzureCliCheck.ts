@@ -161,11 +161,6 @@ export class AzureCliCheck implements Disposable {
             return false;
         }
 
-        if (result) {
-            window.showInformationMessage(
-                "Databricks: Successfully logged in with Azure CLI"
-            );
-        }
         return result;
     }
 
