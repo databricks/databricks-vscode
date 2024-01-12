@@ -107,7 +107,8 @@ export class ConnectionManager implements Disposable {
     constructor(
         private cli: CliWrapper,
         private readonly configModel: ConfigModel,
-        private readonly workspaceUri: Uri
+        private readonly workspaceUri: Uri,
+        private readonly customWhenContext: CustomWhenContext
     ) {}
 
     public async init() {
@@ -330,7 +331,7 @@ export class ConnectionManager implements Disposable {
             this._state = newState;
             this.onDidChangeStateEmitter.fire(this._state);
         }
-        CustomWhenContext.setLoggedIn(this._state === "CONNECTED");
+        this.customWhenContext.setLoggedIn(this._state === "CONNECTED");
     }
 
     async startCluster() {

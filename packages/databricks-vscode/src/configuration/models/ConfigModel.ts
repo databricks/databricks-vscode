@@ -17,6 +17,7 @@ import {
     BundleValidateModel,
     BundleValidateState,
 } from "../../bundle/models/BundleValidateModel";
+import {CustomWhenContext} from "../../vscode-objs/CustomWhenContext";
 
 const defaults: ConfigState = {
     mode: "development",
@@ -119,6 +120,7 @@ export class ConfigModel implements Disposable {
         public readonly bundleValidateModel: BundleValidateModel,
         public readonly overrideableConfigModel: OverrideableConfigModel,
         public readonly bundlePreValidateModel: BundlePreValidateModel,
+        private readonly vscodeWhenContext: CustomWhenContext,
         private readonly stateStorage: StateStorage
     ) {
         this.disposables.push(
@@ -191,15 +193,10 @@ export class ConfigModel implements Disposable {
         }
 
         if (
-            this.target !== undefined &&
-            !(
-                this.target in
-                ((await this.bundlePreValidateModel.targets) ?? {})
-            )
+            target !== undefined &&
+            !(target in ((await this.bundlePreValidateModel.targets) ?? {}))
         ) {
-            throw new Error(
-                `Target '${this.target}' doesn't exist in the bundle`
-            );
+            throw new Error(`Target '${target}' doesn't exist in the bundle`);
         }
         await this.configsMutex.synchronise(async () => {
             this._target = target;
@@ -215,6 +212,8 @@ export class ConfigModel implements Disposable {
             });
             this.onDidChangeTargetEmitter.fire();
         });
+
+        this.vscodeWhenContext.isTargetSet(this._target !== undefined);
     }
 
     @onError({popup: {prefix: "Failed to set auth provider."}})
