@@ -4,7 +4,6 @@ import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {Mutex} from "../../locking";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {BundleTarget} from "../types";
-import {onError} from "../../utils/onErrorDecorator";
 import lodash from "lodash";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
