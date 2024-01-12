@@ -2,7 +2,7 @@ import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {Mutex} from "../../locking";
 import {CachedValue} from "../../locking/CachedValue";
 import {StateStorage} from "../../vscode-objs/StateStorage";
-import {onError} from "../../utils/onErrorDecorator";
+import {onError, onErrorLambda} from "../../utils/onErrorDecorator";
 import {AuthProvider} from "../auth/AuthProvider";
 import {
     OverrideableConfigModel,
@@ -122,20 +122,28 @@ export class ConfigModel implements Disposable {
         private readonly stateStorage: StateStorage
     ) {
         this.disposables.push(
-            this.overrideableConfigModel.onDidChange(async () => {
-                //refresh cache to trigger onDidChange event
-                await this.configCache.refresh();
-            }),
-            this.bundlePreValidateModel.onDidChange(async () => {
-                await this.readTarget();
-                //refresh cache to trigger onDidChange event
-                await this.configCache.refresh();
-            }),
-            ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS.map((key) =>
-                this.bundleValidateModel.onDidChangeKey(key)(async () => {
+            this.overrideableConfigModel.onDidChange(
+                onErrorLambda({popup: true}, async () => {
                     //refresh cache to trigger onDidChange event
-                    this.configCache.refresh();
+                    await this.configCache.refresh();
                 })
+            ),
+            this.bundlePreValidateModel.onDidChange(
+                onErrorLambda({popup: true}, async () => {
+                    await this.readTarget();
+                    //refresh cache to trigger onDidChange event
+                    await this.configCache.refresh();
+                })
+            ),
+            ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS.map((key) =>
+                this.bundleValidateModel.onDidChangeKey(key)(
+                    onErrorLambda({popup: true}, async () => {
+                        async () => {
+                            //refresh cache to trigger onDidChange event
+                            this.configCache.refresh();
+                        };
+                    })
+                )
             )
         );
     }
