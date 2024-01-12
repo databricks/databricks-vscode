@@ -59,10 +59,12 @@ import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 
+const customWhenContext = new CustomWhenContext();
+
 export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
-    CustomWhenContext.setActivated(false);
+    customWhenContext.setActivated(false);
 
     if (extensions.getExtension("databricks.databricks-vscode") !== undefined) {
         await commands.executeCommand(
@@ -142,8 +144,8 @@ export async function activate(
 
     // manage contexts for experimental features
     function updateFeatureContexts() {
-        CustomWhenContext.updateShowClusterView();
-        CustomWhenContext.updateShowWorkspaceView();
+        customWhenContext.updateShowClusterView();
+        customWhenContext.updateShowWorkspaceView();
     }
 
     updateFeatureContexts();
@@ -180,13 +182,15 @@ export async function activate(
         bundleValidateModel,
         overrideableConfigModel,
         bundlePreValidateModel,
+        customWhenContext,
         stateStorage
     );
 
     const connectionManager = new ConnectionManager(
         cli,
         configModel,
-        workspaceUri
+        workspaceUri,
+        customWhenContext
     );
     context.subscriptions.push(
         connectionManager.onDidChangeState(async (state) => {
@@ -607,7 +611,7 @@ export async function activate(
     connectionManager.init().catch((e) => {
         window.showErrorMessage(e);
     });
-    CustomWhenContext.setActivated(true);
+    customWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 
     const publicApi: PublicApi = {
@@ -619,5 +623,5 @@ export async function activate(
 
 // this method is called when your extension is deactivated
 export function deactivate() {
-    CustomWhenContext.setActivated(false);
+    customWhenContext.setActivated(false);
 }
