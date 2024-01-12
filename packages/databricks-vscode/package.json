@@ -248,6 +248,12 @@
                     "name": "Configuration"
                 },
                 {
+                    "id": "dabsResourceExplorerView",
+                    "name": "DABs Resource Explorer",
+                    "visibility": "visible",
+                    "when": "databricks.context.bundle.isTargetSet"
+                },
+                {
                     "id": "workspaceFsView",
                     "name": "Workspace explorer",
                     "when": "config.databricks.sync.destinationType == workspace && databricks.feature.views.workspace"

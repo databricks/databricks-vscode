@@ -1,7 +1,6 @@
 import {StateStorage} from "../../vscode-objs/StateStorage";
 import {Mutex} from "../../locking";
 import {BaseModelWithStateCache} from "./BaseModelWithStateCache";
-import {onError} from "../../utils/onErrorDecorator";
 
 export type OverrideableConfigState = {
     authProfile?: string;

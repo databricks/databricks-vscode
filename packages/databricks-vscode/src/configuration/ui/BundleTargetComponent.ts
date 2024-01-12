@@ -22,6 +22,9 @@ export class BundleTargetComponent extends BaseComponent {
         this.disposables.push(
             this.configModel.onDidChangeTarget(() => {
                 this.onDidChangeEmitter.fire();
+            }),
+            this.configModel.bundlePreValidateModel.onDidChange(() => {
+                this.onDidChangeEmitter.fire();
             })
         );
     }
