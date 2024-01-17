@@ -7,6 +7,9 @@ import {BundleTarget} from "../types";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
+import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
+import {Loggers} from "../../logger";
+import {Context, context} from "@databricks/databricks-sdk";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 type Resources = Required<BundleTarget>["resources"];
@@ -28,6 +31,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     private target: string | undefined;
     private authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
+    private refreshInterval: NodeJS.Timeout | undefined;
 
     constructor(
         private readonly cli: CliWrapper,
@@ -37,8 +41,15 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         super();
     }
 
-    public async init() {
-        await this.stateCache.refresh();
+    @withLogContext(Loggers.Extension)
+    public init(@context ctx?: Context) {
+        this.refreshInterval = setInterval(async () => {
+            try {
+                await this.stateCache.refresh();
+            } catch (e) {
+                ctx?.logger?.error("Unable to refresh bundle remote state", e);
+            }
+        }, this.workspaceConfigs.bundleRemoteStateRefreshInterval);
     }
 
     @Mutex.synchronise("mutex")
@@ -74,5 +85,12 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
                 this.workspaceConfigs.databrickscfgLocation
             )
         );
+    }
+
+    dispose() {
+        super.dispose();
+        if (this.refreshInterval !== undefined) {
+            clearInterval(this.refreshInterval);
+        }
     }
 }

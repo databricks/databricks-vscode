@@ -658,6 +658,11 @@
                     "databricks.ipythonDir": {
                         "type": "string",
                         "description": "Absolute path to a directory for storing IPython files. Defaults to IPYTHONDIR environment variable (if set) or ~/.ipython."
+                    },
+                    "databricks.bundle.remoteStateRefreshInterval": {
+                        "type": "number",
+                        "default": 5,
+                        "description": "The interval in minutes at which the remote state of the bundle is refreshed."
                     }
                 }
             }

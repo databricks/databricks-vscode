@@ -167,7 +167,6 @@ export async function activate(
     const cli = new CliWrapper(context, cliLogFilePath);
     const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
     const bundleFileWatcher = new BundleWatcher(bundleFileSet);
-    context.subscriptions.push(bundleFileWatcher);
     const bundleValidateModel = new BundleValidateModel(
         bundleFileWatcher,
         cli,
@@ -200,6 +199,14 @@ export async function activate(
         customWhenContext
     );
     context.subscriptions.push(
+        bundleFileWatcher,
+        bundleValidateModel,
+        overrideableConfigModel,
+        bundlePreValidateModel,
+        bundleRemoteStateModel,
+        configModel,
+        configModel,
+        connectionManager,
         connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
                 Metadata.USER,

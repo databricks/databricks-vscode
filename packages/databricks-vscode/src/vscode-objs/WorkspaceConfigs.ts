@@ -1,5 +1,6 @@
 import {ConfigurationTarget, workspace} from "vscode";
 import {SyncDestinationType} from "../sync/SyncDestination";
+import {Time, TimeUnits} from "@databricks/databricks-sdk";
 
 export const workspaceConfigs = {
     get maxFieldLength() {
@@ -147,6 +148,15 @@ export const workspaceConfigs = {
             return undefined;
         }
         return dir;
+    },
+
+    get bundleRemoteStateRefreshInterval(): number {
+        const config =
+            workspace
+                .getConfiguration("databricks")
+                .get<number>("bundle.remoteStateRefreshInterval") ?? 5;
+
+        return new Time(config, TimeUnits.minutes).toMillSeconds().value;
     },
 };
 
