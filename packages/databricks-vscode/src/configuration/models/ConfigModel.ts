@@ -18,6 +18,7 @@ import {
     BundleValidateState,
 } from "../../bundle/models/BundleValidateModel";
 import {CustomWhenContext} from "../../vscode-objs/CustomWhenContext";
+import {BundleRemoteStateModel} from "../../bundle/models/BundleRemoteStateModel";
 
 const defaults: ConfigState = {
     mode: "development",
@@ -77,11 +78,11 @@ export class ConfigModel implements Disposable {
             ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS,
         ]);
         const overrides = await this.overrideableConfigModel.load();
-        const bundleConfigs = await this.bundlePreValidateModel.load([
+        const bundlePreValidate = await this.bundlePreValidateModel.load([
             ...SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS,
         ]);
         const newConfigs = {
-            ...bundleConfigs,
+            ...bundlePreValidate,
             ...bundleValidateConfig,
             ...overrides,
         };
@@ -120,6 +121,7 @@ export class ConfigModel implements Disposable {
         public readonly bundleValidateModel: BundleValidateModel,
         public readonly overrideableConfigModel: OverrideableConfigModel,
         public readonly bundlePreValidateModel: BundlePreValidateModel,
+        private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly vscodeWhenContext: CustomWhenContext,
         private readonly stateStorage: StateStorage
     ) {
@@ -138,7 +140,10 @@ export class ConfigModel implements Disposable {
                     //refresh cache to trigger onDidChange event
                     this.configCache.refresh();
                 })
-            )
+            ),
+            this.bundleRemoteStateModel.onDidChange(async () => {
+                await this.configCache.refresh();
+            })
         );
     }
 

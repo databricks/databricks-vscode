@@ -149,3 +149,5 @@ export const workspaceConfigs = {
         return dir;
     },
 };
+
+export type WorkspaceConfigs = typeof workspaceConfigs;
