@@ -85,9 +85,9 @@ export class ClusterComponent extends BaseComponent {
 
     @onError({popup: true})
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
-        const config = await this.configModel.getS("clusterId");
+        const config = await this.configModel.get("clusterId");
 
-        if (config?.config === undefined) {
+        if (config === undefined) {
             // Cluster is not set in bundle and override
             // We are logged in -> Select cluster prompt
             const label = "Select a cluster";
@@ -124,7 +124,6 @@ export class ClusterComponent extends BaseComponent {
                 collapsibleState: TreeItemCollapsibleState.Expanded,
                 contextValue: contextValue,
                 iconPath: icon,
-                source: config.source,
                 id: TREE_ICON_ID,
             },
         ];

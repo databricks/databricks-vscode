@@ -55,8 +55,8 @@ export class AuthTypeComponent extends BaseComponent {
         }
 
         const config =
-            (await this.configModel.getS("authProfile")) ??
-            (await this.configModel.getS("authParams"));
+            (await this.configModel.get("authProfile")) ??
+            (await this.configModel.get("authParams"));
         if (config === undefined) {
             // This case can never happen. This is just to make ts happy.
             return [];
@@ -72,7 +72,6 @@ export class AuthTypeComponent extends BaseComponent {
                 description: authProvider.describe(),
                 contextValue: getContextValue(authProvider.authType),
                 id: TREE_ICON_ID,
-                source: config.source,
             },
         ];
     }
