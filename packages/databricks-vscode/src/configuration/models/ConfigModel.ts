@@ -18,7 +18,10 @@ import {
     BundleValidateState,
 } from "../../bundle/models/BundleValidateModel";
 import {CustomWhenContext} from "../../vscode-objs/CustomWhenContext";
-import {BundleRemoteStateModel} from "../../bundle/models/BundleRemoteStateModel";
+import {
+    BundleRemoteState,
+    BundleRemoteStateModel,
+} from "../../bundle/models/BundleRemoteStateModel";
 
 const defaults: ConfigState = {
     mode: "development",
@@ -43,6 +46,7 @@ type ConfigState = Pick<
     OverrideableConfigState & {
         preValidateConfig?: BundlePreValidateState;
         validateConfig?: BundleValidateState;
+        remoteStateConfig?: BundleRemoteState;
         overrides?: OverrideableConfigState;
     };
 
@@ -93,6 +97,7 @@ export class ConfigModel implements Disposable {
             preValidateConfig: bundlePreValidateConfig,
             validateConfig: bundleValidateConfig,
             overrides,
+            remoteStateConfig: await this.bundleRemoteStateModel.load(),
         };
     }
 

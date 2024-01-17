@@ -58,6 +58,7 @@ import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
 import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
+import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -178,10 +179,16 @@ export async function activate(
         bundleFileSet,
         bundleFileWatcher
     );
+    const bundleRemoteStateModel = new BundleRemoteStateModel(
+        cli,
+        workspaceUri,
+        workspaceConfigs
+    );
     const configModel = new ConfigModel(
         bundleValidateModel,
         overrideableConfigModel,
         bundlePreValidateModel,
+        bundleRemoteStateModel,
         customWhenContext,
         stateStorage
     );

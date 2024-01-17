@@ -12,7 +12,7 @@ import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 type Resources = Required<BundleTarget>["resources"];
 type Resource<K extends keyof Required<Resources>> = Required<Resources>[K];
 
-export type InternalBundleTargetSchema = BundleTarget & {
+export type BundleRemoteState = BundleTarget & {
     resources?: Resources & {
         [r in keyof Resources]?: {
             [k in keyof Resource<r>]?: Resource<r>[k] & {
@@ -24,7 +24,7 @@ export type InternalBundleTargetSchema = BundleTarget & {
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
-export class BundleRemoteStateModel extends BaseModelWithStateCache<InternalBundleTargetSchema> {
+export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemoteState> {
     private target: string | undefined;
     private authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
@@ -61,7 +61,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<InternalBund
         }
     }
 
-    protected async readState(): Promise<InternalBundleTargetSchema> {
+    protected async readState(): Promise<BundleRemoteState> {
         if (this.target === undefined || this.authProvider === undefined) {
             return {};
         }
