@@ -24,12 +24,9 @@ const defaults: ConfigState = {
     mode: "development",
 };
 
-const SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS = [
-    "clusterId",
-    "remoteRootPath",
-] as const;
+const TOP_LEVEL_VALIDATE_CONFIG_KEYS = ["clusterId", "remoteRootPath"] as const;
 
-const SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS = [
+const TOP_LEVEL_PRE_VALIDATE_CONFIG_KEYS = [
     "host",
     "mode",
     "authParams",
@@ -37,23 +34,27 @@ const SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS = [
 
 type ConfigState = Pick<
     BundleValidateState,
-    (typeof SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS)[number]
+    (typeof TOP_LEVEL_VALIDATE_CONFIG_KEYS)[number]
 > &
     Pick<
         BundlePreValidateState,
-        (typeof SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS)[number]
+        (typeof TOP_LEVEL_PRE_VALIDATE_CONFIG_KEYS)[number]
     > &
-    OverrideableConfigState;
-
-export type ConfigSource = "bundle" | "override" | "default";
-
-type ConfigSourceMap = {
-    [K in keyof ConfigState]: {
-        config: ConfigState[K];
-        source: ConfigSource;
+    OverrideableConfigState & {
+        preValidateConfig?: BundlePreValidateState;
+        validateConfig?: BundleValidateState;
+        overrides?: OverrideableConfigState;
     };
-};
 
+function selectTopLevelKeys(
+    obj: any,
+    keys: readonly string[]
+): Record<string, any> {
+    return keys.reduce((prev: any, key) => {
+        prev[key] = obj[key];
+        return prev;
+    }, {});
+}
 /**
  * In memory view of the databricks configs loaded from overrides and bundle.
  */
@@ -65,43 +66,36 @@ export class ConfigModel implements Disposable {
      * after configsMutex to avoid deadlocks.
      */
     private readonly readStateMutex = new Mutex();
-    private readonly configCache = new CachedValue<ConfigSourceMap>(
+    private readonly configCache = new CachedValue<ConfigState>(
         this.readState.bind(this)
     );
 
     @Mutex.synchronise("readStateMutex")
     async readState() {
         if (this.target === undefined) {
-            return {config: {}, source: {}};
+            return {};
         }
-        const bundleValidateConfig = await this.bundleValidateModel.load([
-            ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS,
-        ]);
+        const bundleValidateConfig = await this.bundleValidateModel.load();
         const overrides = await this.overrideableConfigModel.load();
-        const bundlePreValidate = await this.bundlePreValidateModel.load([
-            ...SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS,
-        ]);
-        const newConfigs = {
-            ...bundlePreValidate,
-            ...bundleValidateConfig,
+        const bundlePreValidateConfig =
+            await this.bundlePreValidateModel.load();
+
+        return {
+            ...selectTopLevelKeys(
+                bundlePreValidateConfig,
+                TOP_LEVEL_PRE_VALIDATE_CONFIG_KEYS
+            ),
+            ...selectTopLevelKeys(
+                bundleValidateConfig,
+                TOP_LEVEL_VALIDATE_CONFIG_KEYS
+            ),
             ...overrides,
+            preValidateConfig: bundlePreValidateConfig,
+            validateConfig: bundleValidateConfig,
+            overrides,
         };
-
-        const newValue: any = {};
-        (Object.keys(newConfigs) as (keyof typeof newConfigs)[]).forEach(
-            (key) => {
-                newValue[key] = {
-                    config: newConfigs[key],
-                    source:
-                        overrides !== undefined && key in overrides
-                            ? "override"
-                            : "bundle",
-                };
-            }
-        );
-
-        return newValue;
     }
+
     public onDidChange = this.configCache.onDidChange.bind(this.configCache);
     public onDidChangeKey = this.configCache.onDidChangeKey.bind(
         this.configCache
@@ -118,9 +112,9 @@ export class ConfigModel implements Disposable {
     private _authProvider: AuthProvider | undefined;
 
     constructor(
-        public readonly bundleValidateModel: BundleValidateModel,
-        public readonly overrideableConfigModel: OverrideableConfigModel,
-        public readonly bundlePreValidateModel: BundlePreValidateModel,
+        private readonly bundleValidateModel: BundleValidateModel,
+        private readonly overrideableConfigModel: OverrideableConfigModel,
+        private readonly bundlePreValidateModel: BundlePreValidateModel,
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly vscodeWhenContext: CustomWhenContext,
         private readonly stateStorage: StateStorage
@@ -135,7 +129,7 @@ export class ConfigModel implements Disposable {
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
-            ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS.map((key) =>
+            ...TOP_LEVEL_VALIDATE_CONFIG_KEYS.map((key) =>
                 this.bundleValidateModel.onDidChangeKey(key)(async () => {
                     //refresh cache to trigger onDidChange event
                     this.configCache.refresh();
@@ -152,6 +146,9 @@ export class ConfigModel implements Disposable {
         await this.readTarget();
     }
 
+    get targets() {
+        return this.bundlePreValidateModel.targets;
+    }
     /**
      * Try to read target from bundle config.
      * If not found, try to read from state storage.
@@ -231,24 +228,7 @@ export class ConfigModel implements Disposable {
     public async get<T extends keyof ConfigState>(
         key: T
     ): Promise<ConfigState[T] | undefined> {
-        return (await this.configCache.value)[key]?.config ?? defaults[key];
-    }
-
-    /**
-     * Return config value along with source of the config.
-     * Refer to {@link DatabricksConfigSource} for possible values.
-     */
-    @Mutex.synchronise("configsMutex")
-    public async getS<T extends keyof ConfigState>(
-        key: T
-    ): Promise<ConfigSourceMap[T] | undefined> {
-        const config = (await this.configCache.value)[key];
-        return config
-            ? ({
-                  config: config.config ?? defaults[key],
-                  source: config.source ?? "default",
-              } as ConfigSourceMap[T])
-            : undefined;
+        return (await this.configCache.value)[key] ?? defaults[key];
     }
 
     @Mutex.synchronise("configsMutex")
