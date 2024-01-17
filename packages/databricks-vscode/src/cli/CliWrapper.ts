@@ -194,4 +194,30 @@ export class CliWrapper {
         }
         return stdout;
     }
+
+    async bundleSummarise(
+        target: string,
+        authProvider: AuthProvider,
+        workspaceFolder: Uri,
+        configfilePath?: string
+    ) {
+        const {stdout, stderr} = await execFile(
+            this.cliPath,
+            ["bundle", "summarise", "--target", target],
+            {
+                cwd: workspaceFolder.fsPath,
+                env: {
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getProxyEnvVars(),
+                    ...authProvider.toEnv(),
+                },
+                shell: true,
+            }
+        );
+
+        if (stderr !== "") {
+            throw new Error(stderr);
+        }
+        return stdout;
+    }
 }

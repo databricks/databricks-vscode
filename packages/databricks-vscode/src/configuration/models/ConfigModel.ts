@@ -18,6 +18,10 @@ import {
     BundleValidateState,
 } from "../../bundle/models/BundleValidateModel";
 import {CustomWhenContext} from "../../vscode-objs/CustomWhenContext";
+import {
+    BundleRemoteState,
+    BundleRemoteStateModel,
+} from "../../bundle/models/BundleRemoteStateModel";
 
 const defaults: ConfigState = {
     mode: "development",
@@ -42,6 +46,7 @@ type ConfigState = Pick<
     OverrideableConfigState & {
         preValidateConfig?: BundlePreValidateState;
         validateConfig?: BundleValidateState;
+        remoteStateConfig?: BundleRemoteState;
         overrides?: OverrideableConfigState;
     };
 
@@ -92,6 +97,7 @@ export class ConfigModel implements Disposable {
             preValidateConfig: bundlePreValidateConfig,
             validateConfig: bundleValidateConfig,
             overrides,
+            remoteStateConfig: await this.bundleRemoteStateModel.load(),
         };
     }
 
@@ -114,6 +120,7 @@ export class ConfigModel implements Disposable {
         private readonly bundleValidateModel: BundleValidateModel,
         private readonly overrideableConfigModel: OverrideableConfigModel,
         private readonly bundlePreValidateModel: BundlePreValidateModel,
+        private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly vscodeWhenContext: CustomWhenContext,
         private readonly stateStorage: StateStorage
     ) {
@@ -132,13 +139,17 @@ export class ConfigModel implements Disposable {
                     //refresh cache to trigger onDidChange event
                     this.configCache.refresh();
                 })
-            )
+            ),
+            this.bundleRemoteStateModel.onDidChange(async () => {
+                await this.configCache.refresh();
+            })
         );
     }
 
     @onError({popup: {prefix: "Failed to initialize configs."}})
     public async init() {
         await this.readTarget();
+        this.bundleRemoteStateModel.init();
     }
 
     get targets() {
