@@ -23,12 +23,9 @@ const defaults: ConfigState = {
     mode: "development",
 };
 
-const SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS = [
-    "clusterId",
-    "remoteRootPath",
-] as const;
+const TOP_LEVEL_VALIDATE_CONFIG_KEYS = ["clusterId", "remoteRootPath"] as const;
 
-const SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS = [
+const TOP_LEVEL_PRE_VALIDATE_CONFIG_KEYS = [
     "host",
     "mode",
     "authParams",
@@ -36,17 +33,26 @@ const SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS = [
 
 type ConfigState = Pick<
     BundleValidateState,
-    (typeof SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS)[number]
+    (typeof TOP_LEVEL_VALIDATE_CONFIG_KEYS)[number]
 > &
     Pick<
         BundlePreValidateState,
-        (typeof SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS)[number]
+        (typeof TOP_LEVEL_PRE_VALIDATE_CONFIG_KEYS)[number]
     > &
     OverrideableConfigState & {
         preValidateConfig?: BundlePreValidateState;
         validateConfig?: BundleValidateState;
     };
 
+function selectTopLevelKeys(
+    obj: any,
+    keys: readonly string[]
+): Record<string, any> {
+    return keys.reduce((prev: any, key) => {
+        prev[key] = obj[key];
+        return prev;
+    }, {});
+}
 /**
  * In memory view of the databricks configs loaded from overrides and bundle.
  */
@@ -67,19 +73,23 @@ export class ConfigModel implements Disposable {
         if (this.target === undefined) {
             return {};
         }
-        const bundleValidateConfig = await this.bundleValidateModel.load([
-            ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS,
-        ]);
+        const bundleValidateConfig = await this.bundleValidateModel.load();
         const overrides = await this.overrideableConfigModel.load();
-        const bundleConfigs = await this.bundlePreValidateModel.load([
-            ...SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS,
-        ]);
+        const bundlePreValidateConfig =
+            await this.bundlePreValidateModel.load();
+
         return {
-            ...bundleConfigs,
-            ...bundleValidateConfig,
+            ...selectTopLevelKeys(
+                bundlePreValidateConfig,
+                TOP_LEVEL_PRE_VALIDATE_CONFIG_KEYS
+            ),
+            ...selectTopLevelKeys(
+                bundleValidateConfig,
+                TOP_LEVEL_VALIDATE_CONFIG_KEYS
+            ),
             ...overrides,
-            preValidateConfig: await this.bundleValidateModel.load(),
-            validateConfig: await this.bundlePreValidateModel.load(),
+            preValidateConfig: bundlePreValidateConfig,
+            validateConfig: bundleValidateConfig,
         };
     }
 
@@ -115,7 +125,7 @@ export class ConfigModel implements Disposable {
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
-            ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS.map((key) =>
+            ...TOP_LEVEL_VALIDATE_CONFIG_KEYS.map((key) =>
                 this.bundleValidateModel.onDidChangeKey(key)(async () => {
                     //refresh cache to trigger onDidChange event
                     this.configCache.refresh();
