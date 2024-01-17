@@ -42,6 +42,7 @@ type ConfigState = Pick<
     OverrideableConfigState & {
         preValidateConfig?: BundlePreValidateState;
         validateConfig?: BundleValidateState;
+        overrides?: OverrideableConfigState;
     };
 
 function selectTopLevelKeys(
@@ -90,6 +91,7 @@ export class ConfigModel implements Disposable {
             ...overrides,
             preValidateConfig: bundlePreValidateConfig,
             validateConfig: bundleValidateConfig,
+            overrides,
         };
     }
 
@@ -109,9 +111,9 @@ export class ConfigModel implements Disposable {
     private _authProvider: AuthProvider | undefined;
 
     constructor(
-        public readonly bundleValidateModel: BundleValidateModel,
-        public readonly overrideableConfigModel: OverrideableConfigModel,
-        public readonly bundlePreValidateModel: BundlePreValidateModel,
+        private readonly bundleValidateModel: BundleValidateModel,
+        private readonly overrideableConfigModel: OverrideableConfigModel,
+        private readonly bundlePreValidateModel: BundlePreValidateModel,
         private readonly vscodeWhenContext: CustomWhenContext,
         private readonly stateStorage: StateStorage
     ) {
@@ -139,6 +141,9 @@ export class ConfigModel implements Disposable {
         await this.readTarget();
     }
 
+    get targets() {
+        return this.bundlePreValidateModel.targets;
+    }
     /**
      * Try to read target from bundle config.
      * If not found, try to read from state storage.
