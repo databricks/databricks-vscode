@@ -4,8 +4,6 @@ import {
     EventEmitter,
     TreeDataProvider,
     TreeItem,
-    ThemeIcon,
-    ThemeColor,
 } from "vscode";
 
 import {ConnectionManager} from "../ConnectionManager";
@@ -79,47 +77,8 @@ export class ConfigurationDataProvider
                 break;
         }
 
-        const configSourceTooltip = {
-            bundle: "This configuration is loaded from a Databricks Asset Bundle.",
-            override: "This configuration is a workspace only override.",
-        };
-
         return (
             await Promise.all(this.components.map((c) => c.getChildren(parent)))
-        )
-            .map((items) => {
-                // Add config source item to expanded view, if the parent config is not a default
-                if (
-                    parent?.source === undefined ||
-                    parent.source === "default" ||
-                    items.length === 0
-                ) {
-                    return items;
-                }
-
-                const tooltip = configSourceTooltip[parent.source];
-                return [
-                    {
-                        label: "Source",
-                        description: parent.source,
-                        iconPath: new ThemeIcon("info", new ThemeColor("info")),
-                        tooltip,
-                    },
-                    ...items,
-                ];
-            })
-            .flat()
-            .map((item) => {
-                // Add config source tooltip to the config root item, if the  config is not a default
-                // and parent is undefined.
-                if (item.source === undefined || item.source === "default") {
-                    return item;
-                }
-                const tooltip = configSourceTooltip[item.source];
-                return {
-                    ...item,
-                    tooltip,
-                };
-            });
+        ).flat();
     }
 }

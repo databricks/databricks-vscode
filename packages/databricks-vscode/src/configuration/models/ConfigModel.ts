@@ -42,16 +42,10 @@ type ConfigState = Pick<
         BundlePreValidateState,
         (typeof SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS)[number]
     > &
-    OverrideableConfigState;
-
-export type ConfigSource = "bundle" | "override" | "default";
-
-type ConfigSourceMap = {
-    [K in keyof ConfigState]: {
-        config: ConfigState[K];
-        source: ConfigSource;
+    OverrideableConfigState & {
+        preValidateConfig?: BundlePreValidateState;
+        validateConfig?: BundleValidateState;
     };
-};
 
 /**
  * In memory view of the databricks configs loaded from overrides and bundle.
@@ -64,14 +58,14 @@ export class ConfigModel implements Disposable {
      * after configsMutex to avoid deadlocks.
      */
     private readonly readStateMutex = new Mutex();
-    private readonly configCache = new CachedValue<ConfigSourceMap>(
+    private readonly configCache = new CachedValue<ConfigState>(
         this.readState.bind(this)
     );
 
     @Mutex.synchronise("readStateMutex")
     async readState() {
         if (this.target === undefined) {
-            return {config: {}, source: {}};
+            return {};
         }
         const bundleValidateConfig = await this.bundleValidateModel.load([
             ...SELECTED_BUNDLE_VALIDATE_CONFIG_KEYS,
@@ -80,27 +74,15 @@ export class ConfigModel implements Disposable {
         const bundleConfigs = await this.bundlePreValidateModel.load([
             ...SELECTED_BUNDLE_PRE_VALIDATE_CONFIG_KEYS,
         ]);
-        const newConfigs = {
+        return {
             ...bundleConfigs,
             ...bundleValidateConfig,
             ...overrides,
+            preValidateConfig: await this.bundleValidateModel.load(),
+            validateConfig: await this.bundlePreValidateModel.load(),
         };
-
-        const newValue: any = {};
-        (Object.keys(newConfigs) as (keyof typeof newConfigs)[]).forEach(
-            (key) => {
-                newValue[key] = {
-                    config: newConfigs[key],
-                    source:
-                        overrides !== undefined && key in overrides
-                            ? "override"
-                            : "bundle",
-                };
-            }
-        );
-
-        return newValue;
     }
+
     public onDidChange = this.configCache.onDidChange.bind(this.configCache);
     public onDidChangeKey = this.configCache.onDidChangeKey.bind(
         this.configCache
@@ -226,24 +208,7 @@ export class ConfigModel implements Disposable {
     public async get<T extends keyof ConfigState>(
         key: T
     ): Promise<ConfigState[T] | undefined> {
-        return (await this.configCache.value)[key]?.config ?? defaults[key];
-    }
-
-    /**
-     * Return config value along with source of the config.
-     * Refer to {@link DatabricksConfigSource} for possible values.
-     */
-    @Mutex.synchronise("configsMutex")
-    public async getS<T extends keyof ConfigState>(
-        key: T
-    ): Promise<ConfigSourceMap[T] | undefined> {
-        const config = (await this.configCache.value)[key];
-        return config
-            ? ({
-                  config: config.config ?? defaults[key],
-                  source: config.source ?? "default",
-              } as ConfigSourceMap[T])
-            : undefined;
+        return (await this.configCache.value)[key] ?? defaults[key];
     }
 
     @Mutex.synchronise("configsMutex")
