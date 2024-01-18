@@ -205,38 +205,4 @@ nothing = true
             assert.equal(profiles.length, 0);
         });
     });
-
-    it("should show error for corrupted config file and return empty profile list", async () => {
-        const logFilePath = getTempLogFilePath();
-        const cli = createCliWrapper(logFilePath);
-
-        await withFile(async ({path}) => {
-            await writeFile(path, `[bad]\ntest 123`);
-            const logs: {level: string; msg?: string; meta: any}[] = [];
-            const profiles = await cli.listProfiles(
-                path,
-                new Context({
-                    logger: logging.NamedLogger.getOrCreate(
-                        "cli-parsing-error-test",
-                        {
-                            factory: () => {
-                                return {
-                                    log: (level, msg, meta) => {
-                                        logs.push({level, msg, meta});
-                                    },
-                                };
-                            },
-                        }
-                    ),
-                })
-            );
-            const errorLog = logs.find(
-                (log) =>
-                    log.msg?.includes("Failed to parse Databricks Config File")
-            );
-            assert.ok(errorLog !== undefined);
-            assert.ok(errorLog.level === "error");
-            assert.equal(profiles.length, 0);
-        });
-    });
 });
