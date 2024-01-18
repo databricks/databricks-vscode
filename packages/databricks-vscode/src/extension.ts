@@ -60,6 +60,7 @@ import {OverrideableConfigModel} from "./configuration/models/OverrideableConfig
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeDataProvider} from "./ui/bundle-resource-explorer/BundleResourceExplorerTreeDataProvider";
+import {BundleCommands} from "./bundle/BundleCommands";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -549,12 +550,23 @@ export async function activate(
     // Bundle resource explorer
     const bundleResourceExplorerTreeDataProvider =
         new BundleResourceExplorerTreeDataProvider(configModel, context);
-
+    const bundleCommands = new BundleCommands(bundleRemoteStateModel);
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,
+        bundleCommands,
         window.registerTreeDataProvider(
             "dabsResourceExplorerView",
             bundleResourceExplorerTreeDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.refreshRemoteState",
+            bundleCommands.refreshRemoteState,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deploy",
+            bundleCommands.deploy,
+            bundleCommands
         )
     );
 
@@ -589,6 +601,7 @@ export async function activate(
             }
         })
     );
+
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
     registerBundleAutocompleteProvider(

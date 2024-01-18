@@ -101,6 +101,8 @@ export class ConnectionManager implements Disposable {
                       }
                   )
                 : undefined;
+
+        this.cli.setClusterId(clusterId);
         this.onDidChangeClusterEmitter.fire(this.cluster);
     }
 
