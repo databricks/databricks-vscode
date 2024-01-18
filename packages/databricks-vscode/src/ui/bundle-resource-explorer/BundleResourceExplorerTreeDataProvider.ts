@@ -5,9 +5,8 @@ import {
     ExtensionContext,
     ProviderResult,
     TreeDataProvider,
-    TreeItem,
 } from "vscode";
-import {Renderer, TreeNode} from "./types";
+import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {JobsRenderer} from "./JobsRenderer";
 import {onError} from "../../utils/onErrorDecorator";
@@ -26,7 +25,7 @@ export class BundleResourceExplorerTreeDataProvider
     private renderers: Array<Renderer> = [
         new JobsRenderer(this.context),
         new PipelineRenderer(this.context),
-        new TasksRenderer(),
+        new TasksRenderer(this.context),
     ];
     constructor(
         private readonly configModel: ConfigModel,
@@ -43,7 +42,9 @@ export class BundleResourceExplorerTreeDataProvider
     }
 
     @onError({popup: {prefix: "Error rendering DABs Resource Viewer"}})
-    getTreeItem(element: TreeNode): TreeItem | Thenable<TreeItem> {
+    async getTreeItem(
+        element: TreeNode
+    ): Promise<BundleResourceExplorerTreeItem> {
         if (element.type === "treeItem") {
             return element.treeItem;
         }
@@ -55,7 +56,23 @@ export class BundleResourceExplorerTreeDataProvider
             );
         }
 
-        return renderer.getTreeItem(element);
+        const treeItem = await renderer.getTreeItem(element);
+        switch ((element.data as any).modified_status) {
+            case "CREATED":
+                treeItem.label = {
+                    label: `(C) ${treeItem.label}`,
+                    highlights: [[0, 3]],
+                };
+                break;
+            case "DELETED":
+                treeItem.label = {
+                    label: `(D) ${treeItem.label}`,
+                    highlights: [[0, 3]],
+                };
+                break;
+        }
+
+        return treeItem;
     }
 
     private async getRoots(): Promise<TreeNode[]> {
