@@ -208,6 +208,7 @@ export class ConfigModel implements Disposable {
                     this.bundlePreValidateModel.setTarget(target),
                     this.bundleValidateModel.setTarget(target),
                     this.overrideableConfigModel.setTarget(target),
+                    this.bundleRemoteStateModel.setTarget(target),
                 ]);
             });
             this.onDidChangeTargetEmitter.fire();
@@ -222,6 +223,7 @@ export class ConfigModel implements Disposable {
         this._authProvider = authProvider;
         await this.readStateMutex.synchronise(async () => {
             await this.bundleValidateModel.setAuthProvider(authProvider);
+            await this.bundleRemoteStateModel.setAuthProvider(authProvider);
         });
         this.onDidChangeAuthProviderEmitter.fire();
     }
