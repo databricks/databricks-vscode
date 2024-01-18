@@ -59,6 +59,7 @@ import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
+import {BundleResourceExplorerTreeDataProvider} from "./ui/bundle-resource-explorer/BundleResourceExplorerTreeDataProvider";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -542,6 +543,18 @@ export async function activate(
             "databricks.sync.stop",
             syncCommands.stopCommand(),
             syncCommands
+        )
+    );
+
+    // Bundle resource explorer
+    const bundleResourceExplorerTreeDataProvider =
+        new BundleResourceExplorerTreeDataProvider(configModel, context);
+
+    context.subscriptions.push(
+        bundleResourceExplorerTreeDataProvider,
+        window.registerTreeDataProvider(
+            "dabsResourceExplorerView",
+            bundleResourceExplorerTreeDataProvider
         )
     );
 

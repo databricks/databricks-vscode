@@ -1,6 +1,10 @@
 import {commands, QuickPickItem, QuickPickItemKind, window} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
-import {InputStep, MultiStepInput, ValidationMessageType} from "../ui/wizard";
+import {
+    InputStep,
+    MultiStepInput,
+    ValidationMessageType,
+} from "../ui/MultiStepInputWizard";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {
     AuthProvider,

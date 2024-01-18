@@ -4,7 +4,7 @@ import {
     InputStep,
     MultiStepInput,
     ValidationMessageType,
-} from "../ui/wizard";
+} from "../ui/MultiStepInputWizard";
 import {CliWrapper} from "../cli/CliWrapper";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {

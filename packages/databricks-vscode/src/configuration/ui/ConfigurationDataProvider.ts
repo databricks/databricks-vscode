@@ -30,23 +30,21 @@ export class ConfigurationDataProvider
     > = this._onDidChangeTreeData.event;
 
     private disposables: Array<Disposable> = [];
-    private components: Array<BaseComponent> = [];
+    private components: Array<BaseComponent> = [
+        new BundleTargetComponent(this.configModel),
+        new AuthTypeComponent(this.connectionManager, this.configModel),
+        new ClusterComponent(this.connectionManager, this.configModel),
+        new SyncDestinationComponent(
+            this.codeSynchronizer,
+            this.connectionManager,
+            this.configModel
+        ),
+    ];
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly codeSynchronizer: CodeSynchronizer,
         private readonly configModel: ConfigModel
     ) {
-        this.components.push(
-            new BundleTargetComponent(this.configModel),
-            new AuthTypeComponent(this.connectionManager, this.configModel),
-            new ClusterComponent(this.connectionManager, this.configModel),
-            new SyncDestinationComponent(
-                this.codeSynchronizer,
-                this.connectionManager,
-                this.configModel
-            )
-        );
-
         this.disposables.push(
             ...this.components,
             ...this.components.map((c) =>
