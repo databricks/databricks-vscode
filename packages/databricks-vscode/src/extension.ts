@@ -59,6 +59,7 @@ import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
+import {BundleCommands} from "./bundle/BundleCommands";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -575,6 +576,21 @@ export async function activate(
                 fn();
             }
         })
+    );
+
+    // Bundle
+    const bundleCommands = new BundleCommands(bundleRemoteStateModel);
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.bundle.refreshRemoteState",
+            bundleCommands.refreshRemoteState,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deploy",
+            bundleCommands.deploy,
+            bundleCommands
+        )
     );
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema

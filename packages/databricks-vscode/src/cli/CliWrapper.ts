@@ -36,10 +36,15 @@ export type SyncType = "full" | "incremental";
  * of the databricks CLI
  */
 export class CliWrapper {
+    private clusterId?: string;
     constructor(
         private extensionContext: ExtensionContext,
         private logFilePath?: string
     ) {}
+
+    public setClusterId(clusterId?: string) {
+        this.clusterId = clusterId;
+    }
 
     get cliPath(): string {
         return this.extensionContext.asAbsolutePath("./bin/databricks");
@@ -184,6 +189,8 @@ export class CliWrapper {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    DATABRICKS_CLUSTER_ID: this.clusterId,
                 },
                 shell: true,
             }
@@ -210,6 +217,36 @@ export class CliWrapper {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    DATABRICKS_CLUSTER_ID: this.clusterId,
+                },
+                shell: true,
+            }
+        );
+
+        if (stderr !== "") {
+            throw new Error(stderr);
+        }
+        return stdout;
+    }
+
+    async bundleDeploy(
+        target: string,
+        authProvider: AuthProvider,
+        workspaceFolder: Uri,
+        configfilePath?: string
+    ) {
+        const {stdout, stderr} = await execFile(
+            this.cliPath,
+            ["bundle", "summarise", "--target", target],
+            {
+                cwd: workspaceFolder.fsPath,
+                env: {
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getProxyEnvVars(),
+                    ...authProvider.toEnv(),
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    DATABRICKS_CLUSTER_ID: this.clusterId,
                 },
                 shell: true,
             }

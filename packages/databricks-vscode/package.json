@@ -230,6 +230,20 @@
                 "title": "Select a Databricks Asset Bundle target.",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.refreshRemoteState",
+                "icon": "$(refresh)",
+                "title": "Refresh remote state",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deploy",
+                "icon": "$(cloud-upload)",
+                "title": "Deploy bundle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -306,6 +320,16 @@
                 {
                     "command": "databricks.wsfs.createFolder",
                     "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.refreshRemoteState",
+                    "when": "view == dabsResourceExplorerView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.deploy",
+                    "when": "view == dabsResourceExplorerView",
                     "group": "navigation@1"
                 }
             ],
