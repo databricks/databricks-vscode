@@ -60,14 +60,14 @@ export class BundleResourceExplorerTreeDataProvider
         switch ((element.data as any).modified_status) {
             case "CREATED":
                 treeItem.label = {
-                    label: `(C) ${treeItem.label}`,
-                    highlights: [[0, 3]],
+                    label: `Created ${treeItem.label}`,
+                    highlights: [[0, 7]],
                 };
                 break;
             case "DELETED":
                 treeItem.label = {
-                    label: `(D) ${treeItem.label}`,
-                    highlights: [[0, 3]],
+                    label: `Deleted ${treeItem.label}`,
+                    highlights: [[0, 7]],
                 };
                 break;
         }
