@@ -34,7 +34,6 @@ import {
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
-import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManager";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
@@ -101,9 +100,10 @@ export async function activate(
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
-    context.environmentVariableCollection.append(
+    context.environmentVariableCollection.persistent = false;
+    context.environmentVariableCollection.prepend(
         "PATH",
-        `${path.delimiter}${context.asAbsolutePath("./bin")}`
+        `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
 
     const loggerManager = new LoggerManager(context);
@@ -223,10 +223,9 @@ export async function activate(
             }
         })
     );
-    const metadataServiceManager = new MetadataServiceManager(
-        connectionManager
-    );
-    await metadataServiceManager.listen();
+
+    const metadataService = await connectionManager.startMetadataService();
+    context.subscriptions.push(metadataService);
 
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(
         connectionManager
@@ -238,7 +237,6 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        metadataServiceManager,
         window.registerTreeDataProvider(
             "workspaceFsView",
             workspaceFsDataProvider
