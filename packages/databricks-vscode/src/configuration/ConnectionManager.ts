@@ -255,6 +255,7 @@ export class ConnectionManager implements Disposable {
                     );
                 }
                 await this.configModel.setAuthProvider(authProvider);
+                await this._metadataService.setApiClient(this.apiClient);
                 this.updateState("CONNECTED");
             });
         } catch (e) {
