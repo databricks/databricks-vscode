@@ -25,6 +25,8 @@ function toGlobPath(path: string) {
 }
 export class BundleFileSet {
     private rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
+    private subProjectFilePattern: string = `**/${this.rootFilePattern}`;
+
     public readonly bundleDataCache: CachedValue<BundleSchema> =
         new CachedValue<BundleSchema>(async () => {
             let bundle = {};
@@ -52,6 +54,22 @@ export class BundleFileSet {
             return undefined;
         }
         return Uri.file(rootFile[0]);
+    }
+
+    async getSubProjects(): Promise<{relative: Uri; absolute: Uri}[]> {
+        const subProjectRoots = await glob.glob(
+            toGlobPath(this.getAbsolutePath(this.subProjectFilePattern).fsPath),
+            {nocase: process.platform === "win32"}
+        );
+        const delimiter = process.platform === "win32" ? "\\" : "/";
+        return subProjectRoots.map((rootFile) => {
+            const partsWithoutFileName = rootFile.split(delimiter).slice(0, -1);
+            const absolute = Uri.file(partsWithoutFileName.join(delimiter));
+            const relative = Uri.file(
+                absolute.fsPath.replace(this.workspaceRoot.fsPath, "")
+            );
+            return {absolute, relative};
+        });
     }
 
     async getIncludedFilesGlob() {

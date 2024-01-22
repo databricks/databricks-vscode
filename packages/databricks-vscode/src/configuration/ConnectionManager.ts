@@ -121,7 +121,6 @@ export class ConnectionManager implements Disposable {
     }
 
     public async init() {
-        await this.configModel.init();
         await this.loginWithSavedAuth();
 
         this.disposables.push(
@@ -247,10 +246,14 @@ export class ConnectionManager implements Disposable {
 
                 await this.updateSyncDestinationMapper();
                 await this.updateClusterManager();
-                await this.configModel.set(
-                    "authProfile",
-                    authProvider.toJSON().profile as string | undefined
-                );
+                // Target may not exist when we login in the workspace without any bundle configuration
+                // (e.g. for the sake of bundle initialization wizard)
+                if (this.configModel.target) {
+                    await this.configModel.set(
+                        "authProfile",
+                        authProvider.toJSON().profile as string | undefined
+                    );
+                }
                 await this.configModel.setAuthProvider(authProvider);
                 this.updateState("CONNECTED");
             });

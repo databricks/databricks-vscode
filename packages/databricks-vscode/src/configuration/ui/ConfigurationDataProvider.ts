@@ -15,6 +15,7 @@ import {AuthTypeComponent} from "./AuthTypeComponent";
 import {ClusterComponent} from "./ClusterComponent";
 import {SyncDestinationComponent} from "./SyncDestinationComponent";
 import {CodeSynchronizer} from "../../sync";
+import {BundleProjectManager} from "../../bundle/BundleProjectManager";
 
 /**
  * Data provider for the cluster tree view
@@ -33,6 +34,7 @@ export class ConfigurationDataProvider
     private components: Array<BaseComponent> = [];
     constructor(
         private readonly connectionManager: ConnectionManager,
+        private readonly bundleProjectManager: BundleProjectManager,
         private readonly codeSynchronizer: CodeSynchronizer,
         private readonly configModel: ConfigModel
     ) {
@@ -48,6 +50,9 @@ export class ConfigurationDataProvider
         );
 
         this.disposables.push(
+            this.bundleProjectManager.onDidChangeStatus(() => {
+                this._onDidChangeTreeData.fire();
+            }),
             ...this.components,
             ...this.components.map((c) =>
                 c.onDidChange(() => {
@@ -68,17 +73,17 @@ export class ConfigurationDataProvider
     async getChildren(
         parent?: ConfigurationTreeItem | undefined
     ): Promise<Array<ConfigurationTreeItem>> {
-        switch (this.connectionManager.state) {
-            case "DISCONNECTED":
-            case "CONNECTED":
-                break;
-            case "CONNECTING":
-                await this.connectionManager.waitForConnect();
-                break;
+        if (this.connectionManager.state === "DISCONNECTED") {
+            return [];
+        } else if (this.connectionManager.state === "CONNECTING") {
+            await this.connectionManager.waitForConnect();
         }
-
-        return (
-            await Promise.all(this.components.map((c) => c.getChildren(parent)))
-        ).flat();
+        const isInBundleProject =
+            await this.bundleProjectManager.isBundleProject();
+        if (!isInBundleProject) {
+            return [];
+        }
+        const children = this.components.map((c) => c.getChildren(parent));
+        return (await Promise.all(children)).flat();
     }
 }

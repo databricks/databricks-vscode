@@ -58,6 +58,7 @@ import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
+import {BundleProjectManager} from "./bundle/BundleProjectManager";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -205,7 +206,6 @@ export async function activate(
         bundlePreValidateModel,
         bundleRemoteStateModel,
         configModel,
-        configModel,
         connectionManager,
         connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
@@ -225,6 +225,27 @@ export async function activate(
 
     const metadataService = await connectionManager.startMetadataService();
     context.subscriptions.push(metadataService);
+
+    const bundleProjectManager = new BundleProjectManager(
+        customWhenContext,
+        connectionManager,
+        configModel,
+        bundleFileSet,
+        workspaceUri
+    );
+    context.subscriptions.push(
+        bundleProjectManager,
+        telemetry.registerCommand(
+            "databricks.bundle.openSubProject",
+            bundleProjectManager.promptToOpenSubProjects,
+            bundleProjectManager
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.initNewProject",
+            bundleProjectManager.initNewProject,
+            bundleProjectManager
+        )
+    );
 
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(
         connectionManager
@@ -388,6 +409,7 @@ export async function activate(
 
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
+        bundleProjectManager,
         synchronizer,
         configModel
     );
@@ -620,9 +642,10 @@ export async function activate(
         })
     );
 
-    connectionManager.init().catch((e) => {
+    bundleProjectManager.configureWorkspace().catch((e) => {
         window.showErrorMessage(e);
     });
+
     customWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 
