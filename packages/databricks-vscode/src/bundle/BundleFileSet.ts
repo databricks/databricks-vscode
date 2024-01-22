@@ -38,11 +38,11 @@ export class BundleFileSet {
 
     constructor(private readonly workspaceRoot: Uri) {}
 
-    getAbsolutePath(path: string | Uri) {
+    getAbsolutePath(path: string | Uri, root?: Uri) {
         if (typeof path === "string") {
-            return Uri.joinPath(this.workspaceRoot, path);
+            return Uri.joinPath(root ?? this.workspaceRoot, path);
         }
-        return Uri.joinPath(this.workspaceRoot, path.fsPath);
+        return Uri.joinPath(root ?? this.workspaceRoot, path.fsPath);
     }
 
     async getRootFile() {
@@ -56,9 +56,9 @@ export class BundleFileSet {
         return Uri.file(rootFile[0]);
     }
 
-    async getSubProjects(): Promise<{relative: Uri; absolute: Uri}[]> {
+    async getSubProjects(root?: Uri): Promise<{relative: Uri; absolute: Uri}[]> {
         const subProjectRoots = await glob.glob(
-            toGlobPath(this.getAbsolutePath(this.subProjectFilePattern).fsPath),
+            toGlobPath(this.getAbsolutePath(this.subProjectFilePattern, root).fsPath),
             {nocase: process.platform === "win32"}
         );
         return subProjectRoots.map((rootFile) => {

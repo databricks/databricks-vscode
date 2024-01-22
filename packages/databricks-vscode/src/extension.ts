@@ -227,6 +227,7 @@ export async function activate(
     context.subscriptions.push(metadataService);
 
     const bundleProjectManager = new BundleProjectManager(
+        cli,
         customWhenContext,
         connectionManager,
         configModel,
@@ -237,7 +238,7 @@ export async function activate(
         bundleProjectManager,
         telemetry.registerCommand(
             "databricks.bundle.openSubProject",
-            bundleProjectManager.promptToOpenSubProjects,
+            bundleProjectManager.openSubProjects,
             bundleProjectManager
         ),
         telemetry.registerCommand(

@@ -45,18 +45,23 @@ export class CliWrapper {
         return this.extensionContext.asAbsolutePath("./bin/databricks");
     }
 
-    get loggingArguments(): string[] {
+    getLoggingArguments(escape?: boolean): string[] {
         if (!workspaceConfigs.loggingEnabled) {
             return [];
         }
+        const logFilePath = this.logFilePath ?? "stderr";
         return [
             "--log-level",
             "debug",
             "--log-file",
-            this.logFilePath ?? "stderr",
+            escape ? this.escapePathArgument(logFilePath) : logFilePath,
             "--log-format",
             "json",
         ];
+    }
+
+    escapePathArgument(arg: string): string {
+        return `"${arg.replaceAll('"', '\\"')}"`;
     }
 
     /**
@@ -73,7 +78,7 @@ export class CliWrapper {
             "--watch",
             "--output",
             "json",
-            ...this.loggingArguments,
+            ...this.getLoggingArguments(),
         ];
         if (syncType === "full") {
             args.push("--full");
@@ -88,7 +93,7 @@ export class CliWrapper {
                 "auth",
                 "profiles",
                 "--skip-validate",
-                ...this.loggingArguments,
+                ...this.getLoggingArguments(),
             ],
         };
     }

@@ -5,6 +5,7 @@ import {
     Uri,
     window,
     commands,
+    TerminalLocation,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
@@ -13,6 +14,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {CachedValue} from "../locking/CachedValue";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
+import {CliWrapper} from "../cli/CliWrapper";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -41,6 +43,7 @@ export class BundleProjectManager {
     );
 
     constructor(
+        private cli: CliWrapper,
         private customWhenContext: CustomWhenContext,
         private connectionManager: ConnectionManager,
         private configModel: ConfigModel,
@@ -83,11 +86,15 @@ export class BundleProjectManager {
         await this.connectionManager.init();
     }
 
-    public async promptToOpenSubProjects() {
+    public async openSubProjects() {
         const projects = await this._subProjects.value;
         if (projects.length === 0) {
             return;
         }
+        return this.promptToOpenSubProjects(projects);
+    }
+
+    private async promptToOpenSubProjects(projects: {absolute: Uri, relative: Uri}[]) {
         type OpenProjectItem = QuickPickItem & {uri?: Uri};
         const items: OpenProjectItem[] = projects.map((project) => {
             return {
@@ -123,7 +130,37 @@ export class BundleProjectManager {
             this.logger.debug("No parent folder provided");
             return;
         }
-        // TODO
+        await this.openInitWizardInTerminal(parentFolder);
+        await this._isBundleProject.refresh();
+        const projects = await this.bundleFileSet.getSubProjects(parentFolder);
+        if (projects.length > 0) {
+            await this.promptToOpenSubProjects(projects);
+        }
+    }
+
+    private async openInitWizardInTerminal(parentFolder: Uri) {
+        const terminal = window.createTerminal({
+            name: "Databricks Project Init",
+            isTransient: true,
+            location: TerminalLocation.Editor,
+        });
+        const args = [
+            "bundle",
+            "init",
+            "--output-dir",
+            this.cli.escapePathArgument(parentFolder.fsPath),
+            ...this.cli.getLoggingArguments(true),
+        ];
+        const finalPrompt = `echo "Press any key to close the terminal and continue ..."; read; exit`;
+        terminal.sendText(`${this.cli.cliPath} ${args.join(" ")}; ${finalPrompt}`);
+        return new Promise<void>((resolve) => {
+            const closeEvent = window.onDidCloseTerminal(async (t) => {
+                if (t !== terminal) return;
+                closeEvent.dispose();
+                resolve();
+            });
+            this.disposables.push(closeEvent);
+        });
     }
 
     private async promptForParentFolder(): Promise<Uri | undefined> {
