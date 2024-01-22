@@ -57,9 +57,9 @@
                 "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
-                "command": "databricks.connection.configureWorkspace",
+                "command": "databricks.connection.configureLogin",
                 "icon": "$(gear)",
-                "title": "Configure workspace",
+                "title": "Sign in to Databricks workspace",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
@@ -278,7 +278,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Configure your Databricks workspace:\n[Configure Databricks](command:databricks.connection.configureWorkspace)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "contents": "Sign in to your Databricks workspace:\n[Sign in to Databricks](command:databricks.connection.configureLogin)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
                 "when": "workspaceFolderCount > 0 && !databricks.context.loggedIn"
             },
             {
@@ -290,7 +290,7 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "databricks.connection.configureWorkspace",
+                    "command": "databricks.connection.configureLogin",
                     "when": "view == configurationView",
                     "group": "navigation@3"
                 },
@@ -347,7 +347,7 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "databricks.connection.configureWorkspace",
+                    "command": "databricks.connection.configureLogin",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.authType.*$/",
                     "group": "inline@2"
                 },

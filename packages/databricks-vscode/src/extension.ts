@@ -440,8 +440,8 @@ export async function activate(
             connectionCommands
         ),
         telemetry.registerCommand(
-            "databricks.connection.configureWorkspace",
-            connectionCommands.configureWorkspaceCommand,
+            "databricks.connection.configureLogin",
+            connectionCommands.configureLoginCommand,
             connectionCommands
         ),
         telemetry.registerCommand(
