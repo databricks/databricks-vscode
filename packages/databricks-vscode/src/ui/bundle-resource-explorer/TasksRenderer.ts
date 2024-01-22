@@ -28,9 +28,7 @@ export class TasksRenderer implements Renderer {
         };
     }
 
-    async getTreeItem(
-        element: TreeNode
-    ): Promise<BundleResourceExplorerTreeItem> {
+    getTreeItem(element: TreeNode): BundleResourceExplorerTreeItem {
         if (element.type !== "task") {
             throw new Error("Invalid element type");
         }
@@ -54,12 +52,12 @@ export class TasksRenderer implements Renderer {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async getChildren(element: TreeNode): Promise<TreeNode[]> {
+    getChildren(element: TreeNode): TreeNode[] {
         return [];
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async getRoots(remoteStateConfig: BundleRemoteState): Promise<TreeNode[]> {
+    getRoots(remoteStateConfig: BundleRemoteState): TreeNode[] {
         return [];
     }
 }

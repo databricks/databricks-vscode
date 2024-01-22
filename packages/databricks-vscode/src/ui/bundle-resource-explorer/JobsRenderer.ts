@@ -1,45 +1,24 @@
-import {ExtensionContext, TreeItemCollapsibleState} from "vscode";
+import {TreeItemCollapsibleState} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
-import path from "path";
 
 export class JobsRenderer implements Renderer {
     readonly type = "jobs";
 
-    constructor(private readonly context: ExtensionContext) {}
-    async getTreeItem(
-        element: TreeNode
-    ): Promise<BundleResourceExplorerTreeItem> {
+    constructor() {}
+    getTreeItem(element: TreeNode): BundleResourceExplorerTreeItem {
         if (element.type !== this.type) {
             throw new Error("Invalid element type");
         }
 
         return {
             label: element.data.name,
-            iconPath: {
-                dark: this.context.asAbsolutePath(
-                    path.join(
-                        "resources",
-                        "dark",
-                        "resource-explorer",
-                        "jobs.svg"
-                    )
-                ),
-                light: this.context.asAbsolutePath(
-                    path.join(
-                        "resources",
-                        "light",
-                        "resource-explorer",
-                        "jobs.svg"
-                    )
-                ),
-            },
             contextValue: "job",
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }
 
-    async getChildren(element: TreeNode): Promise<TreeNode[]> {
+    getChildren(element: TreeNode): TreeNode[] {
         if (element.type !== this.type) {
             return [];
         }
@@ -59,7 +38,7 @@ export class JobsRenderer implements Renderer {
         });
     }
 
-    async getRoots(remoteStateConfig: BundleRemoteState): Promise<TreeNode[]> {
+    getRoots(remoteStateConfig: BundleRemoteState): TreeNode[] {
         const jobs = remoteStateConfig?.resources?.jobs;
         if (jobs === undefined) {
             return [];

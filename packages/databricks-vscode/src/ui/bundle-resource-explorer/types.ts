@@ -28,7 +28,15 @@ export type TreeNode =
           type: "treeItem";
           parent?: TreeNode;
           treeItem: BundleResourceExplorerTreeItem;
-      };
+      }
+    | {
+          [k in keyof Required<Resources>]: {
+              type: "resource_type_header";
+              parent: undefined;
+              resourceType: k;
+              children: TreeNode[];
+          };
+      }[keyof Required<Resources>];
 
 export interface BundleResourceExplorerTreeItem extends TreeItem {
     url?: string;
@@ -36,7 +44,7 @@ export interface BundleResourceExplorerTreeItem extends TreeItem {
 
 export interface Renderer {
     type: TreeNode["type"];
-    getTreeItem(element: TreeNode): Promise<BundleResourceExplorerTreeItem>;
-    getChildren(element: TreeNode): Promise<TreeNode[]>;
-    getRoots(remoteStateConfig: BundleRemoteState): Promise<TreeNode[]>;
+    getTreeItem(element: TreeNode): BundleResourceExplorerTreeItem;
+    getChildren(element: TreeNode): TreeNode[];
+    getRoots(remoteStateConfig: BundleRemoteState): TreeNode[];
 }

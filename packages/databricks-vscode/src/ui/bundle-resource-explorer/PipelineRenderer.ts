@@ -1,46 +1,25 @@
-import {ExtensionContext, TreeItemCollapsibleState} from "vscode";
+import {TreeItemCollapsibleState} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
-import path from "path";
 
 export class PipelineRenderer implements Renderer {
     readonly type = "pipelines";
 
-    constructor(private readonly context: ExtensionContext) {}
+    constructor() {}
 
-    async getTreeItem(
-        element: TreeNode
-    ): Promise<BundleResourceExplorerTreeItem> {
+    getTreeItem(element: TreeNode): BundleResourceExplorerTreeItem {
         if (element.type !== this.type) {
             throw new Error("Invalid element type");
         }
 
         return {
             label: element.data.name,
-            iconPath: {
-                dark: this.context.asAbsolutePath(
-                    path.join(
-                        "resources",
-                        "dark",
-                        "resource-explorer",
-                        `${this.type}.svg`
-                    )
-                ),
-                light: this.context.asAbsolutePath(
-                    path.join(
-                        "resources",
-                        "light",
-                        "resource-explorer",
-                        `${this.type}.svg`
-                    )
-                ),
-            },
             contextValue: this.type,
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }
 
-    async getChildren(element: TreeNode): Promise<TreeNode[]> {
+    getChildren(element: TreeNode): TreeNode[] {
         if (element.type !== this.type) {
             return [];
         }
@@ -73,7 +52,7 @@ export class PipelineRenderer implements Renderer {
         return children;
     }
 
-    async getRoots(remoteStateConfig: BundleRemoteState): Promise<TreeNode[]> {
+    getRoots(remoteStateConfig: BundleRemoteState): TreeNode[] {
         const pipelines = remoteStateConfig?.resources?.pipelines;
         if (pipelines === undefined) {
             return [];
