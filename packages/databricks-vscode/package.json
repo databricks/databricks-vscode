@@ -273,13 +273,8 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Current workspace has no Databricks configuration at the root level, do you want to initialize a new Databricks project?\n[Initialize New Project](command:databricks.bundle.initNewProject)\n",
-                "when": "workspaceFolderCount > 0 && databricks.context.loggedIn"
-            },
-            {
-                "view": "configurationView",
-                "contents": "Sign in to your Databricks workspace:\n[Sign in to Databricks](command:databricks.connection.configureLogin)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
-                "when": "workspaceFolderCount > 0 && !databricks.context.loggedIn"
+                "contents": "Current workspace has no Databricks configuration at the root level, do you want to initialize a new Databricks project?\n[Initialize New Project](command:databricks.bundle.initNewProject)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "when": "workspaceFolderCount > 0"
             },
             {
                 "view": "configurationView",
