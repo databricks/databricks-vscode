@@ -45,19 +45,29 @@ export class CliWrapper {
         return this.extensionContext.asAbsolutePath("./bin/databricks");
     }
 
-    getLoggingArguments(escape?: boolean): string[] {
+    getLoggingArguments(): string[] {
         if (!workspaceConfigs.loggingEnabled) {
             return [];
         }
-        const logFilePath = this.logFilePath ?? "stderr";
         return [
             "--log-level",
             "debug",
             "--log-file",
-            escape ? this.escapePathArgument(logFilePath) : logFilePath,
+            this.logFilePath ?? "stderr",
             "--log-format",
             "json",
         ];
+    }
+
+    getLogginEnvVars(): Record<string, string> {
+        if (!workspaceConfigs.loggingEnabled) {
+            return {};
+        }
+        return {
+            DATABRICKS_LOG_LEVEL: "debug",
+            DATABRICKS_LOG_FILE: this.logFilePath ?? "stderr",
+            DATABRICKS_LOG_FORMAT: "json",
+        }
     }
 
     escapePathArgument(arg: string): string {
