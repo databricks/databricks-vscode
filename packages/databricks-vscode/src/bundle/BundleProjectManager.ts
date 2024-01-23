@@ -173,12 +173,15 @@ export class BundleProjectManager {
     }
 
     public async initNewProject() {
-        let authProvider = this.connectionManager.databricksWorkspace?.authProvider;
+        let authProvider =
+            this.connectionManager.databricksWorkspace?.authProvider;
         if (!authProvider) {
             authProvider = await LoginWizard.run(this.cli, this.configModel);
         }
         if (!authProvider || !(await authProvider.check())) {
-            this.logger.debug("No valid auth providers, can't proceed with bundle init wizard");
+            this.logger.debug(
+                "No valid auth providers, can't proceed with bundle init wizard"
+            );
             return;
         }
         const parentFolder = await this.promptForParentFolder();
