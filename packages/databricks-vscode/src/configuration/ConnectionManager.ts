@@ -246,14 +246,10 @@ export class ConnectionManager implements Disposable {
 
                 await this.updateSyncDestinationMapper();
                 await this.updateClusterManager();
-                // Target may not exist when we login in the workspace without any bundle configuration
-                // (e.g. for the sake of bundle initialization wizard)
-                if (this.configModel.target) {
-                    await this.configModel.set(
-                        "authProfile",
-                        authProvider.toJSON().profile as string | undefined
-                    );
-                }
+                await this.configModel.set(
+                    "authProfile",
+                    authProvider.toJSON().profile as string | undefined
+                );
                 await this.configModel.setAuthProvider(authProvider);
                 await this._metadataService.setApiClient(this.apiClient);
                 this.updateState("CONNECTED");
