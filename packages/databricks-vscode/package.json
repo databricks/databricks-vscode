@@ -230,6 +230,12 @@
                 "title": "Select a Databricks Asset Bundle target.",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.initNewProject",
+                "title": "Initialize new Databricks project",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -291,6 +297,10 @@
                 },
                 {
                     "command": "databricks.quickstart.open",
+                    "when": "view == configurationView"
+                },
+                {
+                    "command": "databricks.bundle.initNewProject",
                     "when": "view == configurationView"
                 },
                 {

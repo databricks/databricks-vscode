@@ -73,7 +73,7 @@ export class BundleFileSet {
                 const dirname = path.dirname(path.normalize(rootFile));
                 const absolute = Uri.file(dirname);
                 const relative = Uri.file(
-                    absolute.fsPath.replace(this.workspaceRoot.fsPath, "")
+                    absolute.fsPath.replace(normalizedRoot, "")
                 );
                 return {absolute, relative};
             })

@@ -156,7 +156,7 @@ export class BundleProjectManager {
             {label: "Choose another folder"}
         );
         const options = {
-            title: "We've detected several Databricks projects, select the one you want to open",
+            title: "Select the project you want to open",
         };
         const item = await window.showQuickPick<OpenProjectItem>(
             items,
@@ -173,8 +173,12 @@ export class BundleProjectManager {
     }
 
     public async initNewProject() {
-        const authProvider = await LoginWizard.run(this.cli, this.configModel);
+        let authProvider = this.connectionManager.databricksWorkspace?.authProvider;
+        if (!authProvider) {
+            authProvider = await LoginWizard.run(this.cli, this.configModel);
+        }
         if (!authProvider || !(await authProvider.check())) {
+            this.logger.debug("No valid auth providers, can't proceed with bundle init wizard");
             return;
         }
         const parentFolder = await this.promptForParentFolder();
@@ -195,7 +199,7 @@ export class BundleProjectManager {
             await this.promptToOpenSubProjects(projects);
         } else {
             this.logger.debug(
-                `No projects detect after the init wizard, showing notification to open a folder manually`
+                `No projects detected after the init wizard, showing notification to open a folder manually`
             );
             const choice = await window.showInformationMessage(
                 `We haven't detected any Databricks projects in "${parentFolder.fsPath}". If you initialized your project somewhere else, please open the folder manually.`,

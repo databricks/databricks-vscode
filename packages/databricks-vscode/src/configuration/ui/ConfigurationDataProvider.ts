@@ -73,11 +73,6 @@ export class ConfigurationDataProvider
     async getChildren(
         parent?: ConfigurationTreeItem | undefined
     ): Promise<Array<ConfigurationTreeItem>> {
-        if (this.connectionManager.state === "DISCONNECTED") {
-            return [];
-        } else if (this.connectionManager.state === "CONNECTING") {
-            await this.connectionManager.waitForConnect();
-        }
         const isInBundleProject =
             await this.bundleProjectManager.isBundleProject();
         if (!isInBundleProject) {
