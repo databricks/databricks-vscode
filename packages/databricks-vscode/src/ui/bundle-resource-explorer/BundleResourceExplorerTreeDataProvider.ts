@@ -53,7 +53,7 @@ export class BundleResourceExplorerTreeDataProvider
         );
     }
 
-    @onError({popup: {prefix: "Error rendering DABs Resource Viewer"}})
+    @onError({popup: {prefix: "Error rendering DABs Resource Viewer."}})
     async getTreeItem(
         element: TreeNode
     ): Promise<BundleResourceExplorerTreeItem> {
@@ -146,7 +146,7 @@ export class BundleResourceExplorerTreeDataProvider
             .flat();
     }
 
-    @onError({popup: {prefix: "Error rendering DABs Resource Viewer"}})
+    @onError({popup: {prefix: "Error rendering DABs Resource Viewer."}})
     async getChildren(element?: TreeNode) {
         if (element === undefined) {
             return await this.getRoots();

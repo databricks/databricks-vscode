@@ -14,7 +14,8 @@ export class PipelineRenderer implements Renderer {
 
         return {
             label: element.data.name,
-            contextValue: this.type,
+            contextValue:
+                "databricks.bundle.resource-explorer.runnable.pipeline",
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }
@@ -62,7 +63,7 @@ export class PipelineRenderer implements Renderer {
             return {
                 type: this.type,
                 data: pipelines[pipelineKey],
-                resourceKey: pipelineKey,
+                resourceKey: `pipelines.${pipelineKey}`,
             };
         });
     }

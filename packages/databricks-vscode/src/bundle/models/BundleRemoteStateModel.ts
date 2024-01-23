@@ -28,7 +28,7 @@ export type BundleRemoteState = BundleTarget & {
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemoteState> {
-    private target: string | undefined;
+    public target: string | undefined;
     private authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
     private refreshInterval: NodeJS.Timeout | undefined;
@@ -69,6 +69,23 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         await this.refresh();
     }
 
+    public getRunCommand(resourceKey: string) {
+        if (this.target === undefined) {
+            throw new Error("Target is undefined");
+        }
+        if (this.authProvider === undefined) {
+            throw new Error("No authentication method is set");
+        }
+
+        return this.cli.getBundleRunCommand(
+            this.target,
+            this.authProvider,
+            resourceKey,
+            this.workspaceFolder,
+            this.workspaceConfigs.databrickscfgLocation
+        );
+    }
+
     @withLogContext(Loggers.Extension)
     public init(@context ctx?: Context) {
         this.refreshInterval = setInterval(async () => {
@@ -105,14 +122,17 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             return {};
         }
 
-        return JSON.parse(
-            await this.cli.bundleSummarise(
-                this.target,
-                this.authProvider,
-                this.workspaceFolder,
-                this.workspaceConfigs.databrickscfgLocation
-            )
+        const output = await this.cli.bundleSummarise(
+            this.target,
+            this.authProvider,
+            this.workspaceFolder,
+            this.workspaceConfigs.databrickscfgLocation
         );
+
+        if (output === "" || output === undefined) {
+            return {};
+        }
+        return JSON.parse(output);
     }
 
     dispose() {

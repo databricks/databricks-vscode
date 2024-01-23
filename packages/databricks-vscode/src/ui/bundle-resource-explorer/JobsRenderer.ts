@@ -13,7 +13,7 @@ export class JobsRenderer implements Renderer {
 
         return {
             label: element.data.name,
-            contextValue: "job",
+            contextValue: "databricks.bundle.resource-explorer.runnable.job",
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }
@@ -32,6 +32,7 @@ export class JobsRenderer implements Renderer {
                 type: "task",
                 jobId: element.data.id,
                 jobKey: element.resourceKey,
+                resourceKey: `${element.resourceKey}.tasks.${task.task_key}`,
                 parent: element,
                 data: task,
             };
@@ -48,7 +49,7 @@ export class JobsRenderer implements Renderer {
             return {
                 type: this.type,
                 data: jobs[jobKey],
-                resourceKey: jobKey,
+                resourceKey: `jobs.${jobKey}`,
             };
         });
     }

@@ -4,23 +4,27 @@ import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 type Resources = Required<BundleRemoteState>["resources"];
 type Job = Required<Resources>["jobs"][string];
 
+export type ResourceTreeNode = {
+    [k in keyof Required<Resources>]: {
+        type: k;
+        /** The key used to refer to the resource in databricks.yml. Also the key used for running the resource*/
+        resourceKey: string;
+        parent?: TreeNode;
+        data: Required<Resources>[k][string];
+    };
+}[keyof Required<Resources>];
+
 export type TreeNode =
-    | {
-          [k in keyof Required<Resources>]: {
-              type: k;
-              /** The key used to refer to the job in databricks.yml. */
-              resourceKey: string;
-              parent?: TreeNode;
-              data: Required<Resources>[k][string];
-          };
-      }[keyof Required<Resources>]
+    | ResourceTreeNode
     | {
           type: "task";
           jobId?: string;
           /** The key used to refer to the job in databricks.yml. This is
            * especially useful for jobs which have not been deployed yet.
            */
-          jobKey?: string;
+          jobKey: string;
+          /** The key used to refer to the resource in databricks.yml. */
+          resourceKey: string;
           parent?: TreeNode;
           data: Required<Job>["tasks"][number];
       }
