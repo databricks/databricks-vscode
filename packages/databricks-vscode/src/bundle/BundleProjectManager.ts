@@ -15,6 +15,7 @@ import {Loggers} from "../logger";
 import {CachedValue} from "../locking/CachedValue";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {CliWrapper} from "../cli/CliWrapper";
+import {LoginWizard} from "../configuration/LoginWizard";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -72,7 +73,7 @@ export class BundleProjectManager {
         const subProjects = await this._subProjects.value;
         if (subProjects.length > 0) {
             this.logger.debug(
-                "Detected multiple sub folders with bundle projects, prompting to open one"
+                "Detected multiple sub folders with bundle projects"
             );
         } else {
             this.logger.debug(
@@ -125,31 +126,37 @@ export class BundleProjectManager {
     }
 
     public async initNewProject() {
+        const authProvider = await LoginWizard.run(this.cli, this.configModel);
+        if (!authProvider || !(await authProvider.check())) {
+            return;
+        }
         const parentFolder = await this.promptForParentFolder();
         if (!parentFolder) {
             this.logger.debug("No parent folder provided");
             return;
         }
-        await this.openInitWizardInTerminal(parentFolder);
+        await this.bundleInitInTerminal(parentFolder, authProvider.toEnv());
         await this._isBundleProject.refresh();
         const projects = await this.bundleFileSet.getSubProjects(parentFolder);
         if (projects.length > 0) {
             await this.promptToOpenSubProjects(projects);
+        } else {
+            // notify that we don't know what to open
         }
     }
 
-    private async openInitWizardInTerminal(parentFolder: Uri) {
+    private async bundleInitInTerminal(parentFolder: Uri, env: Record<string, string>) {
         const terminal = window.createTerminal({
             name: "Databricks Project Init",
             isTransient: true,
             location: TerminalLocation.Editor,
+            env: {...env, ...this.cli.getLogginEnvVars()},
         });
         const args = [
             "bundle",
             "init",
             "--output-dir",
             this.cli.escapePathArgument(parentFolder.fsPath),
-            ...this.cli.getLoggingArguments(true),
         ];
         const finalPrompt = `echo "Press any key to close the terminal and continue ..."; read; exit`;
         terminal.sendText(`${this.cli.cliPath} ${args.join(" ")}; ${finalPrompt}`);
