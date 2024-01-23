@@ -86,7 +86,9 @@ export class BundleProjectManager {
 
     public async configureWorkspace(): Promise<void> {
         // We listen to _isBundleProject changes and call configureBundleProject
-        await this._isBundleProject.refresh();
+        if (await this.isBundleProject()) {
+            return;
+        }
 
         // The cached value updates subProjectsAvailabe context.
         // We have a configurationView that shows "open project" button if the context value is true.
