@@ -46,7 +46,7 @@ export class BundleProjectManager {
     );
 
     private projectServicesReady = false;
-    private projectServiceMutex = new Mutex();
+    private projectServicesMutex = new Mutex();
 
     constructor(
         private cli: CliWrapper,
@@ -115,7 +115,7 @@ export class BundleProjectManager {
         }
     }
 
-    @Mutex.synchronise("projectServiceMutex")
+    @Mutex.synchronise("projectServicesMutex")
     private async initProjectServices() {
         if (this.projectServicesReady) {
             this.logger.debug("Project services have already been initialized");
