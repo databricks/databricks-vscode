@@ -75,6 +75,11 @@ export class BundleProjectManager {
                         "Failed to configure bundle project after isBundleProject change",
                         error
                     );
+                    const message =
+                        (error as Error)?.message ?? "Unknown Error";
+                    window.showErrorMessage(
+                        `Failed to configure Databricks project: ${message}`
+                    );
                 }
             })
         );
