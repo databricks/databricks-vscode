@@ -61,13 +61,16 @@ export class BundleFileSet {
             toGlobPath(this.getAbsolutePath(this.subProjectFilePattern, root).fsPath),
             {nocase: process.platform === "win32"}
         );
+        const normalizedRoot = path.normalize(root?.fsPath ?? this.workspaceRoot.fsPath);
         return subProjectRoots.map((rootFile) => {
-            const dirname = path.dirname(rootFile);
+            const dirname = path.dirname(path.normalize(rootFile));
             const absolute = Uri.file(dirname);
             const relative = Uri.file(
                 absolute.fsPath.replace(this.workspaceRoot.fsPath, "")
             );
             return {absolute, relative};
+        }).filter(({absolute}) => {
+            return absolute.fsPath !== normalizedRoot;
         });
     }
 
