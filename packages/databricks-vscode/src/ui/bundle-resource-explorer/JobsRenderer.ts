@@ -1,11 +1,12 @@
 import {TreeItemCollapsibleState} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
+import {BundleRunManager} from "../../bundle/BundleRunManager";
 
 export class JobsRenderer implements Renderer {
     readonly type = "jobs";
 
-    constructor() {}
+    constructor(private readonly bundleRunManager: BundleRunManager) {}
     getTreeItem(element: TreeNode): BundleResourceExplorerTreeItem {
         if (element.type !== this.type) {
             throw new Error("Invalid element type");
@@ -13,7 +14,11 @@ export class JobsRenderer implements Renderer {
 
         return {
             label: element.data.name,
-            contextValue: "databricks.bundle.resource-explorer.runnable.job",
+            contextValue: `databricks.bundle.resource-explorer.${
+                this.bundleRunManager.isRunning(element.resourceKey)
+                    ? "running"
+                    : "runnable"
+            }.job`,
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }

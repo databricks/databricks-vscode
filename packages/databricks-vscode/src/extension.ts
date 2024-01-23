@@ -547,10 +547,14 @@ export async function activate(
     );
 
     // Bundle resource explorer
-    const bundleResourceExplorerTreeDataProvider =
-        new BundleResourceExplorerTreeDataProvider(configModel, context);
-
     const bundleRunManager = new BundleRunManager(bundleRemoteStateModel);
+    const bundleResourceExplorerTreeDataProvider =
+        new BundleResourceExplorerTreeDataProvider(
+            configModel,
+            bundleRunManager,
+            context
+        );
+
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
         bundleRunManager
@@ -580,6 +584,11 @@ export async function activate(
         ),
         telemetry.registerCommand(
             "databricks.bundle.cancelAllRuns",
+            bundleCommands.cancelRun,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.cancelRun",
             bundleCommands.cancelRun,
             bundleCommands
         )

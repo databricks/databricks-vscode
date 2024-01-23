@@ -1,11 +1,12 @@
 import {TreeItemCollapsibleState} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
+import {BundleRunManager} from "../../bundle/BundleRunManager";
 
 export class PipelineRenderer implements Renderer {
     readonly type = "pipelines";
 
-    constructor() {}
+    constructor(private readonly bundleRunManager: BundleRunManager) {}
 
     getTreeItem(element: TreeNode): BundleResourceExplorerTreeItem {
         if (element.type !== this.type) {
@@ -14,8 +15,11 @@ export class PipelineRenderer implements Renderer {
 
         return {
             label: element.data.name,
-            contextValue:
-                "databricks.bundle.resource-explorer.runnable.pipeline",
+            contextValue: `databricks.bundle.resource-explorer.${
+                this.bundleRunManager.isRunning(element.resourceKey)
+                    ? "running"
+                    : "runnable"
+            }.pipeline`,
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }

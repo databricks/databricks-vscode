@@ -14,6 +14,7 @@ import {onError} from "../../utils/onErrorDecorator";
 import {TasksRenderer} from "./TasksRenderer";
 import {PipelineRenderer} from "./PipelineRenderer";
 import path from "path";
+import {BundleRunManager} from "../../bundle/BundleRunManager";
 
 function humaniseResourceType(type: TreeNode["type"]) {
     switch (type) {
@@ -35,12 +36,13 @@ export class BundleResourceExplorerTreeDataProvider
         this._onDidChangeTreeData.event;
 
     private renderers: Array<Renderer> = [
-        new JobsRenderer(),
-        new PipelineRenderer(),
+        new JobsRenderer(this.bundleRunManager),
+        new PipelineRenderer(this.bundleRunManager),
         new TasksRenderer(this.context),
     ];
     constructor(
         private readonly configModel: ConfigModel,
+        private readonly bundleRunManager: BundleRunManager,
         private readonly context: ExtensionContext
     ) {
         this.disposables.push(
@@ -48,6 +50,9 @@ export class BundleResourceExplorerTreeDataProvider
                 this._onDidChangeTreeData.fire();
             }),
             this.configModel.onDidChangeKey("remoteStateConfig")(() => {
+                this._onDidChangeTreeData.fire();
+            }),
+            this.bundleRunManager.onDidChange(() => {
                 this._onDidChangeTreeData.fire();
             })
         );

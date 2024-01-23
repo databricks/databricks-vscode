@@ -79,8 +79,12 @@ export class BundleCommands implements Disposable {
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})
-    async cancelRun() {
-        this.bundleRunManager.cancelAll();
+    async cancelRun(treeNode: BundleResourceExplorerTreeNode) {
+        if (!isRunnable(treeNode)) {
+            throw new Error(`Resource of ${treeNode.type} is not runnable`);
+        }
+
+        this.bundleRunManager.cancel(treeNode.resourceKey);
     }
 
     dispose() {
