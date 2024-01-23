@@ -64,10 +64,12 @@ export class CliWrapper {
             return {};
         }
         return {
+            /* eslint-disable @typescript-eslint/naming-convention */
             DATABRICKS_LOG_LEVEL: "debug",
             DATABRICKS_LOG_FILE: this.logFilePath ?? "stderr",
             DATABRICKS_LOG_FORMAT: "json",
-        }
+            /* eslint-enable @typescript-eslint/naming-convention */
+        };
     }
 
     escapePathArgument(arg: string): string {

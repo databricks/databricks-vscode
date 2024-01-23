@@ -644,6 +644,10 @@ export async function activate(
     );
 
     bundleProjectManager.configureWorkspace().catch((e) => {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to configure workspace",
+            e
+        );
         window.showErrorMessage(e);
     });
 
