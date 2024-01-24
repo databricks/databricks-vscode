@@ -17,6 +17,7 @@ import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {CliWrapper} from "../cli/CliWrapper";
 import {LoginWizard} from "../configuration/LoginWizard";
 import {Mutex} from "../locking";
+import {AuthProvider} from "../configuration/auth/AuthProvider";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -178,12 +179,8 @@ export class BundleProjectManager {
     }
 
     public async initNewProject() {
-        let authProvider =
-            this.connectionManager.databricksWorkspace?.authProvider;
+        const authProvider = await this.configureAuthForBundleInit();
         if (!authProvider) {
-            authProvider = await LoginWizard.run(this.cli, this.configModel);
-        }
-        if (!authProvider || !(await authProvider.check())) {
             this.logger.debug(
                 "No valid auth providers, can't proceed with bundle init wizard"
             );
@@ -217,6 +214,46 @@ export class BundleProjectManager {
                 await commands.executeCommand("vscode.openFolder");
             }
         }
+    }
+
+    private async configureAuthForBundleInit(): Promise<
+        AuthProvider | undefined
+    > {
+        let authProvider =
+            this.connectionManager.databricksWorkspace?.authProvider;
+        if (authProvider) {
+            authProvider = await this.promptToUseExistingAuth(authProvider);
+        }
+        if (!authProvider) {
+            authProvider = await LoginWizard.run(this.cli, this.configModel);
+        }
+        if (authProvider && (await authProvider.check())) {
+            return authProvider;
+        } else {
+            return undefined;
+        }
+    }
+
+    private async promptToUseExistingAuth(authProvider: AuthProvider) {
+        type AuthSelectionItem = QuickPickItem & {authProvider?: AuthProvider};
+        const items: AuthSelectionItem[] = [
+            {
+                label: "Use current auth",
+                detail: `Type: ${authProvider.authType}; Host: ${authProvider.host.hostname}`,
+                authProvider,
+            },
+            {
+                label: "Setup new auth",
+            },
+        ];
+        const options = {
+            title: "What auth do you want to use for the new project?",
+        };
+        const item = await window.showQuickPick<AuthSelectionItem>(
+            items,
+            options
+        );
+        return item?.authProvider;
     }
 
     private async bundleInitInTerminal(
