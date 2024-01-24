@@ -262,7 +262,7 @@ export class BundleProjectManager {
         return {
             cancelled: item === undefined,
             approved: item?.approved ?? false,
-        }
+        };
     }
 
     private async bundleInitInTerminal(
