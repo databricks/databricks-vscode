@@ -233,7 +233,7 @@
             },
             {
                 "command": "databricks.bundle.initNewProject",
-                "title": "Initialize new Databricks project",
+                "title": "Initialize new project",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
             }
