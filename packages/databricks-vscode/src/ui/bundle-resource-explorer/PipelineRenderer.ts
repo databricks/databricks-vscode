@@ -1,4 +1,4 @@
-import {TreeItemCollapsibleState} from "vscode";
+import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
 import {BundleRunManager} from "../../bundle/BundleRunManager";
@@ -12,13 +12,17 @@ export class PipelineRenderer implements Renderer {
         if (element.type !== this.type) {
             throw new Error("Invalid element type");
         }
-
+        const isRunning = this.bundleRunManager.isRunning(element.resourceKey);
         return {
             label: element.data.name,
+            iconPath: isRunning
+                ? new ThemeIcon(
+                      "sync~spin",
+                      new ThemeColor("debugIcon.startForeground")
+                  )
+                : undefined,
             contextValue: `databricks.bundle.resource-explorer.${
-                this.bundleRunManager.isRunning(element.resourceKey)
-                    ? "running"
-                    : "runnable"
+                isRunning ? "running" : "runnable"
             }.pipeline`,
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
