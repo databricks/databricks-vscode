@@ -222,7 +222,12 @@ export class BundleProjectManager {
         let authProvider =
             this.connectionManager.databricksWorkspace?.authProvider;
         if (authProvider) {
-            authProvider = await this.promptToUseExistingAuth(authProvider);
+            const response = await this.promptToUseExistingAuth(authProvider);
+            if (response.cancelled) {
+                return undefined;
+            } else if (!response.approved) {
+                authProvider = undefined;
+            }
         }
         if (!authProvider) {
             authProvider = await LoginWizard.run(this.cli, this.configModel);
@@ -235,15 +240,16 @@ export class BundleProjectManager {
     }
 
     private async promptToUseExistingAuth(authProvider: AuthProvider) {
-        type AuthSelectionItem = QuickPickItem & {authProvider?: AuthProvider};
+        type AuthSelectionItem = QuickPickItem & {approved: boolean};
         const items: AuthSelectionItem[] = [
             {
                 label: "Use current auth",
                 detail: `Type: ${authProvider.authType}; Host: ${authProvider.host.hostname}`,
-                authProvider,
+                approved: true,
             },
             {
                 label: "Setup new auth",
+                approved: false,
             },
         ];
         const options = {
@@ -253,7 +259,10 @@ export class BundleProjectManager {
             items,
             options
         );
-        return item?.authProvider;
+        return {
+            cancelled: item === undefined,
+            approved: item?.approved ?? false,
+        }
     }
 
     private async bundleInitInTerminal(
