@@ -66,7 +66,7 @@ export class ConnectionCommands implements Disposable {
         this.connectionManager.logout();
     }
 
-    async configureWorkspaceCommand() {
+    async configureLoginCommand() {
         await this.connectionManager.configureLogin();
     }
 
