@@ -1,30 +1,36 @@
-import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
+import {TreeItemCollapsibleState} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
-import {BundleRunManager} from "../../bundle/BundleRunManager";
+import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
+import {GetUpdateResponse} from "@databricks/databricks-sdk/dist/apis/pipelines";
 
 export class PipelineRenderer implements Renderer {
     readonly type = "pipelines";
 
-    constructor(private readonly bundleRunManager: BundleRunManager) {}
+    constructor(
+        private readonly bundleRunStatusManager: BundleRunStatusManager
+    ) {}
+
+    isRunning(resourceKey: string) {
+        const runner = this.bundleRunStatusManager.runStatuses.get(resourceKey);
+        return runner?.runState === "running";
+    }
 
     getTreeItem(element: TreeNode): BundleResourceExplorerTreeItem {
         if (element.type !== this.type) {
             throw new Error("Invalid element type");
         }
-        const isRunning = this.bundleRunManager.isRunning(element.resourceKey);
+
+        const isRunning = this.isRunning(element.resourceKey);
+
         return {
             label: element.data.name,
-            iconPath: isRunning
-                ? new ThemeIcon(
-                      "sync~spin",
-                      new ThemeColor("debugIcon.startForeground")
-                  )
-                : undefined,
             contextValue: `databricks.bundle.resource-explorer.${
                 isRunning ? "running" : "runnable"
             }.pipeline`,
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            collapsibleState: isRunning
+                ? TreeItemCollapsibleState.Expanded
+                : TreeItemCollapsibleState.Collapsed,
         };
     }
 
@@ -34,6 +40,21 @@ export class PipelineRenderer implements Renderer {
         }
 
         const children: TreeNode[] = [];
+        const runMonitor = this.bundleRunStatusManager.runStatuses.get(
+            element.resourceKey
+        );
+        const update = runMonitor?.data as GetUpdateResponse | undefined;
+        if (update?.update?.update_id !== undefined) {
+            children.push({
+                type: "pipeline_run_status",
+                parent: element,
+                pipelineId: update.update.pipeline_id,
+                updateId: update.update.update_id,
+                pipelineResourceKey: element.resourceKey,
+                update: update,
+            });
+        }
+
         if (element.data.catalog) {
             children.push({
                 type: "treeItem",

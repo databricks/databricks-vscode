@@ -1,18 +1,8 @@
-import {
-    CancellationTokenSource,
-    Disposable,
-    EventEmitter,
-    Terminal,
-    window,
-} from "vscode";
-import {BundleRemoteStateModel} from "./models/BundleRemoteStateModel";
+import {CancellationTokenSource, Disposable, Terminal, window} from "vscode";
+import {BundleRemoteStateModel} from "../models/BundleRemoteStateModel";
 import {CustomOutputTerminal} from "./CustomOutputTerminal";
-import {Mutex} from "../locking";
 
-export class BundleRunManager implements Disposable {
-    private onDidChangeEmitter = new EventEmitter<void>();
-    readonly onDidChange = this.onDidChangeEmitter.event;
-
+export class BundleRunTerminalManager implements Disposable {
     private disposables: Disposable[] = [];
     private terminalDetails: Map<
         string,
@@ -25,17 +15,6 @@ export class BundleRunManager implements Disposable {
     private cancellationTokenSources: Map<string, CancellationTokenSource> =
         new Map();
 
-    private _isRunning: Map<string, boolean> = new Map();
-    private isRunningMutex = new Mutex();
-
-    isRunning(resourceKey: string) {
-        const target = this.bundleRemoteStateModel.target;
-        if (target === undefined) {
-            return false;
-        }
-        const terminalName = this.getTerminalName(target, resourceKey);
-        return this._isRunning.get(terminalName) ?? false;
-    }
     constructor(
         private readonly bundleRemoteStateModel: BundleRemoteStateModel
     ) {}
@@ -44,7 +23,7 @@ export class BundleRunManager implements Disposable {
         return `Run ${resourceKey} (${target})`;
     }
 
-    async run(resourceKey: string) {
+    async run(resourceKey: string, onDidUpdate?: (data: string) => void) {
         const target = this.bundleRemoteStateModel.target;
         if (target === undefined) {
             throw new Error(`Cannot run ${resourceKey}, Target is undefined`);
@@ -95,13 +74,15 @@ export class BundleRunManager implements Disposable {
 
             const cmd = this.bundleRemoteStateModel.getRunCommand(resourceKey);
 
-            await this.isRunningMutex.synchronise(async () => {
-                this._isRunning.set(terminalName, true);
-                this.onDidChangeEmitter.fire();
-            });
             // spawn a new process with the latest command, in the same terminal.
             terminal.pty.spawn(cmd);
             terminal.terminal.show();
+
+            disposables.push(
+                terminal.pty.onDidWrite((data) => {
+                    onDidUpdate?.(data);
+                })
+            );
 
             // Wait for the process to exit
             await new Promise<void>((resolve, reject) => {
@@ -112,7 +93,8 @@ export class BundleRunManager implements Disposable {
                 disposables.push(
                     terminal.pty.onDidCloseProcess(
                         (exitCode) => {
-                            if (exitCode === 0) {
+                            if (exitCode === 0 || terminal.pty.isClosed) {
+                                // Resolve when the process exits with code 0 or is closed by human action
                                 resolve();
                             } else {
                                 reject(
@@ -123,17 +105,14 @@ export class BundleRunManager implements Disposable {
                             }
                         },
                         window.onDidCloseTerminal((e) => {
+                            // Resolve when the process is closed by human action
                             e.name === terminal.terminal.name &&
-                                reject(new Error("Terminal closed"));
+                                reject(resolve());
                         })
                     )
                 );
             });
         } finally {
-            await this.isRunningMutex.synchronise(async () => {
-                this._isRunning.delete(terminalName);
-                this.onDidChangeEmitter.fire();
-            });
             disposables.forEach((i) => i.dispose());
             this.cancellationTokenSources.get(terminalName)?.cancel();
             this.cancellationTokenSources.get(terminalName)?.dispose();

@@ -2,6 +2,8 @@ import {ChildProcess, SpawnOptions, spawn} from "child_process";
 import {Pseudoterminal, Event, EventEmitter} from "vscode";
 
 export class CustomOutputTerminal implements Pseudoterminal {
+    /** Is the terminal closed by user action */
+    public isClosed = false;
     private writeEmitter = new EventEmitter<string>();
     onDidWrite: Event<string> = this.writeEmitter.event;
 
@@ -30,6 +32,7 @@ export class CustomOutputTerminal implements Pseudoterminal {
         args: string[];
         options: SpawnOptions;
     }): void {
+        this.isClosed = false;
         this.writeEmitter.fire("\x1b[2J\x1b[H");
         this._process = spawn(cmd, args, options);
         if (!this.process) {
@@ -76,6 +79,7 @@ export class CustomOutputTerminal implements Pseudoterminal {
     }
 
     close(): void {
+        this.isClosed = true;
         if (this.process !== undefined) {
             this.writeEmitter.fire(
                 "\x1b[31mProcess killed by user input\x1b[0m\r\n"

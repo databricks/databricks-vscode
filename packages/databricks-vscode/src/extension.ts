@@ -60,7 +60,8 @@ import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeDataProvider} from "./ui/bundle-resource-explorer/BundleResourceExplorerTreeDataProvider";
 import {BundleCommands} from "./bundle/BundleCommands";
-import {BundleRunManager} from "./bundle/BundleRunManager";
+import {BundleRunTerminalManager} from "./bundle/run/BundleRunTerminalManager";
+import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -547,22 +548,28 @@ export async function activate(
     );
 
     // Bundle resource explorer
-    const bundleRunManager = new BundleRunManager(bundleRemoteStateModel);
+    const bundleRunTerminalManager = new BundleRunTerminalManager(
+        bundleRemoteStateModel
+    );
+    const bundleRunStatusManager = new BundleRunStatusManager(
+        bundleRemoteStateModel,
+        bundleRunTerminalManager
+    );
     const bundleResourceExplorerTreeDataProvider =
         new BundleResourceExplorerTreeDataProvider(
             configModel,
-            bundleRunManager,
+            bundleRunStatusManager,
             context
         );
 
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
-        bundleRunManager
+        bundleRunStatusManager
     );
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,
         bundleCommands,
-        bundleRunManager,
+        bundleRunTerminalManager,
         window.registerTreeDataProvider(
             "dabsResourceExplorerView",
             bundleResourceExplorerTreeDataProvider
