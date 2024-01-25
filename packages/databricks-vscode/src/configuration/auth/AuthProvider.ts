@@ -41,6 +41,7 @@ export abstract class AuthProvider {
     abstract describe(): string;
     abstract toJSON(): Record<string, string | undefined>;
     abstract toEnv(): Record<string, string>;
+    abstract toIni(): Record<string, string | undefined> | undefined;
 
     getWorkspaceClient(): WorkspaceClient {
         const config = this.getSdkConfig();
@@ -149,6 +150,10 @@ export class ProfileAuthProvider extends AuthProvider {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_CONFIG_PROFILE: this.profile,
         };
+    }
+
+    toIni() {
+        return undefined;
     }
 
     getSdkConfig(): Config {

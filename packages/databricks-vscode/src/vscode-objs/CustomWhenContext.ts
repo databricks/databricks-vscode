@@ -35,6 +35,14 @@ export class CustomWhenContext {
         );
     }
 
+    setPendingManualMigration(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.pendingManualMigration",
+            value
+        );
+    }
+
     updateShowClusterView() {
         commands.executeCommand(
             "setContext",

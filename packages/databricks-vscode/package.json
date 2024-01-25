@@ -274,6 +274,11 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
+                "contents": "Configure your Databricks workspace:\n[Configure Databricks](command:databricks.bundle.configureManualMigration)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "when": "workspaceFolderCount > 0 && databricks.context.pendingManualMigration"
+            },
+            {
+                "view": "configurationView",
                 "contents": "There are multiple Databricks projects in the workspace, please chose which one to open:\n[Open Existing Project](command:databricks.bundle.openSubProject)\n",
                 "when": "workspaceFolderCount > 0 && databricks.context.subProjectsAvailable"
             },
