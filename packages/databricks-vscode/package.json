@@ -653,11 +653,8 @@
         "chatRequestAccess",
         "chatProvider",
         "chatTab",
-        "chatVariables",
         "interactive",
-        "interactiveUserActions",
-        "interactiveWindow",
-        "readonlyMessage"
+        "interactiveWindow"
     ],
     "vsce": {
         "dependencies": false,
