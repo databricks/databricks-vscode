@@ -261,7 +261,7 @@ export class CliWrapper {
         workspaceFolder: Uri,
         configfilePath?: string
     ) {
-        let {stdout, stderr} = await execFile(
+        const {stdout, stderr} = await execFile(
             this.cliPath,
             ["bundle", "summarise", "--target", target],
             {
@@ -276,10 +276,6 @@ export class CliWrapper {
                 shell: true,
             }
         );
-
-        //TODO: remove this hack once cli command is fixed.
-        stdout = stderr;
-        stderr = "";
 
         if (stderr !== "") {
             throw new Error(stderr);
