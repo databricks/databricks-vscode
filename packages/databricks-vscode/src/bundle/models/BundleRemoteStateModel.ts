@@ -41,6 +41,34 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         super();
     }
 
+    public async refresh() {
+        return await this.stateCache.refresh();
+    }
+
+    @Mutex.synchronise("mutex")
+    public async deploy(
+        onStdOut?: (data: string) => void,
+        onStdErr?: (data: string) => void
+    ) {
+        if (this.target === undefined) {
+            throw new Error("Target is undefined");
+        }
+        if (this.authProvider === undefined) {
+            throw new Error("No authentication method is set");
+        }
+
+        await this.cli.bundleDeploy(
+            this.target,
+            this.authProvider,
+            this.workspaceFolder,
+            this.workspaceConfigs.databrickscfgLocation,
+            onStdOut,
+            onStdErr
+        );
+
+        await this.refresh();
+    }
+
     @withLogContext(Loggers.Extension)
     public init(@context ctx?: Context) {
         this.refreshInterval = setInterval(async () => {

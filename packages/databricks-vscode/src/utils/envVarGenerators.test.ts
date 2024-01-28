@@ -58,7 +58,6 @@ describe(__filename, () => {
             DATABRICKS_AUTH_TYPE: "metadata-service",
             DATABRICKS_METADATA_SERVICE_URL:
                 "http://example.com/metadata-service",
-            DATABRICKS_CLUSTER_ID: mockClusterId,
         });
     });
 

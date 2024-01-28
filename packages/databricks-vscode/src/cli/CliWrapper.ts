@@ -1,4 +1,8 @@
-import {execFile as execFileCb} from "child_process";
+import {
+    ChildProcessWithoutNullStreams,
+    execFile as execFileCb,
+    spawn,
+} from "child_process";
 import {ExtensionContext, window, commands, Uri} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
@@ -29,6 +33,41 @@ export interface ConfigEntry {
 
 export type SyncType = "full" | "incremental";
 
+async function waitForProcess(
+    p: ChildProcessWithoutNullStreams,
+    onStdOut?: (data: string) => void,
+    onStdError?: (data: string) => void
+) {
+    const output: string[] = [];
+    p.stdout.on("data", (data) => {
+        output.push(data.toString());
+        if (onStdOut) {
+            onStdOut(data.toString());
+        }
+    });
+
+    const stderr: string[] = [];
+    p.stderr.on("data", (data) => {
+        stderr.push(data.toString());
+        output.push(data.toString());
+        if (onStdError) {
+            onStdError(data.toString());
+        }
+    });
+
+    await new Promise((resolve, reject) => {
+        p.on("close", (code) => {
+            if (code === 0) {
+                resolve(output.join(""));
+            } else {
+                reject(stderr.join(""));
+            }
+        });
+        p.on("error", reject);
+    });
+
+    return output.join("");
+}
 /**
  * Entrypoint for all wrapped CLI commands
  *
@@ -36,10 +75,15 @@ export type SyncType = "full" | "incremental";
  * of the databricks CLI
  */
 export class CliWrapper {
+    private clusterId?: string;
     constructor(
         private extensionContext: ExtensionContext,
         private logFilePath?: string
     ) {}
+
+    public setClusterId(clusterId?: string) {
+        this.clusterId = clusterId;
+    }
 
     get cliPath(): string {
         return this.extensionContext.asAbsolutePath("./bin/databricks");
@@ -192,7 +236,7 @@ export class CliWrapper {
         workspaceFolder: Uri,
         configfilePath?: string
     ) {
-        const {stdout, stderr} = await execFile(
+        const {stdout} = await execFile(
             this.cliPath,
             ["bundle", "validate", "--target", target],
             {
@@ -201,14 +245,13 @@ export class CliWrapper {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    DATABRICKS_CLUSTER_ID: this.clusterId,
                 },
                 shell: true,
             }
         );
 
-        if (stderr !== "") {
-            throw new Error(stderr);
-        }
         return stdout;
     }
 
@@ -227,6 +270,8 @@ export class CliWrapper {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    DATABRICKS_CLUSTER_ID: this.clusterId,
                 },
                 shell: true,
             }
@@ -236,5 +281,38 @@ export class CliWrapper {
             throw new Error(stderr);
         }
         return stdout;
+    }
+    async bundleDeploy(
+        target: string,
+        authProvider: AuthProvider,
+        workspaceFolder: Uri,
+        configfilePath?: string,
+        onStdOut?: (data: string) => void,
+        onStdError?: (data: string) => void
+    ) {
+        if (onStdError) {
+            onStdError(`Deploying the bundle for target ${target}...\n\n`);
+            onStdError(`${this.cliPath} bundle deploy --target ${target}\n`);
+            if (this.clusterId) {
+                onStdError(`DATABRICKS_CLUSTER_ID=${this.clusterId}\n\n`);
+            }
+        }
+        const p = spawn(
+            this.cliPath,
+            ["bundle", "deploy", "--target", target],
+            {
+                cwd: workspaceFolder.fsPath,
+                env: {
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getProxyEnvVars(),
+                    ...authProvider.toEnv(),
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    DATABRICKS_CLUSTER_ID: this.clusterId,
+                },
+                shell: true,
+            }
+        );
+
+        return await waitForProcess(p, onStdOut, onStdError);
     }
 }
