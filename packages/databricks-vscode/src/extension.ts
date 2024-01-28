@@ -34,7 +34,6 @@ import {
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
-import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManager";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
@@ -60,6 +59,7 @@ import {OverrideableConfigModel} from "./configuration/models/OverrideableConfig
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
 import {BundleCommands} from "./bundle/BundleCommands";
+import {BundleProjectManager} from "./bundle/BundleProjectManager";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -101,9 +101,10 @@ export async function activate(
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
-    context.environmentVariableCollection.append(
+    context.environmentVariableCollection.persistent = false;
+    context.environmentVariableCollection.prepend(
         "PATH",
-        `${path.delimiter}${context.asAbsolutePath("./bin")}`
+        `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
 
     const loggerManager = new LoggerManager(context);
@@ -206,7 +207,6 @@ export async function activate(
         bundlePreValidateModel,
         bundleRemoteStateModel,
         configModel,
-        configModel,
         connectionManager,
         connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
@@ -223,10 +223,31 @@ export async function activate(
             }
         })
     );
-    const metadataServiceManager = new MetadataServiceManager(
-        connectionManager
+
+    const metadataService = await connectionManager.startMetadataService();
+    context.subscriptions.push(metadataService);
+
+    const bundleProjectManager = new BundleProjectManager(
+        cli,
+        customWhenContext,
+        connectionManager,
+        configModel,
+        bundleFileSet,
+        workspaceUri
     );
-    await metadataServiceManager.listen();
+    context.subscriptions.push(
+        bundleProjectManager,
+        telemetry.registerCommand(
+            "databricks.bundle.openSubProject",
+            bundleProjectManager.openSubProjects,
+            bundleProjectManager
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.initNewProject",
+            bundleProjectManager.initNewProject,
+            bundleProjectManager
+        )
+    );
 
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(
         connectionManager
@@ -238,7 +259,6 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        metadataServiceManager,
         window.registerTreeDataProvider(
             "workspaceFsView",
             workspaceFsDataProvider
@@ -391,6 +411,7 @@ export async function activate(
 
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
+        bundleProjectManager,
         synchronizer,
         configModel
     );
@@ -421,8 +442,8 @@ export async function activate(
             connectionCommands
         ),
         telemetry.registerCommand(
-            "databricks.connection.configureWorkspace",
-            connectionCommands.configureWorkspaceCommand,
+            "databricks.connection.configureLogin",
+            connectionCommands.configureLoginCommand,
             connectionCommands
         ),
         telemetry.registerCommand(
@@ -638,9 +659,14 @@ export async function activate(
         })
     );
 
-    connectionManager.init().catch((e) => {
+    bundleProjectManager.configureWorkspace().catch((e) => {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to configure workspace",
+            e
+        );
         window.showErrorMessage(e);
     });
+
     customWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
 

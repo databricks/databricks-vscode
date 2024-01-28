@@ -15,6 +15,7 @@ import {ConfigModel} from "./models/ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
+import {MetadataService} from "./auth/MetadataService";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -35,6 +36,7 @@ export class ConnectionManager implements Disposable {
     private _syncDestinationMapper?: SyncDestinationMapper;
     private _clusterManager?: ClusterManager;
     private _databricksWorkspace?: DatabricksWorkspace;
+    private _metadataService: MetadataService;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -50,7 +52,17 @@ export class ConnectionManager implements Disposable {
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
 
-    public metadataServiceUrl?: string;
+    constructor(
+        private cli: CliWrapper,
+        private readonly configModel: ConfigModel,
+        private readonly workspaceUri: Uri,
+        private readonly customWhenContext: CustomWhenContext
+    ) {
+        this._metadataService = new MetadataService(
+            undefined,
+            NamedLogger.getOrCreate("Extension")
+        );
+    }
 
     @onError({
         popup: {prefix: "Error attaching sync destination: "},
@@ -106,15 +118,11 @@ export class ConnectionManager implements Disposable {
         this.onDidChangeClusterEmitter.fire(this.cluster);
     }
 
-    constructor(
-        private cli: CliWrapper,
-        private readonly configModel: ConfigModel,
-        private readonly workspaceUri: Uri,
-        private readonly customWhenContext: CustomWhenContext
-    ) {}
+    get metadataServiceUrl() {
+        return this._metadataService.url;
+    }
 
     public async init() {
-        await this.configModel.init();
         await this.loginWithSavedAuth();
 
         this.disposables.push(
@@ -245,6 +253,7 @@ export class ConnectionManager implements Disposable {
                     authProvider.toJSON().profile as string | undefined
                 );
                 await this.configModel.setAuthProvider(authProvider);
+                await this._metadataService.setApiClient(this.apiClient);
                 this.updateState("CONNECTED");
             });
         } catch (e) {
@@ -345,6 +354,11 @@ export class ConnectionManager implements Disposable {
         await this._clusterManager?.stop(() => {
             this.onDidChangeClusterEmitter.fire(this.cluster);
         });
+    }
+
+    async startMetadataService() {
+        await this._metadataService.listen();
+        return this._metadataService;
     }
 
     async waitForConnect(): Promise<void> {

@@ -47,8 +47,8 @@ export class AuthTypeComponent extends BaseComponent {
                     contextValue: getContextValue("none"),
                     id: TREE_ICON_ID,
                     command: {
-                        title: "Login to Databricks",
-                        command: "databricks.connection.configureWorkspace",
+                        title: "Sign in to Databricks",
+                        command: "databricks.connection.configureLogin",
                     },
                 },
             ];

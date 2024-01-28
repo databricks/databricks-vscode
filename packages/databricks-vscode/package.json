@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "1.2.4",
+    "version": "1.2.5",
     "engines": {
         "vscode": "^1.83.0"
     },
@@ -57,9 +57,9 @@
                 "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
-                "command": "databricks.connection.configureWorkspace",
+                "command": "databricks.connection.configureLogin",
                 "icon": "$(gear)",
-                "title": "Configure workspace",
+                "title": "Sign in to Databricks workspace",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
@@ -244,6 +244,12 @@
                 "title": "Deploy bundle",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.initNewProject",
+                "title": "Initialize new project",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -282,7 +288,12 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.connection.configureWorkspace)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "contents": "There are multiple Databricks projects in the workspace, please chose which one to open:\n[Open Existing Project](command:databricks.bundle.openSubProject)\n",
+                "when": "workspaceFolderCount > 0 && databricks.context.subProjectsAvailable"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Current workspace has no Databricks configuration at the root level, do you want to initialize a new Databricks project?\n[Initialize New Project](command:databricks.bundle.initNewProject)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
                 "when": "workspaceFolderCount > 0"
             },
             {
@@ -294,12 +305,16 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "databricks.connection.configureWorkspace",
+                    "command": "databricks.connection.configureLogin",
                     "when": "view == configurationView",
                     "group": "navigation@3"
                 },
                 {
                     "command": "databricks.quickstart.open",
+                    "when": "view == configurationView"
+                },
+                {
+                    "command": "databricks.bundle.initNewProject",
                     "when": "view == configurationView"
                 },
                 {
@@ -361,7 +376,7 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "databricks.connection.configureWorkspace",
+                    "command": "databricks.connection.configureLogin",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.authType.*$/",
                     "group": "inline@2"
                 },
@@ -701,7 +716,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.210.3"
+        "version": "0.212.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
