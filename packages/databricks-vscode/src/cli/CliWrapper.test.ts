@@ -57,7 +57,7 @@ describe(__filename, () => {
         mocks.push(configsSpy);
         when(configsSpy.loggingEnabled).thenReturn(true);
         const cli = createCliWrapper(logFilePath);
-        await execFile(cli.cliPath, ["version", ...cli.loggingArguments]);
+        await execFile(cli.cliPath, ["version", ...cli.getLoggingArguments()]);
         const file = await readFile(logFilePath);
         // Just checking if the file is not empty to avoid depending on internal CLI log patterns
         assert.ok(file.toString().length > 0);

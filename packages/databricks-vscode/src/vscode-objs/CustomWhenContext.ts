@@ -27,6 +27,14 @@ export class CustomWhenContext {
         );
     }
 
+    setSubProjectsAvailable(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.subProjectsAvailable",
+            value
+        );
+    }
+
     updateShowClusterView() {
         commands.executeCommand(
             "setContext",

@@ -123,7 +123,6 @@ export class ConnectionManager implements Disposable {
     }
 
     public async init() {
-        await this.configModel.init();
         await this.loginWithSavedAuth();
 
         this.disposables.push(
@@ -254,6 +253,7 @@ export class ConnectionManager implements Disposable {
                     authProvider.toJSON().profile as string | undefined
                 );
                 await this.configModel.setAuthProvider(authProvider);
+                await this._metadataService.setApiClient(this.apiClient);
                 this.updateState("CONNECTED");
             });
         } catch (e) {
