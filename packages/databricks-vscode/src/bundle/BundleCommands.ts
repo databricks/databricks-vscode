@@ -8,7 +8,9 @@ export class BundleCommands implements Disposable {
         "Databricks Asset Bundles"
     );
 
-    constructor(private bundleRemoteStateModel: BundleRemoteStateModel) {}
+    constructor(private bundleRemoteStateModel: BundleRemoteStateModel) {
+        this.disposables.push(this.outputChannel);
+    }
 
     @onError({popup: {prefix: "Error refreshing remote state."}})
     async refreshRemoteState() {
