@@ -89,7 +89,7 @@ export class CliWrapper {
         return this.extensionContext.asAbsolutePath("./bin/databricks");
     }
 
-    get loggingArguments(): string[] {
+    getLoggingArguments(): string[] {
         if (!workspaceConfigs.loggingEnabled) {
             return [];
         }
@@ -101,6 +101,23 @@ export class CliWrapper {
             "--log-format",
             "json",
         ];
+    }
+
+    getLogginEnvVars(): Record<string, string> {
+        if (!workspaceConfigs.loggingEnabled) {
+            return {};
+        }
+        return {
+            /* eslint-disable @typescript-eslint/naming-convention */
+            DATABRICKS_LOG_LEVEL: "debug",
+            DATABRICKS_LOG_FILE: this.logFilePath ?? "stderr",
+            DATABRICKS_LOG_FORMAT: "json",
+            /* eslint-enable @typescript-eslint/naming-convention */
+        };
+    }
+
+    escapePathArgument(arg: string): string {
+        return `"${arg.replaceAll('"', '\\"')}"`;
     }
 
     /**
@@ -117,7 +134,7 @@ export class CliWrapper {
             "--watch",
             "--output",
             "json",
-            ...this.loggingArguments,
+            ...this.getLoggingArguments(),
         ];
         if (syncType === "full") {
             args.push("--full");
@@ -132,7 +149,7 @@ export class CliWrapper {
                 "auth",
                 "profiles",
                 "--skip-validate",
-                ...this.loggingArguments,
+                ...this.getLoggingArguments(),
             ],
         };
     }
@@ -244,7 +261,7 @@ export class CliWrapper {
         workspaceFolder: Uri,
         configfilePath?: string
     ) {
-        let {stdout, stderr} = await execFile(
+        const {stdout, stderr} = await execFile(
             this.cliPath,
             ["bundle", "summarise", "--target", target],
             {
@@ -260,9 +277,6 @@ export class CliWrapper {
             }
         );
 
-        //TODO: remove this hack once cli command is fixed.
-        stdout = stderr;
-        stderr = "";
         if (stderr !== "") {
             throw new Error(stderr);
         }
