@@ -25,6 +25,8 @@ function toGlobPath(path: string) {
 }
 export class BundleFileSet {
     private rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
+    private subProjectFilePattern: string = `**/${this.rootFilePattern}`;
+
     public readonly bundleDataCache: CachedValue<BundleSchema> =
         new CachedValue<BundleSchema>(async () => {
             let bundle = {};
@@ -36,11 +38,11 @@ export class BundleFileSet {
 
     constructor(private readonly workspaceRoot: Uri) {}
 
-    getAbsolutePath(path: string | Uri) {
+    getAbsolutePath(path: string | Uri, root?: Uri) {
         if (typeof path === "string") {
-            return Uri.joinPath(this.workspaceRoot, path);
+            return Uri.joinPath(root ?? this.workspaceRoot, path);
         }
-        return Uri.joinPath(this.workspaceRoot, path.fsPath);
+        return Uri.joinPath(root ?? this.workspaceRoot, path.fsPath);
     }
 
     async getRootFile() {
@@ -52,6 +54,32 @@ export class BundleFileSet {
             return undefined;
         }
         return Uri.file(rootFile[0]);
+    }
+
+    async getSubProjects(
+        root?: Uri
+    ): Promise<{relative: Uri; absolute: Uri}[]> {
+        const subProjectRoots = await glob.glob(
+            toGlobPath(
+                this.getAbsolutePath(this.subProjectFilePattern, root).fsPath
+            ),
+            {nocase: process.platform === "win32"}
+        );
+        const normalizedRoot = path.normalize(
+            root?.fsPath ?? this.workspaceRoot.fsPath
+        );
+        return subProjectRoots
+            .map((rootFile) => {
+                const dirname = path.dirname(path.normalize(rootFile));
+                const absolute = Uri.file(dirname);
+                const relative = Uri.file(
+                    absolute.fsPath.replace(normalizedRoot, "")
+                );
+                return {absolute, relative};
+            })
+            .filter(({absolute}) => {
+                return absolute.fsPath !== normalizedRoot;
+            });
     }
 
     async getIncludedFilesGlob() {
