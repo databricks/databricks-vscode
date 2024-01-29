@@ -3766,14 +3766,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"databricks@npm:*":
-  version: 1.0.0
-  resolution: "databricks@npm:1.0.0"
-  checksum: 0ac813380bbc822686b745576ad9207270e7fab5c2dc43da255d6f9d75437146fab4c56185f013e152f7b25e0764a98e89217f20dba250dc35334ee7e705a515
-  languageName: node
-  linkType: hard
-
-"databricks@workspace:packages/databricks-vscode":
+"databricks@*, databricks@workspace:packages/databricks-vscode":
   version: 0.0.0-use.local
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
