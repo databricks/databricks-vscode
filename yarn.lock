@@ -378,7 +378,7 @@ __metadata:
     reflect-metadata: ^0.2.1
     semver: ^7.5.4
     undici: ^6.4.0
-  checksum: 9639a1c129e8b0ebe0a1c264fa811698c5e7e3163d1f15185d4822fc68828ee42f09d9d594d12ff0570ac8fe3db0076cf7942b80b4b2973b4d023e5efe36f8db
+  checksum: 61f366be13411ff67ee87fa4c91dcf22f4b2f57d544fe7ec77929e5820e0ce6aa045e6144095a9a9ebe301dc430e64b19c0010eb90e4ee71bb725194ad57db7f
   languageName: node
   linkType: hard
 
@@ -394,7 +394,7 @@ __metadata:
     reflect-metadata: ^0.2.1
     semver: ^7.5.4
     undici: ^6.4.0
-  checksum: 9639a1c129e8b0ebe0a1c264fa811698c5e7e3163d1f15185d4822fc68828ee42f09d9d594d12ff0570ac8fe3db0076cf7942b80b4b2973b4d023e5efe36f8db
+  checksum: 61f366be13411ff67ee87fa4c91dcf22f4b2f57d544fe7ec77929e5820e0ce6aa045e6144095a9a9ebe301dc430e64b19c0010eb90e4ee71bb725194ad57db7f
   languageName: node
   linkType: hard
 
@@ -1559,11 +1559,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^20.11.5":
-  version: 20.11.7
-  resolution: "@types/node@npm:20.11.7"
+  version: 20.11.10
+  resolution: "@types/node@npm:20.11.10"
   dependencies:
     undici-types: ~5.26.4
-  checksum: 61ea0718bccda31110c643190518407b7c50d26698a20e3522871608db5fa3d2d43d1ae57c609068eae6996d563db43326045a90f22a9aacc825e8d6c7aea2ce
+  checksum: 58544f52c14d839cc5fca7a9f001303016aefa85fea684de9aa3c24a1340a55a03a6744fa20f601ca032a9f9d08b32c1ff074ccb75dcd57d61a1a65c50a949b1
   languageName: node
   linkType: hard
 
@@ -3766,7 +3766,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"databricks@*, databricks@workspace:packages/databricks-vscode":
+"databricks@npm:*":
+  version: 1.0.0
+  resolution: "databricks@npm:1.0.0"
+  checksum: 0ac813380bbc822686b745576ad9207270e7fab5c2dc43da255d6f9d75437146fab4c56185f013e152f7b25e0764a98e89217f20dba250dc35334ee7e705a515
+  languageName: node
+  linkType: hard
+
+"databricks@workspace:packages/databricks-vscode":
   version: 0.0.0-use.local
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
@@ -10812,11 +10819,11 @@ __metadata:
   linkType: hard
 
 "undici@npm:^6.4.0":
-  version: 6.4.0
-  resolution: "undici@npm:6.4.0"
+  version: 6.5.0
+  resolution: "undici@npm:6.5.0"
   dependencies:
     "@fastify/busboy": ^2.0.0
-  checksum: af54fd0baf6b4ae166fed406ac2efe22d7e3a8b2fb2f393268eb494f8f8e6494151958e4ec02120d1f5773c1e5610c91711e2281b6e11ce5d9ebcff44dcf8620
+  checksum: b1e8d1ccd9b2ad15ffd5261ec3d956e2cfbaf9518d3d5f19735206568ed3513f187e710da38c7c02e963590d16e04c3329f1be6ced2e2ad0e1ef00a50867da56
   languageName: node
   linkType: hard
 
