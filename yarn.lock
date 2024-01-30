@@ -1558,6 +1558,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/shell-quote@npm:^1.7.5":
+  version: 1.7.5
+  resolution: "@types/shell-quote@npm:1.7.5"
+  checksum: 32b4d697c7d23dbadf40713692c47f1595f083a3b3deea76cb18e30a05d197aa9205d2b87f6d92edb60cda120b51e35d32bda96ed9b0a7e32921eed2deb4559e
+  languageName: node
+  linkType: hard
+
 "@types/sinonjs__fake-timers@npm:^8.1.5":
   version: 8.1.5
   resolution: "@types/sinonjs__fake-timers@npm:8.1.5"
@@ -3617,6 +3624,7 @@ __metadata:
     "@types/mocha": ^10.0.6
     "@types/mock-require": ^2.0.3
     "@types/node": ^20.10.4
+    "@types/shell-quote": ^1.7.5
     "@types/sinonjs__fake-timers": ^8.1.5
     "@types/tmp": ^0.2.6
     "@types/triple-beam": ^1.3.5
@@ -3649,6 +3657,7 @@ __metadata:
     mock-require: ^3.0.3
     nyc: ^15.1.0
     prettier: ^3.1.1
+    shell-quote: ^1.8.1
     tmp-promise: ^3.0.3
     triple-beam: ^1.4.1
     ts-mocha: ^10.0.0
@@ -9335,6 +9344,13 @@ __metadata:
   version: 3.0.0
   resolution: "shebang-regex@npm:3.0.0"
   checksum: 1a2bcae50de99034fcd92ad4212d8e01eedf52c7ec7830eedcf886622804fe36884278f2be8be0ea5fde3fd1c23911643a4e0f726c8685b61871c8908af01222
+  languageName: node
+  linkType: hard
+
+"shell-quote@npm:^1.8.1":
+  version: 1.8.1
+  resolution: "shell-quote@npm:1.8.1"
+  checksum: 5f01201f4ef504d4c6a9d0d283fa17075f6770bfbe4c5850b074974c68062f37929ca61700d95ad2ac8822e14e8c4b990ca0e6e9272e64befd74ce5e19f0736b
   languageName: node
   linkType: hard
 
