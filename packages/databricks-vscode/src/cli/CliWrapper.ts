@@ -263,7 +263,7 @@ export class CliWrapper {
     ) {
         const {stdout, stderr} = await execFile(
             this.cliPath,
-            ["bundle", "summarise", "--target", target],
+            ["bundle", "summary", "--target", target],
             {
                 cwd: workspaceFolder.fsPath,
                 env: {

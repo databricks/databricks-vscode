@@ -150,7 +150,10 @@
                 "title": "Run File as Workflow",
                 "category": "Databricks",
                 "enablement": "!inDebugMode",
-                "icon": "$(play)"
+                "icon": {
+                    "dark": "resources/dark/logo.svg",
+                    "light": "resources/light/logo.svg"
+                }
             },
             {
                 "command": "databricks.run.runEditorContents",
