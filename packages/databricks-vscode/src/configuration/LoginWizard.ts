@@ -283,12 +283,9 @@ export class LoginWizard {
             return checkResult;
         }
 
-        await saveNewProfile(profileName, authProvider);
-
-        this.state.authProvider = new ProfileAuthProvider(
-            this.state.host!,
+        this.state.authProvider = await saveNewProfile(
             profileName,
-            true
+            authProvider
         );
     }
 
@@ -313,7 +310,7 @@ export async function saveNewProfile(
 ) {
     const iniData = authProvider.toIni();
     if (!iniData) {
-        return;
+        throw new Error("Can't save empty auth provider to a profile");
     }
     const {path: configFilePath, iniFile} = await loadConfigFile(
         workspaceConfigs.databrickscfgLocation
@@ -334,6 +331,8 @@ export async function saveNewProfile(
 
     // Write the new profile to .databrickscfg
     await writeFile(configFilePath, ini.stringify(iniFile));
+
+    return new ProfileAuthProvider(authProvider.host, profileName, true);
 }
 
 function humaniseSdkAuthType(sdkAuthType: string) {

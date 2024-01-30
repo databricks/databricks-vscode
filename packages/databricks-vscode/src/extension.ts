@@ -245,6 +245,11 @@ export async function activate(
             "databricks.bundle.initNewProject",
             bundleProjectManager.initNewProject,
             bundleProjectManager
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.startManualMigration",
+            bundleProjectManager.startManualMigration,
+            bundleProjectManager
         )
     );
 

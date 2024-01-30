@@ -7,6 +7,8 @@ import {
     commands,
     TerminalLocation,
 } from "vscode";
+import fs from "node:fs/promises";
+import path from "path";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {BundleFileSet} from "./BundleFileSet";
@@ -17,9 +19,13 @@ import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {CliWrapper} from "../cli/CliWrapper";
 import {LoginWizard, saveNewProfile} from "../configuration/LoginWizard";
 import {Mutex} from "../locking";
-import {AuthProvider} from "../configuration/auth/AuthProvider";
+import {
+    AuthProvider,
+    ProfileAuthProvider,
+} from "../configuration/auth/AuthProvider";
 import {ProjectConfigFile} from "../file-managers/ProjectConfigFile";
 import {randomUUID} from "crypto";
+import {onError} from "../utils/onErrorDecorator";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -171,11 +177,17 @@ export class BundleProjectManager {
 
     private async detectLegacyProjectConfig() {
         this.legacyProjectConfig = await this.loadLegacyProjectConfig();
-        if (this.legacyProjectConfig) {
-            this.logger.debug(
-                "Detected a legacy project.json, starting automatic migration"
-            );
-            await this.configureAutomaticMigration(this.legacyProjectConfig);
+        if (!this.legacyProjectConfig) {
+            return;
+        }
+        this.logger.debug(
+            "Detected a legacy project.json, starting automatic migration"
+        );
+        try {
+            await this.startAutomaticMigration(this.legacyProjectConfig);
+        } catch (error) {
+            this.logger.error("Failed to perform automatic migration:", error);
+            this.customWhenContext.setPendingManualMigration(true);
         }
     }
 
@@ -193,44 +205,80 @@ export class BundleProjectManager {
         }
     }
 
-    private async configureAutomaticMigration(
+    private async startAutomaticMigration(
         legacyProjectConfig: ProjectConfigFile
     ) {
-        const authProvider = legacyProjectConfig.authProvider;
-        if (await authProvider.check()) {
-            let profileName = authProvider.toJSON().profile;
-            if (!profileName) {
-                profileName = `${authProvider.authType}-${randomUUID().slice(
-                    0,
-                    8
-                )}`;
-                await saveNewProfile(profileName, authProvider);
-            }
-            await this.migrateProjectJsonToBundle(profileName);
-        } else {
+        let authProvider = legacyProjectConfig.authProvider;
+        if (!(await authProvider.check())) {
             this.logger.debug(
                 "Legacy project auth was not successful, showing 'configure' welcome screen"
             );
             this.customWhenContext.setPendingManualMigration(true);
+            return;
         }
+        if (!(authProvider instanceof ProfileAuthProvider)) {
+            const rnd = randomUUID().slice(0, 8);
+            const profileName = `${authProvider.authType}-${rnd}`;
+            this.logger.debug(
+                "Creating new profile before bundle migration",
+                profileName
+            );
+            authProvider = await saveNewProfile(profileName, authProvider);
+        }
+        await this.migrateProjectJsonToBundle(
+            legacyProjectConfig,
+            authProvider as ProfileAuthProvider
+        );
     }
 
-    public async configureManualMigration() {
+    @onError({
+        popup: {
+            prefix: "Failed to migrate the project to Databricks Asset Bundles",
+        },
+    })
+    public async startManualMigration() {
+        if (!this.legacyProjectConfig) {
+            throw new Error("Can't migrate without project configuration");
+        }
         const authProvider = await LoginWizard.run(this.cli, this.configModel);
-        const profileName = authProvider?.toJSON().pofile;
-        if (authProvider && profileName && (await authProvider.check())) {
-            return this.migrateProjectJsonToBundle(profileName);
+        if (
+            authProvider instanceof ProfileAuthProvider &&
+            (await authProvider.check())
+        ) {
+            return this.migrateProjectJsonToBundle(
+                this.legacyProjectConfig!,
+                authProvider
+            );
         } else {
             this.logger.debug("Incorrect auth for the project.json migration");
         }
     }
 
-    private async migrateProjectJsonToBundle(profileName: string) {
-        if (!this.legacyProjectConfig || !profileName) {
-            throw new Error("Can't migrate without project configuration");
-        }
-        // TODO: call "bundle init" with predefined template using at least the following data from the legacy config:
-        // host, clusterId, workspacePath (as remoteRootPath)
+    private async migrateProjectJsonToBundle(
+        legacyProjectConfig: ProjectConfigFile,
+        authProvider: ProfileAuthProvider
+    ) {
+        const configVars = {
+            /* eslint-disable @typescript-eslint/naming-convention */
+            project_name: path.basename(this.workspaceUri.fsPath),
+            compute_id: legacyProjectConfig.clusterId,
+            root_path: legacyProjectConfig.workspacePath?.path,
+            /* eslint-enable @typescript-eslint/naming-convention */
+        };
+        this.logger.debug("Starting bundle migration, config:", configVars);
+        const configFilePath = path.join(
+            this.workspaceUri.fsPath,
+            ".databricks",
+            "migration-config.json"
+        );
+        await fs.writeFile(configFilePath, JSON.stringify(configVars, null, 4));
+        const templateDirPath = path.join(__dirname, "migration-template");
+        await this.cli.bundleInit(
+            templateDirPath,
+            this.workspaceUri.fsPath,
+            configFilePath,
+            authProvider
+        );
     }
 
     public async initNewProject() {
@@ -246,7 +294,7 @@ export class BundleProjectManager {
             this.logger.debug("No parent folder provided");
             return;
         }
-        await this.bundleInitInTerminal(parentFolder, authProvider.toEnv());
+        await this.bundleInitInTerminal(parentFolder, authProvider);
         this.logger.debug(
             "Finished bundle init wizard, detecting projects to initialize or open"
         );
@@ -322,13 +370,13 @@ export class BundleProjectManager {
 
     private async bundleInitInTerminal(
         parentFolder: Uri,
-        env: Record<string, string>
+        authProvider: AuthProvider
     ) {
         const terminal = window.createTerminal({
             name: "Databricks Project Init",
             isTransient: true,
             location: TerminalLocation.Editor,
-            env: {...env, ...this.cli.getLogginEnvVars()},
+            env: this.cli.getBundleInitEnvVars(authProvider),
         });
         const args = [
             "bundle",

@@ -110,4 +110,12 @@ export class ProjectConfigFile {
             cliPath
         );
     }
+
+    static getProjectConfigFilePath(rootPath?: string): string {
+        if (!rootPath) {
+            throw new Error("Not in a VSCode workspace");
+        }
+        const cwd = path.normalize(rootPath);
+        return path.join(cwd, ".databricks", "project.json");
+    }
 }

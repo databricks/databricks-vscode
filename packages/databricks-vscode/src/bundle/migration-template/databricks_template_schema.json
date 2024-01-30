@@ -1,0 +1,19 @@
+{
+    "properties": {
+        "project_name": {
+            "type": "string",
+            "description": "Project name",
+            "order": 1
+        },
+        "compute_id": {
+            "type": "string",
+            "description": "Compute id",
+            "order": 2
+        },
+        "root_path": {
+            "type": "string",
+            "description": "Root path",
+            "order": 3
+        }
+    }
+}
