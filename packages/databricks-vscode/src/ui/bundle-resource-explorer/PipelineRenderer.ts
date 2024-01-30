@@ -1,20 +1,29 @@
-import {TreeItemCollapsibleState} from "vscode";
+import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
+import {BundleRunManager} from "../../bundle/BundleRunManager";
 
 export class PipelineRenderer implements Renderer {
     readonly type = "pipelines";
 
-    constructor() {}
+    constructor(private readonly bundleRunManager: BundleRunManager) {}
 
     getTreeItem(element: TreeNode): BundleResourceExplorerTreeItem {
         if (element.type !== this.type) {
             throw new Error("Invalid element type");
         }
-
+        const isRunning = this.bundleRunManager.isRunning(element.resourceKey);
         return {
             label: element.data.name,
-            contextValue: this.type,
+            iconPath: isRunning
+                ? new ThemeIcon(
+                      "sync~spin",
+                      new ThemeColor("debugIcon.startForeground")
+                  )
+                : undefined,
+            contextValue: `databricks.bundle.resource-explorer.${
+                isRunning ? "running" : "runnable"
+            }.pipeline`,
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }
@@ -62,7 +71,7 @@ export class PipelineRenderer implements Renderer {
             return {
                 type: this.type,
                 data: pipelines[pipelineKey],
-                resourceKey: pipelineKey,
+                resourceKey: `pipelines.${pipelineKey}`,
             };
         });
     }

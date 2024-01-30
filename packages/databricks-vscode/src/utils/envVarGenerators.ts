@@ -141,14 +141,10 @@ export function getEnvVarsForCli(configfilePath?: string) {
 
 export function removeUndefinedKeys<
     T extends Record<string, string | undefined>,
->(envVarMap?: T): T | undefined {
-    if (envVarMap === undefined) {
-        return;
-    }
-
+>(envVarMap: T): Record<string, string> {
     const filteredEntries = Object.entries(envVarMap).filter(
         (entry) => entry[1] !== undefined
     ) as [string, string][];
 
-    return Object.fromEntries<string>(filteredEntries) as T;
+    return Object.fromEntries<string>(filteredEntries);
 }

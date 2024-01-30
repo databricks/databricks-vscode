@@ -60,6 +60,7 @@ import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeDataProvider} from "./ui/bundle-resource-explorer/BundleResourceExplorerTreeDataProvider";
 import {BundleCommands} from "./bundle/BundleCommands";
+import {BundleRunManager} from "./bundle/BundleRunManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
 
 const customWhenContext = new CustomWhenContext();
@@ -569,12 +570,22 @@ export async function activate(
     );
 
     // Bundle resource explorer
+    const bundleRunManager = new BundleRunManager(bundleRemoteStateModel);
     const bundleResourceExplorerTreeDataProvider =
-        new BundleResourceExplorerTreeDataProvider(configModel, context);
-    const bundleCommands = new BundleCommands(bundleRemoteStateModel);
+        new BundleResourceExplorerTreeDataProvider(
+            configModel,
+            bundleRunManager,
+            context
+        );
+
+    const bundleCommands = new BundleCommands(
+        bundleRemoteStateModel,
+        bundleRunManager
+    );
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,
         bundleCommands,
+        bundleRunManager,
         window.registerTreeDataProvider(
             "dabsResourceExplorerView",
             bundleResourceExplorerTreeDataProvider
@@ -587,6 +598,21 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.bundle.deploy",
             bundleCommands.deploy,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deployAndRun",
+            bundleCommands.deployAndRun,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.cancelAllRuns",
+            bundleCommands.cancelRun,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.cancelRun",
+            bundleCommands.cancelRun,
             bundleCommands
         )
     );

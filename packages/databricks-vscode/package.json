@@ -246,6 +246,26 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.bundle.deployAndRun",
+                "icon": "$(debug-start)",
+                "title": "Deploy the bundle and run the resource",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.cancelAllRuns",
+                "title": "Cancel all runs",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.cancelRun",
+                "title": "Cancel run",
+                "icon": "$(debug-stop)",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.bundle.initNewProject",
                 "title": "Initialize new project",
                 "enablement": "databricks.context.activated",
@@ -403,6 +423,16 @@
                 {
                     "command": "databricks.cluster.start",
                     "when": "view == configurationView && viewItem == databricks.configuration.cluster.terminated",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRun",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.runnable.*$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.cancelRun",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.running.*$/",
                     "group": "inline@0"
                 }
             ],
