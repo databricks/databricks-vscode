@@ -110,30 +110,26 @@ export class BundleRunManager implements Disposable {
                     return;
                 }
                 disposables.push(
-                    terminal.pty.onDidCloseProcess(
-                        (exitCode) => {
-                            if (exitCode === 0) {
-                                resolve();
-                            } else {
-                                reject(
-                                    new Error(
-                                        `Process exited with code ${exitCode}`
-                                    )
-                                );
-                            }
-                        },
-                        window.onDidCloseTerminal((e) => {
-                            e.name === terminal.terminal.name &&
-                                reject(new Error("Terminal closed"));
-                        })
-                    )
+                    terminal.pty.onDidCloseProcess((exitCode) => {
+                        if (exitCode === 0) {
+                            resolve();
+                        } else {
+                            reject(
+                                new Error(
+                                    `Process exited with code ${exitCode}`
+                                )
+                            );
+                        }
+                    }),
+                    window.onDidCloseTerminal((e) => {
+                        e.name === terminal.terminal.name &&
+                            reject(new Error("Terminal closed"));
+                    })
                 );
             });
         } finally {
-            await this.isRunningMutex.synchronise(async () => {
-                this._isRunning.delete(terminalName);
-                this.onDidChangeEmitter.fire();
-            });
+            this._isRunning.delete(terminalName);
+            this.onDidChangeEmitter.fire();
             disposables.forEach((i) => i.dispose());
             this.cancellationTokenSources.get(terminalName)?.cancel();
             this.cancellationTokenSources.get(terminalName)?.dispose();
