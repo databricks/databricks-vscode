@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import {BundleRunStatus} from "./BundleRunStatus";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {onError} from "../../utils/onErrorDecorator";

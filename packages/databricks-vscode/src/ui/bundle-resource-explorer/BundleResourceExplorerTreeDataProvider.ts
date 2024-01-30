@@ -123,9 +123,8 @@ export class BundleResourceExplorerTreeDataProvider
     }
 
     private async getRoots(): Promise<TreeNode[]> {
-        const remoteStateConfig = await this.configModel.get(
-            "remoteStateConfig"
-        );
+        const remoteStateConfig =
+            await this.configModel.get("remoteStateConfig");
         if (remoteStateConfig?.resources === undefined) {
             return [];
         }
