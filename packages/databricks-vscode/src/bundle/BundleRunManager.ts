@@ -7,7 +7,6 @@ import {
 } from "vscode";
 import {BundleRemoteStateModel} from "./models/BundleRemoteStateModel";
 import {CustomOutputTerminal} from "./CustomOutputTerminal";
-import {Mutex} from "../locking";
 
 export class BundleRunManager implements Disposable {
     private onDidChangeEmitter = new EventEmitter<void>();
@@ -26,7 +25,6 @@ export class BundleRunManager implements Disposable {
         new Map();
 
     private _isRunning: Map<string, boolean> = new Map();
-    private isRunningMutex = new Mutex();
 
     isRunning(resourceKey: string) {
         const target = this.bundleRemoteStateModel.target;
@@ -77,9 +75,6 @@ export class BundleRunManager implements Disposable {
                     `Process already running. Pid: ${terminal.pty.process.pid}`
                 );
             }
-            this.cancellationTokenSources.get(terminalName)?.cancel();
-            this.cancellationTokenSources.get(terminalName)?.dispose();
-            this.cancellationTokenSources.delete(terminalName);
 
             const cancellationTokenSource = new CancellationTokenSource();
             this.cancellationTokenSources.set(
@@ -91,14 +86,13 @@ export class BundleRunManager implements Disposable {
                     terminal?.pty.close();
                     //Dispose self on cancellation
                     onCancellationEvent.dispose();
-                });
+                }, this.disposables);
 
             const cmd = this.bundleRemoteStateModel.getRunCommand(resourceKey);
 
-            await this.isRunningMutex.synchronise(async () => {
-                this._isRunning.set(terminalName, true);
-                this.onDidChangeEmitter.fire();
-            });
+            this._isRunning.set(terminalName, true);
+            this.onDidChangeEmitter.fire();
+
             // spawn a new process with the latest command, in the same terminal.
             terminal.pty.spawn(cmd);
             terminal.terminal.show();
@@ -130,7 +124,9 @@ export class BundleRunManager implements Disposable {
         } finally {
             this._isRunning.delete(terminalName);
             this.onDidChangeEmitter.fire();
+
             disposables.forEach((i) => i.dispose());
+
             this.cancellationTokenSources.get(terminalName)?.cancel();
             this.cancellationTokenSources.get(terminalName)?.dispose();
             this.cancellationTokenSources.delete(terminalName);
