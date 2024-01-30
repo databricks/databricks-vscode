@@ -140,14 +140,6 @@ export class BundleRunTerminalManager implements Disposable {
         this.cancellationTokenSources.delete(terminalName);
     }
 
-    cancelAll() {
-        this.cancellationTokenSources.forEach((cs) => {
-            cs.cancel();
-        });
-
-        this.cancellationTokenSources.clear();
-    }
-
     dispose() {
         this.disposables.forEach((i) => i.dispose());
     }

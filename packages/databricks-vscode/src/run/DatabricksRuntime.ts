@@ -20,17 +20,13 @@ import {
     SyncDestinationMapper,
 } from "../sync/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {
-    promptForAttachingSyncDest,
-    promptForClusterAttach,
-    promptForClusterStart,
-} from "./prompts";
-import {CodeSynchronizer} from "../sync/CodeSynchronizer";
+import {promptForClusterAttach, promptForClusterStart} from "./prompts";
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
+import {BundleCommands} from "../bundle/BundleCommands";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -97,7 +93,7 @@ export class DatabricksRuntime implements Disposable {
 
     constructor(
         private connection: ConnectionManager,
-        private codeSynchronizer: CodeSynchronizer,
+        private bundleCommands: BundleCommands,
         private context: ExtensionContext,
         private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {}
@@ -124,9 +120,19 @@ export class DatabricksRuntime implements Disposable {
 
         try {
             if (this.connection.state === "CONNECTING") {
-                log("Connecting to cluster ...");
+                log("Connecting to databricks...");
                 await this.cancellable(this.connection.waitForConnect());
             }
+            const syncDestinationMapper = this.connection.syncDestinationMapper;
+            if (syncDestinationMapper === undefined) {
+                throw new Error("No sync destination found");
+            }
+
+            log("Deploying assets to databricks workspace...");
+            this.state = "SYNCING";
+            await this.bundleCommands.deploy();
+
+            await commands.executeCommand("workbench.panel.repl.view.focus");
 
             const cluster = this.connection.cluster;
             if (!cluster) {
@@ -140,12 +146,6 @@ export class DatabricksRuntime implements Disposable {
                 this._onErrorEmitter.fire(undefined);
                 promptForClusterStart();
                 return;
-            }
-
-            const syncDestination = this.connection.syncDestinationMapper;
-            if (!syncDestination) {
-                promptForAttachingSyncDest();
-                return this._onErrorEmitter.fire(undefined);
             }
 
             log(`Creating execution context on cluster ${cluster.id} ...`);
@@ -163,52 +163,12 @@ export class DatabricksRuntime implements Disposable {
                 await executionContext.destroy();
             });
 
-            // We wait for sync to complete so that the local files are consistant
-            // with the remote repo files
-            log(`Synchronizing code to ${syncDestination.remoteUri.path} ...`);
-            this.state = "SYNCING";
-
-            this.disposables.push(
-                this.codeSynchronizer.onDidChangeState((state) => {
-                    if (
-                        !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(state)
-                    ) {
-                        return this._onErrorEmitter.fire(
-                            "Execution cancelled because sync was stopped"
-                        );
-                    }
-                })
-            );
-
-            if (
-                !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(
-                    this.codeSynchronizer.state
-                )
-            ) {
-                await commands.executeCommand("databricks.sync.start");
-            }
-
-            // We wait for sync to complete so that the local files are consistant
-            // with the remote repo files
-            await this.cancellable(this.codeSynchronizer.waitForSyncComplete());
             if (this._runtimeState === "CANCELED") {
                 return;
             }
-            if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {
-                this._onDidSendOutputEmitter.fire({
-                    type: "err",
-                    text: `Can't sync ${program}. Reason: ${this.codeSynchronizer.state}`,
-                    filePath: program,
-                    line: 0,
-                    column: 0,
-                });
-                this._onErrorEmitter.fire(`Error in running ${program}.`);
-                return;
-            }
-            await commands.executeCommand("workbench.panel.repl.view.focus");
 
             log(
-                `Running ${syncDestination.localUri.relativePath(
+                `Running ${syncDestinationMapper.localUri.relativePath(
                     new LocalUri(program)
                 )} ...\n`
             );
@@ -218,7 +178,7 @@ export class DatabricksRuntime implements Disposable {
                 await this.compileCommandString(
                     program,
                     args,
-                    syncDestination,
+                    syncDestinationMapper,
                     envVars
                 ),
                 undefined,
@@ -241,7 +201,7 @@ export class DatabricksRuntime implements Disposable {
                     let localFile = "";
                     try {
                         if (frame.file) {
-                            localFile = syncDestination.remoteToLocal(
+                            localFile = syncDestinationMapper.remoteToLocal(
                                 new RemoteUri(path.posix.normalize(frame.file))
                             ).path;
 

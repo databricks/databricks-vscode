@@ -150,7 +150,10 @@
                 "title": "Run File as Workflow",
                 "category": "Databricks",
                 "enablement": "!inDebugMode",
-                "icon": "$(play)"
+                "icon": {
+                    "dark": "resources/dark/logo.svg",
+                    "light": "resources/light/logo.svg"
+                }
             },
             {
                 "command": "databricks.run.runEditorContents",
@@ -249,12 +252,6 @@
                 "command": "databricks.bundle.deployAndRun",
                 "icon": "$(debug-start)",
                 "title": "Deploy the bundle and run the resource",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
-                "category": "Databricks"
-            },
-            {
-                "command": "databricks.bundle.cancelAllRuns",
-                "title": "Cancel all runs",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
                 "category": "Databricks"
             },
@@ -404,16 +401,6 @@
                     "command": "databricks.connection.attachClusterQuickPick",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.*$/",
                     "group": "inline@2"
-                },
-                {
-                    "command": "databricks.sync.start",
-                    "when": "view == configurationView && viewItem == databricks.configuration.sync.stopped",
-                    "group": "inline@0"
-                },
-                {
-                    "command": "databricks.sync.stop",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.sync.(?!error|stopped|selected).*$/",
-                    "group": "inline@0"
                 },
                 {
                     "command": "databricks.cluster.stop",

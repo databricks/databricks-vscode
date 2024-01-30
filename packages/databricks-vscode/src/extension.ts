@@ -16,7 +16,6 @@ import {ConfigurationDataProvider} from "./configuration/ui/ConfigurationDataPro
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
-import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
@@ -471,41 +470,6 @@ export async function activate(
         )
     );
 
-    // Run/debug group
-    const runCommands = new RunCommands(connectionManager);
-    const debugFactory = new DatabricksDebugAdapterFactory(
-        connectionManager,
-        synchronizer,
-        context,
-        wsfsAccessVerifier
-    );
-    const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
-        connectionManager,
-        wsfsAccessVerifier,
-        context,
-        synchronizer
-    );
-
-    context.subscriptions.push(
-        telemetry.registerCommand(
-            "databricks.run.runEditorContents",
-            runCommands.runEditorContentsCommand(),
-            runCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.run.runEditorContentsAsWorkflow",
-            runCommands.runEditorContentsAsWorkflowCommand(),
-            runCommands
-        ),
-        debug.registerDebugAdapterDescriptorFactory("databricks", debugFactory),
-        debugFactory,
-        debug.registerDebugAdapterDescriptorFactory(
-            "databricks-workflow",
-            debugWorkflowFactory
-        ),
-        debugWorkflowFactory
-    );
-
     // Cluster group
     const clusterTreeDataProvider = new ClusterListDataProvider(clusterModel);
     const clusterCommands = new ClusterCommands(
@@ -550,26 +514,6 @@ export async function activate(
         )
     );
 
-    // Sync
-    const syncCommands = new SyncCommands(synchronizer);
-    context.subscriptions.push(
-        telemetry.registerCommand(
-            "databricks.sync.start",
-            syncCommands.startCommand("incremental"),
-            syncCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.sync.startFull",
-            syncCommands.startCommand("full"),
-            syncCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.sync.stop",
-            syncCommands.stopCommand(),
-            syncCommands
-        )
-    );
-
     // Bundle resource explorer
     const bundleRunTerminalManager = new BundleRunTerminalManager(
         bundleRemoteStateModel
@@ -587,7 +531,8 @@ export async function activate(
 
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
-        bundleRunStatusManager
+        bundleRunStatusManager,
+        bundleFileWatcher
     );
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,
@@ -599,12 +544,12 @@ export async function activate(
         ),
         telemetry.registerCommand(
             "databricks.bundle.refreshRemoteState",
-            bundleCommands.refreshRemoteState,
+            bundleCommands.refreshRemoteStateCommand,
             bundleCommands
         ),
         telemetry.registerCommand(
             "databricks.bundle.deploy",
-            bundleCommands.deploy,
+            bundleCommands.deployCommand,
             bundleCommands
         ),
         telemetry.registerCommand(
@@ -613,15 +558,45 @@ export async function activate(
             bundleCommands
         ),
         telemetry.registerCommand(
-            "databricks.bundle.cancelAllRuns",
-            bundleCommands.cancelRun,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
             "databricks.bundle.cancelRun",
             bundleCommands.cancelRun,
             bundleCommands
         )
+    );
+
+    // Run/debug group
+    const runCommands = new RunCommands(connectionManager);
+    const debugFactory = new DatabricksDebugAdapterFactory(
+        connectionManager,
+        bundleCommands,
+        context,
+        wsfsAccessVerifier
+    );
+    const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
+        connectionManager,
+        wsfsAccessVerifier,
+        context,
+        bundleCommands
+    );
+
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.run.runEditorContents",
+            runCommands.runEditorContentsCommand(),
+            runCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.run.runEditorContentsAsWorkflow",
+            runCommands.runEditorContentsAsWorkflowCommand(),
+            runCommands
+        ),
+        debug.registerDebugAdapterDescriptorFactory("databricks", debugFactory),
+        debugFactory,
+        debug.registerDebugAdapterDescriptorFactory(
+            "databricks-workflow",
+            debugWorkflowFactory
+        ),
+        debugWorkflowFactory
     );
 
     // Quickstart

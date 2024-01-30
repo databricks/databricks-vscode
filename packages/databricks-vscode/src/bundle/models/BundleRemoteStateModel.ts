@@ -69,8 +69,6 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             onStdOut,
             onStdErr
         );
-
-        await this.refresh();
     }
 
     public getRunCommand(resourceKey: string) {

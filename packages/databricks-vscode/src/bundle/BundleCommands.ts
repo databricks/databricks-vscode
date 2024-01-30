@@ -1,6 +1,7 @@
-import {Disposable, window} from "vscode";
+import {Disposable, ProgressLocation, window} from "vscode";
 import {BundleRemoteStateModel} from "./models/BundleRemoteStateModel";
 import {onError} from "../utils/onErrorDecorator";
+import {BundleWatcher} from "./BundleWatcher";
 import {
     TreeNode as BundleResourceExplorerTreeNode,
     ResourceTreeNode as BundleResourceExplorerResourceTreeNode,
@@ -24,6 +25,28 @@ export class BundleCommands implements Disposable {
         "Databricks Asset Bundles"
     );
 
+    constructor(
+        private readonly bundleRemoteStateModel: BundleRemoteStateModel,
+        private readonly bundleRunStatusManager: BundleRunStatusManager,
+        private readonly bundleWatcher: BundleWatcher
+    ) {
+        this.disposables.push(
+            this.outputChannel,
+            this.bundleWatcher.onDidChange(async () => {
+                await this.bundleRemoteStateModel.refresh();
+            })
+        );
+    }
+
+    async refreshRemoteState() {
+        await window.withProgress(
+            {location: {viewId: "dabsResourceExplorerView"}},
+            async () => {
+                await this.bundleRemoteStateModel.refresh();
+            }
+        );
+    }
+
     private writeToChannel = (data: string) => {
         this.outputChannel.append(data);
     };
@@ -33,22 +56,15 @@ export class BundleCommands implements Disposable {
         this.outputChannel.appendLine("");
     }
 
-    constructor(
-        private readonly bundleRemoteStateModel: BundleRemoteStateModel,
-        private readonly bundleRunStatusManager: BundleRunStatusManager
-    ) {
-        this.disposables.push(this.outputChannel);
-    }
-
     @onError({popup: {prefix: "Error refreshing remote state."}})
-    async refreshRemoteState() {
-        await this.bundleRemoteStateModel.refresh();
+    async refreshRemoteStateCommand() {
+        await this.refreshRemoteState();
     }
 
-    @onError({popup: {prefix: "Error deploying the bundle."}})
     async deploy() {
+        this.prepareOutputChannel();
         await window.withProgress(
-            {location: {viewId: "dabsResourceExplorerView"}},
+            {location: ProgressLocation.Notification, cancellable: false},
             async () => {
                 await this.bundleRemoteStateModel.deploy(
                     this.writeToChannel,
@@ -56,6 +72,13 @@ export class BundleCommands implements Disposable {
                 );
             }
         );
+
+        await this.refreshRemoteState();
+    }
+
+    @onError({popup: {prefix: "Error deploying the bundle."}})
+    async deployCommand() {
+        await this.deploy();
     }
 
     @onError({popup: {prefix: "Error running resource."}})
@@ -64,16 +87,7 @@ export class BundleCommands implements Disposable {
             throw new Error(`Cannot run resource of type ${treeNode.type}`);
         }
         //TODO: Don't deploy if there is no diff between local and remote state
-        this.prepareOutputChannel();
-        await window.withProgress(
-            {location: {viewId: "dabsResourceExplorerView"}},
-            async () => {
-                await this.bundleRemoteStateModel.deploy(
-                    this.writeToChannel,
-                    this.writeToChannel
-                );
-            }
-        );
+        await this.deploy();
 
         await this.bundleRunStatusManager.run(
             treeNode.resourceKey,
