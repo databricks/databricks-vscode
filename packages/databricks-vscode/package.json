@@ -389,16 +389,6 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "databricks.sync.start",
-                    "when": "view == configurationView && viewItem == databricks.configuration.sync.stopped",
-                    "group": "inline@0"
-                },
-                {
-                    "command": "databricks.sync.stop",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.sync.(?!error|stopped|selected).*$/",
-                    "group": "inline@0"
-                },
-                {
                     "command": "databricks.cluster.stop",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.(running|pending)$/",
                     "group": "inline@0"
