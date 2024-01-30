@@ -36,7 +36,9 @@ export class PipelineRunStatus extends BundleRunStatus {
         this.startPolling();
     }
 
-    @onError({popup: {prefix: "Error starting polling."}})
+    @onError({
+        popup: {prefix: "Failed to check the run status for the pipeline."},
+    })
     private async startPolling() {
         if (this.runState !== "unknown") {
             return;

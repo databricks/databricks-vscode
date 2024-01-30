@@ -30,7 +30,7 @@ export class JobRunStatus extends BundleRunStatus {
         this.startPolling();
     }
 
-    @onError({popup: {prefix: "Error starting polling."}})
+    @onError({popup: {prefix: "Failed to check the run status for the job."}})
     private async startPolling() {
         if (this.runState !== "unknown") {
             return;
@@ -52,11 +52,11 @@ export class JobRunStatus extends BundleRunStatus {
                 },
             });
         } catch (e) {
+            this.runState = "error";
             if (e instanceof JobsError || e instanceof JobsRetriableError) {
                 // On progress is already fired for these status updates. We let the listeners handle it.
                 return;
             }
-            this.runState = "error";
             throw e;
         }
         this.runState = "completed";
