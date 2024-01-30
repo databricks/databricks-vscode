@@ -5,7 +5,7 @@ import {
     TreeNode as BundleResourceExplorerTreeNode,
     ResourceTreeNode as BundleResourceExplorerResourceTreeNode,
 } from "../ui/bundle-resource-explorer/types";
-import {BundleRunManager} from "./BundleRunManager";
+import {BundleRunStatusManager} from "./run/BundleRunStatusManager";
 
 const RUNNABLE_RESOURCES = [
     "pipelines",
@@ -35,7 +35,7 @@ export class BundleCommands implements Disposable {
 
     constructor(
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
-        private readonly bundleRunManager: BundleRunManager
+        private readonly bundleRunStatusManager: BundleRunStatusManager
     ) {
         this.disposables.push(this.outputChannel);
     }
@@ -75,7 +75,10 @@ export class BundleCommands implements Disposable {
             }
         );
 
-        await this.bundleRunManager.run(treeNode.resourceKey);
+        await this.bundleRunStatusManager.run(
+            treeNode.resourceKey,
+            treeNode.type
+        );
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})
@@ -84,7 +87,7 @@ export class BundleCommands implements Disposable {
             throw new Error(`Resource of ${treeNode.type} is not runnable`);
         }
 
-        this.bundleRunManager.cancel(treeNode.resourceKey);
+        this.bundleRunStatusManager.cancel(treeNode.resourceKey);
     }
 
     dispose() {
