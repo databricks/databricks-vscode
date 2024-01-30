@@ -56,9 +56,6 @@ export class BundleRunTerminalManager implements Disposable {
                     `Process already running. Pid: ${terminal.pty.process.pid}`
                 );
             }
-            this.cancellationTokenSources.get(terminalName)?.cancel();
-            this.cancellationTokenSources.get(terminalName)?.dispose();
-            this.cancellationTokenSources.delete(terminalName);
 
             const cancellationTokenSource = new CancellationTokenSource();
             this.cancellationTokenSources.set(
@@ -70,7 +67,7 @@ export class BundleRunTerminalManager implements Disposable {
                     terminal?.pty.close();
                     //Dispose self on cancellation
                     onCancellationEvent.dispose();
-                });
+                }, this.disposables);
 
             const cmd = this.bundleRemoteStateModel.getRunCommand(resourceKey);
 
@@ -90,30 +87,24 @@ export class BundleRunTerminalManager implements Disposable {
                     resolve();
                     return;
                 }
-                disposables.push(
-                    terminal.pty.onDidCloseProcess(
-                        (exitCode) => {
-                            if (exitCode === 0 || terminal.pty.isClosed) {
-                                // Resolve when the process exits with code 0 or is closed by human action
-                                resolve();
-                            } else {
-                                reject(
-                                    new Error(
-                                        `Process exited with code ${exitCode}`
-                                    )
-                                );
-                            }
-                        },
-                        window.onDidCloseTerminal((e) => {
-                            // Resolve when the process is closed by human action
-                            e.name === terminal.terminal.name &&
-                                reject(resolve());
-                        })
-                    )
-                );
+                terminal.pty.onDidCloseProcess((exitCode) => {
+                    if (exitCode === 0 || terminal.pty.isClosed) {
+                        // Resolve when the process exits with code 0 or is closed by human action
+                        resolve();
+                    } else {
+                        reject(
+                            new Error(`Process exited with code ${exitCode}`)
+                        );
+                    }
+                }, disposables);
+                window.onDidCloseTerminal((e) => {
+                    // Resolve when the process is closed by human action
+                    e.name === terminal.terminal.name && reject(resolve());
+                }, disposables);
             });
         } finally {
             disposables.forEach((i) => i.dispose());
+
             this.cancellationTokenSources.get(terminalName)?.cancel();
             this.cancellationTokenSources.get(terminalName)?.dispose();
             this.cancellationTokenSources.delete(terminalName);

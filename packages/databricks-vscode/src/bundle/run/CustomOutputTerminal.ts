@@ -47,23 +47,16 @@ export class CustomOutputTerminal implements Pseudoterminal {
             throw new Error("Can't start process: can't pipe stdout process");
         }
 
-        this.process.stdout.on("data", (data) => {
+        const handleOutput = (data: Buffer) => {
             let dataStr = data.toString();
             dataStr = dataStr.replaceAll("\n", "\r\n");
             if (!dataStr.endsWith("\r\n")) {
                 dataStr = dataStr + "\r\n";
             }
             this.writeEmitter.fire(dataStr);
-        });
-
-        this.process.stderr.on("data", (data) => {
-            let dataStr: string = data.toString();
-            dataStr = dataStr.replaceAll("\n", "\r\n");
-            if (!dataStr.endsWith("\r\n")) {
-                dataStr = dataStr + "\r\n";
-            }
-            this.writeEmitter.fire(dataStr);
-        });
+        };
+        this.process.stdout.on("data", handleOutput);
+        this.process.stderr.on("data", handleOutput);
 
         this.process.on("close", (exitCode) => {
             this.onDidCloseProcessEmitter.fire(exitCode);
