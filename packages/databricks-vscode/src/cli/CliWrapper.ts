@@ -1,5 +1,6 @@
 import {
     ChildProcessWithoutNullStreams,
+    SpawnOptionsWithoutStdio,
     execFile as execFileCb,
     spawn,
 } from "child_process";
@@ -13,6 +14,7 @@ import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
 import {EnvVarGenerators, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
+import {removeUndefinedKeys} from "../utils/envVarGenerators";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -314,5 +316,35 @@ export class CliWrapper {
         );
 
         return await waitForProcess(p, onStdOut, onStdError);
+    }
+
+    getBundleRunCommand(
+        target: string,
+        authProvider: AuthProvider,
+        resourceKey: string,
+        workspaceFolder: Uri,
+        configfilePath?: string
+    ): {
+        cmd: string;
+        args: string[];
+        options: SpawnOptionsWithoutStdio;
+    } {
+        const env: Record<string, string> = removeUndefinedKeys({
+            ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            DATABRICKS_CLUSTER_ID: this.clusterId,
+        });
+
+        return {
+            cmd: this.cliPath,
+            args: ["bundle", "run", "--target", target, resourceKey],
+            options: {
+                cwd: workspaceFolder.fsPath,
+                env,
+                shell: true,
+            },
+        };
     }
 }

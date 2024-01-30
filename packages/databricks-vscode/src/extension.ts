@@ -59,6 +59,8 @@ import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeDataProvider} from "./ui/bundle-resource-explorer/BundleResourceExplorerTreeDataProvider";
 import {BundleCommands} from "./bundle/BundleCommands";
+import {BundleRunTerminalManager} from "./bundle/run/BundleRunTerminalManager";
+import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
 
 const customWhenContext = new CustomWhenContext();
@@ -513,15 +515,29 @@ export async function activate(
     );
 
     // Bundle resource explorer
+    const bundleRunTerminalManager = new BundleRunTerminalManager(
+        bundleRemoteStateModel
+    );
+    const bundleRunStatusManager = new BundleRunStatusManager(
+        bundleRemoteStateModel,
+        bundleRunTerminalManager
+    );
     const bundleResourceExplorerTreeDataProvider =
-        new BundleResourceExplorerTreeDataProvider(configModel, context);
+        new BundleResourceExplorerTreeDataProvider(
+            configModel,
+            bundleRunStatusManager,
+            context
+        );
+
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
+        bundleRunStatusManager,
         bundleFileWatcher
     );
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,
         bundleCommands,
+        bundleRunTerminalManager,
         window.registerTreeDataProvider(
             "dabsResourceExplorerView",
             bundleResourceExplorerTreeDataProvider
@@ -534,6 +550,16 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.bundle.deploy",
             bundleCommands.deployCommand,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deployAndRun",
+            bundleCommands.deployAndRun,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.cancelRun",
+            bundleCommands.cancelRun,
             bundleCommands
         )
     );

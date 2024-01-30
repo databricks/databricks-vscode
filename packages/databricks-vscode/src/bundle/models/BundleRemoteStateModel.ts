@@ -13,7 +13,8 @@ import {Context, context} from "@databricks/databricks-sdk";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 type Resources = Required<BundleTarget>["resources"];
-type Resource<K extends keyof Required<Resources>> = Required<Resources>[K];
+export type Resource<K extends keyof Required<Resources>> =
+    Required<Resources>[K];
 
 export type BundleRemoteState = BundleTarget & {
     resources?: Resources & {
@@ -25,11 +26,14 @@ export type BundleRemoteState = BundleTarget & {
         };
     };
 };
+
+export type ResourceType = keyof Resources;
+
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemoteState> {
-    private target: string | undefined;
-    private authProvider: AuthProvider | undefined;
+    public target: string | undefined;
+    public authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
     private refreshInterval: NodeJS.Timeout | undefined;
 
@@ -64,6 +68,23 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.workspaceConfigs.databrickscfgLocation,
             onStdOut,
             onStdErr
+        );
+    }
+
+    public getRunCommand(resourceKey: string) {
+        if (this.target === undefined) {
+            throw new Error("Target is undefined");
+        }
+        if (this.authProvider === undefined) {
+            throw new Error("No authentication method is set");
+        }
+
+        return this.cli.getBundleRunCommand(
+            this.target,
+            this.authProvider,
+            resourceKey,
+            this.workspaceFolder,
+            this.workspaceConfigs.databrickscfgLocation
         );
     }
 
@@ -103,14 +124,27 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             return {};
         }
 
-        return JSON.parse(
-            await this.cli.bundleSummarise(
-                this.target,
-                this.authProvider,
-                this.workspaceFolder,
-                this.workspaceConfigs.databrickscfgLocation
-            )
+        const output = await this.cli.bundleSummarise(
+            this.target,
+            this.authProvider,
+            this.workspaceFolder,
+            this.workspaceConfigs.databrickscfgLocation
         );
+
+        if (output === "" || output === undefined) {
+            return {};
+        }
+        return JSON.parse(output);
+    }
+
+    /**
+     * @param key dot separated string that uniquely identifies a resource in the nested resources object
+     */
+    async getResource(key: string) {
+        const resources = await this.get("resources");
+        return key.split(".").reduce((prev: any, k) => {
+            return prev[k];
+        }, resources);
     }
 
     dispose() {

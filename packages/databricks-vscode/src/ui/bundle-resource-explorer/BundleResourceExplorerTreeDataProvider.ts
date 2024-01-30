@@ -10,10 +10,13 @@ import {
 import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {JobsRenderer} from "./JobsRenderer";
-import {onError} from "../../utils/onErrorDecorator";
 import {TasksRenderer} from "./TasksRenderer";
 import {PipelineRenderer} from "./PipelineRenderer";
 import path from "path";
+import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
+import {JobsRunStatusRenderer} from "./JobsRunStatusRenderer";
+import {TaskRunStatusRenderer} from "./TaskRunStatusRenderer";
+import {PipelineRunStatusRenderer} from "./PipelineRunStatusRenderer";
 
 function humaniseResourceType(type: TreeNode["type"]) {
     switch (type) {
@@ -35,12 +38,16 @@ export class BundleResourceExplorerTreeDataProvider
         this._onDidChangeTreeData.event;
 
     private renderers: Array<Renderer> = [
-        new JobsRenderer(),
-        new PipelineRenderer(),
+        new JobsRenderer(this.bundleRunStatusManager),
+        new PipelineRenderer(this.bundleRunStatusManager),
         new TasksRenderer(this.context),
+        new JobsRunStatusRenderer(),
+        new TaskRunStatusRenderer(),
+        new PipelineRunStatusRenderer(),
     ];
     constructor(
         private readonly configModel: ConfigModel,
+        private readonly bundleRunStatusManager: BundleRunStatusManager,
         private readonly context: ExtensionContext
     ) {
         this.disposables.push(
@@ -49,11 +56,13 @@ export class BundleResourceExplorerTreeDataProvider
             }),
             this.configModel.onDidChangeKey("remoteStateConfig")(() => {
                 this._onDidChangeTreeData.fire();
+            }),
+            this.bundleRunStatusManager.onDidChange(() => {
+                this._onDidChangeTreeData.fire();
             })
         );
     }
 
-    @onError({popup: {prefix: "Error rendering DABs Resource Viewer"}})
     async getTreeItem(
         element: TreeNode
     ): Promise<BundleResourceExplorerTreeItem> {
@@ -77,7 +86,7 @@ export class BundleResourceExplorerTreeDataProvider
         }
 
         const treeItem = renderer.getTreeItem(element);
-        const modifiedStatus = (element.data as any).modified_status as string;
+        const modifiedStatus = (element as any).data?.modified_status as string;
         if (modifiedStatus === undefined) {
             return treeItem;
         }
@@ -114,8 +123,9 @@ export class BundleResourceExplorerTreeDataProvider
     }
 
     private async getRoots(): Promise<TreeNode[]> {
-        const remoteStateConfig =
-            await this.configModel.get("remoteStateConfig");
+        const remoteStateConfig = await this.configModel.get(
+            "remoteStateConfig"
+        );
         if (remoteStateConfig?.resources === undefined) {
             return [];
         }
@@ -146,7 +156,6 @@ export class BundleResourceExplorerTreeDataProvider
             .flat();
     }
 
-    @onError({popup: {prefix: "Error rendering DABs Resource Viewer"}})
     async getChildren(element?: TreeNode) {
         if (element === undefined) {
             return await this.getRoots();
