@@ -347,7 +347,7 @@ export class BundleProjectManager {
         const items: AuthSelectionItem[] = [
             {
                 label: "Use current auth",
-                detail: `Type: ${authProvider.authType}; Host: ${authProvider.host.hostname}`,
+                detail: `Host: ${authProvider.host.hostname}`,
                 approved: true,
             },
             {

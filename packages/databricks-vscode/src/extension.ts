@@ -682,13 +682,18 @@ export async function activate(
         })
     );
 
-    bundleProjectManager.configureWorkspace().catch((e) => {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Failed to configure workspace",
-            e
-        );
-        window.showErrorMessage(e);
-    });
+    bundleProjectManager
+        .configureWorkspace()
+        .catch((e) => {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Failed to configure workspace",
+                e
+            );
+            window.showErrorMessage(e);
+        })
+        .finally(() => {
+            customWhenContext.setInitialized();
+        });
 
     customWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);

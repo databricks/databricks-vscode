@@ -293,6 +293,7 @@ export class CliWrapper {
             ...EnvVarGenerators.getProxyEnvVars(),
             ...this.getLogginEnvVars(),
             ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             DATABRICKS_OUTPUT_FORMAT: "text",
         };
     }

@@ -305,18 +305,23 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "Configure your Databricks workspace:\n[Configure Databricks](command:databricks.bundle.startManualMigration)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
-                "when": "workspaceFolderCount > 0 && databricks.context.pendingManualMigration"
+                "contents": "Configure your Databricks workspace:\n[Configure Databricks](command:databricks.bundle.startManualMigration)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
                 "view": "configurationView",
-                "contents": "There are multiple Databricks projects in the workspace, please chose which one to open:\n[Open Existing Project](command:databricks.bundle.openSubProject)\n",
-                "when": "workspaceFolderCount > 0 && databricks.context.subProjectsAvailable"
+                "contents": "There are multiple Databricks projects in the workspace, please chose which one to open:\n[Open Existing Project](command:databricks.bundle.openSubProject)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
                 "contents": "Current workspace has no Databricks configuration at the root level, do you want to initialize a new Databricks project?\n[Initialize New Project](command:databricks.bundle.initNewProject)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
-                "when": "workspaceFolderCount > 0"
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.pendingManualMigration"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Initializing...",
+                "when": "workspaceFolderCount > 0 && !databricks.context.initialized"
             },
             {
                 "view": "configurationView",

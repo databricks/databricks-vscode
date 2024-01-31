@@ -43,6 +43,14 @@ export class CustomWhenContext {
         );
     }
 
+    setInitialized() {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.initialized",
+            true
+        );
+    }
+
     updateShowClusterView() {
         commands.executeCommand(
             "setContext",
