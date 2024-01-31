@@ -3,7 +3,6 @@ import {BundleFileSet, BundleWatcher} from "..";
 import {BundleTarget} from "../types";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {UrlUtils} from "../../utils";
-import {onError} from "../../utils/onErrorDecorator";
 import {Mutex} from "../../locking";
 
 export type BundlePreValidateState = {
@@ -56,17 +55,18 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
     }
 
     protected readStateFromTarget(
-        target: BundleTarget
-    ): BundlePreValidateState {
-        return {
-            ...target,
-            host: UrlUtils.normalizeHost(target?.workspace?.host ?? ""),
-            mode: target?.mode as BundlePreValidateState["mode"],
-            authParams: undefined,
-        };
+        target?: BundleTarget
+    ): BundlePreValidateState | undefined {
+        return target
+            ? {
+                  ...target,
+                  host: UrlUtils.normalizeHost(target?.workspace?.host ?? ""),
+                  mode: target?.mode as BundlePreValidateState["mode"],
+                  authParams: undefined,
+              }
+            : undefined;
     }
 
-    @onError({popup: {prefix: "Failed to parse bundle yaml"}})
     @Mutex.synchronise("mutex")
     protected async readState() {
         if (this.target === undefined) {
@@ -76,7 +76,7 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         const targetObject = (await this.bundleFileSet.bundleDataCache.value)
             .targets?.[this.target];
 
-        return this.readStateFromTarget(targetObject ?? {});
+        return this.readStateFromTarget(targetObject) ?? {};
     }
 
     public async getFileToWrite(key: string) {

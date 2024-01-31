@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "1.2.4",
+    "version": "1.2.5",
     "engines": {
         "vscode": "^1.83.0"
     },
@@ -57,9 +57,9 @@
                 "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
-                "command": "databricks.connection.configureWorkspace",
+                "command": "databricks.connection.configureLogin",
                 "icon": "$(gear)",
-                "title": "Configure workspace",
+                "title": "Sign in to Databricks workspace",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
@@ -150,7 +150,10 @@
                 "title": "Run File as Workflow",
                 "category": "Databricks",
                 "enablement": "!inDebugMode",
-                "icon": "$(play)"
+                "icon": {
+                    "dark": "resources/dark/logo.svg",
+                    "light": "resources/light/logo.svg"
+                }
             },
             {
                 "command": "databricks.run.runEditorContents",
@@ -230,6 +233,40 @@
                 "title": "Select a Databricks Asset Bundle target.",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.refreshRemoteState",
+                "icon": "$(refresh)",
+                "title": "Refresh remote state",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deploy",
+                "icon": "$(cloud-upload)",
+                "title": "Deploy bundle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deployAndRun",
+                "icon": "$(debug-start)",
+                "title": "Deploy the bundle and run the resource",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.cancelRun",
+                "title": "Cancel run",
+                "icon": "$(debug-stop)",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.initNewProject",
+                "title": "Initialize new project",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -248,6 +285,12 @@
                     "name": "Configuration"
                 },
                 {
+                    "id": "dabsResourceExplorerView",
+                    "name": "DABs Resource Explorer",
+                    "visibility": "visible",
+                    "when": "databricks.context.bundle.isTargetSet"
+                },
+                {
                     "id": "workspaceFsView",
                     "name": "Workspace explorer",
                     "when": "config.databricks.sync.destinationType == workspace && databricks.feature.views.workspace"
@@ -262,7 +305,12 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "In order to connect to a cluster you first have to configure your Databricks workspace:\n[Configure Databricks](command:databricks.connection.configureWorkspace)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "contents": "There are multiple Databricks projects in the workspace, please chose which one to open:\n[Open Existing Project](command:databricks.bundle.openSubProject)\n",
+                "when": "workspaceFolderCount > 0 && databricks.context.subProjectsAvailable"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Current workspace has no Databricks configuration at the root level, do you want to initialize a new Databricks project?\n[Initialize New Project](command:databricks.bundle.initNewProject)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
                 "when": "workspaceFolderCount > 0"
             },
             {
@@ -274,12 +322,16 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "databricks.connection.configureWorkspace",
+                    "command": "databricks.connection.configureLogin",
                     "when": "view == configurationView",
                     "group": "navigation@3"
                 },
                 {
                     "command": "databricks.quickstart.open",
+                    "when": "view == configurationView"
+                },
+                {
+                    "command": "databricks.bundle.initNewProject",
                     "when": "view == configurationView"
                 },
                 {
@@ -300,6 +352,16 @@
                 {
                     "command": "databricks.wsfs.createFolder",
                     "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.refreshRemoteState",
+                    "when": "view == dabsResourceExplorerView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.deploy",
+                    "when": "view == dabsResourceExplorerView",
                     "group": "navigation@1"
                 }
             ],
@@ -331,7 +393,7 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "databricks.connection.configureWorkspace",
+                    "command": "databricks.connection.configureLogin",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.authType.*$/",
                     "group": "inline@2"
                 },
@@ -341,16 +403,6 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "databricks.sync.start",
-                    "when": "view == configurationView && viewItem == databricks.configuration.sync.stopped",
-                    "group": "inline@0"
-                },
-                {
-                    "command": "databricks.sync.stop",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.sync.(?!error|stopped|selected).*$/",
-                    "group": "inline@0"
-                },
-                {
                     "command": "databricks.cluster.stop",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.(running|pending)$/",
                     "group": "inline@0"
@@ -358,6 +410,16 @@
                 {
                     "command": "databricks.cluster.start",
                     "when": "view == configurationView && viewItem == databricks.configuration.cluster.terminated",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRun",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.runnable.*$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.cancelRun",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.running.*$/",
                     "group": "inline@0"
                 }
             ],
@@ -652,6 +714,11 @@
                     "databricks.ipythonDir": {
                         "type": "string",
                         "description": "Absolute path to a directory for storing IPython files. Defaults to IPYTHONDIR environment variable (if set) or ~/.ipython."
+                    },
+                    "databricks.bundle.remoteStateRefreshInterval": {
+                        "type": "number",
+                        "default": 5,
+                        "description": "The interval in minutes at which the remote state of the bundle is refreshed."
                     }
                 }
             }
@@ -666,7 +733,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.210.3"
+        "version": "0.212.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",

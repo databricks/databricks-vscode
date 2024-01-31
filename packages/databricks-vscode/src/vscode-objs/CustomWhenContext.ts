@@ -2,14 +2,14 @@ import {commands} from "vscode";
 import {workspaceConfigs} from "./WorkspaceConfigs";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const CustomWhenContext = {
+export class CustomWhenContext {
     setLoggedIn(value: boolean) {
         commands.executeCommand(
             "setContext",
             "databricks.context.loggedIn",
             value
         );
-    },
+    }
 
     setActivated(value: boolean) {
         commands.executeCommand(
@@ -17,7 +17,23 @@ export const CustomWhenContext = {
             "databricks.context.activated",
             value
         );
-    },
+    }
+
+    isTargetSet(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.bundle.isTargetSet",
+            value
+        );
+    }
+
+    setSubProjectsAvailable(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.subProjectsAvailable",
+            value
+        );
+    }
 
     updateShowClusterView() {
         commands.executeCommand(
@@ -27,7 +43,7 @@ export const CustomWhenContext = {
                 "views.cluster"
             )
         );
-    },
+    }
 
     updateShowWorkspaceView() {
         commands.executeCommand(
@@ -37,5 +53,5 @@ export const CustomWhenContext = {
                 "views.workspace"
             )
         );
-    },
-};
+    }
+}

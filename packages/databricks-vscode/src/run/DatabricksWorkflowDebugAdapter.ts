@@ -23,10 +23,10 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
 import {WorkflowRunner} from "./WorkflowRunner";
 import {promptForClusterAttach, promptForClusterStart} from "./prompts";
-import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {LocalUri} from "../sync/SyncDestination";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {FileUtils} from "../utils";
+import {BundleCommands} from "../bundle/BundleCommands";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -54,11 +54,11 @@ export class DatabricksWorkflowDebugAdapterFactory
         private connection: ConnectionManager,
         private wsfsAccessVerifier: WorkspaceFsAccessVerifier,
         context: ExtensionContext,
-        codeSynchronizer: CodeSynchronizer
+        bundleCommands: BundleCommands
     ) {
         this.workflowRunner = new WorkflowRunner(
             context,
-            codeSynchronizer,
+            bundleCommands,
             connection
         );
     }
@@ -181,8 +181,8 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             promptForClusterAttach();
             return this.onError();
         }
-        const syncDestination = this.connection.syncDestinationMapper;
-        if (!syncDestination) {
+        const syncDestinationMapper = this.connection.syncDestinationMapper;
+        if (!syncDestinationMapper) {
             return this.onError(
                 "You must configure code synchronization to run on Databricks"
             );
@@ -201,7 +201,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             parameters,
             args,
             cluster,
-            syncDestination: syncDestination,
+            syncDestinationMapper,
             token: this.token,
         });
     }

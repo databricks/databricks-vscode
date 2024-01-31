@@ -28,11 +28,6 @@ export class RunCommands {
                     await this.connection.waitForConnect();
                 }
 
-                if (this.connection.syncDestinationMapper === undefined) {
-                    promptForAttachingSyncDest();
-                    return;
-                }
-
                 await debug.startDebugging(
                     undefined,
                     {

@@ -15,6 +15,7 @@ import {ConfigModel} from "./models/ConfigModel";
 import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
+import {MetadataService} from "./auth/MetadataService";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -35,6 +36,7 @@ export class ConnectionManager implements Disposable {
     private _syncDestinationMapper?: SyncDestinationMapper;
     private _clusterManager?: ClusterManager;
     private _databricksWorkspace?: DatabricksWorkspace;
+    private _metadataService: MetadataService;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -50,7 +52,17 @@ export class ConnectionManager implements Disposable {
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
 
-    public metadataServiceUrl?: string;
+    constructor(
+        private cli: CliWrapper,
+        private readonly configModel: ConfigModel,
+        private readonly workspaceUri: Uri,
+        private readonly customWhenContext: CustomWhenContext
+    ) {
+        this._metadataService = new MetadataService(
+            undefined,
+            NamedLogger.getOrCreate("Extension")
+        );
+    }
 
     @onError({
         popup: {prefix: "Error attaching sync destination: "},
@@ -70,13 +82,6 @@ export class ConnectionManager implements Disposable {
             );
             return;
         }
-        if (!(await remoteUri.validate(this))) {
-            window.showErrorMessage(
-                `Invalid sync destination ${workspacePath}`
-            );
-            this.detachSyncDestination();
-            return;
-        }
         this._syncDestinationMapper = new SyncDestinationMapper(
             new LocalUri(this.workspaceUri),
             remoteUri
@@ -87,31 +92,38 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Error attaching cluster: "},
     })
     private async updateClusterManager() {
-        const clusterId = await this.configModel.get("clusterId");
-        if (clusterId === this._clusterManager?.cluster?.id) {
-            return;
+        try {
+            const clusterId = await this.configModel.get("clusterId");
+            if (clusterId === this._clusterManager?.cluster?.id) {
+                return;
+            }
+            this._clusterManager?.dispose();
+            this._clusterManager =
+                clusterId !== undefined && this.apiClient !== undefined
+                    ? new ClusterManager(
+                          await Cluster.fromClusterId(
+                              this.apiClient,
+                              clusterId
+                          ),
+                          () => {
+                              this.onDidChangeClusterEmitter.fire(this.cluster);
+                          }
+                      )
+                    : undefined;
+
+            this.cli.setClusterId(clusterId);
+            this.onDidChangeClusterEmitter.fire(this.cluster);
+        } catch (e) {
+            this.configModel.set("clusterId", undefined);
+            throw e;
         }
-        this._clusterManager?.dispose();
-        this._clusterManager =
-            clusterId !== undefined && this.apiClient !== undefined
-                ? new ClusterManager(
-                      await Cluster.fromClusterId(this.apiClient, clusterId),
-                      () => {
-                          this.onDidChangeClusterEmitter.fire(this.cluster);
-                      }
-                  )
-                : undefined;
-        this.onDidChangeClusterEmitter.fire(this.cluster);
     }
 
-    constructor(
-        private cli: CliWrapper,
-        private readonly configModel: ConfigModel,
-        private readonly workspaceUri: Uri
-    ) {}
+    get metadataServiceUrl() {
+        return this._metadataService.url;
+    }
 
     public async init() {
-        await this.configModel.init();
         await this.loginWithSavedAuth();
 
         this.disposables.push(
@@ -170,9 +182,8 @@ export class ConnectionManager implements Disposable {
         }
 
         // Try to load a profile user had previously selected for this target
-        const savedProfile = (
-            await this.configModel.overrideableConfigModel.load()
-        ).authProfile;
+        const savedProfile = (await this.configModel.get("overrides"))
+            ?.authProfile;
         if (savedProfile !== undefined) {
             const authProvider = new ProfileAuthProvider(host, savedProfile);
             if (await authProvider.check()) {
@@ -182,8 +193,8 @@ export class ConnectionManager implements Disposable {
 
         // Try to load any parameters that are hard coded in the bundle
         const bundleAuthParams =
-            await this.configModel.bundlePreValidateModel.load();
-        if (bundleAuthParams.authParams !== undefined) {
+            await this.configModel.get("preValidateConfig");
+        if (bundleAuthParams?.authParams !== undefined) {
             throw new Error("Bundle auth params not implemented");
         }
 
@@ -243,6 +254,7 @@ export class ConnectionManager implements Disposable {
                     authProvider.toJSON().profile as string | undefined
                 );
                 await this.configModel.setAuthProvider(authProvider);
+                await this._metadataService.setApiClient(this.apiClient);
                 this.updateState("CONNECTED");
             });
         } catch (e) {
@@ -330,7 +342,7 @@ export class ConnectionManager implements Disposable {
             this._state = newState;
             this.onDidChangeStateEmitter.fire(this._state);
         }
-        CustomWhenContext.setLoggedIn(this._state === "CONNECTED");
+        this.customWhenContext.setLoggedIn(this._state === "CONNECTED");
     }
 
     async startCluster() {
@@ -343,6 +355,11 @@ export class ConnectionManager implements Disposable {
         await this._clusterManager?.stop(() => {
             this.onDidChangeClusterEmitter.fire(this.cluster);
         });
+    }
+
+    async startMetadataService() {
+        await this._metadataService.listen();
+        return this._metadataService;
     }
 
     async waitForConnect(): Promise<void> {

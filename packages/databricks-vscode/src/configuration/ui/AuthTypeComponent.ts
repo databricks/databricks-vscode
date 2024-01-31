@@ -47,16 +47,16 @@ export class AuthTypeComponent extends BaseComponent {
                     contextValue: getContextValue("none"),
                     id: TREE_ICON_ID,
                     command: {
-                        title: "Login to Databricks",
-                        command: "databricks.connection.configureWorkspace",
+                        title: "Sign in to Databricks",
+                        command: "databricks.connection.configureLogin",
                     },
                 },
             ];
         }
 
         const config =
-            (await this.configModel.getS("authProfile")) ??
-            (await this.configModel.getS("authParams"));
+            (await this.configModel.get("authProfile")) ??
+            (await this.configModel.get("authParams"));
         if (config === undefined) {
             // This case can never happen. This is just to make ts happy.
             return [];
@@ -72,7 +72,6 @@ export class AuthTypeComponent extends BaseComponent {
                 description: authProvider.describe(),
                 contextValue: getContextValue(authProvider.authType),
                 id: TREE_ICON_ID,
-                source: config.source,
             },
         ];
     }

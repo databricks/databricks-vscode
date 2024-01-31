@@ -4,7 +4,7 @@ import {ConfigModel} from "../models/ConfigModel";
 import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
-import {TreeItemCollapsibleState, ThemeIcon, ThemeColor, window} from "vscode";
+import {TreeItemCollapsibleState, ThemeIcon, ThemeColor} from "vscode";
 
 const TREE_ICON_ID = "WORKSPACE";
 function getContextValue(key: string) {
@@ -130,38 +130,6 @@ export class SyncDestinationComponent extends BaseComponent {
                 collapsibleState: TreeItemCollapsibleState.None,
             },
         ];
-
-        // Only show details uptil here if not in dev mode.
-        if ((await this.configModel.get("mode")) !== "development") {
-            return children;
-        }
-
-        children.push({
-            label: "State",
-            description: this.codeSynchronizer.state,
-            collapsibleState: TreeItemCollapsibleState.None,
-        });
-
-        const reason = this.codeSynchronizer.reason;
-        if (reason !== undefined) {
-            const label = "See full error";
-            children.push({
-                label: {
-                    label,
-                    highlights: [[0, label.length]],
-                },
-                collapsibleState: TreeItemCollapsibleState.None,
-                command: {
-                    title: "Call",
-                    command: "databricks.call",
-                    arguments: [
-                        async () => {
-                            window.showErrorMessage(reason);
-                        },
-                    ],
-                },
-            });
-        }
 
         return children;
     }

@@ -20,10 +20,10 @@ import {
     ExtensionContext,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {DatabricksRuntime} from "./DatabricksRuntime";
 import {Subject} from "./Subject";
+import {BundleCommands} from "../bundle/BundleCommands";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -47,7 +47,7 @@ export class DatabricksDebugAdapterFactory
 {
     constructor(
         private connection: ConnectionManager,
-        private codeSynchroniser: CodeSynchronizer,
+        private bundleCommands: BundleCommands,
         private context: ExtensionContext,
         private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {}
@@ -58,7 +58,7 @@ export class DatabricksDebugAdapterFactory
         return new DebugAdapterInlineImplementation(
             new DatabricksDebugSession(
                 this.connection,
-                this.codeSynchroniser,
+                this.bundleCommands,
                 this.context,
                 this.wsfsAccessVerifier
             )
@@ -73,7 +73,7 @@ export class DatabricksDebugSession extends LoggingDebugSession {
 
     constructor(
         connection: ConnectionManager,
-        codeSynchronizer: CodeSynchronizer,
+        bundleCommands: BundleCommands,
         context: ExtensionContext,
         wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {
@@ -81,7 +81,7 @@ export class DatabricksDebugSession extends LoggingDebugSession {
 
         this.runtime = new DatabricksRuntime(
             connection,
-            codeSynchronizer,
+            bundleCommands,
             context,
             wsfsAccessVerifier
         );

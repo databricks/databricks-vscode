@@ -62,17 +62,17 @@ export function onError(props: Props) {
 
         descriptor.value = async function (...args: any[]) {
             closureArgs = args;
-            return await onErrorLambda(
-                props,
-                originalMethod.bind(this)
+            return await withOnErrorHandler(
+                originalMethod.bind(this),
+                props
             )(...args);
         };
     };
 }
 
-export function onErrorLambda<T extends any[], U>(
-    props: Props,
-    fn: (...args: T) => Promise<U>
+export function withOnErrorHandler<T extends any[], U>(
+    fn: (...args: T) => Promise<U>,
+    props: Props = {}
 ) {
     props = {...defaultProps, ...props};
 

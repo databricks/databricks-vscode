@@ -47,7 +47,6 @@ function getUserAgent(connectionManager: ConnectionManager) {
 }
 
 export function getAuthEnvVars(connectionManager: ConnectionManager) {
-    const cluster = connectionManager.cluster;
     const host = connectionManager.databricksWorkspace?.host.toString();
     if (!host || !connectionManager.metadataServiceUrl) {
         return;
@@ -58,7 +57,6 @@ export function getAuthEnvVars(connectionManager: ConnectionManager) {
         DATABRICKS_HOST: host,
         DATABRICKS_AUTH_TYPE: "metadata-service",
         DATABRICKS_METADATA_SERVICE_URL: connectionManager.metadataServiceUrl,
-        DATABRICKS_CLUSTER_ID: cluster?.id,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }
@@ -66,10 +64,12 @@ export function getAuthEnvVars(connectionManager: ConnectionManager) {
 export function getCommonDatabricksEnvVars(
     connectionManager: ConnectionManager
 ) {
+    const cluster = connectionManager.cluster;
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         ...(getAuthEnvVars(connectionManager) || {}),
         ...(getProxyEnvVars() || {}),
+        DATABRICKS_CLUSTER_ID: cluster?.id,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }
@@ -141,14 +141,10 @@ export function getEnvVarsForCli(configfilePath?: string) {
 
 export function removeUndefinedKeys<
     T extends Record<string, string | undefined>,
->(envVarMap?: T): T | undefined {
-    if (envVarMap === undefined) {
-        return;
-    }
-
+>(envVarMap: T): Record<string, string> {
     const filteredEntries = Object.entries(envVarMap).filter(
         (entry) => entry[1] !== undefined
     ) as [string, string][];
 
-    return Object.fromEntries<string>(filteredEntries) as T;
+    return Object.fromEntries<string>(filteredEntries);
 }
