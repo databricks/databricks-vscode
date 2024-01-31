@@ -188,8 +188,12 @@ export class BundleProjectManager {
         try {
             await this.startAutomaticMigration(this.legacyProjectConfig);
         } catch (error) {
-            this.logger.error("Failed to perform automatic migration:", error);
             this.customWhenContext.setPendingManualMigration(true);
+            const message =
+                "Failed to perform automatic migration to Databricks Asset Bundles.";
+            this.logger.error(message, error);
+            const errorMessage = (error as Error)?.message ?? "Unknown Error";
+            window.showErrorMessage(`${message} ${errorMessage}`);
         }
     }
 
