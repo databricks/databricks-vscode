@@ -746,7 +746,7 @@
         "version": "0.212.0"
     },
     "scripts": {
-        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-migration-template && yarn run generate-telemetry",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
         "package": "vsce package --baseContentUrl https://github.com/databricks/databricks-vscode/blob/${TAG:-main}/packages/databricks-vscode --baseImagesUrl https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-main}/packages/databricks-vscode",
         "package:linux:x64": "./scripts/package-vsix.sh linux-x64",
         "package:linux:arm64": "./scripts/package-vsix.sh linux-arm64",
@@ -762,10 +762,9 @@
         "package:bundle-schema:write": "yarn package:cli:fetch && ts-node ./scripts/writeBundleSchema.ts ./bin/databricks ./src/bundle/BundleSchema.d.ts",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
-        "package:copy-migration-template": "cp -r ./src/bundle/migration-template ./out/bundle",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && tsc --build --force",
-        "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-migration-template && tsc --build --watch --force",
+        "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && tsc --build --watch --force",
         "fix": "eslint src --ext ts --fix && prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",

@@ -1,4 +1,5 @@
 import {
+    ExtensionContext,
     QuickPickItem,
     QuickPickItemKind,
     Disposable,
@@ -45,6 +46,7 @@ export class BundleProjectManager {
     private legacyProjectConfig?: ProjectConfigFile;
 
     constructor(
+        private context: ExtensionContext,
         private cli: CliWrapper,
         private customWhenContext: CustomWhenContext,
         private connectionManager: ConnectionManager,
@@ -272,7 +274,9 @@ export class BundleProjectManager {
             "migration-config.json"
         );
         await fs.writeFile(configFilePath, JSON.stringify(configVars, null, 4));
-        const templateDirPath = path.join(__dirname, "migration-template");
+        const templateDirPath = this.context.asAbsolutePath(
+            path.join("resources", "migration-template")
+        );
         await this.cli.bundleInit(
             templateDirPath,
             this.workspaceUri.fsPath,

@@ -230,6 +230,7 @@ export async function activate(
     context.subscriptions.push(metadataService);
 
     const bundleProjectManager = new BundleProjectManager(
+        context,
         cli,
         customWhenContext,
         connectionManager,
