@@ -150,7 +150,10 @@
                 "title": "Run File as Workflow",
                 "category": "Databricks",
                 "enablement": "!inDebugMode",
-                "icon": "$(play)"
+                "icon": {
+                    "dark": "resources/dark/logo.svg",
+                    "light": "resources/light/logo.svg"
+                }
             },
             {
                 "command": "databricks.run.runEditorContents",
@@ -229,6 +232,34 @@
                 "icon": "$(gear)",
                 "title": "Select a Databricks Asset Bundle target.",
                 "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.refreshRemoteState",
+                "icon": "$(refresh)",
+                "title": "Refresh remote state",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deploy",
+                "icon": "$(cloud-upload)",
+                "title": "Deploy bundle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deployAndRun",
+                "icon": "$(debug-start)",
+                "title": "Deploy the bundle and run the resource",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.cancelRun",
+                "title": "Cancel run",
+                "icon": "$(debug-stop)",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
                 "category": "Databricks"
             },
             {
@@ -327,6 +358,16 @@
                     "command": "databricks.wsfs.createFolder",
                     "when": "view == workspaceFsView",
                     "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.refreshRemoteState",
+                    "when": "view == dabsResourceExplorerView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.deploy",
+                    "when": "view == dabsResourceExplorerView",
+                    "group": "navigation@1"
                 }
             ],
             "databricks.cluster.filter": [
@@ -367,16 +408,6 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "databricks.sync.start",
-                    "when": "view == configurationView && viewItem == databricks.configuration.sync.stopped",
-                    "group": "inline@0"
-                },
-                {
-                    "command": "databricks.sync.stop",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.sync.(?!error|stopped|selected).*$/",
-                    "group": "inline@0"
-                },
-                {
                     "command": "databricks.cluster.stop",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.(running|pending)$/",
                     "group": "inline@0"
@@ -384,6 +415,16 @@
                 {
                     "command": "databricks.cluster.start",
                     "when": "view == configurationView && viewItem == databricks.configuration.cluster.terminated",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRun",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.runnable.*$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.cancelRun",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.running.*$/",
                     "group": "inline@0"
                 }
             ],

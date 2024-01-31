@@ -82,13 +82,6 @@ export class ConnectionManager implements Disposable {
             );
             return;
         }
-        if (!(await remoteUri.validate(this))) {
-            window.showErrorMessage(
-                `Invalid sync destination ${workspacePath}`
-            );
-            this.detachSyncDestination();
-            return;
-        }
         this._syncDestinationMapper = new SyncDestinationMapper(
             new LocalUri(this.workspaceUri),
             remoteUri
@@ -99,21 +92,31 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Error attaching cluster: "},
     })
     private async updateClusterManager() {
-        const clusterId = await this.configModel.get("clusterId");
-        if (clusterId === this._clusterManager?.cluster?.id) {
-            return;
+        try {
+            const clusterId = await this.configModel.get("clusterId");
+            if (clusterId === this._clusterManager?.cluster?.id) {
+                return;
+            }
+            this._clusterManager?.dispose();
+            this._clusterManager =
+                clusterId !== undefined && this.apiClient !== undefined
+                    ? new ClusterManager(
+                          await Cluster.fromClusterId(
+                              this.apiClient,
+                              clusterId
+                          ),
+                          () => {
+                              this.onDidChangeClusterEmitter.fire(this.cluster);
+                          }
+                      )
+                    : undefined;
+
+            this.cli.setClusterId(clusterId);
+            this.onDidChangeClusterEmitter.fire(this.cluster);
+        } catch (e) {
+            this.configModel.set("clusterId", undefined);
+            throw e;
         }
-        this._clusterManager?.dispose();
-        this._clusterManager =
-            clusterId !== undefined && this.apiClient !== undefined
-                ? new ClusterManager(
-                      await Cluster.fromClusterId(this.apiClient, clusterId),
-                      () => {
-                          this.onDidChangeClusterEmitter.fire(this.cluster);
-                      }
-                  )
-                : undefined;
-        this.onDidChangeClusterEmitter.fire(this.cluster);
     }
 
     get metadataServiceUrl() {

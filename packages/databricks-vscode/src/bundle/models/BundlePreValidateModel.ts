@@ -4,7 +4,6 @@ import {BundleTarget} from "../types";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {UrlUtils} from "../../utils";
 import {Mutex} from "../../locking";
-import {onError} from "../../utils/onErrorDecorator";
 
 export type BundlePreValidateState = {
     host?: URL;
@@ -68,7 +67,6 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
             : undefined;
     }
 
-    @onError({popup: {prefix: "Failed to parse bundle yaml"}})
     @Mutex.synchronise("mutex")
     protected async readState() {
         if (this.target === undefined) {

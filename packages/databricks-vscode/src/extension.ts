@@ -16,7 +16,6 @@ import {ConfigurationDataProvider} from "./configuration/ui/ConfigurationDataPro
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
-import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
@@ -58,6 +57,10 @@ import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
+import {BundleResourceExplorerTreeDataProvider} from "./ui/bundle-resource-explorer/BundleResourceExplorerTreeDataProvider";
+import {BundleCommands} from "./bundle/BundleCommands";
+import {BundleRunTerminalManager} from "./bundle/run/BundleRunTerminalManager";
+import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
 
 const customWhenContext = new CustomWhenContext();
@@ -472,41 +475,6 @@ export async function activate(
         )
     );
 
-    // Run/debug group
-    const runCommands = new RunCommands(connectionManager);
-    const debugFactory = new DatabricksDebugAdapterFactory(
-        connectionManager,
-        synchronizer,
-        context,
-        wsfsAccessVerifier
-    );
-    const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
-        connectionManager,
-        wsfsAccessVerifier,
-        context,
-        synchronizer
-    );
-
-    context.subscriptions.push(
-        telemetry.registerCommand(
-            "databricks.run.runEditorContents",
-            runCommands.runEditorContentsCommand(),
-            runCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.run.runEditorContentsAsWorkflow",
-            runCommands.runEditorContentsAsWorkflowCommand(),
-            runCommands
-        ),
-        debug.registerDebugAdapterDescriptorFactory("databricks", debugFactory),
-        debugFactory,
-        debug.registerDebugAdapterDescriptorFactory(
-            "databricks-workflow",
-            debugWorkflowFactory
-        ),
-        debugWorkflowFactory
-    );
-
     // Cluster group
     const clusterTreeDataProvider = new ClusterListDataProvider(clusterModel);
     const clusterCommands = new ClusterCommands(
@@ -551,24 +519,89 @@ export async function activate(
         )
     );
 
-    // Sync
-    const syncCommands = new SyncCommands(synchronizer);
+    // Bundle resource explorer
+    const bundleRunTerminalManager = new BundleRunTerminalManager(
+        bundleRemoteStateModel
+    );
+    const bundleRunStatusManager = new BundleRunStatusManager(
+        bundleRemoteStateModel,
+        bundleRunTerminalManager
+    );
+    const bundleResourceExplorerTreeDataProvider =
+        new BundleResourceExplorerTreeDataProvider(
+            configModel,
+            bundleRunStatusManager,
+            context
+        );
+
+    const bundleCommands = new BundleCommands(
+        bundleRemoteStateModel,
+        bundleRunStatusManager,
+        bundleFileWatcher
+    );
+    context.subscriptions.push(
+        bundleResourceExplorerTreeDataProvider,
+        bundleCommands,
+        bundleRunTerminalManager,
+        window.registerTreeDataProvider(
+            "dabsResourceExplorerView",
+            bundleResourceExplorerTreeDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.refreshRemoteState",
+            bundleCommands.refreshRemoteStateCommand,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deploy",
+            bundleCommands.deployCommand,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deployAndRun",
+            bundleCommands.deployAndRun,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.cancelRun",
+            bundleCommands.cancelRun,
+            bundleCommands
+        )
+    );
+
+    // Run/debug group
+    const runCommands = new RunCommands(connectionManager);
+    const debugFactory = new DatabricksDebugAdapterFactory(
+        connectionManager,
+        bundleCommands,
+        context,
+        wsfsAccessVerifier
+    );
+    const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
+        connectionManager,
+        wsfsAccessVerifier,
+        context,
+        bundleCommands
+    );
+
     context.subscriptions.push(
         telemetry.registerCommand(
-            "databricks.sync.start",
-            syncCommands.startCommand("incremental"),
-            syncCommands
+            "databricks.run.runEditorContents",
+            runCommands.runEditorContentsCommand(),
+            runCommands
         ),
         telemetry.registerCommand(
-            "databricks.sync.startFull",
-            syncCommands.startCommand("full"),
-            syncCommands
+            "databricks.run.runEditorContentsAsWorkflow",
+            runCommands.runEditorContentsAsWorkflowCommand(),
+            runCommands
         ),
-        telemetry.registerCommand(
-            "databricks.sync.stop",
-            syncCommands.stopCommand(),
-            syncCommands
-        )
+        debug.registerDebugAdapterDescriptorFactory("databricks", debugFactory),
+        debugFactory,
+        debug.registerDebugAdapterDescriptorFactory(
+            "databricks-workflow",
+            debugWorkflowFactory
+        ),
+        debugWorkflowFactory
     );
 
     // Quickstart
@@ -602,6 +635,7 @@ export async function activate(
             }
         })
     );
+
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
     registerBundleAutocompleteProvider(
