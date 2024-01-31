@@ -279,6 +279,7 @@ export class BundleProjectManager {
             configFilePath,
             authProvider
         );
+        this.logger.debug("Successfully finished bundle migration");
     }
 
     public async initNewProject() {
