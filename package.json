@@ -14,7 +14,7 @@
     },
     "scripts": {
         "install:sdk": "yarn fetch:sdk && chmod a+x scripts/install_sdk.sh && scripts/install_sdk.sh",
-        "fetch:sdk": "rm -rf vendor && mkdir vendor && gh release download -R databricks/databricks-sdk-js v0.5.2 -p '*.tgz' && mv *.tgz vendor/databricks-sdk.tgz",
+        "fetch:sdk": "rm -rf vendor && mkdir vendor && gh release download -R databricks/databricks-sdk-js v0.6.0 -p '*.tgz' && mv *.tgz vendor/databricks-sdk.tgz",
         "test": "yarn workspaces foreach run test",
         "test:integ": "yarn workspaces foreach run test:integ",
         "build": "yarn workspaces foreach run build",
