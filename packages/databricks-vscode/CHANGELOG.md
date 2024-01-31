@@ -4,10 +4,8 @@
 
 ## <small>1.2.6 (2024-01-31)</small>
 
--   Bump Databricks SDK to 0.6.0 (#1023) ([14178ab](https://github.com/databricks/databricks-vscode/commit/14178ab)), closes [#1023](https://github.com/databricks/databricks-vscode/issues/1023)
--   Update Databricks CLI to v0.212.0 (#1001) ([355490f](https://github.com/databricks/databricks-vscode/commit/355490f)), closes [#1001](https://github.com/databricks/databricks-vscode/issues/1001)
--   Update Databricks CLI to v0.212.1 (#1007) ([7e3ede2](https://github.com/databricks/databricks-vscode/commit/7e3ede2)), closes [#1007](https://github.com/databricks/databricks-vscode/issues/1007)
--   Update Databricks CLI to v0.212.2 (#1014) ([ee8a737](https://github.com/databricks/databricks-vscode/commit/ee8a737)), closes [#1014](https://github.com/databricks/databricks-vscode/issues/1014)
+-   Update Databricks SDK to 0.6.0 (#1023) ([14178ab](https://github.com/databricks/databricks-vscode/commit/14178ab)), closes [#1023](https://github.com/databricks/databricks-vscode/issues/1023)
+-   Update Databricks CLI to v0.212.3
 
 # Release: v1.2.5
 
