@@ -94,11 +94,11 @@ export class BundleProjectManager {
         await Promise.all([
             // This method updates subProjectsAvailabe context.
             // We have a configurationView that shows "openSubProjects" button if the context value is true.
-            await this.detectSubProjects(),
+            this.detectSubProjects(),
             // This method will try to automatically create bundle config if there's existing valid project.json config.
             // In the case project.json auth doesn't work, it sets pendingManualMigration context to enable
             // configurationView with the configureManualMigration button.
-            await this.detectLegacyProjectConfig(),
+            this.detectLegacyProjectConfig(),
         ]);
     }
 
