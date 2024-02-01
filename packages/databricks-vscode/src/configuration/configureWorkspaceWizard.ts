@@ -209,15 +209,7 @@ async function listProfiles(cliWrapper: CliWrapper) {
         }
     });
 
-    return profiles.filter((profile) => {
-        return [
-            "pat",
-            "basic",
-            "azure-cli",
-            "oauth-m2m",
-            "azure-client-secret",
-        ].includes(profile.authType);
-    });
+    return profiles;
 }
 
 async function validateDatabricksHost(
@@ -243,11 +235,11 @@ async function validateDatabricksHost(
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
     if (isAzureHost(host)) {
-        return ["azure-cli", "profile"];
+        return ["databricks-cli", "azure-cli", "profile"];
     }
 
     if (isGcpHost(host)) {
-        return ["google-id", "profile"];
+        return ["databricks-cli", "google-id", "profile"];
     }
 
     if (isAwsHost(host)) {
