@@ -1,4 +1,5 @@
 import {ChildProcess, SpawnOptions, spawn} from "child_process";
+import {quote} from "shell-quote";
 import {Pseudoterminal, Event, EventEmitter} from "vscode";
 
 export class CustomOutputTerminal implements Pseudoterminal {
@@ -33,7 +34,9 @@ export class CustomOutputTerminal implements Pseudoterminal {
         options: SpawnOptions;
     }): void {
         this.isClosed = false;
-        this.writeEmitter.fire("\x1b[2J\x1b[H");
+        this.writeEmitter.fire("\x1b[2J\x1b[H\r\n");
+        this.writeEmitter.fire(quote([cmd, ...args]) + "\r\n\r\n");
+
         this._process = spawn(cmd, args, options);
         if (!this.process) {
             throw new Error("Can't start process: process is undefined");

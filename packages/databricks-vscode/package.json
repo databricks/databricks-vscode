@@ -772,6 +772,7 @@
         "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz",
         "@databricks/databricks-vscode-types": "workspace:^",
         "@types/lodash": "^4.14.202",
+        "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",
         "@vscode/extension-telemetry": "^0.9.1",
         "@vscode/webview-ui-toolkit": "^1.4.0",
@@ -779,6 +780,7 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
         "lodash": "^4.17.21",
+        "shell-quote": "^1.8.1",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
         "yaml": "^2.3.4"
