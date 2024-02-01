@@ -7,6 +7,7 @@ import {
     ResourceTreeNode as BundleResourceExplorerResourceTreeNode,
 } from "../ui/bundle-resource-explorer/types";
 import {BundleRunStatusManager} from "./run/BundleRunStatusManager";
+import {Mutex} from "../locking";
 
 const RUNNABLE_RESOURCES = [
     "pipelines",
@@ -38,6 +39,9 @@ export class BundleCommands implements Disposable {
         );
     }
 
+    private refreshStateMutex = new Mutex();
+
+    @Mutex.synchronise("refreshStateMutex")
     async refreshRemoteState() {
         await window.withProgress(
             {location: {viewId: "dabsResourceExplorerView"}},
@@ -61,6 +65,9 @@ export class BundleCommands implements Disposable {
         await this.refreshRemoteState();
     }
 
+    private deployMutex = new Mutex();
+
+    @Mutex.synchronise("deployMutex")
     async deploy() {
         this.prepareOutputChannel();
         await window.withProgress(
