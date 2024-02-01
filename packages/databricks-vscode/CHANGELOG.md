@@ -1,3 +1,12 @@
+# Release: v1.2.6
+
+## packages/databricks-vscode
+
+## <small>1.2.6 (2024-01-31)</small>
+
+-   Update Databricks SDK to 0.6.0 (#1023) ([14178ab](https://github.com/databricks/databricks-vscode/commit/14178ab)), closes [#1023](https://github.com/databricks/databricks-vscode/issues/1023)
+-   Update Databricks CLI to v0.212.3
+
 # Release: v1.2.5
 
 ## packages/databricks-vscode
