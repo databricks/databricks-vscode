@@ -31,7 +31,7 @@ describe(__filename, () => {
         when(mockConnectionManager.databricksWorkspace).thenReturn(
             instance(mockDatabricksWorkspace)
         );
-        when(mockDatabricksWorkspace.host).thenReturn(Uri.parse(mockHost));
+        when(mockDatabricksWorkspace.host).thenReturn(new URL(mockHost));
 
         when(mockCluster.id).thenReturn(mockClusterId);
         when(mockConnectionManager.cluster).thenReturn(instance(mockCluster));

@@ -17,7 +17,7 @@ import Convert from "ansi-to-html";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWrapper";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {BundleCommands} from "../bundle/BundleCommands";
+import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();

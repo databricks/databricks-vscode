@@ -5,50 +5,32 @@ import {
     ExtensionContext,
     ProviderResult,
     TreeDataProvider,
-    TreeItemCollapsibleState,
 } from "vscode";
-import {BundleResourceExplorerTreeItem, Renderer, TreeNode} from "./types";
+import {
+    BundleResourceExplorerTreeItem,
+    BundleResourceExplorerTreeNode,
+} from "./types";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
-import {JobsRenderer} from "./JobsRenderer";
-import {TasksRenderer} from "./TasksRenderer";
-import {PipelineRenderer} from "./PipelineRenderer";
-import path from "path";
 import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
-import {JobsRunStatusRenderer} from "./JobsRunStatusRenderer";
-import {TaskRunStatusRenderer} from "./TaskRunStatusRenderer";
-import {PipelineRunStatusRenderer} from "./PipelineRunStatusRenderer";
+import {ConnectionManager} from "../../configuration/ConnectionManager";
+import {ResourceTypeHeaderTreeNode} from "./ResourceTypeHeaderTreeNode";
 
-function humaniseResourceType(type: TreeNode["type"]) {
-    switch (type) {
-        case "pipelines":
-            return "Pipelines";
-        case "jobs":
-            return "Workflows";
-        default:
-            return type;
-    }
-}
 export class BundleResourceExplorerTreeDataProvider
-    implements TreeDataProvider<TreeNode>
+    implements TreeDataProvider<BundleResourceExplorerTreeNode>
 {
     private disposables: Disposable[] = [];
-    private _onDidChangeTreeData: EventEmitter<TreeNode | undefined | void> =
-        new EventEmitter<TreeNode | undefined | void>();
-    readonly onDidChangeTreeData: Event<TreeNode | undefined | void> =
-        this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: EventEmitter<
+        BundleResourceExplorerTreeNode | undefined | void
+    > = new EventEmitter<BundleResourceExplorerTreeNode | undefined | void>();
+    readonly onDidChangeTreeData: Event<
+        BundleResourceExplorerTreeNode | undefined | void
+    > = this._onDidChangeTreeData.event;
 
-    private renderers: Array<Renderer> = [
-        new JobsRenderer(this.bundleRunStatusManager),
-        new PipelineRenderer(this.bundleRunStatusManager),
-        new TasksRenderer(this.context),
-        new JobsRunStatusRenderer(),
-        new TaskRunStatusRenderer(),
-        new PipelineRunStatusRenderer(),
-    ];
     constructor(
         private readonly configModel: ConfigModel,
         private readonly bundleRunStatusManager: BundleRunStatusManager,
-        private readonly context: ExtensionContext
+        private readonly context: ExtensionContext,
+        private readonly connectionManager: ConnectionManager
     ) {
         this.disposables.push(
             this.configModel.onDidChangeTarget(() => {
@@ -64,108 +46,31 @@ export class BundleResourceExplorerTreeDataProvider
     }
 
     async getTreeItem(
-        element: TreeNode
+        element: BundleResourceExplorerTreeNode
     ): Promise<BundleResourceExplorerTreeItem> {
-        if (element.type === "treeItem") {
-            return element.treeItem;
-        }
-        if (element.type === "resource_type_header") {
-            return {
-                label: humaniseResourceType(element.resourceType),
-                iconPath: this.getIconPath(element.resourceType),
-                contextValue: `${element.resourceType}-header`,
-                collapsibleState: TreeItemCollapsibleState.Expanded,
-            };
-        }
+        return element.getTreeItem();
+    }
 
-        const renderer = this.renderers.find((r) => r.type === element.type);
-        if (renderer === undefined) {
-            throw new Error(
-                `No renderer found for element type ${element.type}`
+    async getChildren(element?: BundleResourceExplorerTreeNode) {
+        if (element === undefined) {
+            const bundleRemoteState =
+                await this.configModel.get("remoteStateConfig");
+            if (bundleRemoteState === undefined) {
+                return [];
+            }
+            return ResourceTypeHeaderTreeNode.getRoots(
+                this.context,
+                this.bundleRunStatusManager,
+                this.connectionManager,
+                bundleRemoteState
             );
         }
-
-        const treeItem = renderer.getTreeItem(element);
-        const modifiedStatus = (element as any).data?.modified_status as string;
-        if (modifiedStatus === undefined) {
-            return treeItem;
-        }
-
-        treeItem.label = {
-            label: `${modifiedStatus.charAt(0).toUpperCase()}${modifiedStatus
-                .slice(1)
-                .toLowerCase()} ${treeItem.label}`,
-            highlights: [[0, modifiedStatus.length]],
-        };
-
-        return treeItem;
+        return element.getChildren();
     }
 
-    private getIconPath(resourceType: string) {
-        return {
-            dark: this.context.asAbsolutePath(
-                path.join(
-                    "resources",
-                    "dark",
-                    "resource-explorer",
-                    `${resourceType}.svg`
-                )
-            ),
-            light: this.context.asAbsolutePath(
-                path.join(
-                    "resources",
-                    "light",
-                    "resource-explorer",
-                    `${resourceType}.svg`
-                )
-            ),
-        };
-    }
-
-    private async getRoots(): Promise<TreeNode[]> {
-        const remoteStateConfig =
-            await this.configModel.get("remoteStateConfig");
-        if (remoteStateConfig?.resources === undefined) {
-            return [];
-        }
-        return this.renderers
-            .map((r) => {
-                const children = r.getRoots(remoteStateConfig);
-                if (children.length === 0) {
-                    return [];
-                }
-                return [
-                    {
-                        type: "resource_type_header",
-                        parent: undefined,
-                        resourceType: r.type,
-                        children,
-                    },
-                    {
-                        type: "treeItem",
-                        parent: undefined,
-                        treeItem: {
-                            label: "",
-                            contextValue: "spacer",
-                            collapsibleState: TreeItemCollapsibleState.None,
-                        },
-                    },
-                ] as TreeNode[];
-            })
-            .flat();
-    }
-
-    async getChildren(element?: TreeNode) {
-        if (element === undefined) {
-            return await this.getRoots();
-        }
-        if (element.type === "resource_type_header") {
-            return element.children;
-        }
-        return this.renderers.map((r) => r.getChildren(element)).flat();
-    }
-
-    getParent(element: TreeNode): ProviderResult<TreeNode> {
+    getParent(
+        element: BundleResourceExplorerTreeNode
+    ): ProviderResult<BundleResourceExplorerTreeNode> {
         return element.parent;
     }
 

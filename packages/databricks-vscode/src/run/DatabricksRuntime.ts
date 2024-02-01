@@ -26,7 +26,7 @@ import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
-import {BundleCommands} from "../bundle/BundleCommands";
+import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";

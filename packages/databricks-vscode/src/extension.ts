@@ -58,7 +58,7 @@ import {OverrideableConfigModel} from "./configuration/models/OverrideableConfig
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
 import {BundleRemoteStateModel} from "./bundle/models/BundleRemoteStateModel";
 import {BundleResourceExplorerTreeDataProvider} from "./ui/bundle-resource-explorer/BundleResourceExplorerTreeDataProvider";
-import {BundleCommands} from "./bundle/BundleCommands";
+import {BundleCommands} from "./ui/bundle-resource-explorer/BundleCommands";
 import {BundleRunTerminalManager} from "./bundle/run/BundleRunTerminalManager";
 import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
@@ -185,7 +185,8 @@ export async function activate(
     const bundleRemoteStateModel = new BundleRemoteStateModel(
         cli,
         workspaceUri,
-        workspaceConfigs
+        workspaceConfigs,
+        bundleValidateModel
     );
     const configModel = new ConfigModel(
         bundleValidateModel,
@@ -526,13 +527,13 @@ export async function activate(
         new BundleResourceExplorerTreeDataProvider(
             configModel,
             bundleRunStatusManager,
-            context
+            context,
+            connectionManager
         );
 
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
-        bundleRunStatusManager,
-        bundleFileWatcher
+        bundleRunStatusManager
     );
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,

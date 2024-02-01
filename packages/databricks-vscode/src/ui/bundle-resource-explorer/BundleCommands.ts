@@ -1,23 +1,19 @@
 import {Disposable, ProgressLocation, window} from "vscode";
-import {BundleRemoteStateModel} from "./models/BundleRemoteStateModel";
-import {onError} from "../utils/onErrorDecorator";
-import {BundleWatcher} from "./BundleWatcher";
-import {
-    TreeNode as BundleResourceExplorerTreeNode,
-    ResourceTreeNode as BundleResourceExplorerResourceTreeNode,
-} from "../ui/bundle-resource-explorer/types";
-import {BundleRunStatusManager} from "./run/BundleRunStatusManager";
-import {Mutex} from "../locking";
+import {BundleRemoteStateModel} from "../../bundle/models/BundleRemoteStateModel";
+import {onError} from "../../utils/onErrorDecorator";
+import {BundleResourceExplorerTreeNode} from "./types";
+import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
+import {Mutex} from "../../locking";
 
-const RUNNABLE_RESOURCES = [
+export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
 ] satisfies BundleResourceExplorerTreeNode["type"][];
 
 function isRunnable(
-    treeNode: BundleResourceExplorerTreeNode
-): treeNode is BundleResourceExplorerResourceTreeNode {
-    return (RUNNABLE_RESOURCES as string[]).includes(treeNode.type);
+    type: string
+): type is (typeof RUNNABLE_BUNDLE_RESOURCES)[number] {
+    return (RUNNABLE_BUNDLE_RESOURCES as string[]).includes(type);
 }
 
 export class BundleCommands implements Disposable {
@@ -28,15 +24,9 @@ export class BundleCommands implements Disposable {
 
     constructor(
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
-        private readonly bundleRunStatusManager: BundleRunStatusManager,
-        private readonly bundleWatcher: BundleWatcher
+        private readonly bundleRunStatusManager: BundleRunStatusManager
     ) {
-        this.disposables.push(
-            this.outputChannel,
-            this.bundleWatcher.onDidChange(async () => {
-                await this.bundleRemoteStateModel.refresh();
-            })
-        );
+        this.disposables.push(this.outputChannel);
     }
 
     private refreshStateMutex = new Mutex();
@@ -90,25 +80,27 @@ export class BundleCommands implements Disposable {
 
     @onError({popup: {prefix: "Error running resource."}})
     async deployAndRun(treeNode: BundleResourceExplorerTreeNode) {
-        if (!isRunnable(treeNode)) {
-            throw new Error(`Cannot run resource of type ${treeNode.type}`);
+        const type = treeNode.type;
+        if (!isRunnable(type)) {
+            throw new Error(`Cannot run resource of type ${type}`);
         }
         //TODO: Don't deploy if there is no diff between local and remote state
         await this.deploy();
 
         await this.bundleRunStatusManager.run(
-            treeNode.resourceKey,
-            treeNode.type
+            (treeNode as any).resourceKey,
+            type
         );
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})
     async cancelRun(treeNode: BundleResourceExplorerTreeNode) {
-        if (!isRunnable(treeNode)) {
+        const type = treeNode.type;
+        if (!isRunnable(type)) {
             throw new Error(`Resource of ${treeNode.type} is not runnable`);
         }
 
-        this.bundleRunStatusManager.cancel(treeNode.resourceKey);
+        this.bundleRunStatusManager.cancel((treeNode as any).resourceKey);
     }
 
     dispose() {

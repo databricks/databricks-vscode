@@ -1,9 +1,10 @@
 import {EventEmitter} from "vscode";
-import {ResourceType} from "../models/BundleRemoteStateModel";
 import {RunState} from "./types";
+import {ResourceKey} from "../types";
+import {BundleRemoteState} from "../models/BundleRemoteStateModel";
 
 export abstract class BundleRunStatus {
-    abstract readonly type: ResourceType;
+    abstract readonly type: ResourceKey<BundleRemoteState>;
     protected readonly onDidChangeEmitter = new EventEmitter<void>();
     readonly onDidChange = this.onDidChangeEmitter.event;
     runId: string | undefined;

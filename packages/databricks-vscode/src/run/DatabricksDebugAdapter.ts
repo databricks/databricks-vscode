@@ -23,7 +23,7 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {DatabricksRuntime} from "./DatabricksRuntime";
 import {Subject} from "./Subject";
-import {BundleCommands} from "../bundle/BundleCommands";
+import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 
 /**
  * This interface describes the mock-debug specific launch attributes

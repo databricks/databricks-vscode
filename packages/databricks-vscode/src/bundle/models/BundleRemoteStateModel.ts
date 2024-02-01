@@ -3,31 +3,30 @@ import {CliWrapper} from "../../cli/CliWrapper";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {Mutex} from "../../locking";
 
-import {BundleTarget} from "../types";
+import {BundleTarget, Resource, ResourceKey, Resources} from "../types";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
-import {withLogContext} from "@databricks/databricks-sdk/dist/logging";
+import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
 import {Context, context} from "@databricks/databricks-sdk";
+import {BundleValidateModel} from "./BundleValidateModel";
 
 /* eslint-disable @typescript-eslint/naming-convention */
-type Resources = Required<BundleTarget>["resources"];
-export type Resource<K extends keyof Required<Resources>> =
-    Required<Resources>[K];
-
+export type BundleResourceModifiedStatus = "CREATED" | "DELETED" | "UPDATED";
 export type BundleRemoteState = BundleTarget & {
-    resources?: Resources & {
-        [r in keyof Resources]?: {
-            [k in keyof Resource<r>]?: Resource<r>[k] & {
+    resources?: Resources<BundleTarget> & {
+        [r in ResourceKey<BundleTarget>]?: {
+            [k in keyof Required<Resources<BundleTarget>>[r]]?: Resource<
+                BundleTarget,
+                r
+            > & {
                 id?: string;
-                modified_status?: "CREATED" | "DELETED" | "UPDATED";
+                modified_status?: BundleResourceModifiedStatus;
             };
         };
     };
 };
-
-export type ResourceType = keyof Resources;
 
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -40,9 +39,13 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     constructor(
         private readonly cli: CliWrapper,
         private readonly workspaceFolder: Uri,
-        private readonly workspaceConfigs: WorkspaceConfigs
+        private readonly workspaceConfigs: WorkspaceConfigs,
+        private readonly bundleValidateModel: BundleValidateModel
     ) {
         super();
+        this.bundleValidateModel.onDidChange(async () => {
+            this.refresh();
+        });
     }
 
     public async refresh() {
@@ -88,7 +91,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         );
     }
 
-    @withLogContext(Loggers.Extension)
+    @logging.withLogContext(Loggers.Extension)
     public init(@context ctx?: Context) {
         this.refreshInterval = setInterval(async () => {
             try {

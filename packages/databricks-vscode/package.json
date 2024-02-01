@@ -383,6 +383,11 @@
                     "group": "inline@1"
                 },
                 {
+                    "command": "databricks.utils.openExternal",
+                    "when": "viewItem =~ /^databricks.*\\.(has-url).*$/",
+                    "group": "inline@1"
+                },
+                {
                     "command": "databricks.connection.attachCluster",
                     "when": "view == clusterView",
                     "group": "inline@2"
@@ -419,7 +424,7 @@
                 },
                 {
                     "command": "databricks.bundle.cancelRun",
-                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.running.*$/",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.cancellable.*$/",
                     "group": "inline@0"
                 }
             ],

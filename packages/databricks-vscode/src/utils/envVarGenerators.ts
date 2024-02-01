@@ -81,7 +81,7 @@ async function getPatToken(connectionManager: ConnectionManager) {
 }
 
 async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {
-    const host = connectionManager.databricksWorkspace?.host.authority;
+    const host = connectionManager.databricksWorkspace?.host.host;
     const authType =
         connectionManager.databricksWorkspace?.authProvider.authType;
 
