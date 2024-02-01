@@ -246,14 +246,13 @@ export class ConnectionManager implements Disposable {
                 await this._databricksWorkspace.optionalEnableFilesInReposPopup(
                     this._workspaceClient
                 );
-
-                await this.updateSyncDestinationMapper();
-                await this.updateClusterManager();
                 await this.configModel.set(
                     "authProfile",
                     authProvider.toJSON().profile as string | undefined
                 );
                 await this.configModel.setAuthProvider(authProvider);
+                await this.updateSyncDestinationMapper();
+                await this.updateClusterManager();
                 await this._metadataService.setApiClient(this.apiClient);
                 this.updateState("CONNECTED");
             });
