@@ -1,4 +1,9 @@
-import {WorkspaceClient, ApiClient, logging} from "@databricks/databricks-sdk";
+import {
+    WorkspaceClient,
+    ApiClient,
+    logging,
+    Headers,
+} from "@databricks/databricks-sdk";
 import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
 import {
     env,

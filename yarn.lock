@@ -367,32 +367,34 @@ __metadata:
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
-  version: 0.6.0
+  version: 0.6.1
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
   dependencies:
     "@types/ini": ^4.1.0
     "@types/node": ^20.11.5
     "@types/semver": ^7.5.6
-    google-auth-library: ^9.4.2
+    google-auth-library: ^9.6.1
     ini: ^4.1.1
     reflect-metadata: ^0.2.1
     semver: ^7.5.4
-  checksum: c24ddbed95ee852563c81510ca1f2439e4ad23f780f4dbd9b931eacdf8ac57bb35c1fc638205d25ed720bc6afe975c3274b35395d281704df6b91477ae3b347e
+    undici: ^6.4.0
+  checksum: 9ec51072a40562dcd72a0c1d9a060a506d61817fb3eb09075c2a6e4c6d72a42e7eee958714172383b8dc7d877be3bc7d6f47ac736ee9044e82c977cb90f15a47
   languageName: node
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
-  version: 0.6.0
+  version: 0.6.1
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
   dependencies:
     "@types/ini": ^4.1.0
     "@types/node": ^20.11.5
     "@types/semver": ^7.5.6
-    google-auth-library: ^9.4.2
+    google-auth-library: ^9.6.1
     ini: ^4.1.1
     reflect-metadata: ^0.2.1
     semver: ^7.5.4
-  checksum: c24ddbed95ee852563c81510ca1f2439e4ad23f780f4dbd9b931eacdf8ac57bb35c1fc638205d25ed720bc6afe975c3274b35395d281704df6b91477ae3b347e
+    undici: ^6.4.0
+  checksum: 9ec51072a40562dcd72a0c1d9a060a506d61817fb3eb09075c2a6e4c6d72a42e7eee958714172383b8dc7d877be3bc7d6f47ac736ee9044e82c977cb90f15a47
   languageName: node
   linkType: hard
 
@@ -643,6 +645,13 @@ __metadata:
     ajv-formats: ^2.1.1
     fast-uri: ^2.0.0
   checksum: 5e5b16469f8d586473d0b32e3a9cf38c0d86ef2a6fb7ea12ed7f3665642bd8eb2dde9adcc317814369cb5a58210bfdac35996fa87d1cc23e88bbc799f0b128b0
+  languageName: node
+  linkType: hard
+
+"@fastify/busboy@npm:^2.0.0":
+  version: 2.1.0
+  resolution: "@fastify/busboy@npm:2.1.0"
+  checksum: 3233abd10f73e50668cb4bb278a79b7b3fadd30215ac6458299b0e5a09a29c3586ec07597aae6bd93f5cbedfcef43a8aeea51829cd28fc13850cdbcd324c28d5
   languageName: node
   linkType: hard
 
@@ -1550,11 +1559,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^20.11.5":
-  version: 20.11.13
-  resolution: "@types/node@npm:20.11.13"
+  version: 20.11.15
+  resolution: "@types/node@npm:20.11.15"
   dependencies:
     undici-types: ~5.26.4
-  checksum: 76fbe4dbcce9ecb602c1e0528124bb113e9ece58d417e96710b7ba96dd67cd0bb050272218dc796be36c0d8c29d7c55da44311be429daa4253c3a00f1b3840ff
+  checksum: 80fe17561636e6e72a0264c26232ea4c46b5ee700888a703f06ae6c9115a2dadb16ccd09b79aa2c66a07cb547a201b2609ab939b9bde42bdad56eeefd161bc12
   languageName: node
   linkType: hard
 
@@ -5430,14 +5439,14 @@ __metadata:
   linkType: hard
 
 "gaxios@npm:^6.0.0, gaxios@npm:^6.1.1":
-  version: 6.1.1
-  resolution: "gaxios@npm:6.1.1"
+  version: 6.2.0
+  resolution: "gaxios@npm:6.2.0"
   dependencies:
     extend: ^3.0.2
     https-proxy-agent: ^7.0.1
     is-stream: ^2.0.0
     node-fetch: ^2.6.9
-  checksum: bb4a4e6c81847b690ee29e01294d2093eb9bb4f9e60bbf81fcc6cd3b274f3c551c50a9bc134e7e7019a9b116eac9d9df6af9f2519c695da7ddd785f36564da72
+  checksum: a1000b841cb3d3d88e434318c7070a4860544dd0d7f4b45ff3a79ee42257cb9e19b4bb18a90420a11b91b3c0c97b57a4f8e338cec2f362003220ce190371f497
   languageName: node
   linkType: hard
 
@@ -5764,9 +5773,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"google-auth-library@npm:^9.4.2":
-  version: 9.6.0
-  resolution: "google-auth-library@npm:9.6.0"
+"google-auth-library@npm:^9.6.1":
+  version: 9.6.1
+  resolution: "google-auth-library@npm:9.6.1"
   dependencies:
     base64-js: ^1.3.0
     ecdsa-sig-formatter: ^1.0.11
@@ -5774,7 +5783,7 @@ __metadata:
     gcp-metadata: ^6.1.0
     gtoken: ^7.0.0
     jws: ^4.0.0
-  checksum: f5849cf46b3fca7937d111d14f10575e189a86409846e2a45fd100a8e21c9413aabb16744e52b515a2b36c814122db47f3ebb1c95c330bc9294d11eb9f160e3f
+  checksum: fc93a433c64e713a0093af20bca1a1f36e510b4918dd72f5bc94b96d240bc1fccb42dbdce6f0b85fa3ded2c92c1b08bb198457d5febe599f71cb2f479ac5e2f5
   languageName: node
   linkType: hard
 
@@ -10799,6 +10808,15 @@ __metadata:
   dependencies:
     busboy: ^1.6.0
   checksum: 048a3365f622be44fb319316cedfaa241c59cf7f3368ae7667a12323447e1822e8cc3d00f6956c852d1478a6fde1cbbe753f49e05f2fdaed229693e716ebaf35
+  languageName: node
+  linkType: hard
+
+"undici@npm:^6.4.0":
+  version: 6.6.0
+  resolution: "undici@npm:6.6.0"
+  dependencies:
+    "@fastify/busboy": ^2.0.0
+  checksum: d0ad781631cd8a92a8afdc1832c971ec3d0c71b68279a4549073c1996086bce29d5bcf1c86ff8342c511345cbb0d7744c3c54e80fec5433e62c0eb6be7655a1b
   languageName: node
   linkType: hard
 
