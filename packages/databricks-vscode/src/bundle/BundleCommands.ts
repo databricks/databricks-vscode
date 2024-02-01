@@ -1,12 +1,12 @@
 import {Disposable, ProgressLocation, window} from "vscode";
 import {BundleRemoteStateModel} from "./models/BundleRemoteStateModel";
-import {onError} from "../utils/onErrorDecorator";
-import {BundleWatcher} from "./BundleWatcher";
+import {onError, withOnErrorHandler} from "../utils/onErrorDecorator";
 import {
     TreeNode as BundleResourceExplorerTreeNode,
     ResourceTreeNode as BundleResourceExplorerResourceTreeNode,
 } from "../ui/bundle-resource-explorer/types";
 import {BundleRunStatusManager} from "./run/BundleRunStatusManager";
+import {BundleValidateModel} from "./models/BundleValidateModel";
 
 const RUNNABLE_RESOURCES = [
     "pipelines",
@@ -28,13 +28,15 @@ export class BundleCommands implements Disposable {
     constructor(
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly bundleRunStatusManager: BundleRunStatusManager,
-        private readonly bundleWatcher: BundleWatcher
+        private readonly bundleValidateModel: BundleValidateModel
     ) {
         this.disposables.push(
             this.outputChannel,
-            this.bundleWatcher.onDidChange(async () => {
-                await this.bundleRemoteStateModel.refresh();
-            })
+            this.bundleValidateModel.onDidChange(
+                withOnErrorHandler(async () => {
+                    await this.refreshRemoteState();
+                })
+            )
         );
     }
 

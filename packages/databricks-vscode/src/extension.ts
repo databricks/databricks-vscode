@@ -532,7 +532,7 @@ export async function activate(
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
         bundleRunStatusManager,
-        bundleFileWatcher
+        bundleValidateModel
     );
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,
