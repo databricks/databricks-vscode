@@ -410,14 +410,52 @@ export class BundleProjectManager {
     }
 
     private async promptForParentFolder(): Promise<Uri | undefined> {
-        const parentPath = await window.showInputBox({
-            title: "Provide a path to a folder where you would want your new project to be",
-            value: this.workspaceUri.fsPath,
-        });
-        if (!parentPath) {
-            return undefined;
+        const quickPick = window.createQuickPick();
+        const openFolderLabel = "Open folder selection dialog";
+        quickPick.value = this.workspaceUri.fsPath;
+        quickPick.title =
+            "Provide a path to a folder where you would want your new project to be";
+        quickPick.items = [
+            {label: quickPick.value, alwaysShow: true},
+            {label: "", kind: QuickPickItemKind.Separator, alwaysShow: true},
+            {label: openFolderLabel, alwaysShow: true},
+        ];
+        quickPick.show();
+        const disposables = [
+            quickPick.onDidChangeValue(() => {
+                quickPick.items = [
+                    {label: quickPick.value, alwaysShow: true},
+                    ...quickPick.items.slice(1),
+                ];
+            }),
+        ];
+        const choice = await new Promise<QuickPickItem | undefined>(
+            (resolve) => {
+                disposables.push(
+                    quickPick.onDidAccept(() =>
+                        resolve(quickPick.selectedItems[0])
+                    ),
+                    quickPick.onDidHide(() => resolve(undefined))
+                );
+            }
+        );
+        disposables.forEach((d) => d.dispose());
+        quickPick.hide();
+        if (!choice) {
+            return;
         }
-        return Uri.file(parentPath);
+        if (choice.label !== openFolderLabel) {
+            return Uri.file(choice.label);
+        }
+        const choices = await window.showOpenDialog({
+            title: "Chose a folder where you would want your new project to be",
+            openLabel: "Select folder",
+            defaultUri: this.workspaceUri,
+            canSelectFolders: true,
+            canSelectFiles: false,
+            canSelectMany: false,
+        });
+        return choices ? choices[0] : undefined;
     }
 
     dispose() {
