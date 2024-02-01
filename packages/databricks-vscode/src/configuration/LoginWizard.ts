@@ -283,33 +283,9 @@ export class LoginWizard {
             return checkResult;
         }
 
-        // Create a new profile
-        const {path: configFilePath, iniFile} = await loadConfigFile(
-            workspaceConfigs.databrickscfgLocation
-        );
-        iniFile[profileName] = Object.fromEntries(
-            Object.entries(authProvider.toIni()).filter(
-                (kv) => kv[1] !== undefined
-            )
-        );
-
-        // Create a backup for .databrickscfg
-        const backup = path.join(
-            path.dirname(configFilePath),
-            ".databrickscfg.bak"
-        );
-        await copyFile(configFilePath, backup);
-        window.showInformationMessage(
-            `Created a backup for .databrickscfg at ${backup}`
-        );
-
-        // Write the new profile to .databrickscfg
-        await writeFile(configFilePath, ini.stringify(iniFile));
-
-        this.state.authProvider = new ProfileAuthProvider(
-            this.state.host!,
+        this.state.authProvider = await saveNewProfile(
             profileName,
-            true
+            authProvider
         );
     }
 
@@ -326,6 +302,37 @@ export class LoginWizard {
 
         return wizard.state.authProvider;
     }
+}
+
+export async function saveNewProfile(
+    profileName: string,
+    authProvider: AuthProvider
+) {
+    const iniData = authProvider.toIni();
+    if (!iniData) {
+        throw new Error("Can't save empty auth provider to a profile");
+    }
+    const {path: configFilePath, iniFile} = await loadConfigFile(
+        workspaceConfigs.databrickscfgLocation
+    );
+    iniFile[profileName] = Object.fromEntries(
+        Object.entries(iniData).filter((kv) => kv[1] !== undefined)
+    );
+
+    // Create a backup for .databrickscfg
+    const backup = path.join(
+        path.dirname(configFilePath),
+        ".databrickscfg.bak"
+    );
+    await copyFile(configFilePath, backup);
+    window.showInformationMessage(
+        `Created a backup for .databrickscfg at ${backup}`
+    );
+
+    // Write the new profile to .databrickscfg
+    await writeFile(configFilePath, ini.stringify(iniFile));
+
+    return new ProfileAuthProvider(authProvider.host, profileName, true);
 }
 
 function humaniseSdkAuthType(sdkAuthType: string) {

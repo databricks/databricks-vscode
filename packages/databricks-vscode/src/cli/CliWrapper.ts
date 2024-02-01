@@ -285,6 +285,41 @@ export class CliWrapper {
         }
         return stdout;
     }
+
+    getBundleInitEnvVars(authProvider: AuthProvider) {
+        return {
+            ...EnvVarGenerators.getEnvVarsForCli(
+                workspaceConfigs.databrickscfgLocation
+            ),
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...this.getLogginEnvVars(),
+            ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            DATABRICKS_OUTPUT_FORMAT: "text",
+        };
+    }
+
+    async bundleInit(
+        templateDirPath: string,
+        outputDirPath: string,
+        initConfigFilePath: string,
+        authProvider: AuthProvider
+    ) {
+        return await execFile(
+            this.cliPath,
+            [
+                "bundle",
+                "init",
+                templateDirPath,
+                "--output-dir",
+                outputDirPath,
+                "--config-file",
+                initConfigFilePath,
+            ],
+            {env: this.getBundleInitEnvVars(authProvider)}
+        );
+    }
+
     async bundleDeploy(
         target: string,
         authProvider: AuthProvider,

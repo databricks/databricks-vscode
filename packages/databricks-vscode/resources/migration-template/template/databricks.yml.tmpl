@@ -1,0 +1,25 @@
+# This is a Databricks asset bundle definition for {{.project_name}}.
+# The Databricks extension requires databricks.yml configuration file.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+
+bundle:
+  name: {{.project_name}}
+
+targets:
+  dev:
+    mode: development
+    default: true
+    {{- if .compute_id}}
+    compute_id: {{.compute_id}}
+    {{- end}}
+    workspace:
+      host: {{workspace_host}}
+      {{- if .root_path}}
+      root_path: {{.root_path}}
+      {{- end}}
+
+  ## Optionally, there could be 'staging' or 'prod' targets here.
+  #
+  # prod:
+  #   workspace:
+  #     host: {{workspace_host}}
