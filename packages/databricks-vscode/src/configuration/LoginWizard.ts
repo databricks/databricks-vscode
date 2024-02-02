@@ -41,7 +41,7 @@ export class LoginWizard {
     private readonly title = "Configure Databricks Workspace";
     constructor(
         private readonly cliWrapper: CliWrapper,
-        private readonly configModel: ConfigModel
+        private readonly configModel?: ConfigModel
     ) {}
 
     private async inputHost(input: MultiStepInput) {
@@ -219,13 +219,13 @@ export class LoginWizard {
         input: MultiStepInput,
         pick: AuthTypeQuickPickItem
     ) {
-        let initialValue = this.configModel.target ?? "";
+        let initialValue = this.configModel?.target ?? "";
 
         // If the initialValue profile already exists, then create a unique name.
         const profiles = await listProfiles(this.cliWrapper);
         if (profiles.find((profile) => profile.name === initialValue)) {
             const suffix = randomUUID().slice(0, 8);
-            initialValue = `${this.configModel.target}-${suffix}`;
+            initialValue = `${this.configModel?.target ?? "dev"}-${suffix}`;
         }
 
         const profileName = await input.showInputBox({
@@ -291,10 +291,12 @@ export class LoginWizard {
 
     static async run(
         cliWrapper: CliWrapper,
-        configModel: ConfigModel
+        configModel?: ConfigModel
     ): Promise<AuthProvider | undefined> {
         const wizard = new LoginWizard(cliWrapper, configModel);
-        wizard.state.host = await configModel.get("host");
+        if (configModel) {
+            wizard.state.host = await configModel.get("host");
+        }
         await MultiStepInput.run(wizard.inputHost.bind(wizard));
         if (!wizard.state.host || !wizard.state.authProvider) {
             return;

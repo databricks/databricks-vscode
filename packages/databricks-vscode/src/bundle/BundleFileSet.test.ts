@@ -1,5 +1,5 @@
 import {Uri} from "vscode";
-import {BundleFileSet} from "./BundleFileSet";
+import {BundleFileSet, getAbsolutePath} from "./BundleFileSet";
 import {expect} from "chai";
 import path from "path";
 import * as tmp from "tmp-promise";
@@ -21,14 +21,12 @@ describe(__filename, async function () {
     it("should return the correct absolute path", () => {
         const tmpdirUri = Uri.file(tmpdir.path);
 
-        const bundleFileSet = new BundleFileSet(tmpdirUri);
-
-        expect(bundleFileSet.getAbsolutePath("test.txt").fsPath).to.equal(
+        expect(getAbsolutePath("test.txt", tmpdirUri).fsPath).to.equal(
             path.join(tmpdirUri.fsPath, "test.txt")
         );
 
         expect(
-            bundleFileSet.getAbsolutePath(Uri.file("test.txt")).fsPath
+            getAbsolutePath(Uri.file("test.txt"), tmpdirUri).fsPath
         ).to.equal(path.join(tmpdirUri.fsPath, "test.txt"));
     });
 
