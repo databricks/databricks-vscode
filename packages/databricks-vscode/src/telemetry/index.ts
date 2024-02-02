@@ -55,7 +55,7 @@ async function getDatabricksWorkspaceMetadata(
     const hashedUserName = await bcrypt.hash(userName, bcryptSalt);
     return {
         hashedUserName: hashedUserName,
-        host: databricksWorkspace.host.toString(),
+        host: databricksWorkspace.host.host,
     };
 }
 
