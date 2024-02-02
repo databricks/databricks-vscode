@@ -142,11 +142,18 @@ export class LoginWizard {
                                 );
                             })
                             .map((profile) => {
+                                const humanisedAuthType = humaniseSdkAuthType(
+                                    profile.authType
+                                );
+                                const detail = humanisedAuthType
+                                    ? `Authenticate using ${humaniseSdkAuthType(
+                                          profile.authType
+                                      )}`
+                                    : `Authenticate using profile ${profile.name}`;
+
                                 return {
                                     label: profile.name,
-                                    detail: `Authenticate using ${humaniseSdkAuthType(
-                                        profile.authType
-                                    )} from ${profile.name} profile`,
+                                    detail,
                                     authType: profile.authType as SdkAuthType,
                                     profile: profile.name,
                                 };
