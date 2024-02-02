@@ -1,9 +1,10 @@
 import {BundleResourceModifiedStatus} from "../../../bundle/models/BundleRemoteStateModel";
+import {TreeItemLabel} from "vscode";
 
 export function addModifiedTag(
     label: string,
     modifiedStatus?: BundleResourceModifiedStatus
-) {
+): TreeItemLabel | string {
     if (modifiedStatus === undefined) {
         return label;
     }

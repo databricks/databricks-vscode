@@ -4,7 +4,7 @@ import {
     BundleResourceExplorerTreeItem,
     BundleResourceExplorerTreeNode,
 } from "./types";
-import {ExtensionContext, TreeItemCollapsibleState} from "vscode";
+import {ExtensionContext, TreeItemCollapsibleState, ThemeIcon} from "vscode";
 import {JobRunStatus} from "../../bundle/run/JobRunStatus";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {jobs} from "@databricks/databricks-sdk";
@@ -12,6 +12,9 @@ import {TaskRunStatusTreeNode} from "./TaskRunStatusTreeNode";
 import {ContextUtils} from "./utils";
 
 type Task = Required<BundleResourceExplorerResource<"jobs">>["tasks"][number];
+type TaskType = keyof {
+    [k in keyof Required<Task> as k extends `${string}_task` ? k : never]: k;
+};
 
 export class TaskTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "task";
@@ -43,7 +46,7 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
         public parent?: BundleResourceExplorerTreeNode
     ) {}
 
-    private getTaskIconPath(taskType: string) {
+    private getIconPathForType(taskType: string) {
         return {
             dark: this.context.asAbsolutePath(
                 path.join(
@@ -71,21 +74,60 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
         );
     }
 
-    getTreeItem(): BundleResourceExplorerTreeItem {
-        let iconPath: BundleResourceExplorerTreeItem["iconPath"] = undefined;
+    get taskType(): TaskType | undefined {
+        return Object.keys(this.data).find(
+            (k) =>
+                k.endsWith("_task") && this.data[k as keyof Task] !== undefined
+        ) as TaskType | undefined;
+    }
 
-        if (this.data.pipeline_task !== undefined) {
-            iconPath = this.getTaskIconPath("pipelines");
+    get humanisedTaskType() {
+        if (this.taskType === undefined) {
+            return undefined;
         }
 
-        if (this.data.spark_python_task !== undefined) {
-            iconPath = this.getTaskIconPath("python");
+        return this.taskType
+            .replace("_task", "")
+            .split("_")
+            .map((word) => word[0].toUpperCase() + word.slice(1))
+            .join(" ");
+    }
+
+    getTreeItem(): BundleResourceExplorerTreeItem {
+        let iconPath: BundleResourceExplorerTreeItem["iconPath"] = undefined;
+        switch (this.taskType) {
+            case "pipeline_task":
+                iconPath = this.getIconPathForType("pipelines");
+                break;
+            case "spark_python_task":
+                iconPath = this.getIconPathForType("python");
+                break;
+            case "notebook_task":
+                iconPath = new ThemeIcon("notebook");
+                break;
+            case "condition_task":
+                iconPath = this.getIconPathForType("fork");
+                break;
+            case "run_job_task":
+                iconPath = this.getIconPathForType("jobs");
+                break;
+            case "python_wheel_task":
+                iconPath = this.getIconPathForType("python");
+                break;
+            case "dbt_task":
+            case "spark_submit_task":
+            case "sql_task":
+            case "spark_jar_task":
+                break;
+            default:
+                break;
         }
 
         return {
             label: this.data.task_key,
             id: `${this.data.task_key}-${this.jobId}-${this.jobResourceKey}`,
-            description: this.data.description,
+            description: this.humanisedTaskType,
+            tooltip: this.data.description,
             iconPath: iconPath,
             contextValue: ContextUtils.getContextString({
                 nodeType: this.type,
