@@ -152,15 +152,11 @@ export class BundleInitWizard {
             "init",
             "--output-dir",
             this.cli.escapePathArgument(parentFolder.fsPath),
-        ];
-        const initialPrompt = `clear; echo "Executing: databricks ${args.join(
-            " "
-        )}\nFollow the steps below to create your new Databricks project.\n"`;
+        ].join(" ");
+        const initialPrompt = `clear; echo "Executing: databricks ${args}\nFollow the steps below to create your new Databricks project.\n"`;
         const finalPrompt = `echo "Press any key to close the terminal and continue ..."; read; exit`;
         terminal.sendText(
-            `${initialPrompt}; ${this.cli.cliPath} ${args.join(
-                " "
-            )}; ${finalPrompt}`
+            `${initialPrompt}; ${this.cli.cliPath} ${args}; ${finalPrompt}`
         );
         return new Promise<void>((resolve) => {
             const closeEvent = window.onDidCloseTerminal(async (t) => {
@@ -178,21 +174,23 @@ export class BundleInitWizard {
     ): Promise<Uri | undefined> {
         const quickPick = window.createQuickPick();
         const openFolderLabel = "Open folder selection dialog";
-        quickPick.value = workspaceUri?.fsPath ?? "";
+        const initialValue = workspaceUri?.fsPath || process.env.HOME;
+        if (initialValue) {
+            quickPick.value = initialValue;
+        }
         quickPick.title =
             "Provide a path to a folder where you would want your new project to be";
-        quickPick.items = [
-            {label: quickPick.value, alwaysShow: true},
-            {label: "", kind: QuickPickItemKind.Separator, alwaysShow: true},
-            {label: openFolderLabel, alwaysShow: true},
-        ];
+        quickPick.items = createParentFolderQuickPickItems(
+            quickPick.value,
+            openFolderLabel
+        );
         quickPick.show();
         const disposables = [
             quickPick.onDidChangeValue(() => {
-                quickPick.items = [
-                    {label: quickPick.value, alwaysShow: true},
-                    ...quickPick.items.slice(1),
-                ];
+                quickPick.items = createParentFolderQuickPickItems(
+                    quickPick.value,
+                    openFolderLabel
+                );
             }),
         ];
         const choice = await new Promise<QuickPickItem | undefined>(
@@ -223,4 +221,18 @@ export class BundleInitWizard {
         });
         return choices ? choices[0] : undefined;
     }
+}
+
+function createParentFolderQuickPickItems(
+    value: string | undefined,
+    openFolderLabel: string
+) {
+    const items: QuickPickItem[] = value
+        ? [{label: value, alwaysShow: true}]
+        : [];
+    items.push(
+        {label: "", kind: QuickPickItemKind.Separator, alwaysShow: true},
+        {label: openFolderLabel, alwaysShow: true}
+    );
+    return items;
 }
