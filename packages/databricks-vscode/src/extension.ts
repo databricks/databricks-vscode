@@ -185,8 +185,7 @@ export async function activate(
     const bundleRemoteStateModel = new BundleRemoteStateModel(
         cli,
         workspaceUri,
-        workspaceConfigs,
-        bundleValidateModel
+        workspaceConfigs
     );
     const configModel = new ConfigModel(
         bundleValidateModel,
@@ -539,7 +538,8 @@ export async function activate(
 
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
-        bundleRunStatusManager
+        bundleRunStatusManager,
+        bundleValidateModel
     );
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,

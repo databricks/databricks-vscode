@@ -10,7 +10,6 @@ import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
 import {Context, context} from "@databricks/databricks-sdk";
-import {BundleValidateModel} from "./BundleValidateModel";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export type BundleResourceModifiedStatus = "CREATED" | "DELETED" | "UPDATED";
@@ -39,13 +38,9 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     constructor(
         private readonly cli: CliWrapper,
         private readonly workspaceFolder: Uri,
-        private readonly workspaceConfigs: WorkspaceConfigs,
-        private readonly bundleValidateModel: BundleValidateModel
+        private readonly workspaceConfigs: WorkspaceConfigs
     ) {
         super();
-        this.bundleValidateModel.onDidChange(async () => {
-            this.refresh();
-        });
     }
 
     public async refresh() {

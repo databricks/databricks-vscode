@@ -4,6 +4,7 @@ import {onError} from "../../utils/onErrorDecorator";
 import {BundleResourceExplorerTreeNode} from "./types";
 import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
 import {Mutex} from "../../locking";
+import {BundleValidateModel} from "../../bundle/models/BundleValidateModel";
 
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
@@ -24,9 +25,15 @@ export class BundleCommands implements Disposable {
 
     constructor(
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
-        private readonly bundleRunStatusManager: BundleRunStatusManager
+        private readonly bundleRunStatusManager: BundleRunStatusManager,
+        private readonly bundleValidateModel: BundleValidateModel
     ) {
-        this.disposables.push(this.outputChannel);
+        this.disposables.push(
+            this.outputChannel,
+            this.bundleValidateModel.onDidChange(async () => {
+                await this.refreshRemoteState();
+            })
+        );
     }
 
     private refreshStateMutex = new Mutex();
