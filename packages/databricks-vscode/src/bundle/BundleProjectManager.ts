@@ -1,4 +1,5 @@
 import {
+    ExtensionContext,
     QuickPickItem,
     QuickPickItemKind,
     Disposable,
@@ -7,6 +8,8 @@ import {
     commands,
     TerminalLocation,
 } from "vscode";
+import fs from "node:fs/promises";
+import path from "path";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {BundleFileSet} from "./BundleFileSet";
@@ -15,41 +18,35 @@ import {Loggers} from "../logger";
 import {CachedValue} from "../locking/CachedValue";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {CliWrapper} from "../cli/CliWrapper";
-import {LoginWizard} from "../configuration/LoginWizard";
+import {LoginWizard, saveNewProfile} from "../configuration/LoginWizard";
 import {Mutex} from "../locking";
-import {AuthProvider} from "../configuration/auth/AuthProvider";
+import {
+    AuthProvider,
+    ProfileAuthProvider,
+} from "../configuration/auth/AuthProvider";
+import {ProjectConfigFile} from "../file-managers/ProjectConfigFile";
+import {randomUUID} from "crypto";
+import {onError} from "../utils/onErrorDecorator";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
     private disposables: Disposable[] = [];
 
-    private _isBundleProject = new CachedValue<boolean>(async () => {
+    private isBundleProjectCache = new CachedValue<boolean>(async () => {
         const rootBundleFile = await this.bundleFileSet.getRootFile();
         return rootBundleFile !== undefined;
     });
 
-    public onDidChangeStatus = this._isBundleProject.onDidChange;
-
-    private _isLegacyProject = new CachedValue<boolean>(async () => {
-        // TODO
-        return false;
-    });
-
-    private _subProjects = new CachedValue<{absolute: Uri; relative: Uri}[]>(
-        async () => {
-            const projects = await this.bundleFileSet.getSubProjects();
-            this.logger.debug(
-                `Detected ${projects.length} sub folders with bundle projects`
-            );
-            this.customWhenContext.setSubProjectsAvailable(projects.length > 0);
-            return projects;
-        }
-    );
+    public onDidChangeStatus = this.isBundleProjectCache.onDidChange;
 
     private projectServicesReady = false;
     private projectServicesMutex = new Mutex();
 
+    private subProjects?: {relative: Uri; absolute: Uri}[];
+    private legacyProjectConfig?: ProjectConfigFile;
+
     constructor(
+        private context: ExtensionContext,
         private cli: CliWrapper,
         private customWhenContext: CustomWhenContext,
         private connectionManager: ConnectionManager,
@@ -60,15 +57,15 @@ export class BundleProjectManager {
         this.disposables.push(
             this.bundleFileSet.bundleDataCache.onDidChange(async () => {
                 try {
-                    await this._isBundleProject.refresh();
+                    await this.isBundleProjectCache.refresh();
                 } catch (error) {
                     this.logger.error(
-                        "Failed to refresh isBundleProject var",
+                        "Failed to refresh isBundleProjectCache",
                         error
                     );
                 }
             }),
-            this._isBundleProject.onDidChange(async () => {
+            this.isBundleProjectCache.onDidChange(async () => {
                 try {
                     await this.configureBundleProject();
                 } catch (error) {
@@ -87,7 +84,7 @@ export class BundleProjectManager {
     }
 
     public async isBundleProject(): Promise<boolean> {
-        return await this._isBundleProject.value;
+        return await this.isBundleProjectCache.value;
     }
 
     public async configureWorkspace(): Promise<void> {
@@ -96,17 +93,15 @@ export class BundleProjectManager {
             return;
         }
 
-        // The cached value updates subProjectsAvailabe context.
-        // We have a configurationView that shows "open project" button if the context value is true.
-        await this._subProjects.refresh();
-
-        const isLegacyProject = await this._isLegacyProject.value;
-        if (isLegacyProject) {
-            this.logger.debug(
-                "Detected a legacy project.json, starting automatic migration"
-            );
-            await this.migrateProjectJsonToBundle();
-        }
+        await Promise.all([
+            // This method updates subProjectsAvailabe context.
+            // We have a configurationView that shows "openSubProjects" button if the context value is true.
+            this.detectSubProjects(),
+            // This method will try to automatically create bundle config if there's existing valid project.json config.
+            // In the case project.json auth doesn't work, it sets pendingManualMigration context to enable
+            // configurationView with the configureManualMigration button.
+            this.detectLegacyProjectConfig(),
+        ]);
     }
 
     private async configureBundleProject() {
@@ -138,12 +133,20 @@ export class BundleProjectManager {
         // TODO
     }
 
+    private async detectSubProjects() {
+        this.subProjects = await this.bundleFileSet.getSubProjects();
+        this.logger.debug(
+            `Detected ${this.subProjects?.length} sub folders with bundle projects`
+        );
+        this.customWhenContext.setSubProjectsAvailable(
+            this.subProjects?.length > 0
+        );
+    }
+
     public async openSubProjects() {
-        const projects = await this._subProjects.value;
-        if (projects.length === 0) {
-            return;
+        if (this.subProjects && this.subProjects.length > 0) {
+            return this.promptToOpenSubProjects(this.subProjects);
         }
-        return this.promptToOpenSubProjects(projects);
     }
 
     private async promptToOpenSubProjects(
@@ -174,8 +177,117 @@ export class BundleProjectManager {
         await commands.executeCommand("vscode.openFolder", item.uri);
     }
 
-    private async migrateProjectJsonToBundle() {
-        // TODO
+    private async detectLegacyProjectConfig() {
+        this.legacyProjectConfig = await this.loadLegacyProjectConfig();
+        if (!this.legacyProjectConfig) {
+            return;
+        }
+        this.logger.debug(
+            "Detected a legacy project.json, starting automatic migration"
+        );
+        try {
+            await this.startAutomaticMigration(this.legacyProjectConfig);
+        } catch (error) {
+            this.customWhenContext.setPendingManualMigration(true);
+            const message =
+                "Failed to perform automatic migration to Databricks Asset Bundles.";
+            this.logger.error(message, error);
+            const errorMessage = (error as Error)?.message ?? "Unknown Error";
+            window.showErrorMessage(`${message} ${errorMessage}`);
+        }
+    }
+
+    private async loadLegacyProjectConfig(): Promise<
+        ProjectConfigFile | undefined
+    > {
+        try {
+            return await ProjectConfigFile.load(
+                this.workspaceUri.fsPath,
+                this.cli.cliPath
+            );
+        } catch (error) {
+            this.logger.error("Failed to load legacy project config:", error);
+            return undefined;
+        }
+    }
+
+    private async startAutomaticMigration(
+        legacyProjectConfig: ProjectConfigFile
+    ) {
+        let authProvider = legacyProjectConfig.authProvider;
+        if (!(await authProvider.check())) {
+            this.logger.debug(
+                "Legacy project auth was not successful, showing 'configure' welcome screen"
+            );
+            this.customWhenContext.setPendingManualMigration(true);
+            return;
+        }
+        if (!(authProvider instanceof ProfileAuthProvider)) {
+            const rnd = randomUUID().slice(0, 8);
+            const profileName = `${authProvider.authType}-${rnd}`;
+            this.logger.debug(
+                "Creating new profile before bundle migration",
+                profileName
+            );
+            authProvider = await saveNewProfile(profileName, authProvider);
+        }
+        await this.migrateProjectJsonToBundle(
+            legacyProjectConfig,
+            authProvider as ProfileAuthProvider
+        );
+    }
+
+    @onError({
+        popup: {
+            prefix: "Failed to migrate the project to Databricks Asset Bundles",
+        },
+    })
+    public async startManualMigration() {
+        if (!this.legacyProjectConfig) {
+            throw new Error("Can't migrate without project configuration");
+        }
+        const authProvider = await LoginWizard.run(this.cli, this.configModel);
+        if (
+            authProvider instanceof ProfileAuthProvider &&
+            (await authProvider.check())
+        ) {
+            return this.migrateProjectJsonToBundle(
+                this.legacyProjectConfig!,
+                authProvider
+            );
+        } else {
+            this.logger.debug("Incorrect auth for the project.json migration");
+        }
+    }
+
+    private async migrateProjectJsonToBundle(
+        legacyProjectConfig: ProjectConfigFile,
+        authProvider: ProfileAuthProvider
+    ) {
+        const configVars = {
+            /* eslint-disable @typescript-eslint/naming-convention */
+            project_name: path.basename(this.workspaceUri.fsPath),
+            compute_id: legacyProjectConfig.clusterId,
+            root_path: legacyProjectConfig.workspacePath?.path,
+            /* eslint-enable @typescript-eslint/naming-convention */
+        };
+        this.logger.debug("Starting bundle migration, config:", configVars);
+        const configFilePath = path.join(
+            this.workspaceUri.fsPath,
+            ".databricks",
+            "migration-config.json"
+        );
+        await fs.writeFile(configFilePath, JSON.stringify(configVars, null, 4));
+        const templateDirPath = this.context.asAbsolutePath(
+            path.join("resources", "migration-template")
+        );
+        await this.cli.bundleInit(
+            templateDirPath,
+            this.workspaceUri.fsPath,
+            configFilePath,
+            authProvider
+        );
+        this.logger.debug("Successfully finished bundle migration");
     }
 
     public async initNewProject() {
@@ -191,11 +303,11 @@ export class BundleProjectManager {
             this.logger.debug("No parent folder provided");
             return;
         }
-        await this.bundleInitInTerminal(parentFolder, authProvider.toEnv());
+        await this.bundleInitInTerminal(parentFolder, authProvider);
         this.logger.debug(
             "Finished bundle init wizard, detecting projects to initialize or open"
         );
-        await this._isBundleProject.refresh();
+        await this.isBundleProjectCache.refresh();
         const projects = await this.bundleFileSet.getSubProjects(parentFolder);
         if (projects.length > 0) {
             this.logger.debug(
@@ -244,7 +356,7 @@ export class BundleProjectManager {
         const items: AuthSelectionItem[] = [
             {
                 label: "Use current auth",
-                detail: `Type: ${authProvider.authType}; Host: ${authProvider.host.hostname}`,
+                detail: `Host: ${authProvider.host.hostname}`,
                 approved: true,
             },
             {
@@ -267,13 +379,13 @@ export class BundleProjectManager {
 
     private async bundleInitInTerminal(
         parentFolder: Uri,
-        env: Record<string, string>
+        authProvider: AuthProvider
     ) {
         const terminal = window.createTerminal({
             name: "Databricks Project Init",
             isTransient: true,
             location: TerminalLocation.Editor,
-            env: {...env, ...this.cli.getLogginEnvVars()},
+            env: this.cli.getBundleInitEnvVars(authProvider),
         });
         const args = [
             "bundle",
@@ -298,14 +410,52 @@ export class BundleProjectManager {
     }
 
     private async promptForParentFolder(): Promise<Uri | undefined> {
-        const parentPath = await window.showInputBox({
-            title: "Provide a path to a folder where you would want your new project to be",
-            value: this.workspaceUri.fsPath,
-        });
-        if (!parentPath) {
-            return undefined;
+        const quickPick = window.createQuickPick();
+        const openFolderLabel = "Open folder selection dialog";
+        quickPick.value = this.workspaceUri.fsPath;
+        quickPick.title =
+            "Provide a path to a folder where you would want your new project to be";
+        quickPick.items = [
+            {label: quickPick.value, alwaysShow: true},
+            {label: "", kind: QuickPickItemKind.Separator, alwaysShow: true},
+            {label: openFolderLabel, alwaysShow: true},
+        ];
+        quickPick.show();
+        const disposables = [
+            quickPick.onDidChangeValue(() => {
+                quickPick.items = [
+                    {label: quickPick.value, alwaysShow: true},
+                    ...quickPick.items.slice(1),
+                ];
+            }),
+        ];
+        const choice = await new Promise<QuickPickItem | undefined>(
+            (resolve) => {
+                disposables.push(
+                    quickPick.onDidAccept(() =>
+                        resolve(quickPick.selectedItems[0])
+                    ),
+                    quickPick.onDidHide(() => resolve(undefined))
+                );
+            }
+        );
+        disposables.forEach((d) => d.dispose());
+        quickPick.hide();
+        if (!choice) {
+            return;
         }
-        return Uri.file(parentPath);
+        if (choice.label !== openFolderLabel) {
+            return Uri.file(choice.label);
+        }
+        const choices = await window.showOpenDialog({
+            title: "Chose a folder where you would want your new project to be",
+            openLabel: "Select folder",
+            defaultUri: this.workspaceUri,
+            canSelectFolders: true,
+            canSelectFiles: false,
+            canSelectMany: false,
+        });
+        return choices ? choices[0] : undefined;
     }
 
     dispose() {
