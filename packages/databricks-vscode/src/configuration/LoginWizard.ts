@@ -1,4 +1,10 @@
-import {commands, QuickPickItem, QuickPickItemKind, window} from "vscode";
+import {
+    commands,
+    QuickPickItem,
+    QuickPickItemKind,
+    window,
+    ProgressLocation,
+} from "vscode";
 import {
     InputFlowAction,
     InputStep,
@@ -357,18 +363,28 @@ function humaniseSdkAuthType(sdkAuthType: string) {
 }
 
 export async function listProfiles(cliWrapper: CliWrapper) {
-    const profiles = (
-        await cliWrapper.listProfiles(workspaceConfigs.databrickscfgLocation)
-    ).filter((profile) => {
-        try {
-            UrlUtils.normalizeHost(profile.host!.toString());
-            return true;
-        } catch (e) {
-            return false;
-        }
-    });
+    return await window.withProgress(
+        {
+            location: ProgressLocation.Notification,
+            title: "Loading Databricks profiles",
+        },
+        async () => {
+            const profiles = (
+                await cliWrapper.listProfiles(
+                    workspaceConfigs.databrickscfgLocation
+                )
+            ).filter((profile) => {
+                try {
+                    UrlUtils.normalizeHost(profile.host!.toString());
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            });
 
-    return profiles;
+            return profiles;
+        }
+    );
 }
 
 async function validateDatabricksHost(

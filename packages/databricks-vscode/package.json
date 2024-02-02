@@ -389,11 +389,6 @@
             "view/item/context": [
                 {
                     "command": "databricks.utils.openExternal",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.(cluster|sync).*$/",
-                    "group": "inline@1"
-                },
-                {
-                    "command": "databricks.utils.openExternal",
                     "when": "viewItem =~ /^databricks.*\\.(has-url).*$/",
                     "group": "inline@1"
                 },

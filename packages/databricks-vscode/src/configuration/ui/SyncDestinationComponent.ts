@@ -5,6 +5,7 @@ import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {TreeItemCollapsibleState, ThemeIcon, ThemeColor} from "vscode";
+import {LabelUtils} from "../../ui/bundle-resource-explorer/utils";
 
 const TREE_ICON_ID = "WORKSPACE";
 function getContextValue(key: string) {
@@ -70,10 +71,20 @@ export class SyncDestinationComponent extends BaseComponent {
             }),
             this.configModel.onDidChangeKey("remoteRootPath")(() => {
                 this.onDidChangeEmitter.fire();
+            }),
+            this.configModel.onDidChangeKey("remoteStateConfig")(() => {
+                this.onDidChangeEmitter.fire();
             })
         );
     }
 
+    async getUrl() {
+        return this.connectionManager.workspaceClient
+            ? await this.connectionManager.syncDestinationMapper?.remoteUri.getUrl(
+                  this.connectionManager.workspaceClient
+              )
+            : undefined;
+    }
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
         const config = await this.configModel.get("remoteRootPath");
         if (config === undefined) {
@@ -86,19 +97,20 @@ export class SyncDestinationComponent extends BaseComponent {
             this.codeSynchronizer
         );
 
+        const url = await this.getUrl();
+
         return [
             {
-                label: "Sync",
+                label: url
+                    ? "Sync"
+                    : LabelUtils.addModifiedTag("Sync", "CREATED"),
+                tooltip: url ? undefined : "Created after deploy",
                 description: posix.basename(posix.dirname(config)),
                 collapsibleState: TreeItemCollapsibleState.Expanded,
-                contextValue: contextValue,
+                contextValue: url ? `${contextValue}.has-url` : contextValue,
                 iconPath: icon,
                 id: TREE_ICON_ID,
-                url: this.connectionManager.workspaceClient
-                    ? await this.connectionManager.syncDestinationMapper?.remoteUri.getUrl(
-                          this.connectionManager.workspaceClient
-                      )
-                    : undefined,
+                url: url,
             },
         ];
     }
@@ -121,7 +133,6 @@ export class SyncDestinationComponent extends BaseComponent {
         if (workspaceFsPath === undefined) {
             return [];
         }
-        //TODO: Disable syncing for all targets (dev/staging/prod)
 
         const children: ConfigurationTreeItem[] = [
             {
