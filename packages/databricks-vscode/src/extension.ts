@@ -231,6 +231,7 @@ export async function activate(
     context.subscriptions.push(metadataService);
 
     const bundleProjectManager = new BundleProjectManager(
+        context,
         cli,
         customWhenContext,
         connectionManager,
@@ -248,6 +249,11 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.bundle.initNewProject",
             bundleProjectManager.initNewProject,
+            bundleProjectManager
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.startManualMigration",
+            bundleProjectManager.startManualMigration,
             bundleProjectManager
         )
     );
@@ -678,13 +684,18 @@ export async function activate(
         })
     );
 
-    bundleProjectManager.configureWorkspace().catch((e) => {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Failed to configure workspace",
-            e
-        );
-        window.showErrorMessage(e);
-    });
+    bundleProjectManager
+        .configureWorkspace()
+        .catch((e) => {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Failed to configure workspace",
+                e
+            );
+            window.showErrorMessage(e);
+        })
+        .finally(() => {
+            customWhenContext.setInitialized();
+        });
 
     customWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
