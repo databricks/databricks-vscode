@@ -11,13 +11,14 @@ import {
     MultiStepInput,
     ValidationMessageType,
 } from "../ui/MultiStepInputWizard";
-import {CliWrapper} from "../cli/CliWrapper";
+import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {
     AuthProvider,
     AuthType,
     AzureCliAuthProvider,
     DatabricksCliAuthProvider,
+    PersonalAccessTokenAuthProvider,
     ProfileAuthProvider,
 } from "./auth/AuthProvider";
 import {UrlUtils} from "../utils";
@@ -45,6 +46,13 @@ interface State {
 export class LoginWizard {
     private state = {} as Partial<State>;
     private readonly title = "Configure Databricks Workspace";
+    private _profiles: Array<ConfigEntry> = [];
+    async getProfiles() {
+        if (this._profiles.length === 0) {
+            this._profiles = await listProfiles(this.cliWrapper);
+        }
+        return this._profiles;
+    }
     constructor(
         private readonly cliWrapper: CliWrapper,
         private readonly configModel: ConfigModel
@@ -64,9 +72,8 @@ export class LoginWizard {
             });
         }
 
-        const profiles = await listProfiles(this.cliWrapper);
         items.push(
-            ...profiles.map((profile) => {
+            ...(await this.getProfiles()).map((profile) => {
                 return {
                     label: profile.host!.toString(),
                     detail: `Profile: ${profile.name}`,
@@ -113,7 +120,10 @@ export class LoginWizard {
         input: MultiStepInput
     ): Promise<InputStep | void> {
         const items: Array<AuthTypeQuickPickItem> = [];
-
+        items.push({
+            label: "Create new Databricks CLI profile",
+            kind: QuickPickItemKind.Separator,
+        });
         for (const authMethod of authMethodsForHostname(this.state.host!)) {
             switch (authMethod) {
                 case "azure-cli":
@@ -131,10 +141,9 @@ export class LoginWizard {
                         authType: "databricks-cli",
                     });
                     break;
-
                 case "profile":
                     {
-                        const profiles = (await listProfiles(this.cliWrapper))
+                        const profiles = (await this.getProfiles())
                             .filter((profile) => {
                                 return (
                                     profile.host?.hostname ===
@@ -159,6 +168,11 @@ export class LoginWizard {
                                 };
                             });
 
+                        items.push({
+                            label: "Personal Access Token",
+                            detail: "Create a new profile and authenticate using the 'databricks' command line tool",
+                            authType: "pat",
+                        });
                         if (profiles.length !== 0) {
                             items.push(
                                 {
@@ -235,7 +249,7 @@ export class LoginWizard {
         let initialValue = this.configModel.target ?? "";
 
         // If the initialValue profile already exists, then create a unique name.
-        const profiles = await listProfiles(this.cliWrapper);
+        const profiles = await this.getProfiles();
         if (profiles.find((profile) => profile.name === initialValue)) {
             const suffix = randomUUID().slice(0, 8);
             initialValue = `${this.configModel.target}-${suffix}`;
@@ -254,7 +268,6 @@ export class LoginWizard {
                         type: "error",
                     };
                 }
-                const profiles = await listProfiles(this.cliWrapper);
                 if (profiles.find((profile) => profile.name === value)) {
                     return {
                         message: `Profile ${value} already exists`,
@@ -269,7 +282,10 @@ export class LoginWizard {
             return;
         }
 
-        let authProvider: AzureCliAuthProvider | DatabricksCliAuthProvider;
+        let authProvider:
+            | AzureCliAuthProvider
+            | DatabricksCliAuthProvider
+            | PersonalAccessTokenAuthProvider;
         switch (pick.authType) {
             case "azure-cli":
                 authProvider = new AzureCliAuthProvider(this.state.host!);
@@ -282,6 +298,20 @@ export class LoginWizard {
                 );
                 break;
 
+            case "pat":
+                {
+                    const token = await collectTokenForPatAuth(input, 4, 4);
+                    if (token === undefined) {
+                        // Token can never be undefined unless the users cancels the whole process.
+                        // Therefore, we can safely return here.
+                        return;
+                    }
+                    authProvider = new PersonalAccessTokenAuthProvider(
+                        this.state.host!,
+                        token
+                    );
+                }
+                break;
             default:
                 throw new Error(
                     `Unknown auth type: ${pick.authType} for profile creation`
@@ -429,4 +459,32 @@ function authMethodsForHostname(host: URL): Array<AuthType> {
     }
 
     return ["profile"];
+}
+
+async function collectTokenForPatAuth(
+    input: MultiStepInput,
+    step: number,
+    totalSteps: number
+) {
+    const token = await input.showInputBox({
+        title: "Enter Personal Access Token",
+        step,
+        totalSteps,
+        validate: async (value) => {
+            if (value.length === 0) {
+                return {
+                    message: "Token cannot be empty",
+                    type: "error",
+                };
+            }
+        },
+        placeholder: "Enter Personal Access Token",
+        ignoreFocusOut: true,
+    });
+
+    if (token === undefined) {
+        return;
+    }
+
+    return token;
 }

@@ -539,7 +539,8 @@ export async function activate(
 
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
-        bundleRunStatusManager
+        bundleRunStatusManager,
+        bundleValidateModel
     );
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,

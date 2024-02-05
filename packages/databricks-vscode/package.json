@@ -393,11 +393,6 @@
                     "group": "inline@1"
                 },
                 {
-                    "command": "databricks.utils.openExternal",
-                    "when": "viewItem =~ /^databricks.*\\.(has-url).*$/",
-                    "group": "inline@1"
-                },
-                {
                     "command": "databricks.connection.attachCluster",
                     "when": "view == clusterView",
                     "group": "inline@2"
