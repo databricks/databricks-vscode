@@ -4,16 +4,20 @@ import {onError} from "../../utils/onErrorDecorator";
 import {BundleResourceExplorerTreeNode} from "./types";
 import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
 import {Mutex} from "../../locking";
+import {PipelineTreeNode} from "./PipelineTreeNode";
+import {JobTreeNode} from "./JobTreeNode";
 
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
 ] satisfies BundleResourceExplorerTreeNode["type"][];
 
+type RunnableTreeNodes = PipelineTreeNode | JobTreeNode;
+
 function isRunnable(
-    type: string
-): type is (typeof RUNNABLE_BUNDLE_RESOURCES)[number] {
-    return (RUNNABLE_BUNDLE_RESOURCES as string[]).includes(type);
+    treeNode: BundleResourceExplorerTreeNode
+): treeNode is RunnableTreeNodes {
+    return (RUNNABLE_BUNDLE_RESOURCES as string[]).includes(treeNode.type);
 }
 
 export class BundleCommands implements Disposable {
@@ -80,27 +84,25 @@ export class BundleCommands implements Disposable {
 
     @onError({popup: {prefix: "Error running resource."}})
     async deployAndRun(treeNode: BundleResourceExplorerTreeNode) {
-        const type = treeNode.type;
-        if (!isRunnable(type)) {
-            throw new Error(`Cannot run resource of type ${type}`);
+        if (!isRunnable(treeNode)) {
+            throw new Error(`Cannot run resource of type ${treeNode.type}`);
         }
         //TODO: Don't deploy if there is no diff between local and remote state
         await this.deploy();
 
         await this.bundleRunStatusManager.run(
-            (treeNode as any).resourceKey,
-            type
+            treeNode.resourceKey,
+            treeNode.type
         );
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})
     async cancelRun(treeNode: BundleResourceExplorerTreeNode) {
-        const type = treeNode.type;
-        if (!isRunnable(type)) {
+        if (!isRunnable(treeNode)) {
             throw new Error(`Resource of ${treeNode.type} is not runnable`);
         }
 
-        this.bundleRunStatusManager.cancel((treeNode as any).resourceKey);
+        this.bundleRunStatusManager.cancel(treeNode.resourceKey);
     }
 
     dispose() {

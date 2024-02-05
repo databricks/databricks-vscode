@@ -59,7 +59,7 @@ export function getThemeIconForStatus(status: SimplifiedRunState): ThemeIcon {
             return new ThemeIcon("circle-slash");
         case "Success":
             return new ThemeIcon("check-all", new ThemeColor("charts.green"));
-        case "Unknown":
+        default:
             return new ThemeIcon("question");
     }
 }

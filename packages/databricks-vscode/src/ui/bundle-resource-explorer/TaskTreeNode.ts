@@ -38,9 +38,9 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
         public readonly data: Task,
         public readonly jobResourceKey: string,
         public readonly resourceKey: string,
+        public parent: BundleResourceExplorerTreeNode,
         public readonly jobId?: string,
-        public readonly runMonitor?: JobRunStatus,
-        public parent?: BundleResourceExplorerTreeNode
+        public readonly runMonitor?: JobRunStatus
     ) {}
 
     private getTaskIconPath(taskType: string) {
@@ -112,8 +112,8 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
             new TaskRunStatusTreeNode(
                 this.connectionManager,
                 this.runDetails,
-                this.jobId,
-                this
+                this,
+                this.jobId
             ),
         ];
     }
