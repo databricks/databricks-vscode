@@ -63,6 +63,7 @@ import {BundleRunTerminalManager} from "./bundle/run/BundleRunTerminalManager";
 import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
 import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
+import {BundleInitWizard} from "./bundle/BundleInitWizard";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -84,18 +85,43 @@ export async function activate(
         return undefined;
     }
 
+    const telemetry = Telemetry.createDefault();
+    telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
+
+    const loggerManager = new LoggerManager(context);
+    if (workspaceConfigs.loggingEnabled) {
+        loggerManager.initLoggers();
+    }
+
+    let cliLogFilePath;
+    try {
+        cliLogFilePath = await loggerManager.getLogFile("databricks-cli");
+    } catch (e) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to create a log file for the CLI",
+            e
+        );
+    }
+    const cli = new CliWrapper(context, cliLogFilePath);
+    context.extensionPath;
+
     if (
         workspace.workspaceFolders === undefined ||
         workspace.workspaceFolders?.length === 0
     ) {
-        window.showErrorMessage("Open a folder to use Databricks extension");
-        /*
-            We force the user to open a folder from the databricks sidebar view. Returning
-            here blocks all other commands from running. 
-            Since the workspace is reloaded when a folder is opened, the activation function
-            is called again. Therefore this won't block the activation of the extension on a
-            valid workspace.
-        */
+        context.subscriptions.push(
+            telemetry.registerCommand(
+                "databricks.bundle.initNewProject",
+                async () => {
+                    const bundleInitWizard = new BundleInitWizard(cli);
+                    await bundleInitWizard.initNewProject();
+                }
+            )
+        );
+        // We show a welcome view when there's no workspace folders, prompting users
+        // to either open a new folder or to initialize a new databricks project.
+        // In both cases we expect the workspace to be reloaded and the extension will
+        // be activated again.
         return undefined;
     }
 
@@ -109,14 +135,6 @@ export async function activate(
         "PATH",
         `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
-
-    const loggerManager = new LoggerManager(context);
-    if (workspaceConfigs.loggingEnabled) {
-        loggerManager.initLoggers();
-    }
-
-    const telemetry = Telemetry.createDefault();
-    telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
 
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
@@ -136,7 +154,7 @@ export async function activate(
 
     const pythonExtensionWrapper = new MsPythonExtensionWrapper(
         pythonExtension,
-        workspace.workspaceFolders[0].uri,
+        workspaceUri,
         stateStorage
     );
 
@@ -160,18 +178,8 @@ export async function activate(
     );
 
     // Configuration group
-    let cliLogFilePath;
-    try {
-        cliLogFilePath = await loggerManager.getLogFile("databricks-cli");
-    } catch (e) {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Failed to create a log file for the CLI",
-            e
-        );
-    }
-    const cli = new CliWrapper(context, cliLogFilePath);
-    const bundleFileSet = new BundleFileSet(workspace.workspaceFolders[0].uri);
-    const bundleFileWatcher = new BundleWatcher(bundleFileSet);
+    const bundleFileSet = new BundleFileSet(workspaceUri);
+    const bundleFileWatcher = new BundleWatcher(bundleFileSet, workspaceUri);
     const bundleValidateModel = new BundleValidateModel(
         bundleFileWatcher,
         cli,
@@ -263,7 +271,7 @@ export async function activate(
         connectionManager
     );
     const workspaceFsCommands = new WorkspaceFsCommands(
-        workspace.workspaceFolders[0].uri,
+        workspaceUri,
         connectionManager,
         workspaceFsDataProvider
     );
@@ -331,7 +339,7 @@ export async function activate(
     );
 
     const notebookInitScriptManager = new NotebookInitScriptManager(
-        workspace.workspaceFolders[0].uri,
+        workspaceUri,
         context,
         connectionManager,
         featureManager,
@@ -348,7 +356,7 @@ export async function activate(
     );
 
     const databricksEnvFileManager = new DatabricksEnvFileManager(
-        workspace.workspaceFolders[0].uri,
+        workspaceUri,
         featureManager,
         dbConnectStatusBarButton,
         connectionManager,
@@ -406,7 +414,7 @@ export async function activate(
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
         stateStorage,
-        workspace.workspaceFolders[0].uri.fsPath,
+        workspaceUri.fsPath,
         pythonExtensionWrapper,
         dbConnectInstallPrompt
     );
@@ -660,10 +668,7 @@ export async function activate(
         );
     });
 
-    setDbnbCellLimits(
-        workspace.workspaceFolders[0].uri,
-        connectionManager
-    ).catch((e) => {
+    setDbnbCellLimits(workspaceUri, connectionManager).catch((e) => {
         logging.NamedLogger.getOrCreate(Loggers.Extension).error(
             "Error while setting jupyter configs for parsing databricks notebooks",
             e
