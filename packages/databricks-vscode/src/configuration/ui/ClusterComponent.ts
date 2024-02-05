@@ -10,7 +10,7 @@ import {
 import {ConfigurationTreeItem} from "./types";
 import {Cluster} from "../../sdk-extensions";
 import {onError} from "../../utils/onErrorDecorator";
-import {LabelUtils} from "../../ui/bundle-resource-explorer/utils";
+import {DecorationUtils} from "../../ui/bundle-resource-explorer/utils";
 
 const TREE_ICON_ID = "CLUSTER";
 function getContextValue(key: string) {
@@ -120,13 +120,17 @@ export class ClusterComponent extends BaseComponent {
         const url = await cluster.url;
         return [
             {
-                label: url
-                    ? "Cluster"
-                    : LabelUtils.addModifiedTag("Cluster", "CREATED"),
+                label: "Cluster",
                 tooltip: url ? undefined : "Created after deploy",
                 description: cluster.name,
                 collapsibleState: TreeItemCollapsibleState.Expanded,
                 contextValue: url ? `${contextValue}.has-url` : contextValue,
+                resourceUri: url
+                    ? undefined
+                    : DecorationUtils.getModifiedStatusDecoration(
+                          TREE_ICON_ID,
+                          "created"
+                      ),
                 iconPath: icon,
                 id: TREE_ICON_ID,
                 url,

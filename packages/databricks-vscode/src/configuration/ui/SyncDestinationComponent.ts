@@ -5,7 +5,7 @@ import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {TreeItemCollapsibleState, ThemeIcon, ThemeColor} from "vscode";
-import {LabelUtils} from "../../ui/bundle-resource-explorer/utils";
+import {DecorationUtils} from "../../ui/bundle-resource-explorer/utils";
 
 const TREE_ICON_ID = "WORKSPACE";
 function getContextValue(key: string) {
@@ -101,14 +101,18 @@ export class SyncDestinationComponent extends BaseComponent {
 
         return [
             {
-                label: url
-                    ? "Sync"
-                    : LabelUtils.addModifiedTag("Sync", "CREATED"),
+                label: "Sync",
                 tooltip: url ? undefined : "Created after deploy",
                 description: posix.basename(posix.dirname(config)),
                 collapsibleState: TreeItemCollapsibleState.Expanded,
                 contextValue: url ? `${contextValue}.has-url` : contextValue,
                 iconPath: icon,
+                resourceUri: url
+                    ? undefined
+                    : DecorationUtils.getModifiedStatusDecoration(
+                          TREE_ICON_ID,
+                          "created"
+                      ),
                 id: TREE_ICON_ID,
                 url: url,
             },
