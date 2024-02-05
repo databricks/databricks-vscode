@@ -13,7 +13,7 @@ import {Context, context} from "@databricks/databricks-sdk";
 import {BundleValidateModel} from "./BundleValidateModel";
 
 /* eslint-disable @typescript-eslint/naming-convention */
-export type BundleResourceModifiedStatus = "CREATED" | "DELETED" | "UPDATED";
+export type BundleResourceModifiedStatus = "created" | "deleted" | "updated";
 export type BundleRemoteState = BundleTarget & {
     resources?: Resources<BundleTarget> & {
         [r in ResourceKey<BundleTarget>]?: {

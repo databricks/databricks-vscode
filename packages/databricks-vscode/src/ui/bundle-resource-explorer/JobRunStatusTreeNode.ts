@@ -19,8 +19,8 @@ export class JobRunStatusTreeNode implements BundleResourceExplorerTreeNode {
     }
 
     constructor(
-        public readonly runMonitor?: JobRunStatus,
-        public parent?: BundleResourceExplorerTreeNode
+        public parent: BundleResourceExplorerTreeNode,
+        public readonly runMonitor?: JobRunStatus
     ) {}
 
     getChildren(): BundleResourceExplorerTreeNode[] {

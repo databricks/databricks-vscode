@@ -325,7 +325,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Please open a folder to start using Databricks on VSCode.\n[Open Folder](command:vscode.openFolder)",
+                "contents": "The workspace is empty.\n[Initialize New Project](command:databricks.bundle.initNewProject)\n[Open Folder](command:vscode.openFolder)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
                 "when": "workspaceFolderCount == 0"
             }
         ],
@@ -389,7 +389,7 @@
             "view/item/context": [
                 {
                     "command": "databricks.utils.openExternal",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.(cluster|sync).*$/",
+                    "when": "viewItem =~ /^databricks.*\\.(has-url).*$/",
                     "group": "inline@1"
                 },
                 {

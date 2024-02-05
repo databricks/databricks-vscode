@@ -10,6 +10,7 @@ import {
 import {ConfigurationTreeItem} from "./types";
 import {Cluster} from "../../sdk-extensions";
 import {onError} from "../../utils/onErrorDecorator";
+import {LabelUtils} from "../../ui/bundle-resource-explorer/utils";
 
 const TREE_ICON_ID = "CLUSTER";
 function getContextValue(key: string) {
@@ -116,15 +117,19 @@ export class ClusterComponent extends BaseComponent {
             return [];
         }
         const {icon, contextValue} = getTreeItemsForClusterState(cluster);
-
+        const url = await cluster.url;
         return [
             {
-                label: "Cluster",
+                label: url
+                    ? "Cluster"
+                    : LabelUtils.addModifiedTag("Cluster", "created"),
+                tooltip: url ? undefined : "Created after deploy",
                 description: cluster.name,
                 collapsibleState: TreeItemCollapsibleState.Expanded,
-                contextValue: contextValue,
+                contextValue: url ? `${contextValue}.has-url` : contextValue,
                 iconPath: icon,
                 id: TREE_ICON_ID,
+                url,
             },
         ];
     }
