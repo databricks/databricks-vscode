@@ -1,14 +1,14 @@
 import {Disposable, EventEmitter} from "vscode";
 import {
+    BundleRemoteState,
     BundleRemoteStateModel,
-    Resource,
-    ResourceType,
 } from "../models/BundleRemoteStateModel";
 import {BundleRunTerminalManager} from "./BundleRunTerminalManager";
 import {JobRunStatus} from "./JobRunStatus";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {BundleRunStatus} from "./BundleRunStatus";
 import {PipelineRunStatus} from "./PipelineRunStatus";
+import {Resource, ResourceKey} from "../types";
 /**
  * This class monitors the cli bundle run output and record ids for runs. It also polls for status of the these runs.
  */
@@ -26,7 +26,7 @@ export class BundleRunStatusManager implements Disposable {
 
     getRunStatusMonitor(
         resourceKey: string,
-        resourceType: ResourceType,
+        resourceType: ResourceKey<BundleRemoteState>,
         authProvider: AuthProvider,
         resource: any
     ): BundleRunStatus {
@@ -34,7 +34,9 @@ export class BundleRunStatusManager implements Disposable {
             case "jobs":
                 return new JobRunStatus(authProvider);
             case "pipelines": {
-                const id = (resource as Resource<"pipelines">[string]).id;
+                const id = (
+                    resource as Resource<BundleRemoteState, "pipelines">
+                ).id;
                 if (id === undefined) {
                     throw new Error(
                         `Pipeline id is undefined for ${resourceKey}. This likely means the pipeline is not deployed.`
@@ -48,7 +50,10 @@ export class BundleRunStatusManager implements Disposable {
         }
     }
 
-    async run(resourceKey: string, resourceType: ResourceType) {
+    async run(
+        resourceKey: string,
+        resourceType: ResourceKey<BundleRemoteState>
+    ) {
         const target = this.bundleRemoteStateModel.target;
         const authProvider = this.bundleRemoteStateModel.authProvider;
         const resource =

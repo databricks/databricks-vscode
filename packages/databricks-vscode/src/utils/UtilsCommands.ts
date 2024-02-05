@@ -1,18 +1,16 @@
-import {Cluster} from "../sdk-extensions";
 import {Disposable} from "vscode";
-import {ConfigurationTreeItem} from "../configuration/ui/types";
 import {openExternal} from "./urlUtils";
 
 export class UtilsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
     openExternalCommand() {
-        return async (value: ConfigurationTreeItem | Cluster) => {
+        return async (value: any) => {
             let url: string | undefined;
 
-            if (value instanceof Cluster) {
+            if (value.url instanceof Promise) {
                 url = await value.url;
-            } else {
+            } else if (value.url !== undefined) {
                 url = value.url;
             }
 

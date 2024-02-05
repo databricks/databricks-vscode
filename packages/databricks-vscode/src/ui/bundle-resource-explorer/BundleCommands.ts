@@ -1,23 +1,23 @@
 import {Disposable, ProgressLocation, window} from "vscode";
-import {BundleRemoteStateModel} from "./models/BundleRemoteStateModel";
-import {onError} from "../utils/onErrorDecorator";
-import {BundleWatcher} from "./BundleWatcher";
-import {
-    TreeNode as BundleResourceExplorerTreeNode,
-    ResourceTreeNode as BundleResourceExplorerResourceTreeNode,
-} from "../ui/bundle-resource-explorer/types";
-import {BundleRunStatusManager} from "./run/BundleRunStatusManager";
-import {Mutex} from "../locking";
+import {BundleRemoteStateModel} from "../../bundle/models/BundleRemoteStateModel";
+import {onError} from "../../utils/onErrorDecorator";
+import {BundleResourceExplorerTreeNode} from "./types";
+import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
+import {Mutex} from "../../locking";
+import {PipelineTreeNode} from "./PipelineTreeNode";
+import {JobTreeNode} from "./JobTreeNode";
 
-const RUNNABLE_RESOURCES = [
+export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
 ] satisfies BundleResourceExplorerTreeNode["type"][];
 
+type RunnableTreeNodes = PipelineTreeNode | JobTreeNode;
+
 function isRunnable(
     treeNode: BundleResourceExplorerTreeNode
-): treeNode is BundleResourceExplorerResourceTreeNode {
-    return (RUNNABLE_RESOURCES as string[]).includes(treeNode.type);
+): treeNode is RunnableTreeNodes {
+    return (RUNNABLE_BUNDLE_RESOURCES as string[]).includes(treeNode.type);
 }
 
 export class BundleCommands implements Disposable {
@@ -28,15 +28,9 @@ export class BundleCommands implements Disposable {
 
     constructor(
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
-        private readonly bundleRunStatusManager: BundleRunStatusManager,
-        private readonly bundleWatcher: BundleWatcher
+        private readonly bundleRunStatusManager: BundleRunStatusManager
     ) {
-        this.disposables.push(
-            this.outputChannel,
-            this.bundleWatcher.onDidChange(async () => {
-                await this.bundleRemoteStateModel.refresh();
-            })
-        );
+        this.disposables.push(this.outputChannel);
     }
 
     private refreshStateMutex = new Mutex();

@@ -26,7 +26,7 @@ import {promptForClusterAttach, promptForClusterStart} from "./prompts";
 import {LocalUri} from "../sync/SyncDestination";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {FileUtils} from "../utils";
-import {BundleCommands} from "../bundle/BundleCommands";
+import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 
 /**
  * This interface describes the mock-debug specific launch attributes
