@@ -10,7 +10,7 @@ export class TaskHeaderTreeNode implements BundleResourceExplorerTreeNode {
 
     constructor(
         public readonly children: TaskTreeNode[],
-        public readonly parent?: BundleResourceExplorerTreeNode
+        public readonly parent: BundleResourceExplorerTreeNode
     ) {
         this.children.forEach((child) => {
             child.parent = this;

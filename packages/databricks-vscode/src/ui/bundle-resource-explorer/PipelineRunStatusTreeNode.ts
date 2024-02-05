@@ -35,6 +35,8 @@ function getSimplifiedUpdateState(
             return "Cancelled";
         case "STOPPING":
             return "Terminating";
+        default:
+            return "Unknown";
     }
 }
 

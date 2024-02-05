@@ -71,7 +71,7 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
         ) as JobRunStatus | undefined;
 
         if (runMonitor?.runId !== undefined) {
-            children.push(new JobRunStatusTreeNode(runMonitor));
+            children.push(new JobRunStatusTreeNode(this, runMonitor));
         }
         children.push(
             new TaskHeaderTreeNode(
@@ -82,9 +82,9 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
                         task,
                         this.resourceKey,
                         `${this.resourceKey}.tasks.[${i}].${task.task_key}`,
+                        this,
                         this.data.id,
-                        runMonitor,
-                        this
+                        runMonitor
                     );
                 }),
                 this

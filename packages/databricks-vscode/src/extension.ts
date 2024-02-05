@@ -186,7 +186,8 @@ export async function activate(
     const bundleRemoteStateModel = new BundleRemoteStateModel(
         cli,
         workspaceUri,
-        workspaceConfigs
+        workspaceConfigs,
+        bundleValidateModel
     );
     const configModel = new ConfigModel(
         bundleValidateModel,
