@@ -66,7 +66,7 @@ describe(__filename, () => {
                 )
             );
             when(mockDbWorkspace.host).thenReturn(
-                Uri.parse("https://000000000000.00.azuredatabricks.net/")
+                new URL("https://000000000000.00.azuredatabricks.net/")
             );
 
             const mockSyncDestination = mock(SyncDestinationMapper);

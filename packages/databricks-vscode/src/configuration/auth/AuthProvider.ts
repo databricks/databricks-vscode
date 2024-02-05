@@ -312,3 +312,70 @@ export class AzureCliAuthProvider extends AuthProvider {
         return result;
     }
 }
+
+export class PersonalAccessTokenAuthProvider extends AuthProvider {
+    constructor(
+        host: URL,
+        private readonly token: string
+    ) {
+        super(host, "pat");
+    }
+
+    describe(): string {
+        return "Personal Access Token";
+    }
+    toJSON(): Record<string, string | undefined> {
+        return {
+            host: this.host.toString(),
+            authType: this.authType,
+            token: this.token,
+        };
+    }
+    toEnv(): Record<string, string> {
+        return {
+            DATABRICKS_HOST: this.host.toString(),
+            DATABRICKS_AUTH_TYPE: this.authType,
+            DATABRICKS_TOKEN: this.token,
+        };
+    }
+    toIni(): Record<string, string | undefined> | undefined {
+        return {
+            host: this.host.toString(),
+            token: this.token,
+        };
+    }
+    protected async _check(): Promise<boolean> {
+        while (true) {
+            try {
+                const workspaceClient = this.getWorkspaceClient();
+                await workspaceClient.currentUser.me();
+                return true;
+            } catch (e) {
+                let message: string = `Can't login with the provided Personal Access Token`;
+                if (e instanceof Error) {
+                    message = `Can't login with the provided Personal Access Token: ${e.message}`;
+                }
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    message,
+                    e
+                );
+                const choice = await window.showErrorMessage(
+                    message,
+                    "Retry",
+                    "Cancel"
+                );
+                if (choice === "Retry") {
+                    continue;
+                }
+                return false;
+            }
+        }
+    }
+    protected getSdkConfig(): Config {
+        return new Config({
+            host: this.host.toString(),
+            authType: "pat",
+            token: this.token,
+        });
+    }
+}

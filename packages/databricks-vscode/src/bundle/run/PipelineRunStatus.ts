@@ -2,9 +2,9 @@
 import {BundleRunStatus} from "./BundleRunStatus";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {onError} from "../../utils/onErrorDecorator";
-import {UpdateInfoState} from "@databricks/databricks-sdk/dist/apis/pipelines";
+import {pipelines} from "@databricks/databricks-sdk";
 
-function isRunning(status?: UpdateInfoState) {
+function isRunning(status?: pipelines.UpdateInfoState) {
     if (status === undefined) {
         return false;
     }
@@ -14,7 +14,7 @@ function isRunning(status?: UpdateInfoState) {
 export class PipelineRunStatus extends BundleRunStatus {
     readonly type = "pipelines";
     private interval?: NodeJS.Timeout;
-
+    data: pipelines.GetUpdateResponse | undefined;
     constructor(
         private readonly authProvider: AuthProvider,
         private readonly pipelineId: string

@@ -389,7 +389,7 @@
             "view/item/context": [
                 {
                     "command": "databricks.utils.openExternal",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.(cluster|sync).*$/",
+                    "when": "viewItem =~ /^databricks.*\\.(has-url).*$/",
                     "group": "inline@1"
                 },
                 {
@@ -429,7 +429,7 @@
                 },
                 {
                     "command": "databricks.bundle.cancelRun",
-                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.running.*$/",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.cancellable.*$/",
                     "group": "inline@0"
                 }
             ],

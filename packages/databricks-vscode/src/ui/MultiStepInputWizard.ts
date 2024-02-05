@@ -71,7 +71,7 @@ interface InputBoxParameters {
     totalSteps: number;
     placeholder: string;
     initialValue?: string;
-    validate: (
+    validate?: (
         value: string
     ) => Promise<string | undefined | ValidationMessageType>;
     buttons?: QuickInputButton[];
