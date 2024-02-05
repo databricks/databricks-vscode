@@ -1,3 +1,13 @@
+# Release: v1.2.7
+
+## packages/databricks-vscode
+
+## <small>1.2.7 (2024-02-05)</small>
+
+-   Fix: Databricks OAuth U2M on GCP.
+-   Fix: "Fetch failed" issue when using a proxy. This is fixed by using undici instead of native fetch.
+-   List profiles with all auth methods.
+
 # Release: v1.2.6
 
 ## packages/databricks-vscode
