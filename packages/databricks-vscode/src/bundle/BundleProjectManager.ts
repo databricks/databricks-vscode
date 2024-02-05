@@ -1,6 +1,7 @@
 import {ExtensionContext, Disposable, Uri, window} from "vscode";
 import fs from "node:fs/promises";
 import path from "path";
+import os from "node:os";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {BundleFileSet, getSubProjects} from "./BundleFileSet";
@@ -91,6 +92,18 @@ export class BundleProjectManager {
             // configurationView with the configureManualMigration button.
             this.detectLegacyProjectConfig(),
         ]);
+        // This method checks if we are already in a project but don't have a legacy config. In this case, it sets pendingManualMigration
+        // context to enable configurationView with the configureManualMigration button.
+        await this.isInProjectWithoutConfig();
+    }
+
+    private async isInProjectWithoutConfig() {
+        if (
+            this.legacyProjectConfig === undefined &&
+            !(await this.isBundleProject())
+        ) {
+            this.customWhenContext.setPendingManualMigration(true);
+        }
     }
 
     private async configureBundleProject() {
@@ -193,8 +206,8 @@ export class BundleProjectManager {
             authProvider = await saveNewProfile(profileName, authProvider);
         }
         await this.migrateProjectJsonToBundle(
-            legacyProjectConfig,
-            authProvider as ProfileAuthProvider
+            authProvider as ProfileAuthProvider,
+            legacyProjectConfig
         );
     }
 
@@ -204,17 +217,14 @@ export class BundleProjectManager {
         },
     })
     public async startManualMigration() {
-        if (!this.legacyProjectConfig) {
-            throw new Error("Can't migrate without project configuration");
-        }
         const authProvider = await LoginWizard.run(this.cli, this.configModel);
         if (
             authProvider instanceof ProfileAuthProvider &&
             (await authProvider.check())
         ) {
             return this.migrateProjectJsonToBundle(
-                this.legacyProjectConfig!,
-                authProvider
+                authProvider,
+                this.legacyProjectConfig
             );
         } else {
             this.logger.debug("Incorrect auth for the project.json migration");
@@ -222,14 +232,14 @@ export class BundleProjectManager {
     }
 
     private async migrateProjectJsonToBundle(
-        legacyProjectConfig: ProjectConfigFile,
-        authProvider: ProfileAuthProvider
+        authProvider: ProfileAuthProvider,
+        legacyProjectConfig?: ProjectConfigFile
     ) {
         const configVars = {
             /* eslint-disable @typescript-eslint/naming-convention */
             project_name: path.basename(this.workspaceUri.fsPath),
-            compute_id: legacyProjectConfig.clusterId,
-            root_path: legacyProjectConfig.workspacePath?.path,
+            compute_id: legacyProjectConfig?.clusterId,
+            root_path: legacyProjectConfig?.workspacePath?.path,
             /* eslint-enable @typescript-eslint/naming-convention */
         };
         this.logger.debug("Starting bundle migration, config:", configVars);
@@ -238,7 +248,15 @@ export class BundleProjectManager {
             ".databricks",
             "migration-config.json"
         );
+        await fs.mkdir(path.dirname(configFilePath), {recursive: true});
         await fs.writeFile(configFilePath, JSON.stringify(configVars, null, 4));
+
+        // TODO: Add to .gitignore only if it's not already there
+        await fs.appendFile(
+            path.join(path.dirname(path.dirname(configFilePath)), ".gitignore"),
+            os.EOL + ".databricks" + os.EOL
+        );
+
         const templateDirPath = this.context.asAbsolutePath(
             path.join("resources", "migration-template")
         );
