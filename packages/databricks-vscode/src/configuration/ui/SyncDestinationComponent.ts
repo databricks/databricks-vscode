@@ -103,7 +103,7 @@ export class SyncDestinationComponent extends BaseComponent {
             {
                 label: url
                     ? "Sync"
-                    : LabelUtils.addModifiedTag("Sync", "CREATED"),
+                    : LabelUtils.addModifiedTag("Sync", "created"),
                 tooltip: url ? undefined : "Created after deploy",
                 description: posix.basename(posix.dirname(config)),
                 collapsibleState: TreeItemCollapsibleState.Expanded,

@@ -122,7 +122,7 @@ export class ClusterComponent extends BaseComponent {
             {
                 label: url
                     ? "Cluster"
-                    : LabelUtils.addModifiedTag("Cluster", "CREATED"),
+                    : LabelUtils.addModifiedTag("Cluster", "created"),
                 tooltip: url ? undefined : "Created after deploy",
                 description: cluster.name,
                 collapsibleState: TreeItemCollapsibleState.Expanded,

@@ -32,8 +32,8 @@ export class TaskRunStatusTreeNode implements BundleResourceExplorerTreeNode {
     constructor(
         private readonly connectionManager: ConnectionManager,
         public readonly runDetails: jobs.RunTask,
-        public readonly jobId?: string,
-        public readonly parent?: TaskTreeNode
+        public readonly parent: TaskTreeNode,
+        public readonly jobId?: string
     ) {}
 
     getChildren(): BundleResourceExplorerTreeNode[] {
