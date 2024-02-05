@@ -1,3 +1,12 @@
+# Release: v1.2.7
+
+## packages/databricks-vscode
+
+## <small>1.2.7 (2024-02-05)</small>
+
+-   Bump Databricks SDK to 0.6.1 (#1028) ([abaa30b](https://github.com/databricks/databricks-vscode/commit/abaa30b)), closes [#1028](https://github.com/databricks/databricks-vscode/issues/1028)
+-   List profiles with all auth methods (#1027) ([41ca392](https://github.com/databricks/databricks-vscode/commit/41ca392)), closes [#1027](https://github.com/databricks/databricks-vscode/issues/1027)
+
 # Release: v1.2.6
 
 ## packages/databricks-vscode
