@@ -8,6 +8,9 @@ import {readFile, writeFile} from "fs/promises";
 import {CachedValue} from "../locking/CachedValue";
 import minimatch from "minimatch";
 
+const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
+const subProjectFilePattern: string = path.join("**", rootFilePattern);
+
 export async function parseBundleYaml(file: Uri) {
     const data = yaml.parse(await readFile(file.fsPath, "utf-8"));
     return data as BundleSchema;
@@ -17,16 +20,41 @@ export async function writeBundleYaml(file: Uri, data: BundleSchema) {
     await writeFile(file.fsPath, yaml.stringify(data));
 }
 
+export async function getSubProjects(root: Uri) {
+    const subProjectRoots = await glob.glob(
+        toGlobPath(getAbsolutePath(subProjectFilePattern, root).fsPath),
+        {nocase: process.platform === "win32"}
+    );
+    const normalizedRoot = path.normalize(root.fsPath);
+    return subProjectRoots
+        .map((rootFile) => {
+            const dirname = path.dirname(path.normalize(rootFile));
+            const absolute = Uri.file(dirname);
+            const relative = Uri.file(
+                absolute.fsPath.replace(normalizedRoot, "")
+            );
+            return {absolute, relative};
+        })
+        .filter(({absolute}) => {
+            return absolute.fsPath !== normalizedRoot;
+        });
+}
+
+export function getAbsolutePath(path: string | Uri, root: Uri) {
+    if (typeof path === "string") {
+        return Uri.joinPath(root, path);
+    }
+    return Uri.joinPath(root, path.fsPath);
+}
+
 function toGlobPath(path: string) {
     if (process.platform === "win32") {
         return path.replace(/\\/g, "/");
     }
     return path;
 }
-export class BundleFileSet {
-    private rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
-    private subProjectFilePattern: string = `**/${this.rootFilePattern}`;
 
+export class BundleFileSet {
     public readonly bundleDataCache: CachedValue<BundleSchema> =
         new CachedValue<BundleSchema>(async () => {
             let bundle = {};
@@ -38,16 +66,11 @@ export class BundleFileSet {
 
     constructor(private readonly workspaceRoot: Uri) {}
 
-    getAbsolutePath(path: string | Uri, root?: Uri) {
-        if (typeof path === "string") {
-            return Uri.joinPath(root ?? this.workspaceRoot, path);
-        }
-        return Uri.joinPath(root ?? this.workspaceRoot, path.fsPath);
-    }
-
     async getRootFile() {
         const rootFile = await glob.glob(
-            toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath),
+            toGlobPath(
+                getAbsolutePath(rootFilePattern, this.workspaceRoot).fsPath
+            ),
             {nocase: process.platform === "win32"}
         );
         if (rootFile.length !== 1) {
@@ -61,7 +84,10 @@ export class BundleFileSet {
     ): Promise<{relative: Uri; absolute: Uri}[]> {
         const subProjectRoots = await glob.glob(
             toGlobPath(
-                this.getAbsolutePath(this.subProjectFilePattern, root).fsPath
+                getAbsolutePath(
+                    subProjectFilePattern,
+                    root || this.workspaceRoot
+                ).fsPath
             ),
             {nocase: process.platform === "win32"}
         );
@@ -141,7 +167,9 @@ export class BundleFileSet {
     isRootBundleFile(e: Uri) {
         return minimatch(
             e.fsPath,
-            toGlobPath(this.getAbsolutePath(this.rootFilePattern).fsPath)
+            toGlobPath(
+                getAbsolutePath(rootFilePattern, this.workspaceRoot).fsPath
+            )
         );
     }
 
@@ -150,7 +178,10 @@ export class BundleFileSet {
         if (includedFilesGlob === undefined) {
             return false;
         }
-        includedFilesGlob = this.getAbsolutePath(includedFilesGlob).fsPath;
+        includedFilesGlob = getAbsolutePath(
+            includedFilesGlob,
+            this.workspaceRoot
+        ).fsPath;
         return minimatch(e.fsPath, toGlobPath(includedFilesGlob));
     }
 

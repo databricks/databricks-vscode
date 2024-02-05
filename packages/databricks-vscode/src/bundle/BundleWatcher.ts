@@ -1,5 +1,5 @@
 import {Disposable, EventEmitter, Uri, workspace} from "vscode";
-import {BundleFileSet} from "./BundleFileSet";
+import {BundleFileSet, getAbsolutePath} from "./BundleFileSet";
 import {WithMutex} from "../locking";
 import path from "path";
 
@@ -20,12 +20,11 @@ export class BundleWatcher implements Disposable {
 
     private bundleFileSet: WithMutex<BundleFileSet>;
 
-    constructor(bundleFileSet: BundleFileSet) {
+    constructor(bundleFileSet: BundleFileSet, workspaceUri: Uri) {
         this.bundleFileSet = new WithMutex(bundleFileSet);
         const yamlWatcher = workspace.createFileSystemWatcher(
-            this.bundleFileSet.value.getAbsolutePath(
-                path.join("**", "*.{yaml,yml}")
-            ).fsPath
+            getAbsolutePath(path.join("**", "*.{yaml,yml}"), workspaceUri)
+                .fsPath
         );
 
         this.disposables.push(
