@@ -277,6 +277,7 @@ export class ConnectionManager implements Disposable {
         await this.updateSyncDestinationMapper();
         if (this.configModel.target !== undefined) {
             await this.configModel.set("authProfile", undefined);
+            await this.configModel.setAuthProvider(undefined);
         }
         this.updateState("DISCONNECTED");
     }
