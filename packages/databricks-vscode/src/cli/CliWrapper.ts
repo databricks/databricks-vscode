@@ -229,7 +229,11 @@ export class CliWrapper {
     }
 
     public async getBundleSchema(): Promise<string> {
-        const {stdout} = await execFile(this.cliPath, ["bundle", "schema"]);
+        const {stdout} = await execFile(this.cliPath, [
+            "bundle",
+            "schema",
+            ...this.getLoggingArguments(),
+        ]);
         return stdout;
     }
 
@@ -241,7 +245,13 @@ export class CliWrapper {
     ) {
         const {stdout} = await execFile(
             this.cliPath,
-            ["bundle", "validate", "--target", target],
+            [
+                "bundle",
+                "validate",
+                "--target",
+                target,
+                ...this.getLoggingArguments(),
+            ],
             {
                 cwd: workspaceFolder.fsPath,
                 env: {
@@ -321,6 +331,7 @@ export class CliWrapper {
                 outputDirPath,
                 "--config-file",
                 initConfigFilePath,
+                ...this.getLoggingArguments(),
             ],
             {env: this.getBundleInitEnvVars(authProvider)}
         );
@@ -334,7 +345,14 @@ export class CliWrapper {
         onStdOut?: (data: string) => void,
         onStdError?: (data: string) => void
     ) {
-        const cmd = [this.cliPath, "bundle", "deploy", "--target", target];
+        const cmd = [
+            this.cliPath,
+            "bundle",
+            "deploy",
+            "--target",
+            target,
+            ...this.getLoggingArguments(),
+        ];
         if (onStdError) {
             onStdError(`Deploying the bundle for target ${target}...\n`);
             if (this.clusterId) {
@@ -378,7 +396,14 @@ export class CliWrapper {
 
         return {
             cmd: this.cliPath,
-            args: ["bundle", "run", "--target", target, resourceKey],
+            args: [
+                "bundle",
+                "run",
+                "--target",
+                target,
+                resourceKey,
+                ...this.getLoggingArguments(),
+            ],
             options: {
                 cwd: workspaceFolder.fsPath,
                 env,
