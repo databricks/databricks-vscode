@@ -17,7 +17,7 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
     get url(): string | undefined {
         const host = this.connectionManager.databricksWorkspace?.host;
 
-        if (host === undefined) {
+        if (!host || !this.data.id) {
             return undefined;
         }
 

@@ -29,7 +29,7 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
 
     get url(): string | undefined {
         const host = this.connectionManager.databricksWorkspace?.host;
-        if (host === undefined || this.taskKey === undefined) {
+        if (!host || !this.jobId || !this.taskKey) {
             return undefined;
         }
 
