@@ -22,7 +22,7 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
             return undefined;
         }
 
-        return `${host.toString()}jobs/${this.data.id}`;
+        return `${host.toString()}#job/${this.data.id}`;
     }
 
     constructor(

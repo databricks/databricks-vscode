@@ -24,7 +24,7 @@ export class TaskRunStatusTreeNode implements BundleResourceExplorerTreeNode {
             return undefined;
         }
 
-        return `${host.toString()}jobs/${this.jobId}/runs/${
+        return `${host.toString()}#job/${this.jobId}/run/${
             this.runDetails.run_id
         }`;
     }
