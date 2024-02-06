@@ -305,7 +305,7 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "Configure your Databricks workspace:\n[Configure Databricks](command:databricks.bundle.startManualMigration)",
+                "contents": "Initialise current project as a Databricks project:\n[Initialise Project](command:databricks.bundle.startManualMigration)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
@@ -315,8 +315,13 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Current workspace has no Databricks configuration at the root level, do you want to initialize a new Databricks project?\n[Initialize New Project](command:databricks.bundle.initNewProject)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "contents": "Create a new Databricks project?\n[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.pendingManualMigration"
+            },
+            {
+                "view": "configurationView",
+                "contents": "[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "when": "databricks.context.initialized"
             },
             {
                 "view": "configurationView",
@@ -325,7 +330,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "The workspace is empty.\n[Initialize New Project](command:databricks.bundle.initNewProject)\n[Open Folder](command:vscode.openFolder)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "contents": "The workspace is empty.\n[Initialize New Project](command:databricks.bundle.initNewProject)",
                 "when": "workspaceFolderCount == 0"
             }
         ],
@@ -743,7 +748,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.212.0"
+        "version": "0.212.3"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
