@@ -28,18 +28,20 @@ export class AuthTypeComponent extends BaseComponent {
         const authProvider =
             this.connectionManager.databricksWorkspace?.authProvider;
 
-        if (this.configModel.target === undefined) {
-            return [];
+        if (this.connectionManager.state === "CONNECTING") {
+            return [
+                {
+                    label: "Connecting to the workspace",
+                    iconPath: new ThemeIcon("sync~spin"),
+                },
+            ];
         }
 
         if (authProvider === undefined) {
             const label = "Login to Databricks";
             return [
                 {
-                    label: {
-                        label: label,
-                        highlights: [[0, label.length]],
-                    },
+                    label: {label},
                     iconPath: new ThemeIcon(
                         "account",
                         new ThemeColor("notificationsErrorIcon.foreground")
