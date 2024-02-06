@@ -24,6 +24,7 @@ import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {DatabricksRuntime} from "./DatabricksRuntime";
 import {Subject} from "./Subject";
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
+import {ConfigModel} from "../configuration/models/ConfigModel";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -47,6 +48,7 @@ export class DatabricksDebugAdapterFactory
 {
     constructor(
         private connection: ConnectionManager,
+        private configModel: ConfigModel,
         private bundleCommands: BundleCommands,
         private context: ExtensionContext,
         private wsfsAccessVerifier: WorkspaceFsAccessVerifier
@@ -58,6 +60,7 @@ export class DatabricksDebugAdapterFactory
         return new DebugAdapterInlineImplementation(
             new DatabricksDebugSession(
                 this.connection,
+                this.configModel,
                 this.bundleCommands,
                 this.context,
                 this.wsfsAccessVerifier
@@ -73,6 +76,7 @@ export class DatabricksDebugSession extends LoggingDebugSession {
 
     constructor(
         connection: ConnectionManager,
+        configModel: ConfigModel,
         bundleCommands: BundleCommands,
         context: ExtensionContext,
         wsfsAccessVerifier: WorkspaceFsAccessVerifier
@@ -81,6 +85,7 @@ export class DatabricksDebugSession extends LoggingDebugSession {
 
         this.runtime = new DatabricksRuntime(
             connection,
+            configModel,
             bundleCommands,
             context,
             wsfsAccessVerifier

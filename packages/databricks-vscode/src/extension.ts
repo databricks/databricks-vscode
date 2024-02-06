@@ -584,12 +584,14 @@ export async function activate(
     const runCommands = new RunCommands(connectionManager);
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
+        configModel,
         bundleCommands,
         context,
         wsfsAccessVerifier
     );
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,
+        configModel,
         wsfsAccessVerifier,
         context,
         bundleCommands
