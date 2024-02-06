@@ -13,6 +13,7 @@ import {LoginWizard} from "../configuration/LoginWizard";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {getSubProjects} from "./BundleFileSet";
+import {tmpdir} from "os";
 
 export async function promptToOpenSubProjects(
     projects: {absolute: Uri; relative: Uri}[]
@@ -146,6 +147,9 @@ export class BundleInitWizard {
             isTransient: true,
             location: TerminalLocation.Editor,
             env: this.cli.getBundleInitEnvVars(authProvider),
+            // Setting CWD avoids a possibility of the CLI picking up unrelated bundle configuration
+            // in the current workspace root or while traversing up the folder structure.
+            cwd: tmpdir(),
         });
         const args = [
             "bundle",
