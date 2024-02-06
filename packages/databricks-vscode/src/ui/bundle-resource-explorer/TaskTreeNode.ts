@@ -33,7 +33,9 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
             return undefined;
         }
 
-        return `${host.toString()}jobs/${this.jobId}/tasks/${this.taskKey}`;
+        return `${host.toString()}#job/${this.jobId}/tasks/task/${
+            this.taskKey
+        }`;
     }
     constructor(
         private readonly context: ExtensionContext,
