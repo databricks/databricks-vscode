@@ -100,17 +100,23 @@ export class LoginWizard {
 
     private async checkAuthProvider(
         authProvider: AuthProvider,
-        authDescription: string
+        authDescription: string,
+        input: MultiStepInput
     ): Promise<InputStep | undefined> {
+        //Hide the input and let the check show it's own messages and UI.
+        input.hide();
         if (await authProvider.check()) {
             return;
         }
+
         const choice = await window.showErrorMessage(
-            `Authentication using ${authDescription} failed. Select another authentication method?`,
-            "Yes",
-            "No"
+            `Authentication using ${authDescription} failed.`,
+            "Select a different auth method",
+            "Cancel"
         );
-        if (choice === "Yes") {
+        if (choice === "Select a different auth method") {
+            //Show input again with the select auth step.
+            input.show();
             return this.selectAuthMethod.bind(this);
         }
         throw InputFlowAction.cancel;
@@ -230,7 +236,8 @@ export class LoginWizard {
             );
             const checkResult = await this.checkAuthProvider(
                 authProvider,
-                `profile '${pick.profile}'`
+                `profile '${pick.profile}'`,
+                input
             );
             if (checkResult) {
                 return checkResult;
@@ -320,7 +327,8 @@ export class LoginWizard {
 
         const checkResult = await this.checkAuthProvider(
             authProvider,
-            authProvider.describe()
+            authProvider.describe(),
+            input
         );
         if (checkResult) {
             return checkResult;
