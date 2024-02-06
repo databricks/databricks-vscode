@@ -87,6 +87,13 @@ export class MultiStepInput {
     private current?: QuickInput;
     private steps: InputStep[] = [];
 
+    public hide() {
+        this.current?.hide();
+    }
+    public show() {
+        this.current?.show();
+    }
+
     private async stepThrough(start: InputStep) {
         let step: InputStep | void = start;
         while (step) {
