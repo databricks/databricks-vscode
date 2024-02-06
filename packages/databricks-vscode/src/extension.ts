@@ -62,6 +62,7 @@ import {BundleCommands} from "./ui/bundle-resource-explorer/BundleCommands";
 import {BundleRunTerminalManager} from "./bundle/run/BundleRunTerminalManager";
 import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
+import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 
 const customWhenContext = new CustomWhenContext();
@@ -550,10 +551,16 @@ export async function activate(
         bundleRunStatusManager,
         bundleValidateModel
     );
+    const decorationProvider = new TreeItemDecorationProvider(
+        bundleResourceExplorerTreeDataProvider,
+        configurationDataProvider
+    );
     context.subscriptions.push(
         bundleResourceExplorerTreeDataProvider,
         bundleCommands,
         bundleRunTerminalManager,
+        decorationProvider,
+        window.registerFileDecorationProvider(decorationProvider),
         window.registerTreeDataProvider(
             "dabsResourceExplorerView",
             bundleResourceExplorerTreeDataProvider

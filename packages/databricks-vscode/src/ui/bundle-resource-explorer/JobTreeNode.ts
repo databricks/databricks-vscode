@@ -6,7 +6,7 @@ import {
     BundleResourceExplorerTreeNode,
 } from "./types";
 import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
-import {ContextUtils} from "./utils";
+import {ContextUtils, DecorationUtils} from "./utils";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {JobRunStatusTreeNode} from "./JobRunStatusTreeNode";
 import {JobRunStatus} from "../../bundle/run/JobRunStatus";
@@ -50,6 +50,10 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
                 hasUrl: this.url !== undefined,
                 nodeType: this.type,
             }),
+            resourceUri: DecorationUtils.getModifiedStatusDecoration(
+                this.resourceKey,
+                this.data.modified_status
+            ),
             collapsibleState: isRunning
                 ? TreeItemCollapsibleState.Collapsed
                 : TreeItemCollapsibleState.Expanded,

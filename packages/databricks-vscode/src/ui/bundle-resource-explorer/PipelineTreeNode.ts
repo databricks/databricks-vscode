@@ -6,7 +6,7 @@ import {
     BundleResourceExplorerTreeNode,
 } from "./types";
 import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
-import {ContextUtils} from "./utils";
+import {ContextUtils, DecorationUtils} from "./utils";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
 import {TreeItemTreeNode} from "./TreeItemTreeNode";
@@ -48,6 +48,10 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
                 hasUrl: this.url !== undefined,
                 nodeType: this.type,
             }),
+            resourceUri: DecorationUtils.getModifiedStatusDecoration(
+                this.resourceKey,
+                this.data.modified_status
+            ),
             collapsibleState: isRunning
                 ? TreeItemCollapsibleState.Expanded
                 : TreeItemCollapsibleState.Collapsed,
