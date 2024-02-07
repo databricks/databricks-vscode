@@ -11,7 +11,6 @@ import {Loggers} from "../logger";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {LoginWizard} from "../configuration/LoginWizard";
 import {CliWrapper} from "../cli/CliWrapper";
-import {ConfigModel} from "../configuration/models/ConfigModel";
 import {getSubProjects} from "./BundleFileSet";
 import {tmpdir} from "os";
 
@@ -48,11 +47,11 @@ export class BundleInitWizard {
     public async initNewProject(
         workspaceUri?: Uri,
         existingAuthProvider?: AuthProvider,
-        configModel?: ConfigModel
+        target?: string
     ) {
         const authProvider = await this.configureAuthForBundleInit(
             existingAuthProvider,
-            configModel
+            target
         );
         if (!authProvider) {
             this.logger.debug(
@@ -92,7 +91,7 @@ export class BundleInitWizard {
 
     private async configureAuthForBundleInit(
         authProvider?: AuthProvider,
-        configModel?: ConfigModel
+        target?: string
     ): Promise<AuthProvider | undefined> {
         if (authProvider) {
             const response = await this.promptToUseExistingAuth(authProvider);
@@ -103,7 +102,7 @@ export class BundleInitWizard {
             }
         }
         if (!authProvider) {
-            authProvider = await LoginWizard.run(this.cli, configModel);
+            authProvider = await LoginWizard.run(this.cli, target);
         }
         if (authProvider && (await authProvider.check())) {
             return authProvider;

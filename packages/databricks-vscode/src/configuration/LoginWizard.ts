@@ -26,7 +26,6 @@ import {
     loadConfigFile,
     AuthType as SdkAuthType,
 } from "@databricks/databricks-sdk";
-import {ConfigModel} from "./models/ConfigModel";
 import {randomUUID} from "crypto";
 import ini from "ini";
 import {copyFile, writeFile} from "fs/promises";
@@ -55,7 +54,7 @@ export class LoginWizard {
     }
     constructor(
         private readonly cliWrapper: CliWrapper,
-        private readonly configModel?: ConfigModel
+        private readonly target?: string
     ) {}
 
     private async inputHost(input: MultiStepInput) {
@@ -253,13 +252,13 @@ export class LoginWizard {
         input: MultiStepInput,
         pick: AuthTypeQuickPickItem
     ) {
-        let initialValue = this.configModel?.target ?? "";
+        let initialValue = this.target ?? "";
 
         // If the initialValue profile already exists, then create a unique name.
         const profiles = await this.getProfiles();
         if (profiles.find((profile) => profile.name === initialValue)) {
             const suffix = randomUUID().slice(0, 8);
-            initialValue = `${this.configModel?.target ?? "dev"}-${suffix}`;
+            initialValue = `${this.target ?? "dev"}-${suffix}`;
         }
 
         const profileName = await input.showInputBox({
@@ -342,11 +341,12 @@ export class LoginWizard {
 
     static async run(
         cliWrapper: CliWrapper,
-        configModel?: ConfigModel
+        target?: string,
+        host?: URL
     ): Promise<AuthProvider | undefined> {
-        const wizard = new LoginWizard(cliWrapper, configModel);
-        if (configModel) {
-            wizard.state.host = await configModel.get("host");
+        const wizard = new LoginWizard(cliWrapper, target);
+        if (host) {
+            wizard.state.host = host;
         }
         await MultiStepInput.run(wizard.inputHost.bind(wizard));
         if (!wizard.state.host || !wizard.state.authProvider) {

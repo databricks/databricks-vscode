@@ -217,7 +217,7 @@ export class BundleProjectManager {
         },
     })
     public async startManualMigration() {
-        const authProvider = await LoginWizard.run(this.cli, this.configModel);
+        const authProvider = await LoginWizard.run(this.cli);
         if (
             authProvider instanceof ProfileAuthProvider &&
             (await authProvider.check())
@@ -276,7 +276,7 @@ export class BundleProjectManager {
         const parentFolder = await bundleInitWizard.initNewProject(
             this.workspaceUri,
             authProvider,
-            this.configModel
+            this.configModel.target
         );
         if (parentFolder) {
             await this.isBundleProjectCache.refresh();
