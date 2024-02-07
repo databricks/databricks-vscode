@@ -275,8 +275,7 @@ export class BundleProjectManager {
             this.connectionManager.databricksWorkspace?.authProvider;
         const parentFolder = await bundleInitWizard.initNewProject(
             this.workspaceUri,
-            authProvider,
-            this.configModel.target
+            authProvider
         );
         if (parentFolder) {
             await this.isBundleProjectCache.refresh();
