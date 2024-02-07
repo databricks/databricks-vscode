@@ -175,7 +175,7 @@ export class LoginWizard {
 
                         items.push({
                             label: "Personal Access Token",
-                            detail: "Create a new profile and authenticate using the 'databricks' command line tool",
+                            detail: "Create a profile and authenticate using a Personal Access Token",
                             authType: "pat",
                         });
                         if (profiles.length !== 0) {
