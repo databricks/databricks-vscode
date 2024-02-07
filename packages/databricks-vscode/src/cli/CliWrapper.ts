@@ -245,19 +245,14 @@ export class CliWrapper {
     ) {
         const {stdout} = await execFile(
             this.cliPath,
-            [
-                "bundle",
-                "validate",
-                "--target",
-                target,
-                ...this.getLoggingArguments(),
-            ],
+            ["bundle", "validate", "--target", target],
             {
                 cwd: workspaceFolder.fsPath,
                 env: {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
+                    ...this.getLogginEnvVars(),
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     DATABRICKS_CLUSTER_ID: this.clusterId,
                 },
@@ -276,19 +271,14 @@ export class CliWrapper {
     ) {
         const {stdout, stderr} = await execFile(
             this.cliPath,
-            [
-                "bundle",
-                "summary",
-                "--target",
-                target,
-                ...this.getLoggingArguments(),
-            ],
+            ["bundle", "summary", "--target", target],
             {
                 cwd: workspaceFolder.fsPath,
                 env: {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
+                    ...this.getLogginEnvVars(),
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     DATABRICKS_CLUSTER_ID: this.clusterId,
                 },
@@ -331,7 +321,6 @@ export class CliWrapper {
                 outputDirPath,
                 "--config-file",
                 initConfigFilePath,
-                ...this.getLoggingArguments(),
             ],
             {env: this.getBundleInitEnvVars(authProvider)}
         );
@@ -345,14 +334,7 @@ export class CliWrapper {
         onStdOut?: (data: string) => void,
         onStdError?: (data: string) => void
     ) {
-        const cmd = [
-            this.cliPath,
-            "bundle",
-            "deploy",
-            "--target",
-            target,
-            ...this.getLoggingArguments(),
-        ];
+        const cmd = [this.cliPath, "bundle", "deploy", "--target", target];
         if (onStdError) {
             onStdError(`Deploying the bundle for target ${target}...\n`);
             if (this.clusterId) {
@@ -366,6 +348,7 @@ export class CliWrapper {
                 ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                 ...EnvVarGenerators.getProxyEnvVars(),
                 ...authProvider.toEnv(),
+                ...this.getLogginEnvVars(),
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 DATABRICKS_CLUSTER_ID: this.clusterId,
             },
@@ -390,20 +373,14 @@ export class CliWrapper {
             ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
             ...EnvVarGenerators.getProxyEnvVars(),
             ...authProvider.toEnv(),
+            ...this.getLogginEnvVars(),
             // eslint-disable-next-line @typescript-eslint/naming-convention
             DATABRICKS_CLUSTER_ID: this.clusterId,
         });
 
         return {
             cmd: this.cliPath,
-            args: [
-                "bundle",
-                "run",
-                "--target",
-                target,
-                resourceKey,
-                ...this.getLoggingArguments(),
-            ],
+            args: ["bundle", "run", "--target", target, resourceKey],
             options: {
                 cwd: workspaceFolder.fsPath,
                 env,
