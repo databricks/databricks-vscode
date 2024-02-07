@@ -35,6 +35,14 @@ export interface ConfigEntry {
 }
 
 export type SyncType = "full" | "incremental";
+export class ProcessError extends Error {
+    constructor(
+        message: string,
+        public code: number | null
+    ) {
+        super(message);
+    }
+}
 
 async function waitForProcess(
     p: ChildProcessWithoutNullStreams,
@@ -63,7 +71,7 @@ async function waitForProcess(
             if (code === 0) {
                 resolve(output.join(""));
             } else {
-                reject(stderr.join(""));
+                reject(new ProcessError(stderr.join("\n"), code));
             }
         });
         p.on("error", reject);

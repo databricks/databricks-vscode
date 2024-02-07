@@ -84,9 +84,18 @@ export class BundleCommands implements Disposable {
         await this.refreshRemoteState();
     }
 
-    @onError({popup: {prefix: "Error deploying the bundle."}})
     async deployCommand() {
-        await this.deploy();
+        try {
+            await this.deploy();
+        } catch (e) {
+            const choice = await window.showErrorMessage(
+                "Databricks: Error deploying resource.",
+                "Show Logs"
+            );
+            if (choice === "Show Logs") {
+                this.outputChannel.show();
+            }
+        }
     }
 
     @onError({popup: {prefix: "Error running resource."}})
