@@ -303,7 +303,7 @@ export class CliWrapper {
     }
 
     getBundleInitEnvVars(authProvider: AuthProvider) {
-        return {
+        return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
                 workspaceConfigs.databrickscfgLocation
             ),
@@ -312,7 +312,7 @@ export class CliWrapper {
             ...authProvider.toEnv(),
             // eslint-disable-next-line @typescript-eslint/naming-convention
             DATABRICKS_OUTPUT_FORMAT: "text",
-        };
+        });
     }
 
     async bundleInit(

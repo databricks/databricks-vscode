@@ -146,6 +146,8 @@ export class BundleInitWizard {
             isTransient: true,
             location: TerminalLocation.Editor,
             env: this.cli.getBundleInitEnvVars(authProvider),
+            // Without strict env we will inherit our global terminal env vars
+            strictEnv: true,
             // Setting CWD avoids a possibility of the CLI picking up unrelated bundle configuration
             // in the current workspace root or while traversing up the folder structure.
             cwd: tmpdir(),
