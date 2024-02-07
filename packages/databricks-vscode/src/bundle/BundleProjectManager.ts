@@ -217,7 +217,7 @@ export class BundleProjectManager {
         },
     })
     public async startManualMigration() {
-        const authProvider = await LoginWizard.run(this.cli, this.configModel);
+        const authProvider = await LoginWizard.run(this.cli);
         if (
             authProvider instanceof ProfileAuthProvider &&
             (await authProvider.check())
@@ -275,8 +275,7 @@ export class BundleProjectManager {
             this.connectionManager.databricksWorkspace?.authProvider;
         const parentFolder = await bundleInitWizard.initNewProject(
             this.workspaceUri,
-            authProvider,
-            this.configModel
+            authProvider
         );
         if (parentFolder) {
             await this.isBundleProjectCache.refresh();

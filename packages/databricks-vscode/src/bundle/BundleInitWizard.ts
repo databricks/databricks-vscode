@@ -11,7 +11,6 @@ import {Loggers} from "../logger";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {LoginWizard} from "../configuration/LoginWizard";
 import {CliWrapper} from "../cli/CliWrapper";
-import {ConfigModel} from "../configuration/models/ConfigModel";
 import {getSubProjects} from "./BundleFileSet";
 import {tmpdir} from "os";
 
@@ -47,13 +46,10 @@ export class BundleInitWizard {
 
     public async initNewProject(
         workspaceUri?: Uri,
-        existingAuthProvider?: AuthProvider,
-        configModel?: ConfigModel
+        existingAuthProvider?: AuthProvider
     ) {
-        const authProvider = await this.configureAuthForBundleInit(
-            existingAuthProvider,
-            configModel
-        );
+        const authProvider =
+            await this.configureAuthForBundleInit(existingAuthProvider);
         if (!authProvider) {
             this.logger.debug(
                 "No valid auth providers, can't proceed with bundle init wizard"
@@ -91,8 +87,7 @@ export class BundleInitWizard {
     }
 
     private async configureAuthForBundleInit(
-        authProvider?: AuthProvider,
-        configModel?: ConfigModel
+        authProvider?: AuthProvider
     ): Promise<AuthProvider | undefined> {
         if (authProvider) {
             const response = await this.promptToUseExistingAuth(authProvider);
@@ -103,7 +98,7 @@ export class BundleInitWizard {
             }
         }
         if (!authProvider) {
-            authProvider = await LoginWizard.run(this.cli, configModel);
+            authProvider = await LoginWizard.run(this.cli);
         }
         if (authProvider && (await authProvider.check())) {
             return authProvider;
@@ -147,6 +142,9 @@ export class BundleInitWizard {
             isTransient: true,
             location: TerminalLocation.Editor,
             env: this.cli.getBundleInitEnvVars(authProvider),
+            // Without strict env we will inherit our environmentVariableCollection
+            // which will override auth env vars we provide in this call.
+            strictEnv: true,
             // Setting CWD avoids a possibility of the CLI picking up unrelated bundle configuration
             // in the current workspace root or while traversing up the folder structure.
             cwd: tmpdir(),

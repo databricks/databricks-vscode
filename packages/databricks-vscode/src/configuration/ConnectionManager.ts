@@ -286,7 +286,11 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Can't configure workspace. "},
     })
     async configureLogin() {
-        const authProvider = await LoginWizard.run(this.cli, this.configModel);
+        const authProvider = await LoginWizard.run(
+            this.cli,
+            this.configModel.target,
+            await this.configModel.get("host")
+        );
         if (!authProvider) {
             return;
         }
