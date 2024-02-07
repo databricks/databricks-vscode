@@ -384,7 +384,7 @@ export async function activate(
                     featureState.reason
                 ) {
                     window.showErrorMessage(
-                        `Error while trying to initialise Databricks Notebooks. Some features may not work. Reason: ${featureState.reason}`
+                        `Error while trying to initialize Databricks Notebooks. Some features may not work. Reason: ${featureState.reason}`
                     );
                 }
             }
