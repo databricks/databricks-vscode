@@ -305,7 +305,7 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "Initialise current project as a Databricks project:\n[Initialise Project](command:databricks.bundle.startManualMigration)",
+                "contents": "Add Databricks configuration to the current project:\n[Initialize Project](command:databricks.bundle.startManualMigration)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
