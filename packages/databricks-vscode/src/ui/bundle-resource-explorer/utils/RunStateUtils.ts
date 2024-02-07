@@ -1,4 +1,5 @@
 import {ThemeColor, ThemeIcon} from "vscode";
+import {DateUtils} from "../../../utils";
 
 export type SimplifiedRunState =
     | "Terminated"
@@ -16,7 +17,7 @@ export function humaniseDate(timestamp?: number) {
         return undefined;
     }
     const date = new Date(timestamp);
-    return date.toLocaleString();
+    return DateUtils.toString(date);
 }
 
 export function humaniseDuration(ms?: number) {

@@ -380,7 +380,7 @@ export async function saveNewProfile(
     // Create a backup for .databrickscfg
     const backup = path.join(
         path.dirname(configFilePath),
-        ".databrickscfg.bak"
+        `.databrickscfg.${new Date().toISOString()}.bak`
     );
     await copyFile(configFilePath, backup);
     window.showInformationMessage(
