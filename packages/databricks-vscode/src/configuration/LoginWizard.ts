@@ -175,7 +175,7 @@ export class LoginWizard {
 
                         items.push({
                             label: "Personal Access Token",
-                            detail: "Create a new profile and authenticate using the 'databricks' command line tool",
+                            detail: "Create a profile and authenticate using a Personal Access Token",
                             authType: "pat",
                         });
                         if (profiles.length !== 0) {
@@ -306,7 +306,12 @@ export class LoginWizard {
 
             case "pat":
                 {
-                    const token = await collectTokenForPatAuth(input, 4, 4);
+                    const token = await collectTokenForPatAuth(
+                        this.state.host!,
+                        input,
+                        4,
+                        4
+                    );
                     if (token === undefined) {
                         // Token can never be undefined unless the users cancels the whole process.
                         // Therefore, we can safely return here.
@@ -375,7 +380,7 @@ export async function saveNewProfile(
     // Create a backup for .databrickscfg
     const backup = path.join(
         path.dirname(configFilePath),
-        ".databrickscfg.bak"
+        `.databrickscfg.${new Date().toISOString()}.bak`
     );
     await copyFile(configFilePath, backup);
     window.showInformationMessage(
@@ -472,11 +477,12 @@ function authMethodsForHostname(host: URL): Array<AuthType> {
 }
 
 async function collectTokenForPatAuth(
+    host: URL,
     input: MultiStepInput,
     step: number,
     totalSteps: number
 ) {
-    const token = await input.showInputBox({
+    const token = await input.showQuickAutoComplete({
         title: "Enter Personal Access Token",
         step,
         totalSteps,
@@ -490,10 +496,25 @@ async function collectTokenForPatAuth(
         },
         placeholder: "Enter Personal Access Token",
         ignoreFocusOut: true,
+        shouldResume: async () => false,
+        items: [
+            {
+                label: "Create a new Personal Access Token",
+                detail: "Open the Databricks UI to create a new Personal Access Token",
+                alwaysShow: true,
+            },
+        ],
     });
 
     if (token === undefined) {
         return;
+    }
+
+    if (token === "Create a new Personal Access Token") {
+        commands.executeCommand("databricks.utils.openExternal", {
+            url: `${host.toString()}settings/user/developer/access-tokens`,
+        });
+        return collectTokenForPatAuth(host, input, step, totalSteps);
     }
 
     return token;
