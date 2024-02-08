@@ -393,9 +393,6 @@ export async function saveNewProfile(
     );
 
     // Write the new profile to .databrickscfg
-    await appendFile(configFilePath, os.EOL);
-
-    await appendFile(configFilePath, os.EOL);
     await appendFile(configFilePath, finalStr);
 
     return new ProfileAuthProvider(authProvider.host, profileName, true);
