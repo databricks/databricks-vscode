@@ -85,10 +85,10 @@ export abstract class AuthProvider {
     }
     protected abstract getSdkConfig(): Config;
 
-    static fromJSON(
+    static async fromJSON(
         json: Record<string, any>,
         databricksPath: string
-    ): AuthProvider {
+    ): Promise<AuthProvider> {
         const host =
             json.host instanceof URL
                 ? json.host
@@ -125,6 +125,14 @@ export abstract class AuthProvider {
 }
 
 export class ProfileAuthProvider extends AuthProvider {
+    static async from(profile: string, checked = false) {
+        const host = await new WorkspaceClient(
+            ProfileAuthProvider._getSdkConfig(profile)
+        ).apiClient.config.getHost();
+
+        return new ProfileAuthProvider(host, profile, checked);
+    }
+
     constructor(
         host: URL,
         private readonly profile: string,
@@ -156,14 +164,18 @@ export class ProfileAuthProvider extends AuthProvider {
         return undefined;
     }
 
-    getSdkConfig(): Config {
+    private static _getSdkConfig(profile: string): Config {
         return new Config({
-            profile: this.profile,
+            profile: profile,
             configFile:
                 workspaceConfigs.databrickscfgLocation ??
                 process.env.DATABRICKS_CONFIG_FILE,
             env: {},
         });
+    }
+
+    getSdkConfig(): Config {
+        return ProfileAuthProvider._getSdkConfig(this.profile);
     }
 
     protected async _check() {

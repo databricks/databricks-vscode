@@ -229,10 +229,7 @@ export class LoginWizard {
         if (pick.profile !== undefined) {
             // We assume that the profile is setup correctly (even for the auth types that have a deeper integration with vscode such as azure-cli).
             // To fix errors, users can create a new profile.
-            const authProvider = new ProfileAuthProvider(
-                this.state.host!,
-                pick.profile
-            );
+            const authProvider = await ProfileAuthProvider.from(pick.profile);
             const checkResult = await this.checkAuthProvider(
                 authProvider,
                 `profile '${pick.profile}'`,
@@ -390,7 +387,7 @@ export async function saveNewProfile(
     // Write the new profile to .databrickscfg
     await writeFile(configFilePath, ini.stringify(iniFile));
 
-    return new ProfileAuthProvider(authProvider.host, profileName, true);
+    return await ProfileAuthProvider.from(profileName, true);
 }
 
 function humaniseSdkAuthType(sdkAuthType: string) {
