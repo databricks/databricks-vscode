@@ -59,7 +59,7 @@ export abstract class AuthProvider {
      */
     protected abstract _check(): Promise<boolean>;
 
-    public async check(force = false): Promise<boolean> {
+    public async check(force = false, showProgress = true): Promise<boolean> {
         if (force) {
             this.checked = false;
         }
@@ -67,20 +67,28 @@ export abstract class AuthProvider {
             return true;
         }
 
+        const checkFn = async () => {
+            this.checked = await this._check();
+        };
+
+        if (!showProgress) {
+            await checkFn();
+            return this.checked;
+        }
+
         await window.withProgress(
             {
                 location: ProgressLocation.Notification,
                 title: `Databricks: Trying to login using ${this.describe()}`,
             },
-            async () => {
-                this.checked = await this._check();
-            }
+            async () => await checkFn()
         );
         if (this.checked) {
             window.showInformationMessage(
                 `Databricks: Successfully logged in using ${this.describe()}`
             );
         }
+
         return this.checked;
     }
     protected abstract getSdkConfig(): Config;
@@ -122,12 +130,44 @@ export abstract class AuthProvider {
                 throw new Error(`Unknown auth type: ${json.authType}`);
         }
     }
+
+    static fromSdkConfig(config: Config): AuthProvider {
+        if (!config.host) {
+            throw new Error("Missing host");
+        }
+        const host = normalizeHost(config.host);
+
+        switch (config.authType) {
+            case "azure-cli":
+                return new AzureCliAuthProvider(
+                    host,
+                    config.azureTenantId,
+                    config.azureLoginAppId
+                );
+
+            case "databricks-cli":
+                if (!config.databricksCliPath) {
+                    throw new Error("Missing path for databricks-cli");
+                }
+
+                return new DatabricksCliAuthProvider(
+                    host,
+                    config.databricksCliPath
+                );
+
+            default:
+                if (config.profile) {
+                    return new ProfileAuthProvider(host, config.profile);
+                }
+                throw new Error(`Unknown auth type: ${config.authType}`);
+        }
+    }
 }
 
 export class ProfileAuthProvider extends AuthProvider {
     static async from(profile: string, checked = false) {
         const host = await new WorkspaceClient(
-            ProfileAuthProvider._getSdkConfig(profile)
+            ProfileAuthProvider.getSdkConfig(profile)
         ).apiClient.config.getHost();
 
         return new ProfileAuthProvider(host, profile, checked);
@@ -164,7 +204,7 @@ export class ProfileAuthProvider extends AuthProvider {
         return undefined;
     }
 
-    private static _getSdkConfig(profile: string): Config {
+    public static getSdkConfig(profile: string): Config {
         return new Config({
             profile: profile,
             configFile:
@@ -175,15 +215,22 @@ export class ProfileAuthProvider extends AuthProvider {
     }
 
     getSdkConfig(): Config {
-        return ProfileAuthProvider._getSdkConfig(this.profile);
+        return ProfileAuthProvider.getSdkConfig(this.profile);
     }
 
     protected async _check() {
         while (true) {
             try {
-                const workspaceClient = this.getWorkspaceClient();
-                await workspaceClient.currentUser.me();
-                return true;
+                const sdkConfig = this.getSdkConfig();
+                await sdkConfig.ensureResolved();
+                const authProvider = AuthProvider.fromSdkConfig(sdkConfig);
+
+                if (authProvider instanceof ProfileAuthProvider) {
+                    const workspaceClient = this.getWorkspaceClient();
+                    await workspaceClient.currentUser.me();
+                    return true;
+                }
+                return await authProvider.check(false, false);
             } catch (e) {
                 let message: string = `Can't login with config profile ${this.profile}`;
                 if (e instanceof Error) {
