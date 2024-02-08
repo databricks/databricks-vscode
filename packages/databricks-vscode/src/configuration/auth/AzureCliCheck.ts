@@ -8,6 +8,7 @@ import {commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
+import {ShellUtils} from "../../utils";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -317,7 +318,7 @@ export class AzureCliCheck implements Disposable {
                     this.azBinPath
                 } login --allow-no-subscriptions ${useDeviceCode} ${
                     tenant ? "-t " + tenant : ""
-                }; echo "Press any key to close the terminal and continue ..."; read; exit`
+                }; echo "Press any key to close the terminal and continue ..."; ${ShellUtils.readCmd()}; exit`
             );
 
             return await Promise.race<boolean>([
