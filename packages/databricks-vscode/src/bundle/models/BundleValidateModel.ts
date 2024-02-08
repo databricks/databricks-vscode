@@ -7,6 +7,7 @@ import {BundleTarget} from "../types";
 import lodash from "lodash";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
+import {withOnErrorHandler} from "../../utils/onErrorDecorator";
 
 export type BundleValidateState = {
     clusterId?: string;
@@ -25,9 +26,14 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
     ) {
         super();
         this.disposables.push(
-            this.bundleWatcher.onDidChange(async () => {
-                await this.stateCache.refresh();
-            })
+            this.bundleWatcher.onDidChange(
+                withOnErrorHandler(
+                    async () => {
+                        await this.stateCache.refresh();
+                    },
+                    {log: true, throw: false}
+                )
+            )
         );
     }
 

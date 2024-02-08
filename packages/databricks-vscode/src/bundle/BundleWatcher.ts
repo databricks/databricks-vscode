@@ -49,7 +49,7 @@ export class BundleWatcher implements Disposable {
             return;
         }
 
-        await this.bundleFileSet.value.bundleDataCache.invalidate();
+        this.bundleFileSet.value.bundleDataCache.invalidate();
         this._onDidChange.fire();
         // to provide additional granularity, we also fire an event when the root bundle file changes
         if (this.bundleFileSet.value.isRootBundleFile(e)) {

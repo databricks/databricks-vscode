@@ -2,7 +2,7 @@ import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {Mutex} from "../../locking";
 import {CachedValue} from "../../locking/CachedValue";
 import {StateStorage} from "../../vscode-objs/StateStorage";
-import {onError} from "../../utils/onErrorDecorator";
+import {onError, withOnErrorHandler} from "../../utils/onErrorDecorator";
 import {AuthProvider} from "../auth/AuthProvider";
 import {
     OverrideableConfigModel,
@@ -125,10 +125,12 @@ export class ConfigModel implements Disposable {
         private readonly stateStorage: StateStorage
     ) {
         this.disposables.push(
-            this.overrideableConfigModel.onDidChange(async () => {
-                //refresh cache to trigger onDidChange event
-                await this.configCache.refresh();
-            }),
+            this.overrideableConfigModel.onDidChange(
+                withOnErrorHandler(async () => {
+                    //refresh cache to trigger onDidChange event
+                    await this.configCache.refresh();
+                })
+            ),
             this.bundlePreValidateModel.onDidChange(async () => {
                 await this.readTarget();
                 // We fire the target change emitter because auth info might have changed,
@@ -140,7 +142,7 @@ export class ConfigModel implements Disposable {
             ...TOP_LEVEL_VALIDATE_CONFIG_KEYS.map((key) =>
                 this.bundleValidateModel.onDidChangeKey(key)(async () => {
                     //refresh cache to trigger onDidChange event
-                    this.configCache.refresh();
+                    await this.configCache.refresh();
                 })
             ),
             this.bundleRemoteStateModel.onDidChange(async () => {

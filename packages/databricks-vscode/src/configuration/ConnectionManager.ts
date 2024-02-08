@@ -175,6 +175,7 @@ export class ConnectionManager implements Disposable {
     }
 
     private async loginWithSavedAuth() {
+        await this.disconnect();
         const authProvider = await this.resolveAuth();
         if (authProvider === undefined) {
             await this.logout();
@@ -268,18 +269,24 @@ export class ConnectionManager implements Disposable {
         this.updateState("CONNECTED");
     }
 
-    @onError({popup: {prefix: "Can't logout."}})
     @Mutex.synchronise("loginLogoutMutex")
-    async logout() {
+    private async disconnect() {
         this._workspaceClient = undefined;
         this._databricksWorkspace = undefined;
         await this.updateClusterManager();
         await this.updateSyncDestinationMapper();
-        if (this.configModel.target !== undefined) {
-            await this.configModel.set("authProfile", undefined);
-            await this.configModel.setAuthProvider(undefined);
-        }
         this.updateState("DISCONNECTED");
+    }
+
+    @onError({popup: {prefix: "Can't logout."}})
+    async logout() {
+        await this.disconnect();
+        if (this.configModel.target !== undefined) {
+            await Promise.all([
+                this.configModel.set("authProfile", undefined),
+                this.configModel.setAuthProvider(undefined),
+            ]);
+        }
     }
 
     @onError({
