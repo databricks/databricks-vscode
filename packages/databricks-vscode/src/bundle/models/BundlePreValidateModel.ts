@@ -4,6 +4,7 @@ import {BundleTarget} from "../types";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {UrlUtils} from "../../utils";
 import {Mutex} from "../../locking";
+import * as lodash from "lodash";
 
 export type BundlePreValidateState = {
     host?: URL;
@@ -73,8 +74,15 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
             return {};
         }
 
-        const targetObject = (await this.bundleFileSet.bundleDataCache.value)
-            .targets?.[this.target];
+        const bundle = await this.bundleFileSet.bundleDataCache.value;
+        const targetObject = bundle?.targets?.[this.target];
+        const globalWorkspace = bundle?.workspace;
+        if (targetObject !== undefined) {
+            targetObject.workspace = lodash.merge(
+                targetObject.workspace ?? {},
+                globalWorkspace
+            );
+        }
 
         return this.readStateFromTarget(targetObject) ?? {};
     }
