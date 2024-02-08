@@ -48,9 +48,8 @@ export class BundleInitWizard {
         workspaceUri?: Uri,
         existingAuthProvider?: AuthProvider
     ) {
-        const authProvider = await this.configureAuthForBundleInit(
-            existingAuthProvider
-        );
+        const authProvider =
+            await this.configureAuthForBundleInit(existingAuthProvider);
         if (!authProvider) {
             this.logger.debug(
                 "No valid auth providers, can't proceed with bundle init wizard"
