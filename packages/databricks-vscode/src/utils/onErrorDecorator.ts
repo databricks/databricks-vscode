@@ -14,6 +14,7 @@ interface OnErrorProps {
         prefix?: string;
         logger?: logging.NamedLogger;
     };
+    throw?: boolean;
 }
 
 type Props = {
@@ -23,6 +24,7 @@ type Props = {
 const defaultProps: Props = {
     popup: false,
     log: true,
+    throw: false,
 };
 
 export function onError(props: Props) {
@@ -78,7 +80,7 @@ export function withOnErrorHandler<T extends any[], U>(
 
     const onErrorProps: OnErrorProps = {};
 
-    (Object.keys(props) as (keyof Props)[]).forEach((key) => {
+    (["popup", "log"] as const).forEach((key) => {
         if (props[key] === undefined || props[key] === false) {
             onErrorProps[key] = undefined;
         } else if (props[key] === true) {
@@ -110,6 +112,10 @@ export function withOnErrorHandler<T extends any[], U>(
                     onErrorProps.log?.logger ??
                     logging.NamedLogger.getOrCreate(Loggers.Extension);
                 logger.error(prefix.trimEnd() + " " + e.message.trimStart(), e);
+            }
+
+            if (onErrorProps.throw) {
+                throw e;
             }
         }
     };
