@@ -1,5 +1,4 @@
 import {posix} from "path/posix";
-import {CodeSynchronizer} from "../../sync";
 import {ConfigModel} from "../models/ConfigModel";
 import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
@@ -8,48 +7,6 @@ import {TreeItemCollapsibleState, ThemeIcon, ThemeColor} from "vscode";
 import {DecorationUtils} from "../../ui/bundle-resource-explorer/utils";
 
 const TREE_ICON_ID = "WORKSPACE";
-function getContextValue(key: string) {
-    return `databricks.configuration.sync.${key}`;
-}
-
-function getTreeItemsForSyncState(codeSynchroniser: CodeSynchronizer) {
-    let icon, contextValue;
-    switch (codeSynchroniser.state) {
-        case "IN_PROGRESS":
-            icon = new ThemeIcon(
-                "sync~spin",
-                new ThemeColor("debugIcon.startForeground")
-            );
-            contextValue = getContextValue("running");
-            break;
-
-        case "STOPPED":
-            icon = new ThemeIcon(
-                "stop-circle",
-                new ThemeColor("notificationsErrorIcon.foreground")
-            );
-            contextValue = getContextValue("stopped");
-            break;
-
-        case "WATCHING_FOR_CHANGES":
-            icon = new ThemeIcon(
-                "eye",
-                new ThemeColor("debugIcon.startForeground")
-            );
-            contextValue = getContextValue("watching");
-            break;
-
-        default:
-            icon = new ThemeIcon(
-                "testing-error-icon",
-                new ThemeColor("notificationsErrorIcon.foreground")
-            );
-            contextValue = getContextValue("error");
-            break;
-    }
-
-    return {icon, contextValue};
-}
 
 /**
  * Component for displaying sync destination details. Sync destination is
@@ -57,7 +14,6 @@ function getTreeItemsForSyncState(codeSynchroniser: CodeSynchronizer) {
  */
 export class SyncDestinationComponent extends BaseComponent {
     constructor(
-        private readonly codeSynchronizer: CodeSynchronizer,
         private readonly connectionManager: ConnectionManager,
         private readonly configModel: ConfigModel
     ) {
@@ -93,10 +49,7 @@ export class SyncDestinationComponent extends BaseComponent {
             return [];
         }
 
-        const {icon, contextValue} = getTreeItemsForSyncState(
-            this.codeSynchronizer
-        );
-
+        const contextValue = "databricks.configuration.sync";
         const url = await this.getUrl();
 
         return [
@@ -106,7 +59,7 @@ export class SyncDestinationComponent extends BaseComponent {
                 description: posix.basename(posix.dirname(config)),
                 collapsibleState: TreeItemCollapsibleState.Expanded,
                 contextValue: url ? `${contextValue}.has-url` : contextValue,
-                iconPath: icon,
+                iconPath: new ThemeIcon("sync", new ThemeColor("charts.green")),
                 resourceUri: url
                     ? undefined
                     : DecorationUtils.getModifiedStatusDecoration(
