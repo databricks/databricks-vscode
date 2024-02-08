@@ -430,7 +430,6 @@ export async function activate(
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         bundleProjectManager,
-        synchronizer,
         configModel
     );
 
