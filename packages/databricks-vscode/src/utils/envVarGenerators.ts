@@ -1,7 +1,7 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
 import {Uri} from "vscode";
-import {logging} from "@databricks/databricks-sdk";
+import {logging, Headers} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 //Get env variables from user's .env file
