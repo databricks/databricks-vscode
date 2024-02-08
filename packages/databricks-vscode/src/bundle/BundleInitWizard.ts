@@ -48,8 +48,9 @@ export class BundleInitWizard {
         workspaceUri?: Uri,
         existingAuthProvider?: AuthProvider
     ) {
-        const authProvider =
-            await this.configureAuthForBundleInit(existingAuthProvider);
+        const authProvider = await this.configureAuthForBundleInit(
+            existingAuthProvider
+        );
         if (!authProvider) {
             this.logger.debug(
                 "No valid auth providers, can't proceed with bundle init wizard"
@@ -214,7 +215,7 @@ export class BundleInitWizard {
             return Uri.file(choice.label);
         }
         const choices = await window.showOpenDialog({
-            title: "Chose a folder where you would want your new project to be",
+            title: "Choose a folder where you would want your new project to be",
             openLabel: "Select folder",
             defaultUri: workspaceUri,
             canSelectFolders: true,
