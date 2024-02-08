@@ -13,6 +13,7 @@ import {LoginWizard} from "../configuration/LoginWizard";
 import {CliWrapper} from "../cli/CliWrapper";
 import {getSubProjects} from "./BundleFileSet";
 import {tmpdir} from "os";
+import {ShellUtils} from "../utils";
 
 export async function promptToOpenSubProjects(
     projects: {absolute: Uri; relative: Uri}[]
@@ -141,7 +142,12 @@ export class BundleInitWizard {
             name: "Databricks Project Init",
             isTransient: true,
             location: TerminalLocation.Editor,
-            env: this.cli.getBundleInitEnvVars(authProvider),
+            env: {
+                // Without supplying full environment and with `strictEnv: true` PowerShell will fail to start.
+                // On unix-like systems we don't require full environment, but it doesn't hurt.
+                ...process.env,
+                ...this.cli.getBundleInitEnvVars(authProvider),
+            },
             // Without strict env we will inherit our environmentVariableCollection
             // which will override auth env vars we provide in this call.
             strictEnv: true,
@@ -156,7 +162,7 @@ export class BundleInitWizard {
             this.cli.escapePathArgument(parentFolder.fsPath),
         ].join(" ");
         const initialPrompt = `clear; echo "Executing: databricks ${args}\nFollow the steps below to create your new Databricks project.\n"`;
-        const finalPrompt = `echo "Press any key to close the terminal and continue ..."; read; exit`;
+        const finalPrompt = `echo "\nPress any key to close the terminal and continue ..."; ${ShellUtils.readCmd()}; exit`;
         terminal.sendText(
             `${initialPrompt}; ${this.cli.cliPath} ${args}; ${finalPrompt}`
         );
