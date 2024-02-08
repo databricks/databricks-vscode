@@ -14,7 +14,6 @@ import {BundleTargetComponent} from "./BundleTargetComponent";
 import {AuthTypeComponent} from "./AuthTypeComponent";
 import {ClusterComponent} from "./ClusterComponent";
 import {SyncDestinationComponent} from "./SyncDestinationComponent";
-import {CodeSynchronizer} from "../../sync";
 import {BundleProjectManager} from "../../bundle/BundleProjectManager";
 
 /**
@@ -35,16 +34,11 @@ export class ConfigurationDataProvider
         new BundleTargetComponent(this.configModel),
         new AuthTypeComponent(this.connectionManager, this.configModel),
         new ClusterComponent(this.connectionManager, this.configModel),
-        new SyncDestinationComponent(
-            this.codeSynchronizer,
-            this.connectionManager,
-            this.configModel
-        ),
+        new SyncDestinationComponent(this.connectionManager, this.configModel),
     ];
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly bundleProjectManager: BundleProjectManager,
-        private readonly codeSynchronizer: CodeSynchronizer,
         private readonly configModel: ConfigModel
     ) {
         this.disposables.push(
