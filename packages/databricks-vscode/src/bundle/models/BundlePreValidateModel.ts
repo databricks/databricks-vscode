@@ -33,9 +33,19 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
     }
 
     get targets() {
-        return this.bundleFileSet.bundleDataCache.value.then(
-            (data) => data?.targets
-        );
+        return (async () => {
+            const targets = Object.assign(
+                {},
+                (await this.bundleFileSet.bundleDataCache.value).targets ?? {}
+            );
+
+            await Promise.all(
+                Object.keys(targets ?? {}).map(async (key) => {
+                    targets[key] = await this.getRawTargetData(key);
+                })
+            );
+            return targets;
+        })();
     }
 
     get defaultTarget() {
@@ -68,23 +78,30 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
             : undefined;
     }
 
+    private async getRawTargetData(target: string) {
+        const bundle = await this.bundleFileSet.bundleDataCache.value;
+        const targetObject = Object.assign({}, bundle?.targets?.[target]);
+        const globalWorkspace = Object.assign({}, bundle?.workspace);
+        if (targetObject !== undefined) {
+            targetObject.workspace = lodash.merge(
+                globalWorkspace ?? {},
+                targetObject.workspace
+            );
+        }
+        return targetObject;
+    }
+
     @Mutex.synchronise("mutex")
     protected async readState() {
         if (this.target === undefined) {
             return {};
         }
 
-        const bundle = await this.bundleFileSet.bundleDataCache.value;
-        const targetObject = bundle?.targets?.[this.target];
-        const globalWorkspace = bundle?.workspace;
-        if (targetObject !== undefined) {
-            targetObject.workspace = lodash.merge(
-                targetObject.workspace ?? {},
-                globalWorkspace
-            );
-        }
-
-        return this.readStateFromTarget(targetObject) ?? {};
+        return (
+            this.readStateFromTarget(
+                await this.getRawTargetData(this.target)
+            ) ?? {}
+        );
     }
 
     public async getFileToWrite(key: string) {
