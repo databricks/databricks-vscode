@@ -1,22 +1,24 @@
 import {Disposable, ProgressLocation, window} from "vscode";
-import {BundleRemoteStateModel} from "./models/BundleRemoteStateModel";
-import {onError, withOnErrorHandler} from "../utils/onErrorDecorator";
-import {
-    TreeNode as BundleResourceExplorerTreeNode,
-    ResourceTreeNode as BundleResourceExplorerResourceTreeNode,
-} from "../ui/bundle-resource-explorer/types";
-import {BundleRunStatusManager} from "./run/BundleRunStatusManager";
-import {BundleValidateModel} from "./models/BundleValidateModel";
+import {BundleRemoteStateModel} from "../../bundle/models/BundleRemoteStateModel";
+import {onError} from "../../utils/onErrorDecorator";
+import {BundleResourceExplorerTreeNode} from "./types";
+import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
+import {Mutex} from "../../locking";
+import {BundleValidateModel} from "../../bundle/models/BundleValidateModel";
+import {PipelineTreeNode} from "./PipelineTreeNode";
+import {JobTreeNode} from "./JobTreeNode";
 
-const RUNNABLE_RESOURCES = [
+export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
 ] satisfies BundleResourceExplorerTreeNode["type"][];
 
+type RunnableTreeNodes = PipelineTreeNode | JobTreeNode;
+
 function isRunnable(
     treeNode: BundleResourceExplorerTreeNode
-): treeNode is BundleResourceExplorerResourceTreeNode {
-    return (RUNNABLE_RESOURCES as string[]).includes(treeNode.type);
+): treeNode is RunnableTreeNodes {
+    return (RUNNABLE_BUNDLE_RESOURCES as string[]).includes(treeNode.type);
 }
 
 export class BundleCommands implements Disposable {
@@ -32,14 +34,15 @@ export class BundleCommands implements Disposable {
     ) {
         this.disposables.push(
             this.outputChannel,
-            this.bundleValidateModel.onDidChange(
-                withOnErrorHandler(async () => {
-                    await this.refreshRemoteState();
-                })
-            )
+            this.bundleValidateModel.onDidChange(async () => {
+                await this.refreshRemoteState();
+            })
         );
     }
 
+    private refreshStateMutex = new Mutex();
+
+    @Mutex.synchronise("refreshStateMutex")
     async refreshRemoteState() {
         await window.withProgress(
             {location: {viewId: "dabsResourceExplorerView"}},
@@ -63,6 +66,9 @@ export class BundleCommands implements Disposable {
         await this.refreshRemoteState();
     }
 
+    private deployMutex = new Mutex();
+
+    @Mutex.synchronise("deployMutex")
     async deploy() {
         this.prepareOutputChannel();
         await window.withProgress(
@@ -78,9 +84,18 @@ export class BundleCommands implements Disposable {
         await this.refreshRemoteState();
     }
 
-    @onError({popup: {prefix: "Error deploying the bundle."}})
     async deployCommand() {
-        await this.deploy();
+        try {
+            await this.deploy();
+        } catch (e) {
+            const choice = await window.showErrorMessage(
+                "Databricks: Error deploying resource.",
+                "Show Logs"
+            );
+            if (choice === "Show Logs") {
+                this.outputChannel.show();
+            }
+        }
     }
 
     @onError({popup: {prefix: "Error running resource."}})

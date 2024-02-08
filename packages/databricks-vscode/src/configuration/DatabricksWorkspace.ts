@@ -1,6 +1,6 @@
 import {WorkspaceClient, iam, logging} from "@databricks/databricks-sdk";
 import {Cluster, WorkspaceConf, WorkspaceConfProps} from "../sdk-extensions";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {context, Context} from "@databricks/databricks-sdk";
 import {Uri, window, env} from "vscode";
 import {Loggers} from "../logger";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
@@ -36,8 +36,8 @@ export class DatabricksWorkspace {
         );
     }
 
-    get host(): Uri {
-        return Uri.parse(this._authProvider.host.toString());
+    get host(): URL {
+        return this._authProvider.host;
     }
 
     get authProvider(): AuthProvider {

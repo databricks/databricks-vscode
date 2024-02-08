@@ -22,11 +22,16 @@ import {DebugProtocol} from "@vscode/debugprotocol";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Subject} from "./Subject";
 import {WorkflowRunner} from "./WorkflowRunner";
-import {promptForClusterAttach, promptForClusterStart} from "./prompts";
+import {
+    promptForChangingTargetMode,
+    promptForClusterAttach,
+    promptForClusterStart,
+} from "./prompts";
 import {LocalUri} from "../sync/SyncDestination";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {FileUtils} from "../utils";
-import {BundleCommands} from "../bundle/BundleCommands";
+import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
+import {ConfigModel} from "../configuration/models/ConfigModel";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -52,6 +57,7 @@ export class DatabricksWorkflowDebugAdapterFactory
 
     constructor(
         private connection: ConnectionManager,
+        private configModel: ConfigModel,
         private wsfsAccessVerifier: WorkspaceFsAccessVerifier,
         context: ExtensionContext,
         bundleCommands: BundleCommands
@@ -71,6 +77,7 @@ export class DatabricksWorkflowDebugAdapterFactory
         return new DebugAdapterInlineImplementation(
             new DatabricksWorkflowDebugSession(
                 this.connection,
+                this.configModel,
                 this.workflowRunner,
                 this.wsfsAccessVerifier
             )
@@ -85,6 +92,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
 
     constructor(
         private connection: ConnectionManager,
+        private configModel: ConfigModel,
         private workflowRunner: WorkflowRunner,
         private wsfsAccessVerifier: WorkspaceFsAccessVerifier
     ) {
@@ -174,6 +182,12 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             await this.connection.waitForConnect();
         }
 
+        const mode = await this.configModel.get("mode");
+        if (mode !== "development") {
+            promptForChangingTargetMode(mode);
+            return this.onError();
+        }
+
         const cluster = this.connection.cluster;
         const workspaceClient = this.connection.workspaceClient;
 
@@ -184,7 +198,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         const syncDestinationMapper = this.connection.syncDestinationMapper;
         if (!syncDestinationMapper) {
             return this.onError(
-                "You must configure code synchronization to run on Databricks"
+                "No sync destination found. Maybe the databricks.yml is misconfgured."
             );
         }
 

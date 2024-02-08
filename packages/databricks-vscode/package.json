@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "1.2.5",
+    "version": "2.0.0",
     "engines": {
         "vscode": "^1.83.0"
     },
@@ -305,17 +305,32 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "There are multiple Databricks projects in the workspace, please chose which one to open:\n[Open Existing Project](command:databricks.bundle.openSubProject)\n",
-                "when": "workspaceFolderCount > 0 && databricks.context.subProjectsAvailable"
+                "contents": "Add Databricks configuration to the current project:\n[Initialize Project](command:databricks.bundle.startManualMigration)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
                 "view": "configurationView",
-                "contents": "Current workspace has no Databricks configuration at the root level, do you want to initialize a new Databricks project?\n[Initialize New Project](command:databricks.bundle.initNewProject)\n[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
-                "when": "workspaceFolderCount > 0"
+                "contents": "There are multiple Databricks projects in the workspace, please chose which one to open:\n[Open Existing Project](command:databricks.bundle.openSubProject)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
-                "contents": "Please open a folder to start using Databricks on VSCode.\n[Open Folder](command:vscode.openFolder)",
+                "contents": "Create a new Databricks project?\n[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.pendingManualMigration"
+            },
+            {
+                "view": "configurationView",
+                "contents": "[Show Quickstart](command:databricks.quickstart.open)\nTo learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "when": "databricks.context.initialized"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Initializing...",
+                "when": "workspaceFolderCount > 0 && !databricks.context.initialized"
+            },
+            {
+                "view": "configurationView",
+                "contents": "The workspace is empty.\n[Initialize New Project](command:databricks.bundle.initNewProject)",
                 "when": "workspaceFolderCount == 0"
             }
         ],
@@ -379,7 +394,7 @@
             "view/item/context": [
                 {
                     "command": "databricks.utils.openExternal",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.(cluster|sync).*$/",
+                    "when": "viewItem =~ /^databricks.*\\.(has-url).*$/",
                     "group": "inline@1"
                 },
                 {
@@ -419,7 +434,7 @@
                 },
                 {
                     "command": "databricks.bundle.cancelRun",
-                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.running.*$/",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.cancellable.*$/",
                     "group": "inline@0"
                 }
             ],
@@ -733,7 +748,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.212.0"
+        "version": "0.212.3"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
@@ -772,6 +787,7 @@
         "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz",
         "@databricks/databricks-vscode-types": "workspace:^",
         "@types/lodash": "^4.14.202",
+        "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",
         "@vscode/extension-telemetry": "^0.9.1",
         "@vscode/webview-ui-toolkit": "^1.4.0",
@@ -779,6 +795,7 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
         "lodash": "^4.17.21",
+        "shell-quote": "^1.8.1",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
         "yaml": "^2.3.4"

@@ -1,17 +1,24 @@
-import {commands, QuickPickItem, QuickPickItemKind, window} from "vscode";
+import {
+    commands,
+    QuickPickItem,
+    QuickPickItemKind,
+    window,
+    ProgressLocation,
+} from "vscode";
 import {
     InputFlowAction,
     InputStep,
     MultiStepInput,
     ValidationMessageType,
 } from "../ui/MultiStepInputWizard";
-import {CliWrapper} from "../cli/CliWrapper";
+import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {
     AuthProvider,
     AuthType,
     AzureCliAuthProvider,
     DatabricksCliAuthProvider,
+    PersonalAccessTokenAuthProvider,
     ProfileAuthProvider,
 } from "./auth/AuthProvider";
 import {UrlUtils} from "../utils";
@@ -19,7 +26,6 @@ import {
     loadConfigFile,
     AuthType as SdkAuthType,
 } from "@databricks/databricks-sdk";
-import {ConfigModel} from "./models/ConfigModel";
 import {randomUUID} from "crypto";
 import ini from "ini";
 import {copyFile, writeFile} from "fs/promises";
@@ -39,9 +45,16 @@ interface State {
 export class LoginWizard {
     private state = {} as Partial<State>;
     private readonly title = "Configure Databricks Workspace";
+    private _profiles: Array<ConfigEntry> = [];
+    async getProfiles() {
+        if (this._profiles.length === 0) {
+            this._profiles = await listProfiles(this.cliWrapper);
+        }
+        return this._profiles;
+    }
     constructor(
         private readonly cliWrapper: CliWrapper,
-        private readonly configModel: ConfigModel
+        private readonly target?: string
     ) {}
 
     private async inputHost(input: MultiStepInput) {
@@ -58,9 +71,8 @@ export class LoginWizard {
             });
         }
 
-        const profiles = await listProfiles(this.cliWrapper);
         items.push(
-            ...profiles.map((profile) => {
+            ...(await this.getProfiles()).map((profile) => {
                 return {
                     label: profile.host!.toString(),
                     detail: `Profile: ${profile.name}`,
@@ -87,17 +99,23 @@ export class LoginWizard {
 
     private async checkAuthProvider(
         authProvider: AuthProvider,
-        authDescription: string
+        authDescription: string,
+        input: MultiStepInput
     ): Promise<InputStep | undefined> {
+        //Hide the input and let the check show it's own messages and UI.
+        input.hide();
         if (await authProvider.check()) {
             return;
         }
+
         const choice = await window.showErrorMessage(
-            `Authentication using ${authDescription} failed. Select another authentication method?`,
-            "Yes",
-            "No"
+            `Authentication using ${authDescription} failed.`,
+            "Select a different auth method",
+            "Cancel"
         );
-        if (choice === "Yes") {
+        if (choice === "Select a different auth method") {
+            //Show input again with the select auth step.
+            input.show();
             return this.selectAuthMethod.bind(this);
         }
         throw InputFlowAction.cancel;
@@ -107,7 +125,10 @@ export class LoginWizard {
         input: MultiStepInput
     ): Promise<InputStep | void> {
         const items: Array<AuthTypeQuickPickItem> = [];
-
+        items.push({
+            label: "Create new Databricks CLI profile",
+            kind: QuickPickItemKind.Separator,
+        });
         for (const authMethod of authMethodsForHostname(this.state.host!)) {
             switch (authMethod) {
                 case "azure-cli":
@@ -125,10 +146,9 @@ export class LoginWizard {
                         authType: "databricks-cli",
                     });
                     break;
-
                 case "profile":
                     {
-                        const profiles = (await listProfiles(this.cliWrapper))
+                        const profiles = (await this.getProfiles())
                             .filter((profile) => {
                                 return (
                                     profile.host?.hostname ===
@@ -136,16 +156,28 @@ export class LoginWizard {
                                 );
                             })
                             .map((profile) => {
+                                const humanisedAuthType = humaniseSdkAuthType(
+                                    profile.authType
+                                );
+                                const detail = humanisedAuthType
+                                    ? `Authenticate using ${humaniseSdkAuthType(
+                                          profile.authType
+                                      )}`
+                                    : `Authenticate using profile ${profile.name}`;
+
                                 return {
                                     label: profile.name,
-                                    detail: `Authenticate using ${humaniseSdkAuthType(
-                                        profile.authType
-                                    )} from ${profile.name} profile`,
+                                    detail,
                                     authType: profile.authType as SdkAuthType,
                                     profile: profile.name,
                                 };
                             });
 
+                        items.push({
+                            label: "Personal Access Token",
+                            detail: "Create a profile and authenticate using a Personal Access Token",
+                            authType: "pat",
+                        });
                         if (profiles.length !== 0) {
                             items.push(
                                 {
@@ -203,7 +235,8 @@ export class LoginWizard {
             );
             const checkResult = await this.checkAuthProvider(
                 authProvider,
-                `profile '${pick.profile}'`
+                `profile '${pick.profile}'`,
+                input
             );
             if (checkResult) {
                 return checkResult;
@@ -219,13 +252,13 @@ export class LoginWizard {
         input: MultiStepInput,
         pick: AuthTypeQuickPickItem
     ) {
-        let initialValue = this.configModel.target ?? "";
+        let initialValue = this.target ?? "";
 
         // If the initialValue profile already exists, then create a unique name.
-        const profiles = await listProfiles(this.cliWrapper);
+        const profiles = await this.getProfiles();
         if (profiles.find((profile) => profile.name === initialValue)) {
             const suffix = randomUUID().slice(0, 8);
-            initialValue = `${this.configModel.target}-${suffix}`;
+            initialValue = `${this.target ?? "dev"}-${suffix}`;
         }
 
         const profileName = await input.showInputBox({
@@ -241,7 +274,6 @@ export class LoginWizard {
                         type: "error",
                     };
                 }
-                const profiles = await listProfiles(this.cliWrapper);
                 if (profiles.find((profile) => profile.name === value)) {
                     return {
                         message: `Profile ${value} already exists`,
@@ -256,7 +288,10 @@ export class LoginWizard {
             return;
         }
 
-        let authProvider: AzureCliAuthProvider | DatabricksCliAuthProvider;
+        let authProvider:
+            | AzureCliAuthProvider
+            | DatabricksCliAuthProvider
+            | PersonalAccessTokenAuthProvider;
         switch (pick.authType) {
             case "azure-cli":
                 authProvider = new AzureCliAuthProvider(this.state.host!);
@@ -269,6 +304,25 @@ export class LoginWizard {
                 );
                 break;
 
+            case "pat":
+                {
+                    const token = await collectTokenForPatAuth(
+                        this.state.host!,
+                        input,
+                        4,
+                        4
+                    );
+                    if (token === undefined) {
+                        // Token can never be undefined unless the users cancels the whole process.
+                        // Therefore, we can safely return here.
+                        return;
+                    }
+                    authProvider = new PersonalAccessTokenAuthProvider(
+                        this.state.host!,
+                        token
+                    );
+                }
+                break;
             default:
                 throw new Error(
                     `Unknown auth type: ${pick.authType} for profile creation`
@@ -277,48 +331,28 @@ export class LoginWizard {
 
         const checkResult = await this.checkAuthProvider(
             authProvider,
-            authProvider.describe()
+            authProvider.describe(),
+            input
         );
         if (checkResult) {
             return checkResult;
         }
 
-        // Create a new profile
-        const {path: configFilePath, iniFile} = await loadConfigFile(
-            workspaceConfigs.databrickscfgLocation
-        );
-        iniFile[profileName] = Object.fromEntries(
-            Object.entries(authProvider.toIni()).filter(
-                (kv) => kv[1] !== undefined
-            )
-        );
-
-        // Create a backup for .databrickscfg
-        const backup = path.join(
-            path.dirname(configFilePath),
-            ".databrickscfg.bak"
-        );
-        await copyFile(configFilePath, backup);
-        window.showInformationMessage(
-            `Created a backup for .databrickscfg at ${backup}`
-        );
-
-        // Write the new profile to .databrickscfg
-        await writeFile(configFilePath, ini.stringify(iniFile));
-
-        this.state.authProvider = new ProfileAuthProvider(
-            this.state.host!,
+        this.state.authProvider = await saveNewProfile(
             profileName,
-            true
+            authProvider
         );
     }
 
     static async run(
         cliWrapper: CliWrapper,
-        configModel: ConfigModel
+        target?: string,
+        host?: URL
     ): Promise<AuthProvider | undefined> {
-        const wizard = new LoginWizard(cliWrapper, configModel);
-        wizard.state.host = await configModel.get("host");
+        const wizard = new LoginWizard(cliWrapper, target);
+        if (host) {
+            wizard.state.host = host;
+        }
         await MultiStepInput.run(wizard.inputHost.bind(wizard));
         if (!wizard.state.host || !wizard.state.authProvider) {
             return;
@@ -326,6 +360,37 @@ export class LoginWizard {
 
         return wizard.state.authProvider;
     }
+}
+
+export async function saveNewProfile(
+    profileName: string,
+    authProvider: AuthProvider
+) {
+    const iniData = authProvider.toIni();
+    if (!iniData) {
+        throw new Error("Can't save empty auth provider to a profile");
+    }
+    const {path: configFilePath, iniFile} = await loadConfigFile(
+        workspaceConfigs.databrickscfgLocation
+    );
+    iniFile[profileName] = Object.fromEntries(
+        Object.entries(iniData).filter((kv) => kv[1] !== undefined)
+    );
+
+    // Create a backup for .databrickscfg
+    const backup = path.join(
+        path.dirname(configFilePath),
+        `.databrickscfg.${new Date().toISOString()}.bak`
+    );
+    await copyFile(configFilePath, backup);
+    window.showInformationMessage(
+        `Created a backup for .databrickscfg at ${backup}`
+    );
+
+    // Write the new profile to .databrickscfg
+    await writeFile(configFilePath, ini.stringify(iniFile));
+
+    return new ProfileAuthProvider(authProvider.host, profileName, true);
 }
 
 function humaniseSdkAuthType(sdkAuthType: string) {
@@ -350,18 +415,28 @@ function humaniseSdkAuthType(sdkAuthType: string) {
 }
 
 export async function listProfiles(cliWrapper: CliWrapper) {
-    const profiles = (
-        await cliWrapper.listProfiles(workspaceConfigs.databrickscfgLocation)
-    ).filter((profile) => {
-        try {
-            UrlUtils.normalizeHost(profile.host!.toString());
-            return true;
-        } catch (e) {
-            return false;
-        }
-    });
+    return await window.withProgress(
+        {
+            location: ProgressLocation.Notification,
+            title: "Loading Databricks profiles",
+        },
+        async () => {
+            const profiles = (
+                await cliWrapper.listProfiles(
+                    workspaceConfigs.databrickscfgLocation
+                )
+            ).filter((profile) => {
+                try {
+                    UrlUtils.normalizeHost(profile.host!.toString());
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            });
 
-    return profiles;
+            return profiles;
+        }
+    );
 }
 
 async function validateDatabricksHost(
@@ -399,4 +474,48 @@ function authMethodsForHostname(host: URL): Array<AuthType> {
     }
 
     return ["profile"];
+}
+
+async function collectTokenForPatAuth(
+    host: URL,
+    input: MultiStepInput,
+    step: number,
+    totalSteps: number
+) {
+    const token = await input.showQuickAutoComplete({
+        title: "Enter Personal Access Token",
+        step,
+        totalSteps,
+        validate: async (value) => {
+            if (value.length === 0) {
+                return {
+                    message: "Token cannot be empty",
+                    type: "error",
+                };
+            }
+        },
+        placeholder: "Enter Personal Access Token",
+        ignoreFocusOut: true,
+        shouldResume: async () => false,
+        items: [
+            {
+                label: "Create a new Personal Access Token",
+                detail: "Open the Databricks UI to create a new Personal Access Token",
+                alwaysShow: true,
+            },
+        ],
+    });
+
+    if (token === undefined) {
+        return;
+    }
+
+    if (token === "Create a new Personal Access Token") {
+        commands.executeCommand("databricks.utils.openExternal", {
+            url: `${host.toString()}settings/user/developer/access-tokens`,
+        });
+        return collectTokenForPatAuth(host, input, step, totalSteps);
+    }
+
+    return token;
 }

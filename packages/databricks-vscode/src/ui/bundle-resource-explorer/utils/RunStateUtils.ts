@@ -1,4 +1,5 @@
 import {ThemeColor, ThemeIcon} from "vscode";
+import {DateUtils} from "../../../utils";
 
 export type SimplifiedRunState =
     | "Terminated"
@@ -16,7 +17,7 @@ export function humaniseDate(timestamp?: number) {
         return undefined;
     }
     const date = new Date(timestamp);
-    return date.toLocaleString();
+    return DateUtils.toString(date);
 }
 
 export function humaniseDuration(ms?: number) {
@@ -59,7 +60,7 @@ export function getThemeIconForStatus(status: SimplifiedRunState): ThemeIcon {
             return new ThemeIcon("circle-slash");
         case "Success":
             return new ThemeIcon("check-all", new ThemeColor("charts.green"));
-        case "Unknown":
+        default:
             return new ThemeIcon("question");
     }
 }

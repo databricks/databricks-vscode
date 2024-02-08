@@ -20,13 +20,18 @@ import {
     SyncDestinationMapper,
 } from "../sync/SyncDestination";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {promptForClusterAttach, promptForClusterStart} from "./prompts";
+import {
+    promptForChangingTargetMode,
+    promptForClusterAttach,
+    promptForClusterStart,
+} from "./prompts";
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
 import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
-import {BundleCommands} from "../bundle/BundleCommands";
+import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
+import {ConfigModel} from "../configuration/models/ConfigModel";
 
 export interface OutputEvent {
     type: "prio" | "out" | "err";
@@ -93,6 +98,7 @@ export class DatabricksRuntime implements Disposable {
 
     constructor(
         private connection: ConnectionManager,
+        private readonly configModel: ConfigModel,
         private bundleCommands: BundleCommands,
         private context: ExtensionContext,
         private wsfsAccessVerifier: WorkspaceFsAccessVerifier
@@ -122,6 +128,11 @@ export class DatabricksRuntime implements Disposable {
             if (this.connection.state === "CONNECTING") {
                 log("Connecting to databricks...");
                 await this.cancellable(this.connection.waitForConnect());
+            }
+            const mode = await this.configModel.get("mode");
+            if (mode !== "development") {
+                promptForChangingTargetMode(mode);
+                return this._onErrorEmitter.fire(undefined);
             }
             const syncDestinationMapper = this.connection.syncDestinationMapper;
             if (syncDestinationMapper === undefined) {

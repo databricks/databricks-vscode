@@ -15,6 +15,7 @@ import {Cloud} from "../utils/constants";
 import {EnvVarGenerators, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
+import {quote} from "shell-quote";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -34,6 +35,14 @@ export interface ConfigEntry {
 }
 
 export type SyncType = "full" | "incremental";
+export class ProcessError extends Error {
+    constructor(
+        message: string,
+        public code: number | null
+    ) {
+        super(message);
+    }
+}
 
 async function waitForProcess(
     p: ChildProcessWithoutNullStreams,
@@ -62,7 +71,7 @@ async function waitForProcess(
             if (code === 0) {
                 resolve(output.join(""));
             } else {
-                reject(stderr.join(""));
+                reject(new ProcessError(stderr.join("\n"), code));
             }
         });
         p.on("error", reject);
@@ -228,7 +237,11 @@ export class CliWrapper {
     }
 
     public async getBundleSchema(): Promise<string> {
-        const {stdout} = await execFile(this.cliPath, ["bundle", "schema"]);
+        const {stdout} = await execFile(this.cliPath, [
+            "bundle",
+            "schema",
+            ...this.getLoggingArguments(),
+        ]);
         return stdout;
     }
 
@@ -247,6 +260,7 @@ export class CliWrapper {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
+                    ...this.getLogginEnvVars(),
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     DATABRICKS_CLUSTER_ID: this.clusterId,
                 },
@@ -272,6 +286,7 @@ export class CliWrapper {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
+                    ...this.getLogginEnvVars(),
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     DATABRICKS_CLUSTER_ID: this.clusterId,
                 },
@@ -284,6 +299,41 @@ export class CliWrapper {
         }
         return stdout;
     }
+
+    getBundleInitEnvVars(authProvider: AuthProvider) {
+        return removeUndefinedKeys({
+            ...EnvVarGenerators.getEnvVarsForCli(
+                workspaceConfigs.databrickscfgLocation
+            ),
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...this.getLogginEnvVars(),
+            ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            DATABRICKS_OUTPUT_FORMAT: "text",
+        });
+    }
+
+    async bundleInit(
+        templateDirPath: string,
+        outputDirPath: string,
+        initConfigFilePath: string,
+        authProvider: AuthProvider
+    ) {
+        return await execFile(
+            this.cliPath,
+            [
+                "bundle",
+                "init",
+                templateDirPath,
+                "--output-dir",
+                outputDirPath,
+                "--config-file",
+                initConfigFilePath,
+            ],
+            {env: this.getBundleInitEnvVars(authProvider)}
+        );
+    }
+
     async bundleDeploy(
         target: string,
         authProvider: AuthProvider,
@@ -292,28 +342,26 @@ export class CliWrapper {
         onStdOut?: (data: string) => void,
         onStdError?: (data: string) => void
     ) {
+        const cmd = [this.cliPath, "bundle", "deploy", "--target", target];
         if (onStdError) {
-            onStdError(`Deploying the bundle for target ${target}...\n\n`);
-            onStdError(`${this.cliPath} bundle deploy --target ${target}\n`);
+            onStdError(`Deploying the bundle for target ${target}...\n`);
             if (this.clusterId) {
                 onStdError(`DATABRICKS_CLUSTER_ID=${this.clusterId}\n\n`);
             }
+            onStdOut?.(quote(cmd) + "\n\n");
         }
-        const p = spawn(
-            this.cliPath,
-            ["bundle", "deploy", "--target", target],
-            {
-                cwd: workspaceFolder.fsPath,
-                env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
-                    ...EnvVarGenerators.getProxyEnvVars(),
-                    ...authProvider.toEnv(),
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    DATABRICKS_CLUSTER_ID: this.clusterId,
-                },
-                shell: true,
-            }
-        );
+        const p = spawn(cmd[0], cmd.slice(1), {
+            cwd: workspaceFolder.fsPath,
+            env: {
+                ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                ...EnvVarGenerators.getProxyEnvVars(),
+                ...authProvider.toEnv(),
+                ...this.getLogginEnvVars(),
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                DATABRICKS_CLUSTER_ID: this.clusterId,
+            },
+            shell: true,
+        });
 
         return await waitForProcess(p, onStdOut, onStdError);
     }
@@ -333,6 +381,7 @@ export class CliWrapper {
             ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
             ...EnvVarGenerators.getProxyEnvVars(),
             ...authProvider.toEnv(),
+            ...this.getLogginEnvVars(),
             // eslint-disable-next-line @typescript-eslint/naming-convention
             DATABRICKS_CLUSTER_ID: this.clusterId,
         });

@@ -26,16 +26,16 @@ export async function promptForClusterStart() {
     }
 }
 
-export async function promptForAttachingSyncDest() {
+export async function promptForChangingTargetMode(curMode: string | undefined) {
     const response = await window.showErrorMessage(
-        "Please configure a Sync Destination",
-        "Configure Sync Destination",
+        `Running is disabled for non development targets. Current target mode is ${curMode}.`,
+        "Change Target Mode",
         "Cancel"
     );
     switch (response) {
-        case "Configure Sync Destination":
+        case "Change Target Mode":
             await commands.executeCommand(
-                "databricks.connection.attachSyncDestination"
+                "databricks.connection.bundle.selectTarget"
             );
     }
 }

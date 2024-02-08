@@ -174,7 +174,19 @@ export class ConnectionManager implements Disposable {
         return this._workspaceClient?.apiClient;
     }
 
-    async resolveAuth() {
+    private async loginWithSavedAuth() {
+        const authProvider = await this.resolveAuth();
+        if (authProvider === undefined) {
+            await this.logout();
+            return;
+        }
+        await this.connect(authProvider);
+    }
+
+    @onError({popup: {prefix: "Failed to login."}})
+    @Mutex.synchronise("loginLogoutMutex")
+    private async resolveAuth() {
+        this.updateState("CONNECTING");
         const host = await this.configModel.get("host");
         const target = this.configModel.target;
         if (host === undefined || target === undefined) {
@@ -211,64 +223,52 @@ export class ConnectionManager implements Disposable {
         }
     }
 
-    @onError({
-        popup: {prefix: "Can't login with saved auth."},
-    })
-    private async loginWithSavedAuth() {
-        const authProvider = await this.resolveAuth();
-        if (authProvider === undefined) {
-            await this.logout();
-            return;
-        }
-        await this.login(authProvider);
-    }
-
-    private async login(authProvider: AuthProvider): Promise<void> {
-        if (!(await authProvider.check())) {
-            // We return without any state changes. This ensures that
-            // if users move from a working auth type to an invalid
-            // auth, the old auth will continue working and they will not
-            // have to re authenticate even the old one.
-            return;
-        }
-
+    private async connect(authProvider: AuthProvider): Promise<void> {
         try {
-            await this.loginLogoutMutex.synchronise(async () => {
-                this.updateState("CONNECTING");
-
-                const databricksWorkspace = await DatabricksWorkspace.load(
-                    authProvider.getWorkspaceClient(),
-                    authProvider
-                );
-                this._databricksWorkspace = databricksWorkspace;
-                this._workspaceClient = authProvider.getWorkspaceClient();
-
-                await this._databricksWorkspace.optionalEnableFilesInReposPopup(
-                    this._workspaceClient
-                );
-
-                await this.updateSyncDestinationMapper();
-                await this.updateClusterManager();
-                await this.configModel.set(
-                    "authProfile",
-                    authProvider.toJSON().profile as string | undefined
-                );
-                await this.configModel.setAuthProvider(authProvider);
-                await this._metadataService.setApiClient(this.apiClient);
-                this.updateState("CONNECTED");
-            });
+            await window.withProgress(
+                {
+                    location: {viewId: "configurationView"},
+                    title: "Connecting to the workspace",
+                },
+                () => this._connect(authProvider)
+            );
         } catch (e) {
-            NamedLogger.getOrCreate("Extension").error(`Login failed`, e);
+            NamedLogger.getOrCreate("Extension").error(
+                `Can't connect to the workspace`,
+                e
+            );
             if (e instanceof Error) {
                 await window.showWarningMessage(
-                    `Login failed with error: "${e.message}"."`
+                    `Can't connect to the workspace: "${e.message}"."`
                 );
             }
             await this.logout();
         }
     }
 
-    @onError({popup: {prefix: "Can't logout"}})
+    @Mutex.synchronise("loginLogoutMutex")
+    private async _connect(authProvider: AuthProvider) {
+        this.updateState("CONNECTING");
+        this._databricksWorkspace = await DatabricksWorkspace.load(
+            authProvider.getWorkspaceClient(),
+            authProvider
+        );
+        this._workspaceClient = authProvider.getWorkspaceClient();
+        await this._databricksWorkspace.optionalEnableFilesInReposPopup(
+            this._workspaceClient
+        );
+        await this.configModel.set(
+            "authProfile",
+            authProvider.toJSON().profile as string | undefined
+        );
+        await this.configModel.setAuthProvider(authProvider);
+        await this.updateSyncDestinationMapper();
+        await this.updateClusterManager();
+        await this._metadataService.setApiClient(this.apiClient);
+        this.updateState("CONNECTED");
+    }
+
+    @onError({popup: {prefix: "Can't logout."}})
     @Mutex.synchronise("loginLogoutMutex")
     async logout() {
         this._workspaceClient = undefined;
@@ -277,6 +277,7 @@ export class ConnectionManager implements Disposable {
         await this.updateSyncDestinationMapper();
         if (this.configModel.target !== undefined) {
             await this.configModel.set("authProfile", undefined);
+            await this.configModel.setAuthProvider(undefined);
         }
         this.updateState("DISCONNECTED");
     }
@@ -285,12 +286,15 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Can't configure workspace. "},
     })
     async configureLogin() {
-        const authProvider = await LoginWizard.run(this.cli, this.configModel);
+        const authProvider = await LoginWizard.run(
+            this.cli,
+            this.configModel.target,
+            await this.configModel.get("host")
+        );
         if (!authProvider) {
             return;
         }
-
-        await this.login(authProvider);
+        await this.connect(authProvider);
     }
 
     @onError({

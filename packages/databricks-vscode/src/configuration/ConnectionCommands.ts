@@ -67,7 +67,15 @@ export class ConnectionCommands implements Disposable {
     }
 
     async configureLoginCommand() {
-        await this.connectionManager.configureLogin();
+        await window.withProgress(
+            {
+                location: {viewId: "configurationView"},
+                title: "Configuring Databricks login",
+            },
+            async () => {
+                await this.connectionManager.configureLogin();
+            }
+        );
     }
 
     openDatabricksConfigFileCommand() {

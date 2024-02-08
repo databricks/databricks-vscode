@@ -2,6 +2,7 @@
 import {
     JobsError,
     JobsRetriableError,
+    Run,
 } from "@databricks/databricks-sdk/dist/apis/jobs";
 import {Event, EventEmitter} from "vscode";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
@@ -10,7 +11,7 @@ import {BundleRunStatus} from "./BundleRunStatus";
 
 export class JobRunStatus extends BundleRunStatus {
     readonly type = "jobs";
-
+    data: Run | undefined;
     private readonly onDidCompleteEmitter = new EventEmitter<void>();
     onDidComplete: Event<void> = this.onDidCompleteEmitter.event;
 

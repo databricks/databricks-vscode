@@ -1,6 +1,5 @@
 import {debug, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {promptForAttachingSyncDest} from "./prompts";
 import {FileUtils} from "../utils";
 import {LocalUri} from "../sync/SyncDestination";
 
@@ -54,8 +53,9 @@ export class RunCommands {
                 }
 
                 if (this.connection.syncDestinationMapper === undefined) {
-                    promptForAttachingSyncDest();
-                    return;
+                    throw new Error(
+                        "No sync destination found. Maybe the databricks.yml is misconfgured."
+                    );
                 }
 
                 await debug.startDebugging(

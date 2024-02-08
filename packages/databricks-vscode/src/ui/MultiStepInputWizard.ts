@@ -71,7 +71,7 @@ interface InputBoxParameters {
     totalSteps: number;
     placeholder: string;
     initialValue?: string;
-    validate: (
+    validate?: (
         value: string
     ) => Promise<string | undefined | ValidationMessageType>;
     buttons?: QuickInputButton[];
@@ -86,6 +86,13 @@ export class MultiStepInput {
 
     private current?: QuickInput;
     private steps: InputStep[] = [];
+
+    public hide() {
+        this.current?.hide();
+    }
+    public show() {
+        this.current?.show();
+    }
 
     private async stepThrough(start: InputStep) {
         let step: InputStep | void = start;
