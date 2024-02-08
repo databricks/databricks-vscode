@@ -85,10 +85,10 @@ export abstract class AuthProvider {
     }
     protected abstract getSdkConfig(): Config;
 
-    static async fromJSON(
+    static fromJSON(
         json: Record<string, any>,
         databricksPath: string
-    ): Promise<AuthProvider> {
+    ): AuthProvider {
         const host =
             json.host instanceof URL
                 ? json.host

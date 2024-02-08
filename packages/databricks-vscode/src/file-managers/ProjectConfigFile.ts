@@ -77,7 +77,7 @@ export class ProjectConfigFile {
         if (!config.authType && config.profile) {
             authProvider = await this.importOldConfig(config);
         } else {
-            authProvider = await AuthProvider.fromJSON(config, cliPath);
+            authProvider = AuthProvider.fromJSON(config, cliPath);
         }
         return new ProjectConfigFile(
             {
