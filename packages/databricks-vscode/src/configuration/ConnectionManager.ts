@@ -204,9 +204,8 @@ export class ConnectionManager implements Disposable {
         }
 
         // Try to load any parameters that are hard coded in the bundle
-        const bundleAuthParams = await this.configModel.get(
-            "preValidateConfig"
-        );
+        const bundleAuthParams =
+            await this.configModel.get("preValidateConfig");
         if (bundleAuthParams?.authParams !== undefined) {
             throw new Error("Bundle auth params not implemented");
         }
