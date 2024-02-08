@@ -719,7 +719,7 @@
         "@wdio/mocha-framework": "^8.12.1",
         "@wdio/spec-reporter": "^8.12.2",
         "@wdio/types": "^8.10.4",
-        "chai": "^4.3.7",
+        "chai": "^5.0.3",
         "esbuild": "^0.19.4",
         "eslint": "^8.51.0",
         "fs-extra": "^11.1.1",
