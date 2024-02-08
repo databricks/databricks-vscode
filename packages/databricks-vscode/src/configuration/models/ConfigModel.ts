@@ -131,9 +131,6 @@ export class ConfigModel implements Disposable {
             }),
             this.bundlePreValidateModel.onDidChange(async () => {
                 await this.readTarget();
-                // We fire the target change emitter because auth info might have changed,
-                // which we handle exactly the same way as a target change.
-                this.onDidChangeTargetEmitter.fire();
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
