@@ -415,12 +415,12 @@
                 },
                 {
                     "command": "databricks.cluster.stop",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.(running|pending)$/",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.*\\.(running|pending).*$/",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.cluster.start",
-                    "when": "view == configurationView && viewItem == databricks.configuration.cluster.terminated",
+                    "when": "view == configurationView && viewItem =~ /databricks.configuration.cluster.*\\.terminated.*/",
                     "group": "inline@0"
                 },
                 {
