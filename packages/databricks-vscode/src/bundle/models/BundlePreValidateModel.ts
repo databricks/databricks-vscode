@@ -1,6 +1,6 @@
 import {Uri} from "vscode";
 import {BundleFileSet, BundleWatcher} from "..";
-import {BundleTarget} from "../types";
+import {BundleSchema, BundleTarget} from "../types";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {UrlUtils} from "../../utils";
 import {Mutex} from "../../locking";
@@ -34,14 +34,12 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
 
     get targets() {
         return (async () => {
-            const targets = Object.assign(
-                {},
-                (await this.bundleFileSet.bundleDataCache.value).targets ?? {}
-            );
+            const bundle = await this.bundleFileSet.bundleDataCache.value;
+            const targets = Object.assign({}, bundle.targets ?? {});
 
             await Promise.all(
                 Object.keys(targets ?? {}).map(async (key) => {
-                    targets[key] = await this.getRawTargetData(key);
+                    targets[key] = this.getRawTargetData(bundle, key);
                 })
             );
             return targets;
@@ -78,8 +76,7 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
             : undefined;
     }
 
-    private async getRawTargetData(target: string) {
-        const bundle = await this.bundleFileSet.bundleDataCache.value;
+    private getRawTargetData(bundle: BundleSchema, target: string) {
         const targetObject = Object.assign({}, bundle?.targets?.[target]);
         const globalWorkspace = Object.assign({}, bundle?.workspace);
         if (targetObject !== undefined) {
@@ -97,9 +94,10 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
             return {};
         }
 
+        const bundle = await this.bundleFileSet.bundleDataCache.value;
         return (
             this.readStateFromTarget(
-                await this.getRawTargetData(this.target)
+                this.getRawTargetData(bundle, this.target)
             ) ?? {}
         );
     }
