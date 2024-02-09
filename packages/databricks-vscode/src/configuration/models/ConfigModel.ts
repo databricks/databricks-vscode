@@ -2,7 +2,7 @@ import {Disposable, EventEmitter, Uri, Event} from "vscode";
 import {Mutex} from "../../locking";
 import {CachedValue} from "../../locking/CachedValue";
 import {StateStorage} from "../../vscode-objs/StateStorage";
-import {onError, withOnErrorHandler} from "../../utils/onErrorDecorator";
+import {onError} from "../../utils/onErrorDecorator";
 import {AuthProvider} from "../auth/AuthProvider";
 import {
     OverrideableConfigModel,
@@ -125,12 +125,10 @@ export class ConfigModel implements Disposable {
         private readonly stateStorage: StateStorage
     ) {
         this.disposables.push(
-            this.overrideableConfigModel.onDidChange(
-                withOnErrorHandler(async () => {
-                    //refresh cache to trigger onDidChange event
-                    await this.configCache.refresh();
-                })
-            ),
+            this.overrideableConfigModel.onDidChange(async () => {
+                //refresh cache to trigger onDidChange event
+                await this.configCache.refresh();
+            }),
             this.bundlePreValidateModel.onDidChange(async () => {
                 await this.readTarget();
                 //refresh cache to trigger onDidChange event

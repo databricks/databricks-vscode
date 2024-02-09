@@ -6,7 +6,7 @@ import {
 } from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 
-interface OnErrorProps {
+interface Props {
     popup?: {
         prefix?: string;
     };
@@ -17,17 +17,17 @@ interface OnErrorProps {
     throw?: boolean;
 }
 
-type Props = {
-    [key in keyof OnErrorProps]?: OnErrorProps[key] | boolean;
+export type OnErrorProps = {
+    [key in keyof Props]?: Props[key] | boolean;
 };
 
-const defaultProps: Props = {
+const defaultProps: OnErrorProps = {
     popup: false,
     log: true,
     throw: false,
 };
 
-export function onError(props: Props) {
+export function onError(props: OnErrorProps) {
     props = {...defaultProps, ...props};
     return function showErrorDecorator(
         target: any,
@@ -74,11 +74,11 @@ export function onError(props: Props) {
 
 export function withOnErrorHandler<T extends any[], U>(
     fn: (...args: T) => Promise<U>,
-    props: Props = {}
+    props: OnErrorProps = {}
 ) {
     props = {...defaultProps, ...props};
 
-    const onErrorProps: OnErrorProps = {};
+    const onErrorProps: Props = {};
 
     (["popup", "log"] as const).forEach((key) => {
         if (props[key] === undefined || props[key] === false) {

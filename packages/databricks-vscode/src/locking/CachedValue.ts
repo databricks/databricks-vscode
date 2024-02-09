@@ -1,6 +1,7 @@
 import {EventEmitter, Disposable} from "vscode";
 import {Mutex} from ".";
 import lodash from "lodash";
+import {EventEmitterWithErrorHandler} from "../utils/EventWithErrorHandler";
 
 export class CachedValue<T> implements Disposable {
     private disposables: Disposable[] = [];
@@ -8,10 +9,10 @@ export class CachedValue<T> implements Disposable {
     private _value: T | null = null;
     private _dirty = true;
     private readonly mutex = new Mutex();
-    private readonly onDidChangeEmitter = new EventEmitter<{
+    private readonly onDidChangeEmitter = new EventEmitterWithErrorHandler<{
         oldValue: T | null;
         newValue: T;
-    }>();
+    }>({log: true, throw: false});
     public readonly onDidChange = this.onDidChangeEmitter.event;
 
     constructor(private readonly getter: () => Promise<T>) {
