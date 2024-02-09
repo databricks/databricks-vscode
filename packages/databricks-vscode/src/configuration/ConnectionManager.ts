@@ -208,15 +208,17 @@ export class ConnectionManager implements Disposable {
             ?.authProfile;
         if (savedProfile !== undefined) {
             const authProvider = await ProfileAuthProvider.from(savedProfile);
-            if (authProvider.host === host && (await authProvider.check())) {
+            if (
+                authProvider.host.toString() === host.toString() &&
+                (await authProvider.check())
+            ) {
                 return authProvider;
             }
         }
 
         // Try to load any parameters that are hard coded in the bundle
-        const bundleAuthParams = await this.configModel.get(
-            "preValidateConfig"
-        );
+        const bundleAuthParams =
+            await this.configModel.get("preValidateConfig");
         if (bundleAuthParams?.authParams !== undefined) {
             throw new Error("Bundle auth params not implemented");
         }
