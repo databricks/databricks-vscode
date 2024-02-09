@@ -42,7 +42,7 @@ export class ConfigurationDataProvider
         private readonly configModel: ConfigModel
     ) {
         this.disposables.push(
-            this.bundleProjectManager.onDidChangeStatus(() => {
+            this.bundleProjectManager.onDidChangeStatus(async () => {
                 this._onDidChangeTreeData.fire();
             }),
             ...this.components,
