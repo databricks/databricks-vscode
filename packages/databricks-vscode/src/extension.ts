@@ -71,6 +71,7 @@ export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
     customWhenContext.setActivated(false);
+    customWhenContext.setDeploymentState("idle");
 
     if (extensions.getExtension("databricks.databricks-vscode") !== undefined) {
         await commands.executeCommand(
@@ -548,7 +549,8 @@ export async function activate(
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
         bundleRunStatusManager,
-        bundleValidateModel
+        bundleValidateModel,
+        customWhenContext
     );
     const decorationProvider = new TreeItemDecorationProvider(
         bundleResourceExplorerTreeDataProvider,
