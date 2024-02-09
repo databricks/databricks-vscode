@@ -166,10 +166,7 @@ export abstract class AuthProvider {
 
 export class ProfileAuthProvider extends AuthProvider {
     static async from(profile: string, checked = false) {
-        const host = await new WorkspaceClient(
-            ProfileAuthProvider.getSdkConfig(profile)
-        ).apiClient.config.getHost();
-
+        const host = await ProfileAuthProvider.getSdkConfig(profile).getHost();
         return new ProfileAuthProvider(host, profile, checked);
     }
 

@@ -1,9 +1,10 @@
 import {Uri} from "vscode";
 import {BundleFileSet, BundleWatcher} from "..";
-import {BundleTarget} from "../types";
+import {BundleSchema, BundleTarget} from "../types";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {UrlUtils} from "../../utils";
 import {Mutex} from "../../locking";
+import * as lodash from "lodash";
 
 export type BundlePreValidateState = {
     host?: URL;
@@ -32,9 +33,16 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
     }
 
     get targets() {
-        return this.bundleFileSet.bundleDataCache.value.then(
-            (data) => data?.targets
-        );
+        return (async () => {
+            const bundle = await this.bundleFileSet.bundleDataCache.value;
+            const targets = Object.assign({}, bundle.targets ?? {});
+
+            Object.keys(targets ?? {}).map((key) => {
+                targets[key] = this.getRawTargetData(bundle, key);
+            });
+
+            return targets;
+        })();
     }
 
     get defaultTarget() {
@@ -67,16 +75,30 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
             : undefined;
     }
 
+    private getRawTargetData(bundle: BundleSchema, target: string) {
+        const targetObject = Object.assign({}, bundle?.targets?.[target]);
+        const globalWorkspace = Object.assign({}, bundle?.workspace);
+        if (targetObject !== undefined) {
+            targetObject.workspace = lodash.merge(
+                globalWorkspace ?? {},
+                targetObject.workspace
+            );
+        }
+        return targetObject;
+    }
+
     @Mutex.synchronise("mutex")
     protected async readState() {
         if (this.target === undefined) {
             return {};
         }
 
-        const targetObject = (await this.bundleFileSet.bundleDataCache.value)
-            .targets?.[this.target];
-
-        return this.readStateFromTarget(targetObject) ?? {};
+        const bundle = await this.bundleFileSet.bundleDataCache.value;
+        return (
+            this.readStateFromTarget(
+                this.getRawTargetData(bundle, this.target)
+            ) ?? {}
+        );
     }
 
     public async getFileToWrite(key: string) {
