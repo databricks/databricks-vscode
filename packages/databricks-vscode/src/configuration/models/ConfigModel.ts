@@ -137,7 +137,7 @@ export class ConfigModel implements Disposable {
             ...TOP_LEVEL_VALIDATE_CONFIG_KEYS.map((key) =>
                 this.bundleValidateModel.onDidChangeKey(key)(async () => {
                     //refresh cache to trigger onDidChange event
-                    this.configCache.refresh();
+                    await this.configCache.refresh();
                 })
             ),
             this.bundleRemoteStateModel.onDidChange(async () => {
