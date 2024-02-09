@@ -1,4 +1,4 @@
-import {Uri} from "vscode";
+import {Uri, EventEmitter} from "vscode";
 import {BundleWatcher} from "../BundleWatcher";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {Mutex} from "../../locking";
@@ -17,6 +17,16 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
     private target: string | undefined;
     private authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
+
+    private readonly stdoutEmitter = new EventEmitter<string>();
+    private readonly stderrEmitter = new EventEmitter<string>();
+    private readonly errorEmitter = new EventEmitter<unknown>();
+
+    refreshCliListeners = {
+        onStdout: this.stdoutEmitter.event,
+        onStderr: this.stderrEmitter.event,
+        onError: this.errorEmitter.event,
+    };
 
     constructor(
         private readonly bundleWatcher: BundleWatcher,
@@ -56,14 +66,22 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
             return {};
         }
 
-        const validateOutput = JSON.parse(
-            await this.cli.bundleValidate(
+        let cliOutput: string;
+        try {
+            cliOutput = await this.cli.bundleValidate(
                 this.target,
                 this.authProvider,
                 this.workspaceFolder,
-                workspaceConfigs.databrickscfgLocation
-            )
-        ) as BundleTarget;
+                workspaceConfigs.databrickscfgLocation,
+                (data) => this.stdoutEmitter.fire(data),
+                (data) => this.stderrEmitter.fire(data)
+            );
+        } catch (e) {
+            this.errorEmitter.fire(e);
+            return {};
+        }
+
+        const validateOutput = JSON.parse(cliOutput) as BundleTarget;
 
         return {
             clusterId: validateOutput?.bundle?.compute_id,

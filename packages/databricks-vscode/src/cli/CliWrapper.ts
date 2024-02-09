@@ -249,55 +249,82 @@ export class CliWrapper {
         target: string,
         authProvider: AuthProvider,
         workspaceFolder: Uri,
-        configfilePath?: string
+        configfilePath?: string,
+        onStdOut?: (data: string) => void,
+        onStdError?: (data: string) => void
     ) {
-        const {stdout} = await execFile(
-            this.cliPath,
-            ["bundle", "validate", "--target", target],
-            {
-                cwd: workspaceFolder.fsPath,
-                env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
-                    ...EnvVarGenerators.getProxyEnvVars(),
-                    ...authProvider.toEnv(),
-                    ...this.getLogginEnvVars(),
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    DATABRICKS_CLUSTER_ID: this.clusterId,
-                },
-                shell: true,
-            }
-        );
+        onStdError?.("\nValidating the bundle...\n");
 
-        return stdout;
+        try {
+            const {stdout} = await execFile(
+                this.cliPath,
+                ["bundle", "validate", "--target", target],
+                {
+                    cwd: workspaceFolder.fsPath,
+                    env: {
+                        ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                        ...EnvVarGenerators.getProxyEnvVars(),
+                        ...authProvider.toEnv(),
+                        ...this.getLogginEnvVars(),
+                        // eslint-disable-next-line @typescript-eslint/naming-convention
+                        DATABRICKS_CLUSTER_ID: this.clusterId,
+                    },
+                    shell: true,
+                }
+            );
+
+            onStdError?.("Bundle validated.\n");
+            return stdout;
+        } catch (e: any) {
+            if (e.stderr) {
+                onStdError?.(e.stderr);
+            }
+            if (e.stdout) {
+                onStdOut?.(e.stdout);
+            }
+            throw e;
+        }
     }
 
     async bundleSummarise(
         target: string,
         authProvider: AuthProvider,
         workspaceFolder: Uri,
-        configfilePath?: string
+        configfilePath?: string,
+        onStdOut?: (data: string) => void,
+        onStdError?: (data: string) => void
     ) {
-        const {stdout, stderr} = await execFile(
-            this.cliPath,
-            ["bundle", "summary", "--target", target],
-            {
-                cwd: workspaceFolder.fsPath,
-                env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
-                    ...EnvVarGenerators.getProxyEnvVars(),
-                    ...authProvider.toEnv(),
-                    ...this.getLogginEnvVars(),
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    DATABRICKS_CLUSTER_ID: this.clusterId,
-                },
-                shell: true,
-            }
-        );
+        onStdError?.("\nSummarising the bundle...\n");
 
-        if (stderr !== "") {
-            throw new Error(stderr);
+        try {
+            const {stdout} = await execFile(
+                this.cliPath,
+                ["bundle", "summary", "--target", target],
+                {
+                    cwd: workspaceFolder.fsPath,
+                    env: {
+                        ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                        ...EnvVarGenerators.getProxyEnvVars(),
+                        ...authProvider.toEnv(),
+                        ...this.getLogginEnvVars(),
+                        // eslint-disable-next-line @typescript-eslint/naming-convention
+                        DATABRICKS_CLUSTER_ID: this.clusterId,
+                    },
+                    shell: true,
+                }
+            );
+
+            onStdError?.("Finished summarising the bundle.\n");
+            return stdout;
+        } catch (e: any) {
+            if (e.stderr) {
+                onStdError?.(e.stderr);
+            }
+            if (e.stdout) {
+                onStdOut?.(e.stdout);
+            }
+            throw e;
         }
-        return stdout;
     }
 
     getBundleInitEnvVars(authProvider: AuthProvider) {

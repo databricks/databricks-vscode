@@ -36,10 +36,41 @@ export class BundleCommands implements Disposable {
             this.outputChannel,
             this.bundleValidateModel.onDidChange(async () => {
                 await this.refreshRemoteState();
-            })
+            }),
+            this.bundleRemoteStateModel.refreshCliListeners.onStderr(
+                this.writeToChannel.bind(this)
+            ),
+            this.bundleRemoteStateModel.refreshCliListeners.onStdout(
+                this.writeToChannel.bind(this)
+            ),
+            this.bundleRemoteStateModel.refreshCliListeners.onError(
+                this.showLogsMessage.bind(this)
+            ),
+            this.bundleValidateModel.refreshCliListeners.onStderr(
+                this.writeToChannel.bind(this)
+            ),
+            this.bundleValidateModel.refreshCliListeners.onStdout(
+                this.writeToChannel.bind(this)
+            ),
+            this.bundleValidateModel.refreshCliListeners.onError(
+                this.showLogsMessage.bind(this)
+            )
         );
     }
 
+    private async showLogsMessage(e: unknown) {
+        if (e instanceof Error) {
+            this.writeToChannel(e.message);
+        }
+
+        const choice = await window.showErrorMessage(
+            "Error refreshing bundle state",
+            "Show logs"
+        );
+        if (choice === "Show logs") {
+            this.outputChannel.show();
+        }
+    }
     private refreshStateMutex = new Mutex();
 
     @Mutex.synchronise("refreshStateMutex")
@@ -74,10 +105,7 @@ export class BundleCommands implements Disposable {
         await window.withProgress(
             {location: ProgressLocation.Notification, cancellable: false},
             async () => {
-                await this.bundleRemoteStateModel.deploy(
-                    this.writeToChannel,
-                    this.writeToChannel
-                );
+                await this.bundleRemoteStateModel.deploy();
             }
         );
 
