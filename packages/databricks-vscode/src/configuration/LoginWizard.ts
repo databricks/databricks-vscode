@@ -100,17 +100,17 @@ export class LoginWizard {
 
     private async checkAuthProvider(
         authProvider: AuthProvider,
-        authDescription: string,
         input: MultiStepInput
     ): Promise<InputStep | undefined> {
         //Hide the input and let the check show it's own messages and UI.
         input.hide();
         if (await authProvider.check()) {
+            input.show();
             return;
         }
 
         const choice = await window.showErrorMessage(
-            `Authentication using ${authDescription} failed.`,
+            `Authentication using ${authProvider.describe()} failed.`,
             "Select a different auth method",
             "Cancel"
         );
@@ -228,16 +228,10 @@ export class LoginWizard {
         }
 
         if (pick.profile !== undefined) {
-            // We assume that the profile is setup correctly (even for the auth types that have a deeper integration with vscode such as azure-cli).
-            // To fix errors, users can create a new profile.
             const authProvider = await ProfileAuthProvider.from(pick.profile);
-            const checkResult = await this.checkAuthProvider(
-                authProvider,
-                `profile '${pick.profile}'`,
-                input
-            );
-            if (checkResult) {
-                return checkResult;
+            const nextStep = await this.checkAuthProvider(authProvider, input);
+            if (nextStep) {
+                return nextStep;
             }
             this.state.authProvider = authProvider;
             return;
@@ -327,11 +321,7 @@ export class LoginWizard {
                 );
         }
 
-        const checkResult = await this.checkAuthProvider(
-            authProvider,
-            authProvider.describe(),
-            input
-        );
+        const checkResult = await this.checkAuthProvider(authProvider, input);
         if (checkResult) {
             return checkResult;
         }
