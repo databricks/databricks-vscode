@@ -7,6 +7,7 @@ import {Mutex} from "../../locking";
 import {BundleValidateModel} from "../../bundle/models/BundleValidateModel";
 import {PipelineTreeNode} from "./PipelineTreeNode";
 import {JobTreeNode} from "./JobTreeNode";
+import {CustomWhenContext} from "../../vscode-objs/CustomWhenContext";
 
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
@@ -30,7 +31,8 @@ export class BundleCommands implements Disposable {
     constructor(
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly bundleRunStatusManager: BundleRunStatusManager,
-        private readonly bundleValidateModel: BundleValidateModel
+        private readonly bundleValidateModel: BundleValidateModel,
+        private readonly whenContext: CustomWhenContext
     ) {
         this.disposables.push(
             this.outputChannel,
@@ -101,15 +103,19 @@ export class BundleCommands implements Disposable {
 
     @Mutex.synchronise("deployMutex")
     async deploy() {
-        this.prepareOutputChannel();
-        await window.withProgress(
-            {location: ProgressLocation.Notification, cancellable: false},
-            async () => {
-                await this.bundleRemoteStateModel.deploy();
-            }
-        );
-
-        await this.refreshRemoteState();
+        try {
+            this.whenContext.setDeploymentState("deploying");
+            this.prepareOutputChannel();
+            await window.withProgress(
+                {location: ProgressLocation.Notification, cancellable: false},
+                async () => {
+                    await this.bundleRemoteStateModel.deploy();
+                }
+            );
+            await this.refreshRemoteState();
+        } finally {
+            this.whenContext.setDeploymentState("idle");
+        }
     }
 
     async deployCommand() {

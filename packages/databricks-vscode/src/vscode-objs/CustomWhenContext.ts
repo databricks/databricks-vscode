@@ -19,6 +19,14 @@ export class CustomWhenContext {
         );
     }
 
+    setDeploymentState(value: "idle" | "deploying") {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.bundle.deploymentState",
+            value
+        );
+    }
+
     isTargetSet(value: boolean) {
         commands.executeCommand(
             "setContext",
