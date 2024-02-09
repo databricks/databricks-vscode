@@ -37,11 +37,10 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
             const bundle = await this.bundleFileSet.bundleDataCache.value;
             const targets = Object.assign({}, bundle.targets ?? {});
 
-            await Promise.all(
-                Object.keys(targets ?? {}).map(async (key) => {
-                    targets[key] = this.getRawTargetData(bundle, key);
-                })
-            );
+            Object.keys(targets ?? {}).map((key) => {
+                targets[key] = this.getRawTargetData(bundle, key);
+            });
+
             return targets;
         })();
     }
