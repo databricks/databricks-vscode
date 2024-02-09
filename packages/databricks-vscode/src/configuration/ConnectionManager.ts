@@ -123,22 +123,31 @@ export class ConnectionManager implements Disposable {
         return this._metadataService.url;
     }
 
-    public async init() {
-        await this.loginWithSavedAuth();
+    private _host: URL | undefined;
 
-        this.disposables.push(
-            this.configModel.onDidChangeKey("remoteRootPath")(
-                this.updateSyncDestinationMapper,
-                this
-            ),
-            this.configModel.onDidChangeKey("clusterId")(
-                this.updateClusterManager,
-                this
-            ),
-            this.configModel.onDidChangeTarget(this.loginWithSavedAuth, this)
-            // TODO: We don't react to changes in authProfile from the config model. We instead listen to changes
-            // in individual models to react to (Overrides and BundlePreValidate)
-        );
+    public async init() {
+        try {
+            await this.loginWithSavedAuth();
+        } finally {
+            this.disposables.push(
+                this.configModel.onDidChangeKey("remoteRootPath")(
+                    this.updateSyncDestinationMapper,
+                    this
+                ),
+                this.configModel.onDidChangeKey("clusterId")(
+                    this.updateClusterManager,
+                    this
+                ),
+                // Don't listen to target change for logging in. Explictly listen for changes in the keys we care about.
+                // We don't have to listen to changes in authProfile as it's set by the login method and we don't respect other
+                // user changes.
+                // TODO: start listening to changes in authParams
+                this.configModel.onDidChangeKey("host")(
+                    this.loginWithSavedAuth,
+                    this
+                )
+            );
+        }
     }
 
     get state(): ConnectionState {
@@ -198,15 +207,16 @@ export class ConnectionManager implements Disposable {
         const savedProfile = (await this.configModel.get("overrides"))
             ?.authProfile;
         if (savedProfile !== undefined) {
-            const authProvider = new ProfileAuthProvider(host, savedProfile);
-            if (await authProvider.check()) {
+            const authProvider = await ProfileAuthProvider.from(savedProfile);
+            if (authProvider.host === host && (await authProvider.check())) {
                 return authProvider;
             }
         }
 
         // Try to load any parameters that are hard coded in the bundle
-        const bundleAuthParams =
-            await this.configModel.get("preValidateConfig");
+        const bundleAuthParams = await this.configModel.get(
+            "preValidateConfig"
+        );
         if (bundleAuthParams?.authParams !== undefined) {
             throw new Error("Bundle auth params not implemented");
         }
@@ -218,7 +228,7 @@ export class ConnectionManager implements Disposable {
         if (profiles.length !== 1) {
             return;
         }
-        const authProvider = new ProfileAuthProvider(host, profiles[0].name);
+        const authProvider = await ProfileAuthProvider.from(profiles[0].name);
         if (await authProvider.check()) {
             return authProvider;
         }
@@ -239,7 +249,7 @@ export class ConnectionManager implements Disposable {
                 e
             );
             if (e instanceof Error) {
-                await window.showWarningMessage(
+                window.showWarningMessage(
                     `Can't connect to the workspace: "${e.message}"."`
                 );
             }
