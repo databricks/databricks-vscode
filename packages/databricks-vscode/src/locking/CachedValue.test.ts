@@ -35,7 +35,7 @@ describe(__filename, () => {
         getterSpy.value = "test2";
         expect(getterSpy.callCount).to.equal(1);
 
-        await st.invalidate();
+        st.invalidate();
         expect(await st.value).to.equal("test2");
         expect(getterSpy.callCount).to.equal(2);
     });

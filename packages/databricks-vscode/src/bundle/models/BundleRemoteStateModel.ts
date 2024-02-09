@@ -8,6 +8,7 @@ import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
+
 /* eslint-disable @typescript-eslint/naming-convention */
 export type BundleResourceModifiedStatus = "created" | "deleted" | "updated";
 export type BundleRemoteState = BundleTarget & {
