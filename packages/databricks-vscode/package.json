@@ -264,6 +264,7 @@
             },
             {
                 "command": "databricks.bundle.initNewProject",
+                "icon": "$(new-folder)",
                 "title": "Initialize new project",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
@@ -336,11 +337,6 @@
         ],
         "menus": {
             "view/title": [
-                {
-                    "command": "databricks.connection.configureLogin",
-                    "when": "view == configurationView && databricks.context.bundle.deploymentState == idle",
-                    "group": "navigation@3"
-                },
                 {
                     "command": "databricks.quickstart.open",
                     "when": "view == configurationView"
@@ -419,12 +415,12 @@
                 },
                 {
                     "command": "databricks.cluster.stop",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.(running|pending)$/ && databricks.context.bundle.deploymentState == idle",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.*\\.(running|pending).*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.cluster.start",
-                    "when": "view == configurationView && viewItem == databricks.configuration.cluster.terminated && databricks.context.bundle.deploymentState == idle",
+                    "when": "view == configurationView && viewItem =~ /databricks.configuration.cluster.*\\.terminated.*/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
                 },
                 {

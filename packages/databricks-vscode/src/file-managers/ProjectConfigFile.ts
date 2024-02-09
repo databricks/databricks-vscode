@@ -5,8 +5,6 @@ import {
     ProfileAuthProvider,
 } from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
-import {Config} from "@databricks/databricks-sdk";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export interface ProjectConfig {
     authProvider: AuthProvider;
@@ -48,20 +46,7 @@ export class ProjectConfigFile {
     }
 
     static async importOldConfig(config: any): Promise<ProfileAuthProvider> {
-        const sdkConfig = new Config({
-            profile: config.profile,
-            configFile:
-                workspaceConfigs.databrickscfgLocation ??
-                process.env.DATABRICKS_CONFIG_FILE,
-            env: {},
-        });
-
-        await sdkConfig.ensureResolved();
-
-        return new ProfileAuthProvider(
-            new URL(sdkConfig.host!),
-            sdkConfig.profile!
-        );
+        return await ProfileAuthProvider.from(config.profile);
     }
 
     static async load(

@@ -11,6 +11,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
 import {Context, context} from "@databricks/databricks-sdk";
 import {BundleValidateModel} from "./BundleValidateModel";
+import {withOnErrorHandler} from "../../utils/onErrorDecorator";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export type BundleResourceModifiedStatus = "created" | "deleted" | "updated";
@@ -43,9 +44,14 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         private readonly bundleValidateModel: BundleValidateModel
     ) {
         super();
-        this.bundleValidateModel.onDidChange(async () => {
-            this.refresh();
-        });
+        this.bundleValidateModel.onDidChange(
+            withOnErrorHandler(
+                async () => {
+                    this.refresh();
+                },
+                {log: true, throw: false}
+            )
+        );
     }
 
     public async refresh() {

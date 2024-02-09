@@ -1,6 +1,7 @@
 import {EventEmitter, Disposable} from "vscode";
 import {Mutex} from ".";
 import lodash from "lodash";
+import {EventEmitterWithErrorHandler} from "../utils/EventWithErrorHandler";
 
 export class CachedValue<T> implements Disposable {
     private disposables: Disposable[] = [];
@@ -8,10 +9,10 @@ export class CachedValue<T> implements Disposable {
     private _value: T | null = null;
     private _dirty = true;
     private readonly mutex = new Mutex();
-    private readonly onDidChangeEmitter = new EventEmitter<{
+    private readonly onDidChangeEmitter = new EventEmitterWithErrorHandler<{
         oldValue: T | null;
         newValue: T;
-    }>();
+    }>({log: true, throw: false});
     public readonly onDidChange = this.onDidChangeEmitter.event;
 
     constructor(private readonly getter: () => Promise<T>) {
@@ -53,8 +54,8 @@ export class CachedValue<T> implements Disposable {
     }
 
     get value(): Promise<T> {
-        if (this._dirty || this._value === null) {
-            return this.mutex.synchronise(async () => {
+        return this.mutex.synchronise(async () => {
+            if (this._dirty || this._value === null) {
                 const newValue = await this.getter();
                 if (!lodash.isEqual(newValue, this._value)) {
                     this.onDidChangeEmitter.fire({
@@ -65,10 +66,9 @@ export class CachedValue<T> implements Disposable {
                 this._value = newValue;
                 this._dirty = false;
                 return this._value;
-            });
-        }
-
-        return Promise.resolve(this._value);
+            }
+            return this._value;
+        });
     }
 
     private readonly onDidChangeKeyEmitters = new Map<
@@ -83,14 +83,17 @@ export class CachedValue<T> implements Disposable {
         return this.onDidChangeKeyEmitters.get(key)!.event;
     }
 
-    @Mutex.synchronise("mutex")
-    async invalidate() {
+    invalidate() {
         this._dirty = true;
     }
 
     async refresh() {
-        await this.invalidate();
-        await this.value;
+        this.invalidate();
+        try {
+            await this.value;
+        } finally {
+            this._dirty = false;
+        }
     }
 
     dispose() {

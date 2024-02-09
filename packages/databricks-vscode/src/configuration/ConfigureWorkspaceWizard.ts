@@ -194,10 +194,7 @@ export class ConfigureWorkspaceWizard {
         if (pick.profile !== undefined) {
             // TODO: If the profile has an auth type with deeper support in the Extension, (azure-cli, databricks-cli),
             // then run the necessary checks to validate the profile and help user fix any errors.
-            const authProvider = new ProfileAuthProvider(
-                this.state.host!,
-                pick.profile
-            );
+            const authProvider = await ProfileAuthProvider.from(pick.profile);
             const checkResult = await this.checkAuthProvider(
                 authProvider,
                 `profile '${pick.profile}'`
@@ -303,8 +300,7 @@ export class ConfigureWorkspaceWizard {
         // Write the new profile to .databrickscfg
         await writeFile(configFilePath, ini.stringify(iniFile));
 
-        this.state.authProvider = new ProfileAuthProvider(
-            this.state.host!,
+        this.state.authProvider = await ProfileAuthProvider.from(
             profileName,
             true
         );
