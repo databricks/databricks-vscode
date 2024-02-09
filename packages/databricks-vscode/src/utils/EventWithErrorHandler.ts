@@ -8,21 +8,25 @@ export class EventEmitterWithErrorHandler<T> {
 
     constructor(private readonly onErrorDefaults: OnErrorProps = {}) {}
 
-    event(
-        listener: (e: T) => Promise<unknown>,
-        opts: {
-            thisArgs?: any;
-            disposables?: Disposable[];
-            onError?: OnErrorProps;
-        } = {}
-    ) {
-        opts = lodash.merge({}, this.onErrorDefaults, opts);
+    get event() {
+        const fn = (
+            listener: (e: T) => Promise<unknown>,
+            opts: {
+                thisArgs?: any;
+                disposables?: Disposable[];
+                onError?: OnErrorProps;
+            } = {}
+        ) => {
+            opts = lodash.merge({}, this.onErrorDefaults, opts);
 
-        return this._event(
-            withOnErrorHandler(listener, opts.onError),
-            opts.thisArgs,
-            opts.disposables
-        );
+            return this._event(
+                withOnErrorHandler(listener, opts.onError),
+                opts.thisArgs,
+                opts.disposables
+            );
+        };
+
+        return fn.bind(this);
     }
 
     fire(event: T) {
