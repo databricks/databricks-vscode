@@ -17,7 +17,6 @@ import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {EnvVarGenerators, FileUtils} from "../utils";
-import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
 import {Mutex} from "../locking/Mutex";
 
 function isValidUserEnvPath(
@@ -30,7 +29,7 @@ export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
     private mutex = new Mutex();
     private readonly unresolvedDatabricksEnvFile: string;
-    private readonly databricksEnvPath: Uri;
+    public readonly databricksEnvPath: Uri;
     private readonly unresolvedUserEnvFile: string;
     private readonly userEnvPath: Uri;
 
@@ -44,8 +43,7 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly featureManager: FeatureManager,
         private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
-        private readonly extensionContext: ExtensionContext,
-        private readonly notebookInitScriptManager: NotebookInitScriptManager
+        private readonly extensionContext: ExtensionContext
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
         this.unresolvedDatabricksEnvFile = path.join(

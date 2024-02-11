@@ -2,7 +2,40 @@ import {ConfigurationTarget, workspace} from "vscode";
 import {SyncDestinationType} from "../sync/SyncDestination";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
 
+function getOsForTerminalSettings() {
+    switch (process.platform) {
+        case "win32":
+            return "windows";
+        case "darwin":
+            return "osx";
+        default:
+            return "linux";
+    }
+}
+
+export type AdvancedTerminalSupportTypes = "bash" | "zsh" | "fish" | "pwsh";
+
 export const workspaceConfigs = {
+    get terminalProfiles() {
+        return (
+            workspace
+                .getConfiguration("terminal")
+                .get<Record<string, {path: string; args?: Array<string>}>>(
+                    `integrated.profiles.${getOsForTerminalSettings()}`
+                ) ?? {}
+        );
+    },
+
+    get terminalDefaultProfile(): AdvancedTerminalSupportTypes | undefined {
+        return (workspace
+            .getConfiguration("terminal")
+            .get<string>(
+                `integrated.defaultProfile.${getOsForTerminalSettings()}`
+            ) ?? Object.keys(this.terminalProfiles)[0]) as
+            | AdvancedTerminalSupportTypes
+            | undefined;
+    },
+
     get maxFieldLength() {
         return (
             workspace

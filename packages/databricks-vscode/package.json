@@ -268,6 +268,13 @@
                 "title": "Initialize new project",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.terminal.launch",
+                "icon": "$(terminal)",
+                "title": "Launch Databricks terminal",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {

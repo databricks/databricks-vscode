@@ -64,6 +64,7 @@ import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
 import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
+import {DatabricksTerminal} from "./language/DatabricksTerminal";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -361,9 +362,14 @@ export async function activate(
         featureManager,
         dbConnectStatusBarButton,
         connectionManager,
-        context,
-        notebookInitScriptManager
+        context
     );
+
+    const databricksTerminal = new DatabricksTerminal(
+        workspaceConfigs,
+        databricksEnvFileManager
+    );
+    databricksTerminal.show();
 
     context.subscriptions.push(
         workspace.onDidOpenNotebookDocument(() =>
@@ -389,6 +395,11 @@ export async function activate(
                     );
                 }
             }
+        ),
+        telemetry.registerCommand(
+            "databricks.terminal.launch",
+            databricksTerminal.show,
+            databricksTerminal
         )
     );
 
