@@ -21,7 +21,7 @@ import {
     PersonalAccessTokenAuthProvider,
     ProfileAuthProvider,
 } from "./auth/AuthProvider";
-import {UrlUtils} from "../utils";
+import {FileUtils, UrlUtils} from "../utils";
 import {
     loadConfigFile,
     AuthType as SdkAuthType,
@@ -221,9 +221,7 @@ export class LoginWizard {
         });
 
         if (pick.openDatabricksConfigFile) {
-            await commands.executeCommand(
-                "databricks.connection.openDatabricksConfigFile"
-            );
+            await FileUtils.openDatabricksConfigFile();
             return;
         }
 

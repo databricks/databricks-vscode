@@ -23,7 +23,7 @@ import {PublicApi} from "@databricks/databricks-vscode-types";
 import {LoggerManager, Loggers} from "./logger";
 import {logging} from "@databricks/databricks-sdk";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
-import {PackageJsonUtils, UtilsCommands} from "./utils";
+import {FileUtils, PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {
     WorkspaceFsAccessVerifier,
@@ -466,7 +466,7 @@ export async function activate(
         ),
         telemetry.registerCommand(
             "databricks.connection.openDatabricksConfigFile",
-            connectionCommands.openDatabricksConfigFileCommand(),
+            FileUtils.openDatabricksConfigFile,
             connectionCommands
         ),
         telemetry.registerCommand(
