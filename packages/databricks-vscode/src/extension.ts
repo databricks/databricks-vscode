@@ -466,7 +466,7 @@ export async function activate(
         ),
         telemetry.registerCommand(
             "databricks.connection.openDatabricksConfigFile",
-            FileUtils.openDatabricksConfigFile,
+            FileUtils.openDatabricksConfigFile
         ),
         telemetry.registerCommand(
             "databricks.connection.attachCluster",
