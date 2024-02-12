@@ -4,7 +4,7 @@ import {
     execFile as execFileCb,
     spawn,
 } from "child_process";
-import {ExtensionContext, window, commands, Uri} from "vscode";
+import {ExtensionContext, window, Uri} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -12,7 +12,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
-import {EnvVarGenerators, UrlUtils} from "../utils";
+import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
@@ -230,9 +230,7 @@ export class CliWrapper {
             "Ignore"
         );
         if (choice === openAction) {
-            commands.executeCommand(
-                "databricks.connection.openDatabricksConfigFile"
-            );
+            await FileUtils.openDatabricksConfigFile();
         }
     }
 
