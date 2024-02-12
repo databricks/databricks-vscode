@@ -430,7 +430,7 @@
                 },
                 {
                     "command": "databricks.bundle.cancelRun",
-                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.cancellable.*$/ && databricks.context.bundle.deploymentState == running",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.cancellable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
                 }
             ],
