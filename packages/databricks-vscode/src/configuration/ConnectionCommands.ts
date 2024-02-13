@@ -1,21 +1,16 @@
 import {Cluster} from "../sdk-extensions";
 import {
     Disposable,
-    FileSystemError,
     QuickPickItem,
     QuickPickItemKind,
     ThemeIcon,
-    Uri,
     window,
-    workspace,
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
-import {FileUtils, UrlUtils} from "../utils";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {UrlUtils} from "../utils";
 import {WorkspaceFsCommands} from "../workspace-fs";
-import path from "node:path";
 import {ConfigModel} from "./models/ConfigModel";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
@@ -76,34 +71,6 @@ export class ConnectionCommands implements Disposable {
                 await this.connectionManager.configureLogin();
             }
         );
-    }
-
-    openDatabricksConfigFileCommand() {
-        return async () => {
-            const homeDir = FileUtils.getHomedir();
-            let filePath =
-                workspaceConfigs.databrickscfgLocation ??
-                process.env.DATABRICKS_CONFIG_FILE ??
-                path.join(homeDir, ".databrickscfg");
-
-            if (filePath.startsWith("~/")) {
-                filePath = path.join(homeDir, filePath.slice(2));
-            }
-            const uri = Uri.file(path.normalize(filePath));
-
-            try {
-                await workspace.fs.stat(uri);
-            } catch (e) {
-                if (e instanceof FileSystemError && e.code === "FileNotFound") {
-                    await workspace.fs.writeFile(uri, Buffer.from(""));
-                } else {
-                    throw e;
-                }
-            }
-
-            const doc = await workspace.openTextDocument(uri);
-            await window.showTextDocument(doc);
-        };
     }
 
     /**
