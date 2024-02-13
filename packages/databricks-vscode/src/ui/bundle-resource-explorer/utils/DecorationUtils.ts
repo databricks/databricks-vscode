@@ -1,6 +1,6 @@
 import {BundleResourceModifiedStatus} from "../../../bundle/models/BundleRemoteStateModel";
 import {asDecorationResourceUri} from "../DecorationProvider";
-import {ThemeColor} from "vscode";
+import {ThemeColor, TreeItemCollapsibleState} from "vscode";
 
 export function getModifiedStatusDecoration(
     id: string,
@@ -30,4 +30,19 @@ export function getModifiedStatusDecoration(
                 tooltip: "Updated after deploy",
             });
     }
+}
+
+export function getCollapsibleState(
+    isRunning: boolean,
+    modifiedStatus?: BundleResourceModifiedStatus
+): TreeItemCollapsibleState {
+    if (modifiedStatus === "deleted") {
+        return TreeItemCollapsibleState.None;
+    }
+
+    if (isRunning) {
+        return TreeItemCollapsibleState.Collapsed;
+    }
+
+    return TreeItemCollapsibleState.Expanded;
 }

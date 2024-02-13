@@ -72,13 +72,25 @@ export class LoginWizard {
             });
         }
 
+        const hostToProfilesMap = new Map<string, string[]>();
+        (await this.getProfiles()).forEach((profile) => {
+            hostToProfilesMap.set(
+                profile.host!.toString(),
+                (hostToProfilesMap.get(profile.host!.toString()) ?? []).concat(
+                    profile.name
+                )
+            );
+        });
+
         items.push(
-            ...(await this.getProfiles()).map((profile) => {
-                return {
-                    label: profile.host!.toString(),
-                    detail: `Profile: ${profile.name}`,
-                };
-            })
+            ...Array.from(hostToProfilesMap.entries()).map(
+                ([host, profiles]) => {
+                    return {
+                        label: host,
+                        detail: `Profiles: ${profiles.join(", ")}`,
+                    };
+                }
+            )
         );
 
         const host = await input.showQuickAutoComplete({
@@ -122,16 +134,64 @@ export class LoginWizard {
         throw InputFlowAction.cancel;
     }
 
+    private async getProfileQuickPickItems() {
+        const items: Array<AuthTypeQuickPickItem> = [];
+
+        const profiles = (await this.getProfiles())
+            .filter((profile) => {
+                return profile.host?.hostname === this.state.host!.hostname;
+            })
+            .map((profile) => {
+                const humanisedAuthType = humaniseSdkAuthType(profile.authType);
+                const detail = humanisedAuthType
+                    ? `Authenticate using ${humaniseSdkAuthType(
+                          profile.authType
+                      )}`
+                    : `Authenticate using profile ${profile.name}`;
+
+                return {
+                    label: profile.name,
+                    detail,
+                    authType: profile.authType as SdkAuthType,
+                    profile: profile.name,
+                };
+            });
+
+        if (profiles.length !== 0) {
+            items.push(
+                {
+                    label: "Existing Databricks CLI Profiles",
+                    kind: QuickPickItemKind.Separator,
+                },
+                ...profiles
+            );
+        }
+        return items;
+    }
     private async selectAuthMethod(
         input: MultiStepInput
     ): Promise<InputStep | void> {
         const items: Array<AuthTypeQuickPickItem> = [];
-        items.push({
-            label: "Create new Databricks CLI profile",
-            kind: QuickPickItemKind.Separator,
-        });
-        for (const authMethod of authMethodsForHostname(this.state.host!)) {
+        items.push(...(await this.getProfileQuickPickItems()));
+
+        const availableAuthMethods = authMethodsForHostname(this.state.host!);
+        if (availableAuthMethods.length !== 0) {
+            items.push({
+                label: "Create New Databricks CLI Profile",
+                kind: QuickPickItemKind.Separator,
+            });
+        }
+
+        for (const authMethod of availableAuthMethods) {
             switch (authMethod) {
+                case "pat":
+                    items.push({
+                        label: "Personal Access Token",
+                        detail: "Create a profile and authenticate using a Personal Access Token",
+                        authType: "pat",
+                    });
+                    break;
+
                 case "azure-cli":
                     items.push({
                         label: "Azure CLI",
@@ -147,66 +207,23 @@ export class LoginWizard {
                         authType: "databricks-cli",
                     });
                     break;
-                case "profile":
-                    {
-                        const profiles = (await this.getProfiles())
-                            .filter((profile) => {
-                                return (
-                                    profile.host?.hostname ===
-                                    this.state.host!.hostname
-                                );
-                            })
-                            .map((profile) => {
-                                const humanisedAuthType = humaniseSdkAuthType(
-                                    profile.authType
-                                );
-                                const detail = humanisedAuthType
-                                    ? `Authenticate using ${humaniseSdkAuthType(
-                                          profile.authType
-                                      )}`
-                                    : `Authenticate using profile ${profile.name}`;
-
-                                return {
-                                    label: profile.name,
-                                    detail,
-                                    authType: profile.authType as SdkAuthType,
-                                    profile: profile.name,
-                                };
-                            });
-
-                        items.push({
-                            label: "Personal Access Token",
-                            detail: "Create a profile and authenticate using a Personal Access Token",
-                            authType: "pat",
-                        });
-                        if (profiles.length !== 0) {
-                            items.push(
-                                {
-                                    label: "Existing Databricks CLI Profiles",
-                                    kind: QuickPickItemKind.Separator,
-                                },
-                                ...profiles
-                            );
-                        }
-
-                        items.push({
-                            label: "",
-                            kind: QuickPickItemKind.Separator,
-                        });
-
-                        items.push({
-                            label: "Edit Databricks profiles",
-                            detail: "Open ~/.databrickscfg to create or edit profiles",
-                            openDatabricksConfigFile: true,
-                        });
-                    }
-
-                    break;
 
                 default:
                     break;
             }
         }
+
+        items.push(
+            {
+                label: "",
+                kind: QuickPickItemKind.Separator,
+            },
+            {
+                label: "Edit Databricks profiles",
+                detail: "Open ~/.databrickscfg to create or edit profiles",
+                openDatabricksConfigFile: true,
+            }
+        );
 
         const pick: AuthTypeQuickPickItem = await input.showQuickPick({
             title: this.title,
@@ -452,18 +469,18 @@ async function validateDatabricksHost(
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
     if (UrlUtils.isAzureHost(host)) {
-        return ["azure-cli", "profile"];
+        return ["azure-cli", "pat"];
     }
 
     if (UrlUtils.isGcpHost(host)) {
-        return ["profile"];
+        return ["pat"];
     }
 
     if (UrlUtils.isAwsHost(host)) {
-        return ["databricks-cli", "profile"];
+        return ["databricks-cli", "pat"];
     }
 
-    return ["profile"];
+    return ["pat"];
 }
 
 async function collectTokenForPatAuth(

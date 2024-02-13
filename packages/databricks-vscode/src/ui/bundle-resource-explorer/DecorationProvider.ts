@@ -51,7 +51,7 @@ export class TreeItemDecorationProvider implements FileDecorationProvider {
 export function asDecorationResourceUri(id: string, data: FileDecoration) {
     return Uri.from({
         scheme: SCHEME,
-        authority: id,
+        path: id,
         query: JSON.stringify(data),
     });
 }
