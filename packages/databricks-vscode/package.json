@@ -343,6 +343,7 @@
                 },
                 {
                     "command": "databricks.bundle.initNewProject",
+                    "group": "navigation@1",
                     "when": "view == configurationView"
                 },
                 {

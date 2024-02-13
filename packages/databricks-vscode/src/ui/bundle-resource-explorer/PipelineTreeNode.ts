@@ -46,6 +46,7 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
                 resourceType: this.type,
                 running: isRunning,
                 hasUrl: this.url !== undefined,
+                cancellable: isRunning,
                 nodeType: this.type,
             }),
             resourceUri: DecorationUtils.getModifiedStatusDecoration(
