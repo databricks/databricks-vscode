@@ -92,6 +92,7 @@ export class BundleRunStatusManager implements Disposable {
                 this.onDidChangeEmitter.fire();
             })
         );
+        this.onDidChangeEmitter.fire();
         await this.bundleRunTerminalManager.run(resourceKey, (data) => {
             remoteRunStatus.parseId(data);
         });

@@ -65,7 +65,7 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
         const runMonitor = this.bundleRunStatusManager.runStatuses.get(
             this.resourceKey
         ) as PipelineRunStatus | undefined;
-        if (runMonitor?.data?.update?.update_id !== undefined) {
+        if (runMonitor) {
             children.push(
                 new PipelineRunStatusTreeNode(
                     this.connectionManager,

@@ -135,6 +135,8 @@ export class BundleRunTerminalManager implements Disposable {
         }
 
         const terminalName = this.getTerminalName(target, resourceKey);
+        window.terminals.find((i) => i.name === terminalName)?.show();
+
         this.cancellationTokenSources.get(terminalName)?.cancel();
         this.cancellationTokenSources.get(terminalName)?.dispose();
         this.cancellationTokenSources.delete(terminalName);

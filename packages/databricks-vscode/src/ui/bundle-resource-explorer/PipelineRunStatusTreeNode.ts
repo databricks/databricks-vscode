@@ -108,6 +108,18 @@ export class PipelineRunStatusTreeNode
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
+        if (this.runMonitor?.runState === "timeout") {
+            return {
+                label: "Run Status",
+                iconPath: RunStateUtils.getThemeIconForStatus("Timeout"),
+                description: "Timeout while fetching run status",
+                contextValue: ContextUtils.getContextString({
+                    nodeType: this.type,
+                }),
+                collapsibleState: TreeItemCollapsibleState.None,
+            };
+        }
+
         if (this.update === undefined) {
             return {
                 label: "Run Status",
@@ -116,7 +128,7 @@ export class PipelineRunStatusTreeNode
                 contextValue: ContextUtils.getContextString({
                     nodeType: this.type,
                 }),
-                collapsibleState: TreeItemCollapsibleState.Collapsed,
+                collapsibleState: TreeItemCollapsibleState.None,
             };
         }
 

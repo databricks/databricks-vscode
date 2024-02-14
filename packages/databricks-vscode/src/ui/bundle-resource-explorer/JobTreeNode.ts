@@ -34,21 +34,21 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
         public parent?: BundleResourceExplorerTreeNode
     ) {}
 
-    isRunning(resourceKey: string) {
-        const runner = this.bundleRunStatusManager.runStatuses.get(resourceKey);
+    get isRunning() {
+        const runner = this.bundleRunStatusManager.runStatuses.get(
+            this.resourceKey
+        );
         return runner?.runState === "running" || runner?.runState === "unknown";
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
-        const isRunning = this.isRunning(this.resourceKey);
-
         return {
             label: this.data.name,
             contextValue: ContextUtils.getContextString({
                 resourceType: this.type,
-                running: isRunning,
+                running: this.isRunning,
                 hasUrl: this.url !== undefined,
-                cancellable: isRunning,
+                cancellable: this.isRunning,
                 nodeType: this.type,
                 modifiedStatus: this.data.modified_status,
             }),
@@ -57,7 +57,7 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
                 this.data.modified_status
             ),
             collapsibleState: DecorationUtils.getCollapsibleState(
-                isRunning,
+                this.isRunning,
                 this.data.modified_status
             ),
         };
@@ -73,7 +73,7 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
             this.resourceKey
         ) as JobRunStatus | undefined;
 
-        if (runMonitor?.runId !== undefined) {
+        if (runMonitor) {
             children.push(new JobRunStatusTreeNode(this, runMonitor));
         }
         children.push(

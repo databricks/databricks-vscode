@@ -68,6 +68,18 @@ export class JobRunStatusTreeNode implements BundleResourceExplorerTreeNode {
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
+        if (this.runMonitor?.runState === "timeout") {
+            return {
+                label: "Run Status",
+                iconPath: RunStateUtils.getThemeIconForStatus("Timeout"),
+                description: "Timeout while fetching run status",
+                contextValue: ContextUtils.getContextString({
+                    nodeType: this.type,
+                }),
+                collapsibleState: TreeItemCollapsibleState.None,
+            };
+        }
+
         if (this.runDetails === undefined) {
             return {
                 label: "Run Status",
@@ -76,7 +88,7 @@ export class JobRunStatusTreeNode implements BundleResourceExplorerTreeNode {
                 contextValue: ContextUtils.getContextString({
                     nodeType: this.type,
                 }),
-                collapsibleState: TreeItemCollapsibleState.Collapsed,
+                collapsibleState: TreeItemCollapsibleState.None,
             };
         }
 

@@ -10,7 +10,8 @@ export type SimplifiedRunState =
     | "Terminating"
     | "Cancelled"
     | "Success"
-    | "Unknown";
+    | "Unknown"
+    | "Timeout";
 
 export function humaniseDate(timestamp?: number) {
     if (timestamp === undefined) {
@@ -42,7 +43,7 @@ export function getThemeIconForStatus(status: SimplifiedRunState): ThemeIcon {
         case "Failed":
             return new ThemeIcon(
                 "testing-error-icon",
-                new ThemeColor("errorForeground")
+                new ThemeColor("problemsErrorIcon.foreground")
             );
         case "Skipped":
             return new ThemeIcon("testing-skipped-icon");
@@ -51,15 +52,17 @@ export function getThemeIconForStatus(status: SimplifiedRunState): ThemeIcon {
         case "Running":
             return new ThemeIcon("sync~spin", new ThemeColor("charts.green"));
         case "Terminating":
-            return new ThemeIcon(
-                "sync-ignored~spin",
-                new ThemeColor("charts.red")
-            );
+            return new ThemeIcon("sync-ignored", new ThemeColor("charts.red"));
         case "Terminated":
         case "Cancelled":
             return new ThemeIcon("circle-slash");
         case "Success":
             return new ThemeIcon("check-all", new ThemeColor("charts.green"));
+        case "Timeout":
+            return new ThemeIcon(
+                "warning",
+                new ThemeColor("problemsWarningIcon.foreground")
+            );
         default:
             return new ThemeIcon("question");
     }
