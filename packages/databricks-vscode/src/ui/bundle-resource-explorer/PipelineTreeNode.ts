@@ -1,4 +1,3 @@
-import {TreeItemCollapsibleState} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {
     BundleResourceExplorerResource,
@@ -46,15 +45,18 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
                 resourceType: this.type,
                 running: isRunning,
                 hasUrl: this.url !== undefined,
+                cancellable: isRunning,
                 nodeType: this.type,
+                modifiedStatus: this.data.modified_status,
             }),
             resourceUri: DecorationUtils.getModifiedStatusDecoration(
-                this.resourceKey,
+                this.data.name ?? this.resourceKey,
                 this.data.modified_status
             ),
-            collapsibleState: isRunning
-                ? TreeItemCollapsibleState.Expanded
-                : TreeItemCollapsibleState.Collapsed,
+            collapsibleState: DecorationUtils.getCollapsibleState(
+                isRunning,
+                this.data.modified_status
+            ),
         };
     }
 
