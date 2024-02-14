@@ -39,7 +39,7 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should dismiss notifications", async function () {
-        //Collect all notifications
+        // Collect all notifications
         sleep(2000);
         const notifications = await workbench.getNotifications();
         for (const n of notifications) {
@@ -49,10 +49,16 @@ describe("Configure Databricks Extension", async function () {
 
     it("should wait for a welcome screen", async () => {
         const section = await getViewSection("CONFIGURATION");
-        const welcome = await section!.findWelcomeContent();
-        const buttons = await welcome!.getButtons();
-        const initTitle = await buttons[0].getTitle();
-        const quickStartTitle = await buttons[1].getTitle();
+        const welcomeButtons = await browser.waitUntil(async () => {
+            const welcome = await section!.findWelcomeContent();
+            const buttons = await welcome!.getButtons();
+            if (buttons?.length >= 2) {
+                return buttons;
+            }
+        });
+        assert(welcomeButtons);
+        const initTitle = await welcomeButtons[0].getTitle();
+        const quickStartTitle = await welcomeButtons[1].getTitle();
         assert(initTitle.toLowerCase().includes("initialize"));
         assert(quickStartTitle.toLowerCase().includes("quickstart"));
     });
