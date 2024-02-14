@@ -36,7 +36,7 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
 
     isRunning(resourceKey: string) {
         const runner = this.bundleRunStatusManager.runStatuses.get(resourceKey);
-        return runner?.runState === "running";
+        return runner?.runState === "running" || runner?.runState === "unknown";
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
