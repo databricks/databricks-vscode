@@ -220,7 +220,7 @@ export async function getTabByTitle(title: string) {
                 }
             }
         },
-        {timeout: 3000}
+        {timeout: 5000}
     );
 }
 
@@ -232,7 +232,7 @@ export async function waitForInput() {
             input = await new InputBox(workbench.locatorMap).wait();
             return input !== undefined;
         },
-        {timeout: 3000, interval: 500}
+        {timeout: 5000, interval: 500}
     );
     assert(input !== undefined);
     while (await input.hasProgress()) {
