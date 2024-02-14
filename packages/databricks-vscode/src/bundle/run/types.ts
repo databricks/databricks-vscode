@@ -3,4 +3,5 @@ export type RunState =
     | "completed"
     | "unknown"
     | "error"
-    | "timeout";
+    | "timeout"
+    | "cancelled";

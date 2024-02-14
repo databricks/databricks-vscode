@@ -1,5 +1,11 @@
-import {ThemeColor, ThemeIcon} from "vscode";
+import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {DateUtils} from "../../../utils";
+import {BundleRunStatus} from "../../../bundle/run/BundleRunStatus";
+import {ContextUtils} from ".";
+import {
+    BundleResourceExplorerTreeItem,
+    BundleResourceExplorerTreeNode,
+} from "../types";
 
 export type SimplifiedRunState =
     | "Terminated"
@@ -76,4 +82,35 @@ export function sentenceCase(str?: string, sep: string = "_") {
     return (str.charAt(0).toUpperCase() + str.slice(1).toLowerCase())
         .split(sep)
         .join(" ");
+}
+
+export function getTreeItemFromRunMonitorStatus(
+    type: BundleResourceExplorerTreeNode["type"],
+    url?: string,
+    runMonitor?: BundleRunStatus
+): BundleResourceExplorerTreeItem | undefined {
+    if (runMonitor?.runState === "timeout") {
+        return {
+            label: "Run Status",
+            iconPath: getThemeIconForStatus("Timeout"),
+            description: "Timeout while fetching run status",
+            contextValue: ContextUtils.getContextString({
+                nodeType: type,
+            }),
+            collapsibleState: TreeItemCollapsibleState.None,
+        };
+    }
+
+    if (runMonitor?.runState === "cancelled") {
+        return {
+            label: "Run Status",
+            iconPath: getThemeIconForStatus("Cancelled"),
+            description: "Cancelled",
+            contextValue: ContextUtils.getContextString({
+                nodeType: type,
+                hasUrl: url !== undefined,
+            }),
+            collapsibleState: TreeItemCollapsibleState.None,
+        };
+    }
 }

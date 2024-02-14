@@ -99,7 +99,7 @@ export class BundleRunTerminalManager implements Disposable {
                 }, disposables);
                 window.onDidCloseTerminal((e) => {
                     // Resolve when the process is closed by human action
-                    e.name === terminal.terminal.name && reject(resolve());
+                    e.name === terminal.terminal.name && resolve();
                 }, disposables);
             });
         } finally {
