@@ -47,19 +47,14 @@ describe("Configure Databricks Extension", async function () {
         }
     });
 
-    it("should wait for quickstart or changelog", async () => {
+    it("should wait for a welcome screen", async () => {
         const section = await getViewSection("CONFIGURATION");
-        assert(section);
-        const welcome = await section.findWelcomeContent();
-        assert(welcome);
-        try {
-            await getTabByTitle("DATABRICKS.quickstart.md");
-        } catch (error) {
-            console.log(
-                "Failed to find quickstart tab, searching for a changelog instead"
-            );
-            await getTabByTitle("Preview CHANGELOG.md");
-        }
+        const welcome = await section!.findWelcomeContent();
+        const buttons = await welcome!.getButtons();
+        const initTitle = await buttons[0].getTitle();
+        const quickStartTitle = await buttons[1].getTitle();
+        assert(initTitle.toLowerCase().includes("initialize"));
+        assert(quickStartTitle.toLowerCase().includes("quickstart"));
     });
 
     it("should open databricks panel and login", async function () {
@@ -67,16 +62,19 @@ describe("Configure Databricks Extension", async function () {
             vscode.commands.executeCommand("databricks.bundle.initNewProject");
         });
 
+        // Host selection input
         let input = await waitForInput();
         await input.confirm();
 
         await sleep(1000);
 
+        // Profile selection input
         input = await waitForInput();
         await input.selectQuickPick("DEFAULT");
     });
 
     it("should initialize new project", async function () {
+        // Project parent folder input
         const input = await waitForInput();
 
         // Clicking on the first pick manually, as selectQuickPick partially deletes default input value
@@ -90,16 +88,18 @@ describe("Configure Databricks Extension", async function () {
         const initTab = await getTabByTitle(title);
         assert(initTab !== undefined);
         await initTab.select();
-        // Answer on all wizard questions with defaults until the tab is closed
-        while (true) {
-            const activeTab = await editorView.getActiveTab();
-            if ((await activeTab?.getTitle()) !== title) {
-                break;
-            }
-            await browser.keys([Key.Enter]);
-            await sleep(2000);
-        }
+        await browser.waitUntil(
+            async () => {
+                const activeTab = await editorView.getActiveTab();
+                if ((await activeTab?.getTitle()) !== title) {
+                    return true;
+                }
+                await browser.keys([Key.Enter]);
+            },
+            {timeout: 20_000, interval: 2_000}
+        );
 
+        // Project folder input
         const projectInput = await waitForInput();
         await projectInput.selectQuickPick("/my_project");
 

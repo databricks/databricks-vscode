@@ -229,14 +229,15 @@ export async function waitForInput() {
     let input: InputBox | undefined;
     await browser.waitUntil(
         async () => {
-            input = await new InputBox(workbench.locatorMap).wait();
-            return input !== undefined;
+            if (!input) {
+                input = await new InputBox(workbench.locatorMap).wait();
+            }
+            if (input) {
+                return !(await input.hasProgress());
+            }
+            return false;
         },
-        {timeout: 5000, interval: 500}
+        {timeout: 10000}
     );
-    assert(input !== undefined);
-    while (await input.hasProgress()) {
-        await sleep(500);
-    }
     return input!;
 }
