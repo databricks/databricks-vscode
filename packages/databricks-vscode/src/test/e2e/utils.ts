@@ -5,6 +5,7 @@ import {
     TreeItem,
     ViewControl,
     ViewSection,
+    InputBox,
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -203,4 +204,39 @@ export async function startSyncIfStopped() {
             timeout: 20000,
         }
     );
+}
+
+export async function getTabByTitle(title: string) {
+    const workbench = await browser.getWorkbench();
+    return await browser.waitUntil(
+        async () => {
+            console.log("Searching for a tab with title:", title);
+            const tabs = await workbench.getEditorView().getOpenTabs();
+            for (const tab of tabs) {
+                const tabTitle = await tab.getTitle();
+                console.log("Found a tab:", tabTitle);
+                if (tabTitle.includes(title)) {
+                    return tab;
+                }
+            }
+        },
+        {timeout: 3000}
+    );
+}
+
+export async function waitForInput() {
+    const workbench = await browser.getWorkbench();
+    let input: InputBox | undefined;
+    await browser.waitUntil(
+        async () => {
+            input = await new InputBox(workbench.locatorMap).wait();
+            return input !== undefined;
+        },
+        {timeout: 3000, interval: 500}
+    );
+    assert(input !== undefined);
+    while (await input.hasProgress()) {
+        await sleep(500);
+    }
+    return input!;
 }
