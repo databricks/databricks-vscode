@@ -30,6 +30,17 @@ export type BundleRemoteState = BundleTarget & {
 };
 
 /* eslint-enable @typescript-eslint/naming-convention */
+export function getResource(
+    key: string,
+    resources?: BundleRemoteState["resources"]
+) {
+    return key.split(".").reduce((prev: any, k) => {
+        if (prev === undefined) {
+            return undefined;
+        }
+        return prev[k];
+    }, resources ?? {});
+}
 
 export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemoteState> {
     public target: string | undefined;

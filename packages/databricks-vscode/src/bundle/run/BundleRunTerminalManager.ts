@@ -99,7 +99,7 @@ export class BundleRunTerminalManager implements Disposable {
                 }, disposables);
                 window.onDidCloseTerminal((e) => {
                     // Resolve when the process is closed by human action
-                    e.name === terminal.terminal.name && reject(resolve());
+                    e.name === terminal.terminal.name && resolve();
                 }, disposables);
             });
         } finally {
@@ -135,6 +135,8 @@ export class BundleRunTerminalManager implements Disposable {
         }
 
         const terminalName = this.getTerminalName(target, resourceKey);
+        window.terminals.find((i) => i.name === terminalName)?.show();
+
         this.cancellationTokenSources.get(terminalName)?.cancel();
         this.cancellationTokenSources.get(terminalName)?.dispose();
         this.cancellationTokenSources.delete(terminalName);

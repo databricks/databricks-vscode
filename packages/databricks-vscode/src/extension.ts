@@ -534,7 +534,7 @@ export async function activate(
         bundleRemoteStateModel
     );
     const bundleRunStatusManager = new BundleRunStatusManager(
-        bundleRemoteStateModel,
+        configModel,
         bundleRunTerminalManager
     );
     const bundleResourceExplorerTreeDataProvider =

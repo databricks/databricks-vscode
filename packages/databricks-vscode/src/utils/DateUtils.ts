@@ -4,10 +4,10 @@ export function toString(date: Date): string {
 
 export function toDateString(date: Date): string {
     const day = date.getDay();
-    const month = date.getMonth() + 1;
+    const month = date.toLocaleString("default", {month: "short"});
     const year = date.getFullYear();
 
-    return `${day}-${month}-${year}`;
+    return `${day} ${month}, ${year}`;
 }
 
 export function toTimeString(date: Date): string {
