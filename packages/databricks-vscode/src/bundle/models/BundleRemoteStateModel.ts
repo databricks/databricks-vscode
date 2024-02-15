@@ -39,7 +39,7 @@ export function getResource(
             return undefined;
         }
         return prev[k];
-    }, resources);
+    }, resources ?? {});
 }
 
 export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemoteState> {
