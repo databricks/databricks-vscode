@@ -241,3 +241,27 @@ export async function waitForInput() {
     );
     return input!;
 }
+
+export async function waitForLogin(profileName?: string) {
+    const section = (await getViewSection(
+        "CONFIGURATION"
+    )) as CustomTreeSection;
+    assert(section, "CONFIGURATION section doesn't exist");
+    await browser.waitUntil(
+        async () => {
+            const items = await section.getVisibleItems();
+            for (const item of items) {
+                const label = await item.getLabel();
+                if (label.toLowerCase().includes("auth type")) {
+                    if (profileName) {
+                        const desc = await item.getDescription();
+                        return desc?.includes(profileName);
+                    } else {
+                        return true;
+                    }
+                }
+            }
+        },
+        {timeout: 20_000}
+    );
+}

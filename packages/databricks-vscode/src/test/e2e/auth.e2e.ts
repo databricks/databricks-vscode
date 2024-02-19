@@ -5,7 +5,7 @@ import {
     dismissNotifications,
     waitForInput,
     getViewSection,
-    waitForTreeItems,
+    waitForLogin,
 } from "./utils.ts";
 import {CustomTreeSection} from "wdio-vscode-service";
 
@@ -86,26 +86,18 @@ describe("Configure Databricks Extension", async function () {
             bundleConfig,
             BUNDLE.replace("_HOST_", process.env.DATABRICKS_HOST)
         );
-        const section = await getViewSection("CONFIGURATION");
-        assert(section, "CONFIGURATION section doesn't exist");
-        await waitForTreeItems(section);
+        await waitForLogin("DEFAULT");
     });
 
     it("should create new profile", async () => {
         // We create a new profile programmatically to avoid leaking tokens through screenshots or video reporters.
         // We still trigger similar code path to the UI flow.
-        await browser.executeWorkbench(
-            async (vscode, host, token) => {
-                await vscode.commands.executeCommand(
-                    "databricks.connection.saveNewProfile",
-                    host,
-                    "NEW_PROFILE",
-                    token
-                );
-            },
-            process.env.DATABRICKS_HOST,
-            process.env.DATABRICKS_TOKEN
-        );
+        await browser.executeWorkbench(async (vscode) => {
+            await vscode.commands.executeCommand(
+                "databricks.connection.saveNewProfile",
+                "NEW_PROFILE"
+            );
+        });
     });
 
     it("should change profiles", async () => {
@@ -131,20 +123,11 @@ describe("Configure Databricks Extension", async function () {
         const authMethodInput = await waitForInput();
         const newProfilePick =
             await authMethodInput.findQuickPick("NEW_PROFILE");
-        await newProfilePick!.select();
-
-        await browser.waitUntil(
-            async () => {
-                const items = await section.getVisibleItems();
-                for (const item of items) {
-                    const label = await item.getLabel();
-                    if (label.toLowerCase().includes("auth type")) {
-                        const desc = await item.getDescription();
-                        return desc?.includes("NEW_PROFILE");
-                    }
-                }
-            },
-            {timeout: 20_000}
+        assert(
+            newProfilePick,
+            "NEW_PROFILE is absent in the quick pick selection"
         );
+        await newProfilePick.select();
+        await waitForLogin("NEW_PROFILE");
     });
 });

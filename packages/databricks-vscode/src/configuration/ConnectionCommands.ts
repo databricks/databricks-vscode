@@ -76,7 +76,14 @@ export class ConnectionCommands implements Disposable {
         );
     }
 
-    async saveNewProfileCommand(host: string, name: string, token: string) {
+    // This command is not exposed to users.
+    // We use it to test new profile flow in e2e tests.
+    async saveNewProfileCommand(name: string) {
+        const host = this.connectionManager.workspaceClient?.config.host;
+        const token = this.connectionManager.workspaceClient?.config.token;
+        if (!host || !token) {
+            throw new Error("Must login first");
+        }
         const hostUrl = normalizeHost(host);
         const provider = new PersonalAccessTokenAuthProvider(hostUrl, token);
         await saveNewProfile(name, provider);
