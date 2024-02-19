@@ -20,13 +20,15 @@ describe(__filename, async function () {
 
     it("should return the correct absolute glob path", () => {
         const tmpdirUri = Uri.file(tmpdir.path);
-
+        let expectedGlob = path.join(tmpdirUri.fsPath, "test.txt");
+        if (process.platform === "win32") {
+            expectedGlob = expectedGlob.replace(/\\/g, "/");
+        }
         expect(getAbsoluteGlobPath("test.txt", tmpdirUri)).to.equal(
-            path.join(tmpdirUri.fsPath, "test.txt")
+            expectedGlob
         );
-
         expect(getAbsoluteGlobPath(Uri.file("test.txt"), tmpdirUri)).to.equal(
-            path.join(tmpdirUri.fsPath, "test.txt")
+            expectedGlob
         );
     });
 
