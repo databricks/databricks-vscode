@@ -12,6 +12,9 @@ import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import {ConfigModel} from "./models/ConfigModel";
+import {saveNewProfile} from "./LoginWizard";
+import {PersonalAccessTokenAuthProvider} from "./auth/AuthProvider";
+import {normalizeHost} from "../utils/urlUtils";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -71,6 +74,12 @@ export class ConnectionCommands implements Disposable {
                 await this.connectionManager.configureLogin();
             }
         );
+    }
+
+    async saveNewProfileCommand(host: string, name: string, token: string) {
+        const hostUrl = normalizeHost(host);
+        const provider = new PersonalAccessTokenAuthProvider(hostUrl, token);
+        await saveNewProfile(name, provider);
     }
 
     /**

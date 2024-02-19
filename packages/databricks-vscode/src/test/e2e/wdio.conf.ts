@@ -26,7 +26,7 @@ const WORKSPACE_PATH = path.resolve(tmpdir(), "workspace");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const {version, name, engines} = packageJson;
+const {version, name} = packageJson;
 
 const REPO_NAME = "vscode-integ-test";
 const EXTENSION_DIR = path.resolve(tmpdir(), "extension-test", "extension");
@@ -117,7 +117,7 @@ export const config: Options.Testrunner = {
         return [
             {
                 "browserName": "vscode",
-                "browserVersion": engines.vscode.replace("^", ""),
+                "browserVersion": "stable",
                 "wdio:vscodeOptions": {
                     extensionPath: path.resolve(
                         __dirname,
@@ -194,7 +194,11 @@ export const config: Options.Testrunner = {
     // Services take over a specific job you don't want to take care of. They enhance
     // your test setup with almost no effort. Unlike plugins, they don't add new
     // commands. Instead, they hook themselves up into the test process.
-    services: [["vscode", {cachePath: "/tmp/wdio-vscode-service"}]],
+    services: ["vscode"],
+    // TODO: enable the cache again after updating the wdio service
+    // services: [["vscode", {cachePath: "/tmp/wdio-vscode-service"}]],
+
+    cacheDir: "/tmp/wdio-vscode-service",
 
     // Framework you want to run your specs with.
     // The following are supported: Mocha, Jasmine, and Cucumber
@@ -531,11 +535,6 @@ export const config: Options.Testrunner = {
 };
 
 async function writeDatabricksConfig(config: Config) {
-    assert(
-        process.env["TEST_DEFAULT_CLUSTER_ID"],
-        "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
-    );
-
     const configFile = path.join(WORKSPACE_PATH, ".databrickscfg");
     await fs.writeFile(
         configFile,
@@ -543,7 +542,6 @@ async function writeDatabricksConfig(config: Config) {
 host = ${config.host!}
 token = ${config.token!}`
     );
-
     return configFile;
 }
 

@@ -482,6 +482,11 @@ export async function activate(
             "databricks.connection.detachCluster",
             connectionCommands.detachClusterCommand(),
             connectionCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.connection.saveNewProfile",
+            connectionCommands.saveNewProfileCommand,
+            connectionCommands
         )
     );
 
