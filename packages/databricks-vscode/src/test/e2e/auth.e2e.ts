@@ -99,7 +99,7 @@ describe("Configure Databricks Extension", async function () {
         )) as CustomTreeSection;
         assert(section, "CONFIGURATION section doesn't exist");
         const signInButton = await browser.waitUntil(
-            async () =>; {
+            async () => {
                 const items = await section.getVisibleItems();
                 for (const item of items) {
                     const label = await item.getLabel();
