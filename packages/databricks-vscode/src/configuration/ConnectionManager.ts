@@ -1,7 +1,7 @@
 import {WorkspaceClient, ApiClient, logging} from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
-import {EventEmitter, Uri, window, Disposable} from "vscode";
-import {CliWrapper} from "../cli/CliWrapper";
+import {EventEmitter, Uri, window, Disposable, commands} from "vscode";
+import {CliWrapper, ProcessError} from "../cli/CliWrapper";
 import {
     SyncDestinationMapper,
     RemoteUri,
@@ -250,8 +250,21 @@ export class ConnectionManager implements Disposable {
                 `Can't connect to the workspace`,
                 e
             );
-            if (e instanceof Error) {
-                window.showWarningMessage(
+            if (e instanceof ProcessError) {
+                window
+                    .showErrorMessage(
+                        `Can't connect to the workspace. Error executing Databricks CLI command.`,
+                        "Show Logs"
+                    )
+                    .then((choice) => {
+                        if (choice === "Show Logs") {
+                            commands.executeCommand(
+                                "databricks.bundle.showLogs"
+                            );
+                        }
+                    });
+            } else if (e instanceof Error) {
+                window.showErrorMessage(
                     `Can't connect to the workspace: "${e.message}"."`
                 );
             }

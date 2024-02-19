@@ -1,4 +1,4 @@
-import {Disposable, ProgressLocation, window} from "vscode";
+import {Disposable, ProgressLocation, window, commands} from "vscode";
 import {BundleRemoteStateModel} from "../../bundle/models/BundleRemoteStateModel";
 import {onError} from "../../utils/onErrorDecorator";
 import {BundleResourceExplorerTreeNode} from "./types";
@@ -24,9 +24,6 @@ function isRunnable(
 
 export class BundleCommands implements Disposable {
     private disposables: Disposable[] = [];
-    private outputChannel = window.createOutputChannel(
-        "Databricks Asset Bundles"
-    );
 
     constructor(
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
@@ -35,7 +32,6 @@ export class BundleCommands implements Disposable {
         private readonly whenContext: CustomWhenContext
     ) {
         this.disposables.push(
-            this.outputChannel,
             this.bundleValidateModel.onDidChange(async () => {
                 await this.refreshRemoteState();
             })
@@ -46,25 +42,30 @@ export class BundleCommands implements Disposable {
 
     @Mutex.synchronise("refreshStateMutex")
     async refreshRemoteState() {
-        await window.withProgress(
-            {location: {viewId: "dabsResourceExplorerView"}},
-            async () => {
-                await this.bundleRemoteStateModel.refresh();
+        try {
+            await window.withProgress(
+                {location: {viewId: "dabsResourceExplorerView"}},
+                async () => {
+                    await this.bundleRemoteStateModel.refresh();
+                }
+            );
+        } catch (e: any) {
+            if (!(e instanceof Error)) {
+                throw e;
             }
-        );
+            const choice = await window.showErrorMessage(
+                "Error refreshing bundle state.",
+                "Show Logs"
+            );
+            if (choice === "Show Logs") {
+                commands.executeCommand("databricks.bundle.showLogs");
+            }
+            throw e;
+        }
     }
 
-    private writeToChannel = (data: string) => {
-        this.outputChannel.append(data);
-    };
-
-    private prepareOutputChannel() {
-        this.outputChannel.show(true);
-        this.outputChannel.appendLine("");
-    }
-
-    @onError({popup: {prefix: "Error refreshing remote state."}})
-    async refreshRemoteStateCommand() {
+    @onError({log: true, popup: false})
+    public async refreshCommand() {
         await this.refreshRemoteState();
     }
 
@@ -74,35 +75,34 @@ export class BundleCommands implements Disposable {
     async deploy() {
         try {
             this.whenContext.setDeploymentState("deploying");
-            this.prepareOutputChannel();
             await window.withProgress(
                 {location: ProgressLocation.Notification, cancellable: false},
                 async () => {
-                    await this.bundleRemoteStateModel.deploy(
-                        this.writeToChannel,
-                        this.writeToChannel
-                    );
+                    await this.bundleRemoteStateModel.deploy();
                 }
             );
 
             await this.refreshRemoteState();
+        } catch (e) {
+            if (!(e instanceof Error)) {
+                throw e;
+            }
+            const choice = await window.showErrorMessage(
+                "Error deploying resource.",
+                "Show Logs"
+            );
+            if (choice === "Show Logs") {
+                commands.executeCommand("databricks.bundle.showLogs");
+            }
+            throw e;
         } finally {
             this.whenContext.setDeploymentState("idle");
         }
     }
 
-    async deployCommand() {
-        try {
-            await this.deploy();
-        } catch (e) {
-            const choice = await window.showErrorMessage(
-                "Databricks: Error deploying resource.",
-                "Show Logs"
-            );
-            if (choice === "Show Logs") {
-                this.outputChannel.show();
-            }
-        }
+    @onError({log: true, popup: false})
+    public async deployCommand() {
+        await this.deploy();
     }
 
     @onError({popup: {prefix: "Error running resource."}})

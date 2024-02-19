@@ -1,11 +1,20 @@
 import internal, {Writable} from "stream";
 import {StringDecoder} from "string_decoder";
-import {OutputChannel} from "vscode";
+import {LogOutputChannel} from "vscode";
 
-export class OutputConsoleStream extends Writable {
+export const LOG_OUTPUT_CHANNEL_LEVELS = [
+    "info",
+    "error",
+    "warn",
+    "debug",
+    "trace",
+] as const;
+
+export class LogOutputChannelStream extends Writable {
     private readonly _decoder = new StringDecoder();
     constructor(
-        private readonly _outputChannel: OutputChannel,
+        private readonly _outputChannel: LogOutputChannel,
+        private readonly level: (typeof LOG_OUTPUT_CHANNEL_LEVELS)[number],
         opts?: internal.WritableOptions
     ) {
         super(opts);
@@ -16,10 +25,14 @@ export class OutputConsoleStream extends Writable {
         encoding: BufferEncoding,
         callback: (error?: Error | null | undefined) => void
     ): void {
-        const decoded = Buffer.isBuffer(chunk)
+        let decoded = Buffer.isBuffer(chunk)
             ? this._decoder.write(chunk)
             : chunk;
-        this._outputChannel.append(decoded);
+
+        if (typeof decoded === "string") {
+            decoded = decoded.trimEnd();
+        }
+        this._outputChannel[this.level](decoded);
         callback();
     }
 
