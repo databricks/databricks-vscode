@@ -80,7 +80,7 @@ describe("Configure Databricks Extension", async function () {
         );
 
         const openProjectFolderInput = await waitForInput();
-        await openProjectFolderInput.selectQuickPick("/my_project");
+        await openProjectFolderInput.selectQuickPick("my_project");
 
         // Wait until vscode is re-opened with the new workspace root
         await browser.waitUntil(
@@ -90,7 +90,7 @@ describe("Configure Databricks Extension", async function () {
                         return vscode.workspace.workspaceFolders[0].uri.fsPath;
                     }
                 );
-                return workspaceRoot === path.join(projectDir, "/my_project");
+                return workspaceRoot === path.join(projectDir, "my_project");
             },
             {timeout: 20_000}
         );
