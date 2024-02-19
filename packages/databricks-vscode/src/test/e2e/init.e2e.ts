@@ -60,13 +60,13 @@ describe("Configure Databricks Extension", async function () {
         // Clicking on the first pick manually, as selectQuickPick partially deletes default input value
         const picks = await parentFolderInput.getQuickPicks();
         const pick = picks.filter((p) => p.getIndex() === 0)[0];
-        assert(pick !== undefined);
+        assert(pick, "Parent folder quick pick doesn't have any items");
         await pick.select();
 
         const editorView = workbench.getEditorView();
         const title = "Databricks Project Init";
         const initTab = await getTabByTitle(title);
-        assert(initTab !== undefined);
+        assert(initTab, "Can't find a tab for project-init terminal wizard");
         await initTab.select();
         await browser.waitUntil(
             async () => {

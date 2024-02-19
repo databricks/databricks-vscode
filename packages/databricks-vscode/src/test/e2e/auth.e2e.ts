@@ -39,7 +39,6 @@ describe("Configure Databricks Extension", async function () {
         projectDir = process.env.WORKSPACE_PATH;
         bundleConfig = path.join(projectDir, "databricks.yml");
         cfgContent = await fs.readFile(cfgPath);
-        await dismissNotifications();
     });
 
     after(async function () {
@@ -47,6 +46,16 @@ describe("Configure Databricks Extension", async function () {
         if (cfgContent) {
             await fs.writeFile(cfgPath, cfgContent);
         }
+    });
+
+    it("should open VSCode and dismiss notifications", async function () {
+        const workbench = await browser.getWorkbench();
+        const title = await workbench.getTitleBar().getTitle();
+        assert(
+            title.indexOf("[Extension Development Host]") >= 0,
+            "Unexpected VSCode title"
+        );
+        await dismissNotifications();
     });
 
     it("should wait for a welcome screen", async () => {
@@ -58,11 +67,17 @@ describe("Configure Databricks Extension", async function () {
                 return buttons;
             }
         });
-        assert(welcomeButtons);
+        assert(welcomeButtons, "Welcome buttons don't exist");
         const initTitle = await welcomeButtons[0].getTitle();
         const quickStartTitle = await welcomeButtons[1].getTitle();
-        assert(initTitle.toLowerCase().includes("initialize"));
-        assert(quickStartTitle.toLowerCase().includes("quickstart"));
+        assert(
+            initTitle.toLowerCase().includes("initialize"),
+            "'initialize` button doesn't exist"
+        );
+        assert(
+            quickStartTitle.toLowerCase().includes("quickstart"),
+            "'quickstart' button doesn't exist"
+        );
     });
 
     it("should automatically login after detecting bundle configuration", async () => {
@@ -108,7 +123,7 @@ describe("Configure Databricks Extension", async function () {
                     }
                 }
             },
-            {timeout: 20_000}
+            {timeout: 10_000}
         );
         assert(signInButton, "Sign In button doesn't exist");
         (await signInButton.elem).click();
