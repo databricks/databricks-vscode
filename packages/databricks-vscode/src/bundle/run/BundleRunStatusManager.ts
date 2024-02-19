@@ -1,14 +1,12 @@
 import {Disposable, EventEmitter} from "vscode";
-import {
-    BundleRemoteState,
-    BundleRemoteStateModel,
-} from "../models/BundleRemoteStateModel";
+import {BundleRemoteState, getResource} from "../models/BundleRemoteStateModel";
 import {BundleRunTerminalManager} from "./BundleRunTerminalManager";
 import {JobRunStatus} from "./JobRunStatus";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {BundleRunStatus} from "./BundleRunStatus";
 import {PipelineRunStatus} from "./PipelineRunStatus";
 import {Resource, ResourceKey} from "../types";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
 /**
  * This class monitors the cli bundle run output and record ids for runs. It also polls for status of the these runs.
  */
@@ -20,9 +18,16 @@ export class BundleRunStatusManager implements Disposable {
     readonly onDidChange = this.onDidChangeEmitter.event;
 
     constructor(
-        private readonly bundleRemoteStateModel: BundleRemoteStateModel,
+        private readonly configModel: ConfigModel,
         private readonly bundleRunTerminalManager: BundleRunTerminalManager
-    ) {}
+    ) {
+        this.disposables.push(
+            this.configModel.onDidChangeTarget(() => {
+                this.runStatuses.clear();
+                this.onDidChangeEmitter.fire();
+            })
+        );
+    }
 
     getRunStatusMonitor(
         resourceKey: string,
@@ -54,10 +59,12 @@ export class BundleRunStatusManager implements Disposable {
         resourceKey: string,
         resourceType: ResourceKey<BundleRemoteState>
     ) {
-        const target = this.bundleRemoteStateModel.target;
-        const authProvider = this.bundleRemoteStateModel.authProvider;
-        const resource =
-            await this.bundleRemoteStateModel.getResource(resourceKey);
+        const target = this.configModel.target;
+        const authProvider = this.configModel.authProvider;
+        const resource = getResource(
+            resourceKey,
+            (await this.configModel.get("remoteStateConfig"))?.resources
+        );
 
         if (target === undefined) {
             throw new Error(`Cannot run ${resourceKey}, Target is undefined`);
@@ -85,6 +92,7 @@ export class BundleRunStatusManager implements Disposable {
                 this.onDidChangeEmitter.fire();
             })
         );
+        this.onDidChangeEmitter.fire();
         await this.bundleRunTerminalManager.run(resourceKey, (data) => {
             remoteRunStatus.parseId(data);
         });

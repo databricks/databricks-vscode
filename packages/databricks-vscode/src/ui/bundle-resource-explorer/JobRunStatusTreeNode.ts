@@ -68,6 +68,17 @@ export class JobRunStatusTreeNode implements BundleResourceExplorerTreeNode {
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
+        const runMonitorRunStateTreeItem =
+            RunStateUtils.getTreeItemFromRunMonitorStatus(
+                this.type,
+                this.url,
+                this.runMonitor
+            );
+
+        if (runMonitorRunStateTreeItem) {
+            return runMonitorRunStateTreeItem;
+        }
+
         if (this.runDetails === undefined) {
             return {
                 label: "Run Status",
@@ -76,7 +87,7 @@ export class JobRunStatusTreeNode implements BundleResourceExplorerTreeNode {
                 contextValue: ContextUtils.getContextString({
                     nodeType: this.type,
                 }),
-                collapsibleState: TreeItemCollapsibleState.Collapsed,
+                collapsibleState: TreeItemCollapsibleState.None,
             };
         }
 

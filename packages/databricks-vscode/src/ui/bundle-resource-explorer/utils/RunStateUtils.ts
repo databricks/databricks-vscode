@@ -1,5 +1,11 @@
-import {ThemeColor, ThemeIcon} from "vscode";
+import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {DateUtils} from "../../../utils";
+import {BundleRunStatus} from "../../../bundle/run/BundleRunStatus";
+import {ContextUtils} from ".";
+import {
+    BundleResourceExplorerTreeItem,
+    BundleResourceExplorerTreeNode,
+} from "../types";
 
 export type SimplifiedRunState =
     | "Terminated"
@@ -10,7 +16,8 @@ export type SimplifiedRunState =
     | "Terminating"
     | "Cancelled"
     | "Success"
-    | "Unknown";
+    | "Unknown"
+    | "Timeout";
 
 export function humaniseDate(timestamp?: number) {
     if (timestamp === undefined) {
@@ -42,7 +49,7 @@ export function getThemeIconForStatus(status: SimplifiedRunState): ThemeIcon {
         case "Failed":
             return new ThemeIcon(
                 "testing-error-icon",
-                new ThemeColor("errorForeground")
+                new ThemeColor("problemsErrorIcon.foreground")
             );
         case "Skipped":
             return new ThemeIcon("testing-skipped-icon");
@@ -51,15 +58,17 @@ export function getThemeIconForStatus(status: SimplifiedRunState): ThemeIcon {
         case "Running":
             return new ThemeIcon("sync~spin", new ThemeColor("charts.green"));
         case "Terminating":
-            return new ThemeIcon(
-                "sync-ignored~spin",
-                new ThemeColor("charts.red")
-            );
+            return new ThemeIcon("sync-ignored", new ThemeColor("charts.red"));
         case "Terminated":
         case "Cancelled":
             return new ThemeIcon("circle-slash");
         case "Success":
             return new ThemeIcon("check-all", new ThemeColor("charts.green"));
+        case "Timeout":
+            return new ThemeIcon(
+                "warning",
+                new ThemeColor("problemsWarningIcon.foreground")
+            );
         default:
             return new ThemeIcon("question");
     }
@@ -73,4 +82,35 @@ export function sentenceCase(str?: string, sep: string = "_") {
     return (str.charAt(0).toUpperCase() + str.slice(1).toLowerCase())
         .split(sep)
         .join(" ");
+}
+
+export function getTreeItemFromRunMonitorStatus(
+    type: BundleResourceExplorerTreeNode["type"],
+    url?: string,
+    runMonitor?: BundleRunStatus
+): BundleResourceExplorerTreeItem | undefined {
+    if (runMonitor?.runState === "timeout") {
+        return {
+            label: "Run Status",
+            iconPath: getThemeIconForStatus("Timeout"),
+            description: "Timeout while fetching run status",
+            contextValue: ContextUtils.getContextString({
+                nodeType: type,
+            }),
+            collapsibleState: TreeItemCollapsibleState.None,
+        };
+    }
+
+    if (runMonitor?.runState === "cancelled") {
+        return {
+            label: "Run Status",
+            iconPath: getThemeIconForStatus("Cancelled"),
+            description: "Cancelled",
+            contextValue: ContextUtils.getContextString({
+                nodeType: type,
+                hasUrl: url !== undefined,
+            }),
+            collapsibleState: TreeItemCollapsibleState.None,
+        };
+    }
 }

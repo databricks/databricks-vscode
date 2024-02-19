@@ -85,9 +85,17 @@ export class PipelineRunStatus extends BundleRunStatus {
         this.runState = "completed";
     }
 
+    private markCancelled() {
+        if (this.interval !== undefined) {
+            clearInterval(this.interval);
+            this.interval = undefined;
+        }
+        this.runState = "cancelled";
+    }
+
     async cancel() {
         if (this.runState !== "running" || this.runId === undefined) {
-            this.markCompleted();
+            this.markCancelled();
             return;
         }
 
@@ -109,6 +117,6 @@ export class PipelineRunStatus extends BundleRunStatus {
             pipeline_id: this.pipelineId,
             update_id: this.runId,
         });
-        this.markCompleted();
+        this.markCancelled();
     }
 }

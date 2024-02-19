@@ -108,6 +108,17 @@ export class PipelineRunStatusTreeNode
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
+        const runMonitorRunStateTreeItem =
+            RunStateUtils.getTreeItemFromRunMonitorStatus(
+                this.type,
+                this.url,
+                this.runMonitor
+            );
+
+        if (runMonitorRunStateTreeItem) {
+            return runMonitorRunStateTreeItem;
+        }
+
         if (this.update === undefined) {
             return {
                 label: "Run Status",
@@ -116,7 +127,7 @@ export class PipelineRunStatusTreeNode
                 contextValue: ContextUtils.getContextString({
                     nodeType: this.type,
                 }),
-                collapsibleState: TreeItemCollapsibleState.Collapsed,
+                collapsibleState: TreeItemCollapsibleState.None,
             };
         }
 
