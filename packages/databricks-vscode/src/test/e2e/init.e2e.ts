@@ -92,7 +92,7 @@ describe("Configure Databricks Extension", async function () {
                 );
                 return workspaceRoot === path.join(projectDir, "/my_project");
             },
-            {timeout: 3000, interval: 500}
+            {timeout: 10_000}
         );
     });
 });
