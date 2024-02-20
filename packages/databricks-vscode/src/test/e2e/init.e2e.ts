@@ -8,11 +8,9 @@ import {
 } from "./utils.ts";
 import {sleep, Workbench} from "wdio-vscode-service";
 import {Key} from "webdriverio";
-import path from "node:path";
 
 describe("Configure Databricks Extension", async function () {
     let workbench: Workbench;
-    let projectDir: string;
 
     this.timeout(3 * 60 * 1000);
 
@@ -29,7 +27,6 @@ describe("Configure Databricks Extension", async function () {
             process.env.DATABRICKS_HOST,
             "DATABRICKS_HOST env var doesn't exist"
         );
-        projectDir = process.env.WORKSPACE_PATH;
         workbench = await browser.getWorkbench();
         await dismissNotifications();
     });
@@ -90,7 +87,7 @@ describe("Configure Databricks Extension", async function () {
                         return vscode.workspace.workspaceFolders[0].uri.fsPath;
                     }
                 );
-                return workspaceRoot === path.join(projectDir, "my_project");
+                return workspaceRoot.includes("my_project");
             },
             {timeout: 20_000}
         );

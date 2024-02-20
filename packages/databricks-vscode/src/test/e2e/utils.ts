@@ -242,7 +242,7 @@ export async function waitForInput() {
     return input!;
 }
 
-export async function waitForLogin(profileName?: string) {
+export async function waitForLogin(profileName: string) {
     const section = (await getViewSection(
         "CONFIGURATION"
     )) as CustomTreeSection;
@@ -253,12 +253,8 @@ export async function waitForLogin(profileName?: string) {
             for (const item of items) {
                 const label = await item.getLabel();
                 if (label.toLowerCase().includes("auth type")) {
-                    if (profileName) {
-                        const desc = await item.getDescription();
-                        return desc?.includes(profileName);
-                    } else {
-                        return true;
-                    }
+                    const desc = await item.getDescription();
+                    return desc?.includes(profileName);
                 }
             }
         },
