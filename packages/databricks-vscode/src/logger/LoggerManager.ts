@@ -44,6 +44,12 @@ export class LoggerManager {
     }
 
     async initLoggers() {
+        /**
+         * We need to create a new transport for each log levle.
+         * This because the log output channel requires different functions to print different levels of log.
+         * Since the log output channel is part of the stream, which does not get the log level as input ever,
+         * we need to specify the log level of the stream at object initialisation time.
+         */
         const commonLogTransports = [
             ...LOG_OUTPUT_CHANNEL_LEVELS.map(
                 (level) =>
@@ -56,6 +62,9 @@ export class LoggerManager {
                             }
                         ),
                         format: format.combine(
+                            // Since we want each stream to be targeted to a specific log level,
+                            // we need to filter the logs by level. Returning false from the first format
+                            // will prevent the log from being printed.
                             format((info) => info.level === level && info)(),
                             getJsonFormat()
                         ),
@@ -94,6 +103,12 @@ export class LoggerManager {
             true
         );
 
+        /**
+         * We need to create a new transport for each log levle.
+         * This because the log output channel requires different functions to print different levels of log.
+         * Since the log output channel is part of the stream, which does not get the log level as input ever,
+         * we need to specify the log level of the stream at object initialisation time.
+         */
         const bundleTransports = LOG_OUTPUT_CHANNEL_LEVELS.filter(
             (i) => i !== "debug" && i !== "trace" //Only log info, error, warn
         ).map(
@@ -107,6 +122,9 @@ export class LoggerManager {
                         }
                     ),
                     format: format.combine(
+                        // Since we want each stream to be targeted to a specific log level,
+                        // we need to filter the logs by level. Returning false from the first format
+                        // will prevent the log from being printed.
                         format((info) => info.level === level && info)(),
                         format.timestamp(),
                         format.printf((info) => {
