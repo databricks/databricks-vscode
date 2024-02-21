@@ -4,7 +4,7 @@ import {
     execFile as execFileCb,
     spawn,
 } from "child_process";
-import {ExtensionContext, window, Uri} from "vscode";
+import {ExtensionContext, window, Uri, commands} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -380,6 +380,7 @@ export class CliWrapper {
     ) {
         const cmd = [this.cliPath, "bundle", "deploy", "--target", target];
 
+        await commands.executeCommand("databricks.bundle.showLogs");
         logger?.info(`Deploying the bundle for target ${target}...`, {
             bundleOpName: "deploy",
         });
