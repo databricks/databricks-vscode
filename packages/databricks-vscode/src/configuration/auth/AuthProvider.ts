@@ -204,9 +204,7 @@ export class ProfileAuthProvider extends AuthProvider {
     public static getSdkConfig(profile: string): Config {
         return new Config({
             profile: profile,
-            configFile:
-                workspaceConfigs.databrickscfgLocation ??
-                process.env.DATABRICKS_CONFIG_FILE,
+            configFile: workspaceConfigs.databrickscfgLocation,
             env: {},
         });
     }
