@@ -13,7 +13,7 @@ export class DatabricksDebugConfigurationProvider
         folder: WorkspaceFolder | undefined,
         debugConfiguration: DebugConfiguration
     ) {
-        if (debugConfiguration.type !== "debugpy") {
+        if (debugConfiguration.type !== "python") {
             return debugConfiguration;
         }
 

@@ -541,6 +541,16 @@ export async function activate(
         )
     );
 
+    const databricksDebugConfigurationProvider =
+        new DatabricksDebugConfigurationProvider(databricksEnvFileManager);
+
+    context.subscriptions.push(
+        debug.registerDebugConfigurationProvider(
+            "python",
+            databricksDebugConfigurationProvider
+        )
+    );
+
     // Bundle resource explorer
     const bundleRunTerminalManager = new BundleRunTerminalManager(
         bundleRemoteStateModel
@@ -556,9 +566,6 @@ export async function activate(
             context,
             connectionManager
         );
-
-    const databricksDebugConfigurationProvider =
-        new DatabricksDebugConfigurationProvider(databricksEnvFileManager);
 
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
