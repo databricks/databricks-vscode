@@ -149,7 +149,6 @@ export class ConfigModel implements Disposable {
     @onError({popup: true})
     public async init() {
         await this.readTarget();
-        this.bundleRemoteStateModel.init();
     }
 
     get targets() {

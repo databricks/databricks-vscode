@@ -8,6 +8,8 @@ import lodash from "lodash";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {withOnErrorHandler} from "../../utils/onErrorDecorator";
+import {logging} from "@databricks/databricks-sdk";
+import {Loggers} from "../../logger";
 
 export type BundleValidateState = {
     clusterId?: string;
@@ -18,6 +20,7 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
     private target: string | undefined;
     private authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
+    protected logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
     constructor(
         private readonly bundleWatcher: BundleWatcher,
@@ -67,7 +70,8 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
                 this.target,
                 this.authProvider,
                 this.workspaceFolder,
-                workspaceConfigs.databrickscfgLocation
+                workspaceConfigs.databrickscfgLocation,
+                this.logger
             )
         ) as BundleTarget;
 
