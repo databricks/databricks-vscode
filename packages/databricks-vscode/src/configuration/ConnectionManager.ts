@@ -145,6 +145,10 @@ export class ConnectionManager implements Disposable {
                 this.configModel.onDidChangeKey("host")(
                     this.loginWithSavedAuth,
                     this
+                ),
+                this.configModel.onDidChangeTarget(
+                    this.loginWithSavedAuth,
+                    this
                 )
             );
         }

@@ -224,6 +224,8 @@ export class ConfigModel implements Disposable {
             this.onDidChangeTargetEmitter.fire();
         });
 
+        await this.setAuthProvider(undefined);
+
         this.vscodeWhenContext.isTargetSet(this._target !== undefined);
     }
 

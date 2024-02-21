@@ -1,7 +1,7 @@
 import os
 
 log_level = os.environ.get("DATABRICKS_VSCODE_LOG_LEVEL")
-log_level = log_level if log_level is not None else "INFO"
+log_level = log_level if log_level is not None else "WARN"
 
 import logging
 logging.basicConfig(level=log_level)
@@ -36,4 +36,4 @@ sys.argv = sys.argv[1:]
 logging.debug(f"Running ${script}")
 logging.debug(f"args: ${sys.argv[1:]}")
 
-run_path(script, init_globals=db_globals)
+run_path(script, init_globals=db_globals, run_name="__main__")
