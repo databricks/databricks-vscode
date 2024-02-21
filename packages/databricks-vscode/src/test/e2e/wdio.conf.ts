@@ -26,7 +26,7 @@ const WORKSPACE_PATH = path.resolve(tmpdir(), "workspace");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const {version, name} = packageJson;
+const {version, name, engines} = packageJson;
 
 const REPO_NAME = "vscode-integ-test";
 const EXTENSION_DIR = path.resolve(tmpdir(), "extension-test", "extension");
@@ -117,7 +117,7 @@ export const config: Options.Testrunner = {
         return [
             {
                 "browserName": "vscode",
-                "browserVersion": "stable",
+                "browserVersion": engines.vscode.replace("^", ""),
                 "wdio:vscodeOptions": {
                     extensionPath: path.resolve(
                         __dirname,
