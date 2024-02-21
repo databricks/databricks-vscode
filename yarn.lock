@@ -584,13 +584,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fastify/cors@npm:^8.5.0":
-  version: 8.5.0
-  resolution: "@fastify/cors@npm:8.5.0"
+"@fastify/cors@npm:^9.0.1":
+  version: 9.0.1
+  resolution: "@fastify/cors@npm:9.0.1"
   dependencies:
     fastify-plugin: ^4.0.0
     mnemonist: 0.39.6
-  checksum: b8adf78fa0c1f2ecbffe644dfda148f57f7e9c3c815de3eb6fd90ff359486d372f275c696db3c4f6441b0864e7427c1b7d8a307582a31925bddf21087a943c18
+  checksum: 3b5618b59ba63636b233b5ac54f061132da53364a98b52a61db57f9fd87678bbe22589411e11b454ad2bf6a5e69e7b9514a9d587c56e28c84aa4b50ea836e380
   languageName: node
   linkType: hard
 
@@ -630,17 +630,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fastify/static@npm:^6.12.0":
-  version: 6.12.0
-  resolution: "@fastify/static@npm:6.12.0"
+"@fastify/static@npm:^7.0.1":
+  version: 7.0.1
+  resolution: "@fastify/static@npm:7.0.1"
   dependencies:
     "@fastify/accept-negotiator": ^1.0.0
     "@fastify/send": ^2.0.0
     content-disposition: ^0.5.3
     fastify-plugin: ^4.0.0
-    glob: ^8.0.1
-    p-limit: ^3.1.0
-  checksum: 1ba2f88665baddc9e67c7ea8aee401b5ec8c207e7fd615b2e68246a7ee2cafcc75e66b66d901abb154566fa7132af2319cd00e15350ed57936b74ee10c8eb9c7
+    fastq: ^1.17.0
+    glob: ^10.3.4
+  checksum: d6038dd14c4d5814c24c79083cdd2fb10978c534c65f033fef4b8f3ffe17fe255234199c3b017d8d23951030a92baf55f996d7b8c01e84e40c2008239c5ca643
   languageName: node
   linkType: hard
 
@@ -3747,7 +3747,7 @@ __metadata:
     typescript: ^5.3.3
     vsce: ^2.15.0
     wdio-video-reporter: ^5.1.4
-    wdio-vscode-service: ^6.0.0
+    wdio-vscode-service: ^6.0.2
     winston: ^3.11.0
     yaml: ^2.3.4
     yargs: ^17.7.2
@@ -5001,7 +5001,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fastify@npm:^4.25.2":
+"fastify@npm:^4.26.1":
   version: 4.26.1
   resolution: "fastify@npm:4.26.1"
   dependencies:
@@ -5025,7 +5025,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fastq@npm:^1.17.1":
+"fastq@npm:^1.17.0, fastq@npm:^1.17.1":
   version: 1.17.1
   resolution: "fastq@npm:1.17.1"
   dependencies:
@@ -5704,7 +5704,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^10.3.10":
+"glob@npm:^10.3.10, glob@npm:^10.3.4":
   version: 10.3.10
   resolution: "glob@npm:10.3.10"
   dependencies:
@@ -8387,7 +8387,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"p-limit@npm:^3.0.2, p-limit@npm:^3.1.0":
+"p-limit@npm:^3.0.2":
   version: 3.1.0
   resolution: "p-limit@npm:3.1.0"
   dependencies:
@@ -10577,12 +10577,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:^5.23.0":
-  version: 5.28.2
-  resolution: "undici@npm:5.28.2"
+"undici@npm:^5.28.3":
+  version: 5.28.3
+  resolution: "undici@npm:5.28.3"
   dependencies:
     "@fastify/busboy": ^2.0.0
-  checksum: f9e9335803f962fff07c3c11c6d50bbc76248bacf97035047155adb29c3622a65bd6bff23a22218189740133149d22e63b68131d8c40e78ac6cb4b6d686a6dfa
+  checksum: fa1e65aff896c5e2ee23637b632e306f9e3a2b32a3dc0b23ea71e5555ad350bcc25713aea894b3dccc0b7dc2c5e92a5a58435ebc2033b731a5524506f573dfd2
   languageName: node
   linkType: hard
 
@@ -10804,33 +10804,33 @@ __metadata:
   languageName: node
   linkType: hard
 
-"wdio-vscode-service@npm:^6.0.0":
-  version: 6.0.0
-  resolution: "wdio-vscode-service@npm:6.0.0"
+"wdio-vscode-service@npm:^6.0.2":
+  version: 6.0.2
+  resolution: "wdio-vscode-service@npm:6.0.2"
   dependencies:
-    "@fastify/cors": ^8.5.0
-    "@fastify/static": ^6.12.0
+    "@fastify/cors": ^9.0.1
+    "@fastify/static": ^7.0.1
     "@types/ws": ^8.5.10
     "@vscode/test-electron": ^2.3.8
-    "@wdio/logger": ^8.24.12
+    "@wdio/logger": ^8.28.0
     clipboardy: ^3.0.0
     decamelize: 6.0.0
     download: ^8.0.0
-    fastify: ^4.25.2
+    fastify: ^4.26.1
     get-port: 7.0.0
     hpagent: ^1.2.0
     slash: ^5.1.0
     tmp-promise: ^3.0.3
-    undici: ^5.23.0
+    undici: ^5.28.3
     vscode-uri: ^3.0.8
     ws: ^8.16.0
     yargs-parser: ^21.1.1
   peerDependencies:
-    webdriverio: ^8.14.0
+    webdriverio: ^8.32.2
   peerDependenciesMeta:
     webdriverio:
       optional: true
-  checksum: df986a6696cd291a1f2ee820d2a53591f7db2d7c3943f651089937c16a73a9e2a36d5559cf047dbdfd9cb76a56511d17a74f317c6bf2dbcd9724dab312bd083c
+  checksum: 16c571275c99253b00fbf4a4d6094de48753cc7d898cc24bf0a175c22076b05d021b80df26045ec34bd1cb98f427dffd308d6e2320f916ac90c9965ab485e0e7
   languageName: node
   linkType: hard
 

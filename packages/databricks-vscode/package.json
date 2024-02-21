@@ -839,7 +839,7 @@
         "typescript": "^5.3.3",
         "vsce": "^2.15.0",
         "wdio-video-reporter": "^5.1.4",
-        "wdio-vscode-service": "^6.0.0",
+        "wdio-vscode-service": "^6.0.2",
         "yargs": "^17.7.2"
     },
     "nyc": {

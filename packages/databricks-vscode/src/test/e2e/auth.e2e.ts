@@ -130,4 +130,10 @@ describe("Configure Databricks Extension", async function () {
         await newProfilePick.select();
         await waitForLogin("NEW_PROFILE");
     });
+
+    it("should pick up new profile after reloading", async () => {
+        const workbench = await driver.getWorkbench();
+        await workbench.executeCommand("Developer: Reload Window");
+        await waitForLogin("NEW_PROFILE");
+    });
 });

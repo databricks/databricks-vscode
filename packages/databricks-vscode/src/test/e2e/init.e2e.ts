@@ -8,12 +8,10 @@ import {
 } from "./utils.ts";
 import {sleep, Workbench} from "wdio-vscode-service";
 import {Key} from "webdriverio";
-import {rm} from "node:fs/promises";
-import path from "node:path";
+import {tmpdir} from "node:os";
 
 describe("Configure Databricks Extension", async function () {
     let workbench: Workbench;
-    let projectDir: string;
 
     this.timeout(3 * 60 * 1000);
 
@@ -31,17 +29,7 @@ describe("Configure Databricks Extension", async function () {
             "DATABRICKS_HOST env var doesn't exist"
         );
         workbench = await browser.getWorkbench();
-        projectDir = process.env.WORKSPACE_PATH;
         await dismissNotifications();
-    });
-
-    after(async function () {
-        try {
-            await rm(path.join(projectDir, "my_project"), {
-                recursive: true,
-                force: true,
-            });
-        } catch (e) {}
     });
 
     it("should wait for initializaion", async () => {
@@ -65,12 +53,15 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should initialize new project", async function () {
+        const parentDir = tmpdir();
         const parentFolderInput = await waitForInput();
-
-        // Clicking on the first pick manually, as selectQuickPick partially deletes default input value
+        // Type in the parentDir value to the input
+        await browser.keys(parentDir);
+        await sleep(1000);
         const picks = await parentFolderInput.getQuickPicks();
         const pick = picks.filter((p) => p.getIndex() === 0)[0];
         assert(pick, "Parent folder quick pick doesn't have any items");
+        expect(await pick.getLabel()).toBe(parentDir);
         await pick.select();
 
         const editorView = workbench.getEditorView();
