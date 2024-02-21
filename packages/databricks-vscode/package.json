@@ -132,20 +132,6 @@
                 "enablement": "databricks.context.activated && databricks.context.loggedIn"
             },
             {
-                "command": "databricks.connection.attachSyncDestination",
-                "title": "Configure sync destination",
-                "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(gear)"
-            },
-            {
-                "command": "databricks.connection.detachSyncDestination",
-                "title": "Detach sync destination",
-                "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(debug-disconnect)"
-            },
-            {
                 "command": "databricks.run.runEditorContentsAsWorkflow",
                 "title": "Run File as Workflow",
                 "category": "Databricks",
