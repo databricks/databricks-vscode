@@ -1,3 +1,4 @@
+import {BundleResourceModifiedStatus} from "../../../bundle/models/BundleRemoteStateModel";
 import {RUNNABLE_BUNDLE_RESOURCES} from "../BundleCommands";
 import {
     BundleResourceExplorerResourceKey,
@@ -10,6 +11,7 @@ type BundleTreeItemContext = {
     running?: boolean;
     cancellable?: boolean;
     hasUrl?: boolean;
+    modifiedStatus?: BundleResourceModifiedStatus;
 };
 
 export function getContextString(context: BundleTreeItemContext) {
@@ -21,7 +23,8 @@ export function getContextString(context: BundleTreeItemContext) {
             (RUNNABLE_BUNDLE_RESOURCES as string[]).includes(
                 context.resourceType
             ) &&
-            !context.running
+            !context.running &&
+            context.modifiedStatus !== "deleted"
         ) {
             parts.push("runnable");
         }

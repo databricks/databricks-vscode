@@ -66,7 +66,7 @@ export class JobRunStatus extends BundleRunStatus {
 
     async cancel(): Promise<void> {
         if (this.runId === undefined || this.runState !== "running") {
-            this.runState = "completed";
+            this.runState = "cancelled";
             return;
         }
 
@@ -74,6 +74,6 @@ export class JobRunStatus extends BundleRunStatus {
         await (
             await client.jobs.cancelRun({run_id: parseInt(this.runId)})
         ).wait();
-        this.runState = "completed";
+        this.runState = "cancelled";
     }
 }

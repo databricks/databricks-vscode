@@ -196,6 +196,9 @@ export const config: Options.Testrunner = {
     // commands. Instead, they hook themselves up into the test process.
     services: [["vscode", {cachePath: "/tmp/wdio-vscode-service"}]],
 
+    // cahePath above is for vscode binaries, this one is for the chromedriver
+    cacheDir: "/tmp/wdio-vscode-service",
+
     // Framework you want to run your specs with.
     // The following are supported: Mocha, Jasmine, and Cucumber
     // see also: https://webdriver.io/docs/frameworks
@@ -531,11 +534,6 @@ export const config: Options.Testrunner = {
 };
 
 async function writeDatabricksConfig(config: Config) {
-    assert(
-        process.env["TEST_DEFAULT_CLUSTER_ID"],
-        "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
-    );
-
     const configFile = path.join(WORKSPACE_PATH, ".databrickscfg");
     await fs.writeFile(
         configFile,
@@ -543,7 +541,6 @@ async function writeDatabricksConfig(config: Config) {
 host = ${config.host!}
 token = ${config.token!}`
     );
-
     return configFile;
 }
 

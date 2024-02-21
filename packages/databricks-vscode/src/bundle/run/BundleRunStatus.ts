@@ -2,7 +2,7 @@ import {EventEmitter} from "vscode";
 import {RunState} from "./types";
 import {ResourceKey} from "../types";
 import {BundleRemoteState} from "../models/BundleRemoteStateModel";
-
+import {Time, TimeUnits} from "@databricks/databricks-sdk";
 export abstract class BundleRunStatus {
     abstract readonly type: ResourceKey<BundleRemoteState>;
     protected readonly onDidChangeEmitter = new EventEmitter<void>();
@@ -10,6 +10,14 @@ export abstract class BundleRunStatus {
     runId: string | undefined;
     data: any;
 
+    constructor() {
+        //  Timeout in 60 seconds if we don't have a runId till then.
+        setTimeout(() => {
+            if (this.runState === "unknown") {
+                this.runState = "timeout";
+            }
+        }, new Time(60, TimeUnits.seconds).toMillSeconds().value);
+    }
     protected _runState: RunState = "unknown";
     public get runState(): RunState {
         return this._runState;

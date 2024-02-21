@@ -1,4 +1,4 @@
-import {TreeItemCollapsibleState, ExtensionContext} from "vscode";
+import {ExtensionContext} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {
     BundleResourceExplorerResource,
@@ -34,29 +34,32 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
         public parent?: BundleResourceExplorerTreeNode
     ) {}
 
-    isRunning(resourceKey: string) {
-        const runner = this.bundleRunStatusManager.runStatuses.get(resourceKey);
-        return runner?.runState === "running";
+    get isRunning() {
+        const runner = this.bundleRunStatusManager.runStatuses.get(
+            this.resourceKey
+        );
+        return runner?.runState === "running" || runner?.runState === "unknown";
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
-        const isRunning = this.isRunning(this.resourceKey);
-
         return {
             label: this.data.name,
             contextValue: ContextUtils.getContextString({
                 resourceType: this.type,
-                running: isRunning,
+                running: this.isRunning,
                 hasUrl: this.url !== undefined,
+                cancellable: this.isRunning,
                 nodeType: this.type,
+                modifiedStatus: this.data.modified_status,
             }),
             resourceUri: DecorationUtils.getModifiedStatusDecoration(
-                this.resourceKey,
+                this.data.name ?? this.resourceKey,
                 this.data.modified_status
             ),
-            collapsibleState: isRunning
-                ? TreeItemCollapsibleState.Collapsed
-                : TreeItemCollapsibleState.Expanded,
+            collapsibleState: DecorationUtils.getCollapsibleState(
+                this.isRunning,
+                this.data.modified_status
+            ),
         };
     }
 
@@ -70,7 +73,7 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
             this.resourceKey
         ) as JobRunStatus | undefined;
 
-        if (runMonitor?.runId !== undefined) {
+        if (runMonitor) {
             children.push(new JobRunStatusTreeNode(this, runMonitor));
         }
         children.push(

@@ -6,7 +6,7 @@
     "license": "LicenseRef-LICENSE",
     "version": "2.0.0",
     "engines": {
-        "vscode": "^1.83.0"
+        "vscode": "^1.86.0"
     },
     "categories": [
         "Data Science",
@@ -130,20 +130,6 @@
                 "icon": "$(refresh)",
                 "title": "Refresh",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn"
-            },
-            {
-                "command": "databricks.connection.attachSyncDestination",
-                "title": "Configure sync destination",
-                "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(gear)"
-            },
-            {
-                "command": "databricks.connection.detachSyncDestination",
-                "title": "Detach sync destination",
-                "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(debug-disconnect)"
             },
             {
                 "command": "databricks.run.runEditorContentsAsWorkflow",
@@ -287,6 +273,12 @@
                 "title": "Databricks Connect: Run current file",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.dbconnect.enabled",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.showLogs",
+                "title": "Show bundle logs",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -362,6 +354,7 @@
                 },
                 {
                     "command": "databricks.bundle.initNewProject",
+                    "group": "navigation@1",
                     "when": "view == configurationView"
                 },
                 {
@@ -866,8 +859,8 @@
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3",
         "vsce": "^2.15.0",
-        "wdio-video-reporter": "^4.0.5",
-        "wdio-vscode-service": "^5.2.2",
+        "wdio-video-reporter": "^5.1.4",
+        "wdio-vscode-service": "^6.0.2",
         "yargs": "^17.7.2"
     },
     "nyc": {

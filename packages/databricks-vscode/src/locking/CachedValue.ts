@@ -38,13 +38,24 @@ export class CachedValue<T> implements Disposable {
                     newValue = {} as T;
                 }
 
+                const customizer: lodash.IsEqualCustomizer = (value, other) => {
+                    if (value instanceof URL && other instanceof URL) {
+                        return value.toString() === other.toString();
+                    }
+                    return undefined;
+                };
+
                 for (const key of Object.keys({
                     ...oldValue,
                     ...newValue,
                 } as any) as (keyof T)[]) {
                     if (
                         oldValue === null ||
-                        !lodash.isEqual(oldValue?.[key], newValue?.[key])
+                        !lodash.isEqualWith(
+                            oldValue?.[key],
+                            newValue?.[key],
+                            customizer
+                        )
                     ) {
                         this.onDidChangeKeyEmitters.get(key)?.fire();
                     }

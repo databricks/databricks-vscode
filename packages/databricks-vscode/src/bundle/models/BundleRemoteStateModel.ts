@@ -9,9 +9,6 @@ import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
-import {Context, context} from "@databricks/databricks-sdk";
-import {BundleValidateModel} from "./BundleValidateModel";
-import {withOnErrorHandler} from "../../utils/onErrorDecorator";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export type BundleResourceModifiedStatus = "created" | "deleted" | "updated";
@@ -30,39 +27,40 @@ export type BundleRemoteState = BundleTarget & {
 };
 
 /* eslint-enable @typescript-eslint/naming-convention */
+export function getResource(
+    key: string,
+    resources?: BundleRemoteState["resources"]
+) {
+    return key.split(".").reduce((prev: any, k) => {
+        if (prev === undefined) {
+            return undefined;
+        }
+        return prev[k];
+    }, resources ?? {});
+}
 
 export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemoteState> {
     public target: string | undefined;
     public authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
     private refreshInterval: NodeJS.Timeout | undefined;
+    private logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
     constructor(
         private readonly cli: CliWrapper,
         private readonly workspaceFolder: Uri,
-        private readonly workspaceConfigs: WorkspaceConfigs,
-        private readonly bundleValidateModel: BundleValidateModel
+        private readonly workspaceConfigs: WorkspaceConfigs
     ) {
         super();
-        this.bundleValidateModel.onDidChange(
-            withOnErrorHandler(
-                async () => {
-                    this.refresh();
-                },
-                {log: true, throw: false}
-            )
-        );
     }
 
+    @Mutex.synchronise("mutex")
     public async refresh() {
         return await this.stateCache.refresh();
     }
 
     @Mutex.synchronise("mutex")
-    public async deploy(
-        onStdOut?: (data: string) => void,
-        onStdErr?: (data: string) => void
-    ) {
+    public async deploy() {
         if (this.target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -75,8 +73,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.authProvider,
             this.workspaceFolder,
             this.workspaceConfigs.databrickscfgLocation,
-            onStdOut,
-            onStdErr
+            this.logger
         );
     }
 
@@ -95,17 +92,6 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.workspaceFolder,
             this.workspaceConfigs.databrickscfgLocation
         );
-    }
-
-    @logging.withLogContext(Loggers.Extension)
-    public init(@context ctx?: Context) {
-        this.refreshInterval = setInterval(async () => {
-            try {
-                await this.stateCache.refresh();
-            } catch (e) {
-                ctx?.logger?.error("Unable to refresh bundle remote state", e);
-            }
-        }, this.workspaceConfigs.bundleRemoteStateRefreshInterval);
     }
 
     @Mutex.synchronise("mutex")
@@ -137,7 +123,8 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.target,
             this.authProvider,
             this.workspaceFolder,
-            this.workspaceConfigs.databrickscfgLocation
+            this.workspaceConfigs.databrickscfgLocation,
+            this.logger
         );
 
         if (output === "" || output === undefined) {

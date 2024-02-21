@@ -12,6 +12,9 @@ import {ConnectionManager} from "./ConnectionManager";
 import {UrlUtils} from "../utils";
 import {WorkspaceFsCommands} from "../workspace-fs";
 import {ConfigModel} from "./models/ConfigModel";
+import {saveNewProfile} from "./LoginWizard";
+import {PersonalAccessTokenAuthProvider} from "./auth/AuthProvider";
+import {normalizeHost} from "../utils/urlUtils";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -71,6 +74,19 @@ export class ConnectionCommands implements Disposable {
                 await this.connectionManager.configureLogin();
             }
         );
+    }
+
+    // This command is not exposed to users.
+    // We use it to test new profile flow in e2e tests.
+    async saveNewProfileCommand(name: string) {
+        const host = this.connectionManager.workspaceClient?.config.host;
+        const token = this.connectionManager.workspaceClient?.config.token;
+        if (!host || !token) {
+            throw new Error("Must login first");
+        }
+        const hostUrl = normalizeHost(host);
+        const provider = new PersonalAccessTokenAuthProvider(hostUrl, token);
+        await saveNewProfile(name, provider);
     }
 
     /**

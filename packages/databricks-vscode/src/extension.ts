@@ -166,6 +166,11 @@ export async function activate(
             "databricks.logs.openFolder",
             loggerManager.openLogFolder,
             loggerManager
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.showLogs",
+            () => loggerManager.showOutputChannel("Databricks Bundle Logs"),
+            loggerManager
         )
     );
 
@@ -197,8 +202,7 @@ export async function activate(
     const bundleRemoteStateModel = new BundleRemoteStateModel(
         cli,
         workspaceUri,
-        workspaceConfigs,
-        bundleValidateModel
+        workspaceConfigs
     );
     const configModel = new ConfigModel(
         bundleValidateModel,
@@ -486,6 +490,11 @@ export async function activate(
             "databricks.connection.detachCluster",
             connectionCommands.detachClusterCommand(),
             connectionCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.connection.saveNewProfile",
+            connectionCommands.saveNewProfileCommand,
+            connectionCommands
         )
     );
 
@@ -538,7 +547,7 @@ export async function activate(
         bundleRemoteStateModel
     );
     const bundleRunStatusManager = new BundleRunStatusManager(
-        bundleRemoteStateModel,
+        configModel,
         bundleRunTerminalManager
     );
     const bundleResourceExplorerTreeDataProvider =
@@ -571,7 +580,7 @@ export async function activate(
         ),
         telemetry.registerCommand(
             "databricks.bundle.refreshRemoteState",
-            bundleCommands.refreshRemoteStateCommand,
+            bundleCommands.refreshCommand,
             bundleCommands
         ),
         telemetry.registerCommand(

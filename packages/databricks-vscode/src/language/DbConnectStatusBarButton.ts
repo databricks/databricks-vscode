@@ -16,7 +16,14 @@ export class DbConnectStatusBarButton implements Disposable {
             StatusBarAlignment.Left,
             1000
         );
-        this.disposables.push(this.statusBarButton);
+        this.disposables.push(
+            this.statusBarButton,
+            this.featureManager.onDidChangeState(
+                "debugging.dbconnect",
+                this.update,
+                this
+            )
+        );
         this.disableStatusBarButton();
     }
 

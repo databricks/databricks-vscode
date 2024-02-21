@@ -62,6 +62,20 @@ export class CustomOutputTerminal implements Pseudoterminal {
         this.process.stderr.on("data", handleOutput);
 
         this.process.on("close", (exitCode) => {
+            if (exitCode === 0) {
+                this.writeEmitter.fire(
+                    "\x1b[32mProcess completed successfully\x1b[0m\r\n"
+                );
+            }
+
+            if (exitCode !== 0) {
+                this.writeEmitter.fire(
+                    "\x1b[31mProcess exited with code " +
+                        exitCode +
+                        "\x1b[0m\r\n"
+                );
+            }
+
             this.onDidCloseProcessEmitter.fire(exitCode);
             this._process = undefined;
         });

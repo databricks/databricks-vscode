@@ -96,7 +96,7 @@ export const workspaceConfigs = {
         const config = workspace
             .getConfiguration("databricks")
             .get<string>("overrideDatabricksConfigFile");
-        return config === "" || config === undefined ? undefined : config;
+        return config || process.env.DATABRICKS_CONFIG_FILE || undefined;
     },
 
     get userEnvFile() {

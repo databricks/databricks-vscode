@@ -1,4 +1,3 @@
-import {TreeItemCollapsibleState} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {
     BundleResourceExplorerResource,
@@ -34,7 +33,7 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
 
     isRunning(resourceKey: string) {
         const runner = this.bundleRunStatusManager.runStatuses.get(resourceKey);
-        return runner?.runState === "running";
+        return runner?.runState === "running" || runner?.runState === "unknown";
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
@@ -46,15 +45,18 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
                 resourceType: this.type,
                 running: isRunning,
                 hasUrl: this.url !== undefined,
+                cancellable: isRunning,
                 nodeType: this.type,
+                modifiedStatus: this.data.modified_status,
             }),
             resourceUri: DecorationUtils.getModifiedStatusDecoration(
-                this.resourceKey,
+                this.data.name ?? this.resourceKey,
                 this.data.modified_status
             ),
-            collapsibleState: isRunning
-                ? TreeItemCollapsibleState.Expanded
-                : TreeItemCollapsibleState.Collapsed,
+            collapsibleState: DecorationUtils.getCollapsibleState(
+                isRunning,
+                this.data.modified_status
+            ),
         };
     }
 
@@ -63,7 +65,7 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
         const runMonitor = this.bundleRunStatusManager.runStatuses.get(
             this.resourceKey
         ) as PipelineRunStatus | undefined;
-        if (runMonitor?.data?.update?.update_id !== undefined) {
+        if (runMonitor) {
             children.push(
                 new PipelineRunStatusTreeNode(
                     this.connectionManager,

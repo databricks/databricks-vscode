@@ -1,1 +1,7 @@
-export type RunState = "running" | "completed" | "unknown" | "error";
+export type RunState =
+    | "running"
+    | "completed"
+    | "unknown"
+    | "error"
+    | "timeout"
+    | "cancelled";

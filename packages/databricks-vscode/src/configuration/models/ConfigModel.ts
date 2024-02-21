@@ -146,10 +146,9 @@ export class ConfigModel implements Disposable {
         );
     }
 
-    @onError({popup: {prefix: "Failed to initialize configs."}})
+    @onError({popup: true})
     public async init() {
         await this.readTarget();
-        this.bundleRemoteStateModel.init();
     }
 
     get targets() {
@@ -177,7 +176,18 @@ export class ConfigModel implements Disposable {
             }
             savedTarget = await this.bundlePreValidateModel.defaultTarget;
         });
-        await this.setTarget(savedTarget);
+
+        try {
+            await this.setTarget(savedTarget);
+        } catch (e: any) {
+            let message: string = String(e);
+            if (e instanceof Error) {
+                message = e.message;
+            }
+            throw new Error(
+                `Failed to initialize target ${savedTarget}: ${message}`
+            );
+        }
     }
 
     public get target() {
