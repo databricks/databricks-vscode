@@ -64,7 +64,8 @@ import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
 import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
-import {DatabricksTerminal} from "./language/DatabricksTerminal";
+import {DatabricksTerminal} from "./terminal/DatabricksTerminal";
+import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -555,6 +556,9 @@ export async function activate(
             context,
             connectionManager
         );
+
+    const databricksDebugConfigurationProvider =
+        new DatabricksDebugConfigurationProvider(databricksEnvFileManager);
 
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,

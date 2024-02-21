@@ -141,13 +141,9 @@ export class DatabricksEnvFileManager implements Disposable {
         return await EnvVarGenerators.getUserEnvVars(this.userEnvPath);
     }
 
-    @logging.withLogContext(Loggers.Extension)
-    async writeFile(@context ctx?: Context) {
-        await this.connectionManager.waitForConnect();
-
-        await this.mutex.wait();
-        try {
-            const data = Object.entries({
+    async getEnv() {
+        return Object.fromEntries(
+            Object.entries({
                 ...(this.getDatabrickseEnvVars() || {}),
                 ...((await EnvVarGenerators.getDbConnectEnvVars(
                     this.connectionManager,
@@ -155,9 +151,19 @@ export class DatabricksEnvFileManager implements Disposable {
                 )) || {}),
                 ...this.getIdeEnvVars(),
                 ...((await this.getUserEnvVars()) || {}),
-            })
-                .filter(([, value]) => value !== undefined)
-                .map(([key, value]) => `${key}=${value}`);
+            }).filter(([, value]) => value !== undefined) as [string, string][]
+        );
+    }
+
+    @logging.withLogContext(Loggers.Extension)
+    async writeFile(@context ctx?: Context) {
+        await this.connectionManager.waitForConnect();
+
+        await this.mutex.wait();
+        try {
+            const data = Object.entries(await this.getEnv()).map(
+                ([key, value]) => `${key}=${value}`
+            );
             data.sort();
             try {
                 const oldData = await readFile(
@@ -170,15 +176,14 @@ export class DatabricksEnvFileManager implements Disposable {
             } catch (e) {
                 ctx?.logger?.info("Error reading old databricks.env file", e);
             }
-            this.onDidChangeEnvironmentVariablesEmitter.fire();
             try {
                 await writeFile(
                     this.databricksEnvPath.fsPath,
                     data.join(os.EOL),
                     "utf-8"
                 );
+                this.onDidChangeEnvironmentVariablesEmitter.fire();
                 this.dbConnectStatusBarButton.update();
-                await this.emitToTerminal();
             } catch (e) {
                 ctx?.logger?.info("Error writing databricks.env file", e);
             }
@@ -187,37 +192,7 @@ export class DatabricksEnvFileManager implements Disposable {
         }
     }
 
-    async emitToTerminal() {
-        this.clearTerminalEnv();
-        this.extensionContext.environmentVariableCollection.persistent = false;
-        Object.entries({
-            ...(this.getDatabrickseEnvVars() || {}),
-            ...this.getIdeEnvVars(),
-            ...((await EnvVarGenerators.getDbConnectEnvVars(
-                this.connectionManager,
-                this.workspacePath
-            )) || {}),
-        }).forEach(([key, value]) => {
-            if (value === undefined) {
-                return;
-            }
-            this.extensionContext.environmentVariableCollection.replace(
-                key,
-                value
-            );
-        });
-        this.extensionContext.environmentVariableCollection.prepend(
-            "PATH",
-            `${this.extensionContext.asAbsolutePath("./bin")}${path.delimiter}`
-        );
-    }
-
-    async clearTerminalEnv() {
-        this.extensionContext.environmentVariableCollection.clear();
-    }
-
     dispose() {
-        this.clearTerminalEnv();
         this.disposables.forEach((i) => i.dispose());
     }
 }
