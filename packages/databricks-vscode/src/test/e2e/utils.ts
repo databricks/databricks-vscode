@@ -1,4 +1,6 @@
 import assert from "node:assert";
+import {unlink, writeFile} from "node:fs/promises";
+import path from "node:path";
 import {
     CustomTreeSection,
     sleep,
@@ -260,4 +262,104 @@ export async function waitForLogin(profileName: string) {
         },
         {timeout: 20_000}
     );
+}
+
+const BASIC_BUNDLE = `
+bundle:
+  name: hello_test
+  compute_id: _COMPUTE_ID_
+
+targets:
+  dev_test:
+    mode: development
+    default: true
+    workspace:
+      host: _HOST_
+`;
+
+export async function createBasicBundleConfig() {
+    assert(process.env.DATABRICKS_HOST, "DATABRICKS_HOST doesn't exist");
+    assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
+    assert(
+        process.env.TEST_DEFAULT_CLUSTER_ID,
+        "TEST_DEFAULT_CLUSTER_ID doesn't exist"
+    );
+    const bundleConfig = path.join(
+        process.env.WORKSPACE_PATH,
+        "databricks.yml"
+    );
+    await writeFile(
+        bundleConfig,
+        BASIC_BUNDLE.replace("_HOST_", process.env.DATABRICKS_HOST).replace(
+            "_COMPUTE_ID_",
+            process.env.TEST_DEFAULT_CLUSTER_ID
+        )
+    );
+}
+
+export async function clearBundleConfig() {
+    assert(process.env.DATABRICKS_HOST, "DATABRICKS_HOST doesn't exist");
+    assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
+    const bundleConfig = path.join(
+        process.env.WORKSPACE_PATH,
+        "databricks.yml"
+    );
+    await unlink(bundleConfig);
+}
+
+export async function waitForWorkflowWebview(expectedOutput: string) {
+    const workbench = await browser.getWorkbench();
+    const webView = await workbench.getWebviewByTitle(/Databricks Job Run/);
+    await webView.open();
+
+    await browser.waitUntil(
+        async () => {
+            const runId = await browser.getTextByLabel("task-run-id");
+            return /N\\A/.test(runId) === false;
+        },
+        {
+            timeoutMsg: "Job did not start",
+        }
+    );
+
+    const startTime = await browser.getTextByLabel("run-start-time");
+    expect(startTime).not.toHaveText("-");
+
+    await browser.waitUntil(
+        async () => {
+            const status = await browser.getTextByLabel("run-status");
+            return status.includes("Succeeded");
+        },
+        {
+            timeout: 30000,
+            interval: 100,
+            timeoutMsg: "Job did not reach succeeded status after 30s.",
+        }
+    );
+
+    const iframe = browser.$("#frame");
+    browser.switchToFrame(iframe);
+    const iframeRoot = await browser.$("html");
+    expect(webView.activeFrame);
+    expect(iframeRoot).toHaveText(expectedOutput);
+    browser.switchToParentFrame();
+    await webView.close();
+}
+
+export async function openFile(fileName: string) {
+    const workbench = await driver.getWorkbench();
+    const editorView = workbench.getEditorView();
+    await editorView.closeAllEditors();
+    const input = await workbench.openCommandPrompt();
+    await input.setText(fileName);
+    await input.confirm();
+    await browser.waitUntil(async () => {
+        const editorView = workbench.getEditorView();
+        const activeTab = await editorView.getActiveTab();
+        if (!activeTab) {
+            return;
+        }
+        const title = await activeTab.getTitle();
+        return title.includes(fileName);
+    });
 }

@@ -1,4 +1,3 @@
-import path from "node:path";
 import assert from "node:assert";
 import * as fs from "fs/promises";
 import {
@@ -6,23 +5,11 @@ import {
     waitForInput,
     getViewSection,
     waitForLogin,
+    clearBundleConfig,
+    createBasicBundleConfig,
 } from "./utils.ts";
 import {CustomTreeSection} from "wdio-vscode-service";
 
-const BUNDLE = `
-bundle:
-  name: hello_test
-
-targets:
-  dev_test:
-    mode: development
-    default: true
-    workspace:
-      host: _HOST_
-`;
-
-let projectDir: string;
-let bundleConfig: string;
 let cfgPath: string;
 let cfgContent: Buffer;
 
@@ -36,15 +23,17 @@ describe("Configure Databricks Extension", async function () {
             "DATABRICKS_CONFIG_FILE doesn't exist"
         );
         cfgPath = process.env.DATABRICKS_CONFIG_FILE;
-        projectDir = process.env.WORKSPACE_PATH;
-        bundleConfig = path.join(projectDir, "databricks.yml");
         cfgContent = await fs.readFile(cfgPath);
     });
 
     after(async function () {
-        await fs.unlink(bundleConfig);
-        if (cfgContent) {
-            await fs.writeFile(cfgPath, cfgContent);
+        try {
+            await clearBundleConfig();
+            if (cfgContent) {
+                await fs.writeFile(cfgPath, cfgContent);
+            }
+        } catch (e) {
+            console.error(e);
         }
     });
 
@@ -81,11 +70,7 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should automatically login after detecting bundle configuration", async () => {
-        assert(process.env.DATABRICKS_HOST, "DATABRICKS_HOST doesn't exist");
-        await fs.writeFile(
-            bundleConfig,
-            BUNDLE.replace("_HOST_", process.env.DATABRICKS_HOST)
-        );
+        await createBasicBundleConfig();
         await waitForLogin("DEFAULT");
     });
 
