@@ -3,6 +3,7 @@ import {readFile} from "fs/promises";
 import {Uri} from "vscode";
 import {logging, Headers} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {ConfigModel} from "../configuration/models/ConfigModel";
 
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {
@@ -62,11 +63,13 @@ export function getAuthEnvVars(connectionManager: ConnectionManager) {
 }
 
 export function getCommonDatabricksEnvVars(
-    connectionManager: ConnectionManager
+    connectionManager: ConnectionManager,
+    configModel: ConfigModel
 ) {
     const cluster = connectionManager.cluster;
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
+        DATABRICKS_BUNDLE_TARGET: configModel.target,
         ...(getAuthEnvVars(connectionManager) || {}),
         ...(getProxyEnvVars() || {}),
         DATABRICKS_CLUSTER_ID: cluster?.id,
@@ -82,14 +85,13 @@ async function getPatToken(connectionManager: ConnectionManager) {
 
 async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {
     const host = connectionManager.databricksWorkspace?.host.host;
-    const authType =
-        connectionManager.databricksWorkspace?.authProvider.authType;
+    const authType = connectionManager.apiClient?.config.authType;
 
     // We export spark remote only for profile auth type. This is to support
     // SparkSession builder in oss spark connect (and also dbconnect).
     // For all other auth types, we don't export spark remote and expect users
     // to use DatabricksSession for full functionality.
-    if (host && connectionManager.cluster && authType === "profile") {
+    if (host && connectionManager.cluster && authType === "pat") {
         const pat = await getPatToken(connectionManager);
         if (pat) {
             return {

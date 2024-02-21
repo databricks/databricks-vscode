@@ -1,7 +1,6 @@
 import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
 import {commands, Disposable, window, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {CodeSynchronizer} from "../sync";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {Events, Telemetry} from "../telemetry";
@@ -75,7 +74,6 @@ export class WorkspaceFsAccessVerifier implements Disposable {
     constructor(
         private connectionManager: ConnectionManager,
         private readonly stateStorage: StateStorage,
-        private codeSynchroniser: CodeSynchronizer,
         private readonly telemetry: Telemetry
     ) {
         this.disposables.push(
@@ -91,30 +89,6 @@ export class WorkspaceFsAccessVerifier implements Disposable {
                     await this.verifyWorkspaceConfigs();
                 } else {
                     this.isEnabled = undefined;
-                }
-            }),
-            this.codeSynchroniser.onDidChangeState(async (state) => {
-                if (
-                    workspaceConfigs.syncDestinationType === "repo" &&
-                    state === "FILES_IN_REPOS_DISABLED"
-                ) {
-                    await window.showErrorMessage(
-                        "Sync failed. Files in Repos is disabled for the current workspace. Please contact your system admin to enable it for your workspace."
-                    );
-                } else if (
-                    workspaceConfigs.syncDestinationType === "workspace" &&
-                    state === "FILES_IN_WORKSPACE_DISABLED"
-                ) {
-                    this.isEnabled = false;
-                    const selection = await window.showErrorMessage(
-                        "Sync failed. Files in Workspace is disabled for the current workspace.",
-                        "Switch to Repos",
-                        "Ignore"
-                    );
-
-                    if (selection === "Switch to Repos") {
-                        switchToRepos();
-                    }
                 }
             })
         );

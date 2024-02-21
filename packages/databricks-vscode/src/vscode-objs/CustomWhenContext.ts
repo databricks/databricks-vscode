@@ -78,4 +78,12 @@ export class CustomWhenContext {
             )
         );
     }
+
+    setDbconnectEnabled(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.dbconnect.enabled",
+            value
+        );
+    }
 }

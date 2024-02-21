@@ -1,10 +1,4 @@
-import {
-    Disposable,
-    Uri,
-    workspace,
-    ExtensionContext,
-    EventEmitter,
-} from "vscode";
+import {Disposable, Uri, workspace, EventEmitter} from "vscode";
 import {writeFile, readFile} from "fs/promises";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -18,19 +12,13 @@ import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {EnvVarGenerators, FileUtils} from "../utils";
 import {Mutex} from "../locking/Mutex";
+import {ConfigModel} from "../configuration/models/ConfigModel";
 
-function isValidUserEnvPath(
-    path: string | undefined,
-    excludes: string[]
-): path is string {
-    return path !== undefined && !excludes.includes(path);
-}
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
     private mutex = new Mutex();
     private readonly unresolvedDatabricksEnvFile: string;
     public readonly databricksEnvPath: Uri;
-    private readonly unresolvedUserEnvFile: string;
     private readonly userEnvPath: Uri;
 
     private readonly onDidChangeEnvironmentVariablesEmitter =
@@ -43,7 +31,7 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly featureManager: FeatureManager,
         private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
-        private readonly extensionContext: ExtensionContext
+        private readonly configModel: ConfigModel
     ) {
         const systemVariableResolver = new SystemVariables(workspacePath);
         this.unresolvedDatabricksEnvFile = path.join(
@@ -54,30 +42,12 @@ export class DatabricksEnvFileManager implements Disposable {
         this.databricksEnvPath = Uri.file(
             systemVariableResolver.resolve(this.unresolvedDatabricksEnvFile)
         );
-        //Try to get user specified .env file fron databricks.python.envFile config
-        //If that is not found, then try to read python.envFile config
-        //Default to ${workspaceFolder}/.env.
-        this.unresolvedUserEnvFile = isValidUserEnvPath(
-            workspaceConfigs.userEnvFile,
-            [this.unresolvedDatabricksEnvFile, this.databricksEnvPath.fsPath]
-        )
-            ? workspaceConfigs.userEnvFile
-            : isValidUserEnvPath(workspaceConfigs.msPythonEnvFile, [
-                    this.unresolvedDatabricksEnvFile,
-                    this.databricksEnvPath.fsPath,
-                ])
-              ? workspaceConfigs.msPythonEnvFile
-              : path.join("${workspaceFolder}", ".env");
+
         this.userEnvPath = Uri.file(
-            systemVariableResolver.resolve(this.unresolvedUserEnvFile)
-        );
-        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
-            "Env file locations",
-            {
-                unresolvedDatabricksEnvFile: this.unresolvedDatabricksEnvFile,
-                unresolvedUserEnvFile: this.unresolvedUserEnvFile,
-                msEnvFile: workspaceConfigs.msPythonEnvFile,
-            }
+            systemVariableResolver.resolve(
+                workspaceConfigs.userEnvFile ??
+                    path.join("${workspaceFolder}", ".env")
+            )
         );
     }
 
@@ -86,8 +56,6 @@ export class DatabricksEnvFileManager implements Disposable {
             this.workspacePath,
             this.connectionManager
         );
-        workspaceConfigs.msPythonEnvFile = this.unresolvedDatabricksEnvFile;
-        workspaceConfigs.userEnvFile = this.unresolvedUserEnvFile;
 
         const userEnvFileWatcher = workspace.createFileSystemWatcher(
             this.userEnvPath.fsPath
@@ -128,7 +96,8 @@ export class DatabricksEnvFileManager implements Disposable {
 
     private getDatabrickseEnvVars() {
         return EnvVarGenerators.getCommonDatabricksEnvVars(
-            this.connectionManager
+            this.connectionManager,
+            this.configModel
         );
     }
 

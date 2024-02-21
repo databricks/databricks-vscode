@@ -24,6 +24,7 @@ import {EnvVarGenerators, FileUtils} from "../../utils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {SystemVariables} from "../../vscode-objs/SystemVariables";
 import {LocalUri} from "../../sync/SyncDestination";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
 
 const execFile = promisify(ef);
 
@@ -55,7 +56,8 @@ export class NotebookInitScriptManager implements Disposable {
         private readonly extensionContext: ExtensionContext,
         private readonly connectionManager: ConnectionManager,
         private readonly featureManager: FeatureManager,
-        private readonly pythonExtension: MsPythonExtensionWrapper
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly configModel: ConfigModel
     ) {
         this.featureManager.isEnabled("notebooks.dbconnect").then((state) => {
             if (!state.isDisabledByFf) {
@@ -239,7 +241,8 @@ export class NotebookInitScriptManager implements Disposable {
             const file = path.join(this.startupDir, fileBaseName);
             const env = {
                 ...(EnvVarGenerators.getCommonDatabricksEnvVars(
-                    this.connectionManager
+                    this.connectionManager,
+                    this.configModel
                 ) ?? {}),
                 ...((await EnvVarGenerators.getDbConnectEnvVars(
                     this.connectionManager,

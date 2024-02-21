@@ -275,6 +275,18 @@
                 "title": "Launch Databricks terminal",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.run.dbconnect.debug",
+                "title": "Databricks Connect: Debug current file",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.dbconnect.enabled",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.run.dbconnect.run",
+                "title": "Databricks Connect: Run current file",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.dbconnect.enabled",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -458,6 +470,16 @@
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb",
                     "group": "1_remote@2"
+                },
+                {
+                    "command": "databricks.run.dbconnect.debug",
+                    "when": "resourceLangId == python && databricks.context.dbconnect.enabled",
+                    "group": "2_local@1"
+                },
+                {
+                    "command": "databricks.run.dbconnect.run",
+                    "when": "resourceLangId == python && databricks.context.dbconnect.enabled",
+                    "group": "2_local@2"
                 }
             ],
             "commandPalette": [
