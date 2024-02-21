@@ -245,12 +245,12 @@ export async function waitForInput() {
 }
 
 export async function waitForLogin(profileName: string) {
-    const section = (await getViewSection(
-        "CONFIGURATION"
-    )) as CustomTreeSection;
-    assert(section, "CONFIGURATION section doesn't exist");
     await browser.waitUntil(
         async () => {
+            const section = (await getViewSection(
+                "CONFIGURATION"
+            )) as CustomTreeSection;
+            assert(section, "CONFIGURATION section doesn't exist");
             const items = await section.getVisibleItems();
             for (const item of items) {
                 const label = await item.getLabel();
