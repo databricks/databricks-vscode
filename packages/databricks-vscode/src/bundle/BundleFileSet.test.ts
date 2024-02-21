@@ -1,5 +1,5 @@
 import {Uri} from "vscode";
-import {BundleFileSet, getAbsolutePath} from "./BundleFileSet";
+import {BundleFileSet, getAbsoluteGlobPath} from "./BundleFileSet";
 import {expect} from "chai";
 import path from "path";
 import * as tmp from "tmp-promise";
@@ -18,16 +18,18 @@ describe(__filename, async function () {
         await tmpdir.cleanup();
     });
 
-    it("should return the correct absolute path", () => {
+    it("should return the correct absolute glob path", () => {
         const tmpdirUri = Uri.file(tmpdir.path);
-
-        expect(getAbsolutePath("test.txt", tmpdirUri).fsPath).to.equal(
-            path.join(tmpdirUri.fsPath, "test.txt")
+        let expectedGlob = path.join(tmpdirUri.fsPath, "test.txt");
+        if (process.platform === "win32") {
+            expectedGlob = expectedGlob.replace(/\\/g, "/");
+        }
+        expect(getAbsoluteGlobPath("test.txt", tmpdirUri)).to.equal(
+            expectedGlob
         );
-
-        expect(
-            getAbsolutePath(Uri.file("test.txt"), tmpdirUri).fsPath
-        ).to.equal(path.join(tmpdirUri.fsPath, "test.txt"));
+        expect(getAbsoluteGlobPath(Uri.file("test.txt"), tmpdirUri)).to.equal(
+            expectedGlob
+        );
     });
 
     it("should find the correct root bundle yaml", async () => {

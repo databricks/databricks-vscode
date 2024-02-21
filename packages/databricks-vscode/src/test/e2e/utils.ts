@@ -5,6 +5,7 @@ import {
     TreeItem,
     ViewControl,
     ViewSection,
+    InputBox,
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -202,5 +203,61 @@ export async function startSyncIfStopped() {
         {
             timeout: 20000,
         }
+    );
+}
+
+export async function getTabByTitle(title: string) {
+    const workbench = await browser.getWorkbench();
+    return await browser.waitUntil(
+        async () => {
+            console.log("Searching for a tab with title:", title);
+            const tabs = await workbench.getEditorView().getOpenTabs();
+            for (const tab of tabs) {
+                const tabTitle = await tab.getTitle();
+                console.log("Found a tab:", tabTitle);
+                if (tabTitle.includes(title)) {
+                    return tab;
+                }
+            }
+        },
+        {timeout: 5000}
+    );
+}
+
+export async function waitForInput() {
+    const workbench = await browser.getWorkbench();
+    let input: InputBox | undefined;
+    await browser.waitUntil(
+        async () => {
+            if (!input) {
+                input = await new InputBox(workbench.locatorMap).wait();
+            }
+            if (input) {
+                return !(await input.hasProgress());
+            }
+            return false;
+        },
+        {timeout: 10000}
+    );
+    return input!;
+}
+
+export async function waitForLogin(profileName: string) {
+    await browser.waitUntil(
+        async () => {
+            const section = (await getViewSection(
+                "CONFIGURATION"
+            )) as CustomTreeSection;
+            assert(section, "CONFIGURATION section doesn't exist");
+            const items = await section.getVisibleItems();
+            for (const item of items) {
+                const label = await item.getLabel();
+                if (label.toLowerCase().includes("auth type")) {
+                    const desc = await item.getDescription();
+                    return desc?.includes(profileName);
+                }
+            }
+        },
+        {timeout: 20_000}
     );
 }

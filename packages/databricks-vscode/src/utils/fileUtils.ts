@@ -54,7 +54,6 @@ export async function openDatabricksConfigFile() {
     const homeDir = getHomedir();
     let filePath =
         workspaceConfigs.databrickscfgLocation ??
-        process.env.DATABRICKS_CONFIG_FILE ??
         path.join(homeDir, ".databrickscfg");
 
     if (filePath.startsWith("~/")) {

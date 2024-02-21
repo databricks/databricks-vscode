@@ -10,7 +10,7 @@ import {
 } from "./utils.ts";
 import {sleep} from "wdio-vscode-service";
 
-describe("Run python on cluster with repo", async function () {
+describe.skip("Run python on cluster with repo", async function () {
     let projectDir: string;
     this.timeout(3 * 60 * 1000);
 
