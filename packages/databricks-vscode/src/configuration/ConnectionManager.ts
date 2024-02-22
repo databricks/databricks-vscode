@@ -138,11 +138,15 @@ export class ConnectionManager implements Disposable {
                     this.updateClusterManager,
                     this
                 ),
-                // Don't listen to target change for logging in. Explictly listen for changes in the keys we care about.
+                // Don't just listen to target change for logging in. Also explictly listen for changes in the keys we care about.
                 // We don't have to listen to changes in authProfile as it's set by the login method and we don't respect other
                 // user changes.
                 // TODO: start listening to changes in authParams
                 this.configModel.onDidChangeKey("host")(
+                    this.loginWithSavedAuth,
+                    this
+                ),
+                this.configModel.onDidChangeTarget(
                     this.loginWithSavedAuth,
                     this
                 )
