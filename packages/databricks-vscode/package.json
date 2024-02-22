@@ -666,6 +666,19 @@
                         }
                     }
                 ]
+            },
+            {
+                "type": "python",
+                "configurationAttributes": {
+                    "launch": {
+                        "properties": {
+                            "databricks": {
+                                "type": "boolean",
+                                "description": "Setup databricks environment variables and globals."
+                            }
+                        }
+                    }
+                }
             }
         ],
         "configuration": [
