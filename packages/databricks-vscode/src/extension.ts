@@ -16,7 +16,6 @@ import {ConfigurationDataProvider} from "./configuration/ui/ConfigurationDataPro
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
-import {CodeSynchronizer} from "./sync/CodeSynchronizer";
 import {QuickstartCommands} from "./quickstart/QuickstartCommands";
 import {showQuickStartOnFirstUse} from "./quickstart/QuickStart";
 import {PublicApi} from "@databricks/databricks-vscode-types";
@@ -298,17 +297,11 @@ export async function activate(
         )
     );
 
-    const synchronizer = new CodeSynchronizer(
-        connectionManager,
-        cli,
-        packageMetadata
-    );
     const clusterModel = new ClusterModel(connectionManager);
 
     const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
         connectionManager,
         stateStorage,
-        synchronizer,
         telemetry
     );
 
@@ -447,7 +440,6 @@ export async function activate(
 
     context.subscriptions.push(
         configurationDataProvider,
-        synchronizer,
 
         window.registerTreeDataProvider(
             "configurationView",
