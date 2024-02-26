@@ -224,7 +224,7 @@ export async function activate(
         bundleRemoteStateModel,
         configModel,
         connectionManager,
-        connectionManager.onDidChangeState(async (state) => {
+        connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
                 Metadata.USER,
                 await toUserMetadata(connectionManager)
@@ -232,11 +232,6 @@ export async function activate(
             telemetry.recordEvent(Events.CONNECTION_STATE_CHANGED, {
                 newState: connectionManager.state,
             });
-            if (state === "CONNECTED") {
-                telemetry.recordEvent(Events.SYNC_DESTINATION, {
-                    destination: workspaceConfigs.syncDestinationType,
-                });
-            }
         })
     );
 
@@ -299,11 +294,7 @@ export async function activate(
 
     const clusterModel = new ClusterModel(connectionManager);
 
-    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
-        connectionManager,
-        stateStorage,
-        telemetry
-    );
+    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(connectionManager);
 
     context.subscriptions.push(wsfsAccessVerifier);
 

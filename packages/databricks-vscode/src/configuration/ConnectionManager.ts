@@ -284,9 +284,6 @@ export class ConnectionManager implements Disposable {
             authProvider
         );
         this._workspaceClient = authProvider.getWorkspaceClient();
-        await this._databricksWorkspace.optionalEnableFilesInReposPopup(
-            this._workspaceClient
-        );
         await this.configModel.set(
             "authProfile",
             authProvider.toJSON().profile as string | undefined

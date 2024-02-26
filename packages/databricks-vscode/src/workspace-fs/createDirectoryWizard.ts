@@ -1,7 +1,6 @@
 import {Uri, window} from "vscode";
 import path from "path";
 import {WorkspaceFsDir} from "../sdk-extensions";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export async function createDirWizard(
     workspaceFolder: Uri,
@@ -13,7 +12,7 @@ export async function createDirWizard(
         placeHolder: path.basename(workspaceFolder.fsPath),
         value: path.basename(workspaceFolder.fsPath),
         validateInput: (input) => {
-            if (workspaceConfigs.enableFilesInWorkspace && root) {
+            if (root) {
                 const childPath = root.getAbsoluteChildPath(input);
                 if (childPath === undefined || childPath === root.path) {
                     return `The path must be a child of ${root.path}`;
