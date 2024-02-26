@@ -18,7 +18,12 @@ import {DatabricksCliCheck} from "./DatabricksCliCheck";
 import {Loggers} from "../../logger";
 
 // TODO: Resolve this with SDK's AuthType.
-export type AuthType = "azure-cli" | "databricks-cli" | "profile" | "pat";
+export type AuthType =
+    | "azure-cli"
+    | "databricks-cli"
+    | "google-id"
+    | "profile"
+    | "pat";
 
 export abstract class AuthProvider {
     constructor(
