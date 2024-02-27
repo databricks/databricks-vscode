@@ -27,13 +27,11 @@ export const workspaceConfigs = {
     },
 
     get terminalDefaultProfile(): AdvancedTerminalSupportTypes | undefined {
-        return (workspace
+        return workspace
             .getConfiguration("terminal")
             .get<string>(
                 `integrated.defaultProfile.${getOsForTerminalSettings()}`
-            ) ?? Object.keys(this.terminalProfiles)[0]) as
-            | AdvancedTerminalSupportTypes
-            | undefined;
+            ) as AdvancedTerminalSupportTypes | undefined;
     },
 
     get maxFieldLength() {
