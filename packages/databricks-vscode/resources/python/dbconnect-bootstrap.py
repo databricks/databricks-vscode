@@ -1,5 +1,22 @@
 import os
 
+def load_env_from_leaf(path: str) -> bool:
+    curdir = path if os.path.isdir(path) else os.path.dirname(path)
+    env_file_path = os.path.join(curdir, ".databricks", ".databricks.env")
+    if os.path.exists(os.path.dirname(env_file_path)):
+        with open(env_file_path, "r") as f:
+            for line in f.readlines():
+                key, value = line.strip().split("=", 1)
+                os.environ[key] = value
+        return True
+    
+    parent = os.path.dirname(curdir)
+    if parent == curdir:
+        return False
+    return load_env_from_leaf(parent)
+
+load_env_from_leaf(os.getcwd())
+
 log_level = os.environ.get("DATABRICKS_VSCODE_LOG_LEVEL")
 log_level = log_level if log_level is not None else "WARN"
 

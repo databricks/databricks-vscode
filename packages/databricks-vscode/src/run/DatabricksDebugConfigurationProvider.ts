@@ -4,7 +4,6 @@ import {
     WorkspaceFolder,
     ExtensionContext,
 } from "vscode";
-import {DatabricksEnvFileManager} from "../file-managers/DatabricksEnvFileManager";
 import path from "node:path";
 
 export interface DatabricksPythonDebugConfiguration extends DebugConfiguration {
@@ -18,22 +17,14 @@ export interface DatabricksPythonDebugConfiguration extends DebugConfiguration {
 export class DatabricksDebugConfigurationProvider
     implements DebugConfigurationProvider
 {
-    constructor(
-        private readonly context: ExtensionContext,
-        private readonly databricksEnvFile: DatabricksEnvFileManager
-    ) {}
-    async resolveDebugConfigurationWithSubstitutedVariables?(
+    constructor(private readonly context: ExtensionContext) {}
+    async resolveDebugConfigurationWithSubstitutedVariables(
         folder: WorkspaceFolder | undefined,
         debugConfiguration: DebugConfiguration
     ) {
         if (debugConfiguration.databricks !== true) {
             return debugConfiguration;
         }
-
-        debugConfiguration.env = {
-            ...(await this.databricksEnvFile.getEnv()),
-            ...(debugConfiguration.env ?? {}),
-        };
 
         const userProgram = debugConfiguration.program;
         debugConfiguration.program = this.context.asAbsolutePath(

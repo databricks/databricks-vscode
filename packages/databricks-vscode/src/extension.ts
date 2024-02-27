@@ -592,10 +592,7 @@ export async function activate(
 
     // Run/debug group
     const databricksDebugConfigurationProvider =
-        new DatabricksDebugConfigurationProvider(
-            context,
-            databricksEnvFileManager
-        );
+        new DatabricksDebugConfigurationProvider(context);
 
     const runCommands = new RunCommands(
         connectionManager,
