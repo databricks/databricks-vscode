@@ -63,7 +63,6 @@ import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
 import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
-import {DatabricksTerminalManager} from "./terminal/DatabricksTerminalManager";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 
 const customWhenContext = new CustomWhenContext();
@@ -356,11 +355,6 @@ export async function activate(
         configModel
     );
 
-    const databricksTerminalManager = new DatabricksTerminalManager(
-        workspaceConfigs,
-        databricksEnvFileManager
-    );
-
     context.subscriptions.push(
         notebookInitScriptManager,
         telemetry.registerCommand(
@@ -394,10 +388,6 @@ export async function activate(
         ),
         featureManager.onDidChangeState("debugging.dbconnect", (state) => {
             customWhenContext.setDbconnectEnabled(state.avaliable);
-        }),
-        telemetry.registerCommand("databricks.terminal.launch", async () => {
-            const terminal = await databricksTerminalManager.launch();
-            terminal.show();
         })
     );
 
@@ -611,7 +601,6 @@ export async function activate(
         connectionManager,
         workspace.workspaceFolders[0],
         pythonExtensionWrapper,
-        databricksTerminalManager,
         context
     );
     const debugFactory = new DatabricksDebugAdapterFactory(

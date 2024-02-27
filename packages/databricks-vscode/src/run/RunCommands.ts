@@ -4,7 +4,6 @@ import {FileUtils} from "../utils";
 import {LocalUri} from "../sync/SyncDestination";
 import {DatabricksPythonDebugConfiguration} from "./DatabricksDebugConfigurationProvider";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
-import {DatabricksTerminalManager} from "../terminal/DatabricksTerminalManager";
 import path from "path";
 
 /**
@@ -15,7 +14,6 @@ export class RunCommands {
         private connection: ConnectionManager,
         private readonly workspaceFolder: WorkspaceFolder,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly databricksTerminalManager: DatabricksTerminalManager,
         private readonly context: ExtensionContext
     ) {}
 
@@ -120,7 +118,7 @@ export class RunCommands {
             window.showErrorMessage("No python executable found");
         }
 
-        const terminal = await this.databricksTerminalManager.activeTerminal;
+        const terminal = window.activeTerminal ?? window.createTerminal();
         const bootstrapPath = this.context.asAbsolutePath(
             path.join("resources", "python", "dbconnect-bootstrap.py")
         );
