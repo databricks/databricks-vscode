@@ -256,13 +256,6 @@
                 "category": "Databricks"
             },
             {
-                "command": "databricks.terminal.launch",
-                "icon": "$(terminal)",
-                "title": "Launch Databricks terminal",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "category": "Databricks"
-            },
-            {
                 "command": "databricks.run.dbconnect.debug",
                 "title": "Databricks Connect: Debug current file",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.dbconnect.enabled",
