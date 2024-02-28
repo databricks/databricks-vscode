@@ -45,6 +45,7 @@ export class TaskRunStatusTreeNode implements BundleResourceExplorerTreeNode {
                     {
                         label: "State Message",
                         description: this.runDetails.state?.state_message,
+                        tooltip: this.runDetails.state?.state_message,
                         contextValue: "state_message",
                     },
                     this
