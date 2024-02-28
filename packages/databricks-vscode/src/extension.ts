@@ -72,7 +72,6 @@ export async function activate(
 ): Promise<PublicApi | undefined> {
     customWhenContext.setActivated(false);
     customWhenContext.setDeploymentState("idle");
-    customWhenContext.setDbconnectEnabled(false);
 
     if (extensions.getExtension("databricks.databricks-vscode") !== undefined) {
         await commands.executeCommand(
@@ -386,10 +385,7 @@ export async function activate(
                     );
                 }
             }
-        ),
-        featureManager.onDidChangeState("debugging.dbconnect", (state) => {
-            customWhenContext.setDbconnectEnabled(state.avaliable);
-        })
+        )
     );
 
     notebookInitScriptManager.updateInitScript().catch((e) => {
@@ -599,6 +595,7 @@ export async function activate(
         connectionManager,
         workspace.workspaceFolders[0],
         pythonExtensionWrapper,
+        featureManager,
         context
     );
     const debugFactory = new DatabricksDebugAdapterFactory(

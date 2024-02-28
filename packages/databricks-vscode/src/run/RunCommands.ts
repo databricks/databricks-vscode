@@ -5,6 +5,7 @@ import {LocalUri} from "../sync/SyncDestination";
 import {DatabricksPythonDebugConfiguration} from "./DatabricksDebugConfigurationProvider";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
+import {FeatureManager} from "../feature-manager/FeatureManager";
 
 /**
  * Run related commands
@@ -14,6 +15,7 @@ export class RunCommands {
         private connection: ConnectionManager,
         private readonly workspaceFolder: WorkspaceFolder,
         private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly featureManager: FeatureManager,
         private readonly context: ExtensionContext
     ) {}
 
@@ -80,6 +82,18 @@ export class RunCommands {
         };
     }
 
+    private async checkDbconnectEnabled() {
+        const featureState = await this.featureManager.isEnabled(
+            "debugging.dbconnect"
+        );
+        if (!featureState.avaliable) {
+            featureState.action?.();
+            return false;
+        }
+
+        return true;
+    }
+
     private getTargetResource(resource?: Uri): Uri | undefined {
         if (!resource && window.activeTextEditor) {
             return window.activeTextEditor.document.uri;
@@ -87,7 +101,11 @@ export class RunCommands {
         return resource;
     }
 
-    debugFileUsingDbconnect(resource: Uri) {
+    async debugFileUsingDbconnect(resource?: Uri) {
+        if (!(await this.checkDbconnectEnabled())) {
+            return;
+        }
+
         const targetResource = this.getTargetResource(resource);
         if (!targetResource) {
             window.showErrorMessage("Open a file to run");
@@ -106,7 +124,11 @@ export class RunCommands {
         debug.startDebugging(this.workspaceFolder, config);
     }
 
-    async runFileUsingDbconnect(resource: Uri) {
+    async runFileUsingDbconnect(resource?: Uri) {
+        if (!(await this.checkDbconnectEnabled())) {
+            return;
+        }
+
         const targetResource = this.getTargetResource(resource);
         if (!targetResource) {
             window.showErrorMessage("Open a file to run");

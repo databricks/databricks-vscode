@@ -1,4 +1,9 @@
-import {WorkspaceClient, ApiClient, logging} from "@databricks/databricks-sdk";
+import {
+    WorkspaceClient,
+    ApiClient,
+    logging,
+    AuthType as SdkAuthType,
+} from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
 import {EventEmitter, Uri, window, Disposable, commands} from "vscode";
 import {CliWrapper, ProcessError} from "../cli/CliWrapper";
@@ -187,6 +192,9 @@ export class ConnectionManager implements Disposable {
         return this._workspaceClient?.apiClient;
     }
 
+    get authType(): SdkAuthType | undefined {
+        return this.apiClient?.config.authType;
+    }
     private async loginWithSavedAuth() {
         await this.disconnect();
         const authProvider = await this.resolveAuth();
