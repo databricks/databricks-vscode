@@ -1,5 +1,4 @@
 import {ConfigurationTarget, workspace} from "vscode";
-import {SyncDestinationType} from "../sync/SyncDestination";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
 
 export const workspaceConfigs = {
@@ -38,27 +37,7 @@ export const workspaceConfigs = {
                 .get<boolean>("clusters.onlyShowAccessibleClusters") ?? false
         );
     },
-    get syncDestinationType() {
-        return (
-            workspace
-                .getConfiguration("databricks")
-                .get<SyncDestinationType>("sync.destinationType") ?? "workspace"
-        );
-    },
 
-    get enableFilesInWorkspace() {
-        return this.syncDestinationType === "workspace";
-    },
-
-    async setSyncDestinationType(destinationType: SyncDestinationType) {
-        await workspace
-            .getConfiguration("databricks")
-            .update(
-                "sync.destinationType",
-                destinationType,
-                ConfigurationTarget.Workspace
-            );
-    },
     get databrickscfgLocation() {
         const config = workspace
             .getConfiguration("databricks")

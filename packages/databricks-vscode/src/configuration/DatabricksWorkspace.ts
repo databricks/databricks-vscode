@@ -1,9 +1,8 @@
 import {WorkspaceClient, iam, logging} from "@databricks/databricks-sdk";
 import {Cluster, WorkspaceConf, WorkspaceConfProps} from "../sdk-extensions";
 import {context, Context} from "@databricks/databricks-sdk";
-import {Uri, window, env} from "vscode";
+import {Uri} from "vscode";
 import {Loggers} from "../logger";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider} from "./auth/AuthProvider";
 import {RemoteUri} from "../sync/SyncDestination";
 
@@ -15,13 +14,10 @@ export class DatabricksWorkspace {
     ) {}
 
     /**
-     * The current root for sync destination folders. Return a Workspace path or a Repo path
-     * depending on whether files in workspace is enabled for VSCode UI.
+     * The current root for sync destination folders.
      */
     get currentFsRoot(): RemoteUri {
-        return workspaceConfigs.enableFilesInWorkspace
-            ? this.workspaceFsRoot
-            : this.repoRoot;
+        return this.workspaceFsRoot;
     }
 
     get workspaceFsRoot(): RemoteUri {
@@ -116,36 +112,5 @@ export class DatabricksWorkspace {
         }
 
         return new DatabricksWorkspace(authProvider, me, state);
-    }
-
-    public async optionalEnableFilesInReposPopup(
-        workspaceClient: WorkspaceClient
-    ) {
-        if (
-            workspaceConfigs.syncDestinationType === "repo" &&
-            (!this.isReposEnabled || !this.isFilesInReposEnabled)
-        ) {
-            let message = "";
-            if (!this.isReposEnabled) {
-                message =
-                    "Repos are not enabled for this workspace. Please enable it in the Databricks UI.";
-            } else if (!this.isFilesInReposEnabled) {
-                message =
-                    "Files in Repos is not enabled for this workspace. Please enable it in the Databricks UI.";
-            }
-            logging.NamedLogger.getOrCreate("Extension").error(message);
-            const result = await window.showWarningMessage(
-                message,
-                "Open Databricks UI"
-            );
-            if (result === "Open Databricks UI") {
-                const host = await workspaceClient.apiClient.host;
-                await env.openExternal(
-                    Uri.parse(
-                        host.toString() + "#setting/accounts/workspace-settings"
-                    )
-                );
-            }
-        }
     }
 }

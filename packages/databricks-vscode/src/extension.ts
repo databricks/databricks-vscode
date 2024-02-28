@@ -24,11 +24,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {FileUtils, PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
-import {
-    WorkspaceFsAccessVerifier,
-    WorkspaceFsCommands,
-    WorkspaceFsDataProvider,
-} from "./workspace-fs";
+import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
@@ -224,7 +220,7 @@ export async function activate(
         bundleRemoteStateModel,
         configModel,
         connectionManager,
-        connectionManager.onDidChangeState(async (state) => {
+        connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
                 Metadata.USER,
                 await toUserMetadata(connectionManager)
@@ -232,11 +228,6 @@ export async function activate(
             telemetry.recordEvent(Events.CONNECTION_STATE_CHANGED, {
                 newState: connectionManager.state,
             });
-            if (state === "CONNECTED") {
-                telemetry.recordEvent(Events.SYNC_DESTINATION, {
-                    destination: workspaceConfigs.syncDestinationType,
-                });
-            }
         })
     );
 
@@ -298,14 +289,6 @@ export async function activate(
     );
 
     const clusterModel = new ClusterModel(connectionManager);
-
-    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(
-        connectionManager,
-        stateStorage,
-        telemetry
-    );
-
-    context.subscriptions.push(wsfsAccessVerifier);
 
     const dbConnectInstallPrompt = new DbConnectInstallPrompt(
         stateStorage,
@@ -594,13 +577,11 @@ export async function activate(
         connectionManager,
         configModel,
         bundleCommands,
-        context,
-        wsfsAccessVerifier
+        context
     );
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,
         configModel,
-        wsfsAccessVerifier,
         context,
         bundleCommands
     );
