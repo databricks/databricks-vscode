@@ -338,24 +338,25 @@ export async function activate(
         featureManager
     );
 
+    const databricksEnvFileManager = new DatabricksEnvFileManager(
+        workspaceUri,
+        featureManager,
+        connectionManager,
+        configModel
+    );
+
     const notebookInitScriptManager = new NotebookInitScriptManager(
         workspaceUri,
         context,
         connectionManager,
         featureManager,
         pythonExtensionWrapper,
-        configModel
-    );
-
-    const databricksEnvFileManager = new DatabricksEnvFileManager(
-        workspaceUri,
-        featureManager,
-        dbConnectStatusBarButton,
-        connectionManager,
+        databricksEnvFileManager,
         configModel
     );
 
     context.subscriptions.push(
+        dbConnectStatusBarButton,
         notebookInitScriptManager,
         telemetry.registerCommand(
             "databricks.notebookInitScript.verify",

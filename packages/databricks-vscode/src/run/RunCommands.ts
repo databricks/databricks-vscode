@@ -122,6 +122,7 @@ export class RunCommands {
         const bootstrapPath = this.context.asAbsolutePath(
             path.join("resources", "python", "dbconnect-bootstrap.py")
         );
+        terminal.show();
         terminal.sendText(
             `${executable} ${bootstrapPath} ${targetResource.fsPath}`
         );

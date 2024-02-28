@@ -66,20 +66,6 @@ export const workspaceConfigs = {
         return config || process.env.DATABRICKS_CONFIG_FILE || undefined;
     },
 
-    get userEnvFile() {
-        const config = workspace
-            .getConfiguration("databricks")
-            .get<string>("python.envFile");
-
-        return config === "" || config === undefined ? undefined : config;
-    },
-
-    set userEnvFile(value: string | undefined) {
-        workspace
-            .getConfiguration("databricks")
-            .update("python.envFile", value, ConfigurationTarget.Workspace);
-    },
-
     get experimetalFeatureOverides() {
         return workspace
             .getConfiguration("databricks")
