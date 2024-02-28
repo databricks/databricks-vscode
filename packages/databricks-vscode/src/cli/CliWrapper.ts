@@ -9,7 +9,7 @@ import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {logging} from "@databricks/databricks-sdk";
-import {Loggers} from "../logger";
+import {LoggerManager, Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
 import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
@@ -89,6 +89,7 @@ export class CliWrapper {
     private clusterId?: string;
     constructor(
         private extensionContext: ExtensionContext,
+        private loggerManager: LoggerManager,
         private logFilePath?: string
     ) {}
 
@@ -191,7 +192,13 @@ export class CliWrapper {
                 }
             }
             ctx?.logger?.error(msg, e);
-            this.showConfigFileWarning(msg);
+            window
+                .showWarningMessage(msg, "Open Databricks Config File")
+                .then(async (choice) => {
+                    if (choice === "Open Databricks Config File") {
+                        await FileUtils.openDatabricksConfigFile();
+                    }
+                });
             return [];
         }
 
@@ -201,7 +208,7 @@ export class CliWrapper {
         profiles = profiles.filter((p: any) => !p.account_id);
 
         const result = [];
-
+        let hasError = false;
         for (const profile of profiles) {
             try {
                 result.push({
@@ -220,22 +227,27 @@ export class CliWrapper {
                     msg = `Error parsing profile ${profile.name}`;
                 }
                 ctx?.logger?.error(msg, e);
-                this.showConfigFileWarning(msg);
+                hasError = true;
             }
         }
-        return result;
-    }
 
-    private async showConfigFileWarning(msg: string) {
-        const openAction = "Open Databricks Config File";
-        const choice = await window.showWarningMessage(
-            msg,
-            openAction,
-            "Ignore"
-        );
-        if (choice === openAction) {
-            await FileUtils.openDatabricksConfigFile();
+        if (hasError) {
+            window
+                .showWarningMessage(
+                    "There were errors in parsing some profiles",
+                    "Open Databricks Config File",
+                    "Show Error Logs"
+                )
+                .then(async (choice) => {
+                    if (choice === "Open Databricks Config File") {
+                        await FileUtils.openDatabricksConfigFile();
+                    }
+                    if (choice === "Show Error Logs") {
+                        this.loggerManager.showOutputChannel("Databricks Logs");
+                    }
+                });
         }
+        return result;
     }
 
     public async getBundleSchema(): Promise<string> {

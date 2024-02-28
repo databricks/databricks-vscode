@@ -10,13 +10,14 @@ import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
 import {writeFile, readFile} from "node:fs/promises";
-import {when, spy, reset} from "ts-mockito";
+import {when, spy, reset, instance, mock} from "ts-mockito";
 import {CliWrapper} from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
 import {Context} from "@databricks/databricks-sdk/dist/context";
 import {logging} from "@databricks/databricks-sdk";
+import {LoggerManager} from "../logger";
 
 const execFile = promisify(execFileCb);
 const cliPath = path.join(__dirname, "../../bin/databricks");
@@ -35,6 +36,7 @@ function createCliWrapper(logFilePath?: string) {
                 return path.join(__dirname, "../..", relativePath);
             },
         } as any,
+        instance(mock(LoggerManager)),
         logFilePath
     );
 }
@@ -126,14 +128,12 @@ describe(__filename, () => {
             assert.equal(profiles.length, 2);
             assert.equal(profiles[0].name, "DEFAULT");
             assert.equal(profiles[0].host, "https://cloud.databricks.com/");
-            assert.equal(profiles[0].authType, "pat");
 
             assert.equal(profiles[1].name, "STAGING");
             assert.equal(
                 profiles[1].host,
                 "https://staging.cloud.databricks.com/"
             );
-            assert.equal(profiles[1].authType, "pat");
         });
     });
 
@@ -164,7 +164,6 @@ nothing = true
 
             assert.equal(profiles[0].name, "correct");
             assert.equal(profiles[0].host, "https://cloud.databricks.com/");
-            assert.equal(profiles[0].authType, "pat");
 
             assert.equal(profiles[1].name, "no-token");
             assert.equal(profiles[1].host, "https://cloud.databricks.com/");

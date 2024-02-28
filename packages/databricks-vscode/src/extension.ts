@@ -99,7 +99,7 @@ export async function activate(
             e
         );
     }
-    const cli = new CliWrapper(context, cliLogFilePath);
+    const cli = new CliWrapper(context, loggerManager, cliLogFilePath);
     context.extensionPath;
 
     if (
