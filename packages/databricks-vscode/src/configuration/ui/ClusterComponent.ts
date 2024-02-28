@@ -162,7 +162,7 @@ export class ClusterComponent extends BaseComponent {
             return [];
         }
         const cluster = this.connectionManager.cluster;
-        const children: TreeItem[] = [
+        const children: ConfigurationTreeItem[] = [
             {
                 label: "Cluster ID",
                 description: cluster.id,

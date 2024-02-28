@@ -653,6 +653,11 @@ export async function activate(
             utilCommands.openExternalCommand(),
             utilCommands
         ),
+        telemetry.registerCommand(
+            "databricks.utils.copy",
+            utilCommands.copyToClipboardCommand(),
+            utilCommands
+        ),
         telemetry.registerCommand("databricks.call", (fn) => {
             if (fn) {
                 fn();
