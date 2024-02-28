@@ -1,19 +1,29 @@
-import {debug, Uri, window} from "vscode";
+import {debug, ExtensionContext, Uri, window, WorkspaceFolder} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {FileUtils} from "../utils";
 import {LocalUri} from "../sync/SyncDestination";
+import {DatabricksPythonDebugConfiguration} from "./DatabricksDebugConfigurationProvider";
+import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
+import path from "path";
+import {FeatureManager} from "../feature-manager/FeatureManager";
 
 /**
  * Run related commands
  */
 export class RunCommands {
-    constructor(private connection: ConnectionManager) {}
+    constructor(
+        private connection: ConnectionManager,
+        private readonly workspaceFolder: WorkspaceFolder,
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly featureManager: FeatureManager,
+        private readonly context: ExtensionContext
+    ) {}
 
     /**
      * Run a Python file using the command execution API
      */
     runEditorContentsCommand() {
-        return async (resource: Uri) => {
+        return async (resource?: Uri) => {
             const targetResource = this.getTargetResource(resource);
             if (targetResource) {
                 if (await FileUtils.isNotebook(new LocalUri(targetResource))) {
@@ -45,7 +55,7 @@ export class RunCommands {
      * Run a Python file or notebook as a workflow on the connected cluster
      */
     runEditorContentsAsWorkflowCommand() {
-        return async (resource: Uri) => {
+        return async (resource?: Uri) => {
             const targetResource = this.getTargetResource(resource);
             if (targetResource) {
                 if (this.connection.state === "CONNECTING") {
@@ -72,10 +82,71 @@ export class RunCommands {
         };
     }
 
-    private getTargetResource(resource: Uri): Uri | undefined {
+    private async checkDbconnectEnabled() {
+        const featureState = await this.featureManager.isEnabled(
+            "debugging.dbconnect"
+        );
+        if (!featureState.avaliable) {
+            featureState.action?.();
+            return false;
+        }
+
+        return true;
+    }
+
+    private getTargetResource(resource?: Uri): Uri | undefined {
         if (!resource && window.activeTextEditor) {
             return window.activeTextEditor.document.uri;
         }
         return resource;
+    }
+
+    async debugFileUsingDbconnect(resource?: Uri) {
+        if (!(await this.checkDbconnectEnabled())) {
+            return;
+        }
+
+        const targetResource = this.getTargetResource(resource);
+        if (!targetResource) {
+            window.showErrorMessage("Open a file to run");
+            return;
+        }
+        const config: DatabricksPythonDebugConfiguration = {
+            program: targetResource.fsPath,
+            type: "python",
+            name: "Databricks Connect",
+            request: "launch",
+            databricks: true,
+            console: "integratedTerminal",
+            env: {...process.env},
+        };
+
+        debug.startDebugging(this.workspaceFolder, config);
+    }
+
+    async runFileUsingDbconnect(resource?: Uri) {
+        if (!(await this.checkDbconnectEnabled())) {
+            return;
+        }
+
+        const targetResource = this.getTargetResource(resource);
+        if (!targetResource) {
+            window.showErrorMessage("Open a file to run");
+            return;
+        }
+
+        const executable = await this.pythonExtension.getPythonExecutable();
+        if (!executable) {
+            window.showErrorMessage("No python executable found");
+        }
+
+        const terminal = window.activeTerminal ?? window.createTerminal();
+        const bootstrapPath = this.context.asAbsolutePath(
+            path.join("resources", "python", "dbconnect-bootstrap.py")
+        );
+        terminal.show();
+        terminal.sendText(
+            `${executable} ${bootstrapPath} ${targetResource.fsPath}`
+        );
     }
 }

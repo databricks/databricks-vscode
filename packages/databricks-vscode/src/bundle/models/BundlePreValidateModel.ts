@@ -5,6 +5,7 @@ import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithS
 import {UrlUtils} from "../../utils";
 import {Mutex} from "../../locking";
 import * as lodash from "lodash";
+import {withOnErrorHandler} from "../../utils/onErrorDecorator";
 
 export type BundlePreValidateState = {
     host?: URL;
@@ -26,9 +27,14 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
     ) {
         super();
         this.disposables.push(
-            this.bunldeFileWatcher.onDidChange(async () => {
-                await this.stateCache.refresh();
-            })
+            this.bunldeFileWatcher.onDidChange(
+                withOnErrorHandler(
+                    async () => {
+                        await this.stateCache.refresh();
+                    },
+                    {popup: false, log: true, throw: false}
+                )
+            )
         );
     }
 

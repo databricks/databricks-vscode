@@ -1,38 +1,27 @@
-import {
-    Disposable,
-    Uri,
-    workspace,
-    ExtensionContext,
-    EventEmitter,
-} from "vscode";
-import {writeFile, readFile} from "fs/promises";
+import {Disposable, Uri, workspace, EventEmitter} from "vscode";
+import {writeFile, readFile, stat} from "fs/promises";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import os from "node:os";
-import * as path from "node:path";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {SystemVariables} from "../vscode-objs/SystemVariables";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
-import {DbConnectStatusBarButton} from "../language/DbConnectStatusBarButton";
 import {EnvVarGenerators, FileUtils} from "../utils";
-import {NotebookInitScriptManager} from "../language/notebooks/NotebookInitScriptManager";
 import {Mutex} from "../locking/Mutex";
+import {ConfigModel} from "../configuration/models/ConfigModel";
+import path from "path";
 
-function isValidUserEnvPath(
-    path: string | undefined,
-    excludes: string[]
-): path is string {
-    return path !== undefined && !excludes.includes(path);
-}
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
+    private userEnvFileWatcherDisposables: Disposable[] = [];
     private mutex = new Mutex();
-    private readonly unresolvedDatabricksEnvFile: string;
-    private readonly databricksEnvPath: Uri;
-    private readonly unresolvedUserEnvFile: string;
-    private readonly userEnvPath: Uri;
+    public readonly databricksEnvPath: Uri;
+    private userEnvPath?: Uri;
+    private readonly systemVariableResolver = new SystemVariables(
+        this.workspacePath
+    );
 
     private readonly onDidChangeEnvironmentVariablesEmitter =
         new EventEmitter<void>();
@@ -42,60 +31,40 @@ export class DatabricksEnvFileManager implements Disposable {
     constructor(
         private readonly workspacePath: Uri,
         private readonly featureManager: FeatureManager,
-        private readonly dbConnectStatusBarButton: DbConnectStatusBarButton,
         private readonly connectionManager: ConnectionManager,
-        private readonly extensionContext: ExtensionContext,
-        private readonly notebookInitScriptManager: NotebookInitScriptManager
+        private readonly configModel: ConfigModel
     ) {
-        const systemVariableResolver = new SystemVariables(workspacePath);
-        this.unresolvedDatabricksEnvFile = path.join(
-            "${workspaceFolder}",
+        this.systemVariableResolver = new SystemVariables(this.workspacePath);
+        this.databricksEnvPath = Uri.joinPath(
+            this.workspacePath,
             ".databricks",
             ".databricks.env"
         );
-        this.databricksEnvPath = Uri.file(
-            systemVariableResolver.resolve(this.unresolvedDatabricksEnvFile)
-        );
-        //Try to get user specified .env file fron databricks.python.envFile config
-        //If that is not found, then try to read python.envFile config
-        //Default to ${workspaceFolder}/.env.
-        this.unresolvedUserEnvFile = isValidUserEnvPath(
-            workspaceConfigs.userEnvFile,
-            [this.unresolvedDatabricksEnvFile, this.databricksEnvPath.fsPath]
-        )
-            ? workspaceConfigs.userEnvFile
-            : isValidUserEnvPath(workspaceConfigs.msPythonEnvFile, [
-                    this.unresolvedDatabricksEnvFile,
-                    this.databricksEnvPath.fsPath,
-                ])
-              ? workspaceConfigs.msPythonEnvFile
-              : path.join("${workspaceFolder}", ".env");
-        this.userEnvPath = Uri.file(
-            systemVariableResolver.resolve(this.unresolvedUserEnvFile)
-        );
-        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
-            "Env file locations",
-            {
-                unresolvedDatabricksEnvFile: this.unresolvedDatabricksEnvFile,
-                unresolvedUserEnvFile: this.unresolvedUserEnvFile,
-                msEnvFile: workspaceConfigs.msPythonEnvFile,
-            }
-        );
     }
 
-    public async init() {
-        await FileUtils.waitForDatabricksProject(
-            this.workspacePath,
-            this.connectionManager
-        );
-        workspaceConfigs.msPythonEnvFile = this.unresolvedDatabricksEnvFile;
-        workspaceConfigs.userEnvFile = this.unresolvedUserEnvFile;
+    private updateUserEnvFileWatcher() {
+        const userEnvPath = workspaceConfigs.msPythonEnvFile
+            ? Uri.file(
+                  this.systemVariableResolver.resolve(
+                      workspaceConfigs.msPythonEnvFile
+                  )
+              )
+            : undefined;
 
+        if (userEnvPath?.fsPath !== this.userEnvPath?.fsPath) {
+            this.userEnvPath = userEnvPath;
+        }
+
+        this.userEnvFileWatcherDisposables.forEach((i) => i.dispose());
+
+        if (this.userEnvPath === undefined) {
+            return;
+        }
         const userEnvFileWatcher = workspace.createFileSystemWatcher(
             this.userEnvPath.fsPath
         );
 
-        this.disposables.push(
+        this.userEnvFileWatcherDisposables.push(
             userEnvFileWatcher,
             userEnvFileWatcher.onDidChange(async () => {
                 await this.writeFile();
@@ -105,7 +74,39 @@ export class DatabricksEnvFileManager implements Disposable {
             }, this),
             userEnvFileWatcher.onDidCreate(async () => {
                 await this.writeFile();
-            }, this),
+            }, this)
+        );
+    }
+
+    public async init() {
+        await FileUtils.waitForDatabricksProject(
+            this.workspacePath,
+            this.connectionManager
+        );
+
+        const userEnvPath = workspaceConfigs.msPythonEnvFile
+            ? Uri.file(
+                  this.systemVariableResolver.resolve(
+                      workspaceConfigs.msPythonEnvFile
+                  )
+              )
+            : undefined;
+
+        if (userEnvPath?.fsPath === this.databricksEnvPath.fsPath) {
+            workspaceConfigs.msPythonEnvFile = path.join(
+                "${workspaceRoot}",
+                ".env"
+            );
+        }
+
+        this.updateUserEnvFileWatcher();
+
+        this.disposables.push(
+            workspace.onDidChangeConfiguration(
+                this.updateUserEnvFileWatcher,
+                this,
+                this.disposables
+            ),
             this.featureManager.onDidChangeState(
                 "notebooks.dbconnect",
                 async () => {
@@ -130,7 +131,8 @@ export class DatabricksEnvFileManager implements Disposable {
 
     private getDatabrickseEnvVars() {
         return EnvVarGenerators.getCommonDatabricksEnvVars(
-            this.connectionManager
+            this.connectionManager,
+            this.configModel
         );
     }
 
@@ -140,7 +142,31 @@ export class DatabricksEnvFileManager implements Disposable {
 
     //Get env variables from user's .env file
     private async getUserEnvVars() {
+        if (this.userEnvPath === undefined) {
+            return;
+        }
+        try {
+            await stat(this.userEnvPath.fsPath);
+        } catch (err) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                `${this.userEnvPath.fsPath} does not exist. Not loading user env vars and continuing.`
+            );
+        }
         return await EnvVarGenerators.getUserEnvVars(this.userEnvPath);
+    }
+
+    async getEnv() {
+        return Object.fromEntries(
+            Object.entries({
+                ...(this.getDatabrickseEnvVars() || {}),
+                ...((await EnvVarGenerators.getDbConnectEnvVars(
+                    this.connectionManager,
+                    this.workspacePath
+                )) || {}),
+                ...this.getIdeEnvVars(),
+                ...((await this.getUserEnvVars()) || {}),
+            }).filter(([, value]) => value !== undefined) as [string, string][]
+        );
     }
 
     @logging.withLogContext(Loggers.Extension)
@@ -149,17 +175,9 @@ export class DatabricksEnvFileManager implements Disposable {
 
         await this.mutex.wait();
         try {
-            const data = Object.entries({
-                ...(this.getDatabrickseEnvVars() || {}),
-                ...((await EnvVarGenerators.getDbConnectEnvVars(
-                    this.connectionManager,
-                    this.workspacePath
-                )) || {}),
-                ...this.getIdeEnvVars(),
-                ...((await this.getUserEnvVars()) || {}),
-            })
-                .filter(([, value]) => value !== undefined)
-                .map(([key, value]) => `${key}=${value}`);
+            const data = Object.entries(await this.getEnv()).map(
+                ([key, value]) => `${key}=${value}`
+            );
             data.sort();
             try {
                 const oldData = await readFile(
@@ -172,15 +190,13 @@ export class DatabricksEnvFileManager implements Disposable {
             } catch (e) {
                 ctx?.logger?.info("Error reading old databricks.env file", e);
             }
-            this.onDidChangeEnvironmentVariablesEmitter.fire();
             try {
                 await writeFile(
                     this.databricksEnvPath.fsPath,
                     data.join(os.EOL),
                     "utf-8"
                 );
-                this.dbConnectStatusBarButton.update();
-                await this.emitToTerminal();
+                this.onDidChangeEnvironmentVariablesEmitter.fire();
             } catch (e) {
                 ctx?.logger?.info("Error writing databricks.env file", e);
             }
@@ -189,37 +205,7 @@ export class DatabricksEnvFileManager implements Disposable {
         }
     }
 
-    async emitToTerminal() {
-        this.clearTerminalEnv();
-        this.extensionContext.environmentVariableCollection.persistent = false;
-        Object.entries({
-            ...(this.getDatabrickseEnvVars() || {}),
-            ...this.getIdeEnvVars(),
-            ...((await EnvVarGenerators.getDbConnectEnvVars(
-                this.connectionManager,
-                this.workspacePath
-            )) || {}),
-        }).forEach(([key, value]) => {
-            if (value === undefined) {
-                return;
-            }
-            this.extensionContext.environmentVariableCollection.replace(
-                key,
-                value
-            );
-        });
-        this.extensionContext.environmentVariableCollection.prepend(
-            "PATH",
-            `${this.extensionContext.asAbsolutePath("./bin")}${path.delimiter}`
-        );
-    }
-
-    async clearTerminalEnv() {
-        this.extensionContext.environmentVariableCollection.clear();
-    }
-
     dispose() {
-        this.clearTerminalEnv();
         this.disposables.forEach((i) => i.dispose());
     }
 }

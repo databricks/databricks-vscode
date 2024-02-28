@@ -20,10 +20,11 @@ import {Mutex} from "../../locking";
 import {MsPythonExtensionWrapper} from "../MsPythonExtensionWrapper";
 import {execFile as ef} from "child_process";
 import {promisify} from "util";
-import {EnvVarGenerators, FileUtils} from "../../utils";
+import {FileUtils} from "../../utils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
-import {SystemVariables} from "../../vscode-objs/SystemVariables";
 import {LocalUri} from "../../sync/SyncDestination";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
+import {DatabricksEnvFileManager} from "../../file-managers/DatabricksEnvFileManager";
 
 const execFile = promisify(ef);
 
@@ -55,7 +56,9 @@ export class NotebookInitScriptManager implements Disposable {
         private readonly extensionContext: ExtensionContext,
         private readonly connectionManager: ConnectionManager,
         private readonly featureManager: FeatureManager,
-        private readonly pythonExtension: MsPythonExtensionWrapper
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly databricksEnvFileManager: DatabricksEnvFileManager,
+        private readonly configModel: ConfigModel
     ) {
         this.featureManager.isEnabled("notebooks.dbconnect").then((state) => {
             if (!state.isDisabledByFf) {
@@ -193,16 +196,6 @@ export class NotebookInitScriptManager implements Disposable {
         await this.copyInitScript();
     }
 
-    private async getUserEnvVars() {
-        if (workspaceConfigs.userEnvFile === undefined) {
-            return;
-        }
-        const userEnvFile = new SystemVariables(this.workspacePath).resolve(
-            workspaceConfigs.userEnvFile
-        );
-        return EnvVarGenerators.getUserEnvVars(Uri.file(userEnvFile));
-    }
-
     private async showVerificationFailMessage() {
         if (this.verificationErrorMessageMutex.locked) {
             return;
@@ -237,17 +230,8 @@ export class NotebookInitScriptManager implements Disposable {
         let someScriptFailed = false;
         for (const fileBaseName of await this.sourceFiles) {
             const file = path.join(this.startupDir, fileBaseName);
-            const env = {
-                ...(EnvVarGenerators.getCommonDatabricksEnvVars(
-                    this.connectionManager
-                ) ?? {}),
-                ...((await EnvVarGenerators.getDbConnectEnvVars(
-                    this.connectionManager,
-                    this.workspacePath
-                )) ?? {}),
-                ...(EnvVarGenerators.getIdeEnvVars() ?? {}),
-                ...((await this.getUserEnvVars()) ?? {}),
-            };
+            const env = await this.databricksEnvFileManager.getEnv();
+
             const {stderr} = await execFile(
                 executable,
                 ["-m", "IPython", file],

@@ -127,8 +127,7 @@ describe(__filename, () => {
             });
         });
 
-        it("should generate correct dbconnect env vars when auth type is profile", async () => {
-            when(mockAuthProvider.authType).thenReturn("profile");
+        it("should generate correct dbconnect env vars when auth type is pat", async () => {
             const mockConfig = mock(Config);
             when(mockApiClient.config).thenReturn(instance(mockConfig));
             when(mockConfig.authenticate(anything())).thenCall(
@@ -136,6 +135,8 @@ describe(__filename, () => {
                     headers.set("Authorization", "Bearer token");
                 }
             );
+            when(mockConnectionManager.authType).thenReturn("pat");
+
             const actual = await getDbConnectEnvVars(
                 instance(mockConnectionManager),
                 mockWorkspacePath
@@ -147,6 +148,27 @@ describe(__filename, () => {
                 SPARK_REMOTE: `sc://${
                     Uri.parse(mockHost).authority
                 }:443/;token=token;use_ssl=true;x-databricks-cluster-id=${mockClusterId}`,
+            });
+        });
+
+        it("should generate correct dbconnect env vars when auth type is not pat", async () => {
+            const mockConfig = mock(Config);
+            when(mockApiClient.config).thenReturn(instance(mockConfig));
+            when(mockConfig.authenticate(anything())).thenCall(
+                (headers: Headers) => {
+                    headers.set("Authorization", "Bearer token");
+                }
+            );
+            when(mockConnectionManager.authType).thenReturn("azure-cli");
+
+            const actual = await getDbConnectEnvVars(
+                instance(mockConnectionManager),
+                mockWorkspacePath
+            );
+
+            assert.deepEqual(actual, {
+                SPARK_CONNECT_USER_AGENT: "test/0.0.1",
+                DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
             });
         });
     });

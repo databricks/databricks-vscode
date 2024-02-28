@@ -135,17 +135,14 @@
                 "command": "databricks.run.runEditorContentsAsWorkflow",
                 "title": "Run File as Workflow",
                 "category": "Databricks",
-                "enablement": "!inDebugMode",
-                "icon": {
-                    "dark": "resources/dark/logo.svg",
-                    "light": "resources/light/logo.svg"
-                }
+                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
+                "icon": "$(play)"
             },
             {
                 "command": "databricks.run.runEditorContents",
                 "title": "Upload and Run File",
                 "category": "Databricks",
-                "enablement": "!inDebugMode",
+                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(play)"
             },
             {
@@ -253,6 +250,18 @@
                 "icon": "$(new-folder)",
                 "title": "Initialize new project",
                 "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.run.dbconnect.debug",
+                "title": "Databricks Connect: Debug current file",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.run.dbconnect.run",
+                "title": "Databricks Connect: Run current file",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             },
             {
@@ -444,6 +453,16 @@
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb",
                     "group": "1_remote@2"
+                },
+                {
+                    "command": "databricks.run.dbconnect.debug",
+                    "when": "resourceLangId == python",
+                    "group": "2_local@1"
+                },
+                {
+                    "command": "databricks.run.dbconnect.run",
+                    "when": "resourceLangId == python",
+                    "group": "2_local@2"
                 }
             ],
             "commandPalette": [
@@ -474,11 +493,7 @@
             ],
             "explorer/context": [
                 {
-                    "command": "databricks.run.runEditorContents",
-                    "when": "resourceLangId == python"
-                },
-                {
-                    "command": "databricks.run.runEditorContentsAsWorkflow",
+                    "submenu": "databricks.run",
                     "when": "resourceLangId == python"
                 }
             ]
@@ -493,7 +508,7 @@
                 "id": "databricks.run",
                 "label": "Run on Databricks",
                 "icon": {
-                    "dark": "resources/dark/logo.svg",
+                    "dark": "resources/dark/databricks-run-icon.svg",
                     "light": "resources/light/logo.svg"
                 }
             }
@@ -637,6 +652,19 @@
                         }
                     }
                 ]
+            },
+            {
+                "type": "python",
+                "configurationAttributes": {
+                    "launch": {
+                        "properties": {
+                            "databricks": {
+                                "type": "boolean",
+                                "description": "Setup databricks environment variables and globals."
+                            }
+                        }
+                    }
+                }
             }
         ],
         "configuration": [
@@ -808,11 +836,11 @@
         "@typescript-eslint/parser": "^6.14.0",
         "@typescript-eslint/utils": "^6.14.0",
         "@vscode/test-electron": "^2.3.8",
-        "@wdio/cli": "^8.26.1",
-        "@wdio/local-runner": "^8.26.1",
-        "@wdio/mocha-framework": "^8.24.12",
-        "@wdio/spec-reporter": "^8.24.12",
-        "@wdio/types": "^8.24.12",
+        "@wdio/cli": "^8.32.3",
+        "@wdio/local-runner": "^8.32.3",
+        "@wdio/mocha-framework": "^8.32.3",
+        "@wdio/spec-reporter": "^8.32.2",
+        "@wdio/types": "^8.32.2",
         "chai": "^4.3.10",
         "esbuild": "^0.19.9",
         "eslint": "^8.55.0",

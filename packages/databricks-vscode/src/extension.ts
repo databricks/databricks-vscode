@@ -59,6 +59,7 @@ import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
 import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
+import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -319,33 +320,31 @@ export async function activate(
         featureManager
     );
 
+    const databricksEnvFileManager = new DatabricksEnvFileManager(
+        workspaceUri,
+        featureManager,
+        connectionManager,
+        configModel
+    );
+
     const notebookInitScriptManager = new NotebookInitScriptManager(
         workspaceUri,
         context,
         connectionManager,
         featureManager,
-        pythonExtensionWrapper
+        pythonExtensionWrapper,
+        databricksEnvFileManager,
+        configModel
     );
 
     context.subscriptions.push(
+        dbConnectStatusBarButton,
         notebookInitScriptManager,
         telemetry.registerCommand(
             "databricks.notebookInitScript.verify",
             notebookInitScriptManager.verifyInitScriptCommand,
             notebookInitScriptManager
-        )
-    );
-
-    const databricksEnvFileManager = new DatabricksEnvFileManager(
-        workspaceUri,
-        featureManager,
-        dbConnectStatusBarButton,
-        connectionManager,
-        context,
-        notebookInitScriptManager
-    );
-
-    context.subscriptions.push(
+        ),
         workspace.onDidOpenNotebookDocument(() =>
             featureManager.isEnabled("notebooks.dbconnect")
         ),
@@ -572,7 +571,16 @@ export async function activate(
     );
 
     // Run/debug group
-    const runCommands = new RunCommands(connectionManager);
+    const databricksDebugConfigurationProvider =
+        new DatabricksDebugConfigurationProvider(context);
+
+    const runCommands = new RunCommands(
+        connectionManager,
+        workspace.workspaceFolders[0],
+        pythonExtensionWrapper,
+        featureManager,
+        context
+    );
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
         configModel,
@@ -587,6 +595,20 @@ export async function activate(
     );
 
     context.subscriptions.push(
+        debug.registerDebugConfigurationProvider(
+            "python",
+            databricksDebugConfigurationProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.run.dbconnect.debug",
+            runCommands.debugFileUsingDbconnect,
+            runCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.run.dbconnect.run",
+            runCommands.runFileUsingDbconnect,
+            runCommands
+        ),
         telemetry.registerCommand(
             "databricks.run.runEditorContents",
             runCommands.runEditorContentsCommand(),
