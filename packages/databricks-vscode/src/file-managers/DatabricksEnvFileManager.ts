@@ -151,6 +151,7 @@ export class DatabricksEnvFileManager implements Disposable {
             logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
                 `${this.userEnvPath.fsPath} does not exist. Not loading user env vars and continuing.`
             );
+            return;
         }
         return await EnvVarGenerators.getUserEnvVars(this.userEnvPath);
     }
