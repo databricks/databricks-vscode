@@ -135,17 +135,14 @@
                 "command": "databricks.run.runEditorContentsAsWorkflow",
                 "title": "Run File as Workflow",
                 "category": "Databricks",
-                "enablement": "!inDebugMode",
-                "icon": {
-                    "dark": "resources/dark/logo.svg",
-                    "light": "resources/light/logo.svg"
-                }
+                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
+                "icon": "$(play)"
             },
             {
                 "command": "databricks.run.runEditorContents",
                 "title": "Upload and Run File",
                 "category": "Databricks",
-                "enablement": "!inDebugMode",
+                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
                 "icon": "$(play)"
             },
             {
@@ -258,13 +255,13 @@
             {
                 "command": "databricks.run.dbconnect.debug",
                 "title": "Databricks Connect: Debug current file",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.dbconnect.enabled",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.run.dbconnect.run",
                 "title": "Databricks Connect: Run current file",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.dbconnect.enabled",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             },
             {
@@ -496,11 +493,7 @@
             ],
             "explorer/context": [
                 {
-                    "command": "databricks.run.runEditorContents",
-                    "when": "resourceLangId == python"
-                },
-                {
-                    "command": "databricks.run.runEditorContentsAsWorkflow",
+                    "submenu": "databricks.run",
                     "when": "resourceLangId == python"
                 }
             ]
@@ -515,7 +508,7 @@
                 "id": "databricks.run",
                 "label": "Run on Databricks",
                 "icon": {
-                    "dark": "resources/dark/logo.svg",
+                    "dark": "resources/dark/databricks-run-icon.svg",
                     "light": "resources/light/logo.svg"
                 }
             }
