@@ -20,7 +20,6 @@ import {
     ExtensionContext,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {DatabricksRuntime} from "./DatabricksRuntime";
 import {Subject} from "./Subject";
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
@@ -50,8 +49,7 @@ export class DatabricksDebugAdapterFactory
         private connection: ConnectionManager,
         private configModel: ConfigModel,
         private bundleCommands: BundleCommands,
-        private context: ExtensionContext,
-        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
+        private context: ExtensionContext
     ) {}
 
     dispose() {}
@@ -62,8 +60,7 @@ export class DatabricksDebugAdapterFactory
                 this.connection,
                 this.configModel,
                 this.bundleCommands,
-                this.context,
-                this.wsfsAccessVerifier
+                this.context
             )
         );
     }
@@ -78,8 +75,7 @@ export class DatabricksDebugSession extends LoggingDebugSession {
         connection: ConnectionManager,
         configModel: ConfigModel,
         bundleCommands: BundleCommands,
-        context: ExtensionContext,
-        wsfsAccessVerifier: WorkspaceFsAccessVerifier
+        context: ExtensionContext
     ) {
         super();
 
@@ -87,8 +83,7 @@ export class DatabricksDebugSession extends LoggingDebugSession {
             connection,
             configModel,
             bundleCommands,
-            context,
-            wsfsAccessVerifier
+            context
         );
 
         this.disposables.push(

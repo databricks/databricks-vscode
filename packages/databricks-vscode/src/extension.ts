@@ -24,11 +24,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {FileUtils, PackageJsonUtils, UtilsCommands} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
-import {
-    WorkspaceFsAccessVerifier,
-    WorkspaceFsCommands,
-    WorkspaceFsDataProvider,
-} from "./workspace-fs";
+import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
@@ -293,10 +289,6 @@ export async function activate(
     );
 
     const clusterModel = new ClusterModel(connectionManager);
-
-    const wsfsAccessVerifier = new WorkspaceFsAccessVerifier(connectionManager);
-
-    context.subscriptions.push(wsfsAccessVerifier);
 
     const dbConnectInstallPrompt = new DbConnectInstallPrompt(
         stateStorage,
@@ -585,13 +577,11 @@ export async function activate(
         connectionManager,
         configModel,
         bundleCommands,
-        context,
-        wsfsAccessVerifier
+        context
     );
     const debugWorkflowFactory = new DatabricksWorkflowDebugAdapterFactory(
         connectionManager,
         configModel,
-        wsfsAccessVerifier,
         context,
         bundleCommands
     );

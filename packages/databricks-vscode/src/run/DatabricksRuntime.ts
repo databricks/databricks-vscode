@@ -28,7 +28,6 @@ import {
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
-import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {Time, TimeUnits} from "@databricks/databricks-sdk";
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 import {ConfigModel} from "../configuration/models/ConfigModel";
@@ -100,8 +99,7 @@ export class DatabricksRuntime implements Disposable {
         private connection: ConnectionManager,
         private readonly configModel: ConfigModel,
         private bundleCommands: BundleCommands,
-        private context: ExtensionContext,
-        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
+        private context: ExtensionContext
     ) {}
 
     /**
@@ -151,8 +149,6 @@ export class DatabricksRuntime implements Disposable {
                 return this._onErrorEmitter.fire(undefined);
             }
 
-            await this.wsfsAccessVerifier.verifyCluster(cluster);
-            await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
             if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
                 this._onErrorEmitter.fire(undefined);
                 promptForClusterStart();
