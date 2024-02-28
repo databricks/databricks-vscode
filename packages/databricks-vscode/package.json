@@ -269,6 +269,12 @@
                 "title": "Show bundle logs",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.utils.copy",
+                "title": "Copy",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -434,6 +440,10 @@
                     "command": "databricks.bundle.cancelRun",
                     "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.cancellable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
+                },
+                {
+                    "command": "databricks.utils.copy",
+                    "when": "view == dabsResourceExplorerView || view == configurationView"
                 }
             ],
             "editor/title": [
@@ -509,7 +519,7 @@
                 "label": "Run on Databricks",
                 "icon": {
                     "dark": "resources/dark/databricks-run-icon.svg",
-                    "light": "resources/light/logo.svg"
+                    "light": "resources/light/databricks-run-icon.svg"
                 }
             }
         ],

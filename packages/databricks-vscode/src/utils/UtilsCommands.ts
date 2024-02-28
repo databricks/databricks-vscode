@@ -1,4 +1,4 @@
-import {Disposable, window} from "vscode";
+import {Disposable, window, env} from "vscode";
 import {openExternal} from "./urlUtils";
 
 export class UtilsCommands implements Disposable {
@@ -21,6 +21,40 @@ export class UtilsCommands implements Disposable {
                 return;
             }
             await openExternal(url);
+        };
+    }
+
+    copyToClipboardCommand() {
+        return async (value: any | undefined) => {
+            let text: string | undefined;
+
+            if (value?.copyText instanceof Promise) {
+                text = await value.copyText;
+            } else if (value.copyText !== undefined) {
+                text = value.copyText;
+            }
+
+            if (text === undefined && value?.getTreeItem !== undefined) {
+                const treeItem = value.getTreeItem();
+                if (treeItem instanceof Promise) {
+                    value = await treeItem;
+                } else {
+                    value = treeItem;
+                }
+            }
+
+            if (text === undefined) {
+                text = value?.copyText ?? value?.description ?? value?.label;
+            }
+
+            if (text === undefined) {
+                window.showErrorMessage(
+                    "Databricks: Can't copy to clipboard. No text found."
+                );
+                return;
+            }
+            window.showInformationMessage("Copied to clipboard");
+            await env.clipboard.writeText(text);
         };
     }
 
