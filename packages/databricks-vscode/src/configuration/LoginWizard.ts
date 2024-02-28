@@ -469,11 +469,11 @@ async function validateDatabricksHost(
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
     if (UrlUtils.isAzureHost(host)) {
-        return ["azure-cli", "pat"];
+        return ["databricks-cli", "azure-cli", "pat"];
     }
 
     if (UrlUtils.isGcpHost(host)) {
-        return ["pat"];
+        return ["databricks-cli", "google-id", "pat"];
     }
 
     if (UrlUtils.isAwsHost(host)) {

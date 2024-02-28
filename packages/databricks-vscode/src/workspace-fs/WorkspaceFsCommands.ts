@@ -7,9 +7,7 @@ import {
 import {context, Context} from "@databricks/databricks-sdk/dist/context";
 import {Disposable, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {REPO_NAME_SUFFIX} from "../sync/SyncDestination";
 import {Loggers} from "../logger";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
 
@@ -29,10 +27,6 @@ export class WorkspaceFsCommands implements Disposable {
         rootPath?: string,
         @context ctx?: Context
     ): Promise<WorkspaceFsDir | undefined> {
-        if (!workspaceConfigs.enableFilesInWorkspace) {
-            return;
-        }
-
         if (!this.connectionManager.workspaceClient) {
             window.showErrorMessage(
                 `Please login first to create a new directory`
@@ -82,20 +76,14 @@ export class WorkspaceFsCommands implements Disposable {
 
         const inputPath = await createDirWizard(
             this.workspaceFolder,
-            workspaceConfigs.enableFilesInWorkspace
-                ? "Directory Name"
-                : "Repo Name",
+            "Directory Name",
             root
         );
         let created: WorkspaceFsEntity | undefined;
 
         if (inputPath !== undefined) {
             try {
-                if (!workspaceConfigs.enableFilesInWorkspace) {
-                    created = await this.createRepo(
-                        rootPath + "/" + inputPath + REPO_NAME_SUFFIX
-                    );
-                } else if (root) {
+                if (root) {
                     created = await root.mkdir(inputPath);
                 }
             } catch (e: unknown) {

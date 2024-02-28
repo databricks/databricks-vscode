@@ -16,7 +16,6 @@ import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
 import Convert from "ansi-to-html";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWrapper";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 
 export class WorkflowRunner implements Disposable {
@@ -136,10 +135,7 @@ export class WorkflowRunner implements Disposable {
             if (notebookType) {
                 let remoteFilePath: string =
                     syncDestinationMapper.localToRemoteNotebook(program).path;
-                if (
-                    workspaceConfigs.enableFilesInWorkspace &&
-                    syncDestinationMapper.remoteUri.type === "workspace"
-                ) {
+                if (syncDestinationMapper.remoteUri.type === "workspace") {
                     const wrappedFile = await new WorkspaceFsWorkflowWrapper(
                         this.connectionManager,
                         this.context
@@ -170,7 +166,6 @@ export class WorkflowRunner implements Disposable {
                 const originalFileUri =
                     syncDestinationMapper.localToRemote(program);
                 const wrappedFile =
-                    workspaceConfigs.enableFilesInWorkspace &&
                     syncDestinationMapper.remoteUri.type === "workspace"
                         ? await new WorkspaceFsWorkflowWrapper(
                               this.connectionManager,

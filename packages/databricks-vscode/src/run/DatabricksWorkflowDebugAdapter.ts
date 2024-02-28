@@ -28,7 +28,6 @@ import {
     promptForClusterStart,
 } from "./prompts";
 import {LocalUri} from "../sync/SyncDestination";
-import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {FileUtils} from "../utils";
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 import {ConfigModel} from "../configuration/models/ConfigModel";
@@ -58,7 +57,6 @@ export class DatabricksWorkflowDebugAdapterFactory
     constructor(
         private connection: ConnectionManager,
         private configModel: ConfigModel,
-        private wsfsAccessVerifier: WorkspaceFsAccessVerifier,
         context: ExtensionContext,
         bundleCommands: BundleCommands
     ) {
@@ -78,8 +76,7 @@ export class DatabricksWorkflowDebugAdapterFactory
             new DatabricksWorkflowDebugSession(
                 this.connection,
                 this.configModel,
-                this.workflowRunner,
-                this.wsfsAccessVerifier
+                this.workflowRunner
             )
         );
     }
@@ -93,8 +90,7 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
     constructor(
         private connection: ConnectionManager,
         private configModel: ConfigModel,
-        private workflowRunner: WorkflowRunner,
-        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
+        private workflowRunner: WorkflowRunner
     ) {
         super();
     }
@@ -203,8 +199,6 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
         }
 
         await cluster.refresh();
-        await this.wsfsAccessVerifier.verifyCluster(cluster);
-        await this.wsfsAccessVerifier.verifyWorkspaceConfigs();
         if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
             promptForClusterStart();
             return this.onError();
