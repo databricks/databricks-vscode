@@ -5,7 +5,7 @@ import {
     getTabByTitle,
     getViewSection,
     waitForTreeItems,
-} from "./utils.ts";
+} from "../utils.ts";
 import {sleep, Workbench} from "wdio-vscode-service";
 import {Key} from "webdriverio";
 import {tmpdir} from "node:os";
