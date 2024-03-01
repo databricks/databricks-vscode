@@ -87,7 +87,7 @@ export class BundleCommands implements Disposable {
             if (!(e instanceof Error)) {
                 throw e;
             }
-            await window
+            window
                 .showErrorMessage("Error deploying resource.", "Show Logs")
                 .then((choice) => {
                     if (choice === "Show Logs") {
