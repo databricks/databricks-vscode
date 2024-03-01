@@ -9,7 +9,6 @@ import {
 } from "./types";
 import {ExtensionContext, TreeItemCollapsibleState} from "vscode";
 import {PipelineTreeNode} from "./PipelineTreeNode";
-import {TreeItemTreeNode} from "./TreeItemTreeNode";
 
 function humaniseResourceType(type: BundleResourceExplorerTreeNode["type"]) {
     switch (type) {
@@ -93,10 +92,6 @@ export class ResourceTypeHeaderTreeNode
         );
         if (pipelines.length > 0) {
             roots.push(
-                new TreeItemTreeNode(
-                    {collapsibleState: TreeItemCollapsibleState.None},
-                    undefined
-                ),
                 new ResourceTypeHeaderTreeNode(context, "pipelines", pipelines)
             );
         }
