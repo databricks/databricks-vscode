@@ -226,7 +226,7 @@ export class BundleProjectManager {
         await this.migrateProjectJsonToBundle(
             authProvider as ProfileAuthProvider,
             legacyProjectConfig,
-            true,
+            true
         );
     }
 
@@ -245,13 +245,15 @@ export class BundleProjectManager {
                 await this.migrateProjectJsonToBundle(
                     authProvider,
                     this.legacyProjectConfig,
-                    false,
+                    false
                 );
             } else {
                 this.recordManualMigration(false);
-                this.logger.debug("Incorrect auth for the project.json migration");
+                this.logger.debug(
+                    "Incorrect auth for the project.json migration"
+                );
             }
-        } catch(e) {
+        } catch (e) {
             this.recordManualMigration(false);
             throw e;
         }
