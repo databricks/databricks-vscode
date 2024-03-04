@@ -17,6 +17,7 @@ import {ProjectConfigFile} from "../file-managers/ProjectConfigFile";
 import {randomUUID} from "crypto";
 import {onError} from "../utils/onErrorDecorator";
 import {BundleInitWizard, promptToOpenSubProjects} from "./BundleInitWizard";
+import {Events, Telemetry} from "../telemetry";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -42,7 +43,8 @@ export class BundleProjectManager {
         private connectionManager: ConnectionManager,
         private configModel: ConfigModel,
         private bundleFileSet: BundleFileSet,
-        private workspaceUri: Uri
+        private workspaceUri: Uri,
+        private telemetry: Telemetry
     ) {
         this.disposables.push(
             this.bundleFileSet.bundleDataCache.onDidChange(async () => {
@@ -88,22 +90,15 @@ export class BundleProjectManager {
             // We have a configurationView that shows "openSubProjects" button if the context value is true.
             this.detectSubProjects(),
             // This method will try to automatically create bundle config if there's existing valid project.json config.
-            // In the case project.json auth doesn't work, it sets pendingManualMigration context to enable
-            // configurationView with the configureManualMigration button.
+            // In the case project.json doesn't exist or its auth doesn't work, it sets pendingManualMigration context
+            // to enable configurationView with the configureManualMigration button.
             this.detectLegacyProjectConfig(),
         ]);
-        // This method checks if we are already in a project but don't have a legacy config. In this case, it sets pendingManualMigration
-        // context to enable configurationView with the configureManualMigration button.
-        await this.isInProjectWithoutConfig();
-    }
 
-    private async isInProjectWithoutConfig() {
-        if (
-            this.legacyProjectConfig === undefined &&
-            !(await this.isBundleProject())
-        ) {
-            this.customWhenContext.setPendingManualMigration(true);
-        }
+        this.telemetry.recordEvent(Events.PROJECT_INITIALIZATION, {
+            success: true,
+            type: this.legacyProjectConfig ? "legacy" : "unknown",
+        });
     }
 
     private async configureBundleProject() {
@@ -126,9 +121,21 @@ export class BundleProjectManager {
             this.logger.debug("Project services have already been initialized");
             return;
         }
-        await this.configModel.init();
-        await this.connectionManager.init();
-        this.projectServicesReady = true;
+        try {
+            await this.configModel.init();
+            await this.connectionManager.init();
+            this.projectServicesReady = true;
+            this.telemetry.recordEvent(Events.PROJECT_INITIALIZATION, {
+                success: true,
+                type: "dabs",
+            });
+        } catch (e) {
+            this.telemetry.recordEvent(Events.PROJECT_INITIALIZATION, {
+                success: false,
+                type: "dabs",
+            });
+            throw e;
+        }
     }
 
     private async disposeProjectServices() {
@@ -154,6 +161,7 @@ export class BundleProjectManager {
     private async detectLegacyProjectConfig() {
         this.legacyProjectConfig = await this.loadLegacyProjectConfig();
         if (!this.legacyProjectConfig) {
+            this.customWhenContext.setPendingManualMigration(true);
             return;
         }
         this.logger.debug(

@@ -21,6 +21,7 @@ import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
 import {MetadataService} from "./auth/MetadataService";
+import {Events, Telemetry} from "../telemetry";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -61,7 +62,8 @@ export class ConnectionManager implements Disposable {
         private cli: CliWrapper,
         private readonly configModel: ConfigModel,
         private readonly workspaceUri: Uri,
-        private readonly customWhenContext: CustomWhenContext
+        private readonly customWhenContext: CustomWhenContext,
+        private readonly telemetry: Telemetry
     ) {
         this._metadataService = new MetadataService(
             undefined,
@@ -128,11 +130,9 @@ export class ConnectionManager implements Disposable {
         return this._metadataService.url;
     }
 
-    private _host: URL | undefined;
-
     public async init() {
         try {
-            await this.loginWithSavedAuth();
+            await this.loginWithSavedAuth("init");
         } finally {
             this.disposables.push(
                 this.configModel.onDidChangeKey("remoteRootPath")(
@@ -148,12 +148,10 @@ export class ConnectionManager implements Disposable {
                 // user changes.
                 // TODO: start listening to changes in authParams
                 this.configModel.onDidChangeKey("host")(
-                    this.loginWithSavedAuth,
-                    this
+                    this.loginWithSavedAuth.bind(this, "hostChange")
                 ),
                 this.configModel.onDidChangeTarget(
-                    this.loginWithSavedAuth,
-                    this
+                    this.loginWithSavedAuth.bind(this, "targetChange")
                 )
             );
         }
@@ -195,14 +193,33 @@ export class ConnectionManager implements Disposable {
     get authType(): SdkAuthType | undefined {
         return this.apiClient?.config.authType;
     }
-    private async loginWithSavedAuth() {
-        await this.disconnect();
-        const authProvider = await this.resolveAuth();
-        if (authProvider === undefined) {
-            await this.logout();
-            return;
+
+    private async loginWithSavedAuth(
+        source: "init" | "hostChange" | "targetChange"
+    ) {
+        try {
+            await this.disconnect();
+            const authProvider = await this.resolveAuth();
+            if (authProvider) {
+                await this.connect(authProvider);
+            } else {
+                await this.logout();
+            }
+            this.recordLoginWithSavedAuth(source, this.state === "CONNECTED");
+        } catch (e) {
+            this.recordLoginWithSavedAuth(source, false);
+            throw e;
         }
-        await this.connect(authProvider);
+    }
+
+    private recordLoginWithSavedAuth(
+        source: "init" | "hostChange" | "targetChange",
+        success: boolean
+    ) {
+        return this.telemetry.recordEvent(Events.LOGIN_WITH_SAVED_AUTH, {
+            success,
+            source,
+        });
     }
 
     @onError({popup: {prefix: "Failed to login."}})

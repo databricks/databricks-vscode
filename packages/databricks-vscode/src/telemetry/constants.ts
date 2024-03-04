@@ -10,10 +10,10 @@ export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
 /* eslint-disable @typescript-eslint/naming-convention */
 export enum Events {
     COMMAND_EXECUTION = "commandExecution",
-    EXTENSION_ACTIVATED = "extensionActivation",
+    EXTENSION_ACTIVATION = "extensionActivation",
+    PROJECT_INITIALIZATION = "projectInitialization",
+    LOGIN_WITH_SAVED_AUTH = "loginWithSavedAuth",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
-    SYNC_DESTINATION = "syncDestination",
-    SWITCH_TO_WORKSPACE_PROMPT = "switchToWorkspacePrompt",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -69,8 +69,20 @@ export class EventTypes {
         },
         ...getDurationProperty(),
     };
-    [Events.EXTENSION_ACTIVATED]: EventType<undefined> = {
-        comment: "Extention was activated",
+    [Events.EXTENSION_ACTIVATION]: EventType<undefined> = {
+        comment: "Extension was activated",
+    };
+    [Events.PROJECT_INITIALIZATION]: EventType<{
+        success: boolean;
+        type?: "dabs" | "legacy" | "unknown";
+    }> = {
+        comment: "Extension services were initialized",
+    };
+    [Events.LOGIN_WITH_SAVED_AUTH]: EventType<{
+        success: boolean;
+        source: "init" | "hostChange" | "targetChange";
+    }> = {
+        comment: "Extension services were initialized",
     };
     [Events.CONNECTION_STATE_CHANGED]: EventType<{
         newState: string;
@@ -78,22 +90,6 @@ export class EventTypes {
         comment: "State of ConnectionManager has changed",
         newState: {
             comment: "The new state of the connection",
-        },
-    };
-    [Events.SYNC_DESTINATION]: EventType<{
-        destination: string;
-    }> = {
-        comment: "Sync destination was selected",
-        destination: {
-            comment: "The destination that was selected",
-        },
-    };
-    [Events.SWITCH_TO_WORKSPACE_PROMPT]: EventType<{
-        selection: string;
-    }> = {
-        comment: "Prompt to switch to workspace was shown",
-        selection: {
-            comment: "The selection that was made",
         },
     };
 }
