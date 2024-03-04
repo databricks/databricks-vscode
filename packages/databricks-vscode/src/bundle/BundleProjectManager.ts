@@ -220,7 +220,7 @@ export class BundleProjectManager {
             authProvider as ProfileAuthProvider,
             legacyProjectConfig
         );
-        recordEvent({success: false});
+        recordEvent({success: true});
     }
 
     @onError({
