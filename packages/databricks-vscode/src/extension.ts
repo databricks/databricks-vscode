@@ -711,12 +711,13 @@ export async function activate(
         })
     );
 
+    const recordInitializationEvent = telemetry.start(
+        Events.EXTENSION_INITIALIZATION
+    );
     bundleProjectManager
         .configureWorkspace()
         .catch((e) => {
-            telemetry.recordEvent(Events.EXTENSION_INITIALIZATION, {
-                success: false,
-            });
+            recordInitializationEvent({success: false});
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Failed to configure workspace",
                 e

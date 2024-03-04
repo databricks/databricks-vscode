@@ -196,6 +196,7 @@ export class ConnectionManager implements Disposable {
     }
 
     private async loginWithSavedAuth(source: AutoLoginSource) {
+        const recordEvent = this.telemetry.start(Events.AUTO_LOGIN);
         try {
             await this.disconnect();
             const authProvider = await this.resolveAuth();
@@ -204,21 +205,11 @@ export class ConnectionManager implements Disposable {
             } else {
                 await this.logout();
             }
-            this.recordLoginWithSavedAuth(source, this.state === "CONNECTED");
+            recordEvent({success: this.state === "CONNECTED", source});
         } catch (e) {
-            this.recordLoginWithSavedAuth(source, false);
+            recordEvent({success: false, source});
             throw e;
         }
-    }
-
-    private recordLoginWithSavedAuth(
-        source: AutoLoginSource,
-        success: boolean
-    ) {
-        return this.telemetry.recordEvent(Events.AUTO_LOGIN, {
-            success,
-            source,
-        });
     }
 
     @onError({popup: {prefix: "Failed to login."}})
@@ -343,6 +334,7 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Can't configure workspace. "},
     })
     async configureLogin(source: ManualLoginSource) {
+        const recordEvent = this.telemetry.start(Events.MANUAL_LOGIN);
         try {
             const authProvider = await LoginWizard.run(
                 this.cli,
@@ -352,15 +344,9 @@ export class ConnectionManager implements Disposable {
             if (authProvider) {
                 await this.connect(authProvider);
             }
-            this.telemetry.recordEvent(Events.MANUAL_LOGIN, {
-                source,
-                success: this.state === "CONNECTED",
-            });
+            recordEvent({success: this.state === "CONNECTED", source});
         } catch (e) {
-            this.telemetry.recordEvent(Events.MANUAL_LOGIN, {
-                source,
-                success: false,
-            });
+            recordEvent({success: false, source});
             throw e;
         }
     }

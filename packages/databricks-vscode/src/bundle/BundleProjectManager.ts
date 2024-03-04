@@ -17,7 +17,7 @@ import {ProjectConfigFile} from "../file-managers/ProjectConfigFile";
 import {randomUUID} from "crypto";
 import {onError} from "../utils/onErrorDecorator";
 import {BundleInitWizard, promptToOpenSubProjects} from "./BundleInitWizard";
-import {Events, Telemetry} from "../telemetry";
+import {EventReporter, Events, Telemetry} from "../telemetry";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -84,7 +84,9 @@ export class BundleProjectManager {
         if (await this.isBundleProject()) {
             return;
         }
-
+        const recordEvent = this.telemetry.start(
+            Events.EXTENSION_INITIALIZATION
+        );
         await Promise.all([
             // This method updates subProjectsAvailabe context.
             // We have a configurationView that shows "openSubProjects" button if the context value is true.
@@ -94,11 +96,8 @@ export class BundleProjectManager {
             // to enable configurationView with the configureManualMigration button.
             this.detectLegacyProjectConfig(),
         ]);
-
-        this.telemetry.recordEvent(Events.EXTENSION_INITIALIZATION, {
-            success: true,
-            type: this.legacyProjectConfig ? "legacy" : "unknown",
-        });
+        const type = this.legacyProjectConfig ? "legacy" : "unknown";
+        recordEvent({success: true, type});
     }
 
     private async configureBundleProject() {
@@ -121,19 +120,16 @@ export class BundleProjectManager {
             this.logger.debug("Project services have already been initialized");
             return;
         }
+        const recordEvent = this.telemetry.start(
+            Events.EXTENSION_INITIALIZATION
+        );
         try {
             await this.configModel.init();
             await this.connectionManager.init();
             this.projectServicesReady = true;
-            this.telemetry.recordEvent(Events.EXTENSION_INITIALIZATION, {
-                success: true,
-                type: "dabs",
-            });
+            recordEvent({success: true, type: "dabs"});
         } catch (e) {
-            this.telemetry.recordEvent(Events.EXTENSION_INITIALIZATION, {
-                success: false,
-                type: "dabs",
-            });
+            recordEvent({success: false, type: "dabs"});
             throw e;
         }
     }
@@ -167,10 +163,14 @@ export class BundleProjectManager {
         this.logger.debug(
             "Detected a legacy project.json, starting automatic migration"
         );
+        const recordEvent = this.telemetry.start(Events.AUTO_MIGRATION);
         try {
-            await this.startAutomaticMigration(this.legacyProjectConfig);
+            await this.startAutomaticMigration(
+                this.legacyProjectConfig,
+                recordEvent
+            );
         } catch (error) {
-            this.recordAutoMigration(false);
+            recordEvent({success: false});
             this.customWhenContext.setPendingManualMigration(true);
             const message =
                 "Failed to perform automatic migration to Databricks Asset Bundles.";
@@ -178,14 +178,6 @@ export class BundleProjectManager {
             const errorMessage = (error as Error)?.message ?? "Unknown Error";
             window.showErrorMessage(`${message} ${errorMessage}`);
         }
-    }
-
-    private recordAutoMigration(success: boolean) {
-        this.telemetry.recordEvent(Events.AUTO_MIGRATION, {success});
-    }
-
-    private recordManualMigration(success: boolean) {
-        this.telemetry.recordEvent(Events.MANUAL_MIGRATION, {success});
     }
 
     private async loadLegacyProjectConfig(): Promise<
@@ -203,7 +195,8 @@ export class BundleProjectManager {
     }
 
     private async startAutomaticMigration(
-        legacyProjectConfig: ProjectConfigFile
+        legacyProjectConfig: ProjectConfigFile,
+        recordEvent: EventReporter<Events.AUTO_MIGRATION>
     ) {
         let authProvider = legacyProjectConfig.authProvider;
         if (!(await authProvider.check())) {
@@ -211,7 +204,7 @@ export class BundleProjectManager {
                 "Legacy project auth was not successful, showing 'configure' welcome screen"
             );
             this.customWhenContext.setPendingManualMigration(true);
-            this.recordAutoMigration(false);
+            recordEvent({success: false});
             return;
         }
         if (!(authProvider instanceof ProfileAuthProvider)) {
@@ -227,7 +220,7 @@ export class BundleProjectManager {
             authProvider as ProfileAuthProvider,
             legacyProjectConfig
         );
-        this.recordAutoMigration(true);
+        recordEvent({success: false});
     }
 
     @onError({
@@ -236,6 +229,7 @@ export class BundleProjectManager {
         },
     })
     public async startManualMigration() {
+        const recordEvent = this.telemetry.start(Events.MANUAL_MIGRATION);
         try {
             const authProvider = await LoginWizard.run(this.cli);
             if (
@@ -246,15 +240,15 @@ export class BundleProjectManager {
                     authProvider,
                     this.legacyProjectConfig
                 );
-                this.recordManualMigration(true);
+                recordEvent({success: true});
             } else {
-                this.recordManualMigration(false);
+                recordEvent({success: false});
                 this.logger.debug(
                     "Incorrect auth for the project.json migration"
                 );
             }
         } catch (e) {
-            this.recordManualMigration(false);
+            recordEvent({success: false});
             throw e;
         }
     }

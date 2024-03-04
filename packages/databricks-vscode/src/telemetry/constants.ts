@@ -80,38 +80,50 @@ export class EventTypes {
     [Events.EXTENSION_ACTIVATION]: EventType<undefined> = {
         comment: "Extension was activated",
     };
-    [Events.EXTENSION_INITIALIZATION]: EventType<{
-        success: boolean;
-        type?: "dabs" | "legacy" | "unknown";
-    }> = {
+    [Events.EXTENSION_INITIALIZATION]: EventType<
+        {
+            success: boolean;
+            type?: "dabs" | "legacy" | "unknown";
+        } & DurationMeasurement
+    > = {
         comment: "Extension services were initialized",
     };
-    [Events.AUTO_LOGIN]: EventType<{
-        success: boolean;
-        source: AutoLoginSource;
-    }> = {
+    [Events.AUTO_LOGIN]: EventType<
+        {
+            success: boolean;
+            source: AutoLoginSource;
+        } & DurationMeasurement
+    > = {
         comment: "Extension logged in automatically",
     };
-    [Events.MANUAL_LOGIN]: EventType<{
-        success: boolean;
-        source: ManualLoginSource;
-    }> = {
+    [Events.MANUAL_LOGIN]: EventType<
+        {
+            success: boolean;
+            source: ManualLoginSource;
+        } & DurationMeasurement
+    > = {
         comment: "User logged in manually",
     };
-    [Events.AUTO_MIGRATION]: EventType<{
-        success: boolean;
-    }> = {
+    [Events.AUTO_MIGRATION]: EventType<
+        {
+            success: boolean;
+        } & DurationMeasurement
+    > = {
         comment: "Extension migrated automatically",
     };
-    [Events.MANUAL_MIGRATION]: EventType<{
-        success: boolean;
-    }> = {
+    [Events.MANUAL_MIGRATION]: EventType<
+        {
+            success: boolean;
+        } & DurationMeasurement
+    > = {
         comment: "User migrated manually",
     };
-    [Events.BUNDLE_RUN]: EventType<{
-        success: boolean;
-        resourceType?: BundleRunResourceType;
-    }> = {
+    [Events.BUNDLE_RUN]: EventType<
+        {
+            success: boolean;
+            resourceType?: BundleRunResourceType;
+        } & DurationMeasurement
+    > = {
         comment: "Execute a bundle resource",
     };
     [Events.CONNECTION_STATE_CHANGED]: EventType<{
@@ -135,6 +147,10 @@ export type EventProperties = {
             : never
         : never;
 };
+
+export type EventReporter<E extends keyof EventTypes> = (
+    props: Omit<EventProperties[E], "duration">
+) => void;
 
 export type EnvironmentType = "tests" | "prod";
 

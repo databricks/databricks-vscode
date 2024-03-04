@@ -9,7 +9,6 @@ import {PipelineTreeNode} from "./PipelineTreeNode";
 import {JobTreeNode} from "./JobTreeNode";
 import {CustomWhenContext} from "../../vscode-objs/CustomWhenContext";
 import {Events, Telemetry} from "../../telemetry";
-import {BundleRunResourceType} from "../../telemetry/constants";
 
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
@@ -113,6 +112,7 @@ export class BundleCommands implements Disposable {
         if (!isRunnable(treeNode)) {
             throw new Error(`Cannot run resource of type ${treeNode.type}`);
         }
+        const recordEvent = this.telemetry.start(Events.BUNDLE_RUN);
         try {
             // TODO: Don't deploy if there is no diff between local and remote state
             await this.deploy();
@@ -120,18 +120,11 @@ export class BundleCommands implements Disposable {
                 treeNode.resourceKey,
                 treeNode.type
             );
-            this.recordBundleRun(true, treeNode.type);
+            recordEvent({success: true, resourceType: treeNode.type});
         } catch (e) {
-            this.recordBundleRun(false, treeNode.type);
+            recordEvent({success: false, resourceType: treeNode.type});
             throw e;
         }
-    }
-
-    private recordBundleRun(
-        success: boolean,
-        resourceType: BundleRunResourceType
-    ) {
-        this.telemetry.recordEvent(Events.BUNDLE_RUN, {success, resourceType});
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})
