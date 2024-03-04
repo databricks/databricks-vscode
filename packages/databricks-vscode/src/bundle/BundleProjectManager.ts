@@ -170,6 +170,7 @@ export class BundleProjectManager {
         try {
             await this.startAutomaticMigration(this.legacyProjectConfig);
         } catch (error) {
+            this.recordAutoMigration(false);
             this.customWhenContext.setPendingManualMigration(true);
             const message =
                 "Failed to perform automatic migration to Databricks Asset Bundles.";
@@ -177,6 +178,14 @@ export class BundleProjectManager {
             const errorMessage = (error as Error)?.message ?? "Unknown Error";
             window.showErrorMessage(`${message} ${errorMessage}`);
         }
+    }
+
+    private recordAutoMigration(success: boolean) {
+        this.telemetry.recordEvent(Events.AUTO_MIGRATION, {success});
+    }
+
+    private recordManualMigration(success: boolean) {
+        this.telemetry.recordEvent(Events.MANUAL_MIGRATION, {success});
     }
 
     private async loadLegacyProjectConfig(): Promise<
@@ -202,6 +211,7 @@ export class BundleProjectManager {
                 "Legacy project auth was not successful, showing 'configure' welcome screen"
             );
             this.customWhenContext.setPendingManualMigration(true);
+            this.recordAutoMigration(false);
             return;
         }
         if (!(authProvider instanceof ProfileAuthProvider)) {
@@ -215,7 +225,8 @@ export class BundleProjectManager {
         }
         await this.migrateProjectJsonToBundle(
             authProvider as ProfileAuthProvider,
-            legacyProjectConfig
+            legacyProjectConfig,
+            true,
         );
     }
 
@@ -225,23 +236,31 @@ export class BundleProjectManager {
         },
     })
     public async startManualMigration() {
-        const authProvider = await LoginWizard.run(this.cli);
-        if (
-            authProvider instanceof ProfileAuthProvider &&
-            (await authProvider.check())
-        ) {
-            return this.migrateProjectJsonToBundle(
-                authProvider,
-                this.legacyProjectConfig
-            );
-        } else {
-            this.logger.debug("Incorrect auth for the project.json migration");
+        try {
+            const authProvider = await LoginWizard.run(this.cli);
+            if (
+                authProvider instanceof ProfileAuthProvider &&
+                (await authProvider.check())
+            ) {
+                await this.migrateProjectJsonToBundle(
+                    authProvider,
+                    this.legacyProjectConfig,
+                    false,
+                );
+            } else {
+                this.recordManualMigration(false);
+                this.logger.debug("Incorrect auth for the project.json migration");
+            }
+        } catch(e) {
+            this.recordManualMigration(false);
+            throw e;
         }
     }
 
     private async migrateProjectJsonToBundle(
         authProvider: ProfileAuthProvider,
-        legacyProjectConfig?: ProjectConfigFile
+        legacyProjectConfig?: ProjectConfigFile,
+        autoMigration?: boolean
     ) {
         const configVars = {
             /* eslint-disable @typescript-eslint/naming-convention */
@@ -275,6 +294,11 @@ export class BundleProjectManager {
             authProvider
         );
         this.logger.debug("Successfully finished bundle migration");
+        if (autoMigration) {
+            this.recordAutoMigration(true);
+        } else {
+            this.recordManualMigration(true);
+        }
     }
 
     public async initNewProject() {

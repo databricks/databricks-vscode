@@ -14,6 +14,8 @@ export enum Events {
     EXTENSION_INITIALIZATION = "extensionInitialization",
     AUTO_LOGIN = "autoLogin",
     MANUAL_LOGIN = "manualLogin",
+    AUTO_MIGRATION = "autoMigration",
+    MANUAL_MIGRATION = "manualMigration",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -93,6 +95,16 @@ export class EventTypes {
         source: ManualLoginSource;
     }> = {
         comment: "User logged in manually",
+    };
+    [Events.AUTO_MIGRATION]: EventType<{
+        success: boolean;
+    }> = {
+        comment: "Extension migrated automatically",
+    };
+    [Events.MANUAL_MIGRATION]: EventType<{
+        success: boolean;
+    }> = {
+        comment: "User migrated manually",
     };
     [Events.CONNECTION_STATE_CHANGED]: EventType<{
         newState: string;
