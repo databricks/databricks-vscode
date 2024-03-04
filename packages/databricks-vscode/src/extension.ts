@@ -534,7 +534,8 @@ export async function activate(
         bundleRemoteStateModel,
         bundleRunStatusManager,
         bundleValidateModel,
-        customWhenContext
+        customWhenContext,
+        telemetry
     );
     const decorationProvider = new TreeItemDecorationProvider(
         bundleResourceExplorerTreeDataProvider,

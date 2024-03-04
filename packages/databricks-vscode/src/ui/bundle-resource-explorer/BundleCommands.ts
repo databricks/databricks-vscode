@@ -8,6 +8,8 @@ import {BundleValidateModel} from "../../bundle/models/BundleValidateModel";
 import {PipelineTreeNode} from "./PipelineTreeNode";
 import {JobTreeNode} from "./JobTreeNode";
 import {CustomWhenContext} from "../../vscode-objs/CustomWhenContext";
+import {Events, Telemetry} from "../../telemetry";
+import {BundleRunResourceType} from "../../telemetry/constants";
 
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
@@ -29,7 +31,8 @@ export class BundleCommands implements Disposable {
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly bundleRunStatusManager: BundleRunStatusManager,
         private readonly bundleValidateModel: BundleValidateModel,
-        private readonly whenContext: CustomWhenContext
+        private readonly whenContext: CustomWhenContext,
+        private readonly telemetry: Telemetry
     ) {
         this.disposables.push(
             this.bundleValidateModel.onDidChange(async () => {
@@ -110,13 +113,25 @@ export class BundleCommands implements Disposable {
         if (!isRunnable(treeNode)) {
             throw new Error(`Cannot run resource of type ${treeNode.type}`);
         }
-        //TODO: Don't deploy if there is no diff between local and remote state
-        await this.deploy();
+        try {
+            // TODO: Don't deploy if there is no diff between local and remote state
+            await this.deploy();
+            await this.bundleRunStatusManager.run(
+                treeNode.resourceKey,
+                treeNode.type
+            );
+            this.recordBundleRun(true, treeNode.type);
+        } catch (e) {
+            this.recordBundleRun(false, treeNode.type);
+            throw e;
+        }
+    }
 
-        await this.bundleRunStatusManager.run(
-            treeNode.resourceKey,
-            treeNode.type
-        );
+    private recordBundleRun(
+        success: boolean,
+        resourceType: BundleRunResourceType
+    ) {
+        this.telemetry.recordEvent(Events.BUNDLE_RUN, {success, resourceType});
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})

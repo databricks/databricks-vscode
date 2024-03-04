@@ -16,12 +16,14 @@ export enum Events {
     MANUAL_LOGIN = "manualLogin",
     AUTO_MIGRATION = "autoMigration",
     MANUAL_MIGRATION = "manualMigration",
+    BUNDLE_RUN = "bundleRun",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type AutoLoginSource = "init" | "hostChange" | "targetChange";
 export type ManualLoginSource = "authTypeSwitch" | "authTypeLogin" | "command";
+export type BundleRunResourceType = "pipelines" | "jobs";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -105,6 +107,12 @@ export class EventTypes {
         success: boolean;
     }> = {
         comment: "User migrated manually",
+    };
+    [Events.BUNDLE_RUN]: EventType<{
+        success: boolean;
+        resourceType?: BundleRunResourceType;
+    }> = {
+        comment: "Execute a bundle resource",
     };
     [Events.CONNECTION_STATE_CHANGED]: EventType<{
         newState: string;
