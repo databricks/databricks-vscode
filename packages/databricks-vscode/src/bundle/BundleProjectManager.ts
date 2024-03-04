@@ -225,9 +225,9 @@ export class BundleProjectManager {
         }
         await this.migrateProjectJsonToBundle(
             authProvider as ProfileAuthProvider,
-            legacyProjectConfig,
-            true
+            legacyProjectConfig
         );
+        this.recordAutoMigration(true);
     }
 
     @onError({
@@ -244,9 +244,9 @@ export class BundleProjectManager {
             ) {
                 await this.migrateProjectJsonToBundle(
                     authProvider,
-                    this.legacyProjectConfig,
-                    false
+                    this.legacyProjectConfig
                 );
+                this.recordManualMigration(true);
             } else {
                 this.recordManualMigration(false);
                 this.logger.debug(
@@ -261,8 +261,7 @@ export class BundleProjectManager {
 
     private async migrateProjectJsonToBundle(
         authProvider: ProfileAuthProvider,
-        legacyProjectConfig?: ProjectConfigFile,
-        autoMigration?: boolean
+        legacyProjectConfig?: ProjectConfigFile
     ) {
         const configVars = {
             /* eslint-disable @typescript-eslint/naming-convention */
@@ -296,11 +295,6 @@ export class BundleProjectManager {
             authProvider
         );
         this.logger.debug("Successfully finished bundle migration");
-        if (autoMigration) {
-            this.recordAutoMigration(true);
-        } else {
-            this.recordManualMigration(true);
-        }
     }
 
     public async initNewProject() {
