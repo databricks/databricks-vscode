@@ -12,10 +12,14 @@ export enum Events {
     COMMAND_EXECUTION = "commandExecution",
     EXTENSION_ACTIVATION = "extensionActivation",
     PROJECT_INITIALIZATION = "projectInitialization",
-    LOGIN_WITH_SAVED_AUTH = "loginWithSavedAuth",
+    AUTO_LOGIN = "autoLogin",
+    MANUAL_LOGIN = "manualLogin",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
+
+export type AutoLoginSource = "init" | "hostChange" | "targetChange";
+export type ManualLoginSource = "authTypeSwitch" | "authTypeLogin" | "command";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -78,11 +82,17 @@ export class EventTypes {
     }> = {
         comment: "Extension services were initialized",
     };
-    [Events.LOGIN_WITH_SAVED_AUTH]: EventType<{
+    [Events.AUTO_LOGIN]: EventType<{
         success: boolean;
-        source: "init" | "hostChange" | "targetChange";
+        source: AutoLoginSource;
     }> = {
-        comment: "Extension services were initialized",
+        comment: "Extension logged in automatically",
+    };
+    [Events.MANUAL_LOGIN]: EventType<{
+        success: boolean;
+        source: ManualLoginSource;
+    }> = {
+        comment: "User logged in manually",
     };
     [Events.CONNECTION_STATE_CHANGED]: EventType<{
         newState: string;

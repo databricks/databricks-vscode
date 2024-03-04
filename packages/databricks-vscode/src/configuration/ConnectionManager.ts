@@ -22,6 +22,7 @@ import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
 import {MetadataService} from "./auth/MetadataService";
 import {Events, Telemetry} from "../telemetry";
+import {AutoLoginSource, ManualLoginSource} from "../telemetry/constants";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -194,9 +195,7 @@ export class ConnectionManager implements Disposable {
         return this.apiClient?.config.authType;
     }
 
-    private async loginWithSavedAuth(
-        source: "init" | "hostChange" | "targetChange"
-    ) {
+    private async loginWithSavedAuth(source: AutoLoginSource) {
         try {
             await this.disconnect();
             const authProvider = await this.resolveAuth();
@@ -213,10 +212,10 @@ export class ConnectionManager implements Disposable {
     }
 
     private recordLoginWithSavedAuth(
-        source: "init" | "hostChange" | "targetChange",
+        source: AutoLoginSource,
         success: boolean
     ) {
-        return this.telemetry.recordEvent(Events.LOGIN_WITH_SAVED_AUTH, {
+        return this.telemetry.recordEvent(Events.AUTO_LOGIN, {
             success,
             source,
         });
@@ -343,16 +342,27 @@ export class ConnectionManager implements Disposable {
     @onError({
         popup: {prefix: "Can't configure workspace. "},
     })
-    async configureLogin() {
-        const authProvider = await LoginWizard.run(
-            this.cli,
-            this.configModel.target,
-            await this.configModel.get("host")
-        );
-        if (!authProvider) {
-            return;
+    async configureLogin(source: ManualLoginSource) {
+        try {
+            const authProvider = await LoginWizard.run(
+                this.cli,
+                this.configModel.target,
+                await this.configModel.get("host")
+            );
+            if (authProvider) {
+                await this.connect(authProvider);
+            }
+            this.telemetry.recordEvent(Events.MANUAL_LOGIN, {
+                source,
+                success: this.state === "CONNECTED",
+            });
+        } catch (e) {
+            this.telemetry.recordEvent(Events.MANUAL_LOGIN, {
+                source,
+                success: false,
+            });
+            throw e;
         }
-        await this.connect(authProvider);
     }
 
     @onError({

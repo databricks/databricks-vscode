@@ -211,7 +211,8 @@ export async function activate(
         cli,
         configModel,
         workspaceUri,
-        customWhenContext
+        customWhenContext,
+        telemetry
     );
     context.subscriptions.push(
         bundleFileWatcher,
