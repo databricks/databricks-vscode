@@ -95,7 +95,7 @@ export class BundleProjectManager {
             this.detectLegacyProjectConfig(),
         ]);
 
-        this.telemetry.recordEvent(Events.PROJECT_INITIALIZATION, {
+        this.telemetry.recordEvent(Events.EXTENSION_INITIALIZATION, {
             success: true,
             type: this.legacyProjectConfig ? "legacy" : "unknown",
         });
@@ -125,12 +125,12 @@ export class BundleProjectManager {
             await this.configModel.init();
             await this.connectionManager.init();
             this.projectServicesReady = true;
-            this.telemetry.recordEvent(Events.PROJECT_INITIALIZATION, {
+            this.telemetry.recordEvent(Events.EXTENSION_INITIALIZATION, {
                 success: true,
                 type: "dabs",
             });
         } catch (e) {
-            this.telemetry.recordEvent(Events.PROJECT_INITIALIZATION, {
+            this.telemetry.recordEvent(Events.EXTENSION_INITIALIZATION, {
                 success: false,
                 type: "dabs",
             });

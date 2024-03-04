@@ -11,7 +11,7 @@ export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
 export enum Events {
     COMMAND_EXECUTION = "commandExecution",
     EXTENSION_ACTIVATION = "extensionActivation",
-    PROJECT_INITIALIZATION = "projectInitialization",
+    EXTENSION_INITIALIZATION = "extensionInitialization",
     AUTO_LOGIN = "autoLogin",
     MANUAL_LOGIN = "manualLogin",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
@@ -76,7 +76,7 @@ export class EventTypes {
     [Events.EXTENSION_ACTIVATION]: EventType<undefined> = {
         comment: "Extension was activated",
     };
-    [Events.PROJECT_INITIALIZATION]: EventType<{
+    [Events.EXTENSION_INITIALIZATION]: EventType<{
         success: boolean;
         type?: "dabs" | "legacy" | "unknown";
     }> = {

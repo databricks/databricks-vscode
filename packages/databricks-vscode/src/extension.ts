@@ -713,7 +713,7 @@ export async function activate(
     bundleProjectManager
         .configureWorkspace()
         .catch((e) => {
-            telemetry.recordEvent(Events.PROJECT_INITIALIZATION, {
+            telemetry.recordEvent(Events.EXTENSION_INITIALIZATION, {
                 success: false,
             });
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
