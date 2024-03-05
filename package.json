@@ -1,6 +1,6 @@
 {
     "name": "@databricks/databricks-vscode",
-    "version": "2.0.0",
+    "version": "2.0.0-preview",
     "private": true,
     "workspaces": [
         "packages/*"
@@ -46,5 +46,6 @@
     },
     "resolutions": {
         "json5": "2.2.2"
-    }
+    },
+    "stableVersion": "2.0.0"
 }

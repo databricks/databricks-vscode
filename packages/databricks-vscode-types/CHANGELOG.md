@@ -1,3 +1,15 @@
+# Release: v2.0.0-preview
+
+## packages/databricks-vscode-types
+
+## (2024-03-05)
+
+-   Bump to 2.0.0 (#1049) ([2dcf080](https://github.com/databricks/databricks-vscode/commit/2dcf080)), closes [#1049](https://github.com/databricks/databricks-vscode/issues/1049)
+-   Bundle integ merge main (#1009) ([d8852bd](https://github.com/databricks/databricks-vscode/commit/d8852bd)), closes [#1009](https://github.com/databricks/databricks-vscode/issues/1009)
+-   Merge branch 'main' of github.com:databricks/databricks-vscode into bundle-integ (#991) ([3c578aa](https://github.com/databricks/databricks-vscode/commit/3c578aa)), closes [#991](https://github.com/databricks/databricks-vscode/issues/991)
+-   Update dependencies (#974) ([1835fc2](https://github.com/databricks/databricks-vscode/commit/1835fc2)), closes [#974](https://github.com/databricks/databricks-vscode/issues/974)
+-   Use bundle for configuration and not project.json (#924) ([29474b3](https://github.com/databricks/databricks-vscode/commit/29474b3)), closes [#924](https://github.com/databricks/databricks-vscode/issues/924)
+
 # Release: v1.2.5
 
 ## packages/databricks-vscode-types
