@@ -8,7 +8,7 @@ import {
     openFile,
     waitForLogin,
     waitForWorkflowWebview,
-} from "../utils.ts";
+} from "../utils/commonUtils.ts";
 import {sleep} from "wdio-vscode-service";
 
 describe("Run files", async function () {

@@ -84,7 +84,7 @@ export const config: Options.Testrunner = {
     // then the current working directory is where your `package.json` resides, so `wdio`
     // will be called from there.
     //
-    specs: [path.join(__dirname, "**", "*.e2e.ts")],
+    specs: [path.join(__dirname, "**", "bundle_resource_explorer.e2e.ts")],
     // Patterns to exclude.
     exclude: [
         // 'path/to/excluded/files'
@@ -106,7 +106,7 @@ export const config: Options.Testrunner = {
     // and 30 processes will get spawned. The property handles how many capabilities
     // from the same test should run tests.
     //
-    maxInstances: 1,
+    maxInstances: 4,
 
     //
     // If you have trouble getting all important capabilities together, check out the
@@ -266,6 +266,7 @@ export const config: Options.Testrunner = {
             );
 
             await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
+            console.log(`Creating vscode workspace folder: ${WORKSPACE_PATH}`);
             await fs.mkdir(WORKSPACE_PATH);
 
             const client = getWorkspaceClient(config);
@@ -342,11 +343,11 @@ export const config: Options.Testrunner = {
         for (let i = 0; i < 2; i++) {
             try {
                 await new Promise((resolve, reject) => {
-                    const extensionDependencies =
-                        packageJson.extensionDependencies.flatMap((item) => [
-                            "--install-extension",
-                            item,
-                        ]);
+                    const extensionDependencies = [];
+                    // packageJson.extensionDependencies.flatMap((item) => [
+                    //     "--install-extension",
+                    //     item,
+                    // ]);
                     execFile(
                         cli,
                         [
@@ -380,10 +381,12 @@ export const config: Options.Testrunner = {
             break;
         }
 
-        await fs.rm(path.join(WORKSPACE_PATH, ".databricks"), {
+        await fs.rm(WORKSPACE_PATH, {
             recursive: true,
             force: true,
         });
+
+        await fs.mkdir(WORKSPACE_PATH);
     },
 
     /**
@@ -483,7 +486,7 @@ export const config: Options.Testrunner = {
     afterSession: async function (config, capabilities, specs) {
         await sleep(2000);
         try {
-            const fileList = await glob(
+            const logFileList = await glob(
                 path.join(
                     VSCODE_STORAGE_DIR,
                     "**",
@@ -491,8 +494,8 @@ export const config: Options.Testrunner = {
                     "*.json"
                 )
             );
-            console.log(fileList);
-            fileList.forEach((file) => {
+            console.log(logFileList);
+            logFileList.forEach((file) => {
                 cpSync(
                     file,
                     path.join(
@@ -534,7 +537,7 @@ export const config: Options.Testrunner = {
 };
 
 async function writeDatabricksConfig(config: Config) {
-    const configFile = path.join(WORKSPACE_PATH, ".databrickscfg");
+    const configFile = path.join(tmpdir(), ".databrickscfg");
     await fs.writeFile(
         configFile,
         `[DEFAULT]

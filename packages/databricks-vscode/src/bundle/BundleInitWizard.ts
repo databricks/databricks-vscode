@@ -16,13 +16,13 @@ import {tmpdir} from "os";
 import {ShellUtils} from "../utils";
 
 export async function promptToOpenSubProjects(
-    projects: {absolute: Uri; relative: Uri}[]
+    projects: {absolute: Uri; relative: string}[]
 ) {
     type OpenProjectItem = QuickPickItem & {uri?: Uri};
     const items: OpenProjectItem[] = projects.map((project) => {
         return {
             uri: project.absolute,
-            label: project.relative.fsPath,
+            label: project.relative,
             detail: project.absolute.fsPath,
         };
     });

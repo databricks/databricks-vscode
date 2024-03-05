@@ -7,7 +7,7 @@ import {
     waitForLogin,
     clearBundleConfig,
     createBasicBundleConfig,
-} from "../utils.ts";
+} from "../utils/commonUtils.ts";
 import {CustomTreeSection} from "wdio-vscode-service";
 
 let cfgPath: string;
