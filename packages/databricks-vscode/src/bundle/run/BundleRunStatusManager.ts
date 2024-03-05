@@ -7,10 +7,13 @@ import {BundleRunStatus} from "./BundleRunStatus";
 import {PipelineRunStatus} from "./PipelineRunStatus";
 import {Resource, ResourceKey} from "../types";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
+import {logging} from "@databricks/databricks-sdk";
+import {Loggers} from "../../logger";
 /**
  * This class monitors the cli bundle run output and record ids for runs. It also polls for status of the these runs.
  */
 export class BundleRunStatusManager implements Disposable {
+    private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
     private disposables: Disposable[] = [];
     public readonly runStatuses: Map<string, BundleRunStatus> = new Map();
 
@@ -93,15 +96,31 @@ export class BundleRunStatusManager implements Disposable {
             })
         );
         this.onDidChangeEmitter.fire();
-        return await this.bundleRunTerminalManager.run(resourceKey, (data) => {
-            remoteRunStatus.parseId(data);
-        });
+        try {
+            const result = await this.bundleRunTerminalManager.run(
+                resourceKey,
+                (data) => remoteRunStatus.parseId(data)
+            );
+            if (result.cancelled) {
+                await remoteRunStatus.cancel();
+            }
+            return result;
+        } catch (e) {
+            // In the case of a failed run cancellation is expected to fail too.
+            // Because of it we catch errors from the `cancel` and log them, re-throwing original error that will be shown to the user.
+            await remoteRunStatus.cancel().catch((error) => {
+                this.logger.error(
+                    "Error while cancelling a run after a failure",
+                    error
+                );
+            });
+            remoteRunStatus.runState = "error";
+            throw e;
+        }
     }
 
     async cancel(resourceKey: string) {
-        const runner = this.runStatuses.get(resourceKey);
         this.bundleRunTerminalManager.cancel(resourceKey);
-        await runner?.cancel();
     }
 
     dispose() {

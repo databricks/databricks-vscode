@@ -68,7 +68,7 @@ export class CustomOutputTerminal implements Pseudoterminal {
                 );
             }
 
-            if (exitCode !== 0) {
+            if (exitCode !== 0 && exitCode !== null) {
                 this.writeEmitter.fire(
                     "\x1b[31mProcess exited with code " +
                         exitCode +

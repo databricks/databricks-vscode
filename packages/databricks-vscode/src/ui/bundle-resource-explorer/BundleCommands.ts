@@ -55,13 +55,13 @@ export class BundleCommands implements Disposable {
             if (!(e instanceof Error)) {
                 throw e;
             }
-            const choice = await window.showErrorMessage(
-                "Error refreshing bundle state.",
-                "Show Logs"
-            );
-            if (choice === "Show Logs") {
-                commands.executeCommand("databricks.bundle.showLogs");
-            }
+            window
+                .showErrorMessage("Error refreshing bundle state.", "Show Logs")
+                .then((choice) => {
+                    if (choice === "Show Logs") {
+                        commands.executeCommand("databricks.bundle.showLogs");
+                    }
+                });
             throw e;
         }
     }
@@ -89,13 +89,13 @@ export class BundleCommands implements Disposable {
             if (!(e instanceof Error)) {
                 throw e;
             }
-            const choice = await window.showErrorMessage(
-                "Error deploying resource.",
-                "Show Logs"
-            );
-            if (choice === "Show Logs") {
-                commands.executeCommand("databricks.bundle.showLogs");
-            }
+            window
+                .showErrorMessage("Error deploying resource.", "Show Logs")
+                .then((choice) => {
+                    if (choice === "Show Logs") {
+                        commands.executeCommand("databricks.bundle.showLogs");
+                    }
+                });
             throw e;
         } finally {
             this.whenContext.setDeploymentState("idle");
