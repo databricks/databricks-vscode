@@ -84,7 +84,7 @@ export const config: Options.Testrunner = {
     // then the current working directory is where your `package.json` resides, so `wdio`
     // will be called from there.
     //
-    specs: [path.join(__dirname, "**", "bundle_resource_explorer.e2e.ts")],
+    specs: [path.join(__dirname, "**", "*.e2e.ts")],
     // Patterns to exclude.
     exclude: [
         // 'path/to/excluded/files'
@@ -106,7 +106,7 @@ export const config: Options.Testrunner = {
     // and 30 processes will get spawned. The property handles how many capabilities
     // from the same test should run tests.
     //
-    maxInstances: 4,
+    maxInstances: 1,
 
     //
     // If you have trouble getting all important capabilities together, check out the
@@ -343,11 +343,11 @@ export const config: Options.Testrunner = {
         for (let i = 0; i < 2; i++) {
             try {
                 await new Promise((resolve, reject) => {
-                    const extensionDependencies = [];
-                    // packageJson.extensionDependencies.flatMap((item) => [
-                    //     "--install-extension",
-                    //     item,
-                    // ]);
+                    const extensionDependencies =
+                        packageJson.extensionDependencies.flatMap((item) => [
+                            "--install-extension",
+                            item,
+                        ]);
                     execFile(
                         cli,
                         [
