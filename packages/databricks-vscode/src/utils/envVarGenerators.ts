@@ -129,7 +129,7 @@ export function getProxyEnvVars() {
     };
 }
 
-export function getEnvVarsForCli(configfilePath?: string) {
+export function getEnvVarsForCli(version: string, configfilePath?: string) {
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         HOME: process.env.HOME,
@@ -137,6 +137,8 @@ export function getEnvVarsForCli(configfilePath?: string) {
         DATABRICKS_CONFIG_FILE:
             configfilePath ?? process.env.DATABRICKS_CONFIG_FILE,
         DATABRICKS_OUTPUT_FORMAT: "json",
+        DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
+        DATABRICKS_CLI_UPSTREAM_VERSION: version,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }

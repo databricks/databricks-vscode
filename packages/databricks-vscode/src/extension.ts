@@ -100,7 +100,6 @@ export async function activate(
         );
     }
     const cli = new CliWrapper(context, loggerManager, cliLogFilePath);
-    context.extensionPath;
 
     if (
         workspace.workspaceFolders === undefined ||
