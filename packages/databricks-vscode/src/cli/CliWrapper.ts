@@ -86,16 +86,13 @@ async function waitForProcess(
  * of the databricks CLI
  */
 export class CliWrapper {
-    private version: string;
     private clusterId?: string;
 
     constructor(
         private extensionContext: ExtensionContext,
         private loggerManager: LoggerManager,
         private logFilePath?: string
-    ) {
-        this.version = this.extensionContext.extension.packageJSON.version;
-    }
+    ) {}
 
     public setClusterId(clusterId?: string) {
         this.clusterId = clusterId;
@@ -181,10 +178,7 @@ export class CliWrapper {
         try {
             res = await execFile(cmd.command, cmd.args, {
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(
-                        this.version,
-                        configfilePath
-                    ),
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                 },
             });
@@ -285,10 +279,7 @@ export class CliWrapper {
             const {stdout, stderr} = await execFile(cmd[0], cmd.slice(1), {
                 cwd: workspaceFolder.fsPath,
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(
-                        this.version,
-                        configfilePath
-                    ),
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
                     ...this.getLogginEnvVars(),
@@ -335,10 +326,7 @@ export class CliWrapper {
             const {stdout, stderr} = await execFile(cmd[0], cmd.slice(1), {
                 cwd: workspaceFolder.fsPath,
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(
-                        this.version,
-                        configfilePath
-                    ),
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
                     ...this.getLogginEnvVars(),
@@ -369,7 +357,6 @@ export class CliWrapper {
     getBundleInitEnvVars(authProvider: AuthProvider) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
-                this.version,
                 workspaceConfigs.databrickscfgLocation
             ),
             ...EnvVarGenerators.getProxyEnvVars(),
@@ -426,10 +413,7 @@ export class CliWrapper {
         const p = spawn(cmd[0], cmd.slice(1), {
             cwd: workspaceFolder.fsPath,
             env: {
-                ...EnvVarGenerators.getEnvVarsForCli(
-                    this.version,
-                    configfilePath
-                ),
+                ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                 ...EnvVarGenerators.getProxyEnvVars(),
                 ...authProvider.toEnv(),
                 ...this.getLogginEnvVars(),
@@ -483,7 +467,7 @@ export class CliWrapper {
         options: SpawnOptionsWithoutStdio;
     } {
         const env: Record<string, string> = removeUndefinedKeys({
-            ...EnvVarGenerators.getEnvVarsForCli(this.version, configfilePath),
+            ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
             ...EnvVarGenerators.getProxyEnvVars(),
             ...authProvider.toEnv(),
             ...this.getLogginEnvVars(),
