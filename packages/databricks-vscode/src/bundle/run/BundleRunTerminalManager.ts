@@ -23,7 +23,11 @@ export class BundleRunTerminalManager implements Disposable {
         return `Run ${resourceKey} (${target})`;
     }
 
-    async run(resourceKey: string, onDidUpdate?: (data: string) => void) {
+    async run(
+        resourceKey: string,
+        onDidUpdate?: (data: string) => void,
+        onDidClose?: (code: number | null) => void
+    ) {
         const target = this.bundleRemoteStateModel.target;
         if (target === undefined) {
             throw new Error(`Cannot run ${resourceKey}, Target is undefined`);
@@ -88,6 +92,7 @@ export class BundleRunTerminalManager implements Disposable {
                     return;
                 }
                 terminal.pty.onDidCloseProcess((exitCode) => {
+                    onDidClose?.(exitCode);
                     if (exitCode === 0 || terminal.pty.isClosed) {
                         // Resolve when the process exits with code 0 or is closed by human action
                         resolve();
