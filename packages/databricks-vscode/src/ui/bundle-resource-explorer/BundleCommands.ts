@@ -116,11 +116,15 @@ export class BundleCommands implements Disposable {
         try {
             // TODO: Don't deploy if there is no diff between local and remote state
             await this.deploy();
-            await this.bundleRunStatusManager.run(
+            const result = await this.bundleRunStatusManager.run(
                 treeNode.resourceKey,
                 treeNode.type
             );
-            recordEvent({success: true, resourceType: treeNode.type});
+            recordEvent({
+                success: true,
+                resourceType: treeNode.type,
+                cancelled: result.cancelled,
+            });
         } catch (e) {
             recordEvent({success: false, resourceType: treeNode.type});
             throw e;

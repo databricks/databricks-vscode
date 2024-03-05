@@ -121,6 +121,7 @@ export class EventTypes {
     [Events.BUNDLE_RUN]: EventType<
         {
             success: boolean;
+            cancelled?: boolean;
             resourceType?: BundleRunResourceType;
         } & DurationMeasurement
     > = {
