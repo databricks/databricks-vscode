@@ -54,7 +54,7 @@ jobs:
               id: create-changelog
               run: |
                   TMPFILE=$(mktemp /tmp/tmpfile.XXXX)
-                  bash scripts/generate_changelog.sh ${{ inputs.extension_version }} $TMPFILE
+                  bash scripts/generate_changelog.sh ${{ inputs.extension_version }}-preview $TMPFILE
 
                   cat $TMPFILE >> $GITHUB_STEP_SUMMARY
 
@@ -77,14 +77,14 @@ jobs:
                   git checkout -b $BRANCH
                   git add  **/CHANGELOG.md **/package.json package.json **/NOTICE.md
                   git status
-                  git commit -m "Changelog & version bump to ${{ inputs.extension_version }}"
+                  git commit -m "Changelog & version bump to ${{ inputs.extension_version }}-preview"
                   git push origin HEAD
                   echo "branch_name=$BRANCH" >> $GITHUB_OUTPUT
 
             - name: Create PR
               if: ${{ inputs.extension_version != '0.0.0'}}
               run: |
-                  gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.extension_version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
+                  gh pr create -B bundle-integ -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.extension_version }}-preview" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
                   rm ${{ steps.create-changelog.outputs.changelog_file }}
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

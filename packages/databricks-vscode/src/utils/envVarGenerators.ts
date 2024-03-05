@@ -5,6 +5,9 @@ import {logging, Headers} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const extensionVersion = require("../../package.json").version;
+
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {
     try {
@@ -137,6 +140,8 @@ export function getEnvVarsForCli(configfilePath?: string) {
         DATABRICKS_CONFIG_FILE:
             configfilePath ?? process.env.DATABRICKS_CONFIG_FILE,
         DATABRICKS_OUTPUT_FORMAT: "json",
+        DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
+        DATABRICKS_CLI_UPSTREAM_VERSION: extensionVersion,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }

@@ -87,6 +87,7 @@ async function waitForProcess(
  */
 export class CliWrapper {
     private clusterId?: string;
+
     constructor(
         private extensionContext: ExtensionContext,
         private loggerManager: LoggerManager,
