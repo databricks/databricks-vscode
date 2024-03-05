@@ -8,7 +8,7 @@ import {
     openFile,
     waitForLogin,
     waitForWorkflowWebview,
-} from "../utils/commonUtils.ts";
+} from "./utils/commonUtils.ts";
 
 describe("Run notebooks", async function () {
     let projectDir: string;

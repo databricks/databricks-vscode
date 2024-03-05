@@ -4,15 +4,21 @@ import {
     getViewSection,
     waitForLogin,
     waitForTreeItems,
-} from "../utils/commonUtils.ts";
+} from "./utils/commonUtils.ts";
 import {CustomTreeSection, Workbench} from "wdio-vscode-service";
-import {getSimpleJobsResource} from "../utils/dabsFixtures.ts";
+import {getSimpleJobsResource} from "./utils/dabsFixtures.ts";
 import path from "node:path";
 import fs from "node:fs";
-import {BundleSchema} from "../../../bundle/BundleSchema";
+import {BundleSchema} from "../../bundle/BundleSchema";
 import yaml from "yaml";
 import {randomUUID} from "node:crypto";
-import {getJobViewItem} from "../utils/dabsExplorerUtils.ts";
+import {getJobViewItem} from "./utils/dabsExplorerUtils.ts";
+import {fileURLToPath} from "url";
+
+/* eslint-disable @typescript-eslint/naming-convention */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+/* eslint-enable @typescript-eslint/naming-convention */
 
 describe("Deploy and run job", async function () {
     let workbench: Workbench;
@@ -58,6 +64,7 @@ describe("Deploy and run job", async function () {
             targets: {
                 test: {
                     mode: "development",
+                    default: true,
                     resources: {
                         jobs: {
                             vscode_integration_test: jobDef,
@@ -78,7 +85,7 @@ describe("Deploy and run job", async function () {
 
         fs.mkdirSync(path.join(vscodeWorkspaceRoot, "src"), {recursive: true});
         fs.copyFileSync(
-            path.join(__dirname, "..", "resources", "spark_select_1.ipynb"),
+            path.join(__dirname, "resources", "spark_select_1.ipynb"),
             path.join(vscodeWorkspaceRoot, "src", "notebook.ipynb")
         );
     }
@@ -118,7 +125,7 @@ describe("Deploy and run job", async function () {
         resourceExplorerView = section as CustomTreeSection;
     });
 
-    it("should deploy and run the current job", async function () {
+    it("should deploy and run the current job", async () => {
         const outputView = await workbench.getBottomBar().openOutputView();
         await outputView.selectChannel("Databricks Bundle Logs");
         await outputView.clearText();
@@ -132,13 +139,19 @@ describe("Deploy and run job", async function () {
         assert(deployAndRunButton, "Deploy and run button not found");
         await deployAndRunButton.elem.click();
 
+        console.log("Waiting for deployment to finish");
         // Wait for the deployment to finish
         await browser.waitUntil(
             async () => {
+                const outputView = await workbench
+                    .getBottomBar()
+                    .openOutputView();
+                await outputView.selectChannel("Databricks Bundle Logs");
                 const logs = (await outputView.getText()).join("");
+                console.log("logs", logs);
                 return (
                     logs.includes("Bundle deployed successfully") &&
-                    logs.includes("Bundle configuration refreshed.")
+                    logs.includes("Bundle configuration refreshed")
                 );
             },
             {
@@ -149,8 +162,9 @@ describe("Deploy and run job", async function () {
             }
         );
 
+        console.log("Waiting for run to finish");
         // Wait for status to reach success
-        browser.waitUntil(
+        await browser.waitUntil(
             async () => {
                 const jobItem = await getJobViewItem(
                     resourceExplorerView,

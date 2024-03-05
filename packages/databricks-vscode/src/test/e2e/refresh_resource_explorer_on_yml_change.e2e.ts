@@ -4,14 +4,20 @@ import {
     dismissNotifications,
     getViewSection,
     waitForLogin,
-} from "../utils/commonUtils";
+} from "./utils/commonUtils";
 import fs from "fs";
 import path from "path";
 import yaml from "yaml";
-import {getSimpleJobsResource} from "../utils/dabsFixtures";
+import {getSimpleJobsResource} from "./utils/dabsFixtures";
 import {randomUUID} from "crypto";
-import {BundleSchema, BundleTarget, Resource} from "../../../bundle/types";
-import {geTaskViewItem, getJobViewItem} from "../utils/dabsExplorerUtils";
+import {BundleSchema, BundleTarget, Resource} from "../../bundle/types";
+import {geTaskViewItem, getJobViewItem} from "./utils/dabsExplorerUtils";
+import {fileURLToPath} from "url";
+
+/* eslint-disable @typescript-eslint/naming-convention */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+/* eslint-enable @typescript-eslint/naming-convention */
 
 describe("Automatically refresh resource explorer", async function () {
     let vscodeWorkspaceRoot: string;

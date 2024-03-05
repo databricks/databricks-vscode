@@ -6,7 +6,7 @@ import {
     waitForInput,
     waitForLogin,
     waitForTreeItems,
-} from "../utils/commonUtils.ts";
+} from "./utils/commonUtils.ts";
 import {ViewSection, Workbench, sleep} from "wdio-vscode-service";
 import {randomUUID} from "node:crypto";
 import {tmpdir} from "os";
