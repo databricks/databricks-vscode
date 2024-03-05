@@ -219,7 +219,10 @@ export class ConnectionManager implements Disposable {
         const savedProfile = (await this.configModel.get("overrides"))
             ?.authProfile;
         if (savedProfile !== undefined) {
-            const authProvider = await ProfileAuthProvider.from(savedProfile);
+            const authProvider = await ProfileAuthProvider.from(
+                savedProfile,
+                this.cli
+            );
             if (
                 authProvider.host.toString() === host.toString() &&
                 (await authProvider.check())
@@ -242,7 +245,10 @@ export class ConnectionManager implements Disposable {
         if (profiles.length !== 1) {
             return;
         }
-        const authProvider = await ProfileAuthProvider.from(profiles[0].name);
+        const authProvider = await ProfileAuthProvider.from(
+            profiles[0].name,
+            this.cli
+        );
         if (await authProvider.check()) {
             return authProvider;
         }

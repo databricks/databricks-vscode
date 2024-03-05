@@ -14,9 +14,13 @@ import {CliWrapper} from "../cli/CliWrapper";
 import {getSubProjects} from "./BundleFileSet";
 import {tmpdir} from "os";
 import {ShellUtils} from "../utils";
+import {OverrideableConfigModel} from "../configuration/models/OverrideableConfigModel";
+import {writeFile, mkdir} from "fs/promises";
+import path from "path";
 
 export async function promptToOpenSubProjects(
-    projects: {absolute: Uri; relative: Uri}[]
+    projects: {absolute: Uri; relative: Uri}[],
+    authProvider?: AuthProvider
 ) {
     type OpenProjectItem = QuickPickItem & {uri?: Uri};
     const items: OpenProjectItem[] = projects.map((project) => {
@@ -34,8 +38,20 @@ export async function promptToOpenSubProjects(
         title: "Select the project you want to open",
     };
     const item = await window.showQuickPick<OpenProjectItem>(items, options);
-    if (!item) {
+    if (!item?.uri) {
         return;
+    }
+
+    if (authProvider?.authType === "profile") {
+        const rootOverrideFilePath =
+            OverrideableConfigModel.getRootOverrideFile(item.uri);
+        await mkdir(path.dirname(rootOverrideFilePath.fsPath), {
+            recursive: true,
+        });
+        await writeFile(
+            rootOverrideFilePath.fsPath,
+            JSON.stringify({authProfile: authProvider.toJSON().profile})
+        );
     }
     await commands.executeCommand("vscode.openFolder", item.uri);
 }
@@ -71,7 +87,7 @@ export class BundleInitWizard {
             this.logger.debug(
                 `Detected ${projects.length} sub projects after the init wizard, prompting to open one`
             );
-            await promptToOpenSubProjects(projects);
+            await promptToOpenSubProjects(projects, authProvider);
         } else {
             this.logger.debug(
                 `No projects detected after the init wizard, showing notification to open a folder manually`

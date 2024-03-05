@@ -177,7 +177,7 @@ export class BundleProjectManager {
         try {
             return await ProjectConfigFile.load(
                 this.workspaceUri.fsPath,
-                this.cli.cliPath
+                this.cli
             );
         } catch (error) {
             this.logger.error("Failed to load legacy project config:", error);
@@ -203,7 +203,11 @@ export class BundleProjectManager {
                 "Creating new profile before bundle migration",
                 profileName
             );
-            authProvider = await saveNewProfile(profileName, authProvider);
+            authProvider = await saveNewProfile(
+                profileName,
+                authProvider,
+                this.cli
+            );
         }
         await this.migrateProjectJsonToBundle(
             authProvider as ProfileAuthProvider,

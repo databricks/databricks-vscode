@@ -15,6 +15,7 @@ import {ConfigModel} from "./models/ConfigModel";
 import {saveNewProfile} from "./LoginWizard";
 import {PersonalAccessTokenAuthProvider} from "./auth/AuthProvider";
 import {normalizeHost} from "../utils/urlUtils";
+import {CliWrapper} from "../cli/CliWrapper";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -54,7 +55,8 @@ export class ConnectionCommands implements Disposable {
         private wsfsCommands: WorkspaceFsCommands,
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel,
-        private readonly configModel: ConfigModel
+        private readonly configModel: ConfigModel,
+        private readonly cli: CliWrapper
     ) {}
 
     /**
@@ -86,7 +88,7 @@ export class ConnectionCommands implements Disposable {
         }
         const hostUrl = normalizeHost(host);
         const provider = new PersonalAccessTokenAuthProvider(hostUrl, token);
-        await saveNewProfile(name, provider);
+        await saveNewProfile(name, provider, this.cli);
     }
 
     /**

@@ -16,6 +16,7 @@ const extensionVersion = require("../../../package.json")
 import {AzureCliCheck} from "./AzureCliCheck";
 import {DatabricksCliCheck} from "./DatabricksCliCheck";
 import {Loggers} from "../../logger";
+import {CliWrapper} from "../../cli/CliWrapper";
 
 // TODO: Resolve this with SDK's AuthType.
 export type AuthType =
@@ -98,10 +99,7 @@ export abstract class AuthProvider {
     }
     protected abstract getSdkConfig(): Config;
 
-    static fromJSON(
-        json: Record<string, any>,
-        databricksPath: string
-    ): AuthProvider {
+    static fromJSON(json: Record<string, any>, cli: CliWrapper): AuthProvider {
         const host =
             json.host instanceof URL
                 ? json.host
@@ -123,20 +121,20 @@ export abstract class AuthProvider {
                 );
 
             case "databricks-cli":
-                return new DatabricksCliAuthProvider(host, databricksPath);
+                return new DatabricksCliAuthProvider(host, cli);
 
             case "profile":
                 if (!json.profile) {
                     throw new Error("Missing profile");
                 }
-                return new ProfileAuthProvider(host, json.profile);
+                return new ProfileAuthProvider(host, json.profile, cli);
 
             default:
                 throw new Error(`Unknown auth type: ${json.authType}`);
         }
     }
 
-    static fromSdkConfig(config: Config): AuthProvider {
+    static fromSdkConfig(config: Config, cli: CliWrapper): AuthProvider {
         if (!config.host) {
             throw new Error("Missing host");
         }
@@ -151,18 +149,11 @@ export abstract class AuthProvider {
                 );
 
             case "databricks-cli":
-                if (!config.databricksCliPath) {
-                    throw new Error("Missing path for databricks-cli");
-                }
-
-                return new DatabricksCliAuthProvider(
-                    host,
-                    config.databricksCliPath
-                );
+                return new DatabricksCliAuthProvider(host, cli);
 
             default:
                 if (config.profile) {
-                    return new ProfileAuthProvider(host, config.profile);
+                    return new ProfileAuthProvider(host, config.profile, cli);
                 }
                 throw new Error(`Unknown auth type: ${config.authType}`);
         }
@@ -170,14 +161,15 @@ export abstract class AuthProvider {
 }
 
 export class ProfileAuthProvider extends AuthProvider {
-    static async from(profile: string, checked = false) {
+    static async from(profile: string, cli: CliWrapper, checked = false) {
         const host = await ProfileAuthProvider.getSdkConfig(profile).getHost();
-        return new ProfileAuthProvider(host, profile, checked);
+        return new ProfileAuthProvider(host, profile, cli, checked);
     }
 
     constructor(
         host: URL,
         private readonly profile: string,
+        private readonly cli: CliWrapper,
         checked = false
     ) {
         super(host, "profile", checked);
@@ -223,7 +215,10 @@ export class ProfileAuthProvider extends AuthProvider {
             try {
                 const sdkConfig = this.getSdkConfig();
                 await sdkConfig.ensureResolved();
-                const authProvider = AuthProvider.fromSdkConfig(sdkConfig);
+                const authProvider = AuthProvider.fromSdkConfig(
+                    sdkConfig,
+                    this.cli
+                );
 
                 if (authProvider instanceof ProfileAuthProvider) {
                     const workspaceClient = this.getWorkspaceClient();
@@ -257,7 +252,7 @@ export class ProfileAuthProvider extends AuthProvider {
 export class DatabricksCliAuthProvider extends AuthProvider {
     constructor(
         host: URL,
-        readonly databricksPath: string
+        readonly cli: CliWrapper
     ) {
         super(host, "databricks-cli");
     }
@@ -270,7 +265,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return {
             host: this.host.toString(),
             authType: this.authType,
-            databricksPath: this.databricksPath,
+            databricksPath: this.cli.cliPath,
         };
     }
 
@@ -278,7 +273,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return new Config({
             host: this.host.toString(),
             authType: "databricks-cli",
-            databricksCliPath: this.databricksPath,
+            databricksCliPath: this.cli.cliPath,
         });
     }
 
@@ -293,7 +288,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return {
             host: this.host.toString(),
             auth_type: "databricks-cli",
-            databricks_cli_path: this.databricksPath,
+            databricks_cli_path: this.cli.cliPath,
         };
     }
 
