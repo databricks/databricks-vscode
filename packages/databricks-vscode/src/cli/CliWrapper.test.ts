@@ -20,6 +20,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {LoggerManager} from "../logger";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {isMatch} from "lodash";
+import {removeUndefinedKeys} from "../utils/envVarGenerators";
 
 const execFile = promisify(execFileCb);
 const cliPath = path.join(__dirname, "../../bin/databricks");
@@ -229,8 +230,8 @@ nothing = true
             args: ["bundle", "run", "--target", "dev", "resource-key"],
             cmd: cli.cliPath,
             options: {
-                cwd: "/test/123",
-                env: {
+                cwd: workspaceFolder.fsPath,
+                env: removeUndefinedKeys({
                     /* eslint-disable @typescript-eslint/naming-convention */
                     DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
                     DATABRICKS_CLI_UPSTREAM_VERSION: extensionVersion,
@@ -243,7 +244,7 @@ nothing = true
                     HOME: process.env.HOME,
                     PATH: process.env.PATH,
                     /* eslint-enable @typescript-eslint/naming-convention */
-                },
+                }),
                 shell: true,
             },
         };
