@@ -93,9 +93,20 @@ export class BundleRunStatusManager implements Disposable {
             })
         );
         this.onDidChangeEmitter.fire();
-        await this.bundleRunTerminalManager.run(resourceKey, (data) => {
-            remoteRunStatus.parseId(data);
-        });
+        await this.bundleRunTerminalManager.run(
+            resourceKey,
+            (data) => {
+                remoteRunStatus.parseId(data);
+            },
+            async (exitCode) => {
+                await remoteRunStatus.cancel();
+                if (exitCode !== 0) {
+                    remoteRunStatus.runState = "error";
+                } else {
+                    remoteRunStatus.runState = "cancelled";
+                }
+            }
+        );
     }
 
     async cancel(resourceKey: string) {
