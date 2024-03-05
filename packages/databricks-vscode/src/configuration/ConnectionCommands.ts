@@ -15,6 +15,8 @@ import {ConfigModel} from "./models/ConfigModel";
 import {saveNewProfile} from "./LoginWizard";
 import {PersonalAccessTokenAuthProvider} from "./auth/AuthProvider";
 import {normalizeHost} from "../utils/urlUtils";
+import {AUTH_TYPE_SWITCH_ID, AUTH_TYPE_LOGIN_ID} from "./ui/AuthTypeComponent";
+import {ManualLoginSource} from "../telemetry/constants";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -64,14 +66,20 @@ export class ConnectionCommands implements Disposable {
         this.connectionManager.logout();
     }
 
-    async configureLoginCommand() {
+    async configureLoginCommand(arg?: {id: string}) {
+        let source: ManualLoginSource = "command";
+        if (arg?.id === AUTH_TYPE_SWITCH_ID) {
+            source = "authTypeSwitch";
+        } else if (arg?.id === AUTH_TYPE_LOGIN_ID) {
+            source = "authTypeLogin";
+        }
         await window.withProgress(
             {
                 location: {viewId: "configurationView"},
                 title: "Configuring Databricks login",
             },
             async () => {
-                await this.connectionManager.configureLogin();
+                await this.connectionManager.configureLogin(source);
             }
         );
     }

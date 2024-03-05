@@ -17,6 +17,7 @@ import {ProjectConfigFile} from "../file-managers/ProjectConfigFile";
 import {randomUUID} from "crypto";
 import {onError} from "../utils/onErrorDecorator";
 import {BundleInitWizard, promptToOpenSubProjects} from "./BundleInitWizard";
+import {EventReporter, Events, Telemetry} from "../telemetry";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -42,7 +43,8 @@ export class BundleProjectManager {
         private connectionManager: ConnectionManager,
         private configModel: ConfigModel,
         private bundleFileSet: BundleFileSet,
-        private workspaceUri: Uri
+        private workspaceUri: Uri,
+        private telemetry: Telemetry
     ) {
         this.disposables.push(
             this.bundleFileSet.bundleDataCache.onDidChange(async () => {
@@ -82,28 +84,20 @@ export class BundleProjectManager {
         if (await this.isBundleProject()) {
             return;
         }
-
+        const recordEvent = this.telemetry.start(
+            Events.EXTENSION_INITIALIZATION
+        );
         await Promise.all([
             // This method updates subProjectsAvailabe context.
             // We have a configurationView that shows "openSubProjects" button if the context value is true.
             this.detectSubProjects(),
             // This method will try to automatically create bundle config if there's existing valid project.json config.
-            // In the case project.json auth doesn't work, it sets pendingManualMigration context to enable
-            // configurationView with the configureManualMigration button.
+            // In the case project.json doesn't exist or its auth doesn't work, it sets pendingManualMigration context
+            // to enable configurationView with the configureManualMigration button.
             this.detectLegacyProjectConfig(),
         ]);
-        // This method checks if we are already in a project but don't have a legacy config. In this case, it sets pendingManualMigration
-        // context to enable configurationView with the configureManualMigration button.
-        await this.isInProjectWithoutConfig();
-    }
-
-    private async isInProjectWithoutConfig() {
-        if (
-            this.legacyProjectConfig === undefined &&
-            !(await this.isBundleProject())
-        ) {
-            this.customWhenContext.setPendingManualMigration(true);
-        }
+        const type = this.legacyProjectConfig ? "legacy" : "unknown";
+        recordEvent({success: true, type});
     }
 
     private async configureBundleProject() {
@@ -126,9 +120,18 @@ export class BundleProjectManager {
             this.logger.debug("Project services have already been initialized");
             return;
         }
-        await this.configModel.init();
-        await this.connectionManager.init();
-        this.projectServicesReady = true;
+        const recordEvent = this.telemetry.start(
+            Events.EXTENSION_INITIALIZATION
+        );
+        try {
+            await this.configModel.init();
+            await this.connectionManager.init();
+            this.projectServicesReady = true;
+            recordEvent({success: true, type: "dabs"});
+        } catch (e) {
+            recordEvent({success: false, type: "dabs"});
+            throw e;
+        }
     }
 
     private async disposeProjectServices() {
@@ -154,14 +157,20 @@ export class BundleProjectManager {
     private async detectLegacyProjectConfig() {
         this.legacyProjectConfig = await this.loadLegacyProjectConfig();
         if (!this.legacyProjectConfig) {
+            this.customWhenContext.setPendingManualMigration(true);
             return;
         }
         this.logger.debug(
             "Detected a legacy project.json, starting automatic migration"
         );
+        const recordEvent = this.telemetry.start(Events.AUTO_MIGRATION);
         try {
-            await this.startAutomaticMigration(this.legacyProjectConfig);
+            await this.startAutomaticMigration(
+                this.legacyProjectConfig,
+                recordEvent
+            );
         } catch (error) {
+            recordEvent({success: false});
             this.customWhenContext.setPendingManualMigration(true);
             const message =
                 "Failed to perform automatic migration to Databricks Asset Bundles.";
@@ -186,7 +195,8 @@ export class BundleProjectManager {
     }
 
     private async startAutomaticMigration(
-        legacyProjectConfig: ProjectConfigFile
+        legacyProjectConfig: ProjectConfigFile,
+        recordEvent: EventReporter<Events.AUTO_MIGRATION>
     ) {
         let authProvider = legacyProjectConfig.authProvider;
         if (!(await authProvider.check())) {
@@ -194,6 +204,7 @@ export class BundleProjectManager {
                 "Legacy project auth was not successful, showing 'configure' welcome screen"
             );
             this.customWhenContext.setPendingManualMigration(true);
+            recordEvent({success: false});
             return;
         }
         if (!(authProvider instanceof ProfileAuthProvider)) {
@@ -209,6 +220,7 @@ export class BundleProjectManager {
             authProvider as ProfileAuthProvider,
             legacyProjectConfig
         );
+        recordEvent({success: true});
     }
 
     @onError({
@@ -217,17 +229,27 @@ export class BundleProjectManager {
         },
     })
     public async startManualMigration() {
-        const authProvider = await LoginWizard.run(this.cli);
-        if (
-            authProvider instanceof ProfileAuthProvider &&
-            (await authProvider.check())
-        ) {
-            return this.migrateProjectJsonToBundle(
-                authProvider,
-                this.legacyProjectConfig
-            );
-        } else {
-            this.logger.debug("Incorrect auth for the project.json migration");
+        const recordEvent = this.telemetry.start(Events.MANUAL_MIGRATION);
+        try {
+            const authProvider = await LoginWizard.run(this.cli);
+            if (
+                authProvider instanceof ProfileAuthProvider &&
+                (await authProvider.check())
+            ) {
+                await this.migrateProjectJsonToBundle(
+                    authProvider,
+                    this.legacyProjectConfig
+                );
+                recordEvent({success: true});
+            } else {
+                recordEvent({success: false});
+                this.logger.debug(
+                    "Incorrect auth for the project.json migration"
+                );
+            }
+        } catch (e) {
+            recordEvent({success: false});
+            throw e;
         }
     }
 

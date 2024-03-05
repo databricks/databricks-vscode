@@ -211,7 +211,8 @@ export async function activate(
         cli,
         configModel,
         workspaceUri,
-        customWhenContext
+        customWhenContext,
+        telemetry
     );
     context.subscriptions.push(
         bundleFileWatcher,
@@ -242,7 +243,8 @@ export async function activate(
         connectionManager,
         configModel,
         bundleFileSet,
-        workspaceUri
+        workspaceUri,
+        telemetry
     );
     context.subscriptions.push(
         bundleProjectManager,
@@ -532,7 +534,8 @@ export async function activate(
         bundleRemoteStateModel,
         bundleRunStatusManager,
         bundleValidateModel,
-        customWhenContext
+        customWhenContext,
+        telemetry
     );
     const decorationProvider = new TreeItemDecorationProvider(
         bundleResourceExplorerTreeDataProvider,
@@ -708,9 +711,13 @@ export async function activate(
         })
     );
 
+    const recordInitializationEvent = telemetry.start(
+        Events.EXTENSION_INITIALIZATION
+    );
     bundleProjectManager
         .configureWorkspace()
         .catch((e) => {
+            recordInitializationEvent({success: false});
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Failed to configure workspace",
                 e
@@ -722,7 +729,7 @@ export async function activate(
         });
 
     customWhenContext.setActivated(true);
-    telemetry.recordEvent(Events.EXTENSION_ACTIVATED);
+    telemetry.recordEvent(Events.EXTENSION_ACTIVATION);
 
     const publicApi: PublicApi = {
         version: 1,
