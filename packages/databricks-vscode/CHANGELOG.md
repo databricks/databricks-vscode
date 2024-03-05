@@ -1,3 +1,11 @@
+# Release: v0.0.1-preview
+
+## packages/databricks-vscode
+
+## (2024-03-05)
+
+-   Setup pre-release CI for v2 ([dfbabb0](https://github.com/databricks/databricks-vscode/commit/dfbabb0))
+
 # Release: v1.2.5
 
 ## packages/databricks-vscode
