@@ -1,9 +1,9 @@
 import {AuthType} from "@databricks/databricks-sdk";
-/** The production application insights configuration string for Databricks. */
-export const PROD_APP_INSIGHTS_CONFIGURATION_STRING =
+/** The production application insights instrumentation key for Databricks. */
+export const PROD_APP_INSIGHTS_CONFIGURATION_KEY =
     "ebe191c5-f06b-4189-b68c-34fb5fbdb3f0";
-/** The application insights configuration string used while developing on the VS Code extension */
-export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
+/** The application insights instrumentation key used while developing on the VS Code extension */
+export const DEV_APP_INSIGHTS_CONFIGURATION_KEY =
     "257d1561-5005-4a76-a3a8-7955df129e86";
 
 /** The list of all events which can be monitored. */
