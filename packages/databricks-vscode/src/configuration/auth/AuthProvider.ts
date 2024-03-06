@@ -288,7 +288,6 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return {
             host: this.host.toString(),
             auth_type: "databricks-cli",
-            databricks_cli_path: this.cli.cliPath,
         };
     }
 
