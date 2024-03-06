@@ -17,6 +17,7 @@ export enum Events {
     AUTO_MIGRATION = "autoMigration",
     MANUAL_MIGRATION = "manualMigration",
     BUNDLE_RUN = "bundleRun",
+    BUNDLE_INIT = "bundleInit",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -126,6 +127,13 @@ export class EventTypes {
         } & DurationMeasurement
     > = {
         comment: "Execute a bundle resource",
+    };
+    [Events.BUNDLE_INIT]: EventType<
+        {
+            success: boolean;
+        } & DurationMeasurement
+    > = {
+        comment: "Initialize a new bundle project",
     };
     [Events.CONNECTION_STATE_CHANGED]: EventType<{
         newState: string;
