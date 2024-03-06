@@ -1,6 +1,9 @@
-import {StateStorage} from "../../vscode-objs/StateStorage";
+import {copyFile, mkdir, readFile, rm, stat, writeFile} from "fs/promises";
 import {Mutex} from "../../locking";
 import {BaseModelWithStateCache} from "./BaseModelWithStateCache";
+import {Uri} from "vscode";
+import path from "path";
+import {existsSync} from "fs";
 
 export type OverrideableConfigState = {
     authProfile?: string;
@@ -13,17 +16,48 @@ export function isOverrideableConfigKey(
     return ["authProfile", "clusterId"].includes(key);
 }
 
+async function safeRead(filePath: Uri) {
+    try {
+        await stat(filePath.fsPath);
+    } catch (e: any) {
+        if (e.code === "ENOENT") {
+            return "{}";
+        }
+        throw e;
+    }
+
+    return await readFile(filePath.fsPath, "utf-8");
+}
+
 export class OverrideableConfigModel extends BaseModelWithStateCache<OverrideableConfigState> {
     protected mutex = new Mutex();
     private target: string | undefined;
 
-    constructor(private readonly storage: StateStorage) {
-        super();
-        this.disposables.push(
-            this.storage.onDidChange("databricks.bundle.overrides")(
-                async () => await this.stateCache.refresh()
-            )
+    static getRootOverrideFile(workspaceRoot: Uri) {
+        return Uri.joinPath(
+            workspaceRoot,
+            ".databricks",
+            "bundle",
+            "vscode.overrides.json"
         );
+    }
+
+    get storageFile() {
+        if (this.target === undefined) {
+            return undefined;
+        }
+
+        return Uri.joinPath(
+            this.workspaceRoot,
+            ".databricks",
+            "bundle",
+            this.target,
+            "vscode.overrides.json"
+        );
+    }
+
+    constructor(private readonly workspaceRoot: Uri) {
+        super();
     }
 
     @Mutex.synchronise("mutex")
@@ -33,12 +67,26 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
     }
 
     protected async readState() {
-        if (this.target === undefined) {
+        if (this.storageFile === undefined) {
             return {};
         }
-        return (
-            this.storage.get("databricks.bundle.overrides")[this.target] ?? {}
+
+        const rootOverrideFile = OverrideableConfigModel.getRootOverrideFile(
+            this.workspaceRoot
         );
+        // If root override file exists, use it to initialise the configs for the first selected target
+        if (
+            existsSync(rootOverrideFile.fsPath) &&
+            !existsSync(this.storageFile.fsPath)
+        ) {
+            await mkdir(path.dirname(this.storageFile.fsPath), {
+                recursive: true,
+            });
+            await copyFile(rootOverrideFile.fsPath, this.storageFile.fsPath);
+            await rm(rootOverrideFile.fsPath);
+        }
+
+        return JSON.parse(await safeRead(this.storageFile));
     }
 
     /**
@@ -54,12 +102,29 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         target: string,
         value?: OverrideableConfigState[T]
     ) {
-        const data = this.storage.get("databricks.bundle.overrides");
-        if (data[target] === undefined) {
-            data[target] = {};
+        if (this.storageFile === undefined) {
+            return;
         }
-        data[target][key] = value;
-        await this.storage.set("databricks.bundle.overrides", data);
+
+        await OverrideableConfigModel._write(
+            this.storageFile,
+            key,
+            target,
+            value
+        );
+        await this.stateCache.refresh();
+    }
+
+    static async _write<T extends keyof OverrideableConfigState>(
+        storageFile: Uri,
+        key: T,
+        target: string,
+        value?: OverrideableConfigState[T]
+    ) {
+        const data = JSON.parse(await safeRead(storageFile));
+        data[key] = value;
+        await mkdir(path.dirname(storageFile.fsPath), {recursive: true});
+        await writeFile(storageFile.fsPath, JSON.stringify(data, null, 2));
     }
 
     public dispose() {

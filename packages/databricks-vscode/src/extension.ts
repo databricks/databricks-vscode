@@ -188,7 +188,7 @@ export async function activate(
         workspaceUri
     );
 
-    const overrideableConfigModel = new OverrideableConfigModel(stateStorage);
+    const overrideableConfigModel = new OverrideableConfigModel(workspaceUri);
     const bundlePreValidateModel = new BundlePreValidateModel(
         bundleFileSet,
         bundleFileWatcher
@@ -419,7 +419,8 @@ export async function activate(
         workspaceFsCommands,
         connectionManager,
         clusterModel,
-        configModel
+        configModel,
+        cli
     );
 
     context.subscriptions.push(
