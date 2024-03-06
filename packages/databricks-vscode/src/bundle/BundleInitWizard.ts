@@ -14,6 +14,7 @@ import {CliWrapper} from "../cli/CliWrapper";
 import {getSubProjects} from "./BundleFileSet";
 import {tmpdir} from "os";
 import {ShellUtils} from "../utils";
+import {Events, Telemetry} from "../telemetry";
 import {OverrideableConfigModel} from "../configuration/models/OverrideableConfigModel";
 import {writeFile, mkdir} from "fs/promises";
 import path from "path";
@@ -59,48 +60,60 @@ export async function promptToOpenSubProjects(
 export class BundleInitWizard {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
 
-    constructor(private cli: CliWrapper) {}
+    constructor(
+        private cli: CliWrapper,
+        private telemetry: Telemetry
+    ) {}
 
     public async initNewProject(
         workspaceUri?: Uri,
         existingAuthProvider?: AuthProvider
     ) {
-        const authProvider =
-            await this.configureAuthForBundleInit(existingAuthProvider);
-        if (!authProvider) {
-            this.logger.debug(
-                "No valid auth providers, can't proceed with bundle init wizard"
-            );
-            return;
-        }
-        const parentFolder = await this.promptForParentFolder(workspaceUri);
-        if (!parentFolder) {
-            this.logger.debug("No parent folder provided");
-            return;
-        }
-        await this.bundleInitInTerminal(parentFolder, authProvider);
-        this.logger.debug(
-            "Finished bundle init wizard, detecting projects to initialize or open"
-        );
-        const projects = await getSubProjects(parentFolder);
-        if (projects.length > 0) {
-            this.logger.debug(
-                `Detected ${projects.length} sub projects after the init wizard, prompting to open one`
-            );
-            await promptToOpenSubProjects(projects, authProvider);
-        } else {
-            this.logger.debug(
-                `No projects detected after the init wizard, showing notification to open a folder manually`
-            );
-            const choice = await window.showInformationMessage(
-                `We haven't detected any Databricks projects in "${parentFolder.fsPath}". If you initialized your project somewhere else, please open the folder manually.`,
-                "Open Folder"
-            );
-            if (choice === "Open Folder") {
-                await commands.executeCommand("vscode.openFolder");
+        const recordEvent = this.telemetry.start(Events.BUNDLE_INIT);
+        try {
+            const authProvider =
+                await this.configureAuthForBundleInit(existingAuthProvider);
+            if (!authProvider) {
+                this.logger.debug(
+                    "No valid auth providers, can't proceed with bundle init wizard"
+                );
+                recordEvent({success: false});
+                return;
             }
+            const parentFolder = await this.promptForParentFolder(workspaceUri);
+            if (!parentFolder) {
+                this.logger.debug("No parent folder provided");
+                recordEvent({success: false});
+                return;
+            }
+            await this.bundleInitInTerminal(parentFolder, authProvider);
+            this.logger.debug(
+                "Finished bundle init wizard, detecting projects to initialize or open"
+            );
+            const projects = await getSubProjects(parentFolder);
+            recordEvent({success: projects.length > 0});
+            if (projects.length > 0) {
+                this.logger.debug(
+                    `Detected ${projects.length} sub projects after the init wizard, prompting to open one`
+                );
+                await promptToOpenSubProjects(projects, authProvider);
+            } else {
+                this.logger.debug(
+                    `No projects detected after the init wizard, showing notification to open a folder manually`
+                );
+                const choice = await window.showInformationMessage(
+                    `We haven't detected any Databricks projects in "${parentFolder.fsPath}". If you initialized your project somewhere else, please open the folder manually.`,
+                    "Open Folder"
+                );
+                if (choice === "Open Folder") {
+                    await commands.executeCommand("vscode.openFolder");
+                }
+            }
+            return parentFolder;
+        } catch (e) {
+            recordEvent({success: false});
+            throw e;
         }
-        return parentFolder;
     }
 
     private async configureAuthForBundleInit(
