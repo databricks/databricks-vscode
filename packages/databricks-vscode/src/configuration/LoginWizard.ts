@@ -243,7 +243,10 @@ export class LoginWizard {
         }
 
         if (pick.profile !== undefined) {
-            const authProvider = await ProfileAuthProvider.from(pick.profile);
+            const authProvider = await ProfileAuthProvider.from(
+                pick.profile,
+                this.cliWrapper
+            );
             const nextStep = await this.checkAuthProvider(authProvider, input);
             if (nextStep) {
                 return nextStep;
@@ -307,7 +310,7 @@ export class LoginWizard {
             case "databricks-cli":
                 authProvider = new DatabricksCliAuthProvider(
                     this.state.host!,
-                    this.cliWrapper.cliPath
+                    this.cliWrapper
                 );
                 break;
 
@@ -343,7 +346,8 @@ export class LoginWizard {
 
         this.state.authProvider = await saveNewProfile(
             profileName,
-            authProvider
+            authProvider,
+            this.cliWrapper
         );
     }
 
@@ -367,7 +371,8 @@ export class LoginWizard {
 
 export async function saveNewProfile(
     profileName: string,
-    authProvider: AuthProvider
+    authProvider: AuthProvider,
+    cli: CliWrapper
 ) {
     const iniData = authProvider.toIni();
     if (!iniData) {
@@ -397,7 +402,7 @@ export async function saveNewProfile(
     // Write the new profile to .databrickscfg
     await appendFile(configFilePath, finalStr);
 
-    return await ProfileAuthProvider.from(profileName, true);
+    return await ProfileAuthProvider.from(profileName, cli, true);
 }
 
 function humaniseSdkAuthType(sdkAuthType: string) {

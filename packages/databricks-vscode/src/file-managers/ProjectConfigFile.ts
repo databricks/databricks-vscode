@@ -5,6 +5,7 @@ import {
     ProfileAuthProvider,
 } from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
+import {CliWrapper} from "../cli/CliWrapper";
 
 export interface ProjectConfig {
     authProvider: AuthProvider;
@@ -45,13 +46,16 @@ export class ProjectConfigFile {
         };
     }
 
-    static async importOldConfig(config: any): Promise<ProfileAuthProvider> {
-        return await ProfileAuthProvider.from(config.profile);
+    static async importOldConfig(
+        config: any,
+        cli: CliWrapper
+    ): Promise<ProfileAuthProvider> {
+        return await ProfileAuthProvider.from(config.profile, cli);
     }
 
     static async load(
         rootPath: string,
-        cliPath: string
+        cli: CliWrapper
     ): Promise<ProjectConfigFile | undefined> {
         const projectConfigFilePath = path.join(
             path.normalize(rootPath),
@@ -75,9 +79,9 @@ export class ProjectConfigFile {
         let authProvider: AuthProvider;
         const config = JSON.parse(rawConfig);
         if (!config.authType && config.profile) {
-            authProvider = await this.importOldConfig(config);
+            authProvider = await this.importOldConfig(config, cli);
         } else {
-            authProvider = AuthProvider.fromJSON(config, cliPath);
+            authProvider = AuthProvider.fromJSON(config, cli);
         }
         return new ProjectConfigFile(
             {
@@ -92,7 +96,7 @@ export class ProjectConfigFile {
                         : undefined,
             },
             rootPath,
-            cliPath
+            cli.cliPath
         );
     }
 

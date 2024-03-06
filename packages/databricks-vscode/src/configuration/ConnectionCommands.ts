@@ -15,6 +15,7 @@ import {ConfigModel} from "./models/ConfigModel";
 import {saveNewProfile} from "./LoginWizard";
 import {PersonalAccessTokenAuthProvider} from "./auth/AuthProvider";
 import {normalizeHost} from "../utils/urlUtils";
+import {CliWrapper} from "../cli/CliWrapper";
 import {AUTH_TYPE_SWITCH_ID, AUTH_TYPE_LOGIN_ID} from "./ui/AuthTypeComponent";
 import {ManualLoginSource} from "../telemetry/constants";
 
@@ -56,7 +57,8 @@ export class ConnectionCommands implements Disposable {
         private wsfsCommands: WorkspaceFsCommands,
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel,
-        private readonly configModel: ConfigModel
+        private readonly configModel: ConfigModel,
+        private readonly cli: CliWrapper
     ) {}
 
     /**
@@ -94,7 +96,7 @@ export class ConnectionCommands implements Disposable {
         }
         const hostUrl = normalizeHost(host);
         const provider = new PersonalAccessTokenAuthProvider(hostUrl, token);
-        await saveNewProfile(name, provider);
+        await saveNewProfile(name, provider, this.cli);
     }
 
     /**
