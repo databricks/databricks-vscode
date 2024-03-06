@@ -110,7 +110,10 @@ export async function activate(
             telemetry.registerCommand(
                 "databricks.bundle.initNewProject",
                 async () => {
-                    const bundleInitWizard = new BundleInitWizard(cli);
+                    const bundleInitWizard = new BundleInitWizard(
+                        cli,
+                        telemetry
+                    );
                     await bundleInitWizard.initNewProject();
                 }
             )
