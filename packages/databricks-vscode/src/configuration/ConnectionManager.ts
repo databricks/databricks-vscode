@@ -21,6 +21,8 @@ import {onError} from "../utils/onErrorDecorator";
 import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
 import {MetadataService} from "./auth/MetadataService";
+import {Events, Telemetry} from "../telemetry";
+import {AutoLoginSource, ManualLoginSource} from "../telemetry/constants";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -61,7 +63,8 @@ export class ConnectionManager implements Disposable {
         private cli: CliWrapper,
         private readonly configModel: ConfigModel,
         private readonly workspaceUri: Uri,
-        private readonly customWhenContext: CustomWhenContext
+        private readonly customWhenContext: CustomWhenContext,
+        private readonly telemetry: Telemetry
     ) {
         this._metadataService = new MetadataService(
             undefined,
@@ -128,11 +131,9 @@ export class ConnectionManager implements Disposable {
         return this._metadataService.url;
     }
 
-    private _host: URL | undefined;
-
     public async init() {
         try {
-            await this.loginWithSavedAuth();
+            await this.loginWithSavedAuth("init");
         } finally {
             this.disposables.push(
                 this.configModel.onDidChangeKey("remoteRootPath")(
@@ -148,12 +149,10 @@ export class ConnectionManager implements Disposable {
                 // user changes.
                 // TODO: start listening to changes in authParams
                 this.configModel.onDidChangeKey("host")(
-                    this.loginWithSavedAuth,
-                    this
+                    this.loginWithSavedAuth.bind(this, "hostChange")
                 ),
                 this.configModel.onDidChangeTarget(
-                    this.loginWithSavedAuth,
-                    this
+                    this.loginWithSavedAuth.bind(this, "targetChange")
                 )
             );
         }
@@ -195,14 +194,22 @@ export class ConnectionManager implements Disposable {
     get authType(): SdkAuthType | undefined {
         return this.apiClient?.config.authType;
     }
-    private async loginWithSavedAuth() {
-        await this.disconnect();
-        const authProvider = await this.resolveAuth();
-        if (authProvider === undefined) {
-            await this.logout();
-            return;
+
+    private async loginWithSavedAuth(source: AutoLoginSource) {
+        const recordEvent = this.telemetry.start(Events.AUTO_LOGIN);
+        try {
+            await this.disconnect();
+            const authProvider = await this.resolveAuth();
+            if (authProvider) {
+                await this.connect(authProvider);
+            } else {
+                await this.logout();
+            }
+            recordEvent({success: this.state === "CONNECTED", source});
+        } catch (e) {
+            recordEvent({success: false, source});
+            throw e;
         }
-        await this.connect(authProvider);
     }
 
     @onError({popup: {prefix: "Failed to login."}})
@@ -332,16 +339,22 @@ export class ConnectionManager implements Disposable {
     @onError({
         popup: {prefix: "Can't configure workspace. "},
     })
-    async configureLogin() {
-        const authProvider = await LoginWizard.run(
-            this.cli,
-            this.configModel.target,
-            await this.configModel.get("host")
-        );
-        if (!authProvider) {
-            return;
+    async configureLogin(source: ManualLoginSource) {
+        const recordEvent = this.telemetry.start(Events.MANUAL_LOGIN);
+        try {
+            const authProvider = await LoginWizard.run(
+                this.cli,
+                this.configModel.target,
+                await this.configModel.get("host")
+            );
+            if (authProvider) {
+                await this.connect(authProvider);
+            }
+            recordEvent({success: this.state === "CONNECTED", source});
+        } catch (e) {
+            recordEvent({success: false, source});
+            throw e;
         }
-        await this.connect(authProvider);
     }
 
     @onError({

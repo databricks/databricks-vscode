@@ -15,6 +15,7 @@ import bcrypt from "bcryptjs";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export {Events, EventTypes} from "./constants";
+export type {EventReporter} from "./constants";
 
 /**
  * A version number used for the telemetry metric schema. The version of the schema is always provided
@@ -182,5 +183,13 @@ export class Telemetry {
             finalProperties,
             finalMetrics
         );
+    }
+
+    start<E extends keyof EventTypes>(eventName: E) {
+        const start = performance.now();
+        return (props: Omit<EventProperties[E], "duration">) => {
+            const duration = performance.now() - start;
+            this.recordEvent(eventName, {duration, ...(props as any)});
+        };
     }
 }

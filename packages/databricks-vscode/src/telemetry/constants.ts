@@ -10,12 +10,20 @@ export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
 /* eslint-disable @typescript-eslint/naming-convention */
 export enum Events {
     COMMAND_EXECUTION = "commandExecution",
-    EXTENSION_ACTIVATED = "extensionActivation",
+    EXTENSION_ACTIVATION = "extensionActivation",
+    EXTENSION_INITIALIZATION = "extensionInitialization",
+    AUTO_LOGIN = "autoLogin",
+    MANUAL_LOGIN = "manualLogin",
+    AUTO_MIGRATION = "autoMigration",
+    MANUAL_MIGRATION = "manualMigration",
+    BUNDLE_RUN = "bundleRun",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
-    SYNC_DESTINATION = "syncDestination",
-    SWITCH_TO_WORKSPACE_PROMPT = "switchToWorkspacePrompt",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
+
+export type AutoLoginSource = "init" | "hostChange" | "targetChange";
+export type ManualLoginSource = "authTypeSwitch" | "authTypeLogin" | "command";
+export type BundleRunResourceType = "pipelines" | "jobs";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -69,8 +77,55 @@ export class EventTypes {
         },
         ...getDurationProperty(),
     };
-    [Events.EXTENSION_ACTIVATED]: EventType<undefined> = {
-        comment: "Extention was activated",
+    [Events.EXTENSION_ACTIVATION]: EventType<undefined> = {
+        comment: "Extension was activated",
+    };
+    [Events.EXTENSION_INITIALIZATION]: EventType<
+        {
+            success: boolean;
+            type?: "dabs" | "legacy" | "unknown";
+        } & DurationMeasurement
+    > = {
+        comment: "Extension services were initialized",
+    };
+    [Events.AUTO_LOGIN]: EventType<
+        {
+            success: boolean;
+            source: AutoLoginSource;
+        } & DurationMeasurement
+    > = {
+        comment: "Extension logged in automatically",
+    };
+    [Events.MANUAL_LOGIN]: EventType<
+        {
+            success: boolean;
+            source: ManualLoginSource;
+        } & DurationMeasurement
+    > = {
+        comment: "User logged in manually",
+    };
+    [Events.AUTO_MIGRATION]: EventType<
+        {
+            success: boolean;
+        } & DurationMeasurement
+    > = {
+        comment: "Extension migrated automatically",
+    };
+    [Events.MANUAL_MIGRATION]: EventType<
+        {
+            success: boolean;
+        } & DurationMeasurement
+    > = {
+        comment: "User migrated manually",
+    };
+    [Events.BUNDLE_RUN]: EventType<
+        {
+            success: boolean;
+            cancelled?: boolean;
+            resourceType?: BundleRunResourceType;
+        } & DurationMeasurement
+    > = {
+        comment: "Execute a bundle resource",
     };
     [Events.CONNECTION_STATE_CHANGED]: EventType<{
         newState: string;
@@ -78,22 +133,6 @@ export class EventTypes {
         comment: "State of ConnectionManager has changed",
         newState: {
             comment: "The new state of the connection",
-        },
-    };
-    [Events.SYNC_DESTINATION]: EventType<{
-        destination: string;
-    }> = {
-        comment: "Sync destination was selected",
-        destination: {
-            comment: "The destination that was selected",
-        },
-    };
-    [Events.SWITCH_TO_WORKSPACE_PROMPT]: EventType<{
-        selection: string;
-    }> = {
-        comment: "Prompt to switch to workspace was shown",
-        selection: {
-            comment: "The selection that was made",
         },
     };
 }
@@ -109,6 +148,10 @@ export type EventProperties = {
             : never
         : never;
 };
+
+export type EventReporter<E extends keyof EventTypes> = (
+    props: Omit<EventProperties[E], "duration">
+) => void;
 
 export type EnvironmentType = "tests" | "prod";
 
