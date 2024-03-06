@@ -217,6 +217,7 @@ nothing = true
         const authProvider = new ProfileAuthProvider(
             new URL("https://test.com"),
             "PROFILE",
+            cli,
             true
         );
         const workspaceFolder = Uri.file("/test/123");
