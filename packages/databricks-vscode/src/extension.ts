@@ -579,7 +579,10 @@ export async function activate(
 
     // Run/debug group
     const databricksDebugConfigurationProvider =
-        new DatabricksDebugConfigurationProvider(context);
+        new DatabricksDebugConfigurationProvider(
+            context,
+            databricksEnvFileManager
+        );
 
     const runCommands = new RunCommands(
         connectionManager,
@@ -604,6 +607,10 @@ export async function activate(
     context.subscriptions.push(
         debug.registerDebugConfigurationProvider(
             "python",
+            databricksDebugConfigurationProvider
+        ),
+        debug.registerDebugConfigurationProvider(
+            "debugpy",
             databricksDebugConfigurationProvider
         ),
         telemetry.registerCommand(
