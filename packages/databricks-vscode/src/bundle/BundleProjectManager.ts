@@ -291,8 +291,9 @@ export class BundleProjectManager {
         this.logger.debug("Successfully finished bundle migration");
     }
 
+    @onError({popup: {prefix: "Failed to initialize new Databricks project"}})
     public async initNewProject() {
-        const bundleInitWizard = new BundleInitWizard(this.cli);
+        const bundleInitWizard = new BundleInitWizard(this.cli, this.telemetry);
         const authProvider =
             this.connectionManager.databricksWorkspace?.authProvider;
         const parentFolder = await bundleInitWizard.initNewProject(
