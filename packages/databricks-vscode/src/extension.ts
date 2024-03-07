@@ -62,6 +62,7 @@ import {BundleProjectManager} from "./bundle/BundleProjectManager";
 import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
+import {isIntegrationTest} from "./utils/developmentUtils";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -73,7 +74,10 @@ export async function activate(
 
     const stateStorage = new StateStorage(context);
 
-    if (!stateStorage.get("databricks.preview-tnc.accepted")) {
+    if (
+        !stateStorage.get("databricks.preview-tnc.accepted") &&
+        !isIntegrationTest()
+    ) {
         const acceptTnc = await window.showInformationMessage(
             `Please note that you should only be using this functionality if you are part of our private preview and have accepted our terms and conditions regarding this preview.`,
             {
