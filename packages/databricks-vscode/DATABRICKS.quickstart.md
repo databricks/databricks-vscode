@@ -1,6 +1,6 @@
 # ⚠️ Note
-> **The quickstart guide for `2.*.*` version of the extension is still work-in-progress. For now, please use the documentation we provided to you. Please reach out to your Databricks representative if you don't have access to the relevant docs.**
 
+> **The quickstart guide for `2.*.*` version of the extension is still work-in-progress. For now, please use the documentation we provided to you. Please reach out to your Databricks representative if you don't have access to the relevant docs.**
 
 # Databricks Extension for Visual Studio Code
 
