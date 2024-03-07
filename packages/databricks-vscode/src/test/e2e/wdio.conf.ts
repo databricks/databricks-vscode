@@ -279,6 +279,7 @@ export const config: Options.Testrunner = {
             process.env.WORKSPACE_PATH = WORKSPACE_PATH;
             process.env.TEST_REPO_PATH = repoPath;
             process.env.TEST_WORKSPACE_FOLDER_PATH = workspaceFolderPath;
+            process.env.DATABRICKS_VSCODE_INTEGRATION_TEST = "true";
         } catch (e) {
             console.error(e);
             process.exit(1);

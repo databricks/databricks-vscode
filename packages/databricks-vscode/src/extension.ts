@@ -5,6 +5,8 @@ import {
     extensions,
     window,
     workspace,
+    env,
+    Uri,
 } from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
@@ -60,6 +62,7 @@ import {BundleProjectManager} from "./bundle/BundleProjectManager";
 import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
+import {isIntegrationTest} from "./utils/developmentUtils";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -68,6 +71,43 @@ export async function activate(
 ): Promise<PublicApi | undefined> {
     customWhenContext.setActivated(false);
     customWhenContext.setDeploymentState("idle");
+
+    const stateStorage = new StateStorage(context);
+
+    if (
+        !stateStorage.get("databricks.preview-tnc.accepted") &&
+        !isIntegrationTest()
+    ) {
+        const acceptTnc = await window.showInformationMessage(
+            `Please note that you should only be using this functionality if you are part of our private preview and have accepted our terms and conditions regarding this preview.`,
+            {
+                modal: true,
+                detail: `In order to enroll in the private preview please contact us and we will get you added`,
+            },
+            "Contact us",
+            "Continue if you are already enrolled"
+        );
+        switch (acceptTnc) {
+            case "Contact us":
+                env.openExternal(
+                    Uri.parse(
+                        "mailto:dabs-preview@databricks.com?subject=Databricks+Extension+v2+Private+Preview+Enrollment+Request"
+                    )
+                );
+                window.showErrorMessage(
+                    "Databricks Extension is not activated"
+                );
+                return;
+            case "Continue if you are already enrolled":
+                stateStorage.set("databricks.preview-tnc.accepted", true);
+                break;
+            default:
+                window.showErrorMessage(
+                    "Databricks Extension is not activated"
+                );
+                return;
+        }
+    }
 
     if (extensions.getExtension("databricks.databricks-vscode") !== undefined) {
         await commands.executeCommand(
@@ -126,7 +166,6 @@ export async function activate(
     }
 
     const workspaceUri = workspace.workspaceFolders[0].uri;
-    const stateStorage = new StateStorage(context);
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();

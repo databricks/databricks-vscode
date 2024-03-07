@@ -1,6 +1,6 @@
 import TelemetryReporter from "@vscode/extension-telemetry";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {isDevExtension} from "../utils/developmentUtils";
+import {isDevExtension, isIntegrationTest} from "../utils/developmentUtils";
 import {
     DEV_APP_INSIGHTS_CONFIGURATION_KEY,
     EventProperties,
@@ -82,9 +82,7 @@ export async function toUserMetadata(
 
 export function getContextMetadata(): ExtraMetadata[Metadata.CONTEXT] {
     return {
-        environmentType: process.env["TEST_DEFAULT_CLUSTER_ID"]
-            ? "tests"
-            : "prod",
+        environmentType: isIntegrationTest() ? "tests" : "prod",
     };
 }
 
