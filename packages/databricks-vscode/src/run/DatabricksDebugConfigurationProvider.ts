@@ -16,7 +16,11 @@ export interface DatabricksPythonDebugConfiguration extends DebugConfiguration {
 }
 
 function isTest(debugConfiguration: DebugConfiguration) {
-    return debugConfiguration.env?.RUN_TEST_IDS_PORT !== undefined;
+    return (
+        debugConfiguration.env?.RUN_TEST_IDS_PORT !== undefined ||
+        debugConfiguration.request === "test" ||
+        debugConfiguration.name === "Debug Unit Test"
+    );
 }
 export class DatabricksDebugConfigurationProvider
     implements DebugConfigurationProvider
