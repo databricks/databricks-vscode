@@ -131,9 +131,9 @@ export async function activate(
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
     context.environmentVariableCollection.persistent = false;
-    context.environmentVariableCollection.prepend(
+    context.environmentVariableCollection.append(
         "PATH",
-        `${context.asAbsolutePath("./bin")}${path.delimiter}`
+        `${path.delimiter}${context.asAbsolutePath("./bin")}`
     );
 
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
