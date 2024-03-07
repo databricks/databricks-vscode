@@ -1,3 +1,24 @@
+# Release: v2.0.0-preview
+
+## packages/databricks-vscode
+
+## (2024-03-07)
+
+-   Add a note to our quick start (#1126) ([93cbbe5](https://github.com/databricks/databricks-vscode/commit/93cbbe5)), closes [#1126](https://github.com/databricks/databricks-vscode/issues/1126)
+-   Add DATABRICKS_CLI_UPSTREAM env var to CLI calls (#1112) ([8c60fa5](https://github.com/databricks/databricks-vscode/commit/8c60fa5)), closes [#1112](https://github.com/databricks/databricks-vscode/issues/1112)
+-   Add telemetry for bundle init flow (#1117) ([ee955d4](https://github.com/databricks/databricks-vscode/commit/ee955d4)), closes [#1117](https://github.com/databricks/databricks-vscode/issues/1117)
+-   Add telemetry for the v2 (#1105) ([12f306a](https://github.com/databricks/databricks-vscode/commit/12f306a)), closes [#1105](https://github.com/databricks/databricks-vscode/issues/1105)
+-   Append CLI path to make sure it is picked up last (#1121) ([53debe9](https://github.com/databricks/databricks-vscode/commit/53debe9)), closes [#1121](https://github.com/databricks/databricks-vscode/issues/1121)
+-   Bump CLI to 0.215.0 (#1119) ([c121b60](https://github.com/databricks/databricks-vscode/commit/c121b60)), closes [#1119](https://github.com/databricks/databricks-vscode/issues/1119)
+-   Cancel run in the UI when CLI fails (#1102) ([71303b8](https://github.com/databricks/databricks-vscode/commit/71303b8)), closes [#1102](https://github.com/databricks/databricks-vscode/issues/1102)
+-   Inject env vars into python unit test debugging sessions (#1120) ([264cb54](https://github.com/databricks/databricks-vscode/commit/264cb54)), closes [#1120](https://github.com/databricks/databricks-vscode/issues/1120)
+-   Pass CLI path to all auth providers and login only once during bundle init (#1114) ([c6e9b0e](https://github.com/databricks/databricks-vscode/commit/c6e9b0e)), closes [#1114](https://github.com/databricks/databricks-vscode/issues/1114)
+-   Setup pre-release CI for v2 (#1109) ([5b3fbd3](https://github.com/databricks/databricks-vscode/commit/5b3fbd3)), closes [#1109](https://github.com/databricks/databricks-vscode/issues/1109)
+-   Show t&c popup for private preview (#1128) ([d5b69e4](https://github.com/databricks/databricks-vscode/commit/d5b69e4)), closes [#1128](https://github.com/databricks/databricks-vscode/issues/1128)
+-   Take a hard dependency on redhat.vscode-yaml extension (#1127) ([f3354a7](https://github.com/databricks/databricks-vscode/commit/f3354a7)), closes [#1127](https://github.com/databricks/databricks-vscode/issues/1127)
+-   Update NOTICE.md (#1115) ([8d60383](https://github.com/databricks/databricks-vscode/commit/8d60383)), closes [#1115](https://github.com/databricks/databricks-vscode/issues/1115)
+-   Use raw app insights keys for the telemetry reporter (#1116) ([18bb45b](https://github.com/databricks/databricks-vscode/commit/18bb45b)), closes [#1116](https://github.com/databricks/databricks-vscode/issues/1116)
+
 # Release: v1.2.5
 
 ## packages/databricks-vscode
