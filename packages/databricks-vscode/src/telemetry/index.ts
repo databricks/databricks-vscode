@@ -2,13 +2,13 @@ import TelemetryReporter from "@vscode/extension-telemetry";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {isDevExtension} from "../utils/developmentUtils";
 import {
-    DEV_APP_INSIGHTS_CONFIGURATION_STRING,
+    DEV_APP_INSIGHTS_CONFIGURATION_KEY,
     EventProperties,
     EventTypes,
     ExtraMetadata,
     Metadata,
     MetadataTypes,
-    PROD_APP_INSIGHTS_CONFIGURATION_STRING,
+    PROD_APP_INSIGHTS_CONFIGURATION_KEY,
 } from "./constants";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
@@ -90,9 +90,9 @@ export function getContextMetadata(): ExtraMetadata[Metadata.CONTEXT] {
 
 function getTelemetryKey(): string {
     if (isDevExtension()) {
-        return DEV_APP_INSIGHTS_CONFIGURATION_STRING;
+        return DEV_APP_INSIGHTS_CONFIGURATION_KEY;
     }
-    return PROD_APP_INSIGHTS_CONFIGURATION_STRING;
+    return PROD_APP_INSIGHTS_CONFIGURATION_KEY;
 }
 
 function getTelemetryReporter(): TelemetryReporter | undefined {
