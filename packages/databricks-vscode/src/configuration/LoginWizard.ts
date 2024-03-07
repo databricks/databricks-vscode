@@ -11,7 +11,7 @@ import {
     MultiStepInput,
     ValidationMessageType,
 } from "../ui/MultiStepInputWizard";
-import {CliWrapper, ConfigEntry} from "../cli/CliWrapper";
+import {CliWrapper, ProfileDetails} from "../cli/CliWrapper";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {
     AuthProvider,
@@ -46,7 +46,7 @@ interface State {
 export class LoginWizard {
     private state = {} as Partial<State>;
     private readonly title = "Configure Databricks Workspace";
-    private _profiles: Array<ConfigEntry> = [];
+    private _profiles: Array<ProfileDetails> = [];
     async getProfiles() {
         if (this._profiles.length === 0) {
             this._profiles = await listProfiles(this.cliWrapper);
@@ -435,7 +435,7 @@ export async function listProfiles(cliWrapper: CliWrapper) {
         async () => {
             const profiles = (
                 await cliWrapper.listProfiles(
-                    workspaceConfigs.databrickscfgLocation
+                    FileUtils.getDatabricksConfigFilePath().fsPath
                 )
             ).filter((profile) => {
                 try {
@@ -448,6 +448,12 @@ export async function listProfiles(cliWrapper: CliWrapper) {
 
             return profiles;
         }
+    );
+}
+
+export async function getProfilesForHost(host: URL, cliWrapper: CliWrapper) {
+    return (await listProfiles(cliWrapper)).filter(
+        (profile) => profile.host?.toString() === host.toString()
     );
 }
 

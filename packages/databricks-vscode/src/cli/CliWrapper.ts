@@ -16,6 +16,7 @@ import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
+import {stat} from "fs/promises";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -25,7 +26,7 @@ export interface Command {
     args: string[];
 }
 
-export interface ConfigEntry {
+export interface ProfileDetails {
     name: string;
     host?: URL;
     accountId?: string;
@@ -87,7 +88,10 @@ async function waitForProcess(
  */
 export class CliWrapper {
     private clusterId?: string;
-
+    private databricksCfgCache: Map<
+        string,
+        {lastModified: number; profiles: ProfileDetails[]}
+    > = new Map();
     constructor(
         private extensionContext: ExtensionContext,
         private loggerManager: LoggerManager,
@@ -169,19 +173,27 @@ export class CliWrapper {
 
     @withLogContext(Loggers.Extension)
     public async listProfiles(
-        configfilePath?: string,
+        configfilePath: string,
         @context ctx?: Context
-    ): Promise<Array<ConfigEntry>> {
+    ): Promise<Array<ProfileDetails>> {
+        const stats = await stat(configfilePath);
+        if (
+            stats.mtimeMs <=
+            (this.databricksCfgCache.get(configfilePath)?.lastModified ?? 0)
+        ) {
+            return this.databricksCfgCache.get(configfilePath)?.profiles ?? [];
+        }
+
         const cmd = this.getListProfilesCommand();
 
-        let res;
+        let stdout;
         try {
-            res = await execFile(cmd.command, cmd.args, {
+            ({stdout} = await execFile(cmd.command, cmd.args, {
                 env: {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                 },
-            });
+            }));
         } catch (e) {
             let msg = "Failed to load Databricks Config File";
             if (e instanceof Error) {
@@ -203,7 +215,7 @@ export class CliWrapper {
             return [];
         }
 
-        let profiles = JSON.parse(res.stdout).profiles || [];
+        let profiles = JSON.parse(stdout).profiles || [];
 
         // filter out account profiles
         profiles = profiles.filter((p: any) => !p.account_id);
@@ -248,6 +260,11 @@ export class CliWrapper {
                     }
                 });
         }
+
+        this.databricksCfgCache.set(configfilePath, {
+            lastModified: stats.mtimeMs,
+            profiles: result,
+        });
         return result;
     }
 
