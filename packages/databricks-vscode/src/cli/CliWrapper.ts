@@ -17,6 +17,7 @@ import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
 import {stat} from "fs/promises";
+import {Stats} from "fs";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -176,12 +177,22 @@ export class CliWrapper {
         configfilePath: string,
         @context ctx?: Context
     ): Promise<Array<ProfileDetails>> {
-        const stats = await stat(configfilePath);
-        if (
-            stats.mtimeMs <=
-            (this.databricksCfgCache.get(configfilePath)?.lastModified ?? 0)
-        ) {
-            return this.databricksCfgCache.get(configfilePath)?.profiles ?? [];
+        let stats: Stats;
+        try {
+            stats = await stat(configfilePath);
+            if (
+                stats.mtimeMs <=
+                (this.databricksCfgCache.get(configfilePath)?.lastModified ?? 0)
+            ) {
+                return (
+                    this.databricksCfgCache.get(configfilePath)?.profiles ?? []
+                );
+            }
+        } catch (e: any) {
+            if (e.code === "ENOENT") {
+                return [];
+            }
+            throw e;
         }
 
         const cmd = this.getListProfilesCommand();
