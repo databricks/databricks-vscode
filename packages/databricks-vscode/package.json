@@ -768,7 +768,8 @@
     },
     "extensionDependencies": [
         "ms-python.python",
-        "ms-toolsai.jupyter"
+        "ms-toolsai.jupyter",
+        "redhat.vscode-yaml"
     ],
     "vsce": {
         "dependencies": false,
