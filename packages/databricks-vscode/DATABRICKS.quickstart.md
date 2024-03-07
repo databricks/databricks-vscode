@@ -1,3 +1,7 @@
+# ⚠️ Note
+> **This quick start is only relevant for the `1.*.*` versions of the extension. If you are in private preview and use `2.*.*` version, please use the documentation we provided to you (ask us if you don't have it).**
+
+
 # Databricks Extension for Visual Studio Code
 
 The Databricks extension for VS Code allows you to develop for the Databricks Lakehouse platform from VS Code.
