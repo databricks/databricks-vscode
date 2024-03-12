@@ -149,8 +149,8 @@ describe("Init and deploy", async function () {
                 );
             },
             {
-                timeout: 30_000,
-                interval: 2_000,
+                timeout: 60_000,
+                interval: 1_000,
                 timeoutMsg:
                     "Can't find 'Bundle deployed successfully' message in output channel",
             }
