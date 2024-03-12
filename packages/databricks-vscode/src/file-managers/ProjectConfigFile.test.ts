@@ -7,6 +7,8 @@ import path from "path";
 import * as os from "os";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
+import {instance, mock, when} from "ts-mockito";
+import {CliWrapper} from "../cli/CliWrapper";
 
 describe(__filename, () => {
     let tempDir: string;
@@ -29,7 +31,12 @@ describe(__filename, () => {
             encoding: "utf-8",
         });
 
-        const actual = (await ProjectConfigFile.load(tempDir, "databricks"))!;
+        const mockCliWrapper = mock(CliWrapper);
+        when(mockCliWrapper.cliPath).thenReturn("databricks");
+        const actual = (await ProjectConfigFile.load(
+            tempDir,
+            instance(mockCliWrapper)
+        ))!;
         assert.equal(actual.host.toString(), config.host);
         assert.ok(actual.authProvider instanceof ProfileAuthProvider);
         assert.equal(actual.authProvider.authType, config.authType);
@@ -73,7 +80,12 @@ token = testToken`,
             tempDir,
             ".databrickscfg"
         );
-        const actual = (await ProjectConfigFile.load(tempDir, "databricks"))!;
+        const mockCliWrapper = mock(CliWrapper);
+        when(mockCliWrapper.cliPath).thenReturn("databricks");
+        const actual = (await ProjectConfigFile.load(
+            tempDir,
+            instance(mockCliWrapper)
+        ))!;
         assert.equal(
             actual.host.toString(),
             "https://000000000000.00.azuredatabricks.net/"

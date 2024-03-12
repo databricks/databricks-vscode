@@ -268,6 +268,7 @@ export const config: Options.Testrunner = {
             await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
 
             process.env.DATABRICKS_HOST = config.host!;
+            process.env.DATABRICKS_VSCODE_INTEGRATION_TEST = "true";
         } catch (e) {
             console.error(e);
             process.exit(1);

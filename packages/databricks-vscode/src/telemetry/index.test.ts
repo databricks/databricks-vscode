@@ -40,7 +40,7 @@ describe(__filename, () => {
     });
 
     it("sets context metadata with prod env type", async () => {
-        delete process.env["TEST_DEFAULT_CLUSTER_ID"];
+        delete process.env["DATABRICKS_VSCODE_INTEGRATION_TEST"];
         telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
             command: "testCommand",
@@ -58,7 +58,7 @@ describe(__filename, () => {
     });
 
     it("sets context metadata with tests env type", async () => {
-        process.env["TEST_DEFAULT_CLUSTER_ID"] = "123";
+        process.env["DATABRICKS_VSCODE_INTEGRATION_TEST"] = "true";
         telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
             command: "testCommand",

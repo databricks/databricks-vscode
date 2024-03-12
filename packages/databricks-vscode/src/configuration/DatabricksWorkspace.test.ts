@@ -4,6 +4,8 @@ import {Uri} from "vscode";
 import {ProfileAuthProvider} from "./auth/AuthProvider";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {iam} from "@databricks/databricks-sdk";
+import {instance, mock} from "ts-mockito";
+import {CliWrapper} from "../cli/CliWrapper";
 
 describe(__filename, () => {
     it("create an instance", () => {
@@ -17,7 +19,8 @@ describe(__filename, () => {
         } as const;
         const authProvider = new ProfileAuthProvider(
             new URL("https://fabian.databricks.com"),
-            "DEFAULT"
+            "DEFAULT",
+            instance(mock(CliWrapper))
         );
         const dbWorkspace: DatabricksWorkspace = new DatabricksWorkspace(
             authProvider,

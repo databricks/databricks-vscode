@@ -23,7 +23,10 @@ export class BundleRunTerminalManager implements Disposable {
         return `Run ${resourceKey} (${target})`;
     }
 
-    async run(resourceKey: string, onDidUpdate?: (data: string) => void) {
+    async run(
+        resourceKey: string,
+        onDidUpdate?: (data: string) => void
+    ): Promise<{cancelled: boolean; exitCode?: number | null}> {
         const target = this.bundleRemoteStateModel.target;
         if (target === undefined) {
             throw new Error(`Cannot run ${resourceKey}, Target is undefined`);
@@ -82,24 +85,16 @@ export class BundleRunTerminalManager implements Disposable {
             );
 
             // Wait for the process to exit
-            await new Promise<void>((resolve, reject) => {
-                if (terminal === undefined) {
-                    resolve();
-                    return;
-                }
+            return await new Promise((resolve, reject) => {
                 terminal.pty.onDidCloseProcess((exitCode) => {
                     if (exitCode === 0 || terminal.pty.isClosed) {
                         // Resolve when the process exits with code 0 or is closed by human action
-                        resolve();
+                        resolve({cancelled: terminal.pty.isClosed, exitCode});
                     } else {
                         reject(
                             new Error(`Process exited with code ${exitCode}`)
                         );
                     }
-                }, disposables);
-                window.onDidCloseTerminal((e) => {
-                    // Resolve when the process is closed by human action
-                    e.name === terminal.terminal.name && resolve();
                 }, disposables);
             });
         } finally {

@@ -18,9 +18,15 @@ import crypto from "node:crypto";
 import {Context} from "@databricks/databricks-sdk/dist/context";
 import {logging} from "@databricks/databricks-sdk";
 import {LoggerManager} from "../logger";
+import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
+import {isMatch} from "lodash";
+import {removeUndefinedKeys} from "../utils/envVarGenerators";
 
 const execFile = promisify(execFileCb);
 const cliPath = path.join(__dirname, "../../bin/databricks");
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const extensionVersion = require("../../package.json").version;
 
 function getTempLogFilePath() {
     return path.join(
@@ -203,5 +209,52 @@ nothing = true
             assert.ok(errorLog.level === "error");
             assert.equal(profiles.length, 0);
         });
+    });
+
+    it("should set required env vars to the bundle run CLI calls", async () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+        const workspaceFolder = Uri.file("/test/123");
+        const runCmd = cli.getBundleRunCommand(
+            "dev",
+            authProvider,
+            "resource-key",
+            workspaceFolder
+        );
+        const expected = {
+            args: ["bundle", "run", "--target", "dev", "resource-key"],
+            cmd: cli.cliPath,
+            options: {
+                cwd: workspaceFolder.fsPath,
+                env: removeUndefinedKeys({
+                    /* eslint-disable @typescript-eslint/naming-convention */
+                    DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
+                    DATABRICKS_CLI_UPSTREAM_VERSION: extensionVersion,
+                    DATABRICKS_CONFIG_PROFILE: "PROFILE",
+                    DATABRICKS_HOST: "https://test.com/",
+                    DATABRICKS_LOG_FILE: logFilePath,
+                    DATABRICKS_LOG_FORMAT: "json",
+                    DATABRICKS_LOG_LEVEL: "debug",
+                    DATABRICKS_OUTPUT_FORMAT: "json",
+                    HOME: process.env.HOME,
+                    PATH: process.env.PATH,
+                    /* eslint-enable @typescript-eslint/naming-convention */
+                }),
+                shell: true,
+            },
+        };
+        try {
+            assert.ok(isMatch(runCmd, expected));
+        } catch (e) {
+            // Run this in the "catch" case to show better error messages
+            assert.deepStrictEqual(runCmd, expected);
+            throw e;
+        }
     });
 });

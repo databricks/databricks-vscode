@@ -1,3 +1,17 @@
+# Release: v2.0.1-preview
+
+## packages/databricks-vscode
+
+## <small>v2.0.1-preview (2024-03-07)</small>
+
+-   Databricks Asset Bundles (DABs) are now available in VS Code which allows you to:
+    -   easily set up, author and run Databricks projects from VS Code.
+    -   leverage the DABs Resource Explorer so you can easily see all your Jobs and Pipelines in one place and run them with one click.
+-   All our run methods are now consolidated into 1 run menu.
+-   Update databricks cli to v0.215.0.
+
+<img src="./images/dabs_vsc.gif" alt="dabs_demo" width="800"/>
+
 # Release: v1.2.5
 
 ## packages/databricks-vscode
