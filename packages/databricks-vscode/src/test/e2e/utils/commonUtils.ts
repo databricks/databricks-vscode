@@ -300,9 +300,9 @@ export async function waitForWorkflowWebview(expectedOutput: string) {
             return status.includes("Succeeded");
         },
         {
-            timeout: 30000,
+            timeout: 60_000,
             interval: 100,
-            timeoutMsg: "Job did not reach succeeded status after 30s.",
+            timeoutMsg: "Job did not reach succeeded status after 60s.",
         }
     );
 
