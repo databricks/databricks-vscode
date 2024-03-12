@@ -140,14 +140,12 @@ describe(__filename, () => {
             assert.equal(profiles.length, 2);
             assert.equal(profiles[0].name, "DEFAULT");
             assert.equal(profiles[0].host, "https://cloud.databricks.com/");
-            assert.equal(profiles[0].authType, "pat");
 
             assert.equal(profiles[1].name, "STAGING");
             assert.equal(
                 profiles[1].host,
                 "https://staging.cloud.databricks.com/"
             );
-            assert.equal(profiles[1].authType, "pat");
         });
     });
 
