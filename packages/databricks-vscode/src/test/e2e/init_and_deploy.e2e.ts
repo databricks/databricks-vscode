@@ -143,6 +143,7 @@ describe("Init and deploy", async function () {
         await browser.waitUntil(
             async () => {
                 const logs = (await outputView.getText()).join("");
+                console.log("Logs:", logs);
                 return (
                     logs.includes("Bundle deployed successfully") &&
                     logs.includes("Bundle configuration refreshed.")
