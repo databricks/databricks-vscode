@@ -2,21 +2,24 @@ import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
-    clearBundleConfig,
-    createBasicBundleConfig,
     dismissNotifications,
     openFile,
     waitForLogin,
     waitForWorkflowWebview,
 } from "./utils/commonUtils.ts";
 import {sleep} from "wdio-vscode-service";
+import {
+    getBasicBundleConfig,
+    writeRootBundleConfig,
+} from "./utils/dabsFixtures.ts";
 
 describe("Run files", async function () {
     let projectDir: string;
     this.timeout(3 * 60 * 1000);
 
     before(async () => {
-        assert(process.env.WORKSPACE_PATH);
+        assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
+
         projectDir = process.env.WORKSPACE_PATH;
 
         await fs.writeFile(
@@ -33,17 +36,9 @@ describe("Run files", async function () {
             [`from lib import func`, "func(spark)"].join("\n")
         );
 
-        await createBasicBundleConfig();
+        await writeRootBundleConfig(getBasicBundleConfig(), projectDir);
         await waitForLogin("DEFAULT");
         await dismissNotifications();
-    });
-
-    after(async () => {
-        try {
-            await clearBundleConfig();
-        } catch (e) {
-            console.error(e);
-        }
     });
 
     beforeEach(async () => {

@@ -1,6 +1,5 @@
 import assert from "node:assert";
-import {unlink, writeFile} from "node:fs/promises";
-import path from "node:path";
+import {randomUUID} from "crypto";
 import {
     CustomTreeSection,
     sleep,
@@ -248,6 +247,7 @@ export async function waitForInput() {
 export async function waitForLogin(profileName: string) {
     await browser.waitUntil(
         async () => {
+            await dismissNotifications();
             const section = (await getViewSection(
                 "CONFIGURATION"
             )) as CustomTreeSection;
@@ -265,47 +265,15 @@ export async function waitForLogin(profileName: string) {
     );
 }
 
-const BASIC_BUNDLE = `
-bundle:
-  name: hello_test
-  compute_id: _COMPUTE_ID_
-
-targets:
-  dev_test:
-    mode: development
-    default: true
-    workspace:
-      host: _HOST_
-`;
-
-export async function createBasicBundleConfig() {
-    assert(process.env.DATABRICKS_HOST, "DATABRICKS_HOST doesn't exist");
-    assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
-    assert(
-        process.env.TEST_DEFAULT_CLUSTER_ID,
-        "TEST_DEFAULT_CLUSTER_ID doesn't exist"
-    );
-    const bundleConfig = path.join(
-        process.env.WORKSPACE_PATH,
-        "databricks.yml"
-    );
-    await writeFile(
-        bundleConfig,
-        BASIC_BUNDLE.replace("_HOST_", process.env.DATABRICKS_HOST).replace(
-            "_COMPUTE_ID_",
-            process.env.TEST_DEFAULT_CLUSTER_ID
-        )
-    );
+export function getStaticResourceName(name: string) {
+    return `vscode_integration_test_${name}`;
 }
 
-export async function clearBundleConfig() {
-    assert(process.env.DATABRICKS_HOST, "DATABRICKS_HOST doesn't exist");
-    assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
-    const bundleConfig = path.join(
-        process.env.WORKSPACE_PATH,
-        "databricks.yml"
-    );
-    await unlink(bundleConfig);
+export function getUniqueResourceName(name?: string) {
+    const uniqueName = name
+        ? `${randomUUID().slice(0, 8)}_${name}`
+        : randomUUID().slice(0, 8);
+    return getStaticResourceName(uniqueName);
 }
 
 export async function waitForWorkflowWebview(expectedOutput: string) {

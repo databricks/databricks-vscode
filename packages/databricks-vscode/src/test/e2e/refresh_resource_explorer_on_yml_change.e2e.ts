@@ -2,16 +2,19 @@ import assert from "assert";
 import {CustomTreeSection} from "wdio-vscode-service";
 import {
     dismissNotifications,
+    getUniqueResourceName,
     getViewSection,
     waitForLogin,
-} from "./utils/commonUtils";
-import fs from "fs";
+} from "./utils/commonUtils.ts";
+import fs from "fs/promises";
 import path from "path";
-import yaml from "yaml";
-import {getSimpleJobsResource} from "./utils/dabsFixtures";
-import {randomUUID} from "crypto";
+import {
+    getBasicBundleConfig,
+    getSimpleJobsResource,
+    writeRootBundleConfig,
+} from "./utils/dabsFixtures.ts";
 import {BundleSchema, BundleTarget, Resource} from "../../bundle/types";
-import {geTaskViewItem, getJobViewItem} from "./utils/dabsExplorerUtils";
+import {geTaskViewItem, getJobViewItem} from "./utils/dabsExplorerUtils.ts";
 import {fileURLToPath} from "url";
 
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -28,32 +31,7 @@ describe("Automatically refresh resource explorer", async function () {
 
     this.timeout(3 * 60 * 1000);
 
-    function createSimpleProject() {
-        /**
-         * process.env.WORKSPACE_PATH (cwd)
-         * ├── databricks.yml
-         */
-        const schemaDef: BundleSchema = {
-            bundle: {
-                name: projectName,
-            },
-            targets: {
-                test: {
-                    mode: "development",
-                    workspace: {
-                        host: process.env.DATABRICKS_HOST,
-                    },
-                },
-            },
-        };
-
-        fs.writeFileSync(
-            path.join(vscodeWorkspaceRoot, "databricks.yml"),
-            yaml.stringify(schemaDef)
-        );
-    }
-
-    function createProjectWithJob() {
+    async function createProjectWithJob() {
         /**
          * process.env.WORKSPACE_PATH (cwd)
          *  ├── databricks.yml
@@ -61,7 +39,7 @@ describe("Automatically refresh resource explorer", async function () {
          *    └── notebook.ipynb
          */
 
-        const notebookTaskName = `notebook_task_${randomUUID().slice(0, 8)}`;
+        const notebookTaskName = getUniqueResourceName("notebook_task");
         /* eslint-disable @typescript-eslint/naming-convention */
         jobDef = getSimpleJobsResource({
             tasks: [
@@ -75,16 +53,12 @@ describe("Automatically refresh resource explorer", async function () {
             ],
         });
 
-        const schemaDef: BundleSchema = {
+        const schemaDef: BundleSchema = getBasicBundleConfig({
             bundle: {
                 name: projectName,
             },
             targets: {
-                test: {
-                    mode: "development",
-                    workspace: {
-                        host: process.env.DATABRICKS_HOST,
-                    },
+                dev_test: {
                     resources: {
                         jobs: {
                             vscode_integration_test: jobDef,
@@ -92,17 +66,16 @@ describe("Automatically refresh resource explorer", async function () {
                     },
                 },
             },
-        };
+        });
         /* eslint-enable @typescript-eslint/naming-convention */
 
-        fs.writeFileSync(
-            path.join(vscodeWorkspaceRoot, "databricks.yml"),
-            yaml.stringify(schemaDef)
-        );
+        await writeRootBundleConfig(schemaDef, vscodeWorkspaceRoot);
 
-        fs.mkdirSync(path.join(vscodeWorkspaceRoot, "src"), {recursive: true});
-        fs.copyFileSync(
-            path.join(__dirname, "..", "resources", "spark_select_1.ipynb"),
+        await fs.mkdir(path.join(vscodeWorkspaceRoot, "src"), {
+            recursive: true,
+        });
+        await fs.copyFile(
+            path.join(__dirname, "resources", "spark_select_1.ipynb"),
             path.join(vscodeWorkspaceRoot, "src", "notebook.ipynb")
         );
     }
@@ -122,9 +95,12 @@ describe("Automatically refresh resource explorer", async function () {
         );
 
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
-        projectName = `vscode_integration_test_${randomUUID().slice(0, 8)}`;
         vscodeWorkspaceRoot = process.env.WORKSPACE_PATH!;
-        createSimpleProject();
+
+        const basicBundleConfig = getBasicBundleConfig();
+        projectName = basicBundleConfig.bundle!.name!;
+
+        await writeRootBundleConfig(basicBundleConfig, vscodeWorkspaceRoot);
         await dismissNotifications();
     });
 
@@ -135,6 +111,12 @@ describe("Automatically refresh resource explorer", async function () {
 
     it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
+    });
+
+    it("should find resource explorer view", async function () {
+        const section = await getViewSection("DABS RESOURCE EXPLORER");
+        assert(section);
+        resourceExplorerView = section as CustomTreeSection;
     });
 
     it("should pickup changes to jobs resource", async function () {
@@ -150,7 +132,12 @@ describe("Automatically refresh resource explorer", async function () {
             ).join(", ")})`
         );
 
-        createProjectWithJob();
+        const outputView = await (await browser.getWorkbench())
+            .getBottomBar()
+            .openOutputView();
+        await outputView.selectChannel("Databricks Bundle Logs");
+
+        await createProjectWithJob();
 
         await browser.waitUntil(
             async () => {

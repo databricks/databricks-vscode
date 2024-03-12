@@ -1,17 +1,20 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
+    getUniqueResourceName,
     getViewSection,
     waitForLogin,
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
-import {CustomTreeSection, Workbench} from "wdio-vscode-service";
-import {getSimpleJobsResource} from "./utils/dabsFixtures.ts";
+import {CustomTreeSection, Workbench, sleep} from "wdio-vscode-service";
+import {
+    getBasicBundleConfig,
+    getSimpleJobsResource,
+    writeRootBundleConfig,
+} from "./utils/dabsFixtures.ts";
 import path from "node:path";
-import fs from "node:fs";
+import fs from "fs/promises";
 import {BundleSchema} from "../../bundle/BundleSchema";
-import yaml from "yaml";
-import {randomUUID} from "node:crypto";
 import {getJobViewItem} from "./utils/dabsExplorerUtils.ts";
 import {fileURLToPath} from "url";
 
@@ -29,20 +32,16 @@ describe("Deploy and run job", async function () {
 
     this.timeout(3 * 60 * 1000);
 
-    function createProject() {
+    async function createProjectWithJob() {
         /**
          * process.env.WORKSPACE_PATH (cwd)
          *  ├── databricks.yml
          *  └── src
          *    └── notebook.ipynb
          */
-        const projectName = `vscode_integration_test_${randomUUID().slice(
-            0,
-            8
-        )}`;
-        vscodeWorkspaceRoot = process.env.WORKSPACE_PATH!;
 
-        const notebookTaskName = `notebook_task_${randomUUID().slice(0, 8)}`;
+        const projectName = getUniqueResourceName("deploy_and_run_job");
+        const notebookTaskName = getUniqueResourceName("notebook_task");
         /* eslint-disable @typescript-eslint/naming-convention */
         const jobDef = getSimpleJobsResource({
             tasks: [
@@ -57,38 +56,33 @@ describe("Deploy and run job", async function () {
         });
         jobName = jobDef.name!;
 
-        const schemaDef: BundleSchema = {
+        const schemaDef: BundleSchema = getBasicBundleConfig({
             bundle: {
                 name: projectName,
             },
             targets: {
-                test: {
-                    mode: "development",
-                    default: true,
+                dev_test: {
                     resources: {
                         jobs: {
                             vscode_integration_test: jobDef,
                         },
                     },
-                    workspace: {
-                        host: process.env.DATABRICKS_HOST,
-                    },
                 },
             },
-        };
+        });
         /* eslint-enable @typescript-eslint/naming-convention */
 
-        fs.writeFileSync(
-            path.join(vscodeWorkspaceRoot, "databricks.yml"),
-            yaml.stringify(schemaDef)
-        );
+        await writeRootBundleConfig(schemaDef, vscodeWorkspaceRoot);
 
-        fs.mkdirSync(path.join(vscodeWorkspaceRoot, "src"), {recursive: true});
-        fs.copyFileSync(
+        await fs.mkdir(path.join(vscodeWorkspaceRoot, "src"), {
+            recursive: true,
+        });
+        await fs.copyFile(
             path.join(__dirname, "resources", "spark_select_1.ipynb"),
             path.join(vscodeWorkspaceRoot, "src", "notebook.ipynb")
         );
     }
+
     before(async function () {
         assert(
             process.env.TEST_DEFAULT_CLUSTER_ID,
@@ -105,7 +99,8 @@ describe("Deploy and run job", async function () {
 
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
         workbench = await browser.getWorkbench();
-        createProject();
+        vscodeWorkspaceRoot = process.env.WORKSPACE_PATH;
+        await createProjectWithJob();
         await dismissNotifications();
     });
 
@@ -116,6 +111,7 @@ describe("Deploy and run job", async function () {
 
     it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
+        await dismissNotifications();
     });
 
     it("should find resource explorer view", async function () {
@@ -143,20 +139,38 @@ describe("Deploy and run job", async function () {
         // Wait for the deployment to finish
         await browser.waitUntil(
             async () => {
-                const outputView = await workbench
-                    .getBottomBar()
-                    .openOutputView();
-                await outputView.selectChannel("Databricks Bundle Logs");
-                const logs = (await outputView.getText()).join("");
-                console.log("logs", logs);
-                return (
-                    logs.includes("Bundle deployed successfully") &&
-                    logs.includes("Bundle configuration refreshed")
-                );
+                try {
+                    await browser.executeWorkbench(async (vscode) => {
+                        await vscode.commands.executeCommand(
+                            "workbench.panel.output.focus"
+                        );
+                    });
+                    const outputView = await workbench
+                        .getBottomBar()
+                        .openOutputView();
+
+                    if (
+                        (await outputView.getCurrentChannel()) !==
+                        "Databricks Bundle Logs"
+                    ) {
+                        await outputView.selectChannel(
+                            "Databricks Bundle Logs"
+                        );
+                    }
+
+                    const logs = (await outputView.getText()).join("");
+                    console.log(logs);
+                    return (
+                        logs.includes("Bundle deployed successfully") &&
+                        logs.includes("Bundle configuration refreshed")
+                    );
+                } catch (e) {
+                    return false;
+                }
             },
             {
-                timeout: 30_000,
-                interval: 2_000,
+                timeout: 60_000,
+                interval: 1_000,
                 timeoutMsg:
                     "Can't find 'Bundle deployed successfully' message in output channel",
             }

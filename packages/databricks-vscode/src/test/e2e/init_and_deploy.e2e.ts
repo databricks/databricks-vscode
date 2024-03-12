@@ -2,6 +2,7 @@ import assert from "node:assert";
 import {
     dismissNotifications,
     getTabByTitle,
+    getUniqueResourceName,
     getViewSection,
     waitForInput,
     waitForLogin,
@@ -55,7 +56,7 @@ describe("Init and deploy", async function () {
             vscode.commands.executeCommand("databricks.bundle.initNewProject");
         });
 
-        projectName = `vscode_integration_test_${randomUUID().slice(0, 8)}`;
+        projectName = getUniqueResourceName("init_test");
 
         const hostSelectionInput = await waitForInput();
         await hostSelectionInput.confirm();

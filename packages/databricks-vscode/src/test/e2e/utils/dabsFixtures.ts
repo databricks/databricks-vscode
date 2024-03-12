@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {randomUUID} from "node:crypto";
-import {Resource, BundleTarget} from "../../../bundle/types.ts";
+import {Resource, BundleTarget, BundleSchema} from "../../../bundle/types.ts";
+import path from "path";
+import assert from "assert";
+import {writeFile, unlink} from "fs/promises";
+import {getUniqueResourceName} from "./commonUtils.ts";
+import yaml from "yaml";
+import lodash from "lodash";
 
 type SimpleJob = Pick<
     Resource<BundleTarget, "jobs">,
@@ -10,7 +16,7 @@ type SimpleJob = Pick<
 export function getSimpleJobsResource(def: Omit<SimpleJob, "name">) {
     const uuid = randomUUID().slice(0, 8);
     const defaultSimpleJob: SimpleJob = {
-        name: `vscode-integration-test-${uuid}`,
+        name: getUniqueResourceName(),
         tasks: undefined,
         job_clusters: [
             {
@@ -40,8 +46,48 @@ export function getSimpleJobsResource(def: Omit<SimpleJob, "name">) {
         return task;
     });
 
-    return {
-        ...defaultSimpleJob,
-        ...def,
+    return lodash.merge(defaultSimpleJob, def);
+}
+
+export function getBasicBundleConfig(
+    overrides: BundleSchema = {},
+    topLevelComputeId = true
+): BundleSchema {
+    assert(process.env.DATABRICKS_HOST, "DATABRICKS_HOST doesn't exist");
+    assert(
+        process.env.TEST_DEFAULT_CLUSTER_ID,
+        "TEST_DEFAULT_CLUSTER_ID doesn't exist"
+    );
+    const defaultBundleConfig = {
+        bundle: {
+            name: getUniqueResourceName("basic_bundle"),
+            compute_id: topLevelComputeId
+                ? process.env.TEST_DEFAULT_CLUSTER_ID
+                : undefined,
+        },
+        targets: {
+            dev_test: {
+                mode: "development",
+                default: true,
+                workspace: {
+                    host: process.env.DATABRICKS_HOST,
+                },
+            },
+        },
     };
+
+    return lodash.merge(defaultBundleConfig, overrides);
+}
+
+export async function writeRootBundleConfig(
+    config: BundleSchema,
+    workspacePath: string
+) {
+    const bundleConfig = path.join(workspacePath, "databricks.yml");
+    await writeFile(bundleConfig, yaml.stringify(config));
+}
+
+export async function clearRootBundleConfig(workspacePath: string) {
+    const bundleConfig = path.join(workspacePath, "databricks.yml");
+    await unlink(bundleConfig);
 }
