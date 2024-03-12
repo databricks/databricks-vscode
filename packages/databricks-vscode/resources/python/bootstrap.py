@@ -37,8 +37,12 @@ user_ns = {
 }
 
 # Set log level to "ERROR". See https://kb.databricks.com/notebooks/cmd-c-on-object-id-p0.html
-import logging; logger = spark._jvm.org.apache.log4j;
-logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
+try:
+    import logging; logger = spark._jvm.org.apache.log4j;
+    logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
+except Exception as e:
+    logging.debug("Failed to set py4j.java_gateway log level to ERROR", exc_info=True)
+    pass
 
 runpy.run_path(python_file, run_name="__main__", init_globals=user_ns)
 None
