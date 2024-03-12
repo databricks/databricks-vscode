@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {randomUUID} from "node:crypto";
 import {Resource, BundleTarget, BundleSchema} from "../../../bundle/types.ts";
 import path from "path";
 import assert from "assert";
@@ -14,7 +13,6 @@ type SimpleJob = Pick<
 >;
 
 export function getSimpleJobsResource(def: Omit<SimpleJob, "name">) {
-    const uuid = randomUUID().slice(0, 8);
     const defaultSimpleJob: SimpleJob = {
         name: getUniqueResourceName(),
         tasks: undefined,

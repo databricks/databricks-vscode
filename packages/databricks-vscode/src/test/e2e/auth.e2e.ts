@@ -91,9 +91,8 @@ describe("Configure Databricks Extension", async function () {
         (await signInButton.elem).click();
 
         const authMethodInput = await waitForInput();
-        const newProfilePick = await authMethodInput.findQuickPick(
-            "NEW_PROFILE"
-        );
+        const newProfilePick =
+            await authMethodInput.findQuickPick("NEW_PROFILE");
         assert(
             newProfilePick,
             "NEW_PROFILE is absent in the quick pick selection"

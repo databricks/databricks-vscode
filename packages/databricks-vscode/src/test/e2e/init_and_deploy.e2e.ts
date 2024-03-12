@@ -9,7 +9,6 @@ import {
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {ViewSection, Workbench, sleep} from "wdio-vscode-service";
-import {randomUUID} from "node:crypto";
 import {tmpdir} from "os";
 import {Key} from "webdriverio";
 import {Config, WorkspaceClient} from "@databricks/databricks-sdk";

@@ -6,7 +6,7 @@ import {
     waitForLogin,
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
-import {CustomTreeSection, Workbench, sleep} from "wdio-vscode-service";
+import {CustomTreeSection, Workbench} from "wdio-vscode-service";
 import {
     getBasicBundleConfig,
     getSimpleJobsResource,

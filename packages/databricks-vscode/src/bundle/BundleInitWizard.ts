@@ -71,9 +71,8 @@ export class BundleInitWizard {
     ) {
         const recordEvent = this.telemetry.start(Events.BUNDLE_INIT);
         try {
-            const authProvider = await this.configureAuthForBundleInit(
-                existingAuthProvider
-            );
+            const authProvider =
+                await this.configureAuthForBundleInit(existingAuthProvider);
             if (!authProvider) {
                 this.logger.debug(
                     "No valid auth providers, can't proceed with bundle init wizard"
