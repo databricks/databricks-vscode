@@ -261,7 +261,7 @@ export async function waitForLogin(profileName: string) {
                 }
             }
         },
-        {timeout: 20_000, interval: 2_000, timeoutMsg: "Login didn't finish"}
+        {timeout: 60_000, interval: 2_000, timeoutMsg: "Login didn't finish"}
     );
 }
 
