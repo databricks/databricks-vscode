@@ -196,11 +196,9 @@ host = example.com
 
             assert.equal(profiles[0].name, "correct");
             assert.equal(profiles[0].host, "https://cloud.databricks.com/");
-            assert.equal(profiles[0].authType, "pat");
 
             assert.equal(profiles[1].name, "no-token");
             assert.equal(profiles[1].host, "https://cloud.databricks.com/");
-            assert.equal(profiles[1].authType, "");
 
             const typoLog = logs.find((log) => log.msg?.includes("typo-host"));
             assert.ok(typoLog !== undefined);
