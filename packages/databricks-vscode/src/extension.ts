@@ -138,9 +138,21 @@ export async function activate(
         CustomWhenContext.updateShowWorkspaceView();
     }
 
+    function updateStrictSsl() {
+        const httpConfig = workspace.getConfiguration("http");
+        const proxyStrictSSL = httpConfig.get<boolean>("proxyStrictSSL");
+        process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = proxyStrictSSL
+            ? "1"
+            : "0";
+    }
+
     updateFeatureContexts();
+    updateStrictSsl();
     context.subscriptions.push(
-        workspace.onDidChangeConfiguration(updateFeatureContexts)
+        workspace.onDidChangeConfiguration(() => {
+            updateFeatureContexts();
+            updateStrictSsl();
+        })
     );
 
     // Configuration group
