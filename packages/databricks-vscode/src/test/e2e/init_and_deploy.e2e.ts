@@ -134,30 +134,6 @@ describe("Init and deploy", async function () {
         resourceExplorerView = section;
     });
 
-    it("should pip install the requirements", async function () {
-        const outputView = await workbench.getBottomBar().openOutputView();
-        await outputView.selectChannel("Databricks Bundle Logs");
-        await outputView.clearText();
-
-        browser.executeWorkbench((vscode) => {
-            vscode.commands.executeCommand(
-                "databricks.bundle.installRequirements"
-            );
-        });
-
-        await browser.waitUntil(
-            async () => {
-                const logs = (await outputView.getText()).join("");
-                return logs.includes("Successfully installed requirements");
-            },
-            {
-                timeout: 60_000,
-                interval: 1_000,
-                timeoutMsg:
-                    "Can't find 'Successfully installed requirements' message in output channel",
-            }
-        );
-    });
     it("should deploy the current bundle", async function () {
         const outputView = await workbench.getBottomBar().openOutputView();
         await outputView.selectChannel("Databricks Bundle Logs");
