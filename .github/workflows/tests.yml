@@ -58,9 +58,12 @@ jobs:
       - run: yarn install --immutable
 
       - name: "Setup python"
+        id: setup-python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
+
+      - run: export PATH="${{ steps.setup-python.python-path }}:$PATH"
 
       - name: Prettier and Linting
         run: yarn run test:lint

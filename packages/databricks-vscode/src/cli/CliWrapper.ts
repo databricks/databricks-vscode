@@ -423,7 +423,11 @@ export class CliWrapper {
             shell: true,
         });
         // eslint-disable-next-line no-console
-        logger?.info("whichOutput", whichOutput);
+        logger?.info("whichOutput", {
+            ...whichOutput,
+            bundleOpName: "deploy",
+            path: process.env.PATH,
+        });
 
         const p = spawn(cmd[0], cmd.slice(1), {
             cwd: workspaceFolder.fsPath,
