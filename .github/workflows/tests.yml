@@ -63,7 +63,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      - run: export PATH="${{ steps.setup-python.outputs.python-path }}:$PATH"
+      - run: export PATH="$pythonLocation/bin:$PATH"
 
       - name: Prettier and Linting
         run: yarn run test:lint
