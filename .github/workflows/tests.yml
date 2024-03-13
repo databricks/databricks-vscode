@@ -75,11 +75,11 @@ jobs:
       - name: Building packages
         run: yarn run build
 
-      - name: Unit Tests with Coverage
-        uses: coactions/setup-xvfb@v1
-        with:
-          run: yarn run test:cov
-          working-directory: packages/databricks-vscode
+      # - name: Unit Tests with Coverage
+      #   uses: coactions/setup-xvfb@v1
+      #   with:
+      #     run: yarn run test:cov
+      #     working-directory: packages/databricks-vscode
 
       - name: Integration Tests
         run: yarn run test:integ

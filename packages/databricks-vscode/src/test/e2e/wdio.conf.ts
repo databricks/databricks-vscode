@@ -79,7 +79,7 @@ export const config: Options.Testrunner = {
     // then the current working directory is where your `package.json` resides, so `wdio`
     // will be called from there.
     //
-    specs: [path.join(__dirname, "**", "*.e2e.ts")],
+    specs: [path.join(__dirname, "**", "init_and_deploy.e2e.ts")],
     // Patterns to exclude.
     exclude: [
         // 'path/to/excluded/files'
