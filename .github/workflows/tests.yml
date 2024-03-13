@@ -63,8 +63,6 @@ jobs:
         with:
           python-version: "3.10"
 
-      - run: export PATH="$pythonLocation/bin:$PATH"
-
       - name: Prettier and Linting
         run: yarn run test:lint
         working-directory: packages/databricks-vscode
