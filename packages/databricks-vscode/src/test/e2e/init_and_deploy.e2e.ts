@@ -116,7 +116,10 @@ describe("Init and deploy", async function () {
                 )) as string;
                 return vscodeWorkspaceRoot.includes(projectName);
             },
-            {timeout: 20_000}
+            {
+                timeout: 60_000,
+                timeoutMsg: "Can't connect to the new project window",
+            }
         );
     });
 
