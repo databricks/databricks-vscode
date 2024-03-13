@@ -410,7 +410,7 @@ export class CliWrapper {
             bundleOpName: "deploy",
         });
 
-        const {stdout: s, stderr: se} = await execFile("which", ["python"], {
+        const whichOutput = await execFile("which", ["python"], {
             cwd: workspaceFolder.fsPath,
             env: {
                 ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
@@ -423,9 +423,7 @@ export class CliWrapper {
             shell: true,
         });
         // eslint-disable-next-line no-console
-        console.log("stdout", s);
-        // eslint-disable-next-line no-console
-        console.log("stderr", se);
+        logger?.info("whichOutput", whichOutput);
 
         const p = spawn(cmd[0], cmd.slice(1), {
             cwd: workspaceFolder.fsPath,
