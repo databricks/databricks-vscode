@@ -367,34 +367,32 @@ __metadata:
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
-  version: 0.6.1
+  version: 0.6.2
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
   dependencies:
     "@types/ini": ^4.1.0
-    "@types/node": ^20.11.5
-    "@types/semver": ^7.5.6
-    google-auth-library: ^9.6.1
-    ini: ^4.1.1
+    "@types/node": ^18.19.23
+    "@types/semver": ^7.5.8
+    google-auth-library: ^9.6.3
+    ini: ^4.1.2
     reflect-metadata: ^0.2.1
-    semver: ^7.5.4
-    undici: ^6.4.0
-  checksum: 9ec51072a40562dcd72a0c1d9a060a506d61817fb3eb09075c2a6e4c6d72a42e7eee958714172383b8dc7d877be3bc7d6f47ac736ee9044e82c977cb90f15a47
+    semver: ^7.6.0
+  checksum: 84c9f44a5e807b176e0375658e44abe8ac0772d193e3aadbddb06da0d0fbf61696a6102f4e6fa06bf917d16247166b497f5ac7d6c32a4c0ea3fd23b269a2c6d3
   languageName: node
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
-  version: 0.6.1
+  version: 0.6.2
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
   dependencies:
     "@types/ini": ^4.1.0
-    "@types/node": ^20.11.5
-    "@types/semver": ^7.5.6
-    google-auth-library: ^9.6.1
-    ini: ^4.1.1
+    "@types/node": ^18.19.23
+    "@types/semver": ^7.5.8
+    google-auth-library: ^9.6.3
+    ini: ^4.1.2
     reflect-metadata: ^0.2.1
-    semver: ^7.5.4
-    undici: ^6.4.0
-  checksum: 9ec51072a40562dcd72a0c1d9a060a506d61817fb3eb09075c2a6e4c6d72a42e7eee958714172383b8dc7d877be3bc7d6f47ac736ee9044e82c977cb90f15a47
+    semver: ^7.6.0
+  checksum: 84c9f44a5e807b176e0375658e44abe8ac0772d193e3aadbddb06da0d0fbf61696a6102f4e6fa06bf917d16247166b497f5ac7d6c32a4c0ea3fd23b269a2c6d3
   languageName: node
   linkType: hard
 
@@ -1559,19 +1557,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^18.19.23":
+  version: 18.19.23
+  resolution: "@types/node@npm:18.19.23"
+  dependencies:
+    undici-types: ~5.26.4
+  checksum: eb7041e45660c12091a0e41cc0be9bf5d80f7c874181cf4b830856b062176fc3c25c02420dd7b90e5a21c2683d04bfbee7949c9d59e509761d0e1d4dc6ac5242
+  languageName: node
+  linkType: hard
+
 "@types/node@npm:^20.1.0, @types/node@npm:^20.1.1":
   version: 20.2.3
   resolution: "@types/node@npm:20.2.3"
   checksum: 576065e8fc1fa45798c8f59a6bf809169582d04abc2e25fab1a048ffc734975b9992ae31be0d960cf705a21fb37112f7fcde11aa322beddf7491e73d5a5a988c
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^20.11.5":
-  version: 20.11.15
-  resolution: "@types/node@npm:20.11.15"
-  dependencies:
-    undici-types: ~5.26.4
-  checksum: 80fe17561636e6e72a0264c26232ea4c46b5ee700888a703f06ae6c9115a2dadb16ccd09b79aa2c66a07cb547a201b2609ab939b9bde42bdad56eeefd161bc12
   languageName: node
   linkType: hard
 
@@ -1612,10 +1610,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/semver@npm:^7.5.6":
-  version: 7.5.6
-  resolution: "@types/semver@npm:7.5.6"
-  checksum: 563a0120ec0efcc326567db2ed920d5d98346f3638b6324ea6b50222b96f02a8add3c51a916b6897b51523aad8ac227d21d3dcf8913559f1bfc6c15b14d23037
+"@types/semver@npm:^7.5.8":
+  version: 7.5.8
+  resolution: "@types/semver@npm:7.5.8"
+  checksum: ea6f5276f5b84c55921785a3a27a3cd37afee0111dfe2bcb3e03c31819c197c782598f17f0b150a69d453c9584cd14c4c4d7b9a55d2c5e6cacd4d66fdb3b3663
   languageName: node
   linkType: hard
 
@@ -5453,14 +5451,14 @@ __metadata:
   linkType: hard
 
 "gaxios@npm:^6.0.0, gaxios@npm:^6.1.1":
-  version: 6.2.0
-  resolution: "gaxios@npm:6.2.0"
+  version: 6.3.0
+  resolution: "gaxios@npm:6.3.0"
   dependencies:
     extend: ^3.0.2
     https-proxy-agent: ^7.0.1
     is-stream: ^2.0.0
     node-fetch: ^2.6.9
-  checksum: a1000b841cb3d3d88e434318c7070a4860544dd0d7f4b45ff3a79ee42257cb9e19b4bb18a90420a11b91b3c0c97b57a4f8e338cec2f362003220ce190371f497
+  checksum: 4d4a8db32d833f8012435e2016cb0c919cac288e821bf81f877504e4284ef12b444cd903448e738c4031cd5219adf1e8d68e7df2b3dba774db9fde27f71109d4
   languageName: node
   linkType: hard
 
@@ -5787,9 +5785,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"google-auth-library@npm:^9.6.1":
-  version: 9.6.1
-  resolution: "google-auth-library@npm:9.6.1"
+"google-auth-library@npm:^9.6.3":
+  version: 9.6.3
+  resolution: "google-auth-library@npm:9.6.3"
   dependencies:
     base64-js: ^1.3.0
     ecdsa-sig-formatter: ^1.0.11
@@ -5797,7 +5795,7 @@ __metadata:
     gcp-metadata: ^6.1.0
     gtoken: ^7.0.0
     jws: ^4.0.0
-  checksum: fc93a433c64e713a0093af20bca1a1f36e510b4918dd72f5bc94b96d240bc1fccb42dbdce6f0b85fa3ded2c92c1b08bb198457d5febe599f71cb2f479ac5e2f5
+  checksum: 46174191de15ec56110ac0394ae9d1c56fb6aa293809d45170b2ff570130d7e3f3e82fa78d413908862a2d0da3fa946b72f1074000f4d52579eb17367e49e44d
   languageName: node
   linkType: hard
 
@@ -5876,12 +5874,12 @@ __metadata:
   linkType: hard
 
 "gtoken@npm:^7.0.0":
-  version: 7.0.1
-  resolution: "gtoken@npm:7.0.1"
+  version: 7.1.0
+  resolution: "gtoken@npm:7.1.0"
   dependencies:
     gaxios: ^6.0.0
     jws: ^4.0.0
-  checksum: de1f65ebe77deb90931c29c76408e6bd097ac6f8d0b520164ac13449b39012ea8d710596d5a63ae508b2c9e49ef9f92cd7817d6fc97140668ba2e1ff30e2d418
+  checksum: 1f338dced78f9d895ea03cd507454eb5a7b77e841ecd1d45e44483b08c1e64d16a9b0342358d37586d87462ffc2d5f5bff5dfe77ed8d4f0aafc3b5b0347d5d16
   languageName: node
   linkType: hard
 
@@ -6137,12 +6135,12 @@ __metadata:
   linkType: hard
 
 "https-proxy-agent@npm:^7.0.1":
-  version: 7.0.2
-  resolution: "https-proxy-agent@npm:7.0.2"
+  version: 7.0.4
+  resolution: "https-proxy-agent@npm:7.0.4"
   dependencies:
     agent-base: ^7.0.2
     debug: 4
-  checksum: 088969a0dd476ea7a0ed0a2cf1283013682b08f874c3bc6696c83fa061d2c157d29ef0ad3eb70a2046010bb7665573b2388d10fdcb3e410a66995e5248444292
+  checksum: daaab857a967a2519ddc724f91edbbd388d766ff141b9025b629f92b9408fc83cee8a27e11a907aede392938e9c398e240d643e178408a59e4073539cde8cfe9
   languageName: node
   linkType: hard
 
@@ -6289,10 +6287,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ini@npm:^4.1.1":
-  version: 4.1.1
-  resolution: "ini@npm:4.1.1"
-  checksum: 0e5909554074fbc31824fa5415b0f604de4a665514c96a897a77bf77353a7ad4743927321270e9d0610a9d510ccd1f3cd77422f7cc80d8f4542dbce75476fb6d
+"ini@npm:^4.1.2":
+  version: 4.1.2
+  resolution: "ini@npm:4.1.2"
+  checksum: 07e2e216dc3d4452f784ef35fe3e304a755bbafbbce725c7894d44b4c0a88c471f5fab58244a261eb351c931df34ac1a9a0914a64055ff8d4b458cfd97c78983
   languageName: node
   linkType: hard
 
@@ -9719,6 +9717,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"semver@npm:^7.6.0":
+  version: 7.6.0
+  resolution: "semver@npm:7.6.0"
+  dependencies:
+    lru-cache: ^6.0.0
+  bin:
+    semver: bin/semver.js
+  checksum: 7427f05b70786c696640edc29fdd4bc33b2acf3bbe1740b955029044f80575fc664e1a512e4113c3af21e767154a94b4aa214bf6cd6e42a1f6dba5914e0b208c
+  languageName: node
+  linkType: hard
+
 "serialize-error@npm:^8.0.0":
   version: 8.1.0
   resolution: "serialize-error@npm:8.1.0"
@@ -10838,15 +10847,6 @@ __metadata:
   dependencies:
     "@fastify/busboy": ^2.0.0
   checksum: fa1e65aff896c5e2ee23637b632e306f9e3a2b32a3dc0b23ea71e5555ad350bcc25713aea894b3dccc0b7dc2c5e92a5a58435ebc2033b731a5524506f573dfd2
-  languageName: node
-  linkType: hard
-
-"undici@npm:^6.4.0":
-  version: 6.6.0
-  resolution: "undici@npm:6.6.0"
-  dependencies:
-    "@fastify/busboy": ^2.0.0
-  checksum: d0ad781631cd8a92a8afdc1832c971ec3d0c71b68279a4549073c1996086bce29d5bcf1c86ff8342c511345cbb0d7744c3c54e80fec5433e62c0eb6be7655a1b
   languageName: node
   linkType: hard
 
