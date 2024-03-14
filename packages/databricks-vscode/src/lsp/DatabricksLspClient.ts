@@ -1,5 +1,4 @@
 import {Disposable, window} from "vscode";
-import {Trace} from "vscode-jsonrpc";
 import {
     LanguageClient,
     LanguageClientOptions,
@@ -9,22 +8,27 @@ import {WebSocket, createWebSocketStream} from "ws";
 
 export class DatabricksLspClient implements Disposable {
     private disposables: Disposable[] = [];
-
+    private outputChannel = window.createOutputChannel(
+        "Databricks Language Server"
+    );
     public async init() {
         const serverOptions: ServerOptions = async () => {
-            const ws = new WebSocket("ws://localhost:12345");
+            // eslint-disable-next-line no-console
+            console.log("Connecting to Databricks Language Server");
+            const ws = new WebSocket("ws://localhost:12345", {timeout: 30_000});
+            ws.on("close", async (e) => {
+                // eslint-disable-next-line no-console
+                console.error("WebSocket closed", e);
+            });
             await new Promise((resolve) => ws.on("open", resolve));
             const duplex = createWebSocketStream(ws, {encoding: "ascii"});
             return {reader: duplex, writer: duplex};
         };
 
-        const outputChannel = window.createOutputChannel(
-            "Databricks Language Server"
-        );
         const clientOptions: LanguageClientOptions = {
             documentSelector: [{scheme: "file"}],
-            outputChannel: outputChannel,
-            traceOutputChannel: outputChannel,
+            outputChannel: this.outputChannel,
+            traceOutputChannel: this.outputChannel,
         };
         const client = new LanguageClient(
             "databricks",
@@ -32,6 +36,7 @@ export class DatabricksLspClient implements Disposable {
             serverOptions,
             clientOptions
         );
+        client.createDefaultErrorHandler(1000);
         await client.start();
         this.disposables.push(client);
     }
