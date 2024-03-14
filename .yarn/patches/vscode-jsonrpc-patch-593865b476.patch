@@ -1,0 +1,13 @@
+diff --git a/lib/common/messageWriter.js b/lib/common/messageWriter.js
+index c6c87208a4d0f777da86bac0891d3bddb8fb28e5..c8a4d32f1186784a6a020edbfc12485db9cdd5d3 100644
+--- a/lib/common/messageWriter.js
++++ b/lib/common/messageWriter.js
+@@ -96,7 +96,7 @@ class WriteableStreamMessageWriter extends AbstractMessageWriter {
+     }
+     async doWrite(msg, headers, data) {
+         try {
+-            await this.writable.write(headers.join(''), 'ascii');
++            // await this.writable.write(headers.join(''), 'ascii');
+             return this.writable.write(data);
+         }
+         catch (error) {

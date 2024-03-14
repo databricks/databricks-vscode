@@ -63,6 +63,7 @@ import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/Decorati
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 import {isIntegrationTest} from "./utils/developmentUtils";
+import {DatabricksLspClient} from "./lsp/DatabricksLspClient";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -777,6 +778,10 @@ export async function activate(
         .finally(() => {
             customWhenContext.setInitialized();
         });
+
+    const databricksLspClient = new DatabricksLspClient();
+    context.subscriptions.push(databricksLspClient);
+    await databricksLspClient.init();
 
     customWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATION);

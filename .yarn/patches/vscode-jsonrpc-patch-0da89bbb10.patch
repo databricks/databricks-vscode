@@ -1,0 +1,61 @@
+diff --git a/lib/common/messageReader.js b/lib/common/messageReader.js
+index 97c460d382e964014211c7dc6435c669273715fb..6f13bc31a4191636279f73b4c1067c751193d374 100644
+--- a/lib/common/messageReader.js
++++ b/lib/common/messageReader.js
+@@ -129,7 +129,6 @@ class ReadableStreamMessageReader extends AbstractMessageReader {
+     onData(data) {
+         try {
+             this.buffer.append(data);
+-            while (true) {
+                 // if (this.nextMessageLength === -1) {
+                 //     const headers = this.buffer.tryReadHeaders(true);
+                 //     if (!headers) {
+@@ -147,28 +146,27 @@ class ReadableStreamMessageReader extends AbstractMessageReader {
+                 //     }
+                 //     this.nextMessageLength = length;
+                 // }
+-                const body = this.buffer.tryReadBody(this.buffer.numberOfBytes);
+-                if (body === undefined) {
+-                    /** We haven't received the full message yet. */
+-                    this.setPartialMessageTimer();
+-                    return;
+-                }
+-                this.clearPartialMessageTimer();
+-                this.nextMessageLength = -1;
+-                // Make sure that we convert one received message after the
+-                // other. Otherwise it could happen that a decoding of a second
+-                // smaller message finished before the decoding of a first larger
+-                // message and then we would deliver the second message first.
+-                this.readSemaphore.lock(async () => {
+-                    const bytes = this.options.contentDecoder !== undefined
+-                        ? await this.options.contentDecoder.decode(body)
+-                        : body;
+-                    const message = await this.options.contentTypeDecoder.decode(bytes, this.options);
+-                    this.callback(message);
+-                }).catch((error) => {
+-                    this.fireError(error);
+-                });
++            const body = this.buffer.tryReadBody(this.buffer.numberOfBytes);
++            if (body === undefined) {
++                /** We haven't received the full message yet. */
++                this.setPartialMessageTimer();
++                return;
+             }
++            this.clearPartialMessageTimer();
++            this.nextMessageLength = -1;
++            // Make sure that we convert one received message after the
++            // other. Otherwise it could happen that a decoding of a second
++            // smaller message finished before the decoding of a first larger
++            // message and then we would deliver the second message first.
++            this.readSemaphore.lock(async () => {
++                const bytes = this.options.contentDecoder !== undefined
++                    ? await this.options.contentDecoder.decode(body)
++                    : body;
++                const message = await this.options.contentTypeDecoder.decode(bytes, this.options);
++                this.callback(message);
++            }).catch((error) => {
++                this.fireError(error);
++            });
+         }
+         catch (error) {
+             this.fireError(error);

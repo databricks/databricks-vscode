@@ -45,6 +45,12 @@
         "typescript": "^5.3.3"
     },
     "resolutions": {
-        "json5": "2.2.2"
+        "json5": "2.2.2",
+        "vscode-jsonrpc@8.2.0": "patch:vscode-jsonrpc@npm:8.2.0#.yarn/patches/vscode-jsonrpc-npm-8.2.0-b7d2e5b553.patch"
+    },
+    "dependencies": {
+        "vscode-jsonrpc": "^8.2.0",
+        "vscode-languageclient": "^9.0.1",
+        "vscode-languageserver-protocol": "^3.17.5"
     }
 }

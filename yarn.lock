@@ -353,6 +353,9 @@ __metadata:
     eslint-plugin-no-only-tests: ^3.1.0
     ts-mockito: ^2.6.1
     typescript: ^5.3.3
+    vscode-jsonrpc: ^8.2.0
+    vscode-languageclient: ^9.0.1
+    vscode-languageserver-protocol: ^3.17.5
   languageName: unknown
   linkType: soft
 
@@ -9415,6 +9418,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"semver@npm:^7.3.7":
+  version: 7.6.0
+  resolution: "semver@npm:7.6.0"
+  dependencies:
+    lru-cache: ^6.0.0
+  bin:
+    semver: bin/semver.js
+  checksum: 7427f05b70786c696640edc29fdd4bc33b2acf3bbe1740b955029044f80575fc664e1a512e4113c3af21e767154a94b4aa214bf6cd6e42a1f6dba5914e0b208c
+  languageName: node
+  linkType: hard
+
 "semver@npm:^7.5.2, semver@npm:^7.5.4":
   version: 7.5.4
   resolution: "semver@npm:7.5.4"
@@ -10713,6 +10727,48 @@ __metadata:
   bin:
     vsce: vsce
   checksum: 0c7b195fc6c60af9da01f950feff3e42f2ebee51d52c239b9bbeac39abe97a68886b28cafc60fdc9d927a1b618f7736b5e4d44042b84230a53f8798fb1903d1e
+  languageName: node
+  linkType: hard
+
+"vscode-jsonrpc@npm:8.2.0, vscode-jsonrpc@npm:^8.2.0":
+  version: 8.2.0
+  resolution: "vscode-jsonrpc@npm:8.2.0"
+  checksum: f302a01e59272adc1ae6494581fa31c15499f9278df76366e3b97b2236c7c53ebfc71efbace9041cfd2caa7f91675b9e56f2407871a1b3c7f760a2e2ee61484a
+  languageName: node
+  linkType: hard
+
+"vscode-jsonrpc@patch:vscode-jsonrpc@npm:8.2.0#.yarn/patches/vscode-jsonrpc-npm-8.2.0-b7d2e5b553.patch::locator=%40databricks%2Fdatabricks-vscode%40workspace%3A.":
+  version: 8.2.0
+  resolution: "vscode-jsonrpc@patch:vscode-jsonrpc@npm%3A8.2.0#.yarn/patches/vscode-jsonrpc-npm-8.2.0-b7d2e5b553.patch::version=8.2.0&hash=bbf4bc&locator=%40databricks%2Fdatabricks-vscode%40workspace%3A."
+  checksum: c41501bad042ca7dda3de4a67ce33a7ba71b0d3dc3d6b1dcc1019efe0587ffaa2d096ca085a4dd565d4b3d89af61fcd56ae6a1d97642328cb50b489ed0da0784
+  languageName: node
+  linkType: hard
+
+"vscode-languageclient@npm:^9.0.1":
+  version: 9.0.1
+  resolution: "vscode-languageclient@npm:9.0.1"
+  dependencies:
+    minimatch: ^5.1.0
+    semver: ^7.3.7
+    vscode-languageserver-protocol: 3.17.5
+  checksum: ff30e5a9aac6726a88fe443fd631fe7e6130225299667c13162547f0a13ca2548d3f277d68cfb3ef6dc1810c048b2cf0e05024e1bcbd11982cd8acf681a67873
+  languageName: node
+  linkType: hard
+
+"vscode-languageserver-protocol@npm:3.17.5, vscode-languageserver-protocol@npm:^3.17.5":
+  version: 3.17.5
+  resolution: "vscode-languageserver-protocol@npm:3.17.5"
+  dependencies:
+    vscode-jsonrpc: 8.2.0
+    vscode-languageserver-types: 3.17.5
+  checksum: dfb42d276df5dfea728267885b99872ecff62f6c20448b8539fae71bb196b420f5351c5aca7c1047bf8fb1f89fa94a961dce2bc5bf7e726198f4be0bb86a1e71
+  languageName: node
+  linkType: hard
+
+"vscode-languageserver-types@npm:3.17.5":
+  version: 3.17.5
+  resolution: "vscode-languageserver-types@npm:3.17.5"
+  checksum: 79b420e7576398d396579ca3a461c9ed70e78db4403cd28bbdf4d3ed2b66a2b4114031172e51fad49f0baa60a2180132d7cb2ea35aa3157d7af3c325528210ac
   languageName: node
   linkType: hard
 
