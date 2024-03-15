@@ -720,7 +720,7 @@
         "@wdio/spec-reporter": "^8.12.2",
         "@wdio/types": "^8.10.4",
         "chai": "^4.3.7",
-        "esbuild": "^0.19.4",
+        "esbuild": "^0.20.2",
         "eslint": "^8.51.0",
         "fs-extra": "^11.1.1",
         "glob": "^10.3.3",
