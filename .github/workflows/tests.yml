@@ -57,12 +57,6 @@ jobs:
 
       - run: yarn install --immutable
 
-      - name: "Setup python"
-        id: setup-python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-
       - name: Prettier and Linting
         run: yarn run test:lint
         working-directory: packages/databricks-vscode
@@ -76,23 +70,18 @@ jobs:
       - name: Building packages
         run: yarn run build
 
-      # - name: Unit Tests with Coverage
-      #   uses: coactions/setup-xvfb@v1
-      #   with:
-      #     run: yarn run test:cov
-      #     working-directory: packages/databricks-vscode
+      - name: Unit Tests with Coverage
+        uses: coactions/setup-xvfb@v1
+        with:
+          run: yarn run test:cov
+          working-directory: packages/databricks-vscode
 
       - name: Integration Tests
-        run: |
-          export PATH="$pythonLocation/bin:$PATH"
-          echo $PATH
-          yarn run test:integ
+        run: yarn run test:integ
         working-directory: packages/databricks-vscode
 
       - name: Integration Tests SDK wrappers
-        run: |
-          export PATH="$pythonLocation/bin:$PATH"
-          yarn run test:integ:sdk
+        run: yarn run test:integ:sdk
         working-directory: packages/databricks-vscode
 
       - name: Upload test logs
