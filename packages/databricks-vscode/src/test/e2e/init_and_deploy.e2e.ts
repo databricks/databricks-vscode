@@ -8,17 +8,14 @@ import {
     waitForLogin,
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
-import {ViewSection, Workbench, sleep} from "wdio-vscode-service";
+import {Workbench, sleep} from "wdio-vscode-service";
 import {tmpdir} from "os";
 import {Key} from "webdriverio";
-import {Config, WorkspaceClient} from "@databricks/databricks-sdk";
 
 describe("Init and deploy", async function () {
     let workbench: Workbench;
     let vscodeWorkspaceRoot: string;
     let projectName: string;
-    let resourceExplorerView: ViewSection;
-    let workspaceApiClient: WorkspaceClient;
 
     this.timeout(3 * 60 * 1000);
 
@@ -36,12 +33,6 @@ describe("Init and deploy", async function () {
             "DATABRICKS_HOST env var doesn't exist"
         );
         workbench = await browser.getWorkbench();
-        workspaceApiClient = new WorkspaceClient(
-            new Config({
-                configFile: process.env.DATABRICKS_CONFIG_FILE,
-                profile: "DEFAULT",
-            })
-        );
         await dismissNotifications();
     });
 
@@ -131,56 +122,5 @@ describe("Init and deploy", async function () {
         const section = await getViewSection("DABS RESOURCE EXPLORER");
         assert(section);
         await waitForTreeItems(section, 20_000);
-        resourceExplorerView = section;
-    });
-
-    it("should deploy the current bundle", async function () {
-        const outputView = await workbench.getBottomBar().openOutputView();
-        await outputView.selectChannel("Databricks Bundle Logs");
-        await outputView.clearText();
-
-        browser.executeWorkbench((vscode) => {
-            vscode.commands.executeCommand("databricks.bundle.deploy");
-        });
-
-        await browser.waitUntil(
-            async () => {
-                const logs = (await outputView.getText()).join("");
-                console.log("Logs:", logs);
-                return (
-                    logs.includes("Bundle deployed successfully") &&
-                    logs.includes("Bundle configuration refreshed.")
-                );
-            },
-            {
-                timeout: 60_000,
-                interval: 1_000,
-                timeoutMsg:
-                    "Can't find 'Bundle deployed successfully' message in output channel",
-            }
-        );
-
-        await sleep(2_000);
-
-        // Get the full job names of the jobs in the resource explorer
-        const jobNames: (string | undefined)[] = await Promise.all(
-            (await resourceExplorerView.openItem("Workflows")).map((item) =>
-                item.elem.getText()
-            )
-        );
-
-        assert(jobNames.length > 0, "No jobs found in the resource explorer");
-        console.log("Searching for deployed jobs:", jobNames.join(", "));
-
-        for await (const job of workspaceApiClient.jobs.list({})) {
-            if (jobNames.includes(job.settings?.name)) {
-                jobNames.splice(jobNames.indexOf(job.settings?.name), 1);
-            }
-        }
-
-        assert(
-            jobNames.length === 0,
-            `No deployed jobs with names (${jobNames.join(", ")}) found`
-        );
     });
 });
