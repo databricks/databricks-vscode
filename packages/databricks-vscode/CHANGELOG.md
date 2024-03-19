@@ -6,7 +6,7 @@
 
 -   Fix: Add exception handlers to bootstrap python code, closes [#1123](https://github.com/databricks/databricks-vscode/issues/1123)
 -   Update Databricks CLI to v0.215.0
--   Feature: Add support for reading custom CA from system keystore. 
+-   Feature: Add support for reading custom CA from system keystore.
 -   Feature: Add support for disabling SSL from VS Code system configuration. NOTE: We do not recommend disabling SSL.
 
 # Release: v1.2.7
