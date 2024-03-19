@@ -1,3 +1,15 @@
+# Release: v1.3.0
+
+## packages/databricks-vscode
+
+## 1.3.0 (2024-03-19)
+
+-   Add exception handlers to bootstrap python code (#1133) ([4a00f9c](https://github.com/databricks/databricks-vscode/commit/4a00f9c)), closes [#1133](https://github.com/databricks/databricks-vscode/issues/1133) [#1123](https://github.com/databricks/databricks-vscode/issues/1123)
+-   Update `wdio-vscode-service` to fix integration tests (#1046) ([e49b3e7](https://github.com/databricks/databricks-vscode/commit/e49b3e7)), closes [#1046](https://github.com/databricks/databricks-vscode/issues/1046)
+-   Update Databricks CLI to v0.212.4 (#1052) ([53bf355](https://github.com/databricks/databricks-vscode/commit/53bf355)), closes [#1052](https://github.com/databricks/databricks-vscode/issues/1052)
+-   Update Databricks CLI to v0.215.0 (#1118) ([73a147f](https://github.com/databricks/databricks-vscode/commit/73a147f)), closes [#1118](https://github.com/databricks/databricks-vscode/issues/1118)
+-   Update Databricks SDK to fix support for custom certificates (#1136) ([443a5b0](https://github.com/databricks/databricks-vscode/commit/443a5b0)), closes [#1136](https://github.com/databricks/databricks-vscode/issues/1136)
+
 # Release: v1.2.7
 
 ## packages/databricks-vscode
