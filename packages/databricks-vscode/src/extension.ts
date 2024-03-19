@@ -73,16 +73,22 @@ export async function activate(
     customWhenContext.setDeploymentState("idle");
 
     const stateStorage = new StateStorage(context);
+    const packageMetadata = await PackageJsonUtils.getMetadata(context);
+
+    await stateStorage.set("databricks.preview-tnc.accepted", false);
 
     if (
         !stateStorage.get("databricks.preview-tnc.accepted") &&
         !isIntegrationTest()
     ) {
         const acceptTnc = await window.showInformationMessage(
-            `Please note that you should only be using this functionality if you are part of our private preview and have accepted our terms and conditions regarding this preview.`,
+            `Databricks Extension v${packageMetadata.version} is in private preview`,
             {
                 modal: true,
-                detail: `In order to enroll in the private preview please contact us and we will get you added`,
+                detail:
+                    `Please note that you should only be using this functionality if you are part of our private` +
+                    `preview and have accepted our terms and conditions regarding this preview.` +
+                    `In order to enroll in the private preview please contact us and we will get you added`,
             },
             "Contact us",
             "Continue if you are already enrolled"
@@ -107,15 +113,6 @@ export async function activate(
                 );
                 return;
         }
-    }
-
-    if (extensions.getExtension("databricks.databricks-vscode") !== undefined) {
-        await commands.executeCommand(
-            "workbench.extensions.uninstallExtension",
-            "databricks.databricks-vscode"
-        );
-
-        await commands.executeCommand("workbench.action.reloadWindow");
     }
 
     if (!(await PackageJsonUtils.checkArchCompat(context))) {
@@ -175,7 +172,6 @@ export async function activate(
         `${path.delimiter}${context.asAbsolutePath("./bin")}`
     );
 
-    const packageMetadata = await PackageJsonUtils.getMetadata(context);
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,
     });
