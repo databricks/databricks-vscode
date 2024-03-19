@@ -11,9 +11,17 @@ on:
     release:
         types: [published]
 
+    pull_request:
+        branches: [main]
 jobs:
+    test:
+        if: ${{ ! endsWith(github.event_name, 'workflow_dispatch') }}
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo "Test"
+
     publish-to-vscode:
-        if: ${{ ! endsWith(github.event.inputs.version, "preview") || github.event_name == 'workflow_dispatch' }}
+        if: ${{ ! endsWith(github.event.inputs.version, 'preview') || github.event_name == 'workflow_dispatch' }}
         runs-on: ubuntu-latest
         environment: Production
 
