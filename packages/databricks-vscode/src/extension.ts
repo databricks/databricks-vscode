@@ -63,6 +63,7 @@ import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/Decorati
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 import {isIntegrationTest} from "./utils/developmentUtils";
+import {getCLIDependenciesEnvVars as getCliDependenciesEnvVars} from "./utils/envVarGenerators";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -74,8 +75,6 @@ export async function activate(
 
     const stateStorage = new StateStorage(context);
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
-
-    await stateStorage.set("databricks.preview-tnc.accepted", false);
 
     if (
         !stateStorage.get("databricks.preview-tnc.accepted") &&
@@ -167,10 +166,19 @@ export async function activate(
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
     context.environmentVariableCollection.persistent = false;
-    context.environmentVariableCollection.append(
+    context.environmentVariableCollection.prepend(
         "PATH",
-        `${path.delimiter}${context.asAbsolutePath("./bin")}`
+        `${context.asAbsolutePath("./bin")}${path.delimiter}`,
+        {applyAtProcessCreation: true}
     );
+
+    const cliDeps = getCliDependenciesEnvVars(context);
+    for (const [key, value] of Object.entries(cliDeps)) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            `Setting env var ${key}=${value}`
+        );
+        context.environmentVariableCollection.replace(key, value);
+    }
 
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,

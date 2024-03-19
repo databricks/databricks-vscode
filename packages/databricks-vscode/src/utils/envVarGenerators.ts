@@ -1,12 +1,15 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
-import {Uri} from "vscode";
+import {ExtensionContext, Uri} from "vscode";
 import {logging, Headers} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const extensionVersion = require("../../package.json").version;
+const packageJson = require("../../package.json");
+
+const extensionVersion = packageJson.version;
+const terraformDependencies = packageJson.cliDependencies?.terraform;
 
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {
@@ -132,9 +135,12 @@ export function getProxyEnvVars() {
     };
 }
 
-export function getEnvVarsForCli(configfilePath?: string) {
+export function getEnvVarsForCli(
+    extensionContext: ExtensionContext,
+    configfilePath?: string
+) {
     /* eslint-disable @typescript-eslint/naming-convention */
-    return {
+    const envVars: Record<string, string | undefined> = {
         HOME: process.env.HOME,
         PATH: process.env.PATH,
         DATABRICKS_CONFIG_FILE:
@@ -142,6 +148,25 @@ export function getEnvVarsForCli(configfilePath?: string) {
         DATABRICKS_OUTPUT_FORMAT: "json",
         DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
         DATABRICKS_CLI_UPSTREAM_VERSION: extensionVersion,
+        ...getCLIDependenciesEnvVars(extensionContext),
+    };
+    /* eslint-enable @typescript-eslint/naming-convention */
+    return envVars;
+}
+
+export function getCLIDependenciesEnvVars(extensionContext: ExtensionContext) {
+    if (!terraformDependencies) {
+        return {};
+    }
+    /* eslint-disable @typescript-eslint/naming-convention */
+    return {
+        DATABRICKS_TF_VERSION: terraformDependencies.version,
+        DATABRICKS_TF_EXEC_PATH: extensionContext.asAbsolutePath(
+            terraformDependencies.execRelPath
+        ),
+        DATABRICKS_TF_PLUGIN_CACHE_DIR: extensionContext.asAbsolutePath(
+            terraformDependencies.providersCacheRelPath
+        ),
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }

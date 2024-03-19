@@ -178,7 +178,10 @@ export class CliWrapper {
         try {
             res = await execFile(cmd.command, cmd.args, {
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getEnvVarsForCli(
+                        this.extensionContext,
+                        configfilePath
+                    ),
                     ...EnvVarGenerators.getProxyEnvVars(),
                 },
             });
@@ -279,7 +282,10 @@ export class CliWrapper {
             const {stdout, stderr} = await execFile(cmd[0], cmd.slice(1), {
                 cwd: workspaceFolder.fsPath,
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getEnvVarsForCli(
+                        this.extensionContext,
+                        configfilePath
+                    ),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
                     ...this.getLogginEnvVars(),
@@ -326,7 +332,10 @@ export class CliWrapper {
             const {stdout, stderr} = await execFile(cmd[0], cmd.slice(1), {
                 cwd: workspaceFolder.fsPath,
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getEnvVarsForCli(
+                        this.extensionContext,
+                        configfilePath
+                    ),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
                     ...this.getLogginEnvVars(),
@@ -357,6 +366,7 @@ export class CliWrapper {
     getBundleInitEnvVars(authProvider: AuthProvider) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
                 workspaceConfigs.databrickscfgLocation
             ),
             ...EnvVarGenerators.getProxyEnvVars(),
@@ -413,7 +423,10 @@ export class CliWrapper {
         const p = spawn(cmd[0], cmd.slice(1), {
             cwd: workspaceFolder.fsPath,
             env: {
-                ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                ...EnvVarGenerators.getEnvVarsForCli(
+                    this.extensionContext,
+                    configfilePath
+                ),
                 ...EnvVarGenerators.getProxyEnvVars(),
                 ...authProvider.toEnv(),
                 ...this.getLogginEnvVars(),
@@ -467,7 +480,10 @@ export class CliWrapper {
         options: SpawnOptionsWithoutStdio;
     } {
         const env: Record<string, string> = removeUndefinedKeys({
-            ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+            ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
+                configfilePath
+            ),
             ...EnvVarGenerators.getProxyEnvVars(),
             ...authProvider.toEnv(),
             ...this.getLogginEnvVars(),

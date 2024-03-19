@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 set -ex
 
 CLI_VERSION=$(cat package.json | jq -r .cli.version)
