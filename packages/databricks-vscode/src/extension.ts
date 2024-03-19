@@ -168,8 +168,7 @@ export async function activate(
     context.environmentVariableCollection.persistent = false;
     context.environmentVariableCollection.prepend(
         "PATH",
-        `${context.asAbsolutePath("./bin")}${path.delimiter}`,
-        {applyAtProcessCreation: true}
+        `${context.asAbsolutePath("./bin")}${path.delimiter}`
     );
 
     const cliDeps = getCliDependenciesEnvVars(context);
