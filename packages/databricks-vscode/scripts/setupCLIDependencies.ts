@@ -44,7 +44,9 @@ async function main() {
     assert(terraform.provider_version, "cli must return provider version");
 
     const tempDir = path.join(tmpdir(), `terraform_${Date.now()}`);
+    const depsDir = path.join(argv.binDir!, "dependencies");
     await mkdirp(tempDir);
+    await mkdirp(depsDir);
 
     // Download terraform bin for the selected arch
     const arch = argv.arch!;
@@ -52,7 +54,7 @@ async function main() {
     const terraformUrl = `https://releases.hashicorp.com/terraform/${terraform.version}/${terraformZip}`;
     spawn("curl", ["-sLO", terraformUrl], {cwd: tempDir});
     spawn("unzip", ["-q", terraformZip], {cwd: tempDir});
-    const terraformBinRelPath = path.join(argv.binDir!, "terraform");
+    const terraformBinRelPath = path.join(depsDir, "terraform");
     await cp(`${tempDir}/terraform`, terraformBinRelPath);
     terraform.execRelPath = terraformBinRelPath;
 
@@ -60,7 +62,7 @@ async function main() {
     const providerZip = `terraform-provider-databricks_${terraform.provider_version}_${arch}.zip`;
     const providerUrl = `https://github.com/databricks/terraform-provider-databricks/releases/download/v${terraform.provider_version}/${providerZip}`;
     spawn("curl", ["-sLO", providerUrl], {cwd: tempDir});
-    const providersCacheRelPath = path.join(argv.binDir!, "plugins");
+    const providersCacheRelPath = path.join(depsDir, "plugins");
     const databricksProviderDir = path.join(
         providersCacheRelPath,
         terraform.provider_host,
