@@ -410,25 +410,6 @@ export class CliWrapper {
             bundleOpName: "deploy",
         });
 
-        const whichOutput = await execFile("which", ["python"], {
-            cwd: workspaceFolder.fsPath,
-            env: {
-                ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
-                ...EnvVarGenerators.getProxyEnvVars(),
-                ...authProvider.toEnv(),
-                ...this.getLogginEnvVars(),
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                DATABRICKS_CLUSTER_ID: this.clusterId,
-            },
-            shell: true,
-        });
-        // eslint-disable-next-line no-console
-        logger?.info("whichOutput", {
-            ...whichOutput,
-            bundleOpName: "deploy",
-            path: process.env.PATH,
-        });
-
         const p = spawn(cmd[0], cmd.slice(1), {
             cwd: workspaceFolder.fsPath,
             env: {
