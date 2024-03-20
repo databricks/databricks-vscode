@@ -53,9 +53,23 @@ async function main() {
     const terraformZip = `terraform_${terraform.version}_${arch}.zip`;
     const terraformUrl = `https://releases.hashicorp.com/terraform/${terraform.version}/${terraformZip}`;
     spawn("curl", ["-sLO", terraformUrl], {cwd: tempDir});
+    // Check sha of the archive
+    const shasumsFile = `terraform_${terraform.version}_SHA256SUMS`;
+    const shasumsUrl = `https://releases.hashicorp.com/terraform/${terraform.version}/${shasumsFile}`;
+    spawn("curl", ["-sLO", shasumsUrl], {cwd: tempDir});
+    const shasumRes = spawn(
+        "shasum",
+        ["--algorithm", "256", "--check", shasumsFile],
+        {cwd: tempDir}
+    );
+    assert(
+        shasumRes.output.toString().includes(`${terraformZip}: OK`),
+        "sha256sum check failed"
+    );
     spawn("unzip", ["-q", terraformZip], {cwd: tempDir});
     const terraformBinRelPath = path.join(depsDir, "terraform");
     await cp(`${tempDir}/terraform`, terraformBinRelPath);
+    // Set the path to the terraform bin, the extension will use it to setup the environment variables
     terraform.execRelPath = terraformBinRelPath;
 
     // Download databricks provider archive for the selected arch
@@ -84,6 +98,7 @@ async function main() {
         path.join(tempDir, providerZip),
         path.join(databricksProviderDir, providerZip)
     );
+    // Set the path to the providers cache dir, the extension will use it to setup the environment variables
     terraform.providersCacheRelPath = providersCacheRelPath;
 
     // Save the info about deps to the package.json
