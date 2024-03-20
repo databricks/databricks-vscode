@@ -300,11 +300,11 @@ export class ConnectionManager implements Disposable {
     @Mutex.synchronise("loginLogoutMutex")
     private async _connect(authProvider: AuthProvider) {
         this.updateState("CONNECTING");
+        this._workspaceClient = await authProvider.getWorkspaceClient();
         this._databricksWorkspace = await DatabricksWorkspace.load(
-            authProvider.getWorkspaceClient(),
+            this._workspaceClient,
             authProvider
         );
-        this._workspaceClient = authProvider.getWorkspaceClient();
         await this.configModel.set(
             "authProfile",
             authProvider.toJSON().profile as string | undefined
