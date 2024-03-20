@@ -85,7 +85,7 @@ export abstract class AuthProvider {
         await window.withProgress(
             {
                 location: ProgressLocation.Notification,
-                title: `Databricks: Trying to login using ${this.describe()}`,
+                title: `Databricks: Logging in using ${this.describe()}`,
             },
             async () => await checkFn()
         );
