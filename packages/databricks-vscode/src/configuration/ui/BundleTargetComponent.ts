@@ -61,13 +61,13 @@ export class BundleTargetComponent extends BaseComponent {
 
         return [
             {
-                label: target,
+                label: "Target",
                 id: TREE_ICON_ID,
                 iconPath: new ThemeIcon(
                     "target",
                     new ThemeColor("debugIcon.startForeground")
                 ),
-                description: humanisedMode,
+                description: target,
                 contextValue: `databricks.configuration.target.${humanisedMode.toLocaleLowerCase()}}`,
                 collapsibleState: TreeItemCollapsibleState.Collapsed,
             },

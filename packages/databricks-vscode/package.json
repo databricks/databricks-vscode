@@ -177,7 +177,7 @@
             {
                 "command": "databricks.utils.openExternal",
                 "title": "Open link externally",
-                "icon": "$(link)",
+                "icon": "$(link-external)",
                 "category": "Databricks"
             },
             {
@@ -294,7 +294,7 @@
                 },
                 {
                     "id": "dabsResourceExplorerView",
-                    "name": "DABs Resource Explorer",
+                    "name": "Bundle Resource Explorer",
                     "visibility": "visible",
                     "when": "databricks.context.bundle.isTargetSet"
                 },
