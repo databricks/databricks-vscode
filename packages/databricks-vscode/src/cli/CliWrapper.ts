@@ -288,13 +288,11 @@ export class CliWrapper {
                 },
                 shell: true,
             });
-            const output = stdout + stderr;
-
             logger?.info("Finished reading local bundle configuration.", {
                 bundleOpName: "validate",
             });
-            logger?.debug(output);
-            return output;
+            logger?.debug(stdout + stderr);
+            return stdout;
         } catch (e: any) {
             logger?.error(
                 `Failed to read local bundle configuration. ${e.message ?? ""}`,
@@ -335,13 +333,11 @@ export class CliWrapper {
                 },
                 shell: true,
             });
-
-            const output = stdout + stderr;
             logger?.info("Bundle configuration refreshed.", {
                 bundleOpName: "summarize",
             });
-            logger?.debug(output);
-            return output;
+            logger?.debug(stdout + stderr);
+            return stdout;
         } catch (e: any) {
             logger?.error(
                 `Failed to refresh bundle configuration. ${e.message ?? ""}`,
