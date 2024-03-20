@@ -60,8 +60,19 @@ async function main() {
 
     // Download databricks provider archive for the selected arch
     const providerZip = `terraform-provider-databricks_${terraform.provider_version}_${arch}.zip`;
-    const providerUrl = `https://github.com/databricks/terraform-provider-databricks/releases/download/v${terraform.provider_version}/${providerZip}`;
-    spawn("curl", ["-sLO", providerUrl], {cwd: tempDir});
+    spawn(
+        "gh",
+        [
+            "release",
+            "download",
+            `v${terraform.provider_version}`,
+            "--pattern",
+            providerZip,
+            "--repo",
+            "databricks/terraform-provider-databricks",
+        ],
+        {cwd: tempDir}
+    );
     const providersCacheRelPath = path.join(depsDir, "plugins");
     const databricksProviderDir = path.join(
         providersCacheRelPath,
