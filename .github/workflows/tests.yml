@@ -90,6 +90,7 @@ jobs:
       - name: Generate matrix
         id: generate-matrix
         run: |
+          echo "specs=$(yarn ts-node scripts/list_integration_tests.ts)"
           echo "specs=$(yarn ts-node scripts/list_integration_tests.ts)" >> $GITHUB_OUTPUT
         working-directory: packages/databricks-vscode
 
@@ -143,7 +144,7 @@ jobs:
         run: yarn run build
 
       - name: Integration Tests
-        run: yarn run test:integ:extension --spec ${{ matrix.spec }}
+        run: yarn run test:integ:extension --spec ${{ matrix.spec.path }}
         working-directory: packages/databricks-vscode
 
       - name: Upload test logs
@@ -151,7 +152,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v3
         with:
-          name: test-logs ${{ join(inputs.*, ' - ') }} - ${{ matrix.spec }} - ${{ github.event_name }}
+          name: test-logs ${{ join(inputs.*, ' - ') }} - ${{ matrix.spec.baseName }} - ${{ github.event_name }}
           path: packages/databricks-vscode/logs
 
   sdk-wrappers-integration-tests:
