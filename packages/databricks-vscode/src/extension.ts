@@ -75,8 +75,6 @@ export async function activate(
     const stateStorage = new StateStorage(context);
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
 
-    await stateStorage.set("databricks.preview-tnc.accepted", false);
-
     if (
         !stateStorage.get("databricks.preview-tnc.accepted") &&
         !isIntegrationTest()
