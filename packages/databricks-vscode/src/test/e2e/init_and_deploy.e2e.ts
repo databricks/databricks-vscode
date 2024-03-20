@@ -59,7 +59,7 @@ describe("Init and deploy", async function () {
         const parentDir = tmpdir();
         const parentFolderInput = await waitForInput();
         // Type in the parentDir value to the input
-        await browser.keys(parentDir);
+        await browser.keys(parentDir.split(""));
         await sleep(1000);
         const picks = await parentFolderInput.getQuickPicks();
         const pick = picks.filter((p) => p.getIndex() === 0)[0];
@@ -76,9 +76,13 @@ describe("Init and deploy", async function () {
         await initTab.select();
 
         //select temaplate type
-        await browser.keys([..."default-python".split(""), Key.Enter]);
+        await browser.keys("default-python".split(""));
+        await sleep(1000);
+        await browser.keys([Key.Enter]);
         //enter project name temaplate type
-        await browser.keys([...projectName.split(""), Key.Enter]);
+        await browser.keys(projectName.split(""));
+        await sleep(1000);
+        await browser.keys([Key.Enter]);
         await browser.waitUntil(
             async () => {
                 const activeTab = await editorView.getActiveTab();
