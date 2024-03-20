@@ -304,12 +304,16 @@ export class LoginWizard {
             | PersonalAccessTokenAuthProvider;
         switch (pick.authType) {
             case "azure-cli":
-                authProvider = new AzureCliAuthProvider(this.state.host!);
+                authProvider = new AzureCliAuthProvider(
+                    this.state.host!,
+                    this.cliWrapper
+                );
                 break;
 
             case "databricks-cli":
                 authProvider = new DatabricksCliAuthProvider(
                     this.state.host!,
+                    this.cliWrapper.cliPath,
                     this.cliWrapper
                 );
                 break;
@@ -329,7 +333,8 @@ export class LoginWizard {
                     }
                     authProvider = new PersonalAccessTokenAuthProvider(
                         this.state.host!,
-                        token
+                        token,
+                        this.cliWrapper
                     );
                 }
                 break;

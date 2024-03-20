@@ -95,7 +95,11 @@ export class ConnectionCommands implements Disposable {
             throw new Error("Must login first");
         }
         const hostUrl = normalizeHost(host);
-        const provider = new PersonalAccessTokenAuthProvider(hostUrl, token);
+        const provider = new PersonalAccessTokenAuthProvider(
+            hostUrl,
+            token,
+            this.cli
+        );
         await saveNewProfile(name, provider, this.cli);
     }
 
