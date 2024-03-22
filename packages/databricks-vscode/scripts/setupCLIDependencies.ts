@@ -5,6 +5,10 @@ import {cp, readFile, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import yargs from "yargs";
+import type {
+    TerraformMetadata,
+    TerraformMetadataFromCli,
+} from "../src/utils/terraformUtils";
 
 async function main() {
     const argv = await yargs
@@ -31,17 +35,17 @@ async function main() {
 
     const res = spawn(argv.cli!, [
         "bundle",
-        "dependencies",
+        "internal-dependencies",
         "--output",
         "json",
     ]);
     const dependencies = JSON.parse(res.stdout.toString());
-    const terraform = dependencies.terraform;
+    const terraform = dependencies.terraform as TerraformMetadataFromCli;
     assert(terraform, "cli must return terraform dependencies");
     assert(terraform.version, "cli must return terraform version");
-    assert(terraform.provider_host, "cli must return provider host");
-    assert(terraform.provider_source, "cli must return provider source");
-    assert(terraform.provider_version, "cli must return provider version");
+    assert(terraform.providerHost, "cli must return provider host");
+    assert(terraform.providerSource, "cli must return provider source");
+    assert(terraform.providerVersion, "cli must return provider version");
 
     const tempDir = path.join(tmpdir(), `terraform_${Date.now()}`);
     const depsDir = path.join(argv.binDir!, "dependencies");
@@ -70,16 +74,16 @@ async function main() {
     const terraformBinRelPath = path.join(depsDir, "terraform");
     await cp(`${tempDir}/terraform`, terraformBinRelPath);
     // Set the path to the terraform bin, the extension will use it to setup the environment variables
-    terraform.execRelPath = terraformBinRelPath;
+    const execRelPath = terraformBinRelPath;
 
     // Download databricks provider archive for the selected arch
-    const providerZip = `terraform-provider-databricks_${terraform.provider_version}_${arch}.zip`;
+    const providerZip = `terraform-provider-databricks_${terraform.providerVersion}_${arch}.zip`;
     spawn(
         "gh",
         [
             "release",
             "download",
-            `v${terraform.provider_version}`,
+            `v${terraform.providerVersion}`,
             "--pattern",
             providerZip,
             "--repo",
@@ -87,24 +91,31 @@ async function main() {
         ],
         {cwd: tempDir}
     );
-    const providersCacheRelPath = path.join(depsDir, "plugins");
+    const providersMirrorRelPath = path.join(depsDir, "providers");
     const databricksProviderDir = path.join(
-        providersCacheRelPath,
-        terraform.provider_host,
-        terraform.provider_source
+        providersMirrorRelPath,
+        terraform.providerHost,
+        terraform.providerSource
     );
     await mkdirp(databricksProviderDir);
     await cp(
         path.join(tempDir, providerZip),
         path.join(databricksProviderDir, providerZip)
     );
-    // Set the path to the providers cache dir, the extension will use it to setup the environment variables
-    terraform.providersCacheRelPath = providersCacheRelPath;
+    // Set the path to the providers mirror dir, the extension will use it
+    // to create the terraform CLI config at runtime.
+    const terraformCliConfigRelPath = path.join(depsDir, "config.tfrc");
 
-    // Save the info about deps to the package.json
+    // Save the info about all dependencies to the package.json
+    const terraformMetadata: TerraformMetadata = {
+        ...terraform,
+        execRelPath,
+        providersMirrorRelPath,
+        terraformCliConfigRelPath,
+    };
     const rawData = await readFile(argv.package!, {encoding: "utf-8"});
     const jsonData = JSON.parse(rawData);
-    jsonData["cliDependencies"] = dependencies;
+    jsonData["terraformMetadata"] = terraformMetadata;
     await writeFile(argv.package!, JSON.stringify(jsonData, null, 4), {
         encoding: "utf-8",
     });

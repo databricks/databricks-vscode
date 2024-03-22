@@ -4,12 +4,13 @@ import {ExtensionContext, Uri} from "vscode";
 import {logging, Headers} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
+import {TerraformMetadata} from "./terraformUtils";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../../package.json");
 
 const extensionVersion = packageJson.version;
-const terraformDependencies = packageJson.cliDependencies?.terraform;
+const terraformMetadata = packageJson.terraformMetadata as TerraformMetadata;
 
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {
@@ -155,17 +156,18 @@ export function getEnvVarsForCli(
 }
 
 export function getCLIDependenciesEnvVars(extensionContext: ExtensionContext) {
-    if (!terraformDependencies) {
+    if (!terraformMetadata) {
         return {};
     }
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
-        DATABRICKS_TF_VERSION: terraformDependencies.version,
+        DATABRICKS_TF_VERSION: terraformMetadata.version,
         DATABRICKS_TF_EXEC_PATH: extensionContext.asAbsolutePath(
-            terraformDependencies.execRelPath
+            terraformMetadata.execRelPath
         ),
-        DATABRICKS_TF_PLUGIN_CACHE_DIR: extensionContext.asAbsolutePath(
-            terraformDependencies.providersCacheRelPath
+        DATABRICKS_TF_PROVIDER_VERSION: terraformMetadata.providerVersion,
+        DATABRICKS_TF_CLI_CONFIG_FILE: extensionContext.asAbsolutePath(
+            terraformMetadata.terraformCliConfigRelPath
         ),
     };
     /* eslint-enable @typescript-eslint/naming-convention */

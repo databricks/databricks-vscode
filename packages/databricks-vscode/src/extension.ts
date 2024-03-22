@@ -24,7 +24,12 @@ import {PublicApi} from "@databricks/databricks-vscode-types";
 import {LoggerManager, Loggers} from "./logger";
 import {logging} from "@databricks/databricks-sdk";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
-import {FileUtils, PackageJsonUtils, UtilsCommands} from "./utils";
+import {
+    FileUtils,
+    PackageJsonUtils,
+    TerraformUtils,
+    UtilsCommands,
+} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
@@ -64,6 +69,9 @@ import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 import {isIntegrationTest} from "./utils/developmentUtils";
 import {getCLIDependenciesEnvVars as getCliDependenciesEnvVars} from "./utils/envVarGenerators";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const packageJson = require("../package.json");
 
 const customWhenContext = new CustomWhenContext();
 
@@ -178,6 +186,15 @@ export async function activate(
         );
         context.environmentVariableCollection.replace(key, value);
     }
+    TerraformUtils.updateTerraformCliConfig(
+        context,
+        packageJson.terraformMetadata
+    ).catch((e) => {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to update terraform cli config",
+            e
+        );
+    });
 
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,
