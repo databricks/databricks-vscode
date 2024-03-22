@@ -68,7 +68,7 @@ import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/Decorati
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 import {isIntegrationTest} from "./utils/developmentUtils";
-import {getCLIDependenciesEnvVars as getCliDependenciesEnvVars} from "./utils/envVarGenerators";
+import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -179,7 +179,7 @@ export async function activate(
         `${path.delimiter}${context.asAbsolutePath("./bin")}`
     );
 
-    const cliDeps = getCliDependenciesEnvVars(context);
+    const cliDeps = getCLIDependenciesEnvVars(context);
     for (const [key, value] of Object.entries(cliDeps)) {
         logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
             `Setting env var ${key}=${value}`

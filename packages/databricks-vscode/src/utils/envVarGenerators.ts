@@ -141,7 +141,7 @@ export function getEnvVarsForCli(
     configfilePath?: string
 ) {
     /* eslint-disable @typescript-eslint/naming-convention */
-    const envVars: Record<string, string | undefined> = {
+    return {
         HOME: process.env.HOME,
         PATH: process.env.PATH,
         DATABRICKS_CONFIG_FILE:
@@ -152,7 +152,6 @@ export function getEnvVarsForCli(
         ...getCLIDependenciesEnvVars(extensionContext),
     };
     /* eslint-enable @typescript-eslint/naming-convention */
-    return envVars;
 }
 
 export function getCLIDependenciesEnvVars(extensionContext: ExtensionContext) {
