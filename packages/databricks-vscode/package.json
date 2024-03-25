@@ -688,7 +688,7 @@
         "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz",
         "@databricks/databricks-vscode-types": "workspace:^",
         "@vscode/debugadapter": "^1.61.0",
-        "@vscode/extension-telemetry": "^0.8.1",
+        "@vscode/extension-telemetry": "^0.9.6",
         "@vscode/webview-ui-toolkit": "^1.2.2",
         "add": "^2.0.6",
         "ansi-to-html": "^0.7.2",
