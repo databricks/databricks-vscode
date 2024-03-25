@@ -72,7 +72,8 @@ export class BundleRunTerminalManager implements Disposable {
                     onCancellationEvent.dispose();
                 }, this.disposables);
 
-            const cmd = this.bundleRemoteStateModel.getRunCommand(resourceKey);
+            const cmd =
+                await this.bundleRemoteStateModel.getRunCommand(resourceKey);
 
             // spawn a new process with the latest command, in the same terminal.
             terminal.pty.spawn(cmd);

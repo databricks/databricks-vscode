@@ -7,8 +7,8 @@ import {
     EventEmitter,
     Disposable,
 } from "vscode";
-import {BundleResourceExplorerTreeDataProvider} from "./BundleResourceExplorerTreeDataProvider";
-import {ConfigurationDataProvider} from "../../configuration/ui/ConfigurationDataProvider";
+import {BundleResourceExplorerTreeDataProvider} from "./bundle-resource-explorer/BundleResourceExplorerTreeDataProvider";
+import {ConfigurationDataProvider} from "../configuration/ui/ConfigurationDataProvider";
 
 const SCHEME = "databricks-view-item";
 export class TreeItemDecorationProvider implements FileDecorationProvider {

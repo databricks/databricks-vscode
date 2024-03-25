@@ -6,7 +6,7 @@ import {TreeItemCollapsibleState} from "vscode";
 import {ContextUtils, JobRunStateUtils, RunStateUtils} from "./utils";
 import {jobs} from "@databricks/databricks-sdk";
 import {JobRunStatus} from "../../bundle/run/JobRunStatus";
-import {TreeItemTreeNode} from "./TreeItemTreeNode";
+import {TreeItemTreeNode} from "../TreeItemTreeNode";
 
 export class JobRunStatusTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "job_run_status";

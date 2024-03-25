@@ -36,7 +36,7 @@ export class BundleResourceExplorerTreeDataProvider
             this.configModel.onDidChangeTarget(() => {
                 this._onDidChangeTreeData.fire();
             }),
-            this.configModel.onDidChangeKey("remoteStateConfig")(() => {
+            this.configModel.onDidChangeKey("remoteStateConfig")(async () => {
                 this._onDidChangeTreeData.fire();
             }),
             this.bundleRunStatusManager.onDidChange(() => {

@@ -6,7 +6,7 @@ import {TreeItemCollapsibleState} from "vscode";
 import {ContextUtils, JobRunStateUtils, RunStateUtils} from "./utils";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {jobs} from "@databricks/databricks-sdk";
-import {TreeItemTreeNode} from "./TreeItemTreeNode";
+import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {TaskTreeNode} from "./TaskTreeNode";
 
 export class TaskRunStatusTreeNode implements BundleResourceExplorerTreeNode {

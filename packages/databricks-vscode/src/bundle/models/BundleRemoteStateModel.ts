@@ -77,7 +77,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         );
     }
 
-    public getRunCommand(resourceKey: string) {
+    public async getRunCommand(resourceKey: string) {
         if (this.target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -85,7 +85,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             throw new Error("No authentication method is set");
         }
 
-        return this.cli.getBundleRunCommand(
+        return await this.cli.getBundleRunCommand(
             this.target,
             this.authProvider,
             resourceKey,

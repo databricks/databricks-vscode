@@ -86,9 +86,6 @@ export class BundleCommands implements Disposable {
 
             await this.refreshRemoteState();
         } catch (e) {
-            if (!(e instanceof Error)) {
-                throw e;
-            }
             window
                 .showErrorMessage("Error deploying resource.", "Show Logs")
                 .then((choice) => {
