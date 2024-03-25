@@ -137,12 +137,10 @@ export class ConnectionManager implements Disposable {
         } finally {
             this.disposables.push(
                 this.configModel.onDidChangeKey("remoteRootPath")(
-                    this.updateSyncDestinationMapper,
-                    this
+                    this.updateSyncDestinationMapper.bind(this)
                 ),
                 this.configModel.onDidChangeKey("clusterId")(
-                    this.updateClusterManager,
-                    this
+                    this.updateClusterManager.bind(this)
                 ),
                 // Don't just listen to target change for logging in. Also explictly listen for changes in the keys we care about.
                 // We don't have to listen to changes in authProfile as it's set by the login method and we don't respect other

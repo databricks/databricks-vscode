@@ -4,7 +4,7 @@ import {expect} from "chai";
 import path from "path";
 import * as tmp from "tmp-promise";
 import * as fs from "fs/promises";
-import {BundleSchema} from "./BundleSchema";
+import {BundleSchema} from "./types";
 import * as yaml from "yaml";
 
 describe(__filename, async function () {

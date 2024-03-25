@@ -16,6 +16,7 @@ import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
+import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -87,12 +88,17 @@ async function waitForProcess(
  */
 export class CliWrapper {
     private clusterId?: string;
+    private _bundleVariableModel?: BundleVariableModel;
 
     constructor(
         private extensionContext: ExtensionContext,
         private loggerManager: LoggerManager,
         private logFilePath?: string
     ) {}
+
+    public set bundleVariableModel(model: BundleVariableModel) {
+        this._bundleVariableModel = model;
+    }
 
     public setClusterId(clusterId?: string) {
         this.clusterId = clusterId;
@@ -283,6 +289,8 @@ export class CliWrapper {
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
                     ...this.getLogginEnvVars(),
+                    ...((await this._bundleVariableModel?.getEnvVariables()) ??
+                        {}),
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     DATABRICKS_CLUSTER_ID: this.clusterId,
                 },
@@ -329,6 +337,8 @@ export class CliWrapper {
                     ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
+                    ...((await this._bundleVariableModel?.getEnvVariables()) ??
+                        {}),
                     ...this.getLogginEnvVars(),
                     // eslint-disable-next-line @typescript-eslint/naming-convention
                     DATABRICKS_CLUSTER_ID: this.clusterId,
@@ -416,6 +426,7 @@ export class CliWrapper {
                 ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                 ...EnvVarGenerators.getProxyEnvVars(),
                 ...authProvider.toEnv(),
+                ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
                 ...this.getLogginEnvVars(),
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 DATABRICKS_CLUSTER_ID: this.clusterId,
@@ -455,21 +466,22 @@ export class CliWrapper {
         }
     }
 
-    getBundleRunCommand(
+    async getBundleRunCommand(
         target: string,
         authProvider: AuthProvider,
         resourceKey: string,
         workspaceFolder: Uri,
         configfilePath?: string
-    ): {
+    ): Promise<{
         cmd: string;
         args: string[];
         options: SpawnOptionsWithoutStdio;
-    } {
+    }> {
         const env: Record<string, string> = removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
             ...EnvVarGenerators.getProxyEnvVars(),
             ...authProvider.toEnv(),
+            ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
             ...this.getLogginEnvVars(),
             // eslint-disable-next-line @typescript-eslint/naming-convention
             DATABRICKS_CLUSTER_ID: this.clusterId,

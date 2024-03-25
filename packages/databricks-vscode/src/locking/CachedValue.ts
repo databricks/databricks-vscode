@@ -1,4 +1,4 @@
-import {EventEmitter, Disposable} from "vscode";
+import {Disposable} from "vscode";
 import {Mutex} from ".";
 import lodash from "lodash";
 import {EventEmitterWithErrorHandler} from "../utils/EventWithErrorHandler";
@@ -84,12 +84,15 @@ export class CachedValue<T> implements Disposable {
 
     private readonly onDidChangeKeyEmitters = new Map<
         keyof T,
-        EventEmitter<void>
+        EventEmitterWithErrorHandler<void>
     >();
 
     onDidChangeKey(key: T extends object ? keyof T : never) {
         if (!this.onDidChangeKeyEmitters.has(key)) {
-            this.onDidChangeKeyEmitters.set(key, new EventEmitter());
+            this.onDidChangeKeyEmitters.set(
+                key,
+                new EventEmitterWithErrorHandler({log: true, throw: false})
+            );
         }
         return this.onDidChangeKeyEmitters.get(key)!.event;
     }

@@ -24,10 +24,10 @@ export class SyncDestinationComponent extends BaseComponent {
             this.connectionManager.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChangeKey("remoteRootPath")(() => {
+            this.configModel.onDidChangeKey("remoteRootPath")(async () => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChangeKey("remoteStateConfig")(() => {
+            this.configModel.onDidChangeKey("remoteStateConfig")(async () => {
                 this.onDidChangeEmitter.fire();
             })
         );

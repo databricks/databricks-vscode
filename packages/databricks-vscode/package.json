@@ -275,6 +275,18 @@
                 "title": "Copy",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.variable.openFile",
+                "title": "Set bundle variables",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.variable.reset",
+                "title": "Reset to default value",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -295,6 +307,12 @@
                 {
                     "id": "dabsResourceExplorerView",
                     "name": "Bundle Resource Explorer",
+                    "visibility": "visible",
+                    "when": "databricks.context.bundle.isTargetSet"
+                },
+                {
+                    "id": "dabsVariableView",
+                    "name": "Bundle Variable View",
                     "visibility": "visible",
                     "when": "databricks.context.bundle.isTargetSet"
                 },
@@ -381,6 +399,16 @@
                 {
                     "command": "databricks.bundle.deploy",
                     "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.variable.openFile",
+                    "when": "view == dabsVariableView && databricks.context.bundle.deploymentState == idle",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.variable.reset",
+                    "when": "view == dabsVariableView && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@1"
                 }
             ],
