@@ -419,7 +419,7 @@ export class CliWrapper {
         let shellPath = cliEnvVars.PATH;
         if (executable) {
             shellPath = `${path.dirname(executable)}${path.delimiter}${
-                process.env.PATH
+                shellPath
             }`;
         }
         const p = spawn(cmd[0], cmd.slice(1), {
