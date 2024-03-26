@@ -61,7 +61,7 @@ export class AuthTypeComponent extends BaseComponent {
             }
             return [
                 {
-                    label: {label},
+                    label: {label, highlights: [[0, label.length]]},
                     iconPath: new ThemeIcon(
                         "account",
                         new ThemeColor("notificationsErrorIcon.foreground")
