@@ -293,7 +293,6 @@ export class ConnectionManager implements Disposable {
                     `Can't connect to the workspace: "${e.message}"."`
                 );
             }
-            await this.logout();
         }
     }
 
@@ -309,11 +308,15 @@ export class ConnectionManager implements Disposable {
             "authProfile",
             authProvider.toJSON().profile as string | undefined
         );
-        await this.configModel.setAuthProvider(authProvider);
+
         await this.updateSyncDestinationMapper();
         await this.updateClusterManager();
         await this._metadataService.setApiClient(this.apiClient);
-        this.updateState("CONNECTED");
+        try {
+            await this.configModel.setAuthProvider(authProvider);
+        } finally {
+            this.updateState("CONNECTED");
+        }
     }
 
     @Mutex.synchronise("loginLogoutMutex")

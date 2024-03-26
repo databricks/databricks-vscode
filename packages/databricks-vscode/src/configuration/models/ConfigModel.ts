@@ -214,7 +214,7 @@ export class ConfigModel implements Disposable {
             // We want to wait for all the configs to be loaded before we emit any change events from the
             // configStateCache.
             await this.readStateMutex.synchronise(async () => {
-                await Promise.all([
+                await Promise.allSettled([
                     this.bundlePreValidateModel.setTarget(target),
                     this.bundleValidateModel.setTarget(target),
                     this.overrideableConfigModel.setTarget(target),
@@ -233,8 +233,12 @@ export class ConfigModel implements Disposable {
     public async setAuthProvider(authProvider: AuthProvider | undefined) {
         this._authProvider = authProvider;
         await this.readStateMutex.synchronise(async () => {
-            await this.bundleValidateModel.setAuthProvider(authProvider);
-            await this.bundleRemoteStateModel.setAuthProvider(authProvider);
+            await Promise.allSettled([
+                this.bundleValidateModel.setAuthProvider(authProvider),
+                this.bundleRemoteStateModel.setAuthProvider(authProvider),
+            ]).then((value) => {
+                value.find((v) => v.status === "rejected");
+            });
         });
         this.onDidChangeAuthProviderEmitter.fire();
     }
