@@ -12,7 +12,7 @@ import {
     RemoteUri,
     LocalUri,
 } from "../sync/SyncDestination";
-import {LoginWizard, listProfiles} from "./LoginWizard";
+import {LoginWizard, getProfilesForHost} from "./LoginWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
@@ -246,9 +246,7 @@ export class ConnectionManager implements Disposable {
         }
 
         // Try to load a unique profile that matches the host
-        const profiles = (await listProfiles(this.cli)).filter(
-            (p) => p.host?.toString() === host.toString()
-        );
+        const profiles = await getProfilesForHost(host, this.cli);
         if (profiles.length !== 1) {
             return;
         }
