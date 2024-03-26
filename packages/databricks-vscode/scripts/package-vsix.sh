@@ -40,7 +40,8 @@ esac
 
 rm -rf bin
 ./scripts/fetch-databricks-cli.sh $CLI_ARCH
-yarn ts-node ./scripts/set_arch_in_package.ts $VSXI_ARCH -f package.json --cliArch $CLI_ARCH -V $VSXI_ARCH -c $(git rev-parse --short HEAD)
+yarn ts-node ./scripts/setArchInPackage.ts $VSXI_ARCH -f package.json --cliArch $CLI_ARCH -V $VSXI_ARCH -c $(git rev-parse --short HEAD)
+yarn ts-node ./scripts/setupCLIDependencies.ts --cli ./bin/databricks --binDir ./bin --package ./package.json --arch $CLI_ARCH
 yarn run prettier package.json --write
 TAG="release-v$(cat package.json | jq -r .version)" yarn run package -t $VSXI_ARCH
 

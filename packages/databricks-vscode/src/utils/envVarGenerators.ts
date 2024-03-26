@@ -1,12 +1,16 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
-import {Uri} from "vscode";
+import {ExtensionContext, Uri} from "vscode";
 import {logging, Headers} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
+import {TerraformMetadata} from "./terraformUtils";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const extensionVersion = require("../../package.json").version;
+const packageJson = require("../../package.json");
+
+const extensionVersion = packageJson.version;
+const terraformMetadata = packageJson.terraformMetadata as TerraformMetadata;
 
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {
@@ -132,7 +136,10 @@ export function getProxyEnvVars() {
     };
 }
 
-export function getEnvVarsForCli(configfilePath?: string) {
+export function getEnvVarsForCli(
+    extensionContext: ExtensionContext,
+    configfilePath?: string
+) {
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         HOME: process.env.HOME,
@@ -142,6 +149,25 @@ export function getEnvVarsForCli(configfilePath?: string) {
         DATABRICKS_OUTPUT_FORMAT: "json",
         DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
         DATABRICKS_CLI_UPSTREAM_VERSION: extensionVersion,
+        ...getCLIDependenciesEnvVars(extensionContext),
+    };
+    /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+export function getCLIDependenciesEnvVars(extensionContext: ExtensionContext) {
+    if (!terraformMetadata) {
+        return {};
+    }
+    /* eslint-disable @typescript-eslint/naming-convention */
+    return {
+        DATABRICKS_TF_VERSION: terraformMetadata.version,
+        DATABRICKS_TF_EXEC_PATH: extensionContext.asAbsolutePath(
+            terraformMetadata.execRelPath
+        ),
+        DATABRICKS_TF_PROVIDER_VERSION: terraformMetadata.providerVersion,
+        DATABRICKS_TF_CLI_CONFIG_FILE: extensionContext.asAbsolutePath(
+            terraformMetadata.terraformCliConfigRelPath
+        ),
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }
