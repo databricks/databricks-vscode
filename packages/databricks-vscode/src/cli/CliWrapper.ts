@@ -16,6 +16,8 @@ import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
+import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
+import path from "path";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -392,6 +394,7 @@ export class CliWrapper {
         target: string,
         authProvider: AuthProvider,
         workspaceFolder: Uri,
+        pythonExtension: MsPythonExtensionWrapper,
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
@@ -410,6 +413,14 @@ export class CliWrapper {
             bundleOpName: "deploy",
         });
 
+        // Add python executable to PATH
+        const executable = await pythonExtension.getPythonExecutable();
+        let shellPath = process.env.PATH;
+        if (executable) {
+            shellPath = `${path.dirname(executable)}${path.delimiter}${
+                process.env.PATH
+            }`;
+        }
         const p = spawn(cmd[0], cmd.slice(1), {
             cwd: workspaceFolder.fsPath,
             env: {
@@ -417,8 +428,10 @@ export class CliWrapper {
                 ...EnvVarGenerators.getProxyEnvVars(),
                 ...authProvider.toEnv(),
                 ...this.getLogginEnvVars(),
-                // eslint-disable-next-line @typescript-eslint/naming-convention
+                /* eslint-disable @typescript-eslint/naming-convention */
+                PATH: shellPath,
                 DATABRICKS_CLUSTER_ID: this.clusterId,
+                /* eslint-enable @typescript-eslint/naming-convention */
             },
             shell: true,
         });

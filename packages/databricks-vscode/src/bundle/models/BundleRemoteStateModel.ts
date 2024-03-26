@@ -9,6 +9,7 @@ import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
+import {MsPythonExtensionWrapper} from "../../language/MsPythonExtensionWrapper";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export type BundleResourceModifiedStatus = "created" | "deleted" | "updated";
@@ -49,6 +50,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     constructor(
         private readonly cli: CliWrapper,
         private readonly workspaceFolder: Uri,
+        private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly workspaceConfigs: WorkspaceConfigs
     ) {
         super();
@@ -72,6 +74,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.target,
             this.authProvider,
             this.workspaceFolder,
+            this.pythonExtension,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger
         );
