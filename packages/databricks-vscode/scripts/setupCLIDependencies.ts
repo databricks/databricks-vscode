@@ -35,7 +35,8 @@ async function main() {
 
     const res = spawn(argv.cli!, [
         "bundle",
-        "internal-dependencies",
+        "debug",
+        "terraform",
         "--output",
         "json",
     ]);
