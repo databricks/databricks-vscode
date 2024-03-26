@@ -232,6 +232,7 @@ export async function activate(
     const bundleRemoteStateModel = new BundleRemoteStateModel(
         cli,
         workspaceUri,
+        pythonExtensionWrapper,
         workspaceConfigs
     );
     const configModel = new ConfigModel(
