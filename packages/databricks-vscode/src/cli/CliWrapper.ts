@@ -415,7 +415,8 @@ export class CliWrapper {
 
         // Add python executable to PATH
         const executable = await pythonExtension.getPythonExecutable();
-        let shellPath = process.env.PATH;
+        const cliEnvVars = EnvVarGenerators.getEnvVarsForCli(configfilePath);
+        let shellPath = cliEnvVars.PATH;
         if (executable) {
             shellPath = `${path.dirname(executable)}${path.delimiter}${
                 process.env.PATH
@@ -424,7 +425,7 @@ export class CliWrapper {
         const p = spawn(cmd[0], cmd.slice(1), {
             cwd: workspaceFolder.fsPath,
             env: {
-                ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                ...cliEnvVars,
                 ...EnvVarGenerators.getProxyEnvVars(),
                 ...authProvider.toEnv(),
                 ...this.getLogginEnvVars(),
