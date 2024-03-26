@@ -17,8 +17,8 @@ export type BundleValidateState = {
 } & BundleTarget;
 
 export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateState> {
-    private target: string | undefined;
-    private authProvider: AuthProvider | undefined;
+    public target: string | undefined;
+    public authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
     protected logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 

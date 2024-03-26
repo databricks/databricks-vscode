@@ -1,4 +1,4 @@
-import {Disposable, EventEmitter, Uri, Event} from "vscode";
+import {Disposable, EventEmitter, Uri, Event, window, commands} from "vscode";
 import {Mutex} from "../../locking";
 import {CachedValue} from "../../locking/CachedValue";
 import {StateStorage} from "../../vscode-objs/StateStorage";
@@ -22,6 +22,7 @@ import {
     BundleRemoteState,
     BundleRemoteStateModel,
 } from "../../bundle/models/BundleRemoteStateModel";
+import {ProcessError} from "../../cli/CliWrapper";
 
 const defaults: ConfigState = {
     mode: "development",
@@ -219,7 +220,27 @@ export class ConfigModel implements Disposable {
                     this.bundleValidateModel.setTarget(target),
                     this.overrideableConfigModel.setTarget(target),
                     this.bundleRemoteStateModel.setTarget(target),
-                ]);
+                ]).then((value) => {
+                    const e = value.find(
+                        (v) =>
+                            v.status === "rejected" &&
+                            v.reason instanceof ProcessError
+                    );
+                    if (e) {
+                        window
+                            .showErrorMessage(
+                                `Error executing Databricks CLI command.`,
+                                "Show Logs"
+                            )
+                            .then((choice) => {
+                                if (choice === "Show Logs") {
+                                    commands.executeCommand(
+                                        "databricks.bundle.showLogs"
+                                    );
+                                }
+                            });
+                    }
+                });
             });
             this.onDidChangeTargetEmitter.fire();
         });
@@ -234,10 +255,28 @@ export class ConfigModel implements Disposable {
         this._authProvider = authProvider;
         await this.readStateMutex.synchronise(async () => {
             await Promise.allSettled([
-                this.bundleValidateModel.setAuthProvider(authProvider),
                 this.bundleRemoteStateModel.setAuthProvider(authProvider),
+                this.bundleValidateModel.setAuthProvider(authProvider),
             ]).then((value) => {
-                value.find((v) => v.status === "rejected");
+                const e = value.find(
+                    (v) =>
+                        v.status === "rejected" &&
+                        v.reason instanceof ProcessError
+                );
+                if (e) {
+                    window
+                        .showErrorMessage(
+                            `Error executing Databricks CLI command.`,
+                            "Show Logs"
+                        )
+                        .then((choice) => {
+                            if (choice === "Show Logs") {
+                                commands.executeCommand(
+                                    "databricks.bundle.showLogs"
+                                );
+                            }
+                        });
+                }
             });
         });
         this.onDidChangeAuthProviderEmitter.fire();
