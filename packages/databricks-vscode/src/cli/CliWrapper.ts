@@ -418,9 +418,9 @@ export class CliWrapper {
         const cliEnvVars = EnvVarGenerators.getEnvVarsForCli(configfilePath);
         let shellPath = cliEnvVars.PATH;
         if (executable) {
-            shellPath = `${path.dirname(executable)}${path.delimiter}${
-                shellPath
-            }`;
+            shellPath = `${path.dirname(executable)}${
+                path.delimiter
+            }${shellPath}`;
         }
         const p = spawn(cmd[0], cmd.slice(1), {
             cwd: workspaceFolder.fsPath,
