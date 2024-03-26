@@ -1,0 +1,3 @@
+# Taken from https://github.com/databricks/cli/blob/main/libs/template/templates/default-python/template/%7B%7B.project_name%7D%7D/requirements-dev.txt.tmpl
+setuptools
+wheel

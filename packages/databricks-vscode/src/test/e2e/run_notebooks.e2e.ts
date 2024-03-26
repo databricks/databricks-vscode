@@ -2,13 +2,15 @@ import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
-    clearBundleConfig,
-    createBasicBundleConfig,
     dismissNotifications,
     openFile,
     waitForLogin,
     waitForWorkflowWebview,
-} from "./utils.ts";
+} from "./utils/commonUtils.ts";
+import {
+    getBasicBundleConfig,
+    writeRootBundleConfig,
+} from "./utils/dabsFixtures.ts";
 
 describe("Run notebooks", async function () {
     let projectDir: string;
@@ -64,17 +66,9 @@ describe("Run notebooks", async function () {
             })
         );
 
-        await createBasicBundleConfig();
+        await writeRootBundleConfig(getBasicBundleConfig(), projectDir);
         await waitForLogin("DEFAULT");
         await dismissNotifications();
-    });
-
-    after(async () => {
-        try {
-            await clearBundleConfig();
-        } catch (e) {
-            console.error(e);
-        }
     });
 
     it("should run a notebook.py file as a workflow", async () => {
