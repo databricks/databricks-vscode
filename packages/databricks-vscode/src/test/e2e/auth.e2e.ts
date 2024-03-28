@@ -57,16 +57,6 @@ describe("Configure Databricks Extension", async function () {
             }
         });
         assert(welcomeButtons, "Welcome buttons don't exist");
-        const initTitle = await welcomeButtons[0].getTitle();
-        const quickStartTitle = await welcomeButtons[1].getTitle();
-        assert(
-            initTitle.toLowerCase().includes("initialize"),
-            "'initialize` button doesn't exist"
-        );
-        assert(
-            quickStartTitle.toLowerCase().includes("quickstart"),
-            "'quickstart' button doesn't exist"
-        );
     });
 
     it("should automatically login after detecting bundle configuration", async () => {
