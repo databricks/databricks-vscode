@@ -6,7 +6,7 @@ import {
 } from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
 import {EventEmitter, Uri, window, Disposable} from "vscode";
-import {CliWrapper} from "../cli/CliWrapper";
+import {CliWrapper, ProcessError} from "../cli/CliWrapper";
 import {
     SyncDestinationMapper,
     RemoteUri,
@@ -207,6 +207,7 @@ export class ConnectionManager implements Disposable {
             }
             recordEvent({success: this.state === "CONNECTED", source});
         } catch (e) {
+            await this.disconnect();
             recordEvent({success: false, source});
             throw e;
         }
@@ -270,12 +271,14 @@ export class ConnectionManager implements Disposable {
             );
         } catch (e) {
             NamedLogger.getOrCreate("Extension").error(
-                `Can't connect to the workspace`,
+                `Error connecting to the workspace`,
                 e
             );
-            if (e instanceof Error) {
+            if (e instanceof ProcessError) {
+                e.showErrorMessage("Error connecting to the workspace.");
+            } else if (e instanceof Error) {
                 window.showErrorMessage(
-                    `Can't connect to the workspace: "${e.message}"."`
+                    `Error connecting to the workspace: "${e.message}"."`
                 );
             }
         }

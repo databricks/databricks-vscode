@@ -2,6 +2,7 @@ import {ThemeIcon, ThemeColor, TreeItemCollapsibleState, window} from "vscode";
 import {ConfigModel} from "../models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
+import {UrlError} from "../../utils/urlUtils";
 
 const TREE_ICON_ID = "TARGET";
 
@@ -51,27 +52,58 @@ export class BundleTargetComponent extends BaseComponent {
             ];
         }
 
-        const humanisedMode = humaniseMode(await this.configModel.get("mode"));
-        if (humanisedMode === undefined) {
-            window.showErrorMessage(
-                `Could not find "mode" for target ${target}`
+        try {
+            const humanisedMode = humaniseMode(
+                await this.configModel.get("mode")
             );
-            return [];
-        }
+            if (humanisedMode === undefined) {
+                window.showErrorMessage(
+                    `Could not find "mode" for target ${target}`
+                );
+                return [];
+            }
 
-        return [
-            {
-                label: "Target",
-                id: TREE_ICON_ID,
-                iconPath: new ThemeIcon(
-                    "target",
-                    new ThemeColor("debugIcon.startForeground")
-                ),
-                description: target,
-                contextValue: `databricks.configuration.target.${humanisedMode.toLocaleLowerCase()}}`,
-                collapsibleState: TreeItemCollapsibleState.Collapsed,
-            },
-        ];
+            if ((await this.configModel.get("host")) === undefined) {
+                throw new UrlError("Host not found");
+            }
+
+            return [
+                {
+                    label: "Target",
+                    id: TREE_ICON_ID,
+                    iconPath: new ThemeIcon(
+                        "target",
+                        new ThemeColor("debugIcon.startForeground")
+                    ),
+                    description: target,
+                    contextValue: `databricks.configuration.target.${humanisedMode.toLocaleLowerCase()}}`,
+                    collapsibleState: TreeItemCollapsibleState.Collapsed,
+                },
+            ];
+        } catch (e) {
+            if (e instanceof UrlError) {
+                const label = `Invalid host for target ${target}`;
+                return [
+                    {
+                        label: {label, highlights: [[0, label.length]]},
+                        id: TREE_ICON_ID,
+                        iconPath: new ThemeIcon(
+                            "target",
+                            new ThemeColor("debugIcon.startForeground")
+                        ),
+                        contextValue: `databricks.configuration.target.error`,
+                        collapsibleState: TreeItemCollapsibleState.None,
+                        command: {
+                            title: "Select a bundle target",
+                            command:
+                                "databricks.connection.bundle.selectTarget",
+                        },
+                    },
+                ];
+            }
+
+            throw e;
+        }
     }
 
     public async getChildren(

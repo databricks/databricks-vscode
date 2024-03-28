@@ -40,23 +40,20 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
         );
     }
 
-    @Mutex.synchronise("mutex")
-    public async setTarget(target: string | undefined) {
+    public setTarget(target: string | undefined) {
         if (this.target === target) {
             return;
         }
         this.target = target;
+        this.resetCache();
         this.authProvider = undefined;
-        await this.stateCache.refresh();
     }
 
-    @Mutex.synchronise("mutex")
-    public async setAuthProvider(authProvider: AuthProvider | undefined) {
+    public setAuthProvider(authProvider: AuthProvider | undefined) {
         if (
             !lodash.isEqual(this.authProvider?.toJSON(), authProvider?.toJSON())
         ) {
             this.authProvider = authProvider;
-            await this.stateCache.refresh();
         }
     }
 
@@ -80,6 +77,10 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
             remoteRootPath: validateOutput?.workspace?.file_path,
             ...validateOutput,
         };
+    }
+
+    public resetCache(): void {
+        this.stateCache.set({});
     }
 
     dispose() {

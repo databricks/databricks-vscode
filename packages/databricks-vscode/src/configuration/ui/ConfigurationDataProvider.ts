@@ -16,7 +16,8 @@ import {ClusterComponent} from "./ClusterComponent";
 import {SyncDestinationComponent} from "./SyncDestinationComponent";
 import {BundleProjectManager} from "../../bundle/BundleProjectManager";
 import {CliWrapper} from "../../cli/CliWrapper";
-
+import {logging} from "@databricks/databricks-sdk";
+import {Loggers} from "../../logger";
 /**
  * Data provider for the cluster tree view
  */
@@ -76,7 +77,15 @@ export class ConfigurationDataProvider
         if (!isInBundleProject) {
             return [];
         }
-        const children = this.components.map((c) => c.getChildren(parent));
+        const children = this.components.map((c) =>
+            c.getChildren(parent).catch((e) => {
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    `Error getting children for ${c.constructor.name}`,
+                    e
+                );
+                return [];
+            })
+        );
         return (await Promise.all(children)).flat();
     }
 }
