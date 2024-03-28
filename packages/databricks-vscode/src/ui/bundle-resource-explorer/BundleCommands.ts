@@ -1,4 +1,4 @@
-import {Disposable, ProgressLocation, window, commands} from "vscode";
+import {Disposable, ProgressLocation, window} from "vscode";
 import {BundleRemoteStateModel} from "../../bundle/models/BundleRemoteStateModel";
 import {onError} from "../../utils/onErrorDecorator";
 import {BundleResourceExplorerTreeNode} from "./types";
@@ -9,7 +9,8 @@ import {PipelineTreeNode} from "./PipelineTreeNode";
 import {JobTreeNode} from "./JobTreeNode";
 import {CustomWhenContext} from "../../vscode-objs/CustomWhenContext";
 import {Events, Telemetry} from "../../telemetry";
-
+import * as lodash from "lodash";
+import {ProcessError} from "../../cli/CliWrapper";
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
@@ -35,7 +36,17 @@ export class BundleCommands implements Disposable {
     ) {
         this.disposables.push(
             this.bundleValidateModel.onDidChange(async () => {
-                await this.refreshRemoteState();
+                // Only refresh if both the validate model and the remote state model are using the same target and auth provider
+                if (
+                    this.bundleRemoteStateModel.target ===
+                        this.bundleValidateModel.target &&
+                    lodash.isEqual(
+                        this.bundleRemoteStateModel.authProvider,
+                        this.bundleValidateModel.authProvider
+                    )
+                ) {
+                    await this.refreshRemoteState();
+                }
             })
         );
     }
@@ -55,13 +66,11 @@ export class BundleCommands implements Disposable {
             if (!(e instanceof Error)) {
                 throw e;
             }
-            window
-                .showErrorMessage("Error refreshing bundle state.", "Show Logs")
-                .then((choice) => {
-                    if (choice === "Show Logs") {
-                        commands.executeCommand("databricks.bundle.showLogs");
-                    }
-                });
+
+            if (e instanceof ProcessError) {
+                e.showErrorMessage("Error refreshing remote state.");
+            }
+
             throw e;
         }
     }
@@ -89,13 +98,9 @@ export class BundleCommands implements Disposable {
             if (!(e instanceof Error)) {
                 throw e;
             }
-            window
-                .showErrorMessage("Error deploying resource.", "Show Logs")
-                .then((choice) => {
-                    if (choice === "Show Logs") {
-                        commands.executeCommand("databricks.bundle.showLogs");
-                    }
-                });
+            if (e instanceof ProcessError) {
+                e.showErrorMessage("Error deploying bundle.");
+            }
             throw e;
         } finally {
             this.whenContext.setDeploymentState("idle");

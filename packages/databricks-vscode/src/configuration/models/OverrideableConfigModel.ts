@@ -60,10 +60,9 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         super();
     }
 
-    @Mutex.synchronise("mutex")
-    public async setTarget(target: string | undefined) {
+    public setTarget(target: string | undefined) {
         this.target = target;
-        await this.stateCache.refresh();
+        this.resetCache();
     }
 
     protected async readState() {
@@ -125,6 +124,10 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         data[key] = value;
         await mkdir(path.dirname(storageFile.fsPath), {recursive: true});
         await writeFile(storageFile.fsPath, JSON.stringify(data, null, 2));
+    }
+
+    public resetCache(): void {
+        this.stateCache.set({});
     }
 
     public dispose() {

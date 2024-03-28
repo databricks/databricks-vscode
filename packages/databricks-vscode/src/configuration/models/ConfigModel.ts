@@ -208,35 +208,42 @@ export class ConfigModel implements Disposable {
         ) {
             throw new Error(`Target '${target}' doesn't exist in the bundle`);
         }
-        await this.configsMutex.synchronise(async () => {
-            this._target = target;
-            await this.stateStorage.set("databricks.bundle.target", target);
-            // We want to wait for all the configs to be loaded before we emit any change events from the
-            // configStateCache.
-            await this.readStateMutex.synchronise(async () => {
+
+        try {
+            await this.configsMutex.synchronise(async () => {
+                this._target = target;
+                await this.stateStorage.set("databricks.bundle.target", target);
+                // We want to wait for all the configs to be loaded before we emit any change events from the
+                // configStateCache.
+                this.bundlePreValidateModel.setTarget(target);
+                this.bundleValidateModel.setTarget(target);
+                this.overrideableConfigModel.setTarget(target);
+                this.bundleRemoteStateModel.setTarget(target);
+                this.onDidChangeTargetEmitter.fire();
                 await Promise.all([
-                    this.bundlePreValidateModel.setTarget(target),
-                    this.bundleValidateModel.setTarget(target),
-                    this.overrideableConfigModel.setTarget(target),
-                    this.bundleRemoteStateModel.setTarget(target),
+                    this.bundlePreValidateModel.refresh(),
+                    this.bundleValidateModel.refresh(),
+                    this.overrideableConfigModel.refresh(),
+                    this.bundleRemoteStateModel.refresh(),
                 ]);
             });
-            this.onDidChangeTargetEmitter.fire();
-        });
-
-        await this.setAuthProvider(undefined);
-
-        this.vscodeWhenContext.isTargetSet(this._target !== undefined);
+        } finally {
+            this.configCache.set({});
+            await this.setAuthProvider(undefined);
+            this.vscodeWhenContext.isTargetSet(this._target !== undefined);
+        }
     }
 
     @Mutex.synchronise("configsMutex")
     public async setAuthProvider(authProvider: AuthProvider | undefined) {
         this._authProvider = authProvider;
-        await this.readStateMutex.synchronise(async () => {
-            await this.bundleValidateModel.setAuthProvider(authProvider);
-            await this.bundleRemoteStateModel.setAuthProvider(authProvider);
-        });
+        this.bundleRemoteStateModel.setAuthProvider(authProvider);
+        this.bundleValidateModel.setAuthProvider(authProvider);
         this.onDidChangeAuthProviderEmitter.fire();
+        await Promise.all([
+            this.bundleRemoteStateModel.refresh(),
+            this.bundleValidateModel.refresh(),
+        ]);
     }
 
     get authProvider(): AuthProvider | undefined {

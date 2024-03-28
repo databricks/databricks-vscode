@@ -12,7 +12,6 @@ export class EventEmitterWithErrorHandler<T> {
         const fn = (
             listener: (e: T) => Promise<unknown>,
             opts: {
-                thisArgs?: any;
                 disposables?: Disposable[];
                 onError?: OnErrorProps;
             } = {}
@@ -21,7 +20,7 @@ export class EventEmitterWithErrorHandler<T> {
 
             return this._event(
                 withOnErrorHandler(listener, opts.onError),
-                opts.thisArgs,
+                undefined,
                 opts.disposables
             );
         };

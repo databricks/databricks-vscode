@@ -97,23 +97,20 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         );
     }
 
-    @Mutex.synchronise("mutex")
-    public async setTarget(target: string | undefined) {
+    public setTarget(target: string | undefined) {
         if (this.target === target) {
             return;
         }
         this.target = target;
+        this.resetCache();
         this.authProvider = undefined;
-        await this.stateCache.refresh();
     }
 
-    @Mutex.synchronise("mutex")
-    public async setAuthProvider(authProvider: AuthProvider | undefined) {
+    public setAuthProvider(authProvider: AuthProvider | undefined) {
         if (
             !lodash.isEqual(this.authProvider?.toJSON(), authProvider?.toJSON())
         ) {
             this.authProvider = authProvider;
-            await this.stateCache.refresh();
         }
     }
 
@@ -144,6 +141,10 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         return key.split(".").reduce((prev: any, k) => {
             return prev[k];
         }, resources);
+    }
+
+    public resetCache(): void {
+        this.stateCache.set({});
     }
 
     dispose() {

@@ -48,6 +48,11 @@ export abstract class BaseModelWithStateCache<StateType extends object>
         }>;
     }
 
+    public refresh() {
+        this.stateCache.refresh();
+    }
+
+    public abstract resetCache(): void;
     dispose() {
         this.disposables.forEach((i) => i.dispose());
     }

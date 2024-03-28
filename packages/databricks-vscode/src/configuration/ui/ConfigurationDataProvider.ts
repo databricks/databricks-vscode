@@ -15,7 +15,9 @@ import {AuthTypeComponent} from "./AuthTypeComponent";
 import {ClusterComponent} from "./ClusterComponent";
 import {SyncDestinationComponent} from "./SyncDestinationComponent";
 import {BundleProjectManager} from "../../bundle/BundleProjectManager";
-
+import {CliWrapper} from "../../cli/CliWrapper";
+import {logging} from "@databricks/databricks-sdk";
+import {Loggers} from "../../logger";
 /**
  * Data provider for the cluster tree view
  */
@@ -32,14 +34,19 @@ export class ConfigurationDataProvider
     private disposables: Array<Disposable> = [];
     private components: Array<BaseComponent> = [
         new BundleTargetComponent(this.configModel),
-        new AuthTypeComponent(this.connectionManager, this.configModel),
+        new AuthTypeComponent(
+            this.connectionManager,
+            this.configModel,
+            this.cli
+        ),
         new ClusterComponent(this.connectionManager, this.configModel),
         new SyncDestinationComponent(this.connectionManager, this.configModel),
     ];
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly bundleProjectManager: BundleProjectManager,
-        private readonly configModel: ConfigModel
+        private readonly configModel: ConfigModel,
+        private readonly cli: CliWrapper
     ) {
         this.disposables.push(
             this.bundleProjectManager.onDidChangeStatus(async () => {
@@ -70,7 +77,15 @@ export class ConfigurationDataProvider
         if (!isInBundleProject) {
             return [];
         }
-        const children = this.components.map((c) => c.getChildren(parent));
+        const children = this.components.map((c) =>
+            c.getChildren(parent).catch((e) => {
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    `Error getting children for ${c.constructor.name}`,
+                    e
+                );
+                return [];
+            })
+        );
         return (await Promise.all(children)).flat();
     }
 }
