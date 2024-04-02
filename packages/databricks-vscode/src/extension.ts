@@ -179,6 +179,10 @@ export async function activate(
         `${path.delimiter}${context.asAbsolutePath("./bin")}`
     );
 
+    // We always use bundled terraform and databricks provider.
+    // Updating environment collection means that the variables will be set in all terminals.
+    // If users use different CLI version in their terminal it will only pick the variables if
+    // the dependency versions (that we set together with bin and config paths) match the internal versions of the CLI.
     const cliDeps = getCLIDependenciesEnvVars(context);
     for (const [key, value] of Object.entries(cliDeps)) {
         logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
