@@ -440,7 +440,7 @@ export async function listProfiles(cliWrapper: CliWrapper) {
         async () => {
             const profiles = (
                 await cliWrapper.listProfiles(
-                    workspaceConfigs.databrickscfgLocation
+                    FileUtils.getDatabricksConfigFilePath().fsPath
                 )
             ).filter((profile) => {
                 try {
@@ -453,6 +453,12 @@ export async function listProfiles(cliWrapper: CliWrapper) {
 
             return profiles;
         }
+    );
+}
+
+export async function getProfilesForHost(host: URL, cliWrapper: CliWrapper) {
+    return (await listProfiles(cliWrapper)).filter(
+        (profile) => profile.host?.toString() === host.toString()
     );
 }
 

@@ -44,6 +44,20 @@ export class ProcessError extends Error {
     ) {
         super(message);
     }
+
+    showErrorMessage(prefix?: string) {
+        window
+            .showErrorMessage(
+                (prefix?.trimEnd().concat(" ") ?? "") +
+                    `Error executing Databricks CLI command.`,
+                "Show Logs"
+            )
+            .then((choice) => {
+                if (choice === "Show Logs") {
+                    commands.executeCommand("databricks.bundle.showLogs");
+                }
+            });
+    }
 }
 
 async function waitForProcess(

@@ -3,6 +3,8 @@ import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {ThemeIcon, ThemeColor} from "vscode";
+import {getProfilesForHost} from "../LoginWizard";
+import {CliWrapper} from "../../cli/CliWrapper";
 
 export const AUTH_TYPE_SWITCH_ID = "AUTH-TYPE";
 export const AUTH_TYPE_LOGIN_ID = "LOGIN";
@@ -14,7 +16,8 @@ function getContextValue(key: string) {
 export class AuthTypeComponent extends BaseComponent {
     constructor(
         private readonly connectionManager: ConnectionManager,
-        private readonly configModel: ConfigModel
+        private readonly configModel: ConfigModel,
+        private readonly cli: CliWrapper
     ) {
         super();
         this.disposables.push(
@@ -28,6 +31,10 @@ export class AuthTypeComponent extends BaseComponent {
     }
 
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
+        if (this.configModel.target === undefined) {
+            return [];
+        }
+
         const authProvider =
             this.connectionManager.databricksWorkspace?.authProvider;
 
@@ -41,10 +48,20 @@ export class AuthTypeComponent extends BaseComponent {
         }
 
         if (authProvider === undefined) {
-            const label = "Login to Databricks";
+            const host = await this.configModel.get("host");
+            if (host === undefined) {
+                return [];
+            }
+
+            const profiles = await getProfilesForHost(host, this.cli);
+            let label = "Login to Databricks";
+            if (profiles.length > 1) {
+                label =
+                    "Multiple login profiles available. Click to select a profile.";
+            }
             return [
                 {
-                    label: {label},
+                    label: {label, highlights: [[0, label.length]]},
                     iconPath: new ThemeIcon(
                         "account",
                         new ThemeColor("notificationsErrorIcon.foreground")

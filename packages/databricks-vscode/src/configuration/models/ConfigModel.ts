@@ -65,6 +65,10 @@ function selectTopLevelKeys(
 export class ConfigModel implements Disposable {
     private disposables: Disposable[] = [];
 
+    /**
+     * Used to protect local configs (target, authProvider, configCache) from being updated
+     * concurrently.
+     */
     private readonly configsMutex = new Mutex();
     /** Used to lock state updates until certain actions complete. Aquire this always
      * after configsMutex to avoid deadlocks.
@@ -74,6 +78,7 @@ export class ConfigModel implements Disposable {
         this.readState.bind(this)
     );
 
+    @onError({throw: false})
     @Mutex.synchronise("readStateMutex")
     async readState() {
         if (this.target === undefined) {
@@ -208,35 +213,44 @@ export class ConfigModel implements Disposable {
         ) {
             throw new Error(`Target '${target}' doesn't exist in the bundle`);
         }
-        await this.configsMutex.synchronise(async () => {
-            this._target = target;
-            await this.stateStorage.set("databricks.bundle.target", target);
-            // We want to wait for all the configs to be loaded before we emit any change events from the
-            // configStateCache.
-            await this.readStateMutex.synchronise(async () => {
+
+        try {
+            await this.configsMutex.synchronise(async () => {
+                this._target = target;
+                await this.stateStorage.set("databricks.bundle.target", target);
+                // We want to wait for all the configs to be loaded before we emit any change events from the
+                // configStateCache.
+                this.bundlePreValidateModel.setTarget(target);
+                this.bundleValidateModel.setTarget(target);
+                this.overrideableConfigModel.setTarget(target);
+                this.bundleRemoteStateModel.setTarget(target);
                 await Promise.all([
-                    this.bundlePreValidateModel.setTarget(target),
-                    this.bundleValidateModel.setTarget(target),
-                    this.overrideableConfigModel.setTarget(target),
-                    this.bundleRemoteStateModel.setTarget(target),
+                    this.bundlePreValidateModel.refresh(),
+                    this.bundleValidateModel.refresh(),
+                    this.overrideableConfigModel.refresh(),
+                    this.bundleRemoteStateModel.refresh(),
                 ]);
             });
+        } catch (e) {
+            this.configCache.set({}); // clear the cache
+            throw e;
+        } finally {
             this.onDidChangeTargetEmitter.fire();
-        });
-
-        await this.setAuthProvider(undefined);
-
-        this.vscodeWhenContext.isTargetSet(this._target !== undefined);
+            await this.setAuthProvider(undefined);
+            this.vscodeWhenContext.isTargetSet(this._target !== undefined);
+        }
     }
 
     @Mutex.synchronise("configsMutex")
     public async setAuthProvider(authProvider: AuthProvider | undefined) {
         this._authProvider = authProvider;
-        await this.readStateMutex.synchronise(async () => {
-            await this.bundleValidateModel.setAuthProvider(authProvider);
-            await this.bundleRemoteStateModel.setAuthProvider(authProvider);
-        });
+        this.bundleRemoteStateModel.setAuthProvider(authProvider);
+        this.bundleValidateModel.setAuthProvider(authProvider);
         this.onDidChangeAuthProviderEmitter.fire();
+        await Promise.all([
+            this.bundleRemoteStateModel.refresh(),
+            this.bundleValidateModel.refresh(),
+        ]);
     }
 
     get authProvider(): AuthProvider | undefined {
