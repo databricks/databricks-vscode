@@ -312,7 +312,7 @@
                 },
                 {
                     "id": "dabsVariableView",
-                    "name": "Bundle Variable View",
+                    "name": "Bundle Variables View",
                     "visibility": "visible",
                     "when": "databricks.context.bundle.isTargetSet"
                 },
