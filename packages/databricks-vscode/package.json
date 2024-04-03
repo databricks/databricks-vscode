@@ -284,7 +284,7 @@
             },
             {
                 "command": "databricks.bundle.variable.reset",
-                "title": "Reset to default value",
+                "title": "Reset to default values",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
                 "category": "Databricks"
             }
