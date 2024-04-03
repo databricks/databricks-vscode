@@ -1,43 +1,24 @@
 import assert from "node:assert";
-import * as fs from "fs/promises";
 import {
     dismissNotifications,
     waitForInput,
     getViewSection,
     waitForLogin,
-    clearBundleConfig,
-    createBasicBundleConfig,
-} from "./utils.ts";
+} from "./utils/commonUtils.ts";
 import {CustomTreeSection} from "wdio-vscode-service";
-
-let cfgPath: string;
-let cfgContent: Buffer;
+import {
+    getBasicBundleConfig,
+    writeRootBundleConfig,
+} from "./utils/dabsFixtures.ts";
 
 describe("Configure Databricks Extension", async function () {
     this.timeout(3 * 60 * 1000);
 
-    before(async function () {
-        assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
+    it("should open VSCode and dismiss notifications", async function () {
         assert(
             process.env.DATABRICKS_CONFIG_FILE,
             "DATABRICKS_CONFIG_FILE doesn't exist"
         );
-        cfgPath = process.env.DATABRICKS_CONFIG_FILE;
-        cfgContent = await fs.readFile(cfgPath);
-    });
-
-    after(async function () {
-        try {
-            await clearBundleConfig();
-            if (cfgContent) {
-                await fs.writeFile(cfgPath, cfgContent);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    });
-
-    it("should open VSCode and dismiss notifications", async function () {
         const workbench = await browser.getWorkbench();
         const title = await workbench.getTitleBar().getTitle();
         assert(
@@ -60,7 +41,11 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should automatically login after detecting bundle configuration", async () => {
-        await createBasicBundleConfig();
+        assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
+        await writeRootBundleConfig(
+            getBasicBundleConfig(),
+            process.env.WORKSPACE_PATH
+        );
         await waitForLogin("DEFAULT");
     });
 

@@ -33,7 +33,7 @@ export class BundleProjectManager {
     private projectServicesReady = false;
     private projectServicesMutex = new Mutex();
 
-    private subProjects?: {relative: Uri; absolute: Uri}[];
+    private subProjects?: {relative: string; absolute: Uri}[];
     private legacyProjectConfig?: ProjectConfigFile;
 
     constructor(

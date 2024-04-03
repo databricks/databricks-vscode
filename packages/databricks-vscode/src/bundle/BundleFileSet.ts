@@ -30,9 +30,7 @@ export async function getSubProjects(root: Uri) {
         .map((rootFile) => {
             const dirname = path.dirname(path.normalize(rootFile));
             const absolute = Uri.file(dirname);
-            const relative = Uri.file(
-                absolute.fsPath.replace(normalizedRoot, "")
-            );
+            const relative = path.relative(normalizedRoot, dirname);
             return {absolute, relative};
         })
         .filter(({absolute}) => {
