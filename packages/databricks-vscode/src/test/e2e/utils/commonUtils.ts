@@ -14,7 +14,7 @@ const ViewSectionTypes = [
     "CLUSTERS",
     "CONFIGURATION",
     "WORKSPACE EXPLORER",
-    "DABS RESOURCE EXPLORER",
+    "BUNDLE RESOURCE EXPLORER",
 ] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
 

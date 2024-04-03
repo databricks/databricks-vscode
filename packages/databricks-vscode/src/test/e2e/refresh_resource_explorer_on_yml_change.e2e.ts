@@ -114,7 +114,7 @@ describe("Automatically refresh resource explorer", async function () {
     });
 
     it("should find resource explorer view", async function () {
-        const section = await getViewSection("DABS RESOURCE EXPLORER");
+        const section = await getViewSection("BUNDLE RESOURCE EXPLORER");
         assert(section);
         resourceExplorerView = section as CustomTreeSection;
     });

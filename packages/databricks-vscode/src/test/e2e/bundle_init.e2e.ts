@@ -12,7 +12,7 @@ import {Workbench, sleep} from "wdio-vscode-service";
 import {tmpdir} from "os";
 import {Key} from "webdriverio";
 
-describe("Init and deploy", async function () {
+describe("Bundle Init", async function () {
     let workbench: Workbench;
     let vscodeWorkspaceRoot: string;
     let projectName: string;
@@ -123,7 +123,7 @@ describe("Init and deploy", async function () {
     });
 
     it("should find resource explorer view", async function () {
-        const section = await getViewSection("DABS RESOURCE EXPLORER");
+        const section = await getViewSection("BUNDLE RESOURCE EXPLORER");
         assert(section);
         await waitForTreeItems(section, 20_000);
     });
