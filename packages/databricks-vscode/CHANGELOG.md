@@ -1,3 +1,17 @@
+# Release: v2.0.2-preview
+
+## packages/databricks-vscode
+
+## (2024-04-03)
+
+-   Add currently selected python environment to path for wheel builds (#1159) ([2128013](https://github.com/databricks/databricks-vscode/commit/2128013)), closes [#1159](https://github.com/databricks/databricks-vscode/issues/1159)
+-   Add extension name to the private preview terms and conditions popup (#1144) ([5370f04](https://github.com/databricks/databricks-vscode/commit/5370f04)), closes [#1144](https://github.com/databricks/databricks-vscode/issues/1144)
+-   Bump databricks cli to v0.216.0 (#1166) ([fdd0a17](https://github.com/databricks/databricks-vscode/commit/fdd0a17)), closes [#1166](https://github.com/databricks/databricks-vscode/issues/1166)
+-   Fixes to initialisation UI (#1160) ([77267f4](https://github.com/databricks/databricks-vscode/commit/77267f4)), closes [#1160](https://github.com/databricks/databricks-vscode/issues/1160)
+-   Ignore stderr for validate and summary commands (#1151) ([3780ec4](https://github.com/databricks/databricks-vscode/commit/3780ec4)), closes [#1151](https://github.com/databricks/databricks-vscode/issues/1151)
+-   Rename some things (#1146) ([450b002](https://github.com/databricks/databricks-vscode/commit/450b002)), closes [#1146](https://github.com/databricks/databricks-vscode/issues/1146)
+-   Use packaged CLI if a cli path is not specified in .databrickscfg profile (#1150) ([2cff68e](https://github.com/databricks/databricks-vscode/commit/2cff68e)), closes [#1150](https://github.com/databricks/databricks-vscode/issues/1150)
+
 # Release: v2.0.1-preview
 
 ## packages/databricks-vscode
