@@ -65,6 +65,10 @@ function selectTopLevelKeys(
 export class ConfigModel implements Disposable {
     private disposables: Disposable[] = [];
 
+    /**
+     * Used to protect local configs (target, authProvider, configCache) from being updated
+     * concurrently.
+     */
     private readonly configsMutex = new Mutex();
     /** Used to lock state updates until certain actions complete. Aquire this always
      * after configsMutex to avoid deadlocks.
@@ -74,6 +78,7 @@ export class ConfigModel implements Disposable {
         this.readState.bind(this)
     );
 
+    @onError({throw: false})
     @Mutex.synchronise("readStateMutex")
     async readState() {
         if (this.target === undefined) {
@@ -219,7 +224,6 @@ export class ConfigModel implements Disposable {
                 this.bundleValidateModel.setTarget(target);
                 this.overrideableConfigModel.setTarget(target);
                 this.bundleRemoteStateModel.setTarget(target);
-                this.onDidChangeTargetEmitter.fire();
                 await Promise.all([
                     this.bundlePreValidateModel.refresh(),
                     this.bundleValidateModel.refresh(),
@@ -227,8 +231,11 @@ export class ConfigModel implements Disposable {
                     this.bundleRemoteStateModel.refresh(),
                 ]);
             });
+        } catch (e) {
+            this.configCache.set({}); // clear the cache
+            throw e;
         } finally {
-            this.configCache.set({});
+            this.onDidChangeTargetEmitter.fire();
             await this.setAuthProvider(undefined);
             this.vscodeWhenContext.isTargetSet(this._target !== undefined);
         }
