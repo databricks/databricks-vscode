@@ -21,7 +21,7 @@ function getTerraformCliConfig(mirrorPath: string) {
     return `disable_checkpoint = true
 provider_installation {
     filesystem_mirror {
-        path = "${mirrorPath}"
+        path = "${mirrorPath.replace(/\\/g, "\\\\")}"
     }
 }`;
 }
