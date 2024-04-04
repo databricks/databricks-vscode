@@ -479,7 +479,8 @@ export async function activate(
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         bundleProjectManager,
-        configModel
+        configModel,
+        cli
     );
 
     const connectionCommands = new ConnectionCommands(
