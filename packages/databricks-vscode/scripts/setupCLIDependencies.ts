@@ -72,8 +72,9 @@ async function main() {
         "sha256sum check failed"
     );
     spawn("unzip", ["-q", terraformZip], {cwd: tempDir});
-    const terraformBinRelPath = path.join(depsDir, "terraform");
-    await cp(`${tempDir}/terraform`, terraformBinRelPath);
+    const fileExt = arch.includes("windows") ? ".exe" : "";
+    const terraformBinRelPath = path.join(depsDir, `terraform${fileExt}`);
+    await cp(`${tempDir}/terraform${fileExt}`, terraformBinRelPath);
     // Set the path to the terraform bin, the extension will use it to setup the environment variables
     const execRelPath = terraformBinRelPath;
 
