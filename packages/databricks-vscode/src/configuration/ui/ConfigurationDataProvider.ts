@@ -18,6 +18,10 @@ import {BundleProjectManager} from "../../bundle/BundleProjectManager";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
+import {FeatureManager} from "../../feature-manager/FeatureManager";
+import {EnvironmentComponent} from "./EnvironmentComponent";
+import {MsPythonExtensionWrapper} from "../../language/MsPythonExtensionWrapper";
+
 /**
  * Data provider for the cluster tree view
  */
@@ -33,6 +37,7 @@ export class ConfigurationDataProvider
 
     private disposables: Array<Disposable> = [];
     private components: Array<BaseComponent> = [
+        new EnvironmentComponent(this.pythonExtension, this.featureManager),
         new BundleTargetComponent(this.configModel),
         new AuthTypeComponent(
             this.connectionManager,
@@ -46,7 +51,9 @@ export class ConfigurationDataProvider
         private readonly connectionManager: ConnectionManager,
         private readonly bundleProjectManager: BundleProjectManager,
         private readonly configModel: ConfigModel,
-        private readonly cli: CliWrapper
+        private readonly cli: CliWrapper,
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly featureManager: FeatureManager
     ) {
         this.disposables.push(
             this.bundleProjectManager.onDidChangeStatus(async () => {

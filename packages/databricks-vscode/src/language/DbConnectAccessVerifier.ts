@@ -132,13 +132,15 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         if (!executable) {
             return this.rejectStep(
                 "checkDbConnectInstall",
-                "No python executable found."
+                "No python executable found.",
+                async () => {
+                    await this.pythonExtension.selectPythonInterpreter();
+                }
             );
         }
         const env = await this.pythonExtension.pythonEnvironment;
         if (
-            env &&
-            env.version &&
+            env?.version &&
             !(
                 env.version.major > 3 ||
                 (env.version.major === 3 && env.version.minor >= 10)
@@ -150,7 +152,19 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                     env.version.major,
                     env.version.minor,
                     env.version.micro,
-                ].join(".")}.`
+                ].join(".")}.`,
+                async () => {
+                    await this.pythonExtension.selectPythonInterpreter();
+                }
+            );
+        }
+        if (!env?.environment) {
+            return this.rejectStep(
+                "checkDbConnectInstall",
+                "No active virtual environment.",
+                async () => {
+                    await this.pythonExtension.createPythonEnvironment();
+                }
             );
         }
         try {

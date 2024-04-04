@@ -87,7 +87,10 @@ export class RunCommands {
             "debugging.dbconnect"
         );
         if (!featureState.avaliable) {
-            featureState.action?.();
+            if (featureState.reason) {
+                window.showErrorMessage(featureState.reason);
+            }
+            await featureState.action?.();
             return false;
         }
 

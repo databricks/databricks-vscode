@@ -450,7 +450,9 @@ export async function activate(
         connectionManager,
         bundleProjectManager,
         configModel,
-        cli
+        cli,
+        pythonExtensionWrapper,
+        featureManager
     );
 
     const connectionCommands = new ConnectionCommands(
