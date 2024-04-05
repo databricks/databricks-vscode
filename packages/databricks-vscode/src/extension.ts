@@ -59,7 +59,7 @@ import {BundleCommands} from "./ui/bundle-resource-explorer/BundleCommands";
 import {BundleRunTerminalManager} from "./bundle/run/BundleRunTerminalManager";
 import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
-import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
+import {TreeItemDecorationProvider} from "./ui/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 import {isIntegrationTest} from "./utils/developmentUtils";

@@ -11,7 +11,7 @@ import {
 import {ConfigurationTreeItem} from "./types";
 import {Cluster} from "../../sdk-extensions";
 import {onError} from "../../utils/onErrorDecorator";
-import {DecorationUtils} from "../bundle-resource-explorer/utils";
+import {DecorationUtils} from "../utils";
 import {LabelUtils} from "../utils";
 
 const TREE_ICON_ID = "CLUSTER";
