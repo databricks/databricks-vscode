@@ -6,7 +6,7 @@
     "license": "LicenseRef-LICENSE",
     "version": "2.0.2",
     "engines": {
-        "vscode": "^1.86.0"
+        "vscode": "^1.88.0"
     },
     "categories": [
         "Data Science",
