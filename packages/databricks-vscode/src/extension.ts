@@ -14,7 +14,7 @@ import {ConnectionManager} from "./configuration/ConnectionManager";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
-import {ConfigurationDataProvider} from "./configuration/ui/ConfigurationDataProvider";
+import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
@@ -63,6 +63,7 @@ import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/Decorati
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 import {isIntegrationTest} from "./utils/developmentUtils";
+import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 
 const customWhenContext = new CustomWhenContext();
 
@@ -452,6 +453,14 @@ export async function activate(
         configModel,
         cli
     );
+    const configurationView = window.createTreeView("configurationView", {
+        treeDataProvider: configurationDataProvider,
+    });
+
+    const configurationTreeViewManager = new ConfigurationTreeViewManager(
+        configurationView,
+        configModel
+    );
 
     const connectionCommands = new ConnectionCommands(
         workspaceFsCommands,
@@ -463,11 +472,8 @@ export async function activate(
 
     context.subscriptions.push(
         configurationDataProvider,
-
-        window.registerTreeDataProvider(
-            "configurationView",
-            configurationDataProvider
-        ),
+        configurationView,
+        configurationTreeViewManager,
         telemetry.registerCommand(
             "databricks.connection.bundle.selectTarget",
             connectionCommands.selectTarget,

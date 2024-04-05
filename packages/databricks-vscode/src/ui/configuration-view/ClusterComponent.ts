@@ -1,18 +1,22 @@
-import {ConfigModel} from "../models/ConfigModel";
-import {ConnectionManager} from "../ConnectionManager";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
+import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {
     TreeItem,
     TreeItemCollapsibleState,
     ThemeIcon,
     ThemeColor,
+    TreeItemCheckboxState,
 } from "vscode";
 import {ConfigurationTreeItem} from "./types";
 import {Cluster} from "../../sdk-extensions";
 import {onError} from "../../utils/onErrorDecorator";
-import {DecorationUtils} from "../../ui/bundle-resource-explorer/utils";
+import {DecorationUtils} from "../bundle-resource-explorer/utils";
+import {LabelUtils} from "../utils";
 
 const TREE_ICON_ID = "CLUSTER";
+export const CLUSTER_OVERRIDE_CHECKBOX_ID = "OVERRIDE_CLUSTER";
+
 function getContextValue(key: string) {
     return `databricks.configuration.cluster.${key}`;
 }
@@ -80,6 +84,9 @@ export class ClusterComponent extends BaseComponent {
             }),
             this.connectionManager.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
+            }),
+            this.configModel.onDidChangeKey("useClusterOverride")(() => {
+                this.onDidChangeEmitter.fire();
             })
         );
     }
@@ -91,13 +98,9 @@ export class ClusterComponent extends BaseComponent {
         if (config === undefined) {
             // Cluster is not set in bundle and override
             // We are logged in -> Select cluster prompt
-            const label = "Select a cluster";
             return [
                 {
-                    label: {
-                        label,
-                        highlights: [[0, label.length]],
-                    },
+                    label: LabelUtils.highlightedLabel("Select a cluster"),
                     collapsibleState: TreeItemCollapsibleState.Expanded,
                     contextValue: getContextValue("none"),
                     iconPath: new ThemeIcon(
@@ -122,6 +125,11 @@ export class ClusterComponent extends BaseComponent {
         }
         const {icon, contextValue} = getTreeItemsForClusterState(cluster);
         const url = await cluster.url;
+        const useClusterOverride =
+            await this.configModel.get("useClusterOverride");
+        const overrideClusterLabel = "Override Jobs cluster in bundle";
+        const clusterOverrideTooltip =
+            "Use the selected cluster for all jobs in the bundle";
         return [
             {
                 label: "Cluster",
@@ -138,6 +146,20 @@ export class ClusterComponent extends BaseComponent {
                 iconPath: icon,
                 id: TREE_ICON_ID,
                 url,
+            },
+            {
+                label: useClusterOverride
+                    ? LabelUtils.highlightedLabel(overrideClusterLabel)
+                    : overrideClusterLabel,
+                checkboxState: {
+                    state: useClusterOverride
+                        ? TreeItemCheckboxState.Checked
+                        : TreeItemCheckboxState.Unchecked,
+                    tooltip: clusterOverrideTooltip,
+                },
+                tooltip: clusterOverrideTooltip,
+                id: CLUSTER_OVERRIDE_CHECKBOX_ID,
+                collapsibleState: TreeItemCollapsibleState.None,
             },
         ];
     }

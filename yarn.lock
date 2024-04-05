@@ -332,7 +332,7 @@ __metadata:
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
     "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz"
-    "@types/vscode": ^1.85.0
+    "@types/vscode": ^1.88.0
     databricks: "workspace:^"
     eslint: ^8.55.0
     prettier: ^3.1.1
@@ -1603,10 +1603,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/vscode@npm:^1.83.0, @types/vscode@npm:^1.85.0":
-  version: 1.85.0
-  resolution: "@types/vscode@npm:1.85.0"
-  checksum: d7934e55b8606d0df0ac60e6ce0877d3edd513b5bc150e06fababd888f328a6ba87e3eef71930fc8eae1bcce60ec6106dae89d149905cdad613e84f48a6d003e
+"@types/vscode@npm:^1.88.0":
+  version: 1.88.0
+  resolution: "@types/vscode@npm:1.88.0"
+  checksum: 5f42f07e42b6fa78b1bcb64e280c25cf03b8073e39962dc5db4109b8e88710979d15ab415920d1e52b26b86d3946282ba763fd6df20a31ba1ff97738806a9379
   languageName: node
   linkType: hard
 
@@ -3692,7 +3692,7 @@ __metadata:
     "@types/sinonjs__fake-timers": ^8.1.5
     "@types/tmp": ^0.2.6
     "@types/triple-beam": ^1.3.5
-    "@types/vscode": ^1.83.0
+    "@types/vscode": ^1.88.0
     "@types/yargs": ^17.0.32
     "@typescript-eslint/eslint-plugin": ^6.14.0
     "@typescript-eslint/parser": ^6.14.0

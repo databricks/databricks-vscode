@@ -1,9 +1,9 @@
-import {ConfigModel} from "../models/ConfigModel";
-import {ConnectionManager} from "../ConnectionManager";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
+import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {TreeItemCollapsibleState, ThemeIcon, ThemeColor} from "vscode";
-import {DecorationUtils} from "../../ui/bundle-resource-explorer/utils";
+import {DecorationUtils} from "../bundle-resource-explorer/utils";
 
 const TREE_ICON_ID = "WORKSPACE";
 

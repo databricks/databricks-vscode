@@ -1,8 +1,9 @@
 import {ThemeIcon, ThemeColor, TreeItemCollapsibleState, window} from "vscode";
-import {ConfigModel} from "../models/ConfigModel";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {UrlError} from "../../utils/urlUtils";
+import {LabelUtils} from "../utils";
 
 const TREE_ICON_ID = "TARGET";
 
@@ -30,13 +31,11 @@ export class BundleTargetComponent extends BaseComponent {
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
         const target = this.configModel.target;
         if (target === undefined) {
-            const label = "Select a bundle target";
             return [
                 {
-                    label: {
-                        label,
-                        highlights: [[0, label.length]],
-                    },
+                    label: LabelUtils.highlightedLabel(
+                        "Select a bundle target"
+                    ),
                     id: TREE_ICON_ID,
                     iconPath: new ThemeIcon(
                         "plug",
@@ -82,10 +81,11 @@ export class BundleTargetComponent extends BaseComponent {
             ];
         } catch (e) {
             if (e instanceof UrlError) {
-                const label = `Invalid host for target ${target}`;
                 return [
                     {
-                        label: {label, highlights: [[0, label.length]]},
+                        label: LabelUtils.highlightedLabel(
+                            `Invalid host for target ${target}`
+                        ),
                         id: TREE_ICON_ID,
                         iconPath: new ThemeIcon(
                             "target",
