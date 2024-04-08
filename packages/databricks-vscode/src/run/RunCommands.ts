@@ -1,4 +1,11 @@
-import {debug, ExtensionContext, Uri, window, WorkspaceFolder} from "vscode";
+import {
+    commands,
+    debug,
+    ExtensionContext,
+    Uri,
+    window,
+    WorkspaceFolder,
+} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {FileUtils} from "../utils";
 import {LocalUri} from "../sync/SyncDestination";
@@ -84,17 +91,12 @@ export class RunCommands {
 
     private async checkDbconnectEnabled() {
         const featureState = await this.featureManager.isEnabled(
-            "debugging.dbconnect"
+            "environment.dependencies"
         );
-        if (!featureState.avaliable) {
-            if (featureState.reason) {
-                window.showErrorMessage(featureState.reason);
-            }
-            await featureState.action?.();
-            return false;
+        if (featureState.avaliable) {
+            return true;
         }
-
-        return true;
+        return await commands.executeCommand("databricks.environment.setup");
     }
 
     private getTargetResource(resource?: Uri): Uri | undefined {

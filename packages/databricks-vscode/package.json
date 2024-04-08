@@ -729,7 +729,6 @@
                         "default": [],
                         "items": {
                             "enum": [
-                                "notebooks.dbconnect",
                                 "views.cluster",
                                 "views.workspace"
                             ],

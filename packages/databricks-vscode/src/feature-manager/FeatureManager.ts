@@ -7,17 +7,21 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 
 export type FeatureEnableAction = (...args: any[]) => Promise<void>;
-export type FeatureId = "debugging.dbconnect" | "notebooks.dbconnect";
+export type FeatureId = "environment.dependencies";
 /**
  * The state of a feature.
  * *available*: If feature is enabled.
- * *reason*: If feature is disabled, this is the human readable reason for feature being disabled.
+ * *stepId*: If feature is disabled, this is the id of the first failed validation step.
+ * *title*: If feature is disabled, this is the human readable title of the validation error.
+ * *message*: If feature is disabled, this is the human readable message of the validation error.
  * *action*: If feature is disabled, this optionally contains the function which tries to solve the issue
  * and enable the feature.
  */
 export interface FeatureState {
     avaliable: boolean;
-    reason?: string;
+    stepId?: string;
+    title?: string;
+    message?: string;
     action?: FeatureEnableAction;
     isDisabledByFf?: boolean;
     // Dirty is expected to only ever be et by featureManager.
@@ -109,7 +113,7 @@ export class FeatureManager<T = FeatureId> implements Disposable {
         if (!feature) {
             return {
                 avaliable: false,
-                reason: `Feature ${id} has not been registered`,
+                message: `Feature ${id} has not been registered`,
             };
         }
         await feature.mutex.wait();

@@ -5,7 +5,7 @@ import {StateStorage} from "../vscode-objs/StateStorage";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {DATABRICKS_CONNECT_VERSION} from "../utils/constants";
 
-export class DbConnectInstallPrompt implements Disposable {
+export class EnvironmentDependenciesInstallPrompt implements Disposable {
     private disposables: Disposable[] = [];
 
     constructor(

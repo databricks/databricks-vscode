@@ -6,17 +6,17 @@ import {MultiStepAccessVerifier} from "../feature-manager/MultiStepAccessVerfier
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
-import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
+import {EnvironmentDependenciesInstallPrompt} from "./EnvironmentDependenciesInstallPrompt";
 import {FeatureState} from "../feature-manager/FeatureManager";
 import {DATABRICKS_CONNECT_VERSION} from "../utils/constants";
 
-export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
+export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly dbConnectInstallPrompt: DbConnectInstallPrompt
+        private readonly installPrompt: EnvironmentDependenciesInstallPrompt
     ) {
-        super(["checkCluster", "checkWorkspaceHasUc", "checkDbConnectInstall"]);
+        super(["checkCluster", "checkWorkspaceHasUc", "checkLocalEnvironment"]);
         this.disposables.push(
             this.connectionManager.onDidChangeCluster((cluster) => {
                 if (this.connectionManager.state !== "CONNECTED") {
@@ -31,10 +31,10 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                 this.checkWorkspaceHasUc();
             }, this),
             this.pythonExtension.onDidChangePythonExecutable(async () => {
-                const check = await this.checkDbConnectInstall();
+                const check = await this.checkLocalEnvironment();
                 if (
                     typeof check !== "boolean" &&
-                    check.reason?.includes(
+                    check.message?.includes(
                         "databricks-connect package is not installed"
                     ) &&
                     check.action
@@ -65,7 +65,8 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         if (cluster === undefined) {
             return this.rejectStep(
                 "checkCluster",
-                "No cluster attached",
+                "Attach a cluster",
+                `Databricks Connect requires cluster DBR >= 13.0.0`,
                 this.promptForAttachingCluster(
                     "Please attach a cluster to use Databricks Connect."
                 )
@@ -80,7 +81,8 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         ) {
             return this.rejectStep(
                 "checkCluster",
-                `Databricks Connect requires cluster DBR >= 13.0.0.`,
+                "Attach a cluster with DBR >= 13.0.0",
+                `Databricks Connect requires cluster DBR >= 13.0.0`,
                 this.promptForAttachingCluster(
                     `Databricks Connect requires cluster DBR >= 13.0.0. Currently it is ${dbrVersionParts.join(
                         "."
@@ -91,7 +93,8 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         if (!cluster.isUc()) {
             return this.rejectStep(
                 "checkCluster",
-                `Cluster doesn't have UC enabled.`,
+                `Cluster doesn't have UC enabled`,
+                "Attach a cluster with UC enabled",
                 this.promptForAttachingCluster(
                     `Databricks Connect requires a Unity Catalog enabled cluster with Access Mode "Single User" or "Shared". Currently it is ${
                         cluster.accessMode ?? "custom"
@@ -115,24 +118,30 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             if (!(await catalogListIter?.next())) {
                 return this.rejectStep(
                     "checkWorkspaceHasUc",
-                    "No catalogues with read permission were found. Please enable UC for the workspace."
+                    "No catalogues with read permission were found",
+                    "Enable UC for the workspace"
                 );
             }
         } catch (e: unknown) {
             if (e instanceof Error) {
                 ctx?.logger?.error("Error while searching for catalogues", e);
-                return this.rejectStep("checkWorkspaceHasUc", e.message);
+                return this.rejectStep(
+                    "checkWorkspaceHasUc",
+                    e.message,
+                    "Failed to check workspace permissions"
+                );
             }
         }
         return this.acceptStep("checkWorkspaceHasUc");
     }
 
-    async checkDbConnectInstall(): Promise<boolean | FeatureState> {
+    async checkLocalEnvironment(): Promise<boolean | FeatureState> {
         const executable = await this.pythonExtension.getPythonExecutable();
         if (!executable) {
             return this.rejectStep(
-                "checkDbConnectInstall",
-                "No python executable found.",
+                "checkLocalEnvironment",
+                "No python executable found",
+                "Select Python Interpreter",
                 async () => {
                     await this.pythonExtension.selectPythonInterpreter();
                 }
@@ -147,12 +156,13 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
             )
         ) {
             return this.rejectStep(
-                "checkDbConnectInstall",
+                "checkLocalEnvironment",
                 `Databricks Connect requires python >= 3.10.0. Current version is ${[
                     env.version.major,
                     env.version.minor,
                     env.version.micro,
                 ].join(".")}.`,
+                "Select Python Interpreter",
                 async () => {
                     await this.pythonExtension.selectPythonInterpreter();
                 }
@@ -160,8 +170,9 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         }
         if (!env?.environment) {
             return this.rejectStep(
-                "checkDbConnectInstall",
+                "checkLocalEnvironment",
                 "No active virtual environment.",
+                "Activate a virtual environment",
                 async () => {
                     await this.pythonExtension.createPythonEnvironment();
                 }
@@ -173,22 +184,31 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
                 DATABRICKS_CONNECT_VERSION
             );
             if (exists) {
-                return this.acceptStep("checkDbConnectInstall");
+                return this.acceptStep("checkLocalEnvironment");
             }
             return this.rejectStep(
-                "checkDbConnectInstall",
+                "checkLocalEnvironment",
                 "databricks-connect package is not installed in the current environment",
-                (advertisement = false) =>
-                    this.dbConnectInstallPrompt.show(advertisement, () =>
-                        this.checkDbConnectInstall()
+                "Install databricks-connect",
+                async (advertisement = false) =>
+                    await this.installPrompt.show(advertisement, () =>
+                        this.checkLocalEnvironment()
                     )
             );
         } catch (e: unknown) {
             if (e instanceof Error) {
                 window.showErrorMessage(e.message);
-                return this.rejectStep("checkDbConnectInstall", e.message);
+                return this.rejectStep(
+                    "checkLocalEnvironment",
+                    e.message,
+                    "Failed to check dependencies"
+                );
             }
-            return this.rejectStep("checkDbConnectInstall", e as string);
+            return this.rejectStep(
+                "checkLocalEnvironment",
+                e as string,
+                "Failed to check dependencies"
+            );
         }
     }
 
@@ -196,6 +216,6 @@ export class DbConnectAccessVerifier extends MultiStepAccessVerifier {
         await this.connectionManager.waitForConnect();
         this.checkCluster(this.connectionManager.cluster);
         this.checkWorkspaceHasUc();
-        this.checkDbConnectInstall();
+        this.checkLocalEnvironment();
     }
 }

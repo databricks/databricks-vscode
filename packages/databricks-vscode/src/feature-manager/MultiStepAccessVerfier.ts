@@ -40,14 +40,15 @@ export abstract class MultiStepAccessVerifier implements Feature {
     /**
      * Reject the current step in the verification process.
      * @param id of the step
-     * @param reason reason for rejection
+     * @param title reason for rejection
      * @param action action to take that can resolve the rejection
      * @param isDisabledByFf if the rejection is caused by a feature flag then set this to true.
      * @returns
      */
     rejectStep(
         id: string,
-        reason?: string,
+        title: string,
+        message?: string,
         action?: FeatureEnableAction,
         isDisabledByFf?: boolean
     ) {
@@ -60,8 +61,10 @@ export abstract class MultiStepAccessVerifier implements Feature {
         }
         this.stepValues[id] = false;
         const state: FeatureState = {
+            stepId: id,
             avaliable: false,
-            reason,
+            title,
+            message,
             action,
             isDisabledByFf: isDisabledByFf === true,
         };

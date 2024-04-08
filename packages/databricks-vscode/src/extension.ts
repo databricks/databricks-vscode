@@ -31,16 +31,15 @@ import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
-import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
+import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
 import {getContextMetadata, Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
-import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
+import {EnvironmentDependenciesInstallPrompt} from "./language/EnvironmentDependenciesInstallPrompt";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
-import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
 import {
@@ -330,28 +329,19 @@ export async function activate(
 
     const clusterModel = new ClusterModel(connectionManager);
 
-    const dbConnectInstallPrompt = new DbConnectInstallPrompt(
-        stateStorage,
-        pythonExtensionWrapper
-    );
+    const environmentDependenciesInstallPrompt =
+        new EnvironmentDependenciesInstallPrompt(
+            stateStorage,
+            pythonExtensionWrapper
+        );
     const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
-        "debugging.dbconnect",
+        "environment.dependencies",
         () =>
-            new DbConnectAccessVerifier(
+            new EnvironmentDependenciesVerifier(
                 connectionManager,
                 pythonExtensionWrapper,
-                dbConnectInstallPrompt
-            )
-    );
-
-    featureManager.registerFeature(
-        "notebooks.dbconnect",
-        () =>
-            new NotebookAccessVerifier(
-                featureManager,
-                pythonExtensionWrapper,
-                stateStorage
+                environmentDependenciesInstallPrompt
             )
     );
 
@@ -372,8 +362,7 @@ export async function activate(
         connectionManager,
         featureManager,
         pythonExtensionWrapper,
-        databricksEnvFileManager,
-        configModel
+        databricksEnvFileManager
     );
 
     context.subscriptions.push(
@@ -384,30 +373,29 @@ export async function activate(
             notebookInitScriptManager.verifyInitScriptCommand,
             notebookInitScriptManager
         ),
-        workspace.onDidOpenNotebookDocument(() =>
-            featureManager.isEnabled("notebooks.dbconnect")
-        ),
-        featureManager.onDidChangeState(
-            "notebooks.dbconnect",
-            async (featureState) => {
-                const dbconnectState = await featureManager.isEnabled(
-                    "debugging.dbconnect"
+        telemetry.registerCommand("databricks.environment.setup", async () => {
+            let finishedStepId;
+            while (true) {
+                const state = await featureManager.isEnabled(
+                    "environment.dependencies",
+                    true
                 );
-                if (!dbconnectState.avaliable) {
-                    return; // Only take action of notebook errors, when dbconnect is avaliable
+                if (state.avaliable) {
+                    return true;
                 }
-                if (featureState.action) {
-                    featureState.action();
-                } else if (
-                    !featureState.isDisabledByFf &&
-                    featureState.reason
-                ) {
-                    window.showErrorMessage(
-                        `Error while trying to initialize Databricks Notebooks. Some features may not work. Reason: ${featureState.reason}`
-                    );
+                if (state.stepId === finishedStepId) {
+                    return false;
                 }
+                if (state.message) {
+                    window.showErrorMessage(state.message);
+                }
+                if (!state.action) {
+                    return false;
+                }
+                await state.action?.();
+                finishedStepId = state.stepId;
             }
-        )
+        })
     );
 
     notebookInitScriptManager.updateInitScript().catch((e) => {
@@ -428,14 +416,14 @@ export async function activate(
         databricksEnvFileManager,
         showRestartNotebookDialogue(databricksEnvFileManager)
     );
-    featureManager.isEnabled("debugging.dbconnect");
+    featureManager.isEnabled("environment.dependencies");
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
         stateStorage,
         workspaceUri.fsPath,
         pythonExtensionWrapper,
-        dbConnectInstallPrompt
+        environmentDependenciesInstallPrompt
     );
     context.subscriptions.push(
         configureAutocomplete,
@@ -451,7 +439,6 @@ export async function activate(
         bundleProjectManager,
         configModel,
         cli,
-        pythonExtensionWrapper,
         featureManager
     );
 
