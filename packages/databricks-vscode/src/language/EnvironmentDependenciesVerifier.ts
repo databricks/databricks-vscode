@@ -82,7 +82,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             return this.rejectStep(
                 "checkCluster",
                 "Attach a cluster with DBR >= 13.0.0",
-                `Databricks Connect requires cluster DBR >= 13.0.0`,
+                `Databricks Connect requires a cluster with DBR >= 13.0.0`,
                 this.promptForAttachingCluster(
                     `Databricks Connect requires cluster DBR >= 13.0.0. Currently it is ${dbrVersionParts.join(
                         "."
@@ -93,8 +93,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         if (!cluster.isUc()) {
             return this.rejectStep(
                 "checkCluster",
-                `Cluster doesn't have UC enabled`,
-                "Attach a cluster with UC enabled",
+                `Attach a cluster with Unity Catalog`,
+                "Databricks Connect requires a cluster with UC enabled",
                 this.promptForAttachingCluster(
                     `Databricks Connect requires a Unity Catalog enabled cluster with Access Mode "Single User" or "Shared". Currently it is ${
                         cluster.accessMode ?? "custom"
@@ -118,8 +118,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             if (!(await catalogListIter?.next())) {
                 return this.rejectStep(
                     "checkWorkspaceHasUc",
-                    "No catalogues with read permission were found",
-                    "Enable UC for the workspace"
+                    "The workspace should have Unity Catalog enabled",
+                    "No catalogues with read permission were found"
                 );
             }
         } catch (e: unknown) {
@@ -127,8 +127,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 ctx?.logger?.error("Error while searching for catalogues", e);
                 return this.rejectStep(
                     "checkWorkspaceHasUc",
-                    e.message,
-                    "Failed to check workspace permissions"
+                    "Failed to check workspace permissions",
+                    e.message
                 );
             }
         }
@@ -140,8 +140,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         if (!executable) {
             return this.rejectStep(
                 "checkLocalEnvironment",
-                "No python executable found",
                 "Select Python Interpreter",
+                "No python executable found",
                 async () => {
                     await this.pythonExtension.selectPythonInterpreter();
                 }
@@ -157,12 +157,12 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         ) {
             return this.rejectStep(
                 "checkLocalEnvironment",
+                "Select Python Interpreter",
                 `Databricks Connect requires python >= 3.10.0. Current version is ${[
                     env.version.major,
                     env.version.minor,
                     env.version.micro,
                 ].join(".")}.`,
-                "Select Python Interpreter",
                 async () => {
                     await this.pythonExtension.selectPythonInterpreter();
                 }
@@ -171,8 +171,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         if (!env?.environment) {
             return this.rejectStep(
                 "checkLocalEnvironment",
-                "No active virtual environment.",
                 "Activate a virtual environment",
+                "No active virtual environment",
                 async () => {
                     await this.pythonExtension.createPythonEnvironment();
                 }
@@ -188,8 +188,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             }
             return this.rejectStep(
                 "checkLocalEnvironment",
-                "databricks-connect package is not installed in the current environment",
                 "Install databricks-connect",
+                "databricks-connect package is not installed in the current environment",
                 async (advertisement = false) =>
                     await this.installPrompt.show(advertisement, () =>
                         this.checkLocalEnvironment()
@@ -200,14 +200,14 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 window.showErrorMessage(e.message);
                 return this.rejectStep(
                     "checkLocalEnvironment",
-                    e.message,
-                    "Failed to check dependencies"
+                    "Failed to check dependencies",
+                    e.message
                 );
             }
             return this.rejectStep(
                 "checkLocalEnvironment",
-                e as string,
-                "Failed to check dependencies"
+                "Failed to check dependencies",
+                e as string
             );
         }
     }
