@@ -1,3 +1,12 @@
+# Release: v2.0.3-preview
+
+## packages/databricks-vscode
+
+## (2024-04-08)
+
+-   Bundle cli dependencies (#1147) ([5b4f896](https://github.com/databricks/databricks-vscode/commit/5b4f896)), closes [#1147](https://github.com/databricks/databricks-vscode/issues/1147)
+-   Fix build platform detection (#1174) ([97c6d8b](https://github.com/databricks/databricks-vscode/commit/97c6d8b)), closes [#1174](https://github.com/databricks/databricks-vscode/issues/1174)
+
 # Release: v2.0.2-preview
 
 ## packages/databricks-vscode
