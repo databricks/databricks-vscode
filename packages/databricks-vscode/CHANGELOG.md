@@ -1,3 +1,11 @@
+# Release: v2.0.3-preview
+
+## packages/databricks-vscode
+
+## (2024-04-08)
+
+-   Bundle cli dependencies
+
 # Release: v2.0.2-preview
 
 ## packages/databricks-vscode
