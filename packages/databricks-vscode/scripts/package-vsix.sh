@@ -42,7 +42,9 @@ esac
 # This CLI is used to request metadata about CLIs terraform dependencies.
 if [ ! -d ./.build ]; then
   mkdir ./.build
-  BUILD_PLATFORM_ARCH="$(uname -s | awk '{print tolower($0)}')_$(uname -m)"
+  if [ -z "$BUILD_PLATFORM_ARCH" ]; then
+      BUILD_PLATFORM_ARCH="$(uname -s | awk '{print tolower($0)}')_$(uname -m)"
+  fi
   ./scripts/fetch-databricks-cli.sh $BUILD_PLATFORM_ARCH ./.build
 fi
 
