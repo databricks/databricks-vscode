@@ -334,7 +334,17 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
-        const cmd = [this.cliPath, "bundle", "summary", "--target", target];
+        const cmd = [
+            this.cliPath,
+            "bundle",
+            "summary",
+            "--target",
+            target,
+            // Forces the CLI to regenerate local terraform state and pull the remote state.
+            // Regenerating terraform state is useful when we want to ensure that the provider version
+            // used in the local state matches the bundled version we supply with the extension.
+            "--force-pull",
+        ];
 
         logger?.info(
             `Refreshing bundle configuration for target ${target}...`,
