@@ -1,3 +1,11 @@
+# Release: v2.0.4-preview
+
+## packages/databricks-vscode
+
+## (2024-04-09)
+
+-   Fix: avoid terraform errors on DABs projects with older version of databricks terraform provider
+
 # Release: v2.0.3-preview
 
 ## packages/databricks-vscode
