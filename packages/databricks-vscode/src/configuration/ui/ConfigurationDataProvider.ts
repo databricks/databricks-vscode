@@ -36,7 +36,11 @@ export class ConfigurationDataProvider
 
     private disposables: Array<Disposable> = [];
     private components: Array<BaseComponent> = [
-        new EnvironmentComponent(this.featureManager),
+        new EnvironmentComponent(
+            this.featureManager,
+            this.connectionManager,
+            this.configModel
+        ),
         new BundleTargetComponent(this.configModel),
         new AuthTypeComponent(
             this.connectionManager,

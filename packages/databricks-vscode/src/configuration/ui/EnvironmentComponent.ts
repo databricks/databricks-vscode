@@ -2,13 +2,20 @@ import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
+import {ConnectionManager} from "../ConnectionManager";
+import {ConfigModel} from "../models/ConfigModel";
+import {child} from "winston";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
 const getItemId = (key?: string) =>
     key ? `${ENVIRONMENT_COMPONENT_ID}.${key}` : ENVIRONMENT_COMPONENT_ID;
 
 export class EnvironmentComponent extends BaseComponent {
-    constructor(private readonly featureManager: FeatureManager) {
+    constructor(
+        private readonly featureManager: FeatureManager,
+        private readonly connectionManager: ConnectionManager,
+        private readonly configModel: ConfigModel
+    ) {
         super();
         this.featureManager.onDidChangeState("environment.dependencies", () =>
             this.onDidChangeEmitter.fire()
@@ -19,7 +26,7 @@ export class EnvironmentComponent extends BaseComponent {
         const environmentState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
-        if (environmentState.avaliable) {
+        if (environmentState.available) {
             return [];
         }
         return [
@@ -30,14 +37,7 @@ export class EnvironmentComponent extends BaseComponent {
                     "info",
                     new ThemeColor("errorForeground")
                 ),
-                tooltip: environmentState.message || "",
                 collapsibleState: TreeItemCollapsibleState.Expanded,
-                command: environmentState.action
-                    ? {
-                          title: "Setup local python environment",
-                          command: "databricks.environment.setup",
-                      }
-                    : undefined,
             },
         ];
     }
@@ -45,6 +45,12 @@ export class EnvironmentComponent extends BaseComponent {
     public async getChildren(
         parent?: ConfigurationTreeItem
     ): Promise<ConfigurationTreeItem[]> {
+        if (
+            this.connectionManager.state !== "CONNECTED" ||
+            (await this.configModel.get("mode")) !== "development"
+        ) {
+            return [];
+        }
         if (parent === undefined) {
             return this.getRoot();
         }
@@ -54,27 +60,30 @@ export class EnvironmentComponent extends BaseComponent {
         const environmentState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
-        if (environmentState.avaliable) {
+        if (environmentState.available) {
             return [];
         }
-        return [
-            {
-                label:
-                    environmentState.title ||
-                    "Failed to setup local python environment",
-                description: environmentState.message || "",
-                tooltip: environmentState.message || "",
-                id: getItemId("setup"),
-                iconPath: new ThemeIcon(
-                    "gear",
-                    new ThemeColor("errorForeground")
-                ),
-                command: {
-                    title: "Setup local python environment",
-                    command: "databricks.environment.setup",
-                },
-            },
-        ];
+        const children = [];
+        for (const [id, step] of environmentState.steps) {
+            if (!step.available) {
+                children.push({
+                    id: getItemId(id),
+                    label: step.title,
+                    description: step.message,
+                    tooltip: step.message,
+                    iconPath: new ThemeIcon(
+                        "info",
+                        new ThemeColor("errorForeground")
+                    ),
+                    command: {
+                        title: "call",
+                        command: "databricks.call",
+                        arguments: [async () => step.action?.()],
+                    },
+                });
+            }
+        }
+        return children;
     }
 
     private async setupPythonEnvironment() {}

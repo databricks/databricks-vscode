@@ -93,7 +93,7 @@ export class RunCommands {
         const featureState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
-        if (featureState.avaliable) {
+        if (featureState.available) {
             return true;
         }
         return await commands.executeCommand("databricks.environment.setup");

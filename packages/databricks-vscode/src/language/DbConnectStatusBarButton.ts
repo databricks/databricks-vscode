@@ -31,7 +31,7 @@ export class DbConnectStatusBarButton implements Disposable {
         const featureState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
-        if (featureState.isDisabledByFf || featureState.avaliable) {
+        if (featureState.available) {
             return;
         }
         this.statusBarButton.name = "Databricks Connect disabled";
@@ -39,7 +39,7 @@ export class DbConnectStatusBarButton implements Disposable {
         this.statusBarButton.backgroundColor = new ThemeColor(
             "statusBarItem.errorBackground"
         );
-        this.statusBarButton.tooltip = featureState?.message;
+        // this.statusBarButton.tooltip = featureState?.message;
         this.statusBarButton.command = {
             title: "Setup Databricks Connect",
             command: "databricks.environment.setup",
@@ -51,7 +51,7 @@ export class DbConnectStatusBarButton implements Disposable {
         const featureState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
-        if (!featureState.avaliable) {
+        if (!featureState.available) {
             return;
         }
         this.statusBarButton.name = "Databricks Connect enabled";
@@ -69,7 +69,7 @@ export class DbConnectStatusBarButton implements Disposable {
         const featureState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
-        if (!featureState.avaliable) {
+        if (!featureState.available) {
             this.disableStatusBarButton();
         } else {
             this.enableStatusBarButton();

@@ -23,7 +23,6 @@ import {promisify} from "util";
 import {FileUtils} from "../../utils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {LocalUri} from "../../sync/SyncDestination";
-import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {DatabricksEnvFileManager} from "../../file-managers/DatabricksEnvFileManager";
 
 const execFile = promisify(ef);
@@ -187,7 +186,7 @@ export class NotebookInitScriptManager implements Disposable {
     async updateInitScript() {
         if (
             !(await this.featureManager.isEnabled("environment.dependencies"))
-                .avaliable
+                .available
         ) {
             return;
         }
@@ -297,7 +296,7 @@ export class NotebookInitScriptManager implements Disposable {
 
         if (
             !(await this.featureManager.isEnabled("environment.dependencies"))
-                .avaliable
+                .available
         ) {
             return;
         }

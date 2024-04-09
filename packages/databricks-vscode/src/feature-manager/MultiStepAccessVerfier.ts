@@ -1,42 +1,56 @@
 import {Disposable, EventEmitter} from "vscode";
-import {Feature, FeatureEnableAction, FeatureState} from "./FeatureManager";
+import {
+    Feature,
+    FeatureEnableAction,
+    FeatureState,
+    FeatureStepState,
+} from "./FeatureManager";
+import lodash from "lodash";
+import {Mutex} from "../locking";
 
 export type AccessVerifierStep = (...args: any) => Promise<boolean>;
 export abstract class MultiStepAccessVerifier implements Feature {
+    public mutex = new Mutex();
     protected disposables: Disposable[] = [];
-    // Fired when the state of the entire feature changes (all steps are accepted, or >=1 steps are rejected)
     protected onDidChangeStateEmitter = new EventEmitter<FeatureState>();
     public onDidChangeState = this.onDidChangeStateEmitter.event;
 
-    // Fired when the state of a single step changes (accepted or rejected)
-    protected onDidChangeStepStateEmitter = new EventEmitter<{
-        id: string;
-        value: boolean;
-    }>();
-    public onDidChangeStepState = this.onDidChangeStepStateEmitter.event;
-
-    public readonly stepValues: Record<string, boolean> = {};
+    public readonly state: FeatureState = {available: false, steps: new Map()};
 
     constructor(steps: string[]) {
-        steps.forEach((step) => (this.stepValues[step] = false));
+        steps.forEach((step) =>
+            this.state.steps.set(step, {id: step, available: false})
+        );
     }
 
-    private stepValuesHas(key: string) {
-        if (!Object.keys(this.stepValues).includes(key)) {
+    private assertStep(key: string) {
+        if (!this.state.steps.has(key)) {
             throw Error(`Verification step ${key} is not registered.`);
         }
     }
 
-    private checkAllStepValues() {
-        const combinedValue = Object.values(this.stepValues).reduce(
-            (prev, current) => prev && current,
+    private updateStep(stepState: FeatureStepState) {
+        this.assertStep(stepState.id);
+        const oldStepState = this.state.steps.get(stepState.id);
+        this.state.steps.set(stepState.id, stepState);
+        const oldAvailability = this.state.available;
+        this.state.available = Array.from(this.state.steps).reduce(
+            (result, current) => result && current[1].available,
             true
         );
-        if (combinedValue) {
-            this.accept();
+        const nonComparableFields: Array<keyof FeatureStepState> = ["action"];
+        if (
+            oldAvailability !== this.state.available ||
+            !lodash.isEqual(
+                lodash.omit(oldStepState, nonComparableFields),
+                lodash.omit(stepState, nonComparableFields)
+            )
+        ) {
+            this.onDidChangeStateEmitter.fire(this.state);
         }
-        return combinedValue;
+        return stepState;
     }
+
     /**
      * Reject the current step in the verification process.
      * @param id of the step
@@ -52,61 +66,18 @@ export abstract class MultiStepAccessVerifier implements Feature {
         action?: FeatureEnableAction,
         isDisabledByFf?: boolean
     ) {
-        this.stepValuesHas(id);
-        if (this.stepValues[id]) {
-            this.onDidChangeStepStateEmitter.fire({
-                id,
-                value: false,
-            });
-        }
-        this.stepValues[id] = false;
-        const state: FeatureState = {
-            stepId: id,
-            avaliable: false,
+        return this.updateStep({
+            id: id,
+            available: false,
             title,
             message,
             action,
             isDisabledByFf: isDisabledByFf === true,
-        };
-
-        this.onDidChangeStateEmitter.fire(state);
-        return state;
+        });
     }
 
     acceptStep(id: string) {
-        this.stepValuesHas(id);
-        if (!this.stepValues[id]) {
-            this.onDidChangeStepStateEmitter.fire({
-                id,
-                value: true,
-            });
-        }
-        this.stepValues[id] = true;
-        this.checkAllStepValues();
-        return true;
-    }
-
-    private accept() {
-        const state = {
-            avaliable: true,
-        };
-        this.onDidChangeStateEmitter.fire(state);
-        return state;
-    }
-
-    protected async waitForStep(id: string) {
-        this.stepValuesHas(id);
-        if (this.stepValues[id]) {
-            return true;
-        }
-        await new Promise<void>((resolve) => {
-            const changeListener = this.onDidChangeStepState((e) => {
-                if (e.id === id && e.value === true) {
-                    resolve();
-                    changeListener.dispose();
-                }
-            });
-        });
+        return this.updateStep({id: id, available: true});
     }
 
     abstract check(): Promise<void>;

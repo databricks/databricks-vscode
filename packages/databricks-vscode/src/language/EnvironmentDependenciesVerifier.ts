@@ -7,7 +7,7 @@ import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {EnvironmentDependenciesInstallPrompt} from "./EnvironmentDependenciesInstallPrompt";
-import {FeatureState} from "../feature-manager/FeatureManager";
+import {FeatureStepState} from "../feature-manager/FeatureManager";
 import {DATABRICKS_CONNECT_VERSION} from "../utils/constants";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
@@ -33,7 +33,6 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             this.pythonExtension.onDidChangePythonExecutable(async () => {
                 const check = await this.checkLocalEnvironment();
                 if (
-                    typeof check !== "boolean" &&
                     check.message?.includes(
                         "databricks-connect package is not installed"
                     ) &&
@@ -47,17 +46,10 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
 
     promptForAttachingCluster(msg: string) {
         return async () => {
-            const choice = await window.showInformationMessage(
-                msg,
-                "Attach Cluster",
-                "Ignore"
+            await commands.executeCommand(
+                "databricks.connection.attachClusterQuickPick",
+                msg
             );
-            switch (choice) {
-                case "Attach Cluster":
-                    commands.executeCommand(
-                        "databricks.connection.attachClusterQuickPick"
-                    );
-            }
         };
     }
 
@@ -135,7 +127,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         return this.acceptStep("checkWorkspaceHasUc");
     }
 
-    async checkLocalEnvironment(): Promise<boolean | FeatureState> {
+    async checkLocalEnvironment(): Promise<FeatureStepState> {
         const executable = await this.pythonExtension.getPythonExecutable();
         if (!executable) {
             return this.rejectStep(
@@ -157,7 +149,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         ) {
             return this.rejectStep(
                 "checkLocalEnvironment",
-                "Select Python Interpreter",
+                "Select Python >= 3.10.0",
                 `Databricks Connect requires python >= 3.10.0. Current version is ${[
                     env.version.major,
                     env.version.minor,
@@ -214,8 +206,10 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
 
     override async check() {
         await this.connectionManager.waitForConnect();
-        this.checkCluster(this.connectionManager.cluster);
-        this.checkWorkspaceHasUc();
-        this.checkLocalEnvironment();
+        await Promise.all([
+            this.checkCluster(this.connectionManager.cluster),
+            this.checkWorkspaceHasUc(),
+            this.checkLocalEnvironment(),
+        ]);
     }
 }
