@@ -1,3 +1,11 @@
+# Release: v2.0.4-preview
+
+## packages/databricks-vscode
+
+## (2024-04-09)
+
+-   Run `bundle summary` with `--force-pull` (#1181) ([c632563](https://github.com/databricks/databricks-vscode/commit/c632563)), closes [#1181](https://github.com/databricks/databricks-vscode/issues/1181)
+
 # Release: v2.0.3-preview
 
 ## packages/databricks-vscode
