@@ -52,11 +52,10 @@ rm -rf bin
 ./scripts/fetch-databricks-cli.sh $CLI_ARCH
 yarn ts-node ./scripts/setArchInPackage.ts $VSXI_ARCH -f package.json --cliArch $CLI_ARCH -V $VSXI_ARCH -c $(git rev-parse --short HEAD)
 
-# Temporary disable terraform bundling, as we've noticed a bug with projects that use older version of the terraform provider
 # Don't bundle terraform for win32-arm64 as they don't support it yet: https://github.com/hashicorp/terraform/issues/32719
-# if [ $ARCH != "win32-arm64" ]; then
-#   yarn ts-node ./scripts/setupCLIDependencies.ts --cli ./.build/databricks --binDir ./bin --package ./package.json --arch $CLI_ARCH
-# fi
+if [ $ARCH != "win32-arm64" ]; then
+  yarn ts-node ./scripts/setupCLIDependencies.ts --cli ./.build/databricks --binDir ./bin --package ./package.json --arch $CLI_ARCH
+fi
 
 yarn run prettier package.json --write
 TAG="release-v$(cat package.json | jq -r .version)" yarn run package -t $VSXI_ARCH

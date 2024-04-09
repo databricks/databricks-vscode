@@ -47,6 +47,9 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     private refreshInterval: NodeJS.Timeout | undefined;
     private logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
+    // Forces the CLI to regenerate local terraform state and pull the remote state
+    private skipCliCache = true;
+
     constructor(
         private readonly cli: CliWrapper,
         private readonly workspaceFolder: Uri,
@@ -123,6 +126,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.target,
             this.authProvider,
             this.workspaceFolder,
+            this.skipCliCache,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger
         );
@@ -130,6 +134,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         if (output === "" || output === undefined) {
             return {};
         }
+        this.skipCliCache = false;
         return JSON.parse(output);
     }
 
@@ -144,6 +149,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     }
 
     public resetCache(): void {
+        this.skipCliCache = true;
         this.stateCache.set({});
     }
 

@@ -331,10 +331,14 @@ export class CliWrapper {
         target: string,
         authProvider: AuthProvider,
         workspaceFolder: Uri,
+        skipCache: boolean,
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
         const cmd = [this.cliPath, "bundle", "summary", "--target", target];
+        if (skipCache) {
+            cmd.push("--force-pull");
+        }
 
         logger?.info(
             `Refreshing bundle configuration for target ${target}...`,
