@@ -67,9 +67,9 @@ describe(__filename, async () => {
         //cache should be false if even 1 value is false
         assert.ok(!isAvailable(await testVerifier.check2(false)));
         assert.ok(!(await fm.isEnabled("test")).available);
-        assert.ok(
-            (await fm.isEnabled("test")).steps.get("check2")?.message ===
-                "reason2"
+        assert.strictEqual(
+            (await fm.isEnabled("test")).steps.get("check2")?.title,
+            "reason2"
         );
 
         //cache should be reset to true if both values are true
@@ -89,8 +89,9 @@ describe(__filename, async () => {
         verify(spyTestVerifier.check1()).never();
         verify(spyTestVerifier.check2()).never();
 
-        assert.ok(
-            (await fm.isEnabled("test")).message === "feature is disabled"
+        assert.strictEqual(
+            (await fm.isEnabled("test")).message,
+            "Feature is disabled"
         );
     });
 });
