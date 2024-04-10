@@ -89,8 +89,8 @@ describe(__filename, async () => {
         verify(spyTestVerifier.check1()).never();
         verify(spyTestVerifier.check2()).never();
 
-        // assert.ok(
-        //     (await fm.isEnabled("test")).message === "feature is disabled"
-        // );
+        assert.ok(
+            (await fm.isEnabled("test")).message === "feature is disabled"
+        );
     });
 });

@@ -11,6 +11,7 @@ export type FeatureId = "environment.dependencies";
 
 export interface FeatureState {
     available: boolean;
+    message?: string;
     steps: Map<string, FeatureStepState>;
 }
 
@@ -82,6 +83,13 @@ export class FeatureManager<T = FeatureId> implements Disposable {
         const feature = this.features.get(id);
         if (!feature) {
             throw new Error(`Feature ${id} has not been registered`);
+        }
+        if (this.disabledFeatures.includes(id)) {
+            return {
+                available: false,
+                steps: new Map(),
+                message: "Feature is disabled",
+            };
         }
         return await feature.mutex.synchronise(async () => {
             const cachedState = this.stateCache.get(id);
