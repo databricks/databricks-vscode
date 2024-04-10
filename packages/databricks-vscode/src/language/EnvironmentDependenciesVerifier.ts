@@ -128,15 +128,22 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     }
 
     async checkLocalEnvironment(): Promise<FeatureStepState> {
+        const environments =
+            await this.pythonExtension.getAvailableEnvironments();
+        const selectPythonInterpreter = async () => {
+            if (environments.length > 0) {
+                await this.pythonExtension.selectPythonInterpreter();
+            } else {
+                await this.pythonExtension.createPythonEnvironment();
+            }
+        };
         const executable = await this.pythonExtension.getPythonExecutable();
         if (!executable) {
             return this.rejectStep(
                 "checkLocalEnvironment",
                 "Select Python Interpreter",
                 "No python executable found",
-                async () => {
-                    await this.pythonExtension.selectPythonInterpreter();
-                }
+                selectPythonInterpreter
             );
         }
         const env = await this.pythonExtension.pythonEnvironment;
@@ -155,9 +162,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                     env.version.minor,
                     env.version.micro,
                 ].join(".")}.`,
-                async () => {
-                    await this.pythonExtension.selectPythonInterpreter();
-                }
+                selectPythonInterpreter
             );
         }
         if (!env?.environment) {
@@ -165,9 +170,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 "checkLocalEnvironment",
                 "Activate a virtual environment",
                 "No active virtual environment",
-                async () => {
-                    await this.pythonExtension.createPythonEnvironment();
-                }
+                selectPythonInterpreter
             );
         }
         try {

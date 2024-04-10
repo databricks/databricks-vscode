@@ -75,9 +75,9 @@ export class EnvironmentComponent extends BaseComponent {
                         new ThemeColor("errorForeground")
                     ),
                     command: {
-                        title: "call",
-                        command: "databricks.call",
-                        arguments: [async () => step.action?.()],
+                        title: "Setup local environment",
+                        command: "databricks.environment.setup",
+                        arguments: [step.id],
                     },
                 });
             }

@@ -403,26 +403,28 @@ export async function activate(
             notebookInitScriptManager.verifyInitScriptCommand,
             notebookInitScriptManager
         ),
-        telemetry.registerCommand("databricks.environment.setup", async () => {
-            const state = await featureManager.isEnabled(
-                "environment.dependencies",
-                true
-            );
-            if (state.available) {
-                return true;
-            }
-            // Perform an action of the first unavailable step
-            for (const [, step] of state.steps) {
-                if (step.available) {
-                    continue;
+        telemetry.registerCommand(
+            "databricks.environment.setup",
+            async (stepId?: string) => {
+                const state = await featureManager.isEnabled(
+                    "environment.dependencies",
+                    true
+                );
+                if (state.available) {
+                    return true;
                 }
-                if (step.action) {
-                    return await step.action();
-                } else if (step.message) {
-                    return window.showErrorMessage(step.message);
+                for (const [, step] of state.steps) {
+                    if (step.available || (stepId && step.id !== stepId)) {
+                        continue;
+                    }
+                    if (step.action) {
+                        return await step.action();
+                    } else if (step.message) {
+                        return window.showErrorMessage(step.message);
+                    }
                 }
             }
-        })
+        )
     );
 
     notebookInitScriptManager.updateInitScript().catch((e) => {

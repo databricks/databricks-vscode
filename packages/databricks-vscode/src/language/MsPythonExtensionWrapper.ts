@@ -62,6 +62,11 @@ export class MsPythonExtensionWrapper implements Disposable {
         return env?.executable.uri?.fsPath;
     }
 
+    async getAvailableEnvironments() {
+        await this.api.environments.refreshEnvironments();
+        return this.api.environments.known.filter((env) => env.environment);
+    }
+
     get onDidChangePythonExecutable(): Event<Uri | undefined> {
         if (this.api.settings) {
             return this.api.settings.onDidChangeExecutionDetails;
