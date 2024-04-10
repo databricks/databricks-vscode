@@ -1,4 +1,4 @@
-import {Event, EventEmitter, Disposable} from "vscode";
+import {Event, Disposable} from "vscode";
 import {Mutex} from "../locking";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {DisabledFeature} from "./DisabledFeature";

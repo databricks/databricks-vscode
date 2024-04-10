@@ -4,7 +4,6 @@ import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {ConnectionManager} from "../ConnectionManager";
 import {ConfigModel} from "../models/ConfigModel";
-import {child} from "winston";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
 const getItemId = (key?: string) =>
