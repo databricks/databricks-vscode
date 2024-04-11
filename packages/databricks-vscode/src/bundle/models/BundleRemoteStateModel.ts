@@ -9,6 +9,7 @@ import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
+import {MsPythonExtensionWrapper} from "../../language/MsPythonExtensionWrapper";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export type BundleResourceModifiedStatus = "created" | "deleted" | "updated";
@@ -43,12 +44,12 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     public target: string | undefined;
     public authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
-    private refreshInterval: NodeJS.Timeout | undefined;
     private logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
     constructor(
         private readonly cli: CliWrapper,
         private readonly workspaceFolder: Uri,
+        private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly workspaceConfigs: WorkspaceConfigs
     ) {
         super();
@@ -72,6 +73,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.target,
             this.authProvider,
             this.workspaceFolder,
+            this.pythonExtension,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger
         );
@@ -94,23 +96,20 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         );
     }
 
-    @Mutex.synchronise("mutex")
-    public async setTarget(target: string | undefined) {
+    public setTarget(target: string | undefined) {
         if (this.target === target) {
             return;
         }
         this.target = target;
+        this.resetCache();
         this.authProvider = undefined;
-        await this.stateCache.refresh();
     }
 
-    @Mutex.synchronise("mutex")
-    public async setAuthProvider(authProvider: AuthProvider | undefined) {
+    public setAuthProvider(authProvider: AuthProvider | undefined) {
         if (
             !lodash.isEqual(this.authProvider?.toJSON(), authProvider?.toJSON())
         ) {
             this.authProvider = authProvider;
-            await this.stateCache.refresh();
         }
     }
 
@@ -143,10 +142,11 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         }, resources);
     }
 
+    public resetCache(): void {
+        this.stateCache.set({});
+    }
+
     dispose() {
         super.dispose();
-        if (this.refreshInterval !== undefined) {
-            clearInterval(this.refreshInterval);
-        }
     }
 }

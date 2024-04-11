@@ -49,7 +49,7 @@ export class PipelineRunStatus extends BundleRunStatus {
             throw new Error("No update id");
         }
 
-        const client = this.authProvider.getWorkspaceClient();
+        const client = await this.authProvider.getWorkspaceClient();
         this.runState = "running";
 
         this.interval = setInterval(async () => {
@@ -99,7 +99,7 @@ export class PipelineRunStatus extends BundleRunStatus {
             return;
         }
 
-        const client = this.authProvider.getWorkspaceClient();
+        const client = await this.authProvider.getWorkspaceClient();
         const update = await client.pipelines.getUpdate({
             pipeline_id: this.pipelineId,
             update_id: this.runId,

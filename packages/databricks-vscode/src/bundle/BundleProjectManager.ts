@@ -87,15 +87,14 @@ export class BundleProjectManager {
         const recordEvent = this.telemetry.start(
             Events.EXTENSION_INITIALIZATION
         );
-        await Promise.all([
-            // This method updates subProjectsAvailabe context.
-            // We have a configurationView that shows "openSubProjects" button if the context value is true.
-            this.detectSubProjects(),
-            // This method will try to automatically create bundle config if there's existing valid project.json config.
-            // In the case project.json doesn't exist or its auth doesn't work, it sets pendingManualMigration context
-            // to enable configurationView with the configureManualMigration button.
-            this.detectLegacyProjectConfig(),
-        ]);
+        // This method updates subProjectsAvailabe context.
+        // We have a configurationView that shows "openSubProjects" button if the context value is true.
+        await this.detectSubProjects();
+        // This method will try to automatically create bundle config if there's existing valid project.json config.
+        // In the case project.json doesn't exist or its auth doesn't work, it sets pendingManualMigration context
+        // to enable configurationView with the configureManualMigration button.
+        await this.detectLegacyProjectConfig();
+
         const type = this.legacyProjectConfig ? "legacy" : "unknown";
         recordEvent({success: true, type});
     }
@@ -156,7 +155,9 @@ export class BundleProjectManager {
 
     private async detectLegacyProjectConfig() {
         this.legacyProjectConfig = await this.loadLegacyProjectConfig();
-        if (!this.legacyProjectConfig) {
+        // If we have subprojects, we can't migrate automatically. We show the user option to
+        // manually migrate the project (create a new databricks.yml based on selected auth)
+        if (!this.legacyProjectConfig || (this.subProjects?.length ?? 0) > 0) {
             this.customWhenContext.setPendingManualMigration(true);
             return;
         }

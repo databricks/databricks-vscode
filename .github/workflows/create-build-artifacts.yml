@@ -25,6 +25,7 @@ jobs:
               working-directory: packages/databricks-vscode
               env:
                   GH_TOKEN: ${{ github.token }}
+                  BUILD_PLATFORM_ARCH: linux_amd64
 
             - uses: actions/upload-artifact@v3
               with:

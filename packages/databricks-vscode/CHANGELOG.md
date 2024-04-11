@@ -1,3 +1,32 @@
+# Release: v2.0.4-preview
+
+## packages/databricks-vscode
+
+## (2024-04-09)
+
+-   Fix: avoid terraform errors on DABs projects with older version of databricks terraform provider
+
+# Release: v2.0.3-preview
+
+## packages/databricks-vscode
+
+## (2024-04-08)
+
+-   Bundle cli dependencies
+
+# Release: v2.0.2-preview
+
+## packages/databricks-vscode
+
+## (2024-04-03)
+
+-   Fix: Add currently selected python environment to path for wheel builds.
+-   Fix: Add extension name to the private preview terms and conditions popup.
+-   Bump databricks cli to v0.216.0.
+-   Revamp the welcome views so that users can see all the critical actions in all scenarios.
+-   Fix: Ignore stderr for validate and summary commands
+-   Fix: Use packaged CLI if a cli path is not specified in .databrickscfg profile
+
 # Release: v2.0.1-preview
 
 ## packages/databricks-vscode

@@ -3,6 +3,12 @@ import {Mutex} from ".";
 import lodash from "lodash";
 import {EventEmitterWithErrorHandler} from "../utils/EventWithErrorHandler";
 
+const customizer: lodash.IsEqualCustomizer = (value, other) => {
+    if (value instanceof URL && other instanceof URL) {
+        return value.toString() === other.toString();
+    }
+    return undefined;
+};
 export class CachedValue<T> implements Disposable {
     private disposables: Disposable[] = [];
 
@@ -38,13 +44,6 @@ export class CachedValue<T> implements Disposable {
                     newValue = {} as T;
                 }
 
-                const customizer: lodash.IsEqualCustomizer = (value, other) => {
-                    if (value instanceof URL && other instanceof URL) {
-                        return value.toString() === other.toString();
-                    }
-                    return undefined;
-                };
-
                 for (const key of Object.keys({
                     ...oldValue,
                     ...newValue,
@@ -66,22 +65,28 @@ export class CachedValue<T> implements Disposable {
 
     get value(): Promise<T> {
         return this.mutex.synchronise(async () => {
-            if (this._dirty || this._value === null) {
-                const newValue = await this.getter();
-                if (!lodash.isEqual(newValue, this._value)) {
-                    this.onDidChangeEmitter.fire({
-                        oldValue: this._value,
-                        newValue: newValue,
-                    });
+            try {
+                if (this._dirty || this._value === null) {
+                    const newValue = await this.getter();
+                    this.set(newValue);
+                    return this._value as T;
                 }
-                this._value = newValue;
+            } finally {
                 this._dirty = false;
-                return this._value;
             }
             return this._value;
         });
     }
 
+    set(value: T) {
+        if (!lodash.isEqualWith(value, this._value, customizer)) {
+            this.onDidChangeEmitter.fire({
+                oldValue: this._value,
+                newValue: value,
+            });
+            this._value = value;
+        }
+    }
     private readonly onDidChangeKeyEmitters = new Map<
         keyof T,
         EventEmitter<void>

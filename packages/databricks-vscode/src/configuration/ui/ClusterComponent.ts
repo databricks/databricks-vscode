@@ -105,6 +105,10 @@ export class ClusterComponent extends BaseComponent {
                         new ThemeColor("notificationsErrorIcon.foreground")
                     ),
                     id: TREE_ICON_ID,
+                    command: {
+                        title: "Select a cluster",
+                        command: "databricks.connection.attachClusterQuickPick",
+                    },
                 },
             ];
         }

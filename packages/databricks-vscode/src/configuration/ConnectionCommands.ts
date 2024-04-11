@@ -15,9 +15,10 @@ import {ConfigModel} from "./models/ConfigModel";
 import {saveNewProfile} from "./LoginWizard";
 import {PersonalAccessTokenAuthProvider} from "./auth/AuthProvider";
 import {normalizeHost} from "../utils/urlUtils";
-import {CliWrapper} from "../cli/CliWrapper";
+import {CliWrapper, ProcessError} from "../cli/CliWrapper";
 import {AUTH_TYPE_SWITCH_ID, AUTH_TYPE_LOGIN_ID} from "./ui/AuthTypeComponent";
 import {ManualLoginSource} from "../telemetry/constants";
+import {onError} from "../utils/onErrorDecorator";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -95,7 +96,11 @@ export class ConnectionCommands implements Disposable {
             throw new Error("Must login first");
         }
         const hostUrl = normalizeHost(host);
-        const provider = new PersonalAccessTokenAuthProvider(hostUrl, token);
+        const provider = new PersonalAccessTokenAuthProvider(
+            hostUrl,
+            token,
+            this.cli
+        );
         await saveNewProfile(name, provider, this.cli);
     }
 
@@ -200,6 +205,7 @@ export class ConnectionCommands implements Disposable {
         };
     }
 
+    @onError({popup: {prefix: "Error selecting target."}})
     async selectTarget() {
         const targets = await this.configModel.targets;
         const currentTarget = this.configModel.target;
@@ -222,7 +228,14 @@ export class ConnectionCommands implements Disposable {
         if (selectedTarget === undefined) {
             return;
         }
-        this.configModel.setTarget(selectedTarget.label);
+        try {
+            await this.configModel.setTarget(selectedTarget.label);
+        } catch (e) {
+            if (e instanceof ProcessError) {
+                e.showErrorMessage("Error selecting target");
+            }
+            throw e;
+        }
     }
 
     dispose() {
