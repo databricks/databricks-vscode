@@ -1,10 +1,22 @@
 import {glob} from "glob";
 import path from "path";
 
+function toGlobPath(path: string) {
+    if (process.platform === "win32") {
+        return path.replace(/\\/g, "/");
+    }
+    return path;
+}
+
 const integrationTests = glob
-    .sync(path.join(process.cwd(), "src", "test", "e2e", "**", "*.e2e.ts"), {
-        nocase: process.platform === "win32",
-    })
+    .globSync(
+        toGlobPath(
+            path.join(process.cwd(), "src", "test", "e2e", "**", "*.e2e.ts")
+        ),
+        {
+            nocase: process.platform === "win32",
+        }
+    )
     .map((testPath) => {
         return {
             path: testPath,
