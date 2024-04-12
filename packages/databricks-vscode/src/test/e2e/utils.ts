@@ -61,6 +61,7 @@ export async function getViewSection(
             return section !== undefined;
         },
         {
+            timeout: 10 * 1000,
             timeoutMsg: `Can't find view section "${name}"`,
         }
     );
