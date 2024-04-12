@@ -11,8 +11,9 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                arch: [
-                        # { cli_arch: darwin_amd64, os: macos-latest },
+                arch:
+                    [
+                        { cli_arch: darwin_amd64, os: macos-latest },
                         { cli_arch: windows_amd64, os: windows-latest },
                     ]
                 node-version: [18.x]
