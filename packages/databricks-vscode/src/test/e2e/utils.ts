@@ -54,8 +54,16 @@ export async function findViewSection(name: ViewSectionType) {
 export async function getViewSection(
     name: ViewSectionType
 ): Promise<ViewSection | undefined> {
-    const section = await findViewSection(name);
-    assert(section);
+    let section: ViewSection | undefined;
+    await browser.waitUntil(
+        async () => {
+            section = await findViewSection(name);
+            return section !== undefined;
+        },
+        {
+            timeoutMsg: `Can't find view section "${name}"`,
+        }
+    );
 
     for (const s of ViewSectionTypes) {
         if (s !== name) {
@@ -63,8 +71,8 @@ export async function getViewSection(
         }
     }
 
-    await section.expand();
-    await (await section.elem).click();
+    await section!.expand();
+    await (await section!.elem).click();
     return section;
 }
 
