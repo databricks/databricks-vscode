@@ -44,7 +44,6 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     public target: string | undefined;
     public authProvider: AuthProvider | undefined;
     protected mutex = new Mutex();
-    private refreshInterval: NodeJS.Timeout | undefined;
     private logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
     constructor(
@@ -149,8 +148,5 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
 
     dispose() {
         super.dispose();
-        if (this.refreshInterval !== undefined) {
-            clearInterval(this.refreshInterval);
-        }
     }
 }
