@@ -41,7 +41,11 @@ export async function findViewSection(name: ViewSectionType) {
     const views =
         (await (await control?.openView())?.getContent()?.getSections()) ?? [];
     for (const v of views) {
-        if ((await v.getTitle()).toUpperCase() === name) {
+        const title = await v.getTitle();
+        if (title === null) {
+            continue;
+        }
+        if (title.toUpperCase() === name) {
             return v;
         }
     }
