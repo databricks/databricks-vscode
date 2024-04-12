@@ -50,7 +50,7 @@ export function getHomedir() {
     return process.env.HOME ?? homedir();
 }
 
-export async function openDatabricksConfigFile() {
+export function getDatabricksConfigFilePath() {
     const homeDir = getHomedir();
     let filePath =
         workspaceConfigs.databrickscfgLocation ??
@@ -59,7 +59,11 @@ export async function openDatabricksConfigFile() {
     if (filePath.startsWith("~/")) {
         filePath = path.join(homeDir, filePath.slice(2));
     }
-    const uri = Uri.file(path.normalize(filePath));
+    return Uri.file(path.normalize(filePath));
+}
+
+export async function openDatabricksConfigFile() {
+    const uri = getDatabricksConfigFilePath();
     try {
         await workspace.fs.stat(uri);
     } catch (e) {

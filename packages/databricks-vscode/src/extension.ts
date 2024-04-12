@@ -24,7 +24,12 @@ import {PublicApi} from "@databricks/databricks-vscode-types";
 import {LoggerManager, Loggers} from "./logger";
 import {logging} from "@databricks/databricks-sdk";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
-import {FileUtils, PackageJsonUtils, UtilsCommands} from "./utils";
+import {
+    FileUtils,
+    PackageJsonUtils,
+    TerraformUtils,
+    UtilsCommands,
+} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
@@ -63,6 +68,10 @@ import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/Decorati
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 import {isIntegrationTest} from "./utils/developmentUtils";
+import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const packageJson = require("../package.json");
 
 const customWhenContext = new CustomWhenContext();
 
@@ -73,16 +82,20 @@ export async function activate(
     customWhenContext.setDeploymentState("idle");
 
     const stateStorage = new StateStorage(context);
+    const packageMetadata = await PackageJsonUtils.getMetadata(context);
 
     if (
         !stateStorage.get("databricks.preview-tnc.accepted") &&
         !isIntegrationTest()
     ) {
         const acceptTnc = await window.showInformationMessage(
-            `Please note that you should only be using this functionality if you are part of our private preview and have accepted our terms and conditions regarding this preview.`,
+            `Databricks Extension v${packageMetadata.version} is in private preview`,
             {
                 modal: true,
-                detail: `In order to enroll in the private preview please contact us and we will get you added`,
+                detail:
+                    `Please note that you should only be using this functionality if you are part of our private` +
+                    `preview and have accepted our terms and conditions regarding this preview.` +
+                    `In order to enroll in the private preview please contact us and we will get you added`,
             },
             "Contact us",
             "Continue if you are already enrolled"
@@ -107,15 +120,6 @@ export async function activate(
                 );
                 return;
         }
-    }
-
-    if (extensions.getExtension("databricks.databricks-vscode") !== undefined) {
-        await commands.executeCommand(
-            "workbench.extensions.uninstallExtension",
-            "databricks.databricks-vscode"
-        );
-
-        await commands.executeCommand("workbench.action.reloadWindow");
     }
 
     if (!(await PackageJsonUtils.checkArchCompat(context))) {
@@ -175,7 +179,27 @@ export async function activate(
         `${path.delimiter}${context.asAbsolutePath("./bin")}`
     );
 
-    const packageMetadata = await PackageJsonUtils.getMetadata(context);
+    // We always use bundled terraform and databricks provider.
+    // Updating environment collection means that the variables will be set in all terminals.
+    // If users use different CLI version in their terminal it will only pick the variables if
+    // the dependency versions (that we set together with bin and config paths) match the internal versions of the CLI.
+    const cliDeps = getCLIDependenciesEnvVars(context);
+    for (const [key, value] of Object.entries(cliDeps)) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            `Setting env var ${key}=${value}`
+        );
+        context.environmentVariableCollection.replace(key, value);
+    }
+    TerraformUtils.updateTerraformCliConfig(
+        context,
+        packageJson.terraformMetadata
+    ).catch((e) => {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to update terraform cli config",
+            e
+        );
+    });
+
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,
     });
@@ -238,6 +262,7 @@ export async function activate(
     const bundleRemoteStateModel = new BundleRemoteStateModel(
         cli,
         workspaceUri,
+        pythonExtensionWrapper,
         workspaceConfigs
     );
     const configModel = new ConfigModel(
@@ -454,7 +479,8 @@ export async function activate(
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         bundleProjectManager,
-        configModel
+        configModel,
+        cli
     );
 
     const connectionCommands = new ConnectionCommands(

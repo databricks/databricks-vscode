@@ -42,7 +42,7 @@ export class JobRunStatus extends BundleRunStatus {
             throw new Error("No run id found");
         }
 
-        const client = this.authProvider.getWorkspaceClient();
+        const client = await this.authProvider.getWorkspaceClient();
         try {
             this.runState = "running";
             await (
@@ -70,7 +70,7 @@ export class JobRunStatus extends BundleRunStatus {
             return;
         }
 
-        const client = this.authProvider.getWorkspaceClient();
+        const client = await this.authProvider.getWorkspaceClient();
         await (
             await client.jobs.cancelRun({run_id: parseInt(this.runId)})
         ).wait();

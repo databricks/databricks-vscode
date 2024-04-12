@@ -73,7 +73,7 @@ export class DatabricksCliCheck implements Disposable {
             {
                 host: this.authProvider.host.toString(),
                 authType: "databricks-cli",
-                databricksCliPath: this.authProvider.cli.cliPath,
+                databricksCliPath: this.authProvider.cliPath,
             },
             {
                 product: "databricks-vscode",
@@ -92,7 +92,7 @@ export class DatabricksCliCheck implements Disposable {
 
     private async login(): Promise<void> {
         try {
-            await ExecUtils.execFile(this.authProvider.cli.cliPath, [
+            await ExecUtils.execFile(this.authProvider.cliPath, [
                 "auth",
                 "login",
                 "--host",

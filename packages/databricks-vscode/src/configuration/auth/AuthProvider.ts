@@ -30,6 +30,7 @@ export abstract class AuthProvider {
     constructor(
         private readonly _host: URL,
         private readonly _authType: AuthType,
+        private readonly _cli: CliWrapper,
         private checked: boolean = false
     ) {}
 
@@ -49,8 +50,8 @@ export abstract class AuthProvider {
     abstract toEnv(): Record<string, string>;
     abstract toIni(): Record<string, string | undefined> | undefined;
 
-    getWorkspaceClient(): WorkspaceClient {
-        const config = this.getSdkConfig();
+    async getWorkspaceClient(): Promise<WorkspaceClient> {
+        const config = await this.getSdkConfig();
 
         return new WorkspaceClient(config, {
             product: "databricks-vscode",
@@ -85,7 +86,7 @@ export abstract class AuthProvider {
         await window.withProgress(
             {
                 location: ProgressLocation.Notification,
-                title: `Databricks: Trying to login using ${this.describe()}`,
+                title: `Databricks: Logging in using ${this.describe()}`,
             },
             async () => await checkFn()
         );
@@ -97,7 +98,17 @@ export abstract class AuthProvider {
 
         return this.checked;
     }
-    protected abstract getSdkConfig(): Config;
+    async getSdkConfig(): Promise<Config> {
+        const config = this._getSdkConfig();
+        await config.ensureResolved();
+        if (config.databricksCliPath === undefined) {
+            config.databricksCliPath = this._cli.cliPath;
+        }
+
+        return config;
+    }
+
+    protected abstract _getSdkConfig(): Config;
 
     static fromJSON(json: Record<string, any>, cli: CliWrapper): AuthProvider {
         const host =
@@ -121,7 +132,11 @@ export abstract class AuthProvider {
                 );
 
             case "databricks-cli":
-                return new DatabricksCliAuthProvider(host, cli);
+                return new DatabricksCliAuthProvider(
+                    host,
+                    json.databricksPath ?? cli.cliPath,
+                    cli
+                );
 
             case "profile":
                 if (!json.profile) {
@@ -144,12 +159,17 @@ export abstract class AuthProvider {
             case "azure-cli":
                 return new AzureCliAuthProvider(
                     host,
+                    cli,
                     config.azureTenantId,
                     config.azureLoginAppId
                 );
 
             case "databricks-cli":
-                return new DatabricksCliAuthProvider(host, cli);
+                return new DatabricksCliAuthProvider(
+                    host,
+                    config.databricksCliPath ?? cli.cliPath,
+                    cli
+                );
 
             default:
                 if (config.profile) {
@@ -168,11 +188,11 @@ export class ProfileAuthProvider extends AuthProvider {
 
     constructor(
         host: URL,
-        private readonly profile: string,
+        readonly profile: string,
         private readonly cli: CliWrapper,
         checked = false
     ) {
-        super(host, "profile", checked);
+        super(host, "profile", cli, checked);
     }
 
     describe(): string {
@@ -198,7 +218,7 @@ export class ProfileAuthProvider extends AuthProvider {
         return undefined;
     }
 
-    public static getSdkConfig(profile: string): Config {
+    private static getSdkConfig(profile: string): Config {
         return new Config({
             profile: profile,
             configFile: workspaceConfigs.databrickscfgLocation,
@@ -206,25 +226,25 @@ export class ProfileAuthProvider extends AuthProvider {
         });
     }
 
-    getSdkConfig(): Config {
+    protected _getSdkConfig(): Config {
         return ProfileAuthProvider.getSdkConfig(this.profile);
     }
 
     protected async _check() {
         while (true) {
             try {
-                const sdkConfig = this.getSdkConfig();
-                await sdkConfig.ensureResolved();
+                const sdkConfig = await this.getSdkConfig();
                 const authProvider = AuthProvider.fromSdkConfig(
                     sdkConfig,
                     this.cli
                 );
 
                 if (authProvider instanceof ProfileAuthProvider) {
-                    const workspaceClient = this.getWorkspaceClient();
+                    const workspaceClient = await this.getWorkspaceClient();
                     await workspaceClient.currentUser.me();
                     return true;
                 }
+
                 return await authProvider.check(false, false);
             } catch (e) {
                 let message: string = `Can't login with config profile ${this.profile}`;
@@ -252,9 +272,10 @@ export class ProfileAuthProvider extends AuthProvider {
 export class DatabricksCliAuthProvider extends AuthProvider {
     constructor(
         host: URL,
-        readonly cli: CliWrapper
+        readonly cliPath: string,
+        cli: CliWrapper
     ) {
-        super(host, "databricks-cli");
+        super(host, "databricks-cli", cli);
     }
 
     describe(): string {
@@ -265,15 +286,15 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         return {
             host: this.host.toString(),
             authType: this.authType,
-            databricksPath: this.cli.cliPath,
+            databricksPath: this.cliPath,
         };
     }
 
-    getSdkConfig(): Config {
+    _getSdkConfig(): Config {
         return new Config({
             host: this.host.toString(),
             authType: "databricks-cli",
-            databricksCliPath: this.cli.cliPath,
+            databricksCliPath: this.cliPath,
         });
     }
 
@@ -301,8 +322,8 @@ export class AzureCliAuthProvider extends AuthProvider {
     private _tenantId?: string;
     private _appId?: string;
 
-    constructor(host: URL, tenantId?: string, appId?: string) {
-        super(host, "azure-cli");
+    constructor(host: URL, cli: CliWrapper, tenantId?: string, appId?: string) {
+        super(host, "azure-cli", cli);
 
         this._tenantId = tenantId;
         this._appId = appId;
@@ -329,7 +350,7 @@ export class AzureCliAuthProvider extends AuthProvider {
         };
     }
 
-    getSdkConfig(): Config {
+    _getSdkConfig(): Config {
         return new Config({
             host: this.host.toString(),
             authType: "azure-cli",
@@ -369,9 +390,10 @@ export class AzureCliAuthProvider extends AuthProvider {
 export class PersonalAccessTokenAuthProvider extends AuthProvider {
     constructor(
         host: URL,
-        private readonly token: string
+        private readonly token: string,
+        cli: CliWrapper
     ) {
-        super(host, "pat");
+        super(host, "pat", cli);
     }
 
     describe(): string {
@@ -400,7 +422,7 @@ export class PersonalAccessTokenAuthProvider extends AuthProvider {
     protected async _check(): Promise<boolean> {
         while (true) {
             try {
-                const workspaceClient = this.getWorkspaceClient();
+                const workspaceClient = await this.getWorkspaceClient();
                 await workspaceClient.currentUser.me();
                 return true;
             } catch (e) {
@@ -424,7 +446,7 @@ export class PersonalAccessTokenAuthProvider extends AuthProvider {
             }
         }
     }
-    protected getSdkConfig(): Config {
+    protected _getSdkConfig(): Config {
         return new Config({
             host: this.host.toString(),
             authType: "pat",

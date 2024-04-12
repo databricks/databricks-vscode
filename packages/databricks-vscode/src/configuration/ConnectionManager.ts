@@ -5,14 +5,14 @@ import {
     AuthType as SdkAuthType,
 } from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
-import {EventEmitter, Uri, window, Disposable, commands} from "vscode";
+import {EventEmitter, Uri, window, Disposable} from "vscode";
 import {CliWrapper, ProcessError} from "../cli/CliWrapper";
 import {
     SyncDestinationMapper,
     RemoteUri,
     LocalUri,
 } from "../sync/SyncDestination";
-import {LoginWizard, listProfiles} from "./LoginWizard";
+import {LoginWizard, getProfilesForHost} from "./LoginWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
@@ -207,6 +207,7 @@ export class ConnectionManager implements Disposable {
             }
             recordEvent({success: this.state === "CONNECTED", source});
         } catch (e) {
+            await this.disconnect();
             recordEvent({success: false, source});
             throw e;
         }
@@ -246,9 +247,7 @@ export class ConnectionManager implements Disposable {
         }
 
         // Try to load a unique profile that matches the host
-        const profiles = (await listProfiles(this.cli)).filter(
-            (p) => p.host?.toString() === host.toString()
-        );
+        const profiles = await getProfilesForHost(host, this.cli);
         if (profiles.length !== 1) {
             return;
         }
@@ -272,48 +271,40 @@ export class ConnectionManager implements Disposable {
             );
         } catch (e) {
             NamedLogger.getOrCreate("Extension").error(
-                `Can't connect to the workspace`,
+                `Error connecting to the workspace`,
                 e
             );
             if (e instanceof ProcessError) {
-                window
-                    .showErrorMessage(
-                        `Can't connect to the workspace. Error executing Databricks CLI command.`,
-                        "Show Logs"
-                    )
-                    .then((choice) => {
-                        if (choice === "Show Logs") {
-                            commands.executeCommand(
-                                "databricks.bundle.showLogs"
-                            );
-                        }
-                    });
+                e.showErrorMessage("Error connecting to the workspace.");
             } else if (e instanceof Error) {
                 window.showErrorMessage(
-                    `Can't connect to the workspace: "${e.message}"."`
+                    `Error connecting to the workspace: "${e.message}"."`
                 );
             }
-            await this.logout();
         }
     }
 
     @Mutex.synchronise("loginLogoutMutex")
     private async _connect(authProvider: AuthProvider) {
         this.updateState("CONNECTING");
+        this._workspaceClient = await authProvider.getWorkspaceClient();
         this._databricksWorkspace = await DatabricksWorkspace.load(
-            authProvider.getWorkspaceClient(),
+            this._workspaceClient,
             authProvider
         );
-        this._workspaceClient = authProvider.getWorkspaceClient();
         await this.configModel.set(
             "authProfile",
             authProvider.toJSON().profile as string | undefined
         );
-        await this.configModel.setAuthProvider(authProvider);
+
         await this.updateSyncDestinationMapper();
         await this.updateClusterManager();
         await this._metadataService.setApiClient(this.apiClient);
-        this.updateState("CONNECTED");
+        try {
+            await this.configModel.setAuthProvider(authProvider);
+        } finally {
+            this.updateState("CONNECTED");
+        }
     }
 
     @Mutex.synchronise("loginLogoutMutex")

@@ -1,4 +1,3 @@
-import {posix} from "path/posix";
 import {ConfigModel} from "../models/ConfigModel";
 import {ConnectionManager} from "../ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
@@ -42,10 +41,9 @@ export class SyncDestinationComponent extends BaseComponent {
             : undefined;
     }
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
-        const config = await this.configModel.get("remoteRootPath");
-        if (config === undefined) {
-            // Workspace folder is not set in bundle and override
-            // We are not logged in
+        const workspaceFsPath = await this.configModel.get("remoteRootPath");
+
+        if (workspaceFsPath === undefined) {
             return [];
         }
 
@@ -54,12 +52,15 @@ export class SyncDestinationComponent extends BaseComponent {
 
         return [
             {
-                label: "Sync",
+                label: "Workspace Folder",
                 tooltip: url ? undefined : "Created after deploy",
-                description: posix.basename(posix.dirname(config)),
-                collapsibleState: TreeItemCollapsibleState.Expanded,
+                description: workspaceFsPath,
+                collapsibleState: TreeItemCollapsibleState.None,
                 contextValue: url ? `${contextValue}.has-url` : contextValue,
-                iconPath: new ThemeIcon("sync", new ThemeColor("charts.green")),
+                iconPath: new ThemeIcon(
+                    "folder-active",
+                    new ThemeColor("charts.green")
+                ),
                 resourceUri: url
                     ? undefined
                     : DecorationUtils.getModifiedStatusDecoration(
@@ -78,27 +79,11 @@ export class SyncDestinationComponent extends BaseComponent {
         if (this.connectionManager.state !== "CONNECTED") {
             return [];
         }
+
         if (parent === undefined) {
             return this.getRoot();
         }
-        // If the parent is not intended for this component, return empty array
-        if (parent.id !== TREE_ICON_ID) {
-            return [];
-        }
-        const workspaceFsPath = await this.configModel.get("remoteRootPath");
 
-        if (workspaceFsPath === undefined) {
-            return [];
-        }
-
-        const children: ConfigurationTreeItem[] = [
-            {
-                label: "Workspace Folder",
-                description: workspaceFsPath,
-                collapsibleState: TreeItemCollapsibleState.None,
-            },
-        ];
-
-        return children;
+        return [];
     }
 }
