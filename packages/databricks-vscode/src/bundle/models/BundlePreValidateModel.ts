@@ -63,9 +63,9 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         });
     }
 
-    public async setTarget(target: string | undefined) {
+    public setTarget(target: string | undefined) {
         this.target = target;
-        await this.stateCache.refresh();
+        this.resetCache();
     }
 
     protected readStateFromTarget(
@@ -93,7 +93,6 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         return targetObject;
     }
 
-    @Mutex.synchronise("mutex")
     protected async readState() {
         if (this.target === undefined) {
             return {};
@@ -141,6 +140,10 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         }
 
         return [...filesWithConfig, ...filesWithTarget][0];
+    }
+
+    public resetCache(): void {
+        this.stateCache.set({});
     }
 
     public dispose() {

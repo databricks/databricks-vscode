@@ -188,7 +188,7 @@ export class ProfileAuthProvider extends AuthProvider {
 
     constructor(
         host: URL,
-        private readonly profile: string,
+        readonly profile: string,
         private readonly cli: CliWrapper,
         checked = false
     ) {

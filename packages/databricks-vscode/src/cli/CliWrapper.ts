@@ -17,6 +17,8 @@ import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
 import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
+import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
+import path from "path";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -42,6 +44,20 @@ export class ProcessError extends Error {
         public code: number | null
     ) {
         super(message);
+    }
+
+    showErrorMessage(prefix?: string) {
+        window
+            .showErrorMessage(
+                (prefix?.trimEnd().concat(" ") ?? "") +
+                    `Error executing Databricks CLI command.`,
+                "Show Logs"
+            )
+            .then((choice) => {
+                if (choice === "Show Logs") {
+                    commands.executeCommand("databricks.bundle.showLogs");
+                }
+            });
     }
 }
 
@@ -184,7 +200,10 @@ export class CliWrapper {
         try {
             res = await execFile(cmd.command, cmd.args, {
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getEnvVarsForCli(
+                        this.extensionContext,
+                        configfilePath
+                    ),
                     ...EnvVarGenerators.getProxyEnvVars(),
                 },
             });
@@ -285,7 +304,10 @@ export class CliWrapper {
             const {stdout, stderr} = await execFile(cmd[0], cmd.slice(1), {
                 cwd: workspaceFolder.fsPath,
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getEnvVarsForCli(
+                        this.extensionContext,
+                        configfilePath
+                    ),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
                     ...this.getLogginEnvVars(),
@@ -296,13 +318,11 @@ export class CliWrapper {
                 },
                 shell: true,
             });
-            const output = stdout + stderr;
-
             logger?.info("Finished reading local bundle configuration.", {
                 bundleOpName: "validate",
             });
-            logger?.debug(output);
-            return output;
+            logger?.debug(stdout + stderr);
+            return stdout;
         } catch (e: any) {
             logger?.error(
                 `Failed to read local bundle configuration. ${e.message ?? ""}`,
@@ -322,7 +342,17 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
-        const cmd = [this.cliPath, "bundle", "summary", "--target", target];
+        const cmd = [
+            this.cliPath,
+            "bundle",
+            "summary",
+            "--target",
+            target,
+            // Forces the CLI to regenerate local terraform state and pull the remote state.
+            // Regenerating terraform state is useful when we want to ensure that the provider version
+            // used in the local state matches the bundled version we supply with the extension.
+            "--force-pull",
+        ];
 
         logger?.info(
             `Refreshing bundle configuration for target ${target}...`,
@@ -334,7 +364,10 @@ export class CliWrapper {
             const {stdout, stderr} = await execFile(cmd[0], cmd.slice(1), {
                 cwd: workspaceFolder.fsPath,
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                    ...EnvVarGenerators.getEnvVarsForCli(
+                        this.extensionContext,
+                        configfilePath
+                    ),
                     ...EnvVarGenerators.getProxyEnvVars(),
                     ...authProvider.toEnv(),
                     ...((await this._bundleVariableModel?.getEnvVariables()) ??
@@ -345,13 +378,11 @@ export class CliWrapper {
                 },
                 shell: true,
             });
-
-            const output = stdout + stderr;
             logger?.info("Bundle configuration refreshed.", {
                 bundleOpName: "summarize",
             });
-            logger?.debug(output);
-            return output;
+            logger?.debug(stdout + stderr);
+            return stdout;
         } catch (e: any) {
             logger?.error(
                 `Failed to refresh bundle configuration. ${e.message ?? ""}`,
@@ -367,6 +398,7 @@ export class CliWrapper {
     getBundleInitEnvVars(authProvider: AuthProvider) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
                 workspaceConfigs.databrickscfgLocation
             ),
             ...EnvVarGenerators.getProxyEnvVars(),
@@ -402,6 +434,7 @@ export class CliWrapper {
         target: string,
         authProvider: AuthProvider,
         workspaceFolder: Uri,
+        pythonExtension: MsPythonExtensionWrapper,
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
@@ -420,16 +453,30 @@ export class CliWrapper {
             bundleOpName: "deploy",
         });
 
+        // Add python executable to PATH
+        const executable = await pythonExtension.getPythonExecutable();
+        const cliEnvVars = EnvVarGenerators.getEnvVarsForCli(
+            this.extensionContext,
+            configfilePath
+        );
+        let shellPath = cliEnvVars.PATH;
+        if (executable) {
+            shellPath = `${path.dirname(executable)}${
+                path.delimiter
+            }${shellPath}`;
+        }
         const p = spawn(cmd[0], cmd.slice(1), {
             cwd: workspaceFolder.fsPath,
             env: {
-                ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+                ...cliEnvVars,
                 ...EnvVarGenerators.getProxyEnvVars(),
                 ...authProvider.toEnv(),
                 ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
                 ...this.getLogginEnvVars(),
-                // eslint-disable-next-line @typescript-eslint/naming-convention
+                /* eslint-disable @typescript-eslint/naming-convention */
+                PATH: shellPath,
                 DATABRICKS_CLUSTER_ID: this.clusterId,
+                /* eslint-enable @typescript-eslint/naming-convention */
             },
             shell: true,
         });
@@ -478,7 +525,10 @@ export class CliWrapper {
         options: SpawnOptionsWithoutStdio;
     }> {
         const env: Record<string, string> = removeUndefinedKeys({
-            ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
+            ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
+                configfilePath
+            ),
             ...EnvVarGenerators.getProxyEnvVars(),
             ...authProvider.toEnv(),
             ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),

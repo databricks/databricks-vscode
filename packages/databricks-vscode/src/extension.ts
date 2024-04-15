@@ -24,7 +24,12 @@ import {PublicApi} from "@databricks/databricks-vscode-types";
 import {LoggerManager, Loggers} from "./logger";
 import {logging} from "@databricks/databricks-sdk";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
-import {FileUtils, PackageJsonUtils, UtilsCommands} from "./utils";
+import {
+    FileUtils,
+    PackageJsonUtils,
+    TerraformUtils,
+    UtilsCommands,
+} from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
 import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
@@ -65,6 +70,10 @@ import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigu
 import {isIntegrationTest} from "./utils/developmentUtils";
 import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
+import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const packageJson = require("../package.json");
 
 const customWhenContext = new CustomWhenContext();
 
@@ -173,6 +182,27 @@ export async function activate(
         `${path.delimiter}${context.asAbsolutePath("./bin")}`
     );
 
+    // We always use bundled terraform and databricks provider.
+    // Updating environment collection means that the variables will be set in all terminals.
+    // If users use different CLI version in their terminal it will only pick the variables if
+    // the dependency versions (that we set together with bin and config paths) match the internal versions of the CLI.
+    const cliDeps = getCLIDependenciesEnvVars(context);
+    for (const [key, value] of Object.entries(cliDeps)) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            `Setting env var ${key}=${value}`
+        );
+        context.environmentVariableCollection.replace(key, value);
+    }
+    TerraformUtils.updateTerraformCliConfig(
+        context,
+        packageJson.terraformMetadata
+    ).catch((e) => {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to update terraform cli config",
+            e
+        );
+    });
+
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,
     });
@@ -235,6 +265,7 @@ export async function activate(
     const bundleRemoteStateModel = new BundleRemoteStateModel(
         cli,
         workspaceUri,
+        pythonExtensionWrapper,
         workspaceConfigs
     );
     const configModel = new ConfigModel(
@@ -451,7 +482,8 @@ export async function activate(
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
         bundleProjectManager,
-        configModel
+        configModel,
+        cli
     );
 
     const connectionCommands = new ConnectionCommands(
