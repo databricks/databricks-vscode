@@ -332,7 +332,7 @@ __metadata:
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
     "@databricks/databricks-sdk": "file:../../vendor/databricks-sdk.tgz"
-    "@types/vscode": ^1.88.0
+    "@types/vscode": 1.86.0
     databricks: "workspace:^"
     eslint: ^8.55.0
     prettier: ^3.1.1
@@ -1607,13 +1607,6 @@ __metadata:
   version: 1.86.0
   resolution: "@types/vscode@npm:1.86.0"
   checksum: 5d50fbe5dee10d4d07532ec247b19575d4f4a9f8d858b6b7d43ccba418012d7b215447547884bb9ac0448845eb302c0bdc555e69eb1a7423c256c30acc07bfe6
-  languageName: node
-  linkType: hard
-
-"@types/vscode@npm:^1.88.0":
-  version: 1.88.0
-  resolution: "@types/vscode@npm:1.88.0"
-  checksum: 5f42f07e42b6fa78b1bcb64e280c25cf03b8073e39962dc5db4109b8e88710979d15ab415920d1e52b26b86d3946282ba763fd6df20a31ba1ff97738806a9379
   languageName: node
   linkType: hard
 

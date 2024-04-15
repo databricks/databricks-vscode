@@ -23,7 +23,7 @@
         "test": "yarn run test:lint && yarn run test:unit"
     },
     "devDependencies": {
-        "@types/vscode": "^1.88.0",
+        "@types/vscode": "1.86.0",
         "eslint": "^8.55.0",
         "prettier": "^3.1.1",
         "typescript": "^5.3.3"
