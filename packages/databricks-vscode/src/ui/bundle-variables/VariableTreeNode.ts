@@ -14,8 +14,12 @@ export class VariableTreeNode implements BundleVariableTreeNode {
         return {
             label: this.key,
             description:
-                this.value.vscodeOverrideValue ?? this.value.valueInTarget,
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+                this.value.vscodeOverrideValue ??
+                this.value.valueInTarget ??
+                "",
+            collapsibleState: this.value.valueInTarget
+                ? TreeItemCollapsibleState.Collapsed
+                : TreeItemCollapsibleState.None,
         };
     }
 

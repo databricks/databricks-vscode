@@ -12,7 +12,9 @@ export class LookupVariableTreeNode implements BundleVariableTreeNode {
 
     getTreeItem(): BundleVariableTreeItem {
         const lookup = this.value.lookup as any;
-        const lookupValue = Object.values(lookup).at(0) as string | undefined;
+        const lookupValue = Object.values(lookup).find(
+            (v) => v !== undefined
+        ) as string | undefined;
 
         return {
             label: this.key,

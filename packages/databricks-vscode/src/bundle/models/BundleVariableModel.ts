@@ -39,16 +39,30 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
             }),
             this.configModel.onDidChangeTarget(async () => {
                 this.setTarget(this.configModel.target);
+            }),
+            this.onDidChangeKey("variables")(async () => {
+                if (this.bundleVariableFilePath === undefined) {
+                    return;
+                }
+
+                await workspace.fs.writeFile(
+                    this.bundleVariableFilePath,
+                    Buffer.from(await this.getFileContent(), "utf8")
+                );
             })
         );
     }
 
+    public resetCache(): void {
+        this.stateCache.set({variables: {}});
+    }
     setTarget(target: string | undefined) {
         if (this.target === target) {
             return;
         }
 
         this.target = target;
+        this.resetCache();
 
         if (this.target === undefined) {
             this.overrideFileWatcher?.dispose();
@@ -92,7 +106,9 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
         ).with({scheme: "file"});
     }
 
-    private async getVariableOverrides(): Promise<Record<string, string>> {
+    private async getVariableOverrides(): Promise<
+        Record<string, string | undefined>
+    > {
         if (this.bundleVariableFilePath === undefined) {
             return {};
         }
@@ -103,10 +119,14 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
             ).split(os.EOL);
 
             return Object.fromEntries(
-                lines.map((line) => [
-                    line.split("=")[0],
-                    line.split("=").slice(1).join("="),
-                ])
+                lines.map((line) => {
+                    const parts = line.split("=");
+                    const first = parts.shift();
+                    if (parts.join("=").trim().length === 0) {
+                        return [first, undefined];
+                    }
+                    return [first, parts.join("=")];
+                })
             );
         } catch (e: any) {
             if (e.code !== "ENOENT") {
@@ -137,9 +157,11 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
 
         const variables: Record<string, BundleVariable> = {};
 
-        for (const [key, definition] of Object.entries(
-            globalVariableDefinitions
-        )) {
+        for (const key of Object.keys(globalVariableDefinitions)) {
+            let definition = globalVariableDefinitions[key];
+            if (typeof definition === "string") {
+                definition = {default: definition};
+            }
             const inTargetVariable = inTargetVariables[key];
 
             // We check heuristically if the vairable is required, because bundle validate does not work if
@@ -187,10 +209,19 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
         ) as Record<string, string>;
     }
 
-    async getInitialFileContent() {
+    async getFileContent() {
         const variables = (await this.stateCache.value).variables ?? {};
         return Object.entries(variables)
-            .map(([key, value]) => `${key}=${value.valueInTarget ?? ""}`)
+            .filter((v) => v[1].lookup === undefined)
+            .map(
+                ([key, value]) =>
+                    `${key}=${
+                        value.vscodeOverrideValue ??
+                        value.valueInTarget ??
+                        value.default ??
+                        ""
+                    }`
+            )
             .join(os.EOL);
     }
 
@@ -202,14 +233,6 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
             return;
         }
 
-        try {
-            await workspace.fs.stat(this.bundleVariableFilePath);
-        } catch (e) {
-            await workspace.fs.writeFile(
-                this.bundleVariableFilePath,
-                Buffer.from(await this.getInitialFileContent(), "utf8")
-            );
-        }
         const doc = await workspace.openTextDocument(
             this.bundleVariableFilePath
         );

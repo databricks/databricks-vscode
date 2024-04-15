@@ -11,7 +11,15 @@ export type BundlePreValidateState = {
     host?: URL;
     mode?: "development" | "staging" | "production";
     authParams?: Record<string, string | undefined>;
-} & BundleTarget & {preValidateBundleSchema?: BundleSchema};
+} & BundleTarget & {
+        preValidateBundleSchema?: BundleSchema & {
+            variables: {
+                [k in keyof Required<BundleSchema>["variables"]]:
+                    | Required<BundleSchema>["variables"][k]
+                    | string;
+            };
+        };
+    };
 
 /**
  * Reads and writes bundle configs. This class does not notify when the configs change.
