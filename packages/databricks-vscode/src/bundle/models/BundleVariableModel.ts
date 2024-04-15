@@ -4,7 +4,6 @@ import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {Mutex} from "../../locking";
 import {BundleSchema} from "../types";
 import {readFile} from "fs/promises";
-import * as os from "os";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../../logger";
 import {onError} from "../../utils/onErrorDecorator";
@@ -41,18 +40,21 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
                 this.setTarget(this.configModel.target);
             }),
             this.onDidChangeKey("variables")(async () => {
-                if (this.bundleVariableFilePath === undefined) {
-                    return;
-                }
-
-                await workspace.fs.writeFile(
-                    this.bundleVariableFilePath,
-                    Buffer.from(await this.getFileContent(), "utf8")
-                );
+                await this.writeFile();
             })
         );
     }
 
+    public async writeFile() {
+        if (this.bundleVariableFilePath === undefined) {
+            return;
+        }
+
+        await workspace.fs.writeFile(
+            this.bundleVariableFilePath,
+            Buffer.from(await this.getFileContent(), "utf8")
+        );
+    }
     public resetCache(): void {
         this.stateCache.set({variables: {}});
     }
@@ -102,7 +104,7 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
             ".databricks",
             "bundle",
             target,
-            "vscode.bundlevars"
+            "vscode.bundlevars.json"
         ).with({scheme: "file"});
     }
 
@@ -114,19 +116,19 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
         }
 
         try {
-            const lines = (
+            const rawData: Record<string, string> = JSON.parse(
                 await readFile(this.bundleVariableFilePath.fsPath, "utf-8")
-            ).split(os.EOL);
+            );
 
             return Object.fromEntries(
-                lines.map((line) => {
-                    const parts = line.split("=");
-                    const first = parts.shift();
-                    if (parts.join("=").trim().length === 0) {
-                        return [first, undefined];
-                    }
-                    return [first, parts.join("=")];
-                })
+                Object.entries(rawData)
+                    .map(([key, value]) => {
+                        if (value.length === 0) {
+                            return [key, undefined];
+                        }
+                        return [key, value];
+                    })
+                    .filter((v) => v[1] !== undefined)
             );
         } catch (e: any) {
             if (e.code !== "ENOENT") {
@@ -211,18 +213,21 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
 
     async getFileContent() {
         const variables = (await this.stateCache.value).variables ?? {};
-        return Object.entries(variables)
-            .filter((v) => v[1].lookup === undefined)
-            .map(
-                ([key, value]) =>
-                    `${key}=${
+        return JSON.stringify(
+            Object.fromEntries(
+                Object.entries(variables)
+                    .filter((v) => v[1].lookup === undefined)
+                    .map(([key, value]) => [
+                        key,
                         value.vscodeOverrideValue ??
-                        value.valueInTarget ??
-                        value.default ??
-                        ""
-                    }`
-            )
-            .join(os.EOL);
+                            value.valueInTarget ??
+                            value.default ??
+                            "",
+                    ])
+            ),
+            null,
+            4
+        );
     }
 
     async openBundleVariableFile() {
@@ -233,6 +238,7 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
             return;
         }
 
+        await this.writeFile();
         const doc = await workspace.openTextDocument(
             this.bundleVariableFilePath
         );
