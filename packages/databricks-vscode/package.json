@@ -136,14 +136,20 @@
                 "title": "Run File as Workflow",
                 "category": "Databricks",
                 "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(play)"
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
             },
             {
                 "command": "databricks.run.runEditorContents",
                 "title": "Upload and Run File",
                 "category": "Databricks",
                 "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(play)"
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
             },
             {
                 "command": "databricks.quickstart.open",
@@ -256,13 +262,21 @@
                 "command": "databricks.run.dbconnect.debug",
                 "title": "Databricks Connect: Debug current file",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "category": "Databricks"
+                "category": "Databricks",
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
             },
             {
                 "command": "databricks.run.dbconnect.run",
                 "title": "Databricks Connect: Run current file",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "category": "Databricks"
+                "category": "Databricks",
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
             },
             {
                 "command": "databricks.bundle.showLogs",
@@ -532,7 +546,7 @@
             "explorer/context": [
                 {
                     "submenu": "databricks.run",
-                    "when": "resourceLangId == python"
+                    "when": "resourceLangId == python || resourceExtname == .ipynb"
                 }
             ]
         },
