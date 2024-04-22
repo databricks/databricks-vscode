@@ -1,10 +1,11 @@
-import {ConfigModel} from "../models/ConfigModel";
-import {ConnectionManager} from "../ConnectionManager";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
+import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {ThemeIcon, ThemeColor} from "vscode";
-import {getProfilesForHost} from "../LoginWizard";
+import {getProfilesForHost} from "../../configuration/LoginWizard";
 import {CliWrapper} from "../../cli/CliWrapper";
+import {LabelUtils} from "../utils";
 
 export const AUTH_TYPE_SWITCH_ID = "AUTH-TYPE";
 export const AUTH_TYPE_LOGIN_ID = "LOGIN";
@@ -61,7 +62,7 @@ export class AuthTypeComponent extends BaseComponent {
             }
             return [
                 {
-                    label: {label, highlights: [[0, label.length]]},
+                    label: LabelUtils.highlightedLabel(label),
                     iconPath: new ThemeIcon(
                         "account",
                         new ThemeColor("notificationsErrorIcon.foreground")

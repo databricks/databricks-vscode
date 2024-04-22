@@ -2,8 +2,8 @@ import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
-import {ConnectionManager} from "../ConnectionManager";
-import {ConfigModel} from "../models/ConfigModel";
+import {ConnectionManager} from "../../configuration/ConnectionManager";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
 const getItemContext = (key: string, available: boolean) =>

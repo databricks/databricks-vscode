@@ -5,7 +5,6 @@ export abstract class BaseComponent implements Disposable {
     protected disposables: Disposable[] = [];
     protected onDidChangeEmitter = new EventEmitter<void>();
     public readonly onDidChange = this.onDidChangeEmitter.event;
-
     constructor() {}
 
     public abstract getChildren(

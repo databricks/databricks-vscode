@@ -14,7 +14,7 @@ import {ConnectionManager} from "./configuration/ConnectionManager";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
-import {ConfigurationDataProvider} from "./configuration/ui/ConfigurationDataProvider";
+import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
@@ -63,10 +63,11 @@ import {BundleCommands} from "./ui/bundle-resource-explorer/BundleCommands";
 import {BundleRunTerminalManager} from "./bundle/run/BundleRunTerminalManager";
 import {BundleRunStatusManager} from "./bundle/run/BundleRunStatusManager";
 import {BundleProjectManager} from "./bundle/BundleProjectManager";
-import {TreeItemDecorationProvider} from "./ui/bundle-resource-explorer/DecorationProvider";
+import {TreeItemDecorationProvider} from "./ui/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 import {isIntegrationTest} from "./utils/developmentUtils";
+import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -469,6 +470,14 @@ export async function activate(
         cli,
         featureManager
     );
+    const configurationView = window.createTreeView("configurationView", {
+        treeDataProvider: configurationDataProvider,
+    });
+
+    const configurationTreeViewManager = new ConfigurationTreeViewManager(
+        configurationView,
+        configModel
+    );
 
     const connectionCommands = new ConnectionCommands(
         workspaceFsCommands,
@@ -480,11 +489,8 @@ export async function activate(
 
     context.subscriptions.push(
         configurationDataProvider,
-
-        window.registerTreeDataProvider(
-            "configurationView",
-            configurationDataProvider
-        ),
+        configurationView,
+        configurationTreeViewManager,
         telemetry.registerCommand(
             "databricks.connection.bundle.selectTarget",
             connectionCommands.selectTarget,

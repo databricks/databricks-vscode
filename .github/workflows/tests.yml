@@ -77,7 +77,7 @@ jobs:
           working-directory: packages/databricks-vscode
 
       - name: Integration Tests
-        run: yarn run test:integ
+        run: yarn run test:integ:prepare && yarn run test:integ:run
         working-directory: packages/databricks-vscode
 
       - name: Integration Tests SDK wrappers

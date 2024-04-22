@@ -16,7 +16,10 @@ import {saveNewProfile} from "./LoginWizard";
 import {PersonalAccessTokenAuthProvider} from "./auth/AuthProvider";
 import {normalizeHost} from "../utils/urlUtils";
 import {CliWrapper, ProcessError} from "../cli/CliWrapper";
-import {AUTH_TYPE_SWITCH_ID, AUTH_TYPE_LOGIN_ID} from "./ui/AuthTypeComponent";
+import {
+    AUTH_TYPE_SWITCH_ID,
+    AUTH_TYPE_LOGIN_ID,
+} from "../ui/configuration-view/AuthTypeComponent";
 import {ManualLoginSource} from "../telemetry/constants";
 import {onError} from "../utils/onErrorDecorator";
 

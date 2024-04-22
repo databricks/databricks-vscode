@@ -41,7 +41,11 @@ export async function findViewSection(name: ViewSectionType) {
     const views =
         (await (await control?.openView())?.getContent()?.getSections()) ?? [];
     for (const v of views) {
-        if ((await v.getTitle()).toUpperCase() === name) {
+        const title = await v.getTitle();
+        if (title === null) {
+            continue;
+        }
+        if (title.toUpperCase() === name) {
             return v;
         }
     }
@@ -50,8 +54,17 @@ export async function findViewSection(name: ViewSectionType) {
 export async function getViewSection(
     name: ViewSectionType
 ): Promise<ViewSection | undefined> {
-    const section = await findViewSection(name);
-    assert(section);
+    let section: ViewSection | undefined;
+    await browser.waitUntil(
+        async () => {
+            section = await findViewSection(name);
+            return section !== undefined;
+        },
+        {
+            timeout: 10 * 1000,
+            timeoutMsg: `Can't find view section "${name}"`,
+        }
+    );
 
     for (const s of ViewSectionTypes) {
         if (s !== name) {
@@ -59,8 +72,8 @@ export async function getViewSection(
         }
     }
 
-    await section.expand();
-    await (await section.elem).click();
+    await section!.expand();
+    await (await section!.elem).click();
     return section;
 }
 

@@ -1,4 +1,4 @@
-import {BundleResourceModifiedStatus} from "../../../bundle/models/BundleRemoteStateModel";
+import {BundleResourceModifiedStatus} from "../../bundle/models/BundleRemoteStateModel";
 import {asDecorationResourceUri} from "../DecorationProvider";
 import {ThemeColor, TreeItemCollapsibleState} from "vscode";
 
