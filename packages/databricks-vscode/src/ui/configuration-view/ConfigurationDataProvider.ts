@@ -40,11 +40,6 @@ export class ConfigurationDataProvider
 
     private disposables: Array<Disposable> = [];
     private components: Array<BaseComponent> = [
-        new EnvironmentComponent(
-            this.featureManager,
-            this.connectionManager,
-            this.configModel
-        ),
         new BundleTargetComponent(this.configModel),
         new AuthTypeComponent(
             this.connectionManager,
@@ -53,6 +48,11 @@ export class ConfigurationDataProvider
         ),
         new ClusterComponent(this.connectionManager, this.configModel),
         new SyncDestinationComponent(this.connectionManager, this.configModel),
+        new EnvironmentComponent(
+            this.featureManager,
+            this.connectionManager,
+            this.configModel
+        ),
     ];
     constructor(
         private readonly connectionManager: ConnectionManager,

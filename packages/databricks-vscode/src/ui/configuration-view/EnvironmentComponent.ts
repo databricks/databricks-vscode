@@ -1,4 +1,9 @@
-import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
+import {
+    ThemeColor,
+    ThemeIcon,
+    TreeItem,
+    TreeItemCollapsibleState,
+} from "vscode";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
@@ -35,7 +40,9 @@ export class EnvironmentComponent extends BaseComponent {
                           new ThemeColor("debugIcon.startForeground")
                       )
                     : new ThemeIcon("info", new ThemeColor("errorForeground")),
-                collapsibleState: TreeItemCollapsibleState.Expanded,
+                collapsibleState: environmentState.available
+                    ? TreeItemCollapsibleState.Collapsed
+                    : TreeItemCollapsibleState.Expanded,
             },
         ];
     }
