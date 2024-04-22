@@ -1,9 +1,4 @@
-import {
-    ThemeColor,
-    ThemeIcon,
-    TreeItem,
-    TreeItemCollapsibleState,
-} from "vscode";
+import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
