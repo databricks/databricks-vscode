@@ -1,28 +1,37 @@
 import {logging} from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
-import {window, commands} from "vscode";
+import {commands} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {MultiStepAccessVerifier} from "../feature-manager/MultiStepAccessVerfier";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
-import {EnvironmentDependenciesInstallPrompt} from "./EnvironmentDependenciesInstallPrompt";
+import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
 import {FeatureStepState} from "../feature-manager/FeatureManager";
-import {DATABRICKS_CONNECT_VERSION} from "../utils/constants";
+import {Telemetry} from "../telemetry";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly installPrompt: EnvironmentDependenciesInstallPrompt
+        private readonly installer: EnvironmentDependenciesInstaller,
+        private readonly telemetry: Telemetry
     ) {
-        super(["checkCluster", "checkWorkspaceHasUc", "checkLocalEnvironment"]);
+        super([
+            "checkCluster",
+            "checkWorkspaceHasUc",
+            "checkPythonEnvironment",
+            "checkEnvironmentDependencies",
+        ]);
         this.disposables.push(
             this.connectionManager.onDidChangeCluster((cluster) => {
                 if (this.connectionManager.state !== "CONNECTED") {
                     return;
                 }
                 this.checkCluster(cluster);
+                if (cluster) {
+                    this.checkEnvironmentDependencies();
+                }
             }, this),
             this.connectionManager.onDidChangeState((e) => {
                 if (e !== "CONNECTED") {
@@ -31,16 +40,23 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 this.checkWorkspaceHasUc();
             }, this),
             this.pythonExtension.onDidChangePythonExecutable(async () => {
-                const check = await this.checkLocalEnvironment();
-                if (
-                    check.message?.includes(
-                        "databricks-connect package is not installed"
-                    ) &&
-                    check.action
-                ) {
-                    check.action(true);
+                await this.checkPythonEnvironment();
+                const depsCheck = await this.checkEnvironmentDependencies();
+                if (!depsCheck.available && depsCheck.action) {
+                    await depsCheck.action(true);
                 }
-            }, this)
+            }, this),
+            this.installer.onDidTryInstallation(() =>
+                this.checkEnvironmentDependencies()
+            ),
+            this.telemetry.registerCommand(
+                "databricks.environment.selectPythonInterpreter",
+                this.selectPythonInterpreter.bind(this)
+            ),
+            this.telemetry.registerCommand(
+                "databricks.environment.reinstallDBConnect",
+                this.promptToReinstallDbConnect.bind(this)
+            )
         );
     }
 
@@ -126,24 +142,24 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         }
         return this.acceptStep("checkWorkspaceHasUc");
     }
-
-    async checkLocalEnvironment(): Promise<FeatureStepState> {
+    async selectPythonInterpreter() {
         const environments =
             await this.pythonExtension.getAvailableEnvironments();
-        const selectPythonInterpreter = async () => {
-            if (environments.length > 0) {
-                await this.pythonExtension.selectPythonInterpreter();
-            } else {
-                await this.pythonExtension.createPythonEnvironment();
-            }
-        };
+        if (environments.length > 0) {
+            await this.pythonExtension.selectPythonInterpreter();
+        } else {
+            await this.pythonExtension.createPythonEnvironment();
+        }
+    }
+
+    async checkPythonEnvironment(): Promise<FeatureStepState> {
         const executable = await this.pythonExtension.getPythonExecutable();
         if (!executable) {
             return this.rejectStep(
-                "checkLocalEnvironment",
+                "checkPythonEnvironment",
                 "Select Python Interpreter",
                 "No python executable found",
-                selectPythonInterpreter
+                this.selectPythonInterpreter.bind(this)
             );
         }
         const env = await this.pythonExtension.pythonEnvironment;
@@ -155,54 +171,107 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             )
         ) {
             return this.rejectStep(
-                "checkLocalEnvironment",
+                "checkPythonEnvironment",
                 "Select Python >= 3.10.0",
                 `Databricks Connect requires python >= 3.10.0. Current version is ${[
                     env.version.major,
                     env.version.minor,
                     env.version.micro,
                 ].join(".")}.`,
-                selectPythonInterpreter
+                this.selectPythonInterpreter.bind(this)
             );
         }
         if (!env?.environment) {
             return this.rejectStep(
-                "checkLocalEnvironment",
-                "Activate a virtual environment",
+                "checkPythonEnvironment",
+                "Activate virtual environment",
                 "No active virtual environment",
-                selectPythonInterpreter
+                this.selectPythonInterpreter.bind(this)
+            );
+        }
+        return this.acceptStep(
+            "checkPythonEnvironment",
+            `Active Environment: ${env.environment.name}`,
+            env.executable.uri?.fsPath
+        );
+    }
+
+    async promptToReinstallDbConnect() {
+        let placeholderVersion = undefined;
+        const dbrVersionParts = this.connectionManager.cluster?.dbrVersion;
+        if (dbrVersionParts && dbrVersionParts[0] !== "x") {
+            const minor = dbrVersionParts[1] === "x" ? "*" : dbrVersionParts[1];
+            placeholderVersion = `${dbrVersionParts[0]}.${minor}.*`;
+        }
+        return this.installer.installWithVersionPrompt(placeholderVersion);
+    }
+
+    checkDatabricksConnectVersion(version: string) {
+        const dbconnectcVersionParts = version.split(".");
+        const dbconnectMajor = parseInt(dbconnectcVersionParts[0], 10);
+        const dbconnectMinor = parseInt(dbconnectcVersionParts[1], 10);
+        if (dbconnectMajor < 13) {
+            return this.rejectStep(
+                "checkEnvironmentDependencies",
+                "Update databricks-connect",
+                `Databricks Connect ${version} is outdated, please update to 13.0.0 or higher.`,
+                this.promptToReinstallDbConnect.bind(this)
+            );
+        }
+        const dbrVersionParts = this.connectionManager.cluster?.dbrVersion;
+        if (dbrVersionParts && dbrVersionParts[0] !== "x") {
+            const dbrMajor = dbrVersionParts[0];
+            const dbrMinor = dbrVersionParts[1];
+            const dbconnectIsLower =
+                dbconnectMajor <= dbrMajor &&
+                (dbrMinor === "x" || dbconnectMinor <= dbrMinor);
+            if (!dbconnectIsLower) {
+                return this.rejectStep(
+                    "checkEnvironmentDependencies",
+                    "Reinstall databricks-connect",
+                    `Databricks Connect version (${version}) should be equal or lower than the cluster DBR version (${dbrMajor}.${dbrMinor}).`,
+                    this.promptToReinstallDbConnect.bind(this)
+                );
+            }
+        }
+        return this.acceptStep(
+            "checkEnvironmentDependencies",
+            `Databricks Connect: ${version}`
+        );
+    }
+
+    async checkEnvironmentDependencies(): Promise<FeatureStepState> {
+        const envAvailable = this.state.steps.get("checkPythonEnvironment")
+            ?.available;
+        if (!envAvailable) {
+            return this.rejectStep(
+                "checkEnvironmentDependencies",
+                "Can't install databricks-connect without an active python environment"
             );
         }
         try {
-            const exists = await this.pythonExtension.findPackageInEnvironment(
-                "databricks-connect",
-                DATABRICKS_CONNECT_VERSION
-            );
-            if (exists) {
-                return this.acceptStep("checkLocalEnvironment");
-            }
-            return this.rejectStep(
-                "checkLocalEnvironment",
-                "Install databricks-connect",
-                "databricks-connect package is not installed in the current environment",
-                async (advertisement = false) =>
-                    await this.installPrompt.show(advertisement, () =>
-                        this.checkLocalEnvironment()
-                    )
-            );
-        } catch (e: unknown) {
-            if (e instanceof Error) {
-                window.showErrorMessage(e.message);
+            const dbconnect =
+                await this.pythonExtension.getPackageDetailsFromEnvironment(
+                    "databricks-connect"
+                );
+            if (dbconnect) {
+                return this.checkDatabricksConnectVersion(dbconnect.version);
+            } else {
                 return this.rejectStep(
-                    "checkLocalEnvironment",
-                    "Failed to check dependencies",
-                    e.message
+                    "checkEnvironmentDependencies",
+                    "Install databricks-connect",
+                    "databricks-connect package is not installed in the current environment",
+                    async (advertisement = false) =>
+                        this.installer.show(advertisement)
                 );
             }
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : (e as string);
             return this.rejectStep(
-                "checkLocalEnvironment",
+                "checkEnvironmentDependencies",
                 "Failed to check dependencies",
-                e as string
+                message,
+                async () => void (await this.checkEnvironmentDependencies())
             );
         }
     }
@@ -212,7 +281,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         await Promise.all([
             this.checkCluster(this.connectionManager.cluster),
             this.checkWorkspaceHasUc(),
-            this.checkLocalEnvironment(),
+            this.checkPythonEnvironment(),
         ]);
+        await this.checkEnvironmentDependencies();
     }
 }

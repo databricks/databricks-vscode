@@ -76,8 +76,13 @@ export abstract class MultiStepAccessVerifier implements Feature {
         });
     }
 
-    acceptStep(id: string) {
-        return this.updateStep({id: id, available: true});
+    acceptStep(id: string, title?: string, message?: string) {
+        return this.updateStep({
+            id: id,
+            available: true,
+            title,
+            message,
+        });
     }
 
     abstract check(): Promise<void>;

@@ -6,8 +6,8 @@ import {ConnectionManager} from "../ConnectionManager";
 import {ConfigModel} from "../models/ConfigModel";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
-const getItemId = (key?: string) =>
-    key ? `${ENVIRONMENT_COMPONENT_ID}.${key}` : ENVIRONMENT_COMPONENT_ID;
+const getItemContext = (key: string, available: boolean) =>
+    `databricks.environment.${key}.${available ? "success" : "error"}`;
 
 export class EnvironmentComponent extends BaseComponent {
     constructor(
@@ -25,17 +25,16 @@ export class EnvironmentComponent extends BaseComponent {
         const environmentState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
-        if (environmentState.available) {
-            return [];
-        }
         return [
             {
-                label: "Local Python Environment",
+                label: "Python Environment",
                 id: ENVIRONMENT_COMPONENT_ID,
-                iconPath: new ThemeIcon(
-                    "info",
-                    new ThemeColor("errorForeground")
-                ),
+                iconPath: environmentState.available
+                    ? new ThemeIcon(
+                          "check",
+                          new ThemeColor("debugIcon.startForeground")
+                      )
+                    : new ThemeIcon("info", new ThemeColor("errorForeground")),
                 collapsibleState: TreeItemCollapsibleState.Expanded,
             },
         ];
@@ -59,26 +58,34 @@ export class EnvironmentComponent extends BaseComponent {
         const environmentState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
-        if (environmentState.available) {
-            return [];
-        }
         const children = [];
         for (const [id, step] of environmentState.steps) {
             if (!step.available) {
                 children.push({
-                    id: getItemId(id),
+                    contextValue: getItemContext(id, false),
                     label: step.title,
-                    description: step.message,
                     tooltip: step.message,
-                    iconPath: new ThemeIcon(
-                        "info",
-                        new ThemeColor("errorForeground")
-                    ),
+                    iconPath: step.action
+                        ? new ThemeIcon(
+                              "run",
+                              new ThemeColor("errorForeground")
+                          )
+                        : new ThemeIcon(
+                              "info",
+                              new ThemeColor("errorForeground")
+                          ),
                     command: {
-                        title: "Setup local environment",
+                        title: "Setup python environment",
                         command: "databricks.environment.setup",
                         arguments: [step.id],
                     },
+                });
+            } else if (step.available && step.title) {
+                children.push({
+                    contextValue: getItemContext(id, true),
+                    label: step.title,
+                    tooltip: step.message,
+                    iconPath: new ThemeIcon("check"),
                 });
             }
         }

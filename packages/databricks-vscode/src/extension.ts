@@ -42,7 +42,7 @@ import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager
 import {getContextMetadata, Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
-import {EnvironmentDependenciesInstallPrompt} from "./language/EnvironmentDependenciesInstallPrompt";
+import {EnvironmentDependenciesInstaller} from "./language/EnvironmentDependenciesInstaller";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
@@ -359,11 +359,8 @@ export async function activate(
 
     const clusterModel = new ClusterModel(connectionManager);
 
-    const environmentDependenciesInstallPrompt =
-        new EnvironmentDependenciesInstallPrompt(
-            stateStorage,
-            pythonExtensionWrapper
-        );
+    const environmentDependenciesInstaller =
+        new EnvironmentDependenciesInstaller(pythonExtensionWrapper);
     const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
         "environment.dependencies",
@@ -371,7 +368,8 @@ export async function activate(
             new EnvironmentDependenciesVerifier(
                 connectionManager,
                 pythonExtensionWrapper,
-                environmentDependenciesInstallPrompt
+                environmentDependenciesInstaller,
+                telemetry
             )
     );
 
@@ -420,7 +418,8 @@ export async function activate(
                     if (step.action) {
                         return await step.action();
                     } else if (step.message) {
-                        return window.showErrorMessage(step.message);
+                        window.showErrorMessage(step.message);
+                        return false;
                     }
                 }
             }
@@ -452,7 +451,7 @@ export async function activate(
         stateStorage,
         workspaceUri.fsPath,
         pythonExtensionWrapper,
-        environmentDependenciesInstallPrompt
+        environmentDependenciesInstaller
     );
     context.subscriptions.push(
         configureAutocomplete,

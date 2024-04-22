@@ -275,6 +275,20 @@
                 "title": "Copy",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.selectPythonInterpreter",
+                "title": "Change Python environment",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.reinstallDBConnect",
+                "title": "Reinstall Databricks Connect",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
             }
         ],
         "viewsContainers": {
@@ -444,6 +458,18 @@
                 {
                     "command": "databricks.utils.copy",
                     "when": "view == dabsResourceExplorerView || view == configurationView"
+                },
+                {
+                    "command": "databricks.environment.selectPythonInterpreter",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkPythonEnvironment.success$/",
+                    "group": "inline@0",
+                    "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.environment.reinstallDBConnect",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkEnvironmentDependencies.success$/",
+                    "group": "inline@0",
+                    "icon": "$(gear)"
                 }
             ],
             "editor/title": [
