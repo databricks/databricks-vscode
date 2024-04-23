@@ -75,6 +75,9 @@ jobs:
     runs-on: ${{ inputs.os }}
     outputs:
       specs: ${{ steps.generate-matrix.outputs.specs }}
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - uses: actions/checkout@v3
@@ -92,17 +95,19 @@ jobs:
         run: |
           echo "specs=$(yarn ts-node scripts/list_integration_tests.ts)"
           echo "specs=$(yarn ts-node scripts/list_integration_tests.ts)" >> $GITHUB_OUTPUT
-          echo $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
         working-directory: packages/databricks-vscode
 
   read-integration-test-specs:
     name: Read integration test matrix
     runs-on: ${{ inputs.os }}
     needs: [list-integration-test-specs]
-
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Read matrix
-        run: echo "${{ fromJson(needs.list-integration-test-specs.outputs.specs) }}"
+        run: echo "${{ needs.list-integration-test-specs.outputs.specs }}"
 
   extension-integration-tests:
     name: Run extension e2e integration tests
