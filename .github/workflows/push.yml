@@ -26,9 +26,15 @@ jobs:
             cli_arch: ${{ matrix.arch.cli_arch }}
         secrets: inherit
 
+    validate-tests:
+        runs-on: ubuntu-latest
+        needs: ["run-tests"]
+        steps:
+            - run: echo "Tests successfull"
+              shell: bash
+
     package:
         name: Package Arm64 VSIX
-        needs: "run-tests"
         runs-on: "macos-latest"
         steps:
             - uses: actions/checkout@v3
