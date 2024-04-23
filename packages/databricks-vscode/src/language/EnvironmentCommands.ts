@@ -12,6 +12,13 @@ export class EnvironmentCommands {
     ) {}
 
     async setup(stepId?: string) {
+        await window.withProgress(
+            {location: {viewId: "configurationView"}},
+            () => this._setup(stepId)
+        );
+    }
+
+    private async _setup(stepId?: string) {
         const state = await this.featureManager.isEnabled(
             "environment.dependencies",
             true
