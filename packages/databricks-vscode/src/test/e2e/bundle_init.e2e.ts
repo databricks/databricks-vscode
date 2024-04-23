@@ -1,17 +1,21 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
-    waitForInput,
     getTabByTitle,
+    getUniqueResourceName,
     getViewSection,
+    waitForInput,
+    waitForLogin,
     waitForTreeItems,
-} from "./utils.ts";
-import {sleep, Workbench} from "wdio-vscode-service";
+} from "./utils/commonUtils.ts";
+import {Workbench, sleep} from "wdio-vscode-service";
+import {tmpdir} from "os";
 import {Key} from "webdriverio";
-import {tmpdir} from "node:os";
 
-describe("Configure Databricks Extension", async function () {
+describe("Bundle Init", async function () {
     let workbench: Workbench;
+    let vscodeWorkspaceRoot: string;
+    let projectName: string;
 
     this.timeout(3 * 60 * 1000);
 
@@ -32,16 +36,17 @@ describe("Configure Databricks Extension", async function () {
         await dismissNotifications();
     });
 
-    it("should wait for initializaion", async () => {
+    it("should wait for extension activation", async () => {
         const section = await getViewSection("CONFIGURATION");
         assert(section);
-        await waitForTreeItems(section);
     });
 
-    it("should manually login for a new project initialization", async function () {
+    it("should initialize new project", async function () {
         await browser.executeWorkbench((vscode) => {
             vscode.commands.executeCommand("databricks.bundle.initNewProject");
         });
+
+        projectName = getUniqueResourceName("init_test");
 
         const hostSelectionInput = await waitForInput();
         await hostSelectionInput.confirm();
@@ -50,13 +55,11 @@ describe("Configure Databricks Extension", async function () {
 
         const profileSelectionInput = await waitForInput();
         await profileSelectionInput.selectQuickPick("DEFAULT");
-    });
 
-    it("should initialize new project", async function () {
         const parentDir = tmpdir();
         const parentFolderInput = await waitForInput();
         // Type in the parentDir value to the input
-        await browser.keys(parentDir);
+        await browser.keys(parentDir.split(""));
         await sleep(1000);
         const picks = await parentFolderInput.getQuickPicks();
         const pick = picks.filter((p) => p.getIndex() === 0)[0];
@@ -64,11 +67,22 @@ describe("Configure Databricks Extension", async function () {
         expect(await pick.getLabel()).toBe(parentDir);
         await pick.select();
 
+        // Wait for the databricks cli terminal window to pop up and select all
+        // default options for the default template
         const editorView = workbench.getEditorView();
         const title = "Databricks Project Init";
         const initTab = await getTabByTitle(title);
         assert(initTab, "Can't find a tab for project-init terminal wizard");
         await initTab.select();
+
+        //select temaplate type
+        await browser.keys("default-python".split(""));
+        await sleep(1000);
+        await browser.keys([Key.Enter]);
+        //enter project name temaplate type
+        await browser.keys(projectName.split(""));
+        await sleep(1000);
+        await browser.keys([Key.Enter]);
         await browser.waitUntil(
             async () => {
                 const activeTab = await editorView.getActiveTab();
@@ -77,23 +91,40 @@ describe("Configure Databricks Extension", async function () {
                 }
                 await browser.keys([Key.Enter]);
             },
-            {timeout: 20_000, interval: 2_000}
+            {
+                timeout: 20_000,
+                interval: 2_000,
+                timeoutMsg: "Can't complete cli bundle init wizard",
+            }
         );
 
         const openProjectFolderInput = await waitForInput();
-        await openProjectFolderInput.selectQuickPick("my_project");
+        await openProjectFolderInput.selectQuickPick(projectName);
 
         // Wait until vscode is re-opened with the new workspace root
         await browser.waitUntil(
             async () => {
-                const workspaceRoot = await browser.executeWorkbench(
+                vscodeWorkspaceRoot = (await browser.executeWorkbench(
                     (vscode) => {
                         return vscode.workspace.workspaceFolders[0].uri.fsPath;
                     }
-                );
-                return workspaceRoot.includes("my_project");
+                )) as string;
+                return vscodeWorkspaceRoot.includes(projectName);
             },
-            {timeout: 20_000}
+            {
+                timeout: 60_000,
+                timeoutMsg: "Can't connect to the new project window",
+            }
         );
+    });
+
+    it("should wait for connection", async () => {
+        await waitForLogin("DEFAULT");
+    });
+
+    it("should find resource explorer view", async function () {
+        const section = await getViewSection("BUNDLE RESOURCE EXPLORER");
+        assert(section);
+        await waitForTreeItems(section, 20_000);
     });
 });
