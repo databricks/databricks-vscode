@@ -1,6 +1,6 @@
 import {logging} from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
-import {commands} from "vscode";
+import {commands, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {MultiStepAccessVerifier} from "../feature-manager/MultiStepAccessVerfier";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
@@ -48,14 +48,6 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             }, this),
             this.installer.onDidTryInstallation(() =>
                 this.checkEnvironmentDependencies()
-            ),
-            this.telemetry.registerCommand(
-                "databricks.environment.selectPythonInterpreter",
-                this.selectPythonInterpreter.bind(this)
-            ),
-            this.telemetry.registerCommand(
-                "databricks.environment.reinstallDBConnect",
-                this.promptToReinstallDbConnect.bind(this)
             )
         );
     }
@@ -67,6 +59,18 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 msg
             );
         };
+    }
+
+    async selectPythonInterpreter() {
+        await commands.executeCommand(
+            "databricks.environment.selectPythonInterpreter"
+        );
+    }
+
+    async reinstallDbConnect() {
+        await commands.executeCommand(
+            "databricks.environment.reinstallDBConnect"
+        );
     }
 
     async checkCluster(cluster?: Cluster) {
@@ -142,15 +146,6 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         }
         return this.acceptStep("checkWorkspaceHasUc");
     }
-    async selectPythonInterpreter() {
-        const environments =
-            await this.pythonExtension.getAvailableEnvironments();
-        if (environments.length > 0) {
-            await this.pythonExtension.selectPythonInterpreter();
-        } else {
-            await this.pythonExtension.createPythonEnvironment();
-        }
-    }
 
     async checkPythonEnvironment(): Promise<FeatureStepState> {
         const executable = await this.pythonExtension.getPythonExecutable();
@@ -196,16 +191,6 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         );
     }
 
-    async promptToReinstallDbConnect() {
-        let placeholderVersion = undefined;
-        const dbrVersionParts = this.connectionManager.cluster?.dbrVersion;
-        if (dbrVersionParts && dbrVersionParts[0] !== "x") {
-            const minor = dbrVersionParts[1] === "x" ? "*" : dbrVersionParts[1];
-            placeholderVersion = `${dbrVersionParts[0]}.${minor}.*`;
-        }
-        return this.installer.installWithVersionPrompt(placeholderVersion);
-    }
-
     checkDatabricksConnectVersion(version: string) {
         const dbconnectcVersionParts = version.split(".");
         const dbconnectMajor = parseInt(dbconnectcVersionParts[0], 10);
@@ -215,7 +200,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 "checkEnvironmentDependencies",
                 "Update databricks-connect",
                 `Databricks Connect ${version} is outdated, please update to 13.0.0 or higher.`,
-                this.promptToReinstallDbConnect.bind(this)
+                this.reinstallDbConnect.bind(this)
             );
         }
         const dbrVersionParts = this.connectionManager.cluster?.dbrVersion;
@@ -230,7 +215,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                     "checkEnvironmentDependencies",
                     "Reinstall databricks-connect",
                     `Databricks Connect version (${version}) should be equal or lower than the cluster DBR version (${dbrMajor}.${dbrMinor}).`,
-                    this.promptToReinstallDbConnect.bind(this)
+                    this.reinstallDbConnect.bind(this)
                 );
             }
         }

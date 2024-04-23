@@ -69,6 +69,7 @@ import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigu
 import {isIntegrationTest} from "./utils/developmentUtils";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
+import {EnvironmentCommands} from "./language/EnvironmentCommands";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -373,6 +374,35 @@ export async function activate(
                 telemetry
             )
     );
+    const environmentCommands = new EnvironmentCommands(
+        featureManager,
+        pythonExtensionWrapper,
+        environmentDependenciesInstaller
+    );
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.environment.setup",
+            environmentCommands.setup,
+            environmentCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.environment.refresh",
+            environmentCommands.refresh,
+            environmentCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.environment.selectPythonInterpreter",
+            environmentCommands.selectPythonInterpreter,
+            environmentCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.environment.reinstallDBConnect",
+            async () =>
+                environmentCommands.reinstallDBConnect(
+                    connectionManager.cluster
+                )
+        )
+    );
 
     const dbConnectStatusBarButton = new DbConnectStatusBarButton(
         featureManager
@@ -401,29 +431,6 @@ export async function activate(
             "databricks.notebookInitScript.verify",
             notebookInitScriptManager.verifyInitScriptCommand,
             notebookInitScriptManager
-        ),
-        telemetry.registerCommand(
-            "databricks.environment.setup",
-            async (stepId?: string) => {
-                const state = await featureManager.isEnabled(
-                    "environment.dependencies",
-                    true
-                );
-                if (state.available) {
-                    return true;
-                }
-                for (const [, step] of state.steps) {
-                    if (step.available || (stepId && step.id !== stepId)) {
-                        continue;
-                    }
-                    if (step.action) {
-                        return await step.action();
-                    } else if (step.message) {
-                        window.showErrorMessage(step.message);
-                        return false;
-                    }
-                }
-            }
         )
     );
 

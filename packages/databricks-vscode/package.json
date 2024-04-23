@@ -277,17 +277,24 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.environment.refresh",
+                "title": "Refresh python environment status",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.environment.selectPythonInterpreter",
                 "title": "Change Python environment",
                 "icon": "$(gear)",
-                "enablement": "databricks.context.activated",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.environment.reinstallDBConnect",
                 "title": "Reinstall Databricks Connect",
                 "icon": "$(gear)",
-                "enablement": "databricks.context.activated",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks"
             }
         ],
@@ -458,6 +465,12 @@
                 {
                     "command": "databricks.utils.copy",
                     "when": "view == dabsResourceExplorerView || view == configurationView"
+                },
+                {
+                    "command": "databricks.environment.refresh",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.root.(success|error)$/",
+                    "group": "inline@0",
+                    "icon": "$(refresh)"
                 },
                 {
                     "command": "databricks.environment.selectPythonInterpreter",

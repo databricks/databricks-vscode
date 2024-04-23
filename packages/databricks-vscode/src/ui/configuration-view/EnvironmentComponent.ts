@@ -29,6 +29,10 @@ export class EnvironmentComponent extends BaseComponent {
             {
                 label: "Python Environment",
                 id: ENVIRONMENT_COMPONENT_ID,
+                contextValue: getItemContext(
+                    "root",
+                    environmentState.available
+                ),
                 iconPath: environmentState.available
                     ? new ThemeIcon(
                           "check",
