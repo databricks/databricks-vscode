@@ -8,12 +8,13 @@ import {existsSync} from "fs";
 export type OverrideableConfigState = {
     authProfile?: string;
     clusterId?: string;
+    useClusterOverride?: boolean;
 };
 
 export function isOverrideableConfigKey(
     key: string
 ): key is keyof OverrideableConfigState {
-    return ["authProfile", "clusterId"].includes(key);
+    return ["authProfile", "clusterId", "useClusterOverride"].includes(key);
 }
 
 async function safeRead(filePath: Uri) {

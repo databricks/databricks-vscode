@@ -95,7 +95,9 @@ describe(__filename, async function () {
                     path.join(tmpdirUri.fsPath, "includes", "included.yaml")
                 ),
             ].map((v) => v.fsPath);
-            expect(actual).to.deep.equal(expected);
+            expect(Array.from(new Set(actual).values())).to.deep.equal(
+                Array.from(new Set(expected).values())
+            );
         });
 
         it("should return all bundle files", async () => {

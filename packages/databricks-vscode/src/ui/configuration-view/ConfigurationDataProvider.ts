@@ -6,8 +6,8 @@ import {
     TreeItem,
 } from "vscode";
 
-import {ConnectionManager} from "../ConnectionManager";
-import {ConfigModel} from "../models/ConfigModel";
+import {ConnectionManager} from "../../configuration/ConnectionManager";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {BundleTargetComponent} from "./BundleTargetComponent";
@@ -27,6 +27,10 @@ export class ConfigurationDataProvider
     private _onDidChangeTreeData: EventEmitter<
         ConfigurationTreeItem | undefined | void
     > = new EventEmitter<ConfigurationTreeItem | undefined | void>();
+    private _onDidChangeCheckState: EventEmitter<
+        ConfigurationTreeItem | undefined | void
+    > = new EventEmitter<ConfigurationTreeItem | undefined | void>();
+
     readonly onDidChangeTreeData: Event<
         ConfigurationTreeItem | undefined | void
     > = this._onDidChangeTreeData.event;
@@ -57,7 +61,14 @@ export class ConfigurationDataProvider
                 c.onDidChange(() => {
                     this._onDidChangeTreeData.fire();
                 })
-            )
+            ),
+            this.onDidChangeTreeData((e) => {
+                if (e?.collapsibleState !== undefined) {
+                    logging.NamedLogger.getOrCreate(Loggers.Extension).info(
+                        `ConfigurationDataProvider.onDidChangeTreeData: ${e.label}`
+                    );
+                }
+            })
         );
     }
 
