@@ -129,11 +129,17 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: "yarn"
 
+      - name: Get vscode engine
+        id: vscode-engine
+        run: |
+          echo "vscode=$(cat package.json | jq .engines.vscode | tr -d '^"')"
+          echo "vscode=$(cat package.json | jq .engines.vscode | tr -d '^"')" >> $GITHUB_OUTPUT
+
       - name: Cache wdio
         uses: actions/cache@v3
         with:
           path: /tmp/wdio-vscode-service
-          key: ${{ inputs.cli_arch }}-$(cat package.json | jq .engines.vscode | tr -d '^"')-wdio
+          key: ${{ inputs.cli_arch }}-${{ steps.vscode-engine.outputs.vscode }}-wdio
 
       - run: yarn install --immutable
 
