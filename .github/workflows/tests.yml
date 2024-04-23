@@ -159,9 +159,7 @@ jobs:
         run: yarn run build
 
       - name: Integration Tests
-        run: |
-          mkdir '/tmp/wdio-vscode-service';
-          yarn run test:integ:extension --spec ${{ matrix.spec.path }}
+        run: yarn run test:integ:extension --spec ${{ matrix.spec.path }}
         working-directory: packages/databricks-vscode
 
       - name: Upload test logs
