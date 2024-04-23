@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /tmp/vscode-test-databricks
-          key: ${{ inputs.cli_arch }}-$(cat package.json | jq .engines.vscode | tr -d '^"')-vscode-test
+          key: ${{ inputs.cli_arch }}-${{ inputs.vscode-version }}-vscode-test
 
       - run: yarn install --immutable
 
@@ -133,7 +133,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /tmp/wdio-vscode-service
-          key: ${{ inputs.cli_arch }}-${{ inputs.vscode-version }}-wdio
+          key: ${{ inputs.cli_arch }}-$(cat package.json | jq .engines.vscode | tr -d '^"')-wdio
 
       - run: yarn install --immutable
 
