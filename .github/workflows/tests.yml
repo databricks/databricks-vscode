@@ -92,7 +92,17 @@ jobs:
         run: |
           echo "specs=$(yarn ts-node scripts/list_integration_tests.ts)"
           echo "specs=$(yarn ts-node scripts/list_integration_tests.ts)" >> $GITHUB_OUTPUT
+          echo $GITHUB_OUTPUT
         working-directory: packages/databricks-vscode
+
+  read-integration-test-specs:
+    name: Read integration test matrix
+    runs-on: ${{ inputs.os }}
+    needs: [list-integration-test-specs]
+
+    steps:
+      - name: Read matrix
+        run: echo "${{ fromJson(needs.list-integration-test-specs.outputs.specs) }}"
 
   extension-integration-tests:
     name: Run extension e2e integration tests
