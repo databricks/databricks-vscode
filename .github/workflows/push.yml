@@ -27,7 +27,7 @@ jobs:
         secrets: inherit
 
     package:
-        name: Package VSIX
+        name: Package Arm64 VSIX
         needs: "run-tests"
         runs-on: "macos-latest"
         steps:
@@ -53,7 +53,7 @@ jobs:
             - run: mkdir -p packages/databricks-vscode/artifacts
 
             - name: Build VSIX
-              run: yarn package -o artifacts -t darwin-x64
+              run: yarn package -o artifacts -t darwin-arm64
               working-directory: packages/databricks-vscode
 
             - name: Upload artifacts
