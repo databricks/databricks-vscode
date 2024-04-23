@@ -137,10 +137,15 @@ jobs:
         working-directory: packages/databricks-vscode
 
       - name: Cache wdio
+        id: wdio-cache
         uses: actions/cache@v3
         with:
           path: /tmp/wdio-vscode-service
           key: ${{ inputs.cli_arch }}-${{ steps.vscode-engine.outputs.vscode }}-wdio
+
+      - name: mkdir /tmp/wdio-vscode-service
+        run: mkdir '/tmp/wdio-vscode-service'
+        if: steps.wdio-cache.outputs.cache-hit != 'true'
 
       - run: yarn install --immutable
 
@@ -154,7 +159,9 @@ jobs:
         run: yarn run build
 
       - name: Integration Tests
-        run: yarn run test:integ:extension --spec ${{ matrix.spec.path }}
+        run: |
+          mkdir '/tmp/wdio-vscode-service';
+          yarn run test:integ:extension --spec ${{ matrix.spec.path }}
         working-directory: packages/databricks-vscode
 
       - name: Upload test logs
