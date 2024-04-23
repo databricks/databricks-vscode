@@ -370,8 +370,7 @@ export async function activate(
             new EnvironmentDependenciesVerifier(
                 connectionManager,
                 pythonExtensionWrapper,
-                environmentDependenciesInstaller,
-                telemetry
+                environmentDependenciesInstaller
             )
     );
     const environmentCommands = new EnvironmentCommands(

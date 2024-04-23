@@ -1,6 +1,6 @@
 import {logging} from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
-import {commands, window} from "vscode";
+import {commands} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {MultiStepAccessVerifier} from "../feature-manager/MultiStepAccessVerfier";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
@@ -8,14 +8,12 @@ import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
 import {FeatureStepState} from "../feature-manager/FeatureManager";
-import {Telemetry} from "../telemetry";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly installer: EnvironmentDependenciesInstaller,
-        private readonly telemetry: Telemetry
+        private readonly installer: EnvironmentDependenciesInstaller
     ) {
         super([
             "checkCluster",
