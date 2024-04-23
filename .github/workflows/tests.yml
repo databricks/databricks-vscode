@@ -17,8 +17,8 @@ on:
         type: string
 
 jobs:
-  test-extension:
-    name: Test VSCode Extension
+  unit-test-extension:
+    name: Run unit tests
     runs-on: ${{ inputs.os }}
     environment:
       name: azure-prod-usr
@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /tmp/vscode-test-databricks
-          key: ${{ inputs.cli_arch }}-${{ inputs.vscode-version }}-vscode-test
+          key: ${{ inputs.cli_arch }}-$(cat package.json | jq .engines.vscode | tr -d '^"')-vscode-test
 
       - run: yarn install --immutable
 
@@ -95,19 +95,7 @@ jobs:
         run: |
           echo "specs=$(yarn ts-node scripts/list_integration_tests.ts)"
           echo "specs=$(yarn ts-node scripts/list_integration_tests.ts)" >> $GITHUB_OUTPUT
-          cat $GITHUB_OUTPUT
         working-directory: packages/databricks-vscode
-
-  read-integration-test-specs:
-    name: Read integration test matrix
-    runs-on: ${{ inputs.os }}
-    needs: [list-integration-test-specs]
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Read matrix
-        run: echo "${{ needs.list-integration-test-specs.outputs.specs }}"
 
   extension-integration-tests:
     name: Run extension e2e integration tests
