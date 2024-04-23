@@ -134,6 +134,7 @@ jobs:
         run: |
           echo "vscode=$(cat package.json | jq .engines.vscode | tr -d '^"')"
           echo "vscode=$(cat package.json | jq .engines.vscode | tr -d '^"')" >> $GITHUB_OUTPUT
+        working-directory: packages/databricks-vscode
 
       - name: Cache wdio
         uses: actions/cache@v3
