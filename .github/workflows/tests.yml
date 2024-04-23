@@ -140,11 +140,11 @@ jobs:
         id: wdio-cache
         uses: actions/cache@v3
         with:
-          path: /tmp/wdio-vscode-service
+          path: packages/databricks-vscode/tmp/wdio-vscode-service
           key: ${{ inputs.cli_arch }}-${{ steps.vscode-engine.outputs.vscode }}-wdio
 
       - name: mkdir /tmp/wdio-vscode-service
-        run: mkdir '/tmp/wdio-vscode-service'
+        run: mkdir -p /tmp/wdio-vscode-service
         if: steps.wdio-cache.outputs.cache-hit != 'true'
 
       - run: yarn install --immutable
