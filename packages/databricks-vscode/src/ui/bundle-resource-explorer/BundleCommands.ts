@@ -147,7 +147,7 @@ export class BundleCommands implements Disposable {
         this.bundleRunStatusManager.cancel(treeNode.resourceKey);
     }
 
-    @onError({popup: {prefix: "Error destroying bundle."}})
+    @onError({log: true, popup: false})
     async destroy() {
         if ((await this.configModel.get("mode")) !== "development") {
             const confirm = await window.showErrorMessage(
