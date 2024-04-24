@@ -1,3 +1,14 @@
+# Release: v2.1.0-preview
+
+## packages/databricks-vscode
+
+## (2024-04-24)
+
+-   Feature: Add a interface for specifying bundle variables.
+-   Feature: Allow opting out of cluster override and make it more visible in UI.
+-   Feature: Update databricks CLI to v0.218.0. Databricks Asset Bundles (DABs) are now GA!
+-   Feature: Add UI and wizard to help manage virtual environments and Databricks Connect v2 versions.
+
 # Release: v2.0.4-preview
 
 ## packages/databricks-vscode
