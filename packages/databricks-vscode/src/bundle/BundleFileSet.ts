@@ -3,7 +3,7 @@ import * as glob from "glob";
 import {merge} from "lodash";
 import * as yaml from "yaml";
 import path from "path";
-import {BundleSchema} from "./BundleSchema";
+import {BundleSchema} from "./types";
 import {readFile, writeFile} from "fs/promises";
 import {CachedValue} from "../locking/CachedValue";
 import minimatch from "minimatch";
@@ -30,9 +30,7 @@ export async function getSubProjects(root: Uri) {
         .map((rootFile) => {
             const dirname = path.dirname(path.normalize(rootFile));
             const absolute = Uri.file(dirname);
-            const relative = Uri.file(
-                absolute.fsPath.replace(normalizedRoot, "")
-            );
+            const relative = path.relative(normalizedRoot, dirname);
             return {absolute, relative};
         })
         .filter(({absolute}) => {

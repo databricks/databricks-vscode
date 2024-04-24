@@ -67,6 +67,8 @@ import {TreeItemDecorationProvider} from "./ui/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
 import {isIntegrationTest} from "./utils/developmentUtils";
+import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
+import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
@@ -144,6 +146,7 @@ export async function activate(
             e
         );
     }
+
     const cli = new CliWrapper(context, loggerManager, cliLogFilePath);
     context.extensionPath;
 
@@ -638,6 +641,34 @@ export async function activate(
             "databricks.bundle.cancelRun",
             bundleCommands.cancelRun,
             bundleCommands
+        )
+    );
+
+    // Bundle variables
+    const bundleVariableModel = new BundleVariableModel(
+        configModel,
+        bundleValidateModel,
+        workspaceUri
+    );
+    cli.bundleVariableModel = bundleVariableModel;
+    const bundleVariableTreeDataProvider = new BundleVariableTreeDataProvider(
+        bundleVariableModel
+    );
+    context.subscriptions.push(
+        bundleVariableModel,
+        window.registerTreeDataProvider(
+            "dabsVariableView",
+            bundleVariableTreeDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.variable.openFile",
+            bundleVariableModel.openBundleVariableFile,
+            bundleVariableModel
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.variable.reset",
+            bundleVariableModel.deleteBundleVariableFile,
+            bundleVariableModel
         )
     );
 

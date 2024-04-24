@@ -40,6 +40,10 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
         );
     }
 
+    public async refresh() {
+        await this.stateCache.refresh();
+    }
+
     public setTarget(target: string | undefined) {
         if (this.target === target) {
             return;

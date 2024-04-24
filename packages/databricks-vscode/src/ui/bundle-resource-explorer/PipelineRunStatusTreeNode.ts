@@ -7,7 +7,7 @@ import {ContextUtils, RunStateUtils} from "./utils";
 import {SimplifiedRunState, sentenceCase} from "./utils/RunStateUtils";
 import {GetUpdateResponse} from "@databricks/databricks-sdk/dist/apis/pipelines";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
-import {TreeItemTreeNode} from "./TreeItemTreeNode";
+import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 
 function getSimplifiedUpdateState(

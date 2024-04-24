@@ -20,14 +20,14 @@ import {writeFile, mkdir} from "fs/promises";
 import path from "path";
 
 export async function promptToOpenSubProjects(
-    projects: {absolute: Uri; relative: Uri}[],
+    projects: {absolute: Uri; relative: string}[],
     authProvider?: AuthProvider
 ) {
     type OpenProjectItem = QuickPickItem & {uri?: Uri};
     const items: OpenProjectItem[] = projects.map((project) => {
         return {
             uri: project.absolute,
-            label: project.relative.fsPath,
+            label: project.relative,
             detail: project.absolute.fsPath,
         };
     });
