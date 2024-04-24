@@ -318,13 +318,13 @@
             },
             {
                 "view": "configurationView",
-                "contents": "[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized"
+                "contents": "Migrate current workspace to a Databricks Project: \n[Migrate to a Databricks Project](command:databricks.bundle.startManualMigration)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
                 "view": "configurationView",
-                "contents": "Migrate current workspace to a Databricks Project: \n[Migrate to Databricks Project](command:databricks.bundle.startManualMigration)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
+                "contents": "[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized"
             },
             {
                 "view": "configurationView",

@@ -1,5 +1,11 @@
 # This is a Databricks asset bundle definition for {{.project_name}}.
+{{- if .auto_migration}}
+# The file was generated automatically by the Databricks extension. 
+# It's based on the configuration located in `.databricks/project.json`.
+# If you don't want this file to be created automatically, remove the `.databricks/project.json`.
+{{- else}}
 # The Databricks extension requires databricks.yml configuration file.
+{{- end}}
 # See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
 
 bundle:

@@ -223,7 +223,8 @@ export class BundleProjectManager {
         }
         await this.migrateProjectJsonToBundle(
             authProvider as ProfileAuthProvider,
-            legacyProjectConfig
+            legacyProjectConfig,
+            true
         );
         recordEvent({success: true});
     }
@@ -260,11 +261,13 @@ export class BundleProjectManager {
 
     private async migrateProjectJsonToBundle(
         authProvider: ProfileAuthProvider,
-        legacyProjectConfig?: ProjectConfigFile
+        legacyProjectConfig?: ProjectConfigFile,
+        autoMigration: boolean = false
     ) {
         const configVars = {
             /* eslint-disable @typescript-eslint/naming-convention */
             project_name: path.basename(this.workspaceUri.fsPath),
+            auto_migration: autoMigration,
             compute_id: legacyProjectConfig?.clusterId,
             root_path: legacyProjectConfig?.workspacePath?.path,
             /* eslint-enable @typescript-eslint/naming-convention */
