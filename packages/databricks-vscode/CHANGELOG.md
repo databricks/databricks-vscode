@@ -1,3 +1,11 @@
+# Release: v2.0.5
+
+## packages/databricks-vscode
+
+## <small>2.0.5 (2024-04-24)</small>
+
+-   Update Databricks CLI to v0.216.0 (#1156) ([8867b46](https://github.com/databricks/databricks-vscode/commit/8867b46)), closes [#1156](https://github.com/databricks/databricks-vscode/issues/1156)
+
 # Release: v1.3.0
 
 ## packages/databricks-vscode
