@@ -227,28 +227,28 @@
                 "command": "databricks.bundle.refreshRemoteState",
                 "icon": "$(refresh)",
                 "title": "Refresh remote state",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deploy",
                 "icon": "$(cloud-upload)",
                 "title": "Deploy bundle",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deployAndRun",
                 "icon": "$(debug-start)",
                 "title": "Deploy the bundle and run the resource",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.cancelRun",
                 "title": "Cancel run",
                 "icon": "$(debug-stop)",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
@@ -293,16 +293,23 @@
             {
                 "command": "databricks.bundle.variable.openFile",
                 "title": "Override bundle variables",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.bundle.variable.reset",
                 "title": "Reset to default values",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks",
                 "icon": "$(discard)"
+            },
+            {
+                "command": "databricks.bundle.destroy",
+                "title": "Destroy bundle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "category": "Databricks",
+                "icon": "$(trash)"
             }
         ],
         "viewsContainers": {
@@ -414,6 +421,11 @@
                 },
                 {
                     "command": "databricks.bundle.deploy",
+                    "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.destroy",
                     "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@1"
                 },

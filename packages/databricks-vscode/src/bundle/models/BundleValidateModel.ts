@@ -67,13 +67,15 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
         }
 
         const validateOutput = JSON.parse(
-            await this.cli.bundleValidate(
-                this.target,
-                this.authProvider,
-                this.workspaceFolder,
-                workspaceConfigs.databrickscfgLocation,
-                this.logger
-            )
+            (
+                await this.cli.bundleValidate(
+                    this.target,
+                    this.authProvider,
+                    this.workspaceFolder,
+                    workspaceConfigs.databrickscfgLocation,
+                    this.logger
+                )
+            ).stdout
         ) as BundleTarget;
 
         return {

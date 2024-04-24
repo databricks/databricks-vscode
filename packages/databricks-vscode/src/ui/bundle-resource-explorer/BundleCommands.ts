@@ -11,6 +11,7 @@ import {CustomWhenContext} from "../../vscode-objs/CustomWhenContext";
 import {Events, Telemetry} from "../../telemetry";
 import * as lodash from "lodash";
 import {ProcessError} from "../../cli/CliWrapper";
+import {ConfigModel} from "../../configuration/models/ConfigModel";
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
@@ -31,6 +32,7 @@ export class BundleCommands implements Disposable {
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly bundleRunStatusManager: BundleRunStatusManager,
         private readonly bundleValidateModel: BundleValidateModel,
+        private readonly configModel: ConfigModel,
         private readonly whenContext: CustomWhenContext,
         private readonly telemetry: Telemetry
     ) {
@@ -143,6 +145,44 @@ export class BundleCommands implements Disposable {
         }
 
         this.bundleRunStatusManager.cancel(treeNode.resourceKey);
+    }
+
+    @onError({popup: {prefix: "Error destroying bundle."}})
+    async destroy() {
+        if ((await this.configModel.get("mode")) !== "development") {
+            const confirm = await window.showErrorMessage(
+                "Are you sure you want to destroy this bundle and all resources associated with it?",
+                {modal: true},
+                "Yes, continue",
+                "No"
+            );
+
+            if (confirm !== "Yes, continue") {
+                return;
+            }
+        }
+
+        try {
+            this.whenContext.setDeploymentState("deploying");
+            await window.withProgress(
+                {location: ProgressLocation.Notification, cancellable: false},
+                async () => {
+                    await this.bundleRemoteStateModel.destroy();
+                }
+            );
+
+            await this.refreshRemoteState();
+        } catch (e) {
+            if (!(e instanceof Error)) {
+                throw e;
+            }
+            if (e instanceof ProcessError) {
+                e.showErrorMessage("Error destroying bundle.");
+            }
+            throw e;
+        } finally {
+            this.whenContext.setDeploymentState("idle");
+        }
     }
 
     dispose() {
