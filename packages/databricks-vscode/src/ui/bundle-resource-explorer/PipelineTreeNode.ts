@@ -10,7 +10,7 @@ import {DecorationUtils} from "../utils";
 
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
-import {TreeItemTreeNode} from "./TreeItemTreeNode";
+import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {PipelineRunStatusTreeNode} from "./PipelineRunStatusTreeNode";
 
 export class PipelineTreeNode implements BundleResourceExplorerTreeNode {

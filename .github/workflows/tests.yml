@@ -163,7 +163,7 @@ jobs:
         working-directory: packages/databricks-vscode
 
       - name: Upload test logs
-        if: always()
+        if: failure()
         continue-on-error: true
         uses: actions/upload-artifact@v3
         with:

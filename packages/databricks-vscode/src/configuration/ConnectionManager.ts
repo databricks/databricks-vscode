@@ -142,12 +142,10 @@ export class ConnectionManager implements Disposable {
         } finally {
             this.disposables.push(
                 this.configModel.onDidChangeKey("remoteRootPath")(
-                    this.updateSyncDestinationMapper,
-                    this
+                    this.updateSyncDestinationMapper.bind(this)
                 ),
                 this.configModel.onDidChangeKey("clusterId")(
-                    this.updateClusterManager,
-                    this
+                    this.updateClusterManager.bind(this)
                 ),
                 this.configModel.onDidChangeKey("useClusterOverride")(
                     async () => {

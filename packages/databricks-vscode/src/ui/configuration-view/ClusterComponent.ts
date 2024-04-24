@@ -85,7 +85,7 @@ export class ClusterComponent extends BaseComponent {
             this.connectionManager.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
             }),
-            this.configModel.onDidChangeKey("useClusterOverride")(() => {
+            this.configModel.onDidChangeKey("useClusterOverride")(async () => {
                 this.onDidChangeEmitter.fire();
             })
         );
