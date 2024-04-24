@@ -1,5 +1,5 @@
 import {spy, verify} from "ts-mockito";
-import {FeatureManager, FeatureState} from "./FeatureManager";
+import {FeatureManager, FeatureStepState} from "./FeatureManager";
 import {MultiStepAccessVerifier} from "./MultiStepAccessVerfier";
 import * as assert from "assert";
 class TestAccessVerifier extends MultiStepAccessVerifier {
@@ -27,11 +27,8 @@ class TestAccessVerifier extends MultiStepAccessVerifier {
     }
 }
 
-function isAvailable(state: boolean | FeatureState) {
-    if (typeof state === "boolean") {
-        return state;
-    }
-    return state.avaliable;
+function isAvailable(state: FeatureStepState) {
+    return state.available;
 }
 
 describe(__filename, async () => {
@@ -41,8 +38,8 @@ describe(__filename, async () => {
         const spyTestVerifier = spy(testVerifier);
         fm.registerFeature("test", () => testVerifier);
 
-        assert.ok(!(await fm.isEnabled("test")).avaliable);
-        assert.ok(!(await fm.isEnabled("test")).avaliable);
+        assert.ok(!(await fm.isEnabled("test")).available);
+        assert.ok(!(await fm.isEnabled("test")).available);
         verify(spyTestVerifier.check()).once();
         verify(spyTestVerifier.check1()).once();
         verify(spyTestVerifier.check2()).once();
@@ -55,26 +52,29 @@ describe(__filename, async () => {
         fm.registerFeature("test", () => testVerifier);
 
         //check value is picked from cache
-        assert.ok(!(await fm.isEnabled("test")).avaliable);
-        assert.ok(!(await fm.isEnabled("test")).avaliable);
+        assert.ok(!(await fm.isEnabled("test")).available);
+        assert.ok(!(await fm.isEnabled("test")).available);
         verify(spyTestVerifier.check()).once();
         verify(spyTestVerifier.check1()).once();
         verify(spyTestVerifier.check2()).once();
 
         //cache should be true only when both values are true
         assert.ok(isAvailable(await testVerifier.check1(true)));
-        assert.ok(!(await fm.isEnabled("test")).avaliable);
+        assert.ok(!(await fm.isEnabled("test")).available);
         assert.ok(isAvailable(await testVerifier.check2(true)));
-        assert.ok((await fm.isEnabled("test")).avaliable);
+        assert.ok((await fm.isEnabled("test")).available);
 
         //cache should be false if even 1 value is false
         assert.ok(!isAvailable(await testVerifier.check2(false)));
-        assert.ok(!(await fm.isEnabled("test")).avaliable);
-        assert.ok((await fm.isEnabled("test")).reason === "reason2");
+        assert.ok(!(await fm.isEnabled("test")).available);
+        assert.strictEqual(
+            (await fm.isEnabled("test")).steps.get("check2")?.title,
+            "reason2"
+        );
 
         //cache should be reset to true if both values are true
         assert.ok(isAvailable(await testVerifier.check2(true)));
-        assert.ok((await fm.isEnabled("test")).avaliable);
+        assert.ok((await fm.isEnabled("test")).available);
     });
 
     it("disabled features should always return false", async () => {
@@ -83,14 +83,15 @@ describe(__filename, async () => {
         const spyTestVerifier = spy(testVerifier);
         fm.registerFeature("test", () => testVerifier);
 
-        assert.ok(!(await fm.isEnabled("test")).avaliable);
-        assert.ok(!(await fm.isEnabled("test")).avaliable);
+        assert.ok(!(await fm.isEnabled("test")).available);
+        assert.ok(!(await fm.isEnabled("test")).available);
         verify(spyTestVerifier.check()).never();
         verify(spyTestVerifier.check1()).never();
         verify(spyTestVerifier.check2()).never();
 
-        assert.ok(
-            (await fm.isEnabled("test")).reason === "feature is disabled"
+        assert.strictEqual(
+            (await fm.isEnabled("test")).message,
+            "Feature is disabled"
         );
     });
 });

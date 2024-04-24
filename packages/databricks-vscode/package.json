@@ -291,6 +291,27 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.environment.refresh",
+                "title": "Refresh python environment status",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.selectPythonInterpreter",
+                "title": "Change Python environment",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.reinstallDBConnect",
+                "title": "Reinstall Databricks Connect",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.bundle.variable.openFile",
                 "title": "Override bundle variables",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
@@ -488,6 +509,24 @@
                 {
                     "command": "databricks.utils.copy",
                     "when": "view == dabsResourceExplorerView || view == configurationView"
+                },
+                {
+                    "command": "databricks.environment.refresh",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.root.(success|error)$/",
+                    "group": "inline@0",
+                    "icon": "$(refresh)"
+                },
+                {
+                    "command": "databricks.environment.selectPythonInterpreter",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkPythonEnvironment.success$/",
+                    "group": "inline@0",
+                    "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.environment.reinstallDBConnect",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkEnvironmentDependencies.success$/",
+                    "group": "inline@0",
+                    "icon": "$(gear)"
                 }
             ],
             "editor/title": [
@@ -773,7 +812,6 @@
                         "default": [],
                         "items": {
                             "enum": [
-                                "notebooks.dbconnect",
                                 "views.cluster",
                                 "views.workspace"
                             ],

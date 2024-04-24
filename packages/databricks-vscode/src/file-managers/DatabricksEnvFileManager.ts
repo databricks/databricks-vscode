@@ -108,13 +108,7 @@ export class DatabricksEnvFileManager implements Disposable {
                 this.disposables
             ),
             this.featureManager.onDidChangeState(
-                "notebooks.dbconnect",
-                async () => {
-                    await this.writeFile();
-                }
-            ),
-            this.featureManager.onDidChangeState(
-                "debugging.dbconnect",
+                "environment.dependencies",
                 () => {
                     this.writeFile();
                 },

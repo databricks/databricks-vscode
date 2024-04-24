@@ -36,16 +36,15 @@ import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
-import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
+import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
 import {getContextMetadata, Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
-import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
+import {EnvironmentDependenciesInstaller} from "./language/EnvironmentDependenciesInstaller";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
-import {NotebookAccessVerifier} from "./language/notebooks/NotebookAccessVerifier";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
 import {
@@ -72,6 +71,7 @@ import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
+import {EnvironmentCommands} from "./language/EnvironmentCommands";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -364,29 +364,46 @@ export async function activate(
 
     const clusterModel = new ClusterModel(connectionManager);
 
-    const dbConnectInstallPrompt = new DbConnectInstallPrompt(
-        stateStorage,
-        pythonExtensionWrapper
-    );
+    const environmentDependenciesInstaller =
+        new EnvironmentDependenciesInstaller(pythonExtensionWrapper);
     const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
-        "debugging.dbconnect",
+        "environment.dependencies",
         () =>
-            new DbConnectAccessVerifier(
+            new EnvironmentDependenciesVerifier(
                 connectionManager,
                 pythonExtensionWrapper,
-                dbConnectInstallPrompt
+                environmentDependenciesInstaller
             )
     );
-
-    featureManager.registerFeature(
-        "notebooks.dbconnect",
-        () =>
-            new NotebookAccessVerifier(
-                featureManager,
-                pythonExtensionWrapper,
-                stateStorage
-            )
+    const environmentCommands = new EnvironmentCommands(
+        featureManager,
+        pythonExtensionWrapper,
+        environmentDependenciesInstaller
+    );
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.environment.setup",
+            environmentCommands.setup,
+            environmentCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.environment.refresh",
+            environmentCommands.refresh,
+            environmentCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.environment.selectPythonInterpreter",
+            environmentCommands.selectPythonInterpreter,
+            environmentCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.environment.reinstallDBConnect",
+            async () =>
+                environmentCommands.reinstallDBConnect(
+                    connectionManager.cluster
+                )
+        )
     );
 
     const dbConnectStatusBarButton = new DbConnectStatusBarButton(
@@ -406,8 +423,7 @@ export async function activate(
         connectionManager,
         featureManager,
         pythonExtensionWrapper,
-        databricksEnvFileManager,
-        configModel
+        databricksEnvFileManager
     );
 
     context.subscriptions.push(
@@ -417,30 +433,6 @@ export async function activate(
             "databricks.notebookInitScript.verify",
             notebookInitScriptManager.verifyInitScriptCommand,
             notebookInitScriptManager
-        ),
-        workspace.onDidOpenNotebookDocument(() =>
-            featureManager.isEnabled("notebooks.dbconnect")
-        ),
-        featureManager.onDidChangeState(
-            "notebooks.dbconnect",
-            async (featureState) => {
-                const dbconnectState = await featureManager.isEnabled(
-                    "debugging.dbconnect"
-                );
-                if (!dbconnectState.avaliable) {
-                    return; // Only take action of notebook errors, when dbconnect is avaliable
-                }
-                if (featureState.action) {
-                    featureState.action();
-                } else if (
-                    !featureState.isDisabledByFf &&
-                    featureState.reason
-                ) {
-                    window.showErrorMessage(
-                        `Error while trying to initialize Databricks Notebooks. Some features may not work. Reason: ${featureState.reason}`
-                    );
-                }
-            }
         )
     );
 
@@ -462,14 +454,14 @@ export async function activate(
         databricksEnvFileManager,
         showRestartNotebookDialogue(databricksEnvFileManager)
     );
-    featureManager.isEnabled("debugging.dbconnect");
+    featureManager.isEnabled("environment.dependencies");
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
         stateStorage,
         workspaceUri.fsPath,
         pythonExtensionWrapper,
-        dbConnectInstallPrompt
+        environmentDependenciesInstaller
     );
     context.subscriptions.push(
         configureAutocomplete,
@@ -484,7 +476,8 @@ export async function activate(
         connectionManager,
         bundleProjectManager,
         configModel,
-        cli
+        cli,
+        featureManager
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,

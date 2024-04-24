@@ -23,7 +23,6 @@ import {promisify} from "util";
 import {FileUtils} from "../../utils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {LocalUri} from "../../sync/SyncDestination";
-import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {DatabricksEnvFileManager} from "../../file-managers/DatabricksEnvFileManager";
 
 const execFile = promisify(ef);
@@ -57,16 +56,13 @@ export class NotebookInitScriptManager implements Disposable {
         private readonly connectionManager: ConnectionManager,
         private readonly featureManager: FeatureManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly databricksEnvFileManager: DatabricksEnvFileManager,
-        private readonly configModel: ConfigModel
+        private readonly databricksEnvFileManager: DatabricksEnvFileManager
     ) {
-        this.featureManager.isEnabled("notebooks.dbconnect").then((state) => {
-            if (!state.isDisabledByFf) {
-                this.outputWindow = window.createOutputChannel(
-                    "Databricks Notebooks"
-                );
-                this.disposables.push(this.outputWindow);
-            }
+        this.featureManager.isEnabled("environment.dependencies").then(() => {
+            this.outputWindow = window.createOutputChannel(
+                "Databricks Notebooks"
+            );
+            this.disposables.push(this.outputWindow);
         });
         this.disposables.push(
             this.connectionManager.onDidChangeState(async (e) => {
@@ -82,11 +78,14 @@ export class NotebookInitScriptManager implements Disposable {
                 this.currentEnvPath = null;
                 this.verifyInitScript();
             }),
-            this.featureManager.onDidChangeState("notebooks.dbconnect", () => {
-                this.initScriptSuccessfullyVerified = false;
-                this.currentEnvPath = null;
-                this.verifyInitScript();
-            }),
+            this.featureManager.onDidChangeState(
+                "environment.dependencies",
+                () => {
+                    this.initScriptSuccessfullyVerified = false;
+                    this.currentEnvPath = null;
+                    this.verifyInitScript();
+                }
+            ),
             workspace.onDidOpenNotebookDocument(async () => {
                 if (await this.isKnownEnvironment()) {
                     return;
@@ -186,8 +185,8 @@ export class NotebookInitScriptManager implements Disposable {
 
     async updateInitScript() {
         if (
-            !(await this.featureManager.isEnabled("notebooks.dbconnect"))
-                .avaliable
+            !(await this.featureManager.isEnabled("environment.dependencies"))
+                .available
         ) {
             return;
         }
@@ -296,8 +295,8 @@ export class NotebookInitScriptManager implements Disposable {
         );
 
         if (
-            !(await this.featureManager.isEnabled("notebooks.dbconnect"))
-                .avaliable
+            !(await this.featureManager.isEnabled("environment.dependencies"))
+                .available
         ) {
             return;
         }
