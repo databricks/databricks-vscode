@@ -1,3 +1,16 @@
+# Release: v2.1.0-preview
+
+## packages/databricks-vscode
+
+## (2024-04-24)
+
+-   Add a interface for specifying bundle variables (#1157) ([b279467](https://github.com/databricks/databricks-vscode/commit/b279467)), closes [#1157](https://github.com/databricks/databricks-vscode/issues/1157)
+-   Add integration tests for resource explorer refresh and bundle job resource run (#1108) ([5177b8d](https://github.com/databricks/databricks-vscode/commit/5177b8d)), closes [#1108](https://github.com/databricks/databricks-vscode/issues/1108)
+-   Allow opting out of cluster override and make it more visible in UI (#1171) ([f00ebd2](https://github.com/databricks/databricks-vscode/commit/f00ebd2)), closes [#1171](https://github.com/databricks/databricks-vscode/issues/1171)
+-   Bump databricks CLI to v0.218.0 (#1201) ([132044e](https://github.com/databricks/databricks-vscode/commit/132044e)), closes [#1201](https://github.com/databricks/databricks-vscode/issues/1201)
+-   Improve auto-migration template (#1200) ([370e0f5](https://github.com/databricks/databricks-vscode/commit/370e0f5)), closes [#1200](https://github.com/databricks/databricks-vscode/issues/1200)
+-   Prompt users to setup virtual environment (#1169) ([5a85750](https://github.com/databricks/databricks-vscode/commit/5a85750)), closes [#1169](https://github.com/databricks/databricks-vscode/issues/1169)
+
 # Release: v2.0.4-preview
 
 ## packages/databricks-vscode

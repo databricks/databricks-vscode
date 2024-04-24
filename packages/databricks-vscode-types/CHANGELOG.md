@@ -1,3 +1,11 @@
+# Release: v2.1.0-preview
+
+## packages/databricks-vscode-types
+
+## (2024-04-24)
+
+-   Allow opting out of cluster override and make it more visible in UI (#1171) ([f00ebd2](https://github.com/databricks/databricks-vscode/commit/f00ebd2)), closes [#1171](https://github.com/databricks/databricks-vscode/issues/1171)
+
 # Release: v2.0.4-preview
 
 ## packages/databricks-vscode-types
