@@ -23,9 +23,6 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         ]);
         this.disposables.push(
             this.connectionManager.onDidChangeCluster((cluster) => {
-                if (this.connectionManager.state !== "CONNECTED") {
-                    return;
-                }
                 this.checkCluster(cluster);
                 if (cluster) {
                     this.checkEnvironmentDependencies();
@@ -82,7 +79,6 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 )
             );
         }
-        await this.connectionManager.waitForConnect();
 
         const dbrVersionParts = cluster?.dbrVersion;
         if (
@@ -117,7 +113,6 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
 
     @logging.withLogContext(Loggers.Extension)
     async checkWorkspaceHasUc(@context ctx?: Context) {
-        this.connectionManager.waitForConnect();
         try {
             const catalogList =
                 this.connectionManager.workspaceClient?.catalogs.list();
@@ -205,10 +200,12 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         if (dbrVersionParts && dbrVersionParts[0] !== "x") {
             const dbrMajor = dbrVersionParts[0];
             const dbrMinor = dbrVersionParts[1];
-            const dbconnectIsLower =
-                dbconnectMajor <= dbrMajor &&
-                (dbrMinor === "x" || dbconnectMinor <= dbrMinor);
-            if (!dbconnectIsLower) {
+            const dbconnectIsHigher =
+                dbconnectMajor > dbrMajor ||
+                (dbconnectMajor === dbrMajor &&
+                    dbrMinor !== "x" &&
+                    dbconnectMinor > dbrMinor);
+            if (dbconnectIsHigher) {
                 return this.rejectStep(
                     "checkEnvironmentDependencies",
                     "Reinstall databricks-connect",
