@@ -5,729 +5,28 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-/**
- * Root of the bundle config
- */
 export interface BundleSchema {
-    /**
-     * A description of all code artifacts in this bundle.
-     */
     artifacts?: {
         [k: string]: {
-            build: string;
-            files: {
+            build?: string;
+            executable?: string;
+            files?: {
                 source: string;
             }[];
-            path: string;
+            path?: string;
             type: string;
         };
     };
-    /**
-     * The details for this bundle.
-     */
     bundle?: {
         compute_id?: string;
+        deployment: {
+            fail_on_active_runs?: boolean;
+        };
         git?: {
             branch?: string;
             origin_url?: string;
         };
-        /**
-         * The name of the bundle.
-         */
         name: string;
-    };
-    environments?: {
-        [k: string]: {
-            artifacts?: {
-                [k: string]: {
-                    build: string;
-                    files: {
-                        source: string;
-                    }[];
-                    path: string;
-                    type: string;
-                };
-            };
-            bundle?: {
-                compute_id?: string;
-                git?: {
-                    branch?: string;
-                    origin_url?: string;
-                };
-                name: string;
-            };
-            compute_id?: string;
-            default?: boolean;
-            git?: {
-                branch?: string;
-                origin_url?: string;
-            };
-            mode?: string;
-            resources?: {
-                experiments?: {
-                    [k: string]: {
-                        artifact_location?: string;
-                        creation_time?: number;
-                        experiment_id?: string;
-                        last_update_time?: number;
-                        lifecycle_stage?: string;
-                        name?: string;
-                        permissions?: {
-                            group_name?: string;
-                            level: string;
-                            service_principal_name?: string;
-                            user_name?: string;
-                        }[];
-                        tags?: {
-                            key?: string;
-                            value?: string;
-                        }[];
-                    };
-                };
-                jobs?: {
-                    [k: string]: {
-                        compute?: {
-                            compute_key: string;
-                            spec: {
-                                kind?: string;
-                            };
-                        }[];
-                        continuous?: {
-                            pause_status?: string;
-                        };
-                        email_notifications?: {
-                            no_alert_for_skipped_runs?: boolean;
-                            on_duration_warning_threshold_exceeded?: string[];
-                            on_failure?: string[];
-                            on_start?: string[];
-                            on_success?: string[];
-                        };
-                        format?: string;
-                        git_source?: {
-                            git_branch?: string;
-                            git_commit?: string;
-                            git_provider: string;
-                            git_snapshot?: {
-                                used_commit?: string;
-                            };
-                            git_tag?: string;
-                            git_url: string;
-                            job_source?: {
-                                dirty_state?: string;
-                                import_from_git_branch: string;
-                                job_config_path: string;
-                            };
-                        };
-                        health?: {
-                            rules?: {
-                                metric?: string;
-                                op?: string;
-                                value?: number;
-                            }[];
-                        };
-                        job_clusters?: {
-                            job_cluster_key: string;
-                            new_cluster?: {
-                                autoscale?: {
-                                    max_workers: number;
-                                    min_workers: number;
-                                };
-                                autotermination_minutes?: number;
-                                aws_attributes?: {
-                                    availability?: string;
-                                    ebs_volume_count?: number;
-                                    ebs_volume_iops?: number;
-                                    ebs_volume_size?: number;
-                                    ebs_volume_throughput?: number;
-                                    ebs_volume_type?: string;
-                                    first_on_demand?: number;
-                                    instance_profile_arn?: string;
-                                    spot_bid_price_percent?: number;
-                                    zone_id?: string;
-                                };
-                                azure_attributes?: {
-                                    availability?: string;
-                                    first_on_demand?: number;
-                                    log_analytics_info?: {
-                                        log_analytics_primary_key?: string;
-                                        log_analytics_workspace_id?: string;
-                                    };
-                                    spot_bid_max_price?: number;
-                                };
-                                cluster_log_conf?: {
-                                    dbfs?: {
-                                        destination?: string;
-                                    };
-                                    s3?: {
-                                        canned_acl?: string;
-                                        destination?: string;
-                                        enable_encryption?: boolean;
-                                        encryption_type?: string;
-                                        endpoint?: string;
-                                        kms_key?: string;
-                                        region?: string;
-                                    };
-                                };
-                                cluster_name?: string;
-                                cluster_source?: string;
-                                custom_tags?: {
-                                    [k: string]: string;
-                                };
-                                data_security_mode?: string;
-                                docker_image?: {
-                                    basic_auth?: {
-                                        password?: string;
-                                        username?: string;
-                                    };
-                                    url?: string;
-                                };
-                                driver_instance_pool_id?: string;
-                                driver_node_type_id?: string;
-                                enable_elastic_disk?: boolean;
-                                enable_local_disk_encryption?: boolean;
-                                gcp_attributes?: {
-                                    availability?: string;
-                                    boot_disk_size?: number;
-                                    google_service_account?: string;
-                                    local_ssd_count?: number;
-                                };
-                                init_scripts?: {
-                                    dbfs?: {
-                                        destination?: string;
-                                    };
-                                    s3?: {
-                                        canned_acl?: string;
-                                        destination?: string;
-                                        enable_encryption?: boolean;
-                                        encryption_type?: string;
-                                        endpoint?: string;
-                                        kms_key?: string;
-                                        region?: string;
-                                    };
-                                    volumes?: {
-                                        destination?: string;
-                                    };
-                                    workspace?: {
-                                        destination?: string;
-                                    };
-                                }[];
-                                instance_pool_id?: string;
-                                node_type_id?: string;
-                                num_workers?: number;
-                                policy_id?: string;
-                                runtime_engine?: string;
-                                single_user_name?: string;
-                                spark_conf?: {
-                                    [k: string]: string;
-                                };
-                                spark_env_vars?: {
-                                    [k: string]: string;
-                                };
-                                spark_version?: string;
-                                ssh_public_keys?: string[];
-                                workload_type?: {
-                                    clients?: {
-                                        jobs?: boolean;
-                                        notebooks?: boolean;
-                                    };
-                                };
-                            };
-                        }[];
-                        max_concurrent_runs?: number;
-                        name?: string;
-                        notification_settings?: {
-                            no_alert_for_canceled_runs?: boolean;
-                            no_alert_for_skipped_runs?: boolean;
-                        };
-                        parameters?: {
-                            default: string;
-                            name: string;
-                        }[];
-                        permissions?: {
-                            group_name?: string;
-                            level: string;
-                            service_principal_name?: string;
-                            user_name?: string;
-                        }[];
-                        run_as?: {
-                            service_principal_name?: string;
-                            user_name?: string;
-                        };
-                        schedule?: {
-                            pause_status?: string;
-                            quartz_cron_expression: string;
-                            timezone_id: string;
-                        };
-                        tags?: {
-                            [k: string]: string;
-                        };
-                        tasks?: {
-                            compute_key?: string;
-                            condition_task?: {
-                                left?: string;
-                                op?: string;
-                                right?: string;
-                            };
-                            dbt_task?: {
-                                catalog?: string;
-                                commands: string[];
-                                profiles_directory?: string;
-                                project_directory?: string;
-                                schema?: string;
-                                warehouse_id?: string;
-                            };
-                            depends_on?: {
-                                outcome?: string;
-                                task_key: string;
-                            }[];
-                            description?: string;
-                            email_notifications?: {
-                                on_duration_warning_threshold_exceeded?: string[];
-                                on_failure?: string[];
-                                on_start?: string[];
-                                on_success?: string[];
-                            };
-                            existing_cluster_id?: string;
-                            health?: {
-                                rules?: {
-                                    metric?: string;
-                                    op?: string;
-                                    value?: number;
-                                }[];
-                            };
-                            job_cluster_key?: string;
-                            libraries?: {
-                                cran?: {
-                                    package: string;
-                                    repo?: string;
-                                };
-                                egg?: string;
-                                jar?: string;
-                                maven?: {
-                                    coordinates: string;
-                                    exclusions?: string[];
-                                    repo?: string;
-                                };
-                                pypi?: {
-                                    package: string;
-                                    repo?: string;
-                                };
-                                whl?: string;
-                            }[];
-                            max_retries?: number;
-                            min_retry_interval_millis?: number;
-                            new_cluster?: {
-                                autoscale?: {
-                                    max_workers: number;
-                                    min_workers: number;
-                                };
-                                autotermination_minutes?: number;
-                                aws_attributes?: {
-                                    availability?: string;
-                                    ebs_volume_count?: number;
-                                    ebs_volume_iops?: number;
-                                    ebs_volume_size?: number;
-                                    ebs_volume_throughput?: number;
-                                    ebs_volume_type?: string;
-                                    first_on_demand?: number;
-                                    instance_profile_arn?: string;
-                                    spot_bid_price_percent?: number;
-                                    zone_id?: string;
-                                };
-                                azure_attributes?: {
-                                    availability?: string;
-                                    first_on_demand?: number;
-                                    log_analytics_info?: {
-                                        log_analytics_primary_key?: string;
-                                        log_analytics_workspace_id?: string;
-                                    };
-                                    spot_bid_max_price?: number;
-                                };
-                                cluster_log_conf?: {
-                                    dbfs?: {
-                                        destination?: string;
-                                    };
-                                    s3?: {
-                                        canned_acl?: string;
-                                        destination?: string;
-                                        enable_encryption?: boolean;
-                                        encryption_type?: string;
-                                        endpoint?: string;
-                                        kms_key?: string;
-                                        region?: string;
-                                    };
-                                };
-                                cluster_name?: string;
-                                cluster_source?: string;
-                                custom_tags?: {
-                                    [k: string]: string;
-                                };
-                                data_security_mode?: string;
-                                docker_image?: {
-                                    basic_auth?: {
-                                        password?: string;
-                                        username?: string;
-                                    };
-                                    url?: string;
-                                };
-                                driver_instance_pool_id?: string;
-                                driver_node_type_id?: string;
-                                enable_elastic_disk?: boolean;
-                                enable_local_disk_encryption?: boolean;
-                                gcp_attributes?: {
-                                    availability?: string;
-                                    boot_disk_size?: number;
-                                    google_service_account?: string;
-                                    local_ssd_count?: number;
-                                };
-                                init_scripts?: {
-                                    dbfs?: {
-                                        destination?: string;
-                                    };
-                                    s3?: {
-                                        canned_acl?: string;
-                                        destination?: string;
-                                        enable_encryption?: boolean;
-                                        encryption_type?: string;
-                                        endpoint?: string;
-                                        kms_key?: string;
-                                        region?: string;
-                                    };
-                                    volumes?: {
-                                        destination?: string;
-                                    };
-                                    workspace?: {
-                                        destination?: string;
-                                    };
-                                }[];
-                                instance_pool_id?: string;
-                                node_type_id?: string;
-                                num_workers?: number;
-                                policy_id?: string;
-                                runtime_engine?: string;
-                                single_user_name?: string;
-                                spark_conf?: {
-                                    [k: string]: string;
-                                };
-                                spark_env_vars?: {
-                                    [k: string]: string;
-                                };
-                                spark_version?: string;
-                                ssh_public_keys?: string[];
-                                workload_type?: {
-                                    clients?: {
-                                        jobs?: boolean;
-                                        notebooks?: boolean;
-                                    };
-                                };
-                            };
-                            notebook_task?: {
-                                base_parameters?: {
-                                    [k: string]: string;
-                                };
-                                notebook_path: string;
-                                source?: string;
-                            };
-                            notification_settings?: {
-                                alert_on_last_attempt?: boolean;
-                                no_alert_for_canceled_runs?: boolean;
-                                no_alert_for_skipped_runs?: boolean;
-                            };
-                            pipeline_task?: {
-                                full_refresh?: boolean;
-                                pipeline_id?: string;
-                            };
-                            python_wheel_task?: {
-                                entry_point?: string;
-                                named_parameters?: {
-                                    [k: string]: string;
-                                };
-                                package_name?: string;
-                                parameters?: string[];
-                            };
-                            retry_on_timeout?: boolean;
-                            run_if?: string;
-                            run_job_task?: {
-                                job_id: number;
-                                job_parameters?: unknown;
-                            };
-                            spark_jar_task?: {
-                                jar_uri?: string;
-                                main_class_name?: string;
-                                parameters?: string[];
-                            };
-                            spark_python_task?: {
-                                parameters?: string[];
-                                python_file: string;
-                                source?: string;
-                            };
-                            spark_submit_task?: {
-                                parameters?: string[];
-                            };
-                            sql_task?: {
-                                alert?: {
-                                    alert_id: string;
-                                    pause_subscriptions?: boolean;
-                                    subscriptions?: {
-                                        destination_id?: string;
-                                        user_name?: string;
-                                    }[];
-                                };
-                                dashboard?: {
-                                    custom_subject?: string;
-                                    dashboard_id: string;
-                                    pause_subscriptions?: boolean;
-                                    subscriptions?: {
-                                        destination_id?: string;
-                                        user_name?: string;
-                                    }[];
-                                };
-                                file?: {
-                                    path: string;
-                                };
-                                parameters?: {
-                                    [k: string]: string;
-                                };
-                                query?: {
-                                    query_id: string;
-                                };
-                                warehouse_id: string;
-                            };
-                            task_key: string;
-                            timeout_seconds?: number;
-                        }[];
-                        timeout_seconds?: number;
-                        trigger?: {
-                            file_arrival?: {
-                                min_time_between_triggers_seconds?: number;
-                                url?: string;
-                                wait_after_last_change_seconds?: number;
-                            };
-                            pause_status?: string;
-                        };
-                        webhook_notifications?: {
-                            on_duration_warning_threshold_exceeded?: {
-                                id?: string;
-                            }[];
-                            on_failure?: {
-                                id?: string;
-                            }[];
-                            on_start?: {
-                                id?: string;
-                            }[];
-                            on_success?: {
-                                id?: string;
-                            }[];
-                        };
-                    };
-                };
-                model_serving_endpoints?: {
-                    [k: string]: {
-                        config: {
-                            served_models: {
-                                environment_vars?: {
-                                    [k: string]: string;
-                                };
-                                instance_profile_arn?: string;
-                                model_name: string;
-                                model_version: string;
-                                name?: string;
-                                scale_to_zero_enabled: boolean;
-                                workload_size: string;
-                            }[];
-                            traffic_config?: {
-                                routes?: {
-                                    served_model_name: string;
-                                    traffic_percentage: number;
-                                }[];
-                            };
-                        };
-                        name: string;
-                        permissions?: {
-                            group_name?: string;
-                            level: string;
-                            service_principal_name?: string;
-                            user_name?: string;
-                        }[];
-                    };
-                };
-                models?: {
-                    [k: string]: {
-                        creation_timestamp?: number;
-                        description?: string;
-                        last_updated_timestamp?: number;
-                        latest_versions?: {
-                            creation_timestamp?: number;
-                            current_stage?: string;
-                            description?: string;
-                            last_updated_timestamp?: number;
-                            name?: string;
-                            run_id?: string;
-                            run_link?: string;
-                            source?: string;
-                            status?: string;
-                            status_message?: string;
-                            tags?: {
-                                key?: string;
-                                value?: string;
-                            }[];
-                            user_id?: string;
-                            version?: string;
-                        }[];
-                        name?: string;
-                        permissions?: {
-                            group_name?: string;
-                            level: string;
-                            service_principal_name?: string;
-                            user_name?: string;
-                        }[];
-                        tags?: {
-                            key?: string;
-                            value?: string;
-                        }[];
-                        user_id?: string;
-                    };
-                };
-                pipelines?: {
-                    [k: string]: {
-                        catalog?: string;
-                        channel?: string;
-                        clusters?: {
-                            apply_policy_default_values?: boolean;
-                            autoscale?: {
-                                max_workers: number;
-                                min_workers: number;
-                            };
-                            aws_attributes?: {
-                                availability?: string;
-                                ebs_volume_count?: number;
-                                ebs_volume_iops?: number;
-                                ebs_volume_size?: number;
-                                ebs_volume_throughput?: number;
-                                ebs_volume_type?: string;
-                                first_on_demand?: number;
-                                instance_profile_arn?: string;
-                                spot_bid_price_percent?: number;
-                                zone_id?: string;
-                            };
-                            azure_attributes?: {
-                                availability?: string;
-                                first_on_demand?: number;
-                                log_analytics_info?: {
-                                    log_analytics_primary_key?: string;
-                                    log_analytics_workspace_id?: string;
-                                };
-                                spot_bid_max_price?: number;
-                            };
-                            cluster_log_conf?: {
-                                dbfs?: {
-                                    destination?: string;
-                                };
-                                s3?: {
-                                    canned_acl?: string;
-                                    destination?: string;
-                                    enable_encryption?: boolean;
-                                    encryption_type?: string;
-                                    endpoint?: string;
-                                    kms_key?: string;
-                                    region?: string;
-                                };
-                            };
-                            custom_tags?: {
-                                [k: string]: string;
-                            };
-                            driver_instance_pool_id?: string;
-                            driver_node_type_id?: string;
-                            gcp_attributes?: {
-                                availability?: string;
-                                boot_disk_size?: number;
-                                google_service_account?: string;
-                                local_ssd_count?: number;
-                            };
-                            instance_pool_id?: string;
-                            label?: string;
-                            node_type_id?: string;
-                            num_workers?: number;
-                            policy_id?: string;
-                            spark_conf?: {
-                                [k: string]: string;
-                            };
-                            spark_env_vars?: {
-                                [k: string]: string;
-                            };
-                            ssh_public_keys?: string[];
-                        }[];
-                        configuration?: {
-                            [k: string]: string;
-                        };
-                        continuous?: boolean;
-                        development?: boolean;
-                        edition?: string;
-                        filters?: {
-                            exclude?: string[];
-                            include?: string[];
-                        };
-                        id?: string;
-                        libraries?: {
-                            file?: {
-                                path?: string;
-                            };
-                            jar?: string;
-                            maven?: {
-                                coordinates: string;
-                                exclusions?: string[];
-                                repo?: string;
-                            };
-                            notebook?: {
-                                path?: string;
-                            };
-                        }[];
-                        name?: string;
-                        permissions?: {
-                            group_name?: string;
-                            level: string;
-                            service_principal_name?: string;
-                            user_name?: string;
-                        }[];
-                        photon?: boolean;
-                        serverless?: boolean;
-                        storage?: string;
-                        target?: string;
-                        trigger?: {
-                            cron?: {
-                                quartz_cron_schedule?: string;
-                                timezone_id?: string;
-                            };
-                            manual?: unknown;
-                        };
-                    };
-                };
-            };
-            run_as?: {
-                service_principal_name?: string;
-                user_name?: string;
-            };
-            variables?: {
-                [k: string]: string;
-            };
-            workspace?: {
-                artifact_path?: string;
-                auth_type?: string;
-                azure_client_id?: string;
-                azure_environment?: string;
-                azure_login_app_id?: string;
-                azure_tenant_id?: string;
-                azure_use_msi?: boolean;
-                azure_workspace_resource_id?: string;
-                client_id?: string;
-                file_path?: string;
-                google_service_account?: string;
-                host?: string;
-                profile?: string;
-                root_path?: string;
-                state_path?: string;
-            };
-        };
     };
     experimental?: {
         python_wheel_wrapper?: boolean;
@@ -735,10 +34,13 @@ export interface BundleSchema {
             [k: string]: string;
         };
     };
-    /**
-     * A list of glob patterns of files to load and merge into the this configuration. Defaults to no files being included.
-     */
     include?: string[];
+    permissions?: {
+        group_name?: string;
+        level: string;
+        service_principal_name?: string;
+        user_name?: string;
+    }[];
     /**
      * Collection of Databricks resources to deploy.
      */
@@ -825,13 +127,44 @@ export interface BundleSchema {
                     pause_status?: string;
                 };
                 /**
-                 * An optional set of email addresses that is notified when runs of this job begin or complete as well as when this job is deleted. The default behavior is to not send any emails.
+                 * Deployment information for jobs managed by external sources.
+                 */
+                deployment?: {
+                    /**
+                     * The kind of deployment that manages the job.
+                     *
+                     * * `BUNDLE`: The job is managed by Databricks Asset Bundle.
+                     *
+                     */
+                    kind: string;
+                    /**
+                     * Path of the file that contains deployment metadata.
+                     */
+                    metadata_file_path?: string;
+                };
+                /**
+                 * An optional description for the job. The maximum length is 1024 characters in UTF-8 encoding.
+                 */
+                description?: string;
+                /**
+                 * Edit mode of the job.
+                 *
+                 * * `UI_LOCKED`: The job is in a locked UI state and cannot be modified.
+                 * * `EDITABLE`: The job is in an editable state and can be modified.
+                 *
+                 */
+                edit_mode?: string;
+                /**
+                 * An optional set of email addresses that is notified when runs of this job begin or complete as well as when this job is deleted.
                  */
                 email_notifications?: {
                     /**
                      * If true, do not send email to recipients specified in `on_failure` if the run is skipped.
                      */
                     no_alert_for_skipped_runs?: boolean;
+                    /**
+                     * A list of email addresses to be notified when the duration of a run exceeds the threshold specified for the `RUN_DURATION_SECONDS` metric in the `health` field. If no rule for the `RUN_DURATION_SECONDS` metric is specified in the `health` field for the job, notifications are not sent.
+                     */
                     on_duration_warning_threshold_exceeded?: string[];
                     /**
                      * A list of email addresses to be notified when a run unsuccessfully completes. A run is considered to have completed unsuccessfully if it ends with an `INTERNAL_ERROR` `life_cycle_state` or a `FAILED`, or `TIMED_OUT` result_state. If this is not specified on job creation, reset, or update the list is empty, and notifications are not sent.
@@ -851,20 +184,19 @@ export interface BundleSchema {
                  */
                 format?: string;
                 /**
-                 * An optional specification for a remote repository containing the notebooks used by this job's notebook tasks.
+                 * An optional specification for a remote Git repository containing the source code used by tasks. Version-controlled source code is supported by notebook, dbt, Python script, and SQL File tasks.
+                 *
+                 * If `git_source` is set, these tasks retrieve the file from the remote repository by default. However, this behavior can be overridden by setting `source` to `WORKSPACE` on the task.
+                 *
+                 * Note: dbt and SQL File tasks support only version-controlled sources. If dbt or SQL File tasks are used, `git_source` must be defined on the job.
                  */
                 git_source?: {
                     /**
-                     * Name of the branch to be checked out and used by this job.
-                     * This field cannot be specified in conjunction with git_tag or git_commit.
-                     *
-                     * The maximum length is 255 characters.
-                     *
+                     * Name of the branch to be checked out and used by this job. This field cannot be specified in conjunction with git_tag or git_commit.
                      */
                     git_branch?: string;
                     /**
                      * Commit to be checked out and used by this job. This field cannot be specified in conjunction with git_branch or git_tag.
-                     * The maximum length is 64 characters.
                      */
                     git_commit?: string;
                     /**
@@ -878,21 +210,33 @@ export interface BundleSchema {
                         used_commit?: string;
                     };
                     /**
-                     * Name of the tag to be checked out and used by this job.
-                     * This field cannot be specified in conjunction with git_branch or git_commit.
-                     *
-                     * The maximum length is 255 characters.
-                     *
+                     * Name of the tag to be checked out and used by this job. This field cannot be specified in conjunction with git_branch or git_commit.
                      */
                     git_tag?: string;
                     /**
                      * URL of the repository to be cloned by this job.
-                     * The maximum length is 300 characters.
                      */
                     git_url: string;
+                    /**
+                     * The source of the job specification in the remote repository when the job is source controlled.
+                     */
                     job_source?: {
+                        /**
+                         * Dirty state indicates the job is not fully synced with the job specification in the remote repository.
+                         *
+                         * Possible values are:
+                         * * `NOT_SYNCED`: The job is not yet synced with the remote job specification. Import the remote job specification from UI to make the job fully synced.
+                         * * `DISCONNECTED`: The job is temporary disconnected from the remote job specification and is allowed for live edit. Import the remote job specification again from UI to make the job fully synced.
+                         *
+                         */
                         dirty_state?: string;
+                        /**
+                         * Name of the branch which the job is imported from.
+                         */
                         import_from_git_branch: string;
+                        /**
+                         * Path of the job YAML file that contains the job specification.
+                         */
                         job_config_path: string;
                     };
                 };
@@ -900,6 +244,9 @@ export interface BundleSchema {
                     rules?: {
                         metric?: string;
                         op?: string;
+                        /**
+                         * Specifies the threshold value that the health metric should obey to satisfy the health rule.
+                         */
                         value?: number;
                     }[];
                 };
@@ -916,6 +263,7 @@ export interface BundleSchema {
                      * If new_cluster, a description of a cluster that is created for only for this task.
                      */
                     new_cluster?: {
+                        apply_policy_default_values?: boolean;
                         /**
                          * Parameters needed in order to automatically scale clusters up and down based on load.
                          * Note: autoscaling works best with DB runtime versions 3.0 or later.
@@ -925,12 +273,12 @@ export interface BundleSchema {
                              * The maximum number of workers to which the cluster can scale up when overloaded.
                              * Note that `max_workers` must be strictly greater than `min_workers`.
                              */
-                            max_workers: number;
+                            max_workers?: number;
                             /**
                              * The minimum number of workers to which the cluster can scale down when underutilized.
                              * It is also the initial number of workers the cluster will have after creation.
                              */
-                            min_workers: number;
+                            min_workers?: number;
                         };
                         /**
                          * Automatically terminates the cluster after it is inactive for this time in minutes. If not set,
@@ -965,7 +313,7 @@ export interface BundleSchema {
                              */
                             ebs_volume_count?: number;
                             /**
-                             * <needs content added>
+                             * If using gp3 volumes, what IOPS to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                              */
                             ebs_volume_iops?: number;
                             /**
@@ -975,7 +323,7 @@ export interface BundleSchema {
                              */
                             ebs_volume_size?: number;
                             /**
-                             * <needs content added>
+                             * If using gp3 volumes, what throughput to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                              */
                             ebs_volume_throughput?: number;
                             ebs_volume_type?: string;
@@ -1023,9 +371,8 @@ export interface BundleSchema {
                              * This is an optional field at cluster creation, and if not specified, a default zone will be used.
                              * If the zone specified is "auto", will try to place cluster in a zone with high availability,
                              * and will retry placement in a different AZ if there is not enough capacity.
-                             * See [[AutoAZHelper.scala]] for more details.
                              * The list of available zones as well as the default value can be found by using the
-                             * `List Zones`_ method.
+                             * `List Zones` method.
                              */
                             zone_id?: string;
                         };
@@ -1082,7 +429,7 @@ export interface BundleSchema {
                                 /**
                                  * dbfs destination, e.g. `dbfs:/my/path`
                                  */
-                                destination?: string;
+                                destination: string;
                             };
                             /**
                              * destination and either the region or endpoint need to be provided. e.g.
@@ -1106,7 +453,7 @@ export interface BundleSchema {
                                  * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                                  * destination. Please also note that you cannot use AWS keys to deliver logs.
                                  */
-                                destination?: string;
+                                destination: string;
                                 /**
                                  * (Optional) Flag to enable server side encryption, `false` by default.
                                  */
@@ -1211,11 +558,34 @@ export interface BundleSchema {
                              * If provided, each node (workers and driver) in the cluster will have this number of local SSDs attached. Each local SSD is 375GB in size. Refer to [GCP documentation](https://cloud.google.com/compute/docs/disks/local-ssd#choose_number_local_ssds) for the supported number of local SSDs for each instance type.
                              */
                             local_ssd_count?: number;
+                            /**
+                             * This field determines whether the spark executors will be scheduled to run on preemptible VMs (when set to true) versus standard compute engine VMs (when set to false; default).
+                             * Note: Soon to be deprecated, use the availability field instead.
+                             */
+                            use_preemptible_executors?: boolean;
+                            /**
+                             * Identifier for the availability zone in which the cluster resides.
+                             * This can be one of the following:
+                             * - "HA" => High availability, spread nodes across availability zones for a Databricks deployment region [default]
+                             * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+                             * - A GCP availability zone => Pick One of the available zones for (machine type + region) from https://cloud.google.com/compute/docs/regions-zones.
+                             */
+                            zone_id?: string;
                         };
                         /**
                          * The configuration for storing init scripts. Any number of destinations can be specified. The scripts are executed sequentially in the order provided. If `cluster_log_conf` is specified, init script logs are sent to `<destination>/<cluster-ID>/init_scripts`.
                          */
                         init_scripts?: {
+                            /**
+                             * destination needs to be provided. e.g.
+                             * `{ "abfss" : { "destination" : "abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>" } }
+                             */
+                            abfss?: {
+                                /**
+                                 * abfss destination, e.g. `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+                                 */
+                                destination: string;
+                            };
                             /**
                              * destination needs to be provided. e.g.
                              * `{ "dbfs" : { "destination" : "dbfs:/home/cluster_log" } }`
@@ -1224,7 +594,27 @@ export interface BundleSchema {
                                 /**
                                  * dbfs destination, e.g. `dbfs:/my/path`
                                  */
-                                destination?: string;
+                                destination: string;
+                            };
+                            /**
+                             * destination needs to be provided. e.g.
+                             * `{ "file" : { "destination" : "file:/my/local/file.sh" } }`
+                             */
+                            file?: {
+                                /**
+                                 * local file destination, e.g. `file:/my/local/file.sh`
+                                 */
+                                destination: string;
+                            };
+                            /**
+                             * destination needs to be provided. e.g.
+                             * `{ "gcs": { "destination": "gs://my-bucket/file.sh" } }`
+                             */
+                            gcs?: {
+                                /**
+                                 * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+                                 */
+                                destination: string;
                             };
                             /**
                              * destination and either the region or endpoint need to be provided. e.g.
@@ -1248,7 +638,7 @@ export interface BundleSchema {
                                  * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                                  * destination. Please also note that you cannot use AWS keys to deliver logs.
                                  */
-                                destination?: string;
+                                destination: string;
                                 /**
                                  * (Optional) Flag to enable server side encryption, `false` by default.
                                  */
@@ -1273,8 +663,15 @@ export interface BundleSchema {
                                  */
                                 region?: string;
                             };
+                            /**
+                             * destination needs to be provided. e.g.
+                             * `{ "volumes" : { "destination" : "/Volumes/my-init.sh" } }`
+                             */
                             volumes?: {
-                                destination?: string;
+                                /**
+                                 * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+                                 */
+                                destination: string;
                             };
                             /**
                              * destination needs to be provided. e.g.
@@ -1284,7 +681,7 @@ export interface BundleSchema {
                                 /**
                                  * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
                                  */
-                                destination?: string;
+                                destination: string;
                             };
                         }[];
                         /**
@@ -1361,7 +758,7 @@ export interface BundleSchema {
                             /**
                              *  defined what type of clients can use the cluster. E.g. Notebooks, Jobs
                              */
-                            clients?: {
+                            clients: {
                                 /**
                                  * With jobs set, the cluster can be used for jobs
                                  */
@@ -1381,11 +778,11 @@ export interface BundleSchema {
                  *
                  * This setting affects only new runs. For example, suppose the job’s concurrency is 4 and there are 4 concurrent active runs. Then setting the concurrency to 3 won’t kill any of the active runs. However, from then on, new runs are skipped unless there are fewer than 3 active runs.
                  *
-                 * This value cannot exceed 1000\. Setting this value to 0 causes all new runs to be skipped. The default behavior is to allow only 1 concurrent run.
+                 * This value cannot exceed 1000. Setting this value to `0` causes all new runs to be skipped.
                  */
                 max_concurrent_runs?: number;
                 /**
-                 * An optional name for the job.
+                 * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
                  */
                 name?: string;
                 /**
@@ -1420,6 +817,15 @@ export interface BundleSchema {
                     service_principal_name?: string;
                     user_name?: string;
                 }[];
+                /**
+                 * The queue settings of the job.
+                 */
+                queue?: {
+                    /**
+                     * If true, enable queueing for the job. This is a required field.
+                     */
+                    enabled: boolean;
+                };
                 run_as?: {
                     /**
                      * Application ID of an active service principal. Setting this field requires the `servicePrincipal/user` role.
@@ -1505,7 +911,7 @@ export interface BundleSchema {
                          */
                         profiles_directory?: string;
                         /**
-                         * Optional (relative) path to the project directory, if no value is provided, the root of the git repository is used.
+                         * Path to the project directory. Optional for Git sourced tasks, in which case if no value is provided, the root of the Git repository is used.
                          */
                         project_directory?: string;
                         /**
@@ -1513,12 +919,22 @@ export interface BundleSchema {
                          */
                         schema?: string;
                         /**
+                         * Optional location type of the Python file. When set to `WORKSPACE` or not specified, the file will be retrieved
+                         * from the local <Databricks> workspace or cloud location (if the `python_file` has a URI format). When set to `GIT`,
+                         * the Python file will be retrieved from a Git repository defined in `git_source`.
+                         *
+                         * * `WORKSPACE`: The Python file is located in a <Databricks> workspace or at a cloud filesystem URI.
+                         * * `GIT`: The Python file is located in a remote Git repository.
+                         *
+                         */
+                        source?: string;
+                        /**
                          * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide the profile and connection details to dbt. It can be overridden on a per-command basis by using the `--profiles-dir` command line argument.
                          */
                         warehouse_id?: string;
                     };
                     /**
-                     * An optional array of objects specifying the dependency graph of the task. All tasks specified in this field must complete successfully before executing this task.
+                     * An optional array of objects specifying the dependency graph of the task. All tasks specified in this field must complete before executing this task. The task will run only if the `run_if` condition is true.
                      * The key is `task_key`, and the value is the name assigned to the dependent task.
                      *
                      */
@@ -1534,13 +950,15 @@ export interface BundleSchema {
                     }[];
                     /**
                      * An optional description for this task.
-                     * The maximum length is 4096 bytes.
                      */
                     description?: string;
                     /**
                      * An optional set of email addresses that is notified when runs of this task begin or complete as well as when this task is deleted. The default behavior is to not send any emails.
                      */
                     email_notifications?: {
+                        /**
+                         * A list of email addresses to be notified when the duration of a run exceeds the threshold specified for the `RUN_DURATION_SECONDS` metric in the `health` field. If no rule for the `RUN_DURATION_SECONDS` metric is specified in the `health` field for the job, notifications are not sent.
+                         */
                         on_duration_warning_threshold_exceeded?: string[];
                         /**
                          * A list of email addresses to be notified when a run unsuccessfully completes. A run is considered to have completed unsuccessfully if it ends with an `INTERNAL_ERROR` `life_cycle_state` or a `FAILED`, or `TIMED_OUT` result_state. If this is not specified on job creation, reset, or update the list is empty, and notifications are not sent.
@@ -1556,13 +974,17 @@ export interface BundleSchema {
                         on_success?: string[];
                     };
                     /**
-                     * If existing_cluster_id, the ID of an existing cluster that is used for all runs of this task. When running tasks on an existing cluster, you may need to manually restart the cluster if it stops responding. We suggest running jobs on new clusters for greater reliability.
+                     * If existing_cluster_id, the ID of an existing cluster that is used for all runs of this task. Only all-purpose clusters are supported. When running tasks on an existing cluster, you may need to manually restart the cluster if it stops responding. We suggest running jobs on new clusters for greater reliability.
                      */
                     existing_cluster_id?: string;
+                    for_each_task?: null;
                     health?: {
                         rules?: {
                             metric?: string;
                             op?: string;
+                            /**
+                             * Specifies the threshold value that the health metric should obey to satisfy the health rule.
+                             */
                             value?: number;
                         }[];
                     };
@@ -1650,7 +1072,7 @@ export interface BundleSchema {
                         whl?: string;
                     }[];
                     /**
-                     * An optional maximum number of times to retry an unsuccessful run. A run is considered to be unsuccessful if it completes with the `FAILED` result_state or `INTERNAL_ERROR` `life_cycle_state`. The value -1 means to retry indefinitely and the value 0 means to never retry. The default behavior is to never retry.
+                     * An optional maximum number of times to retry an unsuccessful run. A run is considered to be unsuccessful if it completes with the `FAILED` result_state or `INTERNAL_ERROR` `life_cycle_state`. The value `-1` means to retry indefinitely and the value `0` means to never retry.
                      */
                     max_retries?: number;
                     /**
@@ -1661,6 +1083,7 @@ export interface BundleSchema {
                      * If new_cluster, a description of a cluster that is created for only for this task.
                      */
                     new_cluster?: {
+                        apply_policy_default_values?: boolean;
                         /**
                          * Parameters needed in order to automatically scale clusters up and down based on load.
                          * Note: autoscaling works best with DB runtime versions 3.0 or later.
@@ -1670,12 +1093,12 @@ export interface BundleSchema {
                              * The maximum number of workers to which the cluster can scale up when overloaded.
                              * Note that `max_workers` must be strictly greater than `min_workers`.
                              */
-                            max_workers: number;
+                            max_workers?: number;
                             /**
                              * The minimum number of workers to which the cluster can scale down when underutilized.
                              * It is also the initial number of workers the cluster will have after creation.
                              */
-                            min_workers: number;
+                            min_workers?: number;
                         };
                         /**
                          * Automatically terminates the cluster after it is inactive for this time in minutes. If not set,
@@ -1710,7 +1133,7 @@ export interface BundleSchema {
                              */
                             ebs_volume_count?: number;
                             /**
-                             * <needs content added>
+                             * If using gp3 volumes, what IOPS to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                              */
                             ebs_volume_iops?: number;
                             /**
@@ -1720,7 +1143,7 @@ export interface BundleSchema {
                              */
                             ebs_volume_size?: number;
                             /**
-                             * <needs content added>
+                             * If using gp3 volumes, what throughput to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                              */
                             ebs_volume_throughput?: number;
                             ebs_volume_type?: string;
@@ -1768,9 +1191,8 @@ export interface BundleSchema {
                              * This is an optional field at cluster creation, and if not specified, a default zone will be used.
                              * If the zone specified is "auto", will try to place cluster in a zone with high availability,
                              * and will retry placement in a different AZ if there is not enough capacity.
-                             * See [[AutoAZHelper.scala]] for more details.
                              * The list of available zones as well as the default value can be found by using the
-                             * `List Zones`_ method.
+                             * `List Zones` method.
                              */
                             zone_id?: string;
                         };
@@ -1827,7 +1249,7 @@ export interface BundleSchema {
                                 /**
                                  * dbfs destination, e.g. `dbfs:/my/path`
                                  */
-                                destination?: string;
+                                destination: string;
                             };
                             /**
                              * destination and either the region or endpoint need to be provided. e.g.
@@ -1851,7 +1273,7 @@ export interface BundleSchema {
                                  * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                                  * destination. Please also note that you cannot use AWS keys to deliver logs.
                                  */
-                                destination?: string;
+                                destination: string;
                                 /**
                                  * (Optional) Flag to enable server side encryption, `false` by default.
                                  */
@@ -1956,11 +1378,34 @@ export interface BundleSchema {
                              * If provided, each node (workers and driver) in the cluster will have this number of local SSDs attached. Each local SSD is 375GB in size. Refer to [GCP documentation](https://cloud.google.com/compute/docs/disks/local-ssd#choose_number_local_ssds) for the supported number of local SSDs for each instance type.
                              */
                             local_ssd_count?: number;
+                            /**
+                             * This field determines whether the spark executors will be scheduled to run on preemptible VMs (when set to true) versus standard compute engine VMs (when set to false; default).
+                             * Note: Soon to be deprecated, use the availability field instead.
+                             */
+                            use_preemptible_executors?: boolean;
+                            /**
+                             * Identifier for the availability zone in which the cluster resides.
+                             * This can be one of the following:
+                             * - "HA" => High availability, spread nodes across availability zones for a Databricks deployment region [default]
+                             * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+                             * - A GCP availability zone => Pick One of the available zones for (machine type + region) from https://cloud.google.com/compute/docs/regions-zones.
+                             */
+                            zone_id?: string;
                         };
                         /**
                          * The configuration for storing init scripts. Any number of destinations can be specified. The scripts are executed sequentially in the order provided. If `cluster_log_conf` is specified, init script logs are sent to `<destination>/<cluster-ID>/init_scripts`.
                          */
                         init_scripts?: {
+                            /**
+                             * destination needs to be provided. e.g.
+                             * `{ "abfss" : { "destination" : "abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>" } }
+                             */
+                            abfss?: {
+                                /**
+                                 * abfss destination, e.g. `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+                                 */
+                                destination: string;
+                            };
                             /**
                              * destination needs to be provided. e.g.
                              * `{ "dbfs" : { "destination" : "dbfs:/home/cluster_log" } }`
@@ -1969,7 +1414,27 @@ export interface BundleSchema {
                                 /**
                                  * dbfs destination, e.g. `dbfs:/my/path`
                                  */
-                                destination?: string;
+                                destination: string;
+                            };
+                            /**
+                             * destination needs to be provided. e.g.
+                             * `{ "file" : { "destination" : "file:/my/local/file.sh" } }`
+                             */
+                            file?: {
+                                /**
+                                 * local file destination, e.g. `file:/my/local/file.sh`
+                                 */
+                                destination: string;
+                            };
+                            /**
+                             * destination needs to be provided. e.g.
+                             * `{ "gcs": { "destination": "gs://my-bucket/file.sh" } }`
+                             */
+                            gcs?: {
+                                /**
+                                 * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+                                 */
+                                destination: string;
                             };
                             /**
                              * destination and either the region or endpoint need to be provided. e.g.
@@ -1993,7 +1458,7 @@ export interface BundleSchema {
                                  * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                                  * destination. Please also note that you cannot use AWS keys to deliver logs.
                                  */
-                                destination?: string;
+                                destination: string;
                                 /**
                                  * (Optional) Flag to enable server side encryption, `false` by default.
                                  */
@@ -2018,8 +1483,15 @@ export interface BundleSchema {
                                  */
                                 region?: string;
                             };
+                            /**
+                             * destination needs to be provided. e.g.
+                             * `{ "volumes" : { "destination" : "/Volumes/my-init.sh" } }`
+                             */
                             volumes?: {
-                                destination?: string;
+                                /**
+                                 * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+                                 */
+                                destination: string;
                             };
                             /**
                              * destination needs to be provided. e.g.
@@ -2029,7 +1501,7 @@ export interface BundleSchema {
                                 /**
                                  * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
                                  */
-                                destination?: string;
+                                destination: string;
                             };
                         }[];
                         /**
@@ -2106,7 +1578,7 @@ export interface BundleSchema {
                             /**
                              *  defined what type of clients can use the cluster. E.g. Notebooks, Jobs
                              */
-                            clients?: {
+                            clients: {
                                 /**
                                  * With jobs set, the cluster can be used for jobs
                                  */
@@ -2127,12 +1599,14 @@ export interface BundleSchema {
                          * :method:jobs/runNow with parameters specified, the two parameters maps are merged. If the same key is specified in
                          * `base_parameters` and in `run-now`, the value from `run-now` is used.
                          *
-                         * Use [Task parameter variables](https://docs.databricks.com/jobs.html#parameter-variables) to set parameters containing information about job runs.
+                         * Use [task parameter variables](https://docs.databricks.com/workflows/jobs/parameter-value-references.html) such as `{{job.id}}` to pass context about job runs.
                          *
                          * If the notebook takes a parameter that is not specified in the job’s `base_parameters` or the `run-now` override parameters,
                          * the default value from the notebook is used.
                          *
                          * Retrieve these parameters in a notebook using [dbutils.widgets.get](https://docs.databricks.com/dev-tools/databricks-utils.html#dbutils-widgets).
+                         *
+                         * The JSON representation of this field cannot exceed 1MB.
                          *
                          */
                         base_parameters?: {
@@ -2157,7 +1631,7 @@ export interface BundleSchema {
                         source?: string;
                     };
                     /**
-                     * Optional notification settings that are used when sending notifications to each of the `email_notifications` for this task.
+                     * Optional notification settings that are used when sending notifications to each of the `email_notifications` and `webhook_notifications` for this task.
                      */
                     notification_settings?: {
                         /**
@@ -2210,24 +1684,35 @@ export interface BundleSchema {
                         parameters?: string[];
                     };
                     /**
-                     * An optional policy to specify whether to retry a task when it times out. The default behavior is to not retry on timeout.
+                     * An optional policy to specify whether to retry a task when it times out.
                      */
                     retry_on_timeout?: boolean;
                     /**
-                     * An optional value specifying the condition determining whether the task is run once its dependencies have been completed. When omitted, defaults to `ALL_SUCCESS`.
+                     * An optional value specifying the condition determining whether the task is run once its dependencies have been completed.
                      *
                      * * `ALL_SUCCESS`: All dependencies have executed and succeeded
                      * * `AT_LEAST_ONE_SUCCESS`: At least one dependency has succeeded
                      * * `NONE_FAILED`: None of the dependencies have failed and at least one was executed
-                     * * `ALL_DONE`: All dependencies completed and at least one was executed
+                     * * `ALL_DONE`: All dependencies have been completed
                      * * `AT_LEAST_ONE_FAILED`: At least one dependency failed
                      * * `ALL_FAILED`: ALl dependencies have failed
                      *
                      */
                     run_if?: string;
+                    /**
+                     * If run_job_task, indicates that this task must execute another job.
+                     */
                     run_job_task?: {
+                        /**
+                         * ID of the job to trigger.
+                         */
                         job_id: number;
-                        job_parameters?: unknown;
+                        /**
+                         * Job-level parameters used to trigger the job.
+                         */
+                        job_parameters?: {
+                            [k: string]: string;
+                        };
                     };
                     /**
                      * If spark_jar_task, indicates that this task must run a JAR.
@@ -2247,7 +1732,7 @@ export interface BundleSchema {
                         /**
                          * Parameters passed to the main method.
                          *
-                         * Use [Task parameter variables](https://docs.databricks.com/jobs.html#parameter-variables) to set parameters containing information about job runs.
+                         * Use [task parameter variables](https://docs.databricks.com/workflows/jobs/parameter-value-references.html) such as `{{job.id}}` to pass context about job runs.
                          *
                          */
                         parameters?: string[];
@@ -2259,7 +1744,7 @@ export interface BundleSchema {
                         /**
                          * Command line parameters passed to the Python file.
                          *
-                         * Use [Task parameter variables](https://docs.databricks.com/jobs.html#parameter-variables) to set parameters containing information about job runs.
+                         * Use [task parameter variables](https://docs.databricks.com/workflows/jobs/parameter-value-references.html) such as `{{job.id}}` to pass context about job runs.
                          *
                          */
                         parameters?: string[];
@@ -2279,13 +1764,22 @@ export interface BundleSchema {
                         source?: string;
                     };
                     /**
-                     * If spark_submit_task, indicates that this task must be launched by the spark submit script. This task can run only on new clusters.
+                     * If `spark_submit_task`, indicates that this task must be launched by the spark submit script. This task can run only on new clusters.
+                     *
+                     * In the `new_cluster` specification, `libraries` and `spark_conf` are not supported. Instead, use `--jars` and `--py-files` to add Java and Python libraries and `--conf` to set the Spark configurations.
+                     *
+                     * `master`, `deploy-mode`, and `executor-cores` are automatically configured by Databricks; you _cannot_ specify them in parameters.
+                     *
+                     * By default, the Spark submit job uses all available memory (excluding reserved memory for Databricks services). You can set `--driver-memory`, and `--executor-memory` to a smaller value to leave some room for off-heap usage.
+                     *
+                     * The `--jars`, `--py-files`, `--files` arguments support DBFS and S3 paths.
+                     *
                      */
                     spark_submit_task?: {
                         /**
                          * Command-line parameters passed to spark submit.
                          *
-                         * Use [Task parameter variables](https://docs.databricks.com/jobs.html#parameter-variables) to set parameters containing information about job runs.
+                         * Use [task parameter variables](https://docs.databricks.com/workflows/jobs/parameter-value-references.html) such as `{{job.id}}` to pass context about job runs.
                          *
                          */
                         parameters?: string[];
@@ -2311,11 +1805,11 @@ export interface BundleSchema {
                              */
                             subscriptions?: {
                                 /**
-                                 * The canonical identifier of the destination to receive email notification.
+                                 * The canonical identifier of the destination to receive email notification. This parameter is mutually exclusive with user_name. You cannot set both destination_id and user_name for subscription notifications.
                                  */
                                 destination_id?: string;
                                 /**
-                                 * The user name to receive the subscription email.
+                                 * The user name to receive the subscription email. This parameter is mutually exclusive with destination_id. You cannot set both destination_id and user_name for subscription notifications.
                                  */
                                 user_name?: string;
                             }[];
@@ -2341,11 +1835,11 @@ export interface BundleSchema {
                              */
                             subscriptions?: {
                                 /**
-                                 * The canonical identifier of the destination to receive email notification.
+                                 * The canonical identifier of the destination to receive email notification. This parameter is mutually exclusive with user_name. You cannot set both destination_id and user_name for subscription notifications.
                                  */
                                 destination_id?: string;
                                 /**
-                                 * The user name to receive the subscription email.
+                                 * The user name to receive the subscription email. This parameter is mutually exclusive with destination_id. You cannot set both destination_id and user_name for subscription notifications.
                                  */
                                 user_name?: string;
                             }[];
@@ -2355,9 +1849,19 @@ export interface BundleSchema {
                          */
                         file?: {
                             /**
-                             * Relative path of the SQL file in the remote Git repository.
+                             * Path of the SQL file. Must be relative if the source is a remote Git repository and absolute for workspace paths.
                              */
                             path: string;
+                            /**
+                             * Optional location type of the Python file. When set to `WORKSPACE` or not specified, the file will be retrieved
+                             * from the local <Databricks> workspace or cloud location (if the `python_file` has a URI format). When set to `GIT`,
+                             * the Python file will be retrieved from a Git repository defined in `git_source`.
+                             *
+                             * * `WORKSPACE`: The Python file is located in a <Databricks> workspace or at a cloud filesystem URI.
+                             * * `GIT`: The Python file is located in a remote Git repository.
+                             *
+                             */
+                            source?: string;
                         };
                         /**
                          * Parameters to be used for each run of this job. The SQL alert task does not support custom parameters.
@@ -2375,7 +1879,7 @@ export interface BundleSchema {
                             query_id: string;
                         };
                         /**
-                         * The canonical identifier of the SQL warehouse. Only serverless and pro SQL warehouses are supported.
+                         * The canonical identifier of the SQL warehouse. Recommended to use with serverless or pro SQL warehouses. Classic SQL warehouses are only supported for SQL alert, dashboard and query tasks and are limited to scheduled single-task jobs.
                          */
                         warehouse_id: string;
                     };
@@ -2383,20 +1887,48 @@ export interface BundleSchema {
                      * A unique name for the task. This field is used to refer to this task from other tasks.
                      * This field is required and must be unique within its parent job.
                      * On Update or Reset, this field is used to reference the tasks to be updated or reset.
-                     * The maximum length is 100 characters.
                      */
                     task_key: string;
                     /**
-                     * An optional timeout applied to each run of this job task. The default behavior is to have no timeout.
+                     * An optional timeout applied to each run of this job task. A value of `0` means no timeout.
                      */
                     timeout_seconds?: number;
+                    /**
+                     * A collection of system notification IDs to notify when runs of this job begin or complete.
+                     */
+                    webhook_notifications?: {
+                        /**
+                         * An optional list of system notification IDs to call when the duration of a run exceeds the threshold specified for the `RUN_DURATION_SECONDS` metric in the `health` field. A maximum of 3 destinations can be specified for the `on_duration_warning_threshold_exceeded` property.
+                         */
+                        on_duration_warning_threshold_exceeded?: {
+                            id?: string;
+                        }[];
+                        /**
+                         * An optional list of system notification IDs to call when the run fails. A maximum of 3 destinations can be specified for the `on_failure` property.
+                         */
+                        on_failure?: {
+                            id?: string;
+                        }[];
+                        /**
+                         * An optional list of system notification IDs to call when the run starts. A maximum of 3 destinations can be specified for the `on_start` property.
+                         */
+                        on_start?: {
+                            id?: string;
+                        }[];
+                        /**
+                         * An optional list of system notification IDs to call when the run completes successfully. A maximum of 3 destinations can be specified for the `on_success` property.
+                         */
+                        on_success?: {
+                            id?: string;
+                        }[];
+                    };
                 }[];
                 /**
-                 * An optional timeout applied to each run of this job. The default behavior is to have no timeout.
+                 * An optional timeout applied to each run of this job. A value of `0` means no timeout.
                  */
                 timeout_seconds?: number;
                 /**
-                 * Trigger settings for the job. Can be used to trigger a run when new files arrive in an external location. The default behavior is that the job runs only when triggered by clicking “Run Now” in the Jobs UI or sending an API request to `runNow`.
+                 * A configuration to trigger a run when certain conditions are met. The default behavior is that the job runs only when triggered by clicking “Run Now” in the Jobs UI or sending an API request to `runNow`.
                  */
                 trigger?: {
                     /**
@@ -2410,7 +1942,7 @@ export interface BundleSchema {
                          */
                         min_time_between_triggers_seconds?: number;
                         /**
-                         * URL to be monitored for file arrivals. The path must point to the root or a subpath of the external location.
+                         * The storage location to monitor for file arrivals. The value must point to the root or a subpath of an external location URL or the root or subpath of a Unity Catalog volume.
                          */
                         url?: string;
                         /**
@@ -2425,11 +1957,40 @@ export interface BundleSchema {
                      * Whether this trigger is paused or not.
                      */
                     pause_status?: string;
+                    /**
+                     * Table trigger settings.
+                     */
+                    table?: {
+                        /**
+                         * The table(s) condition based on which to trigger a job run.
+                         */
+                        condition?: string;
+                        /**
+                         * If set, the trigger starts a run only after the specified amount of time has passed since
+                         * the last time the trigger fired. The minimum allowed value is 60 seconds.
+                         *
+                         */
+                        min_time_between_triggers_seconds?: number;
+                        /**
+                         * A list of Delta tables to monitor for changes. The table name must be in the format `catalog_name.schema_name.table_name`.
+                         */
+                        table_names?: string[];
+                        /**
+                         * If set, the trigger starts a run only after no table updates have occurred for the specified time
+                         * and can be used to wait for a series of table updates before triggering a run. The
+                         * minimum allowed value is 60 seconds.
+                         *
+                         */
+                        wait_after_last_change_seconds?: number;
+                    };
                 };
                 /**
-                 * A collection of system notification IDs to notify when the run begins or completes. The default behavior is to not send any system notifications.
+                 * A collection of system notification IDs to notify when runs of this job begin or complete.
                  */
                 webhook_notifications?: {
+                    /**
+                     * An optional list of system notification IDs to call when the duration of a run exceeds the threshold specified for the `RUN_DURATION_SECONDS` metric in the `health` field. A maximum of 3 destinations can be specified for the `on_duration_warning_threshold_exceeded` property.
+                     */
                     on_duration_warning_threshold_exceeded?: {
                         id?: string;
                     }[];
@@ -2454,33 +2015,348 @@ export interface BundleSchema {
                 };
             };
         };
+        /**
+         * List of Model Serving Endpoints
+         */
         model_serving_endpoints?: {
             [k: string]: {
+                /**
+                 * The core config of the serving endpoint.
+                 */
                 config: {
-                    served_models: {
+                    /**
+                     * Configuration for Inference Tables which automatically logs requests and responses to Unity Catalog.
+                     */
+                    auto_capture_config?: {
+                        /**
+                         * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog name if it was already set.
+                         */
+                        catalog_name?: string;
+                        /**
+                         * If inference tables are enabled or not. NOTE: If you have already disabled payload logging once, you cannot enable again.
+                         */
+                        enabled?: boolean;
+                        /**
+                         * The name of the schema in Unity Catalog. NOTE: On update, you cannot change the schema name if it was already set.
+                         */
+                        schema_name?: string;
+                        /**
+                         * The prefix of the table in Unity Catalog. NOTE: On update, you cannot change the prefix name if it was already set.
+                         */
+                        table_name_prefix?: string;
+                    };
+                    /**
+                     * A list of served entities for the endpoint to serve. A serving endpoint can have up to 10 served entities.
+                     */
+                    served_entities?: {
+                        /**
+                         * The name of the entity to be served. The entity may be a model in the Databricks Model Registry, a model in the Unity Catalog (UC),
+                         * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the object should be given in the form of
+                         * __catalog_name__.__schema_name__.__model_name__.
+                         *
+                         */
+                        entity_name?: string;
+                        /**
+                         * The version of the model in Databricks Model Registry to be served or empty if the entity is a FEATURE_SPEC.
+                         */
+                        entity_version?: string;
+                        /**
+                         * An object containing a set of optional, user-specified environment variable key-value pairs used for serving this entity.
+                         * Note: this is an experimental feature and subject to change.
+                         * Example entity environment variables that refer to Databricks secrets: `{"OPENAI_API_KEY": "{{secrets/my_scope/my_key}}", "DATABRICKS_TOKEN": "{{secrets/my_scope2/my_key2}}"}`
+                         */
                         environment_vars?: {
                             [k: string]: string;
                         };
+                        /**
+                         * The external model to be served. NOTE: Only one of external_model and (entity_name, entity_version, workload_size, workload_type, and scale_to_zero_enabled)
+                         * can be specified with the latter set being used for custom model serving for a Databricks registered model. When an external_model is present, the served
+                         * entities list can only have one served_entity object. For an existing endpoint with external_model, it can not be updated to an endpoint without external_model.
+                         * If the endpoint is created without external_model, users cannot update it to add external_model later.
+                         *
+                         */
+                        external_model?: {
+                            /**
+                             * AI21Labs Config. Only required if the provider is 'ai21labs'.
+                             */
+                            ai21labs_config?: {
+                                /**
+                                 * The Databricks secret key reference for an AI21Labs API key.
+                                 */
+                                ai21labs_api_key: string;
+                            };
+                            /**
+                             * Anthropic Config. Only required if the provider is 'anthropic'.
+                             */
+                            anthropic_config?: {
+                                /**
+                                 * The Databricks secret key reference for an Anthropic API key.
+                                 */
+                                anthropic_api_key: string;
+                            };
+                            /**
+                             * AWS Bedrock Config. Only required if the provider is 'aws-bedrock'.
+                             */
+                            aws_bedrock_config?: {
+                                /**
+                                 * The Databricks secret key reference for an AWS Access Key ID with permissions to interact with Bedrock services.
+                                 */
+                                aws_access_key_id: string;
+                                /**
+                                 * The AWS region to use. Bedrock has to be enabled there.
+                                 */
+                                aws_region: string;
+                                /**
+                                 * The Databricks secret key reference for an AWS Secret Access Key paired with the access key ID, with permissions to interact with Bedrock services.
+                                 */
+                                aws_secret_access_key: string;
+                                /**
+                                 * The underlying provider in AWS Bedrock. Supported values (case insensitive) include: Anthropic, Cohere, AI21Labs, Amazon.
+                                 */
+                                bedrock_provider: string;
+                            };
+                            /**
+                             * Cohere Config. Only required if the provider is 'cohere'.
+                             */
+                            cohere_config?: {
+                                /**
+                                 * The Databricks secret key reference for a Cohere API key.
+                                 */
+                                cohere_api_key: string;
+                            };
+                            /**
+                             * Databricks Model Serving Config. Only required if the provider is 'databricks-model-serving'.
+                             */
+                            databricks_model_serving_config?: {
+                                /**
+                                 * The Databricks secret key reference for a Databricks API token that corresponds to a user or service
+                                 * principal with Can Query access to the model serving endpoint pointed to by this external model.
+                                 *
+                                 */
+                                databricks_api_token: string;
+                                /**
+                                 * The URL of the Databricks workspace containing the model serving endpoint pointed to by this external model.
+                                 *
+                                 */
+                                databricks_workspace_url: string;
+                            };
+                            /**
+                             * The name of the external model.
+                             */
+                            name: string;
+                            /**
+                             * OpenAI Config. Only required if the provider is 'openai'.
+                             */
+                            openai_config?: {
+                                /**
+                                 * This is the base URL for the OpenAI API (default: "https://api.openai.com/v1").
+                                 * For Azure OpenAI, this field is required, and is the base URL for the Azure OpenAI API service
+                                 * provided by Azure.
+                                 *
+                                 */
+                                openai_api_base?: string;
+                                /**
+                                 * The Databricks secret key reference for an OpenAI or Azure OpenAI API key.
+                                 */
+                                openai_api_key: string;
+                                /**
+                                 * This is an optional field to specify the type of OpenAI API to use.
+                                 * For Azure OpenAI, this field is required, and adjust this parameter to represent the preferred security
+                                 * access validation protocol. For access token validation, use azure. For authentication using Azure Active
+                                 * Directory (Azure AD) use, azuread.
+                                 *
+                                 */
+                                openai_api_type?: string;
+                                /**
+                                 * This is an optional field to specify the OpenAI API version.
+                                 * For Azure OpenAI, this field is required, and is the version of the Azure OpenAI service to
+                                 * utilize, specified by a date.
+                                 *
+                                 */
+                                openai_api_version?: string;
+                                /**
+                                 * This field is only required for Azure OpenAI and is the name of the deployment resource for the
+                                 * Azure OpenAI service.
+                                 *
+                                 */
+                                openai_deployment_name?: string;
+                                /**
+                                 * This is an optional field to specify the organization in OpenAI or Azure OpenAI.
+                                 *
+                                 */
+                                openai_organization?: string;
+                            };
+                            /**
+                             * PaLM Config. Only required if the provider is 'palm'.
+                             */
+                            palm_config?: {
+                                /**
+                                 * The Databricks secret key reference for a PaLM API key.
+                                 */
+                                palm_api_key: string;
+                            };
+                            /**
+                             * The name of the provider for the external model. Currently, the supported providers are 'ai21labs', 'anthropic',
+                             * 'aws-bedrock', 'cohere', 'databricks-model-serving', 'openai', and 'palm'.",
+                             *
+                             */
+                            provider: string;
+                            /**
+                             * The task type of the external model.
+                             */
+                            task: string;
+                        };
+                        /**
+                         * ARN of the instance profile that the served entity uses to access AWS resources.
+                         */
                         instance_profile_arn?: string;
-                        model_name: string;
-                        model_version: string;
+                        /**
+                         * The maximum tokens per second that the endpoint can scale up to.
+                         */
+                        max_provisioned_throughput?: number;
+                        /**
+                         * The minimum tokens per second that the endpoint can scale down to.
+                         */
+                        min_provisioned_throughput?: number;
+                        /**
+                         * The name of a served entity. It must be unique across an endpoint. A served entity name can consist of alphanumeric characters, dashes, and underscores.
+                         * If not specified for an external model, this field defaults to external_model.name, with '.' and ':' replaced with '-', and if not specified for other
+                         * entities, it defaults to <entity-name>-<entity-version>.
+                         *
+                         */
                         name?: string;
-                        scale_to_zero_enabled: boolean;
-                        workload_size: string;
+                        /**
+                         * Whether the compute resources for the served entity should scale down to zero.
+                         */
+                        scale_to_zero_enabled?: boolean;
+                        /**
+                         * The workload size of the served entity. The workload size corresponds to a range of provisioned concurrency that the compute autoscales between.
+                         * A single unit of provisioned concurrency can process one request at a time.
+                         * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16 provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+                         * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each workload size is 0.
+                         *
+                         */
+                        workload_size?: string;
+                        /**
+                         * The workload type of the served entity. The workload type selects which type of compute to use in the endpoint. The default value for this parameter is
+                         * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload types like GPU_SMALL and others.
+                         * See the available [GPU types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+                         *
+                         */
+                        workload_type?: string;
                     }[];
+                    /**
+                     * (Deprecated, use served_entities instead) A list of served models for the endpoint to serve. A serving endpoint can have up to 10 served models.
+                     */
+                    served_models?: {
+                        /**
+                         * An object containing a set of optional, user-specified environment variable key-value pairs used for serving this model.
+                         * Note: this is an experimental feature and subject to change.
+                         * Example model environment variables that refer to Databricks secrets: `{"OPENAI_API_KEY": "{{secrets/my_scope/my_key}}", "DATABRICKS_TOKEN": "{{secrets/my_scope2/my_key2}}"}`
+                         */
+                        environment_vars?: {
+                            [k: string]: string;
+                        };
+                        /**
+                         * ARN of the instance profile that the served model will use to access AWS resources.
+                         */
+                        instance_profile_arn?: string;
+                        /**
+                         * The name of the model in Databricks Model Registry to be served or if the model resides in Unity Catalog, the full name of model,
+                         * in the form of __catalog_name__.__schema_name__.__model_name__.
+                         *
+                         */
+                        model_name: string;
+                        /**
+                         * The version of the model in Databricks Model Registry or Unity Catalog to be served.
+                         */
+                        model_version: string;
+                        /**
+                         * The name of a served model. It must be unique across an endpoint. If not specified, this field will default to <model-name>-<model-version>.
+                         * A served model name can consist of alphanumeric characters, dashes, and underscores.
+                         *
+                         */
+                        name?: string;
+                        /**
+                         * Whether the compute resources for the served model should scale down to zero.
+                         */
+                        scale_to_zero_enabled: boolean;
+                        /**
+                         * The workload size of the served model. The workload size corresponds to a range of provisioned concurrency that the compute will autoscale between.
+                         * A single unit of provisioned concurrency can process one request at a time.
+                         * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16 provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+                         * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each workload size will be 0.
+                         *
+                         */
+                        workload_size: string;
+                        /**
+                         * The workload type of the served model. The workload type selects which type of compute to use in the endpoint. The default value for this parameter is
+                         * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload types like GPU_SMALL and others.
+                         * See the available [GPU types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+                         *
+                         */
+                        workload_type?: string;
+                    }[];
+                    /**
+                     * The traffic config defining how invocations to the serving endpoint should be routed.
+                     */
                     traffic_config?: {
+                        /**
+                         * The list of routes that define traffic to each served entity.
+                         */
                         routes?: {
+                            /**
+                             * The name of the served model this route configures traffic for.
+                             */
                             served_model_name: string;
+                            /**
+                             * The percentage of endpoint traffic to send to this route. It must be an integer between 0 and 100 inclusive.
+                             */
                             traffic_percentage: number;
                         }[];
                     };
                 };
+                /**
+                 * The name of the serving endpoint. This field is required and must be unique across a Databricks workspace.
+                 * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
+                 *
+                 */
                 name: string;
                 permissions?: {
                     group_name?: string;
                     level: string;
                     service_principal_name?: string;
                     user_name?: string;
+                }[];
+                /**
+                 * Rate limits to be applied to the serving endpoint. NOTE: only external and foundation model endpoints are supported as of now.
+                 */
+                rate_limits?: {
+                    /**
+                     * Used to specify how many calls are allowed for a key within the renewal_period.
+                     */
+                    calls: number;
+                    /**
+                     * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are supported, with 'endpoint' being the default if not specified.
+                     */
+                    key?: string;
+                    /**
+                     * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is supported.
+                     */
+                    renewal_period: string;
+                }[];
+                /**
+                 * Tags to be attached to the serving endpoint and automatically propagated to billing logs.
+                 */
+                tags?: {
+                    /**
+                     * Key field for a serving endpoint tag.
+                     */
+                    key: string;
+                    /**
+                     * Optional value field for a serving endpoint tag.
+                     */
+                    value?: string;
                 }[];
             };
         };
@@ -2625,15 +2501,23 @@ export interface BundleSchema {
                      */
                     autoscale?: {
                         /**
-                         * The maximum number of workers to which the cluster can scale up when overloaded.
-                         * Note that `max_workers` must be strictly greater than `min_workers`.
+                         * The maximum number of workers to which the cluster can scale up when overloaded. `max_workers` must be strictly greater than `min_workers`.
                          */
                         max_workers: number;
                         /**
-                         * The minimum number of workers to which the cluster can scale down when underutilized.
+                         * The minimum number of workers the cluster can scale down to when underutilized.
                          * It is also the initial number of workers the cluster will have after creation.
                          */
                         min_workers: number;
+                        /**
+                         * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
+                         * allocating cluster resources based on workload volume, with minimal impact to
+                         * the data processing latency of your pipelines. Enhanced Autoscaling is available
+                         * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
+                         * clusters.
+                         *
+                         */
+                        mode?: string;
                     };
                     /**
                      * Attributes related to clusters running on Amazon Web Services.
@@ -2661,7 +2545,7 @@ export interface BundleSchema {
                          */
                         ebs_volume_count?: number;
                         /**
-                         * <needs content added>
+                         * If using gp3 volumes, what IOPS to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                          */
                         ebs_volume_iops?: number;
                         /**
@@ -2671,7 +2555,7 @@ export interface BundleSchema {
                          */
                         ebs_volume_size?: number;
                         /**
-                         * <needs content added>
+                         * If using gp3 volumes, what throughput to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                          */
                         ebs_volume_throughput?: number;
                         ebs_volume_type?: string;
@@ -2719,9 +2603,8 @@ export interface BundleSchema {
                          * This is an optional field at cluster creation, and if not specified, a default zone will be used.
                          * If the zone specified is "auto", will try to place cluster in a zone with high availability,
                          * and will retry placement in a different AZ if there is not enough capacity.
-                         * See [[AutoAZHelper.scala]] for more details.
                          * The list of available zones as well as the default value can be found by using the
-                         * `List Zones`_ method.
+                         * `List Zones` method.
                          */
                         zone_id?: string;
                     };
@@ -2779,7 +2662,7 @@ export interface BundleSchema {
                             /**
                              * dbfs destination, e.g. `dbfs:/my/path`
                              */
-                            destination?: string;
+                            destination: string;
                         };
                         /**
                          * destination and either the region or endpoint need to be provided. e.g.
@@ -2803,7 +2686,7 @@ export interface BundleSchema {
                              * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                              * destination. Please also note that you cannot use AWS keys to deliver logs.
                              */
-                            destination?: string;
+                            destination: string;
                             /**
                              * (Optional) Flag to enable server side encryption, `false` by default.
                              */
@@ -2873,7 +2756,132 @@ export interface BundleSchema {
                          * If provided, each node (workers and driver) in the cluster will have this number of local SSDs attached. Each local SSD is 375GB in size. Refer to [GCP documentation](https://cloud.google.com/compute/docs/disks/local-ssd#choose_number_local_ssds) for the supported number of local SSDs for each instance type.
                          */
                         local_ssd_count?: number;
+                        /**
+                         * This field determines whether the spark executors will be scheduled to run on preemptible VMs (when set to true) versus standard compute engine VMs (when set to false; default).
+                         * Note: Soon to be deprecated, use the availability field instead.
+                         */
+                        use_preemptible_executors?: boolean;
+                        /**
+                         * Identifier for the availability zone in which the cluster resides.
+                         * This can be one of the following:
+                         * - "HA" => High availability, spread nodes across availability zones for a Databricks deployment region [default]
+                         * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+                         * - A GCP availability zone => Pick One of the available zones for (machine type + region) from https://cloud.google.com/compute/docs/regions-zones.
+                         */
+                        zone_id?: string;
                     };
+                    /**
+                     * The configuration for storing init scripts. Any number of destinations can be specified. The scripts are executed sequentially in the order provided. If `cluster_log_conf` is specified, init script logs are sent to `<destination>/<cluster-ID>/init_scripts`.
+                     */
+                    init_scripts?: {
+                        /**
+                         * destination needs to be provided. e.g.
+                         * `{ "abfss" : { "destination" : "abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>" } }
+                         */
+                        abfss?: {
+                            /**
+                             * abfss destination, e.g. `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+                             */
+                            destination: string;
+                        };
+                        /**
+                         * destination needs to be provided. e.g.
+                         * `{ "dbfs" : { "destination" : "dbfs:/home/cluster_log" } }`
+                         */
+                        dbfs?: {
+                            /**
+                             * dbfs destination, e.g. `dbfs:/my/path`
+                             */
+                            destination: string;
+                        };
+                        /**
+                         * destination needs to be provided. e.g.
+                         * `{ "file" : { "destination" : "file:/my/local/file.sh" } }`
+                         */
+                        file?: {
+                            /**
+                             * local file destination, e.g. `file:/my/local/file.sh`
+                             */
+                            destination: string;
+                        };
+                        /**
+                         * destination needs to be provided. e.g.
+                         * `{ "gcs": { "destination": "gs://my-bucket/file.sh" } }`
+                         */
+                        gcs?: {
+                            /**
+                             * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+                             */
+                            destination: string;
+                        };
+                        /**
+                         * destination and either the region or endpoint need to be provided. e.g.
+                         * `{ "s3": { "destination" : "s3://cluster_log_bucket/prefix", "region" : "us-west-2" } }`
+                         * Cluster iam role is used to access s3, please make sure the cluster iam role in
+                         * `instance_profile_arn` has permission to write data to the s3 destination.
+                         */
+                        s3?: {
+                            /**
+                             * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
+                             * If `canned_cal` is set, please make sure the cluster iam role has `s3:PutObjectAcl` permission on
+                             * the destination bucket and prefix. The full list of possible canned acl can be found at
+                             * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
+                             * Please also note that by default only the object owner gets full controls. If you are using cross account
+                             * role for writing data, you may want to set `bucket-owner-full-control` to make bucket owner able to
+                             * read the logs.
+                             */
+                            canned_acl?: string;
+                            /**
+                             * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be delivered using
+                             * cluster iam role, please make sure you set cluster iam role and the role has write access to the
+                             * destination. Please also note that you cannot use AWS keys to deliver logs.
+                             */
+                            destination: string;
+                            /**
+                             * (Optional) Flag to enable server side encryption, `false` by default.
+                             */
+                            enable_encryption?: boolean;
+                            /**
+                             * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will be used only when
+                             * encryption is enabled and the default type is `sse-s3`.
+                             */
+                            encryption_type?: string;
+                            /**
+                             * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or endpoint needs to be set.
+                             * If both are set, endpoint will be used.
+                             */
+                            endpoint?: string;
+                            /**
+                             * (Optional) Kms key which will be used if encryption is enabled and encryption type is set to `sse-kms`.
+                             */
+                            kms_key?: string;
+                            /**
+                             * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If both are set,
+                             * endpoint will be used.
+                             */
+                            region?: string;
+                        };
+                        /**
+                         * destination needs to be provided. e.g.
+                         * `{ "volumes" : { "destination" : "/Volumes/my-init.sh" } }`
+                         */
+                        volumes?: {
+                            /**
+                             * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+                             */
+                            destination: string;
+                        };
+                        /**
+                         * destination needs to be provided. e.g.
+                         * `{ "workspace" : { "destination" : "/Users/user1@databricks.com/my-init.sh" } }`
+                         */
+                        workspace?: {
+                            /**
+                             * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
+                             */
+                            destination: string;
+                        };
+                    }[];
                     /**
                      * The optional ID of the instance pool to which the cluster belongs.
                      */
@@ -3027,6 +3035,27 @@ export interface BundleSchema {
                  * Friendly identifier for this pipeline.
                  */
                 name?: string;
+                /**
+                 * List of notification settings for this pipeline.
+                 */
+                notifications?: {
+                    /**
+                     * A list of alerts that trigger the sending of notifications to the configured
+                     * destinations. The supported alerts are:
+                     *
+                     * * `on-update-success`: A pipeline update completes successfully.
+                     * * `on-update-failure`: Each time a pipeline update fails.
+                     * * `on-update-fatal-failure`: A pipeline update fails with a non-retryable (fatal) error.
+                     * * `on-flow-failure`: A single data flow fails.
+                     *
+                     */
+                    alerts?: string[];
+                    /**
+                     * A list of email addresses notified when a configured alert is triggered.
+                     *
+                     */
+                    email_recipients?: string[];
+                }[];
                 permissions?: {
                     group_name?: string;
                     level: string;
@@ -3057,8 +3086,39 @@ export interface BundleSchema {
                         quartz_cron_schedule?: string;
                         timezone_id?: string;
                     };
-                    manual?: unknown;
+                    manual?: {};
                 };
+            };
+        };
+        /**
+         * List of Registered Models
+         */
+        registered_models?: {
+            [k: string]: {
+                /**
+                 * The name of the catalog where the schema and the registered model reside
+                 */
+                catalog_name: string;
+                /**
+                 * The comment attached to the registered model
+                 */
+                comment?: string;
+                grants?: {
+                    principal: string;
+                    privileges: string[];
+                }[];
+                /**
+                 * The name of the registered model
+                 */
+                name: string;
+                /**
+                 * The name of the schema where the registered model resides
+                 */
+                schema_name: string;
+                /**
+                 * The storage location on the cloud under which model version data files are stored
+                 */
+                storage_location?: string;
             };
         };
     };
@@ -3072,31 +3132,26 @@ export interface BundleSchema {
     };
     targets?: {
         [k: string]: {
-            /**
-             * A description of all code artifacts in this bundle.
-             */
             artifacts?: {
                 [k: string]: {
-                    build: string;
-                    files: {
+                    build?: string;
+                    executable?: string;
+                    files?: {
                         source: string;
                     }[];
-                    path: string;
+                    path?: string;
                     type: string;
                 };
             };
-            /**
-             * The details for this bundle.
-             */
             bundle?: {
                 compute_id?: string;
+                deployment: {
+                    fail_on_active_runs?: boolean;
+                };
                 git?: {
                     branch?: string;
                     origin_url?: string;
                 };
-                /**
-                 * The name of the bundle.
-                 */
                 name: string;
             };
             compute_id?: string;
@@ -3106,6 +3161,12 @@ export interface BundleSchema {
                 origin_url?: string;
             };
             mode?: string;
+            permissions?: {
+                group_name?: string;
+                level: string;
+                service_principal_name?: string;
+                user_name?: string;
+            }[];
             /**
              * Collection of Databricks resources to deploy.
              */
@@ -3192,13 +3253,44 @@ export interface BundleSchema {
                             pause_status?: string;
                         };
                         /**
-                         * An optional set of email addresses that is notified when runs of this job begin or complete as well as when this job is deleted. The default behavior is to not send any emails.
+                         * Deployment information for jobs managed by external sources.
+                         */
+                        deployment?: {
+                            /**
+                             * The kind of deployment that manages the job.
+                             *
+                             * * `BUNDLE`: The job is managed by Databricks Asset Bundle.
+                             *
+                             */
+                            kind: string;
+                            /**
+                             * Path of the file that contains deployment metadata.
+                             */
+                            metadata_file_path?: string;
+                        };
+                        /**
+                         * An optional description for the job. The maximum length is 1024 characters in UTF-8 encoding.
+                         */
+                        description?: string;
+                        /**
+                         * Edit mode of the job.
+                         *
+                         * * `UI_LOCKED`: The job is in a locked UI state and cannot be modified.
+                         * * `EDITABLE`: The job is in an editable state and can be modified.
+                         *
+                         */
+                        edit_mode?: string;
+                        /**
+                         * An optional set of email addresses that is notified when runs of this job begin or complete as well as when this job is deleted.
                          */
                         email_notifications?: {
                             /**
                              * If true, do not send email to recipients specified in `on_failure` if the run is skipped.
                              */
                             no_alert_for_skipped_runs?: boolean;
+                            /**
+                             * A list of email addresses to be notified when the duration of a run exceeds the threshold specified for the `RUN_DURATION_SECONDS` metric in the `health` field. If no rule for the `RUN_DURATION_SECONDS` metric is specified in the `health` field for the job, notifications are not sent.
+                             */
                             on_duration_warning_threshold_exceeded?: string[];
                             /**
                              * A list of email addresses to be notified when a run unsuccessfully completes. A run is considered to have completed unsuccessfully if it ends with an `INTERNAL_ERROR` `life_cycle_state` or a `FAILED`, or `TIMED_OUT` result_state. If this is not specified on job creation, reset, or update the list is empty, and notifications are not sent.
@@ -3218,20 +3310,19 @@ export interface BundleSchema {
                          */
                         format?: string;
                         /**
-                         * An optional specification for a remote repository containing the notebooks used by this job's notebook tasks.
+                         * An optional specification for a remote Git repository containing the source code used by tasks. Version-controlled source code is supported by notebook, dbt, Python script, and SQL File tasks.
+                         *
+                         * If `git_source` is set, these tasks retrieve the file from the remote repository by default. However, this behavior can be overridden by setting `source` to `WORKSPACE` on the task.
+                         *
+                         * Note: dbt and SQL File tasks support only version-controlled sources. If dbt or SQL File tasks are used, `git_source` must be defined on the job.
                          */
                         git_source?: {
                             /**
-                             * Name of the branch to be checked out and used by this job.
-                             * This field cannot be specified in conjunction with git_tag or git_commit.
-                             *
-                             * The maximum length is 255 characters.
-                             *
+                             * Name of the branch to be checked out and used by this job. This field cannot be specified in conjunction with git_tag or git_commit.
                              */
                             git_branch?: string;
                             /**
                              * Commit to be checked out and used by this job. This field cannot be specified in conjunction with git_branch or git_tag.
-                             * The maximum length is 64 characters.
                              */
                             git_commit?: string;
                             /**
@@ -3245,21 +3336,33 @@ export interface BundleSchema {
                                 used_commit?: string;
                             };
                             /**
-                             * Name of the tag to be checked out and used by this job.
-                             * This field cannot be specified in conjunction with git_branch or git_commit.
-                             *
-                             * The maximum length is 255 characters.
-                             *
+                             * Name of the tag to be checked out and used by this job. This field cannot be specified in conjunction with git_branch or git_commit.
                              */
                             git_tag?: string;
                             /**
                              * URL of the repository to be cloned by this job.
-                             * The maximum length is 300 characters.
                              */
                             git_url: string;
+                            /**
+                             * The source of the job specification in the remote repository when the job is source controlled.
+                             */
                             job_source?: {
+                                /**
+                                 * Dirty state indicates the job is not fully synced with the job specification in the remote repository.
+                                 *
+                                 * Possible values are:
+                                 * * `NOT_SYNCED`: The job is not yet synced with the remote job specification. Import the remote job specification from UI to make the job fully synced.
+                                 * * `DISCONNECTED`: The job is temporary disconnected from the remote job specification and is allowed for live edit. Import the remote job specification again from UI to make the job fully synced.
+                                 *
+                                 */
                                 dirty_state?: string;
+                                /**
+                                 * Name of the branch which the job is imported from.
+                                 */
                                 import_from_git_branch: string;
+                                /**
+                                 * Path of the job YAML file that contains the job specification.
+                                 */
                                 job_config_path: string;
                             };
                         };
@@ -3267,6 +3370,9 @@ export interface BundleSchema {
                             rules?: {
                                 metric?: string;
                                 op?: string;
+                                /**
+                                 * Specifies the threshold value that the health metric should obey to satisfy the health rule.
+                                 */
                                 value?: number;
                             }[];
                         };
@@ -3283,6 +3389,7 @@ export interface BundleSchema {
                              * If new_cluster, a description of a cluster that is created for only for this task.
                              */
                             new_cluster?: {
+                                apply_policy_default_values?: boolean;
                                 /**
                                  * Parameters needed in order to automatically scale clusters up and down based on load.
                                  * Note: autoscaling works best with DB runtime versions 3.0 or later.
@@ -3292,12 +3399,12 @@ export interface BundleSchema {
                                      * The maximum number of workers to which the cluster can scale up when overloaded.
                                      * Note that `max_workers` must be strictly greater than `min_workers`.
                                      */
-                                    max_workers: number;
+                                    max_workers?: number;
                                     /**
                                      * The minimum number of workers to which the cluster can scale down when underutilized.
                                      * It is also the initial number of workers the cluster will have after creation.
                                      */
-                                    min_workers: number;
+                                    min_workers?: number;
                                 };
                                 /**
                                  * Automatically terminates the cluster after it is inactive for this time in minutes. If not set,
@@ -3332,7 +3439,7 @@ export interface BundleSchema {
                                      */
                                     ebs_volume_count?: number;
                                     /**
-                                     * <needs content added>
+                                     * If using gp3 volumes, what IOPS to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                                      */
                                     ebs_volume_iops?: number;
                                     /**
@@ -3342,7 +3449,7 @@ export interface BundleSchema {
                                      */
                                     ebs_volume_size?: number;
                                     /**
-                                     * <needs content added>
+                                     * If using gp3 volumes, what throughput to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                                      */
                                     ebs_volume_throughput?: number;
                                     ebs_volume_type?: string;
@@ -3390,9 +3497,8 @@ export interface BundleSchema {
                                      * This is an optional field at cluster creation, and if not specified, a default zone will be used.
                                      * If the zone specified is "auto", will try to place cluster in a zone with high availability,
                                      * and will retry placement in a different AZ if there is not enough capacity.
-                                     * See [[AutoAZHelper.scala]] for more details.
                                      * The list of available zones as well as the default value can be found by using the
-                                     * `List Zones`_ method.
+                                     * `List Zones` method.
                                      */
                                     zone_id?: string;
                                 };
@@ -3449,7 +3555,7 @@ export interface BundleSchema {
                                         /**
                                          * dbfs destination, e.g. `dbfs:/my/path`
                                          */
-                                        destination?: string;
+                                        destination: string;
                                     };
                                     /**
                                      * destination and either the region or endpoint need to be provided. e.g.
@@ -3473,7 +3579,7 @@ export interface BundleSchema {
                                          * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                                          * destination. Please also note that you cannot use AWS keys to deliver logs.
                                          */
-                                        destination?: string;
+                                        destination: string;
                                         /**
                                          * (Optional) Flag to enable server side encryption, `false` by default.
                                          */
@@ -3578,11 +3684,34 @@ export interface BundleSchema {
                                      * If provided, each node (workers and driver) in the cluster will have this number of local SSDs attached. Each local SSD is 375GB in size. Refer to [GCP documentation](https://cloud.google.com/compute/docs/disks/local-ssd#choose_number_local_ssds) for the supported number of local SSDs for each instance type.
                                      */
                                     local_ssd_count?: number;
+                                    /**
+                                     * This field determines whether the spark executors will be scheduled to run on preemptible VMs (when set to true) versus standard compute engine VMs (when set to false; default).
+                                     * Note: Soon to be deprecated, use the availability field instead.
+                                     */
+                                    use_preemptible_executors?: boolean;
+                                    /**
+                                     * Identifier for the availability zone in which the cluster resides.
+                                     * This can be one of the following:
+                                     * - "HA" => High availability, spread nodes across availability zones for a Databricks deployment region [default]
+                                     * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+                                     * - A GCP availability zone => Pick One of the available zones for (machine type + region) from https://cloud.google.com/compute/docs/regions-zones.
+                                     */
+                                    zone_id?: string;
                                 };
                                 /**
                                  * The configuration for storing init scripts. Any number of destinations can be specified. The scripts are executed sequentially in the order provided. If `cluster_log_conf` is specified, init script logs are sent to `<destination>/<cluster-ID>/init_scripts`.
                                  */
                                 init_scripts?: {
+                                    /**
+                                     * destination needs to be provided. e.g.
+                                     * `{ "abfss" : { "destination" : "abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>" } }
+                                     */
+                                    abfss?: {
+                                        /**
+                                         * abfss destination, e.g. `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+                                         */
+                                        destination: string;
+                                    };
                                     /**
                                      * destination needs to be provided. e.g.
                                      * `{ "dbfs" : { "destination" : "dbfs:/home/cluster_log" } }`
@@ -3591,7 +3720,27 @@ export interface BundleSchema {
                                         /**
                                          * dbfs destination, e.g. `dbfs:/my/path`
                                          */
-                                        destination?: string;
+                                        destination: string;
+                                    };
+                                    /**
+                                     * destination needs to be provided. e.g.
+                                     * `{ "file" : { "destination" : "file:/my/local/file.sh" } }`
+                                     */
+                                    file?: {
+                                        /**
+                                         * local file destination, e.g. `file:/my/local/file.sh`
+                                         */
+                                        destination: string;
+                                    };
+                                    /**
+                                     * destination needs to be provided. e.g.
+                                     * `{ "gcs": { "destination": "gs://my-bucket/file.sh" } }`
+                                     */
+                                    gcs?: {
+                                        /**
+                                         * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+                                         */
+                                        destination: string;
                                     };
                                     /**
                                      * destination and either the region or endpoint need to be provided. e.g.
@@ -3615,7 +3764,7 @@ export interface BundleSchema {
                                          * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                                          * destination. Please also note that you cannot use AWS keys to deliver logs.
                                          */
-                                        destination?: string;
+                                        destination: string;
                                         /**
                                          * (Optional) Flag to enable server side encryption, `false` by default.
                                          */
@@ -3640,8 +3789,15 @@ export interface BundleSchema {
                                          */
                                         region?: string;
                                     };
+                                    /**
+                                     * destination needs to be provided. e.g.
+                                     * `{ "volumes" : { "destination" : "/Volumes/my-init.sh" } }`
+                                     */
                                     volumes?: {
-                                        destination?: string;
+                                        /**
+                                         * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+                                         */
+                                        destination: string;
                                     };
                                     /**
                                      * destination needs to be provided. e.g.
@@ -3651,7 +3807,7 @@ export interface BundleSchema {
                                         /**
                                          * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
                                          */
-                                        destination?: string;
+                                        destination: string;
                                     };
                                 }[];
                                 /**
@@ -3728,7 +3884,7 @@ export interface BundleSchema {
                                     /**
                                      *  defined what type of clients can use the cluster. E.g. Notebooks, Jobs
                                      */
-                                    clients?: {
+                                    clients: {
                                         /**
                                          * With jobs set, the cluster can be used for jobs
                                          */
@@ -3748,11 +3904,11 @@ export interface BundleSchema {
                          *
                          * This setting affects only new runs. For example, suppose the job’s concurrency is 4 and there are 4 concurrent active runs. Then setting the concurrency to 3 won’t kill any of the active runs. However, from then on, new runs are skipped unless there are fewer than 3 active runs.
                          *
-                         * This value cannot exceed 1000\. Setting this value to 0 causes all new runs to be skipped. The default behavior is to allow only 1 concurrent run.
+                         * This value cannot exceed 1000. Setting this value to `0` causes all new runs to be skipped.
                          */
                         max_concurrent_runs?: number;
                         /**
-                         * An optional name for the job.
+                         * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
                          */
                         name?: string;
                         /**
@@ -3787,6 +3943,15 @@ export interface BundleSchema {
                             service_principal_name?: string;
                             user_name?: string;
                         }[];
+                        /**
+                         * The queue settings of the job.
+                         */
+                        queue?: {
+                            /**
+                             * If true, enable queueing for the job. This is a required field.
+                             */
+                            enabled: boolean;
+                        };
                         run_as?: {
                             /**
                              * Application ID of an active service principal. Setting this field requires the `servicePrincipal/user` role.
@@ -3872,7 +4037,7 @@ export interface BundleSchema {
                                  */
                                 profiles_directory?: string;
                                 /**
-                                 * Optional (relative) path to the project directory, if no value is provided, the root of the git repository is used.
+                                 * Path to the project directory. Optional for Git sourced tasks, in which case if no value is provided, the root of the Git repository is used.
                                  */
                                 project_directory?: string;
                                 /**
@@ -3880,12 +4045,22 @@ export interface BundleSchema {
                                  */
                                 schema?: string;
                                 /**
+                                 * Optional location type of the Python file. When set to `WORKSPACE` or not specified, the file will be retrieved
+                                 * from the local <Databricks> workspace or cloud location (if the `python_file` has a URI format). When set to `GIT`,
+                                 * the Python file will be retrieved from a Git repository defined in `git_source`.
+                                 *
+                                 * * `WORKSPACE`: The Python file is located in a <Databricks> workspace or at a cloud filesystem URI.
+                                 * * `GIT`: The Python file is located in a remote Git repository.
+                                 *
+                                 */
+                                source?: string;
+                                /**
                                  * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide the profile and connection details to dbt. It can be overridden on a per-command basis by using the `--profiles-dir` command line argument.
                                  */
                                 warehouse_id?: string;
                             };
                             /**
-                             * An optional array of objects specifying the dependency graph of the task. All tasks specified in this field must complete successfully before executing this task.
+                             * An optional array of objects specifying the dependency graph of the task. All tasks specified in this field must complete before executing this task. The task will run only if the `run_if` condition is true.
                              * The key is `task_key`, and the value is the name assigned to the dependent task.
                              *
                              */
@@ -3901,13 +4076,15 @@ export interface BundleSchema {
                             }[];
                             /**
                              * An optional description for this task.
-                             * The maximum length is 4096 bytes.
                              */
                             description?: string;
                             /**
                              * An optional set of email addresses that is notified when runs of this task begin or complete as well as when this task is deleted. The default behavior is to not send any emails.
                              */
                             email_notifications?: {
+                                /**
+                                 * A list of email addresses to be notified when the duration of a run exceeds the threshold specified for the `RUN_DURATION_SECONDS` metric in the `health` field. If no rule for the `RUN_DURATION_SECONDS` metric is specified in the `health` field for the job, notifications are not sent.
+                                 */
                                 on_duration_warning_threshold_exceeded?: string[];
                                 /**
                                  * A list of email addresses to be notified when a run unsuccessfully completes. A run is considered to have completed unsuccessfully if it ends with an `INTERNAL_ERROR` `life_cycle_state` or a `FAILED`, or `TIMED_OUT` result_state. If this is not specified on job creation, reset, or update the list is empty, and notifications are not sent.
@@ -3923,13 +4100,17 @@ export interface BundleSchema {
                                 on_success?: string[];
                             };
                             /**
-                             * If existing_cluster_id, the ID of an existing cluster that is used for all runs of this task. When running tasks on an existing cluster, you may need to manually restart the cluster if it stops responding. We suggest running jobs on new clusters for greater reliability.
+                             * If existing_cluster_id, the ID of an existing cluster that is used for all runs of this task. Only all-purpose clusters are supported. When running tasks on an existing cluster, you may need to manually restart the cluster if it stops responding. We suggest running jobs on new clusters for greater reliability.
                              */
                             existing_cluster_id?: string;
+                            for_each_task?: null;
                             health?: {
                                 rules?: {
                                     metric?: string;
                                     op?: string;
+                                    /**
+                                     * Specifies the threshold value that the health metric should obey to satisfy the health rule.
+                                     */
                                     value?: number;
                                 }[];
                             };
@@ -4017,7 +4198,7 @@ export interface BundleSchema {
                                 whl?: string;
                             }[];
                             /**
-                             * An optional maximum number of times to retry an unsuccessful run. A run is considered to be unsuccessful if it completes with the `FAILED` result_state or `INTERNAL_ERROR` `life_cycle_state`. The value -1 means to retry indefinitely and the value 0 means to never retry. The default behavior is to never retry.
+                             * An optional maximum number of times to retry an unsuccessful run. A run is considered to be unsuccessful if it completes with the `FAILED` result_state or `INTERNAL_ERROR` `life_cycle_state`. The value `-1` means to retry indefinitely and the value `0` means to never retry.
                              */
                             max_retries?: number;
                             /**
@@ -4028,6 +4209,7 @@ export interface BundleSchema {
                              * If new_cluster, a description of a cluster that is created for only for this task.
                              */
                             new_cluster?: {
+                                apply_policy_default_values?: boolean;
                                 /**
                                  * Parameters needed in order to automatically scale clusters up and down based on load.
                                  * Note: autoscaling works best with DB runtime versions 3.0 or later.
@@ -4037,12 +4219,12 @@ export interface BundleSchema {
                                      * The maximum number of workers to which the cluster can scale up when overloaded.
                                      * Note that `max_workers` must be strictly greater than `min_workers`.
                                      */
-                                    max_workers: number;
+                                    max_workers?: number;
                                     /**
                                      * The minimum number of workers to which the cluster can scale down when underutilized.
                                      * It is also the initial number of workers the cluster will have after creation.
                                      */
-                                    min_workers: number;
+                                    min_workers?: number;
                                 };
                                 /**
                                  * Automatically terminates the cluster after it is inactive for this time in minutes. If not set,
@@ -4077,7 +4259,7 @@ export interface BundleSchema {
                                      */
                                     ebs_volume_count?: number;
                                     /**
-                                     * <needs content added>
+                                     * If using gp3 volumes, what IOPS to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                                      */
                                     ebs_volume_iops?: number;
                                     /**
@@ -4087,7 +4269,7 @@ export interface BundleSchema {
                                      */
                                     ebs_volume_size?: number;
                                     /**
-                                     * <needs content added>
+                                     * If using gp3 volumes, what throughput to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                                      */
                                     ebs_volume_throughput?: number;
                                     ebs_volume_type?: string;
@@ -4135,9 +4317,8 @@ export interface BundleSchema {
                                      * This is an optional field at cluster creation, and if not specified, a default zone will be used.
                                      * If the zone specified is "auto", will try to place cluster in a zone with high availability,
                                      * and will retry placement in a different AZ if there is not enough capacity.
-                                     * See [[AutoAZHelper.scala]] for more details.
                                      * The list of available zones as well as the default value can be found by using the
-                                     * `List Zones`_ method.
+                                     * `List Zones` method.
                                      */
                                     zone_id?: string;
                                 };
@@ -4194,7 +4375,7 @@ export interface BundleSchema {
                                         /**
                                          * dbfs destination, e.g. `dbfs:/my/path`
                                          */
-                                        destination?: string;
+                                        destination: string;
                                     };
                                     /**
                                      * destination and either the region or endpoint need to be provided. e.g.
@@ -4218,7 +4399,7 @@ export interface BundleSchema {
                                          * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                                          * destination. Please also note that you cannot use AWS keys to deliver logs.
                                          */
-                                        destination?: string;
+                                        destination: string;
                                         /**
                                          * (Optional) Flag to enable server side encryption, `false` by default.
                                          */
@@ -4323,11 +4504,34 @@ export interface BundleSchema {
                                      * If provided, each node (workers and driver) in the cluster will have this number of local SSDs attached. Each local SSD is 375GB in size. Refer to [GCP documentation](https://cloud.google.com/compute/docs/disks/local-ssd#choose_number_local_ssds) for the supported number of local SSDs for each instance type.
                                      */
                                     local_ssd_count?: number;
+                                    /**
+                                     * This field determines whether the spark executors will be scheduled to run on preemptible VMs (when set to true) versus standard compute engine VMs (when set to false; default).
+                                     * Note: Soon to be deprecated, use the availability field instead.
+                                     */
+                                    use_preemptible_executors?: boolean;
+                                    /**
+                                     * Identifier for the availability zone in which the cluster resides.
+                                     * This can be one of the following:
+                                     * - "HA" => High availability, spread nodes across availability zones for a Databricks deployment region [default]
+                                     * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+                                     * - A GCP availability zone => Pick One of the available zones for (machine type + region) from https://cloud.google.com/compute/docs/regions-zones.
+                                     */
+                                    zone_id?: string;
                                 };
                                 /**
                                  * The configuration for storing init scripts. Any number of destinations can be specified. The scripts are executed sequentially in the order provided. If `cluster_log_conf` is specified, init script logs are sent to `<destination>/<cluster-ID>/init_scripts`.
                                  */
                                 init_scripts?: {
+                                    /**
+                                     * destination needs to be provided. e.g.
+                                     * `{ "abfss" : { "destination" : "abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>" } }
+                                     */
+                                    abfss?: {
+                                        /**
+                                         * abfss destination, e.g. `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+                                         */
+                                        destination: string;
+                                    };
                                     /**
                                      * destination needs to be provided. e.g.
                                      * `{ "dbfs" : { "destination" : "dbfs:/home/cluster_log" } }`
@@ -4336,7 +4540,27 @@ export interface BundleSchema {
                                         /**
                                          * dbfs destination, e.g. `dbfs:/my/path`
                                          */
-                                        destination?: string;
+                                        destination: string;
+                                    };
+                                    /**
+                                     * destination needs to be provided. e.g.
+                                     * `{ "file" : { "destination" : "file:/my/local/file.sh" } }`
+                                     */
+                                    file?: {
+                                        /**
+                                         * local file destination, e.g. `file:/my/local/file.sh`
+                                         */
+                                        destination: string;
+                                    };
+                                    /**
+                                     * destination needs to be provided. e.g.
+                                     * `{ "gcs": { "destination": "gs://my-bucket/file.sh" } }`
+                                     */
+                                    gcs?: {
+                                        /**
+                                         * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+                                         */
+                                        destination: string;
                                     };
                                     /**
                                      * destination and either the region or endpoint need to be provided. e.g.
@@ -4360,7 +4584,7 @@ export interface BundleSchema {
                                          * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                                          * destination. Please also note that you cannot use AWS keys to deliver logs.
                                          */
-                                        destination?: string;
+                                        destination: string;
                                         /**
                                          * (Optional) Flag to enable server side encryption, `false` by default.
                                          */
@@ -4385,8 +4609,15 @@ export interface BundleSchema {
                                          */
                                         region?: string;
                                     };
+                                    /**
+                                     * destination needs to be provided. e.g.
+                                     * `{ "volumes" : { "destination" : "/Volumes/my-init.sh" } }`
+                                     */
                                     volumes?: {
-                                        destination?: string;
+                                        /**
+                                         * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+                                         */
+                                        destination: string;
                                     };
                                     /**
                                      * destination needs to be provided. e.g.
@@ -4396,7 +4627,7 @@ export interface BundleSchema {
                                         /**
                                          * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
                                          */
-                                        destination?: string;
+                                        destination: string;
                                     };
                                 }[];
                                 /**
@@ -4473,7 +4704,7 @@ export interface BundleSchema {
                                     /**
                                      *  defined what type of clients can use the cluster. E.g. Notebooks, Jobs
                                      */
-                                    clients?: {
+                                    clients: {
                                         /**
                                          * With jobs set, the cluster can be used for jobs
                                          */
@@ -4494,12 +4725,14 @@ export interface BundleSchema {
                                  * :method:jobs/runNow with parameters specified, the two parameters maps are merged. If the same key is specified in
                                  * `base_parameters` and in `run-now`, the value from `run-now` is used.
                                  *
-                                 * Use [Task parameter variables](https://docs.databricks.com/jobs.html#parameter-variables) to set parameters containing information about job runs.
+                                 * Use [task parameter variables](https://docs.databricks.com/workflows/jobs/parameter-value-references.html) such as `{{job.id}}` to pass context about job runs.
                                  *
                                  * If the notebook takes a parameter that is not specified in the job’s `base_parameters` or the `run-now` override parameters,
                                  * the default value from the notebook is used.
                                  *
                                  * Retrieve these parameters in a notebook using [dbutils.widgets.get](https://docs.databricks.com/dev-tools/databricks-utils.html#dbutils-widgets).
+                                 *
+                                 * The JSON representation of this field cannot exceed 1MB.
                                  *
                                  */
                                 base_parameters?: {
@@ -4524,7 +4757,7 @@ export interface BundleSchema {
                                 source?: string;
                             };
                             /**
-                             * Optional notification settings that are used when sending notifications to each of the `email_notifications` for this task.
+                             * Optional notification settings that are used when sending notifications to each of the `email_notifications` and `webhook_notifications` for this task.
                              */
                             notification_settings?: {
                                 /**
@@ -4577,24 +4810,35 @@ export interface BundleSchema {
                                 parameters?: string[];
                             };
                             /**
-                             * An optional policy to specify whether to retry a task when it times out. The default behavior is to not retry on timeout.
+                             * An optional policy to specify whether to retry a task when it times out.
                              */
                             retry_on_timeout?: boolean;
                             /**
-                             * An optional value specifying the condition determining whether the task is run once its dependencies have been completed. When omitted, defaults to `ALL_SUCCESS`.
+                             * An optional value specifying the condition determining whether the task is run once its dependencies have been completed.
                              *
                              * * `ALL_SUCCESS`: All dependencies have executed and succeeded
                              * * `AT_LEAST_ONE_SUCCESS`: At least one dependency has succeeded
                              * * `NONE_FAILED`: None of the dependencies have failed and at least one was executed
-                             * * `ALL_DONE`: All dependencies completed and at least one was executed
+                             * * `ALL_DONE`: All dependencies have been completed
                              * * `AT_LEAST_ONE_FAILED`: At least one dependency failed
                              * * `ALL_FAILED`: ALl dependencies have failed
                              *
                              */
                             run_if?: string;
+                            /**
+                             * If run_job_task, indicates that this task must execute another job.
+                             */
                             run_job_task?: {
+                                /**
+                                 * ID of the job to trigger.
+                                 */
                                 job_id: number;
-                                job_parameters?: unknown;
+                                /**
+                                 * Job-level parameters used to trigger the job.
+                                 */
+                                job_parameters?: {
+                                    [k: string]: string;
+                                };
                             };
                             /**
                              * If spark_jar_task, indicates that this task must run a JAR.
@@ -4614,7 +4858,7 @@ export interface BundleSchema {
                                 /**
                                  * Parameters passed to the main method.
                                  *
-                                 * Use [Task parameter variables](https://docs.databricks.com/jobs.html#parameter-variables) to set parameters containing information about job runs.
+                                 * Use [task parameter variables](https://docs.databricks.com/workflows/jobs/parameter-value-references.html) such as `{{job.id}}` to pass context about job runs.
                                  *
                                  */
                                 parameters?: string[];
@@ -4626,7 +4870,7 @@ export interface BundleSchema {
                                 /**
                                  * Command line parameters passed to the Python file.
                                  *
-                                 * Use [Task parameter variables](https://docs.databricks.com/jobs.html#parameter-variables) to set parameters containing information about job runs.
+                                 * Use [task parameter variables](https://docs.databricks.com/workflows/jobs/parameter-value-references.html) such as `{{job.id}}` to pass context about job runs.
                                  *
                                  */
                                 parameters?: string[];
@@ -4646,13 +4890,22 @@ export interface BundleSchema {
                                 source?: string;
                             };
                             /**
-                             * If spark_submit_task, indicates that this task must be launched by the spark submit script. This task can run only on new clusters.
+                             * If `spark_submit_task`, indicates that this task must be launched by the spark submit script. This task can run only on new clusters.
+                             *
+                             * In the `new_cluster` specification, `libraries` and `spark_conf` are not supported. Instead, use `--jars` and `--py-files` to add Java and Python libraries and `--conf` to set the Spark configurations.
+                             *
+                             * `master`, `deploy-mode`, and `executor-cores` are automatically configured by Databricks; you _cannot_ specify them in parameters.
+                             *
+                             * By default, the Spark submit job uses all available memory (excluding reserved memory for Databricks services). You can set `--driver-memory`, and `--executor-memory` to a smaller value to leave some room for off-heap usage.
+                             *
+                             * The `--jars`, `--py-files`, `--files` arguments support DBFS and S3 paths.
+                             *
                              */
                             spark_submit_task?: {
                                 /**
                                  * Command-line parameters passed to spark submit.
                                  *
-                                 * Use [Task parameter variables](https://docs.databricks.com/jobs.html#parameter-variables) to set parameters containing information about job runs.
+                                 * Use [task parameter variables](https://docs.databricks.com/workflows/jobs/parameter-value-references.html) such as `{{job.id}}` to pass context about job runs.
                                  *
                                  */
                                 parameters?: string[];
@@ -4678,11 +4931,11 @@ export interface BundleSchema {
                                      */
                                     subscriptions?: {
                                         /**
-                                         * The canonical identifier of the destination to receive email notification.
+                                         * The canonical identifier of the destination to receive email notification. This parameter is mutually exclusive with user_name. You cannot set both destination_id and user_name for subscription notifications.
                                          */
                                         destination_id?: string;
                                         /**
-                                         * The user name to receive the subscription email.
+                                         * The user name to receive the subscription email. This parameter is mutually exclusive with destination_id. You cannot set both destination_id and user_name for subscription notifications.
                                          */
                                         user_name?: string;
                                     }[];
@@ -4708,11 +4961,11 @@ export interface BundleSchema {
                                      */
                                     subscriptions?: {
                                         /**
-                                         * The canonical identifier of the destination to receive email notification.
+                                         * The canonical identifier of the destination to receive email notification. This parameter is mutually exclusive with user_name. You cannot set both destination_id and user_name for subscription notifications.
                                          */
                                         destination_id?: string;
                                         /**
-                                         * The user name to receive the subscription email.
+                                         * The user name to receive the subscription email. This parameter is mutually exclusive with destination_id. You cannot set both destination_id and user_name for subscription notifications.
                                          */
                                         user_name?: string;
                                     }[];
@@ -4722,9 +4975,19 @@ export interface BundleSchema {
                                  */
                                 file?: {
                                     /**
-                                     * Relative path of the SQL file in the remote Git repository.
+                                     * Path of the SQL file. Must be relative if the source is a remote Git repository and absolute for workspace paths.
                                      */
                                     path: string;
+                                    /**
+                                     * Optional location type of the Python file. When set to `WORKSPACE` or not specified, the file will be retrieved
+                                     * from the local <Databricks> workspace or cloud location (if the `python_file` has a URI format). When set to `GIT`,
+                                     * the Python file will be retrieved from a Git repository defined in `git_source`.
+                                     *
+                                     * * `WORKSPACE`: The Python file is located in a <Databricks> workspace or at a cloud filesystem URI.
+                                     * * `GIT`: The Python file is located in a remote Git repository.
+                                     *
+                                     */
+                                    source?: string;
                                 };
                                 /**
                                  * Parameters to be used for each run of this job. The SQL alert task does not support custom parameters.
@@ -4742,7 +5005,7 @@ export interface BundleSchema {
                                     query_id: string;
                                 };
                                 /**
-                                 * The canonical identifier of the SQL warehouse. Only serverless and pro SQL warehouses are supported.
+                                 * The canonical identifier of the SQL warehouse. Recommended to use with serverless or pro SQL warehouses. Classic SQL warehouses are only supported for SQL alert, dashboard and query tasks and are limited to scheduled single-task jobs.
                                  */
                                 warehouse_id: string;
                             };
@@ -4750,20 +5013,48 @@ export interface BundleSchema {
                              * A unique name for the task. This field is used to refer to this task from other tasks.
                              * This field is required and must be unique within its parent job.
                              * On Update or Reset, this field is used to reference the tasks to be updated or reset.
-                             * The maximum length is 100 characters.
                              */
                             task_key: string;
                             /**
-                             * An optional timeout applied to each run of this job task. The default behavior is to have no timeout.
+                             * An optional timeout applied to each run of this job task. A value of `0` means no timeout.
                              */
                             timeout_seconds?: number;
+                            /**
+                             * A collection of system notification IDs to notify when runs of this job begin or complete.
+                             */
+                            webhook_notifications?: {
+                                /**
+                                 * An optional list of system notification IDs to call when the duration of a run exceeds the threshold specified for the `RUN_DURATION_SECONDS` metric in the `health` field. A maximum of 3 destinations can be specified for the `on_duration_warning_threshold_exceeded` property.
+                                 */
+                                on_duration_warning_threshold_exceeded?: {
+                                    id?: string;
+                                }[];
+                                /**
+                                 * An optional list of system notification IDs to call when the run fails. A maximum of 3 destinations can be specified for the `on_failure` property.
+                                 */
+                                on_failure?: {
+                                    id?: string;
+                                }[];
+                                /**
+                                 * An optional list of system notification IDs to call when the run starts. A maximum of 3 destinations can be specified for the `on_start` property.
+                                 */
+                                on_start?: {
+                                    id?: string;
+                                }[];
+                                /**
+                                 * An optional list of system notification IDs to call when the run completes successfully. A maximum of 3 destinations can be specified for the `on_success` property.
+                                 */
+                                on_success?: {
+                                    id?: string;
+                                }[];
+                            };
                         }[];
                         /**
-                         * An optional timeout applied to each run of this job. The default behavior is to have no timeout.
+                         * An optional timeout applied to each run of this job. A value of `0` means no timeout.
                          */
                         timeout_seconds?: number;
                         /**
-                         * Trigger settings for the job. Can be used to trigger a run when new files arrive in an external location. The default behavior is that the job runs only when triggered by clicking “Run Now” in the Jobs UI or sending an API request to `runNow`.
+                         * A configuration to trigger a run when certain conditions are met. The default behavior is that the job runs only when triggered by clicking “Run Now” in the Jobs UI or sending an API request to `runNow`.
                          */
                         trigger?: {
                             /**
@@ -4777,7 +5068,7 @@ export interface BundleSchema {
                                  */
                                 min_time_between_triggers_seconds?: number;
                                 /**
-                                 * URL to be monitored for file arrivals. The path must point to the root or a subpath of the external location.
+                                 * The storage location to monitor for file arrivals. The value must point to the root or a subpath of an external location URL or the root or subpath of a Unity Catalog volume.
                                  */
                                 url?: string;
                                 /**
@@ -4792,11 +5083,40 @@ export interface BundleSchema {
                              * Whether this trigger is paused or not.
                              */
                             pause_status?: string;
+                            /**
+                             * Table trigger settings.
+                             */
+                            table?: {
+                                /**
+                                 * The table(s) condition based on which to trigger a job run.
+                                 */
+                                condition?: string;
+                                /**
+                                 * If set, the trigger starts a run only after the specified amount of time has passed since
+                                 * the last time the trigger fired. The minimum allowed value is 60 seconds.
+                                 *
+                                 */
+                                min_time_between_triggers_seconds?: number;
+                                /**
+                                 * A list of Delta tables to monitor for changes. The table name must be in the format `catalog_name.schema_name.table_name`.
+                                 */
+                                table_names?: string[];
+                                /**
+                                 * If set, the trigger starts a run only after no table updates have occurred for the specified time
+                                 * and can be used to wait for a series of table updates before triggering a run. The
+                                 * minimum allowed value is 60 seconds.
+                                 *
+                                 */
+                                wait_after_last_change_seconds?: number;
+                            };
                         };
                         /**
-                         * A collection of system notification IDs to notify when the run begins or completes. The default behavior is to not send any system notifications.
+                         * A collection of system notification IDs to notify when runs of this job begin or complete.
                          */
                         webhook_notifications?: {
+                            /**
+                             * An optional list of system notification IDs to call when the duration of a run exceeds the threshold specified for the `RUN_DURATION_SECONDS` metric in the `health` field. A maximum of 3 destinations can be specified for the `on_duration_warning_threshold_exceeded` property.
+                             */
                             on_duration_warning_threshold_exceeded?: {
                                 id?: string;
                             }[];
@@ -4821,33 +5141,348 @@ export interface BundleSchema {
                         };
                     };
                 };
+                /**
+                 * List of Model Serving Endpoints
+                 */
                 model_serving_endpoints?: {
                     [k: string]: {
+                        /**
+                         * The core config of the serving endpoint.
+                         */
                         config: {
-                            served_models: {
+                            /**
+                             * Configuration for Inference Tables which automatically logs requests and responses to Unity Catalog.
+                             */
+                            auto_capture_config?: {
+                                /**
+                                 * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog name if it was already set.
+                                 */
+                                catalog_name?: string;
+                                /**
+                                 * If inference tables are enabled or not. NOTE: If you have already disabled payload logging once, you cannot enable again.
+                                 */
+                                enabled?: boolean;
+                                /**
+                                 * The name of the schema in Unity Catalog. NOTE: On update, you cannot change the schema name if it was already set.
+                                 */
+                                schema_name?: string;
+                                /**
+                                 * The prefix of the table in Unity Catalog. NOTE: On update, you cannot change the prefix name if it was already set.
+                                 */
+                                table_name_prefix?: string;
+                            };
+                            /**
+                             * A list of served entities for the endpoint to serve. A serving endpoint can have up to 10 served entities.
+                             */
+                            served_entities?: {
+                                /**
+                                 * The name of the entity to be served. The entity may be a model in the Databricks Model Registry, a model in the Unity Catalog (UC),
+                                 * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the object should be given in the form of
+                                 * __catalog_name__.__schema_name__.__model_name__.
+                                 *
+                                 */
+                                entity_name?: string;
+                                /**
+                                 * The version of the model in Databricks Model Registry to be served or empty if the entity is a FEATURE_SPEC.
+                                 */
+                                entity_version?: string;
+                                /**
+                                 * An object containing a set of optional, user-specified environment variable key-value pairs used for serving this entity.
+                                 * Note: this is an experimental feature and subject to change.
+                                 * Example entity environment variables that refer to Databricks secrets: `{"OPENAI_API_KEY": "{{secrets/my_scope/my_key}}", "DATABRICKS_TOKEN": "{{secrets/my_scope2/my_key2}}"}`
+                                 */
                                 environment_vars?: {
                                     [k: string]: string;
                                 };
+                                /**
+                                 * The external model to be served. NOTE: Only one of external_model and (entity_name, entity_version, workload_size, workload_type, and scale_to_zero_enabled)
+                                 * can be specified with the latter set being used for custom model serving for a Databricks registered model. When an external_model is present, the served
+                                 * entities list can only have one served_entity object. For an existing endpoint with external_model, it can not be updated to an endpoint without external_model.
+                                 * If the endpoint is created without external_model, users cannot update it to add external_model later.
+                                 *
+                                 */
+                                external_model?: {
+                                    /**
+                                     * AI21Labs Config. Only required if the provider is 'ai21labs'.
+                                     */
+                                    ai21labs_config?: {
+                                        /**
+                                         * The Databricks secret key reference for an AI21Labs API key.
+                                         */
+                                        ai21labs_api_key: string;
+                                    };
+                                    /**
+                                     * Anthropic Config. Only required if the provider is 'anthropic'.
+                                     */
+                                    anthropic_config?: {
+                                        /**
+                                         * The Databricks secret key reference for an Anthropic API key.
+                                         */
+                                        anthropic_api_key: string;
+                                    };
+                                    /**
+                                     * AWS Bedrock Config. Only required if the provider is 'aws-bedrock'.
+                                     */
+                                    aws_bedrock_config?: {
+                                        /**
+                                         * The Databricks secret key reference for an AWS Access Key ID with permissions to interact with Bedrock services.
+                                         */
+                                        aws_access_key_id: string;
+                                        /**
+                                         * The AWS region to use. Bedrock has to be enabled there.
+                                         */
+                                        aws_region: string;
+                                        /**
+                                         * The Databricks secret key reference for an AWS Secret Access Key paired with the access key ID, with permissions to interact with Bedrock services.
+                                         */
+                                        aws_secret_access_key: string;
+                                        /**
+                                         * The underlying provider in AWS Bedrock. Supported values (case insensitive) include: Anthropic, Cohere, AI21Labs, Amazon.
+                                         */
+                                        bedrock_provider: string;
+                                    };
+                                    /**
+                                     * Cohere Config. Only required if the provider is 'cohere'.
+                                     */
+                                    cohere_config?: {
+                                        /**
+                                         * The Databricks secret key reference for a Cohere API key.
+                                         */
+                                        cohere_api_key: string;
+                                    };
+                                    /**
+                                     * Databricks Model Serving Config. Only required if the provider is 'databricks-model-serving'.
+                                     */
+                                    databricks_model_serving_config?: {
+                                        /**
+                                         * The Databricks secret key reference for a Databricks API token that corresponds to a user or service
+                                         * principal with Can Query access to the model serving endpoint pointed to by this external model.
+                                         *
+                                         */
+                                        databricks_api_token: string;
+                                        /**
+                                         * The URL of the Databricks workspace containing the model serving endpoint pointed to by this external model.
+                                         *
+                                         */
+                                        databricks_workspace_url: string;
+                                    };
+                                    /**
+                                     * The name of the external model.
+                                     */
+                                    name: string;
+                                    /**
+                                     * OpenAI Config. Only required if the provider is 'openai'.
+                                     */
+                                    openai_config?: {
+                                        /**
+                                         * This is the base URL for the OpenAI API (default: "https://api.openai.com/v1").
+                                         * For Azure OpenAI, this field is required, and is the base URL for the Azure OpenAI API service
+                                         * provided by Azure.
+                                         *
+                                         */
+                                        openai_api_base?: string;
+                                        /**
+                                         * The Databricks secret key reference for an OpenAI or Azure OpenAI API key.
+                                         */
+                                        openai_api_key: string;
+                                        /**
+                                         * This is an optional field to specify the type of OpenAI API to use.
+                                         * For Azure OpenAI, this field is required, and adjust this parameter to represent the preferred security
+                                         * access validation protocol. For access token validation, use azure. For authentication using Azure Active
+                                         * Directory (Azure AD) use, azuread.
+                                         *
+                                         */
+                                        openai_api_type?: string;
+                                        /**
+                                         * This is an optional field to specify the OpenAI API version.
+                                         * For Azure OpenAI, this field is required, and is the version of the Azure OpenAI service to
+                                         * utilize, specified by a date.
+                                         *
+                                         */
+                                        openai_api_version?: string;
+                                        /**
+                                         * This field is only required for Azure OpenAI and is the name of the deployment resource for the
+                                         * Azure OpenAI service.
+                                         *
+                                         */
+                                        openai_deployment_name?: string;
+                                        /**
+                                         * This is an optional field to specify the organization in OpenAI or Azure OpenAI.
+                                         *
+                                         */
+                                        openai_organization?: string;
+                                    };
+                                    /**
+                                     * PaLM Config. Only required if the provider is 'palm'.
+                                     */
+                                    palm_config?: {
+                                        /**
+                                         * The Databricks secret key reference for a PaLM API key.
+                                         */
+                                        palm_api_key: string;
+                                    };
+                                    /**
+                                     * The name of the provider for the external model. Currently, the supported providers are 'ai21labs', 'anthropic',
+                                     * 'aws-bedrock', 'cohere', 'databricks-model-serving', 'openai', and 'palm'.",
+                                     *
+                                     */
+                                    provider: string;
+                                    /**
+                                     * The task type of the external model.
+                                     */
+                                    task: string;
+                                };
+                                /**
+                                 * ARN of the instance profile that the served entity uses to access AWS resources.
+                                 */
                                 instance_profile_arn?: string;
-                                model_name: string;
-                                model_version: string;
+                                /**
+                                 * The maximum tokens per second that the endpoint can scale up to.
+                                 */
+                                max_provisioned_throughput?: number;
+                                /**
+                                 * The minimum tokens per second that the endpoint can scale down to.
+                                 */
+                                min_provisioned_throughput?: number;
+                                /**
+                                 * The name of a served entity. It must be unique across an endpoint. A served entity name can consist of alphanumeric characters, dashes, and underscores.
+                                 * If not specified for an external model, this field defaults to external_model.name, with '.' and ':' replaced with '-', and if not specified for other
+                                 * entities, it defaults to <entity-name>-<entity-version>.
+                                 *
+                                 */
                                 name?: string;
-                                scale_to_zero_enabled: boolean;
-                                workload_size: string;
+                                /**
+                                 * Whether the compute resources for the served entity should scale down to zero.
+                                 */
+                                scale_to_zero_enabled?: boolean;
+                                /**
+                                 * The workload size of the served entity. The workload size corresponds to a range of provisioned concurrency that the compute autoscales between.
+                                 * A single unit of provisioned concurrency can process one request at a time.
+                                 * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16 provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+                                 * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each workload size is 0.
+                                 *
+                                 */
+                                workload_size?: string;
+                                /**
+                                 * The workload type of the served entity. The workload type selects which type of compute to use in the endpoint. The default value for this parameter is
+                                 * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload types like GPU_SMALL and others.
+                                 * See the available [GPU types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+                                 *
+                                 */
+                                workload_type?: string;
                             }[];
+                            /**
+                             * (Deprecated, use served_entities instead) A list of served models for the endpoint to serve. A serving endpoint can have up to 10 served models.
+                             */
+                            served_models?: {
+                                /**
+                                 * An object containing a set of optional, user-specified environment variable key-value pairs used for serving this model.
+                                 * Note: this is an experimental feature and subject to change.
+                                 * Example model environment variables that refer to Databricks secrets: `{"OPENAI_API_KEY": "{{secrets/my_scope/my_key}}", "DATABRICKS_TOKEN": "{{secrets/my_scope2/my_key2}}"}`
+                                 */
+                                environment_vars?: {
+                                    [k: string]: string;
+                                };
+                                /**
+                                 * ARN of the instance profile that the served model will use to access AWS resources.
+                                 */
+                                instance_profile_arn?: string;
+                                /**
+                                 * The name of the model in Databricks Model Registry to be served or if the model resides in Unity Catalog, the full name of model,
+                                 * in the form of __catalog_name__.__schema_name__.__model_name__.
+                                 *
+                                 */
+                                model_name: string;
+                                /**
+                                 * The version of the model in Databricks Model Registry or Unity Catalog to be served.
+                                 */
+                                model_version: string;
+                                /**
+                                 * The name of a served model. It must be unique across an endpoint. If not specified, this field will default to <model-name>-<model-version>.
+                                 * A served model name can consist of alphanumeric characters, dashes, and underscores.
+                                 *
+                                 */
+                                name?: string;
+                                /**
+                                 * Whether the compute resources for the served model should scale down to zero.
+                                 */
+                                scale_to_zero_enabled: boolean;
+                                /**
+                                 * The workload size of the served model. The workload size corresponds to a range of provisioned concurrency that the compute will autoscale between.
+                                 * A single unit of provisioned concurrency can process one request at a time.
+                                 * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16 provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+                                 * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each workload size will be 0.
+                                 *
+                                 */
+                                workload_size: string;
+                                /**
+                                 * The workload type of the served model. The workload type selects which type of compute to use in the endpoint. The default value for this parameter is
+                                 * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload types like GPU_SMALL and others.
+                                 * See the available [GPU types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+                                 *
+                                 */
+                                workload_type?: string;
+                            }[];
+                            /**
+                             * The traffic config defining how invocations to the serving endpoint should be routed.
+                             */
                             traffic_config?: {
+                                /**
+                                 * The list of routes that define traffic to each served entity.
+                                 */
                                 routes?: {
+                                    /**
+                                     * The name of the served model this route configures traffic for.
+                                     */
                                     served_model_name: string;
+                                    /**
+                                     * The percentage of endpoint traffic to send to this route. It must be an integer between 0 and 100 inclusive.
+                                     */
                                     traffic_percentage: number;
                                 }[];
                             };
                         };
+                        /**
+                         * The name of the serving endpoint. This field is required and must be unique across a Databricks workspace.
+                         * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
+                         *
+                         */
                         name: string;
                         permissions?: {
                             group_name?: string;
                             level: string;
                             service_principal_name?: string;
                             user_name?: string;
+                        }[];
+                        /**
+                         * Rate limits to be applied to the serving endpoint. NOTE: only external and foundation model endpoints are supported as of now.
+                         */
+                        rate_limits?: {
+                            /**
+                             * Used to specify how many calls are allowed for a key within the renewal_period.
+                             */
+                            calls: number;
+                            /**
+                             * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are supported, with 'endpoint' being the default if not specified.
+                             */
+                            key?: string;
+                            /**
+                             * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is supported.
+                             */
+                            renewal_period: string;
+                        }[];
+                        /**
+                         * Tags to be attached to the serving endpoint and automatically propagated to billing logs.
+                         */
+                        tags?: {
+                            /**
+                             * Key field for a serving endpoint tag.
+                             */
+                            key: string;
+                            /**
+                             * Optional value field for a serving endpoint tag.
+                             */
+                            value?: string;
                         }[];
                     };
                 };
@@ -4992,15 +5627,23 @@ export interface BundleSchema {
                              */
                             autoscale?: {
                                 /**
-                                 * The maximum number of workers to which the cluster can scale up when overloaded.
-                                 * Note that `max_workers` must be strictly greater than `min_workers`.
+                                 * The maximum number of workers to which the cluster can scale up when overloaded. `max_workers` must be strictly greater than `min_workers`.
                                  */
                                 max_workers: number;
                                 /**
-                                 * The minimum number of workers to which the cluster can scale down when underutilized.
+                                 * The minimum number of workers the cluster can scale down to when underutilized.
                                  * It is also the initial number of workers the cluster will have after creation.
                                  */
                                 min_workers: number;
+                                /**
+                                 * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
+                                 * allocating cluster resources based on workload volume, with minimal impact to
+                                 * the data processing latency of your pipelines. Enhanced Autoscaling is available
+                                 * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
+                                 * clusters.
+                                 *
+                                 */
+                                mode?: string;
                             };
                             /**
                              * Attributes related to clusters running on Amazon Web Services.
@@ -5028,7 +5671,7 @@ export interface BundleSchema {
                                  */
                                 ebs_volume_count?: number;
                                 /**
-                                 * <needs content added>
+                                 * If using gp3 volumes, what IOPS to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                                  */
                                 ebs_volume_iops?: number;
                                 /**
@@ -5038,7 +5681,7 @@ export interface BundleSchema {
                                  */
                                 ebs_volume_size?: number;
                                 /**
-                                 * <needs content added>
+                                 * If using gp3 volumes, what throughput to use for the disk. If this is not set, the maximum performance of a gp2 volume with the same volume size will be used.
                                  */
                                 ebs_volume_throughput?: number;
                                 ebs_volume_type?: string;
@@ -5086,9 +5729,8 @@ export interface BundleSchema {
                                  * This is an optional field at cluster creation, and if not specified, a default zone will be used.
                                  * If the zone specified is "auto", will try to place cluster in a zone with high availability,
                                  * and will retry placement in a different AZ if there is not enough capacity.
-                                 * See [[AutoAZHelper.scala]] for more details.
                                  * The list of available zones as well as the default value can be found by using the
-                                 * `List Zones`_ method.
+                                 * `List Zones` method.
                                  */
                                 zone_id?: string;
                             };
@@ -5146,7 +5788,7 @@ export interface BundleSchema {
                                     /**
                                      * dbfs destination, e.g. `dbfs:/my/path`
                                      */
-                                    destination?: string;
+                                    destination: string;
                                 };
                                 /**
                                  * destination and either the region or endpoint need to be provided. e.g.
@@ -5170,7 +5812,7 @@ export interface BundleSchema {
                                      * cluster iam role, please make sure you set cluster iam role and the role has write access to the
                                      * destination. Please also note that you cannot use AWS keys to deliver logs.
                                      */
-                                    destination?: string;
+                                    destination: string;
                                     /**
                                      * (Optional) Flag to enable server side encryption, `false` by default.
                                      */
@@ -5240,7 +5882,132 @@ export interface BundleSchema {
                                  * If provided, each node (workers and driver) in the cluster will have this number of local SSDs attached. Each local SSD is 375GB in size. Refer to [GCP documentation](https://cloud.google.com/compute/docs/disks/local-ssd#choose_number_local_ssds) for the supported number of local SSDs for each instance type.
                                  */
                                 local_ssd_count?: number;
+                                /**
+                                 * This field determines whether the spark executors will be scheduled to run on preemptible VMs (when set to true) versus standard compute engine VMs (when set to false; default).
+                                 * Note: Soon to be deprecated, use the availability field instead.
+                                 */
+                                use_preemptible_executors?: boolean;
+                                /**
+                                 * Identifier for the availability zone in which the cluster resides.
+                                 * This can be one of the following:
+                                 * - "HA" => High availability, spread nodes across availability zones for a Databricks deployment region [default]
+                                 * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+                                 * - A GCP availability zone => Pick One of the available zones for (machine type + region) from https://cloud.google.com/compute/docs/regions-zones.
+                                 */
+                                zone_id?: string;
                             };
+                            /**
+                             * The configuration for storing init scripts. Any number of destinations can be specified. The scripts are executed sequentially in the order provided. If `cluster_log_conf` is specified, init script logs are sent to `<destination>/<cluster-ID>/init_scripts`.
+                             */
+                            init_scripts?: {
+                                /**
+                                 * destination needs to be provided. e.g.
+                                 * `{ "abfss" : { "destination" : "abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>" } }
+                                 */
+                                abfss?: {
+                                    /**
+                                     * abfss destination, e.g. `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+                                     */
+                                    destination: string;
+                                };
+                                /**
+                                 * destination needs to be provided. e.g.
+                                 * `{ "dbfs" : { "destination" : "dbfs:/home/cluster_log" } }`
+                                 */
+                                dbfs?: {
+                                    /**
+                                     * dbfs destination, e.g. `dbfs:/my/path`
+                                     */
+                                    destination: string;
+                                };
+                                /**
+                                 * destination needs to be provided. e.g.
+                                 * `{ "file" : { "destination" : "file:/my/local/file.sh" } }`
+                                 */
+                                file?: {
+                                    /**
+                                     * local file destination, e.g. `file:/my/local/file.sh`
+                                     */
+                                    destination: string;
+                                };
+                                /**
+                                 * destination needs to be provided. e.g.
+                                 * `{ "gcs": { "destination": "gs://my-bucket/file.sh" } }`
+                                 */
+                                gcs?: {
+                                    /**
+                                     * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+                                     */
+                                    destination: string;
+                                };
+                                /**
+                                 * destination and either the region or endpoint need to be provided. e.g.
+                                 * `{ "s3": { "destination" : "s3://cluster_log_bucket/prefix", "region" : "us-west-2" } }`
+                                 * Cluster iam role is used to access s3, please make sure the cluster iam role in
+                                 * `instance_profile_arn` has permission to write data to the s3 destination.
+                                 */
+                                s3?: {
+                                    /**
+                                     * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
+                                     * If `canned_cal` is set, please make sure the cluster iam role has `s3:PutObjectAcl` permission on
+                                     * the destination bucket and prefix. The full list of possible canned acl can be found at
+                                     * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
+                                     * Please also note that by default only the object owner gets full controls. If you are using cross account
+                                     * role for writing data, you may want to set `bucket-owner-full-control` to make bucket owner able to
+                                     * read the logs.
+                                     */
+                                    canned_acl?: string;
+                                    /**
+                                     * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be delivered using
+                                     * cluster iam role, please make sure you set cluster iam role and the role has write access to the
+                                     * destination. Please also note that you cannot use AWS keys to deliver logs.
+                                     */
+                                    destination: string;
+                                    /**
+                                     * (Optional) Flag to enable server side encryption, `false` by default.
+                                     */
+                                    enable_encryption?: boolean;
+                                    /**
+                                     * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will be used only when
+                                     * encryption is enabled and the default type is `sse-s3`.
+                                     */
+                                    encryption_type?: string;
+                                    /**
+                                     * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or endpoint needs to be set.
+                                     * If both are set, endpoint will be used.
+                                     */
+                                    endpoint?: string;
+                                    /**
+                                     * (Optional) Kms key which will be used if encryption is enabled and encryption type is set to `sse-kms`.
+                                     */
+                                    kms_key?: string;
+                                    /**
+                                     * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If both are set,
+                                     * endpoint will be used.
+                                     */
+                                    region?: string;
+                                };
+                                /**
+                                 * destination needs to be provided. e.g.
+                                 * `{ "volumes" : { "destination" : "/Volumes/my-init.sh" } }`
+                                 */
+                                volumes?: {
+                                    /**
+                                     * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+                                     */
+                                    destination: string;
+                                };
+                                /**
+                                 * destination needs to be provided. e.g.
+                                 * `{ "workspace" : { "destination" : "/Users/user1@databricks.com/my-init.sh" } }`
+                                 */
+                                workspace?: {
+                                    /**
+                                     * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
+                                     */
+                                    destination: string;
+                                };
+                            }[];
                             /**
                              * The optional ID of the instance pool to which the cluster belongs.
                              */
@@ -5394,6 +6161,27 @@ export interface BundleSchema {
                          * Friendly identifier for this pipeline.
                          */
                         name?: string;
+                        /**
+                         * List of notification settings for this pipeline.
+                         */
+                        notifications?: {
+                            /**
+                             * A list of alerts that trigger the sending of notifications to the configured
+                             * destinations. The supported alerts are:
+                             *
+                             * * `on-update-success`: A pipeline update completes successfully.
+                             * * `on-update-failure`: Each time a pipeline update fails.
+                             * * `on-update-fatal-failure`: A pipeline update fails with a non-retryable (fatal) error.
+                             * * `on-flow-failure`: A single data flow fails.
+                             *
+                             */
+                            alerts?: string[];
+                            /**
+                             * A list of email addresses notified when a configured alert is triggered.
+                             *
+                             */
+                            email_recipients?: string[];
+                        }[];
                         permissions?: {
                             group_name?: string;
                             level: string;
@@ -5424,8 +6212,39 @@ export interface BundleSchema {
                                 quartz_cron_schedule?: string;
                                 timezone_id?: string;
                             };
-                            manual?: unknown;
+                            manual?: {};
                         };
+                    };
+                };
+                /**
+                 * List of Registered Models
+                 */
+                registered_models?: {
+                    [k: string]: {
+                        /**
+                         * The name of the catalog where the schema and the registered model reside
+                         */
+                        catalog_name: string;
+                        /**
+                         * The comment attached to the registered model
+                         */
+                        comment?: string;
+                        grants?: {
+                            principal: string;
+                            privileges: string[];
+                        }[];
+                        /**
+                         * The name of the registered model
+                         */
+                        name: string;
+                        /**
+                         * The name of the schema where the registered model resides
+                         */
+                        schema_name: string;
+                        /**
+                         * The storage location on the cloud under which model version data files are stored
+                         */
+                        storage_location?: string;
                     };
                 };
             };
@@ -5433,54 +6252,44 @@ export interface BundleSchema {
                 service_principal_name?: string;
                 user_name?: string;
             };
-            variables?: {
-                [k: string]: string;
+            sync?: {
+                exclude?: string[];
+                include?: string[];
             };
-            /**
-             * Configures which workspace to connect to and locations for files, state, and similar locations within the workspace file tree.
-             */
+            variables?: {
+                [k: string]: {
+                    default?: string;
+                    description?: string;
+                    lookup?: {
+                        alert?: string;
+                        cluster?: string;
+                        cluster_policy?: string;
+                        dashboard?: string;
+                        instance_pool?: string;
+                        job?: string;
+                        metastore?: string;
+                        pipeline?: string;
+                        query?: string;
+                        service_principal?: string;
+                        warehouse?: string;
+                    };
+                };
+            };
             workspace?: {
-                /**
-                 * The remote path to synchronize build artifacts to. This defaults to `${workspace.root}/artifacts`
-                 */
                 artifact_path?: string;
                 auth_type?: string;
                 azure_client_id?: string;
-                /**
-                 * Azure environment, one of (Public, UsGov, China, Germany).
-                 */
                 azure_environment?: string;
-                /**
-                 * Azure Login Application ID.
-                 */
                 azure_login_app_id?: string;
                 azure_tenant_id?: string;
                 azure_use_msi?: boolean;
-                /**
-                 * Azure Resource Manager ID for Azure Databricks workspace.
-                 */
                 azure_workspace_resource_id?: string;
                 client_id?: string;
-                /**
-                 * The remote path to synchronize local files artifacts to. This defaults to `${workspace.root}/files`
-                 */
                 file_path?: string;
                 google_service_account?: string;
-                /**
-                 * Host url of the workspace.
-                 */
                 host?: string;
-                /**
-                 * Connection profile to use. By default profiles are specified in ~/.databrickscfg.
-                 */
                 profile?: string;
-                /**
-                 * The base location for synchronizing files, artifacts and state. Defaults to `/Users/jane@doe.com/.bundle/${bundle.name}/${bundle.target}`
-                 */
                 root_path?: string;
-                /**
-                 * The remote path to synchronize bundle state to. This defaults to `${workspace.root}/state`
-                 */
                 state_path?: string;
             };
         };
@@ -5489,53 +6298,36 @@ export interface BundleSchema {
         [k: string]: {
             default?: string;
             description?: string;
+            lookup?: {
+                alert?: string;
+                cluster?: string;
+                cluster_policy?: string;
+                dashboard?: string;
+                instance_pool?: string;
+                job?: string;
+                metastore?: string;
+                pipeline?: string;
+                query?: string;
+                service_principal?: string;
+                warehouse?: string;
+            };
         };
     };
-    /**
-     * Configures which workspace to connect to and locations for files, state, and similar locations within the workspace file tree.
-     */
     workspace?: {
-        /**
-         * The remote path to synchronize build artifacts to. This defaults to `${workspace.root}/artifacts`
-         */
         artifact_path?: string;
         auth_type?: string;
         azure_client_id?: string;
-        /**
-         * Azure environment, one of (Public, UsGov, China, Germany).
-         */
         azure_environment?: string;
-        /**
-         * Azure Login Application ID.
-         */
         azure_login_app_id?: string;
         azure_tenant_id?: string;
         azure_use_msi?: boolean;
-        /**
-         * Azure Resource Manager ID for Azure Databricks workspace.
-         */
         azure_workspace_resource_id?: string;
         client_id?: string;
-        /**
-         * The remote path to synchronize local files artifacts to. This defaults to `${workspace.root}/files`
-         */
         file_path?: string;
         google_service_account?: string;
-        /**
-         * Host url of the workspace.
-         */
         host?: string;
-        /**
-         * Connection profile to use. By default profiles are specified in ~/.databrickscfg.
-         */
         profile?: string;
-        /**
-         * The base location for synchronizing files, artifacts and state. Defaults to `/Users/jane@doe.com/.bundle/${bundle.name}/${bundle.target}`
-         */
         root_path?: string;
-        /**
-         * The remote path to synchronize bundle state to. This defaults to `${workspace.root}/state`
-         */
         state_path?: string;
     };
 }

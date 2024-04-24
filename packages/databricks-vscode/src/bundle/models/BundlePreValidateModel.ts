@@ -11,7 +11,15 @@ export type BundlePreValidateState = {
     host?: URL;
     mode?: "development" | "staging" | "production";
     authParams?: Record<string, string | undefined>;
-} & BundleTarget;
+} & BundleTarget & {
+        preValidateBundleSchema?: BundleSchema & {
+            variables: {
+                [k in keyof Required<BundleSchema>["variables"]]:
+                    | Required<BundleSchema>["variables"][k]
+                    | string;
+            };
+        };
+    };
 
 /**
  * Reads and writes bundle configs. This class does not notify when the configs change.
@@ -99,11 +107,15 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         }
 
         const bundle = await this.bundleFileSet.bundleDataCache.value;
-        return (
+        const targertData =
             this.readStateFromTarget(
                 this.getRawTargetData(bundle, this.target)
-            ) ?? {}
-        );
+            ) ?? {};
+
+        return {
+            ...targertData,
+            preValidateBundleSchema: bundle,
+        };
     }
 
     public async getFileToWrite(key: string) {

@@ -61,7 +61,7 @@ export class CustomOutputTerminal implements Pseudoterminal {
         this.process.stdout.on("data", handleOutput);
         this.process.stderr.on("data", handleOutput);
 
-        this.process.on("close", (exitCode) => {
+        this.process.on("close", async (exitCode) => {
             if (exitCode === 0) {
                 this.writeEmitter.fire(
                     "\x1b[32mProcess completed successfully\x1b[0m\r\n"
@@ -74,6 +74,8 @@ export class CustomOutputTerminal implements Pseudoterminal {
                         exitCode +
                         "\x1b[0m\r\n"
                 );
+                // Wait for 2 seconds to let the error rendering finish
+                await new Promise((resolve) => setTimeout(resolve, 2000));
             }
 
             this.onDidCloseProcessEmitter.fire(exitCode);
