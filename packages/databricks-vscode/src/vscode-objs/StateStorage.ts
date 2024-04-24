@@ -58,23 +58,6 @@ const StorageConfigurations = {
         },
     }),
 
-    "databricks.debugging.skipDbConnectInstallForEnvs": withType<string[]>()({
-        location: "global",
-        defaultValue: [],
-        setter: (storage, value) => {
-            if (value === undefined || value.length === 0) {
-                return undefined;
-            }
-            const currentEnvs: string[] = storage.get(
-                "databricks.debugging.skipDbConnectInstallForEnvs"
-            );
-            if (!currentEnvs.includes(value[0])) {
-                currentEnvs.push(value[0]);
-            }
-            return currentEnvs;
-        },
-    }),
-
     "databricks.bundle.target": withType<string>()({
         location: "workspace",
     }),

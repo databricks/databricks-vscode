@@ -18,6 +18,9 @@ import {BundleProjectManager} from "../../bundle/BundleProjectManager";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
+import {FeatureManager} from "../../feature-manager/FeatureManager";
+import {EnvironmentComponent} from "./EnvironmentComponent";
+
 /**
  * Data provider for the cluster tree view
  */
@@ -45,12 +48,18 @@ export class ConfigurationDataProvider
         ),
         new ClusterComponent(this.connectionManager, this.configModel),
         new SyncDestinationComponent(this.connectionManager, this.configModel),
+        new EnvironmentComponent(
+            this.featureManager,
+            this.connectionManager,
+            this.configModel
+        ),
     ];
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly bundleProjectManager: BundleProjectManager,
         private readonly configModel: ConfigModel,
-        private readonly cli: CliWrapper
+        private readonly cli: CliWrapper,
+        private readonly featureManager: FeatureManager
     ) {
         this.disposables.push(
             this.bundleProjectManager.onDidChangeStatus(async () => {

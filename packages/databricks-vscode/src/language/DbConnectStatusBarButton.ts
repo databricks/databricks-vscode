@@ -19,7 +19,7 @@ export class DbConnectStatusBarButton implements Disposable {
         this.disposables.push(
             this.statusBarButton,
             this.featureManager.onDidChangeState(
-                "debugging.dbconnect",
+                "environment.dependencies",
                 this.update,
                 this
             )
@@ -29,9 +29,9 @@ export class DbConnectStatusBarButton implements Disposable {
 
     private async disableStatusBarButton() {
         const featureState = await this.featureManager.isEnabled(
-            "debugging.dbconnect"
+            "environment.dependencies"
         );
-        if (featureState.isDisabledByFf || featureState.avaliable) {
+        if (featureState.available) {
             return;
         }
         this.statusBarButton.name = "Databricks Connect disabled";
@@ -39,34 +39,19 @@ export class DbConnectStatusBarButton implements Disposable {
         this.statusBarButton.backgroundColor = new ThemeColor(
             "statusBarItem.errorBackground"
         );
-        this.statusBarButton.tooltip = featureState?.reason;
+        // this.statusBarButton.tooltip = featureState?.message;
         this.statusBarButton.command = {
-            title: "Call",
-            command: "databricks.call",
-            arguments: [
-                async () => {
-                    const featureState = await this.featureManager.isEnabled(
-                        "debugging.dbconnect",
-                        true
-                    );
-                    if (!featureState.avaliable) {
-                        if (featureState.action) {
-                            featureState.action();
-                        } else if (featureState.reason) {
-                            window.showErrorMessage(featureState.reason);
-                        }
-                    }
-                },
-            ],
+            title: "Setup Databricks Connect",
+            command: "databricks.environment.setup",
         };
         this.statusBarButton.show();
     }
 
     private async enableStatusBarButton() {
         const featureState = await this.featureManager.isEnabled(
-            "debugging.dbconnect"
+            "environment.dependencies"
         );
-        if (!featureState.avaliable) {
+        if (!featureState.available) {
             return;
         }
         this.statusBarButton.name = "Databricks Connect enabled";
@@ -74,22 +59,17 @@ export class DbConnectStatusBarButton implements Disposable {
         this.statusBarButton.tooltip = "Databricks Connect enabled";
         this.statusBarButton.backgroundColor = undefined;
         this.statusBarButton.command = {
-            title: "Call",
-            command: "databricks.call",
-            arguments: [
-                () => {
-                    this.featureManager.isEnabled("debugging.dbconnect", true);
-                },
-            ],
+            title: "Setup Databricks Connect",
+            command: "databricks.environment.setup",
         };
         this.statusBarButton.show();
     }
 
     public async update() {
         const featureState = await this.featureManager.isEnabled(
-            "debugging.dbconnect"
+            "environment.dependencies"
         );
-        if (!featureState.avaliable) {
+        if (!featureState.available) {
             this.disableStatusBarButton();
         } else {
             this.enableStatusBarButton();

@@ -1,5 +1,10 @@
 {
     "properties": {
+        "auto_migration": {
+            "type": "boolean",
+            "description": "Auto migration",
+            "order": 1
+        },
         "project_name": {
             "type": "string",
             "description": "Project name",

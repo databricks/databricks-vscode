@@ -177,10 +177,6 @@ export class ConnectionManager implements Disposable {
     }
 
     get cluster(): Cluster | undefined {
-        if (this.state !== "CONNECTED") {
-            return;
-        }
-
         return this._clusterManager?.cluster;
     }
 

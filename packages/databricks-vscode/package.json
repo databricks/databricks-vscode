@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.0.4",
+    "version": "2.1.0",
     "engines": {
         "vscode": "^1.86.0"
     },
@@ -291,6 +291,27 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.environment.refresh",
+                "title": "Refresh python environment status",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.selectPythonInterpreter",
+                "title": "Change Python environment",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.reinstallDBConnect",
+                "title": "Reinstall Databricks Connect",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.bundle.variable.openFile",
                 "title": "Override bundle variables",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
@@ -359,13 +380,13 @@
             },
             {
                 "view": "configurationView",
-                "contents": "[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized"
+                "contents": "Migrate current workspace to a Databricks Project: \n[Migrate to a Databricks Project](command:databricks.bundle.startManualMigration)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
                 "view": "configurationView",
-                "contents": "Migrate current workspace to a Databricks Project: \n[Migrate to Databricks Project](command:databricks.bundle.startManualMigration)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
+                "contents": "[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized"
             },
             {
                 "view": "configurationView",
@@ -500,6 +521,24 @@
                 {
                     "command": "databricks.utils.copy",
                     "when": "view == dabsResourceExplorerView || view == configurationView"
+                },
+                {
+                    "command": "databricks.environment.refresh",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.root.(success|error)$/",
+                    "group": "inline@0",
+                    "icon": "$(refresh)"
+                },
+                {
+                    "command": "databricks.environment.selectPythonInterpreter",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkPythonEnvironment.success$/",
+                    "group": "inline@0",
+                    "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.environment.reinstallDBConnect",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkEnvironmentDependencies.success$/",
+                    "group": "inline@0",
+                    "icon": "$(gear)"
                 }
             ],
             "editor/title": [
@@ -785,7 +824,6 @@
                         "default": [],
                         "items": {
                             "enum": [
-                                "notebooks.dbconnect",
                                 "views.cluster",
                                 "views.workspace"
                             ],
@@ -832,7 +870,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.217.0"
+        "version": "0.218.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",

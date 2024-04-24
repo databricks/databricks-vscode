@@ -58,19 +58,13 @@ export class MsPythonExtensionWrapper implements Disposable {
     }
 
     async getPythonExecutable() {
-        if (this.api.settings) {
-            return (
-                this.api.settings.getExecutionDetails(this.workspaceFolder)
-                    .execCommand ?? []
-            ).join(" ");
-        }
-        return (
-            await this.api.environments.resolveEnvironment(
-                this.api.environments.getActiveEnvironmentPath(
-                    this.workspaceFolder
-                )
-            )
-        )?.executable.uri?.fsPath;
+        const env = await this.pythonEnvironment;
+        return env?.executable.uri?.fsPath;
+    }
+
+    async getAvailableEnvironments() {
+        await this.api.environments.refreshEnvironments();
+        return this.api.environments.known.filter((env) => env.environment);
     }
 
     get onDidChangePythonExecutable(): Event<Uri | undefined> {
@@ -88,7 +82,9 @@ export class MsPythonExtensionWrapper implements Disposable {
 
     get pythonEnvironment() {
         return this.api.environments?.resolveEnvironment(
-            this.api.environments?.getActiveEnvironmentPath()
+            this.api.environments?.getActiveEnvironmentPath(
+                this.workspaceFolder
+            )
         );
     }
 
@@ -233,6 +229,10 @@ export class MsPythonExtensionWrapper implements Disposable {
 
     async selectPythonInterpreter() {
         await commands.executeCommand("python.setInterpreter");
+    }
+
+    async createPythonEnvironment() {
+        await commands.executeCommand("python.createEnvironment");
     }
 
     dispose() {}
