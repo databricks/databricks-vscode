@@ -112,7 +112,8 @@ describe(__filename, () => {
         assert.equal(profiles.length, 0);
     });
 
-    it("should list profiles", async function () {
+    // TODO: Don't skip this after cli is updated to > 0.218.0
+    it.skip("should list profiles", async function () {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
 
@@ -143,7 +144,8 @@ describe(__filename, () => {
         });
     });
 
-    it("should load all valid profiles and return errors for rest", async () => {
+    // TODO: Don't skip this after cli is updated to > 0.218.0
+    it.skip("should load all valid profiles and return errors for rest", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
 
