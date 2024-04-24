@@ -480,6 +480,7 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
+        await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
             "deploy",
             this.cliPath,
@@ -506,6 +507,7 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
+        await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
             "destroy",
             this.cliPath,
