@@ -5,7 +5,9 @@ import {
     BundleResourceExplorerTreeNode,
 } from "./types";
 import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
-import {ContextUtils, DecorationUtils} from "./utils";
+import {ContextUtils} from "./utils";
+import {DecorationUtils} from "../utils";
+
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";

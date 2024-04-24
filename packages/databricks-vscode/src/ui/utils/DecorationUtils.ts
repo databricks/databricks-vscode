@@ -1,5 +1,5 @@
-import {BundleResourceModifiedStatus} from "../../../bundle/models/BundleRemoteStateModel";
-import {asDecorationResourceUri} from "../../DecorationProvider";
+import {BundleResourceModifiedStatus} from "../../bundle/models/BundleRemoteStateModel";
+import {asDecorationResourceUri} from "../DecorationProvider";
 import {ThemeColor, TreeItemCollapsibleState} from "vscode";
 
 export function getModifiedStatusDecoration(

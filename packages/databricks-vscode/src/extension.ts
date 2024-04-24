@@ -14,7 +14,7 @@ import {ConnectionManager} from "./configuration/ConnectionManager";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
-import {ConfigurationDataProvider} from "./configuration/ui/ConfigurationDataProvider";
+import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
@@ -70,6 +70,7 @@ import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigu
 import {isIntegrationTest} from "./utils/developmentUtils";
 import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
+import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -485,6 +486,14 @@ export async function activate(
         configModel,
         cli
     );
+    const configurationView = window.createTreeView("configurationView", {
+        treeDataProvider: configurationDataProvider,
+    });
+
+    const configurationTreeViewManager = new ConfigurationTreeViewManager(
+        configurationView,
+        configModel
+    );
 
     const connectionCommands = new ConnectionCommands(
         workspaceFsCommands,
@@ -496,11 +505,8 @@ export async function activate(
 
     context.subscriptions.push(
         configurationDataProvider,
-
-        window.registerTreeDataProvider(
-            "configurationView",
-            configurationDataProvider
-        ),
+        configurationView,
+        configurationTreeViewManager,
         telemetry.registerCommand(
             "databricks.connection.bundle.selectTarget",
             connectionCommands.selectTarget,

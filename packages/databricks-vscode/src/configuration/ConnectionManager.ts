@@ -119,7 +119,12 @@ export class ConnectionManager implements Disposable {
                       )
                     : undefined;
 
-            this.cli.setClusterId(clusterId);
+            if (
+                (await this.configModel.get("useClusterOverride")) ||
+                clusterId === undefined
+            ) {
+                this.cli.setClusterId(clusterId);
+            }
             this.onDidChangeClusterEmitter.fire(this.cluster);
         } catch (e) {
             this.configModel.set("clusterId", undefined);
@@ -141,6 +146,17 @@ export class ConnectionManager implements Disposable {
                 ),
                 this.configModel.onDidChangeKey("clusterId")(
                     this.updateClusterManager.bind(this)
+                ),
+                this.configModel.onDidChangeKey("useClusterOverride")(
+                    async () => {
+                        const useClusterOverride =
+                            await this.configModel.get("useClusterOverride");
+                        this.cli.setClusterId(
+                            useClusterOverride
+                                ? this._clusterManager?.cluster?.id
+                                : undefined
+                        );
+                    }
                 ),
                 // Don't just listen to target change for logging in. Also explictly listen for changes in the keys we care about.
                 // We don't have to listen to changes in authProfile as it's set by the login method and we don't respect other
