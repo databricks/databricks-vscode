@@ -292,15 +292,17 @@
             },
             {
                 "command": "databricks.bundle.variable.openFile",
-                "title": "Set bundle variables",
+                "title": "Override bundle variables",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
-                "category": "Databricks"
+                "category": "Databricks",
+                "icon": "$(gear)"
             },
             {
                 "command": "databricks.bundle.variable.reset",
                 "title": "Reset to default values",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
-                "category": "Databricks"
+                "category": "Databricks",
+                "icon": "$(discard)"
             }
         ],
         "viewsContainers": {
