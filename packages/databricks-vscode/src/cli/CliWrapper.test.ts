@@ -221,7 +221,7 @@ nothing = true
             true
         );
         const workspaceFolder = Uri.file("/test/123");
-        const runCmd = cli.getBundleRunCommand(
+        const runCmd = await cli.getBundleRunCommand(
             "dev",
             authProvider,
             "resource-key",

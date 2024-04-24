@@ -136,14 +136,20 @@
                 "title": "Run File as Workflow",
                 "category": "Databricks",
                 "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(play)"
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
             },
             {
                 "command": "databricks.run.runEditorContents",
                 "title": "Upload and Run File",
                 "category": "Databricks",
                 "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(play)"
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
             },
             {
                 "command": "databricks.quickstart.open",
@@ -256,13 +262,21 @@
                 "command": "databricks.run.dbconnect.debug",
                 "title": "Databricks Connect: Debug current file",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "category": "Databricks"
+                "category": "Databricks",
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
             },
             {
                 "command": "databricks.run.dbconnect.run",
                 "title": "Databricks Connect: Run current file",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "category": "Databricks"
+                "category": "Databricks",
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
             },
             {
                 "command": "databricks.bundle.showLogs",
@@ -275,6 +289,20 @@
                 "title": "Copy",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.variable.openFile",
+                "title": "Override bundle variables",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks",
+                "icon": "$(gear)"
+            },
+            {
+                "command": "databricks.bundle.variable.reset",
+                "title": "Reset to default values",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks",
+                "icon": "$(discard)"
             }
         ],
         "viewsContainers": {
@@ -295,6 +323,12 @@
                 {
                     "id": "dabsResourceExplorerView",
                     "name": "Bundle Resource Explorer",
+                    "visibility": "visible",
+                    "when": "databricks.context.bundle.isTargetSet"
+                },
+                {
+                    "id": "dabsVariableView",
+                    "name": "Bundle Variables View",
                     "visibility": "visible",
                     "when": "databricks.context.bundle.isTargetSet"
                 },
@@ -381,6 +415,16 @@
                 {
                     "command": "databricks.bundle.deploy",
                     "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.variable.openFile",
+                    "when": "view == dabsVariableView && databricks.context.bundle.deploymentState == idle",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.variable.reset",
+                    "when": "view == dabsVariableView && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@1"
                 }
             ],
@@ -504,7 +548,7 @@
             "explorer/context": [
                 {
                     "submenu": "databricks.run",
-                    "when": "resourceLangId == python"
+                    "when": "resourceLangId == python || resourceExtname == .ipynb"
                 }
             ]
         },

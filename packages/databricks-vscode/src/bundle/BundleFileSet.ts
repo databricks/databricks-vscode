@@ -3,7 +3,7 @@ import * as glob from "glob";
 import {merge} from "lodash";
 import * as yaml from "yaml";
 import path from "path";
-import {BundleSchema} from "./BundleSchema";
+import {BundleSchema} from "./types";
 import {readFile, writeFile} from "fs/promises";
 import {CachedValue} from "../locking/CachedValue";
 import minimatch from "minimatch";
