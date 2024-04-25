@@ -59,7 +59,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     }
 
     @Mutex.synchronise("mutex")
-    public async deploy() {
+    public async deploy(force = false) {
         if (this.target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -72,7 +72,8 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.authProvider,
             this.workspaceFolder,
             this.workspaceConfigs.databrickscfgLocation,
-            this.logger
+            this.logger,
+            force
         );
     }
 

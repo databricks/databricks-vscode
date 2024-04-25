@@ -85,13 +85,13 @@ export class BundleCommands implements Disposable {
     private deployMutex = new Mutex();
 
     @Mutex.synchronise("deployMutex")
-    async deploy() {
+    async deploy(force = false) {
         try {
             this.whenContext.setDeploymentState("deploying");
             await window.withProgress(
                 {location: ProgressLocation.Notification, cancellable: false},
                 async () => {
-                    await this.bundleRemoteStateModel.deploy();
+                    await this.bundleRemoteStateModel.deploy(force);
                 }
             );
 
@@ -112,6 +112,11 @@ export class BundleCommands implements Disposable {
     @onError({log: true, popup: false})
     public async deployCommand() {
         await this.deploy();
+    }
+
+    @onError({log: true, popup: false})
+    public async forceDeployCommand() {
+        await this.deploy(true);
     }
 
     @onError({popup: {prefix: "Error running resource."}})
