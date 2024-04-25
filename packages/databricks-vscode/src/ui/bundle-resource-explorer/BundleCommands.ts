@@ -171,7 +171,7 @@ export class BundleCommands implements Disposable {
             await window.withProgress(
                 {location: ProgressLocation.Notification, cancellable: false},
                 async () => {
-                    await this.bundleRemoteStateModel.destroy();
+                    await this.bundleRemoteStateModel.destroy(force);
                 }
             );
 
