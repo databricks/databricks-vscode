@@ -225,6 +225,8 @@ export async function activate(
         stateStorage
     );
 
+    cli.setPythonExtension(pythonExtensionWrapper);
+
     context.subscriptions.push(
         telemetry.registerCommand(
             "databricks.logs.openFolder",
@@ -266,7 +268,6 @@ export async function activate(
     const bundleRemoteStateModel = new BundleRemoteStateModel(
         cli,
         workspaceUri,
-        pythonExtensionWrapper,
         workspaceConfigs
     );
     const configModel = new ConfigModel(
@@ -605,6 +606,7 @@ export async function activate(
         bundleRemoteStateModel,
         bundleRunStatusManager,
         bundleValidateModel,
+        configModel,
         customWhenContext,
         telemetry
     );
@@ -640,6 +642,11 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.bundle.cancelRun",
             bundleCommands.cancelRun,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.destroy",
+            bundleCommands.destroy,
             bundleCommands
         )
     );
