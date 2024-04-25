@@ -334,7 +334,13 @@
             },
             {
                 "command": "databricks.bundle.forceDeploy",
-                "title": "Force deploy",
+                "title": "Force deploy bundle",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
+            },
+            {
+                "command": "databricks.bundle.forceDestroy",
+                "title": "Force destroy bundle",
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
             }
@@ -458,6 +464,10 @@
                 },
                 {
                     "command": "databricks.bundle.forceDeploy",
+                    "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle"
+                },
+                {
+                    "command": "databricks.bundle.forceDestroy",
                     "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle"
                 },
                 {

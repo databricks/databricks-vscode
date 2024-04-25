@@ -640,6 +640,11 @@ export async function activate(
             bundleCommands
         ),
         telemetry.registerCommand(
+            "databricks.bundle.forceDestroy",
+            bundleCommands.forceDestroyCommand,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
             "databricks.bundle.deployAndRun",
             bundleCommands.deployAndRun,
             bundleCommands

@@ -518,13 +518,21 @@ export class CliWrapper {
         authProvider: AuthProvider,
         workspaceFolder: Uri,
         configfilePath?: string,
-        logger?: logging.NamedLogger
+        logger?: logging.NamedLogger,
+        force = false
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
             "destroy",
             this.cliPath,
-            ["bundle", "destroy", "--target", target, "--auto-approve"],
+            [
+                "bundle",
+                "destroy",
+                "--target",
+                target,
+                "--auto-approve",
+                ...(force ? ["--force-lock"] : []),
+            ],
             workspaceFolder,
             {
                 start: `Destroying the bundle for target ${target}...`,

@@ -152,8 +152,7 @@ export class BundleCommands implements Disposable {
         this.bundleRunStatusManager.cancel(treeNode.resourceKey);
     }
 
-    @onError({log: true, popup: false})
-    async destroy() {
+    async destroy(force = false) {
         if ((await this.configModel.get("mode")) !== "development") {
             const confirm = await window.showErrorMessage(
                 "Are you sure you want to destroy this bundle and all resources associated with it?",
@@ -188,6 +187,16 @@ export class BundleCommands implements Disposable {
         } finally {
             this.whenContext.setDeploymentState("idle");
         }
+    }
+
+    @onError({log: true, popup: false})
+    public async destroyCommand() {
+        await this.destroy();
+    }
+
+    @onError({log: true, popup: false})
+    public async forceDestroyCommand() {
+        await this.destroy(true);
     }
 
     dispose() {
