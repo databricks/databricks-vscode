@@ -66,9 +66,9 @@ async function waitForProcess(
     onStdOut?: (data: string) => void,
     onStdError?: (data: string) => void
 ) {
-    const output: string[] = [];
+    const stdout: string[] = [];
     p.stdout.on("data", (data) => {
-        output.push(data.toString());
+        stdout.push(data.toString());
         if (onStdOut) {
             onStdOut(data.toString());
         }
@@ -77,16 +77,15 @@ async function waitForProcess(
     const stderr: string[] = [];
     p.stderr.on("data", (data) => {
         stderr.push(data.toString());
-        output.push(data.toString());
         if (onStdError) {
             onStdError(data.toString());
         }
     });
 
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
         p.on("close", (code) => {
             if (code === 0) {
-                resolve(output.join(""));
+                resolve();
             } else {
                 reject(new ProcessError(stderr.join("\n"), code));
             }
@@ -94,7 +93,69 @@ async function waitForProcess(
         p.on("error", (e) => new ProcessError(e.message, null));
     });
 
-    return output.join("");
+    return {stdout: stdout.join("\n"), stderr: stderr.join("\n")};
+}
+
+async function runBundleCommand(
+    bundleOpName: string,
+    cmd: string,
+    args: string[] = [],
+    workspaceFolder: Uri,
+    displayLogs: {
+        start: string | string[];
+        end: string;
+        error: string;
+    },
+    env: Record<string, string | undefined> = {},
+    logger?: logging.NamedLogger,
+    outputHandlers: {
+        onStdOut?: (data: string) => void;
+        onStdError?: (data: string) => void;
+    } = {}
+) {
+    const defaultOutputHandlers = {
+        onStdOut: (data: string) => {
+            logger?.info(data, {bundleOpName});
+        },
+        onStdError: (data: string) => {
+            logger?.warn(data, {bundleOpName});
+        },
+    };
+    const {onStdOut, onStdError} = {
+        ...defaultOutputHandlers,
+        ...outputHandlers,
+    };
+    const startLogs =
+        typeof displayLogs.start === "string"
+            ? [displayLogs.start]
+            : displayLogs.start;
+
+    startLogs.forEach((msg) => {
+        logger?.info(msg, {bundleOpName});
+    });
+
+    logger?.debug(quote([cmd, ...args]), {bundleOpName});
+
+    try {
+        const p = spawn(cmd, args, {
+            cwd: workspaceFolder.fsPath,
+            env: removeUndefinedKeys(env),
+            shell: true,
+        });
+
+        const {stdout, stderr} = await waitForProcess(p, onStdOut, onStdError);
+        logger?.info(displayLogs.end, {
+            bundleOpName,
+        });
+        logger?.debug("output", {stdout, stderr, bundleOpName});
+        return {stdout, stderr};
+    } catch (e: any) {
+        logger?.error(`${displayLogs.error} ${e.message ?? ""}`, {
+            ...e,
+            bundleOpName,
+        });
+        throw new ProcessError(e.message, e.code);
+    }
 }
 /**
  * Entrypoint for all wrapped CLI commands
@@ -105,6 +166,7 @@ async function waitForProcess(
 export class CliWrapper {
     private clusterId?: string;
     private _bundleVariableModel?: BundleVariableModel;
+    private pythonExtension?: MsPythonExtensionWrapper;
 
     constructor(
         private extensionContext: ExtensionContext,
@@ -114,6 +176,10 @@ export class CliWrapper {
 
     public set bundleVariableModel(model: BundleVariableModel) {
         this._bundleVariableModel = model;
+    }
+
+    public setPythonExtension(pythonExtension: MsPythonExtensionWrapper) {
+        this.pythonExtension = pythonExtension;
     }
 
     public setClusterId(clusterId?: string) {
@@ -285,6 +351,36 @@ export class CliWrapper {
         return stdout;
     }
 
+    async getBundleCommandEnvVars(
+        authProvider: AuthProvider,
+        configfilePath?: string
+    ) {
+        // Add python executable to PATH
+        const executable = await this.pythonExtension?.getPythonExecutable();
+        const cliEnvVars = EnvVarGenerators.getEnvVarsForCli(
+            this.extensionContext,
+            configfilePath
+        );
+        let shellPath = cliEnvVars.PATH;
+        if (executable) {
+            shellPath = `${path.dirname(executable)}${
+                path.delimiter
+            }${shellPath}`;
+        }
+
+        return removeUndefinedKeys({
+            ...cliEnvVars,
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...authProvider.toEnv(),
+            ...this.getLogginEnvVars(),
+            ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
+            /* eslint-disable @typescript-eslint/naming-convention */
+            DATABRICKS_CLUSTER_ID: this.clusterId,
+            PATH: shellPath,
+            /* eslint-enable @typescript-eslint/naming-convention */
+        });
+    }
+
     async bundleValidate(
         target: string,
         authProvider: AuthProvider,
@@ -292,47 +388,23 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
-        const cmd = [this.cliPath, "bundle", "validate", "--target", target];
-
-        logger?.info(
-            `Reading local bundle configuration for target ${target}...`,
-            {bundleOpName: "validate"}
+        return await runBundleCommand(
+            "validate",
+            this.cliPath,
+            ["bundle", "validate", "--target", target],
+            workspaceFolder,
+            {
+                start: `Reading local bundle configuration for target ${target}...`,
+                end: "Finished reading local bundle configuration.",
+                error: "Failed to read local bundle configuration.",
+            },
+            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            logger,
+            {
+                onStdOut: (data) => logger?.debug(data, {target}),
+                onStdError: (data) => logger?.debug(data, {target}),
+            }
         );
-        logger?.debug(quote(cmd));
-
-        try {
-            const {stdout, stderr} = await execFile(cmd[0], cmd.slice(1), {
-                cwd: workspaceFolder.fsPath,
-                env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(
-                        this.extensionContext,
-                        configfilePath
-                    ),
-                    ...EnvVarGenerators.getProxyEnvVars(),
-                    ...authProvider.toEnv(),
-                    ...this.getLogginEnvVars(),
-                    ...((await this._bundleVariableModel?.getEnvVariables()) ??
-                        {}),
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    DATABRICKS_CLUSTER_ID: this.clusterId,
-                },
-                shell: true,
-            });
-            logger?.info("Finished reading local bundle configuration.", {
-                bundleOpName: "validate",
-            });
-            logger?.debug(stdout + stderr);
-            return stdout;
-        } catch (e: any) {
-            logger?.error(
-                `Failed to read local bundle configuration. ${e.message ?? ""}`,
-                {
-                    ...e,
-                    bundleOpName: "validate",
-                }
-            );
-            throw new ProcessError(e.message, e.code);
-        }
     }
 
     async bundleSummarise(
@@ -342,57 +414,32 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
-        const cmd = [
+        return await runBundleCommand(
+            "summarize",
             this.cliPath,
-            "bundle",
-            "summary",
-            "--target",
-            target,
-            // Forces the CLI to regenerate local terraform state and pull the remote state.
-            // Regenerating terraform state is useful when we want to ensure that the provider version
-            // used in the local state matches the bundled version we supply with the extension.
-            "--force-pull",
-        ];
-
-        logger?.info(
-            `Refreshing bundle configuration for target ${target}...`,
-            {bundleOpName: "summarize"}
+            [
+                "bundle",
+                "summary",
+                "--target",
+                target,
+                // Forces the CLI to regenerate local terraform state and pull the remote state.
+                // Regenerating terraform state is useful when we want to ensure that the provider version
+                // used in the local state matches the bundled version we supply with the extension.
+                "--force-pull",
+            ],
+            workspaceFolder,
+            {
+                start: `Refreshing bundle configuration for target ${target}...`,
+                end: "Bundle configuration refreshed.",
+                error: "Failed to refresh bundle configuration.",
+            },
+            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            logger,
+            {
+                onStdOut: (data) => logger?.debug(data, {target}),
+                onStdError: (data) => logger?.debug(data, {target}),
+            }
         );
-        logger?.debug(quote(cmd));
-
-        try {
-            const {stdout, stderr} = await execFile(cmd[0], cmd.slice(1), {
-                cwd: workspaceFolder.fsPath,
-                env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(
-                        this.extensionContext,
-                        configfilePath
-                    ),
-                    ...EnvVarGenerators.getProxyEnvVars(),
-                    ...authProvider.toEnv(),
-                    ...((await this._bundleVariableModel?.getEnvVariables()) ??
-                        {}),
-                    ...this.getLogginEnvVars(),
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    DATABRICKS_CLUSTER_ID: this.clusterId,
-                },
-                shell: true,
-            });
-            logger?.info("Bundle configuration refreshed.", {
-                bundleOpName: "summarize",
-            });
-            logger?.debug(stdout + stderr);
-            return stdout;
-        } catch (e: any) {
-            logger?.error(
-                `Failed to refresh bundle configuration. ${e.message ?? ""}`,
-                {
-                    ...e,
-                    bundleOpName: "summarize",
-                }
-            );
-            throw new ProcessError(e.message, e.code);
-        }
     }
 
     getBundleInitEnvVars(authProvider: AuthProvider) {
@@ -426,7 +473,9 @@ export class CliWrapper {
                 "--config-file",
                 initConfigFilePath,
             ],
-            {env: this.getBundleInitEnvVars(authProvider)}
+            {
+                env: this.getBundleInitEnvVars(authProvider),
+            }
         );
     }
 
@@ -434,83 +483,50 @@ export class CliWrapper {
         target: string,
         authProvider: AuthProvider,
         workspaceFolder: Uri,
-        pythonExtension: MsPythonExtensionWrapper,
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
-        const cmd = [this.cliPath, "bundle", "deploy", "--target", target];
-
         await commands.executeCommand("databricks.bundle.showLogs");
-        logger?.info(`Deploying the bundle for target ${target}...`, {
-            bundleOpName: "deploy",
-        });
-        if (this.clusterId) {
-            logger?.info(`DATABRICKS_CLUSTER_ID=${this.clusterId}`, {
-                bundleOpName: "deploy",
-            });
-        }
-        logger?.info(quote(cmd), {
-            bundleOpName: "deploy",
-        });
-
-        // Add python executable to PATH
-        const executable = await pythonExtension.getPythonExecutable();
-        const cliEnvVars = EnvVarGenerators.getEnvVarsForCli(
-            this.extensionContext,
-            configfilePath
-        );
-        let shellPath = cliEnvVars.PATH;
-        if (executable) {
-            shellPath = `${path.dirname(executable)}${
-                path.delimiter
-            }${shellPath}`;
-        }
-        const p = spawn(cmd[0], cmd.slice(1), {
-            cwd: workspaceFolder.fsPath,
-            env: {
-                ...cliEnvVars,
-                ...EnvVarGenerators.getProxyEnvVars(),
-                ...authProvider.toEnv(),
-                ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
-                ...this.getLogginEnvVars(),
-                /* eslint-disable @typescript-eslint/naming-convention */
-                PATH: shellPath,
-                DATABRICKS_CLUSTER_ID: this.clusterId,
-                /* eslint-enable @typescript-eslint/naming-convention */
+        return await runBundleCommand(
+            "deploy",
+            this.cliPath,
+            ["bundle", "deploy", "--target", target],
+            workspaceFolder,
+            {
+                start: [`Deploying the bundle for target ${target}...`].concat(
+                    this.clusterId
+                        ? [`DATABRICKS_CLUSTER_ID=${this.clusterId}`]
+                        : []
+                ),
+                end: "Bundle deployed successfully.",
+                error: "Failed to deploy the bundle.",
             },
-            shell: true,
-        });
+            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            logger
+        );
+    }
 
-        try {
-            const output = await waitForProcess(
-                p,
-                (message) => {
-                    logger?.info(message, {
-                        outputStream: "stdout",
-                        bundleOpName: "deploy",
-                    });
-                },
-                (message) => {
-                    logger?.info(message, {
-                        outputStream: "stderr",
-                        bundleOpName: "deploy",
-                    });
-                }
-            );
-            logger?.info("Bundle deployed successfully", {
-                bundleOpName: "deploy",
-            });
-            logger?.debug(output, {
-                bundleOpName: "deploy",
-            });
-            return output;
-        } catch (e: any) {
-            logger?.error("Failed to deploy the bundle", {
-                ...e,
-                bundleOpName: "deploy",
-            });
-            throw e;
-        }
+    async bundleDestroy(
+        target: string,
+        authProvider: AuthProvider,
+        workspaceFolder: Uri,
+        configfilePath?: string,
+        logger?: logging.NamedLogger
+    ) {
+        await commands.executeCommand("databricks.bundle.showLogs");
+        return await runBundleCommand(
+            "destroy",
+            this.cliPath,
+            ["bundle", "destroy", "--target", target, "--auto-approve"],
+            workspaceFolder,
+            {
+                start: `Destroying the bundle for target ${target}...`,
+                end: "Bundle destroyed successfully.",
+                error: "Failed to destroy the bundle.",
+            },
+            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            logger
+        );
     }
 
     async getBundleRunCommand(

@@ -9,7 +9,6 @@ import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
-import {MsPythonExtensionWrapper} from "../../language/MsPythonExtensionWrapper";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export type BundleResourceModifiedStatus = "created" | "deleted" | "updated";
@@ -49,7 +48,6 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     constructor(
         private readonly cli: CliWrapper,
         private readonly workspaceFolder: Uri,
-        private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly workspaceConfigs: WorkspaceConfigs
     ) {
         super();
@@ -73,7 +71,24 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.target,
             this.authProvider,
             this.workspaceFolder,
-            this.pythonExtension,
+            this.workspaceConfigs.databrickscfgLocation,
+            this.logger
+        );
+    }
+
+    @Mutex.synchronise("mutex")
+    public async destroy() {
+        if (this.target === undefined) {
+            throw new Error("Target is undefined");
+        }
+        if (this.authProvider === undefined) {
+            throw new Error("No authentication method is set");
+        }
+
+        await this.cli.bundleDestroy(
+            this.target,
+            this.authProvider,
+            this.workspaceFolder,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger
         );
@@ -118,7 +133,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             return {};
         }
 
-        const output = await this.cli.bundleSummarise(
+        const {stdout} = await this.cli.bundleSummarise(
             this.target,
             this.authProvider,
             this.workspaceFolder,
@@ -126,10 +141,10 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.logger
         );
 
-        if (output === "" || output === undefined) {
+        if (stdout === "" || stdout === undefined) {
             return {};
         }
-        return JSON.parse(output);
+        return JSON.parse(stdout);
     }
 
     /**

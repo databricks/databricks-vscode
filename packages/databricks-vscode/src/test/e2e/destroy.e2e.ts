@@ -6,7 +6,7 @@ import {
     waitForLogin,
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
-import {CustomTreeSection, Workbench} from "wdio-vscode-service";
+import {Workbench} from "wdio-vscode-service";
 import {
     getBasicBundleConfig,
     getSimpleJobsResource,
@@ -15,17 +15,16 @@ import {
 import path from "node:path";
 import fs from "fs/promises";
 import {BundleSchema} from "../../bundle/types.ts";
-import {getJobViewItem} from "./utils/dabsExplorerUtils.ts";
 import {fileURLToPath} from "url";
+import {WorkspaceClient} from "@databricks/databricks-sdk";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 /* eslint-enable @typescript-eslint/naming-convention */
 
-describe("Deploy and run job", async function () {
+describe("Deploy and destroy", async function () {
     let workbench: Workbench;
-    let resourceExplorerView: CustomTreeSection;
     let vscodeWorkspaceRoot: string;
     let jobName: string;
     let clusterId: string;
@@ -40,7 +39,7 @@ describe("Deploy and run job", async function () {
          *    └── notebook.ipynb
          */
 
-        const projectName = getUniqueResourceName("deploy_and_run_job");
+        const projectName = getUniqueResourceName("deploy_and_destroy_bundle");
         const notebookTaskName = getUniqueResourceName("notebook_task");
         /* eslint-disable @typescript-eslint/naming-convention */
         const jobDef = getSimpleJobsResource({
@@ -119,23 +118,25 @@ describe("Deploy and run job", async function () {
         const section = await getViewSection("BUNDLE RESOURCE EXPLORER");
         assert(section);
         await waitForTreeItems(section, 20_000);
-        resourceExplorerView = section as CustomTreeSection;
     });
 
     it("should deploy and run the current job", async () => {
+        const wsClient = new WorkspaceClient({
+            configFile: process.env.DATABRICKS_CONFIG_FILE,
+            profile: "DEFAULT",
+        });
+
+        const prefix = `[dev ${(await wsClient.currentUser.me()).userName
+            ?.split("@")[0]
+            .replaceAll(/[^a-zA-Z0-9]/g, "_")}]`;
+
         const outputView = await workbench.getBottomBar().openOutputView();
         await outputView.selectChannel("Databricks Bundle Logs");
         await outputView.clearText();
 
-        const jobItem = await getJobViewItem(resourceExplorerView, jobName);
-        assert(jobItem, `Job ${jobName} not found in resource explorer`);
-
-        const deployAndRunButton = await jobItem.getActionButton(
-            "Deploy the bundle and run the resource"
-        );
-        assert(deployAndRunButton, "Deploy and run button not found");
-        await deployAndRunButton.elem.click();
-
+        await browser.executeWorkbench(async (vscode) => {
+            await vscode.commands.executeCommand("databricks.bundle.deploy");
+        });
         console.log("Waiting for deployment to finish");
         // Wait for the deployment to finish
         await browser.waitUntil(
@@ -177,24 +178,50 @@ describe("Deploy and run job", async function () {
             }
         );
 
-        console.log("Waiting for run to finish");
+        let found = false;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const j of wsClient.jobs.list({
+            name: `${prefix} ${jobName}`,
+        })) {
+            found = true;
+        }
+        assert(found, `Job ${jobName} not found in workspace`);
+
+        await browser.executeWorkbench(async (vscode) => {
+            await vscode.commands.executeCommand("databricks.bundle.destroy");
+        });
+        console.log("Waiting for bundle to destroy");
         // Wait for status to reach success
         await browser.waitUntil(
             async () => {
-                const jobItem = await getJobViewItem(
-                    resourceExplorerView,
-                    jobName
-                );
-                if (jobItem === undefined) {
+                try {
+                    await browser.executeWorkbench(async (vscode) => {
+                        await vscode.commands.executeCommand(
+                            "workbench.panel.output.focus"
+                        );
+                    });
+                    const outputView = await workbench
+                        .getBottomBar()
+                        .openOutputView();
+
+                    if (
+                        (await outputView.getCurrentChannel()) !==
+                        "Databricks Bundle Logs"
+                    ) {
+                        await outputView.selectChannel(
+                            "Databricks Bundle Logs"
+                        );
+                    }
+
+                    const logs = (await outputView.getText()).join("");
+                    console.log(logs);
+                    return (
+                        logs.includes("Bundle destroyed successfully") &&
+                        logs.includes("Bundle configuration refreshed")
+                    );
+                } catch (e) {
                     return false;
                 }
-
-                const runStatusItem = await jobItem.findChildItem("Run Status");
-                if (runStatusItem === undefined) {
-                    return false;
-                }
-
-                return (await runStatusItem.getDescription()) === "Success";
             },
             {
                 timeout: 120_000,
@@ -203,5 +230,14 @@ describe("Deploy and run job", async function () {
                     "The run status didn't reach success within 120 seconds",
             }
         );
+
+        found = false;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const j of wsClient.jobs.list({
+            name: `${prefix} ${jobName}`,
+        })) {
+            found = true;
+        }
+        assert(!found, `Job ${jobName} still found in workspace`);
     });
 });
