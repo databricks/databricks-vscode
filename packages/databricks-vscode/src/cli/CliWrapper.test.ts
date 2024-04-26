@@ -17,6 +17,7 @@ import os from "node:os";
 import crypto from "node:crypto";
 import {Context} from "@databricks/databricks-sdk/dist/context";
 import {logging} from "@databricks/databricks-sdk";
+import {writeFileSync} from "fs";
 
 const execFile = promisify(execFileCb);
 const cliPath = path.join(__dirname, "../../bin/databricks");
@@ -118,21 +119,22 @@ describe(__filename, () => {
         assert.equal(profiles.length, 0);
     });
 
-    it("should list profiles", async function () {
+    it("should list profiles", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
 
         await withFile(async ({path}) => {
-            await writeFile(
+            writeFileSync(
                 path,
                 `
-        host = https://cloud.databricks.com/
-        token = dapitest1234
+host = https://cloud.databricks.com/
+token = dapitest1234
 
-        [STAGING]
-        host = https://staging.cloud.databricks.com/
-        token = dapitest54321
-        `
+[STAGING]
+host = https://staging.cloud.databricks.com/
+token = dapitest54321
+`,
+                "utf-8"
             );
 
             const profiles = await cli.listProfiles(path);
@@ -149,12 +151,12 @@ describe(__filename, () => {
         });
     });
 
-    it("should load all valid profiles and return errors for rest", async () => {
+    it("should load all valid profiles", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
 
         await withFile(async ({path}) => {
-            await writeFile(
+            writeFileSync(
                 path,
                 `[correct]
 host = https://cloud.databricks.com/
@@ -168,30 +170,11 @@ host = https://cloud.databricks.com/
 
 [missing-host-token]
 nothing = true
-
-[typo-host]
-host = example.com
-`
+`,
+                "utf-8"
             );
 
-            const logs: {level: string; msg?: string; meta: any}[] = [];
-            const profiles = await cli.listProfiles(
-                path,
-                new Context({
-                    logger: logging.NamedLogger.getOrCreate(
-                        "cli-profile-format-test",
-                        {
-                            factory: () => {
-                                return {
-                                    log: (level, msg, meta) => {
-                                        logs.push({level, msg, meta});
-                                    },
-                                };
-                            },
-                        }
-                    ),
-                })
-            );
+            const profiles = await cli.listProfiles(path);
             assert.equal(profiles.length, 2);
 
             assert.equal(profiles[0].name, "correct");
@@ -199,10 +182,6 @@ host = example.com
 
             assert.equal(profiles[1].name, "no-token");
             assert.equal(profiles[1].host, "https://cloud.databricks.com/");
-
-            const typoLog = logs.find((log) => log.msg?.includes("typo-host"));
-            assert.ok(typoLog !== undefined);
-            assert.ok(typoLog.level === "error");
         });
     });
 

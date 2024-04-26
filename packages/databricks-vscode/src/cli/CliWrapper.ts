@@ -138,7 +138,6 @@ export class CliWrapper {
         profiles = profiles.filter((p: any) => !p.account_id);
 
         const result = [];
-
         for (const profile of profiles) {
             try {
                 result.push({
