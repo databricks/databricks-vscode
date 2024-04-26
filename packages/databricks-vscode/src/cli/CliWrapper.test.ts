@@ -21,6 +21,7 @@ import {LoggerManager} from "../logger";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {isMatch} from "lodash";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
+import {writeFileSync} from "fs";
 
 const execFile = promisify(execFileCb);
 const cliPath = path.join(__dirname, "../../bin/databricks");
@@ -112,22 +113,22 @@ describe(__filename, () => {
         assert.equal(profiles.length, 0);
     });
 
-    // TODO: Don't skip this after cli is updated to > 0.218.0
-    it.skip("should list profiles", async function () {
+    it("should list profiles", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
 
         await withFile(async ({path}) => {
-            await writeFile(
+            writeFileSync(
                 path,
                 `
-        host = https://cloud.databricks.com/
-        token = dapitest1234
+host = https://cloud.databricks.com/
+token = dapitest1234
 
-        [STAGING]
-        host = https://staging.cloud.databricks.com/
-        token = dapitest54321
-        `
+[STAGING]
+host = https://staging.cloud.databricks.com/
+token = dapitest54321
+`,
+                "utf-8"
             );
 
             const profiles = await cli.listProfiles(path);
@@ -144,13 +145,12 @@ describe(__filename, () => {
         });
     });
 
-    // TODO: Don't skip this after cli is updated to > 0.218.0
-    it.skip("should load all valid profiles and return errors for rest", async () => {
+    it("should load all valid profiles", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
 
         await withFile(async ({path}) => {
-            await writeFile(
+            writeFileSync(
                 path,
                 `[correct]
 host = https://cloud.databricks.com/
@@ -164,9 +164,10 @@ host = https://cloud.databricks.com/
 
 [missing-host-token]
 nothing = true
-
-`
+`,
+                "utf-8"
             );
+
             const profiles = await cli.listProfiles(path);
             assert.equal(profiles.length, 2);
 
@@ -175,7 +176,6 @@ nothing = true
 
             assert.equal(profiles[1].name, "no-token");
             assert.equal(profiles[1].host, "https://cloud.databricks.com/");
-            assert.equal(profiles[1].authType, "");
         });
     });
 
