@@ -90,27 +90,6 @@
                 "icon": "$(debug-disconnect)"
             },
             {
-                "command": "databricks.sync.start",
-                "title": "Start synchronization",
-                "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(debug-start)"
-            },
-            {
-                "command": "databricks.sync.startFull",
-                "title": "Start synchronization (full sync)",
-                "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(sync)"
-            },
-            {
-                "command": "databricks.sync.stop",
-                "title": "Stop synchronization",
-                "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
-                "icon": "$(stop-circle)"
-            },
-            {
                 "command": "databricks.cluster.filterByAll",
                 "title": "All",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn"
@@ -190,14 +169,14 @@
                 "command": "databricks.wsfs.refresh",
                 "title": "Refresh workspace filesystem view",
                 "icon": "$(refresh)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace && databricks.feature.views.workspace",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.wsfs.createFolder",
                 "title": "Create Folder",
                 "icon": "$(new-folder)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.feature.views.workspace",
                 "category": "Databricks"
             },
             {
@@ -219,7 +198,7 @@
             {
                 "command": "databricks.connection.bundle.selectTarget",
                 "icon": "$(gear)",
-                "title": "Select a Databricks Asset Bundle target.",
+                "title": "Select a Databricks Asset Bundle target",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
@@ -260,7 +239,7 @@
             },
             {
                 "command": "databricks.run.dbconnect.debug",
-                "title": "Databricks Connect: Debug current file",
+                "title": "Debug current file with Databricks Connect",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks",
                 "icon": {
@@ -270,7 +249,7 @@
             },
             {
                 "command": "databricks.run.dbconnect.run",
-                "title": "Databricks Connect: Run current file",
+                "title": "Run current file with Databricks Connect",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn",
                 "category": "Databricks",
                 "icon": {
@@ -320,7 +299,7 @@
             },
             {
                 "command": "databricks.bundle.variable.reset",
-                "title": "Reset to default values",
+                "title": "Reset bundle variables to default values",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks",
                 "icon": "$(discard)"
@@ -593,6 +572,18 @@
                 },
                 {
                     "command": "databricks.call",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRun",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.cancelRun",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.utils.copy",
                     "when": "false"
                 }
             ],
