@@ -484,13 +484,20 @@ export class CliWrapper {
         authProvider: AuthProvider,
         workspaceFolder: Uri,
         configfilePath?: string,
-        logger?: logging.NamedLogger
+        logger?: logging.NamedLogger,
+        force = false
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
             "deploy",
             this.cliPath,
-            ["bundle", "deploy", "--target", target],
+            [
+                "bundle",
+                "deploy",
+                "--target",
+                target,
+                ...(force ? ["--force-lock"] : []),
+            ],
             workspaceFolder,
             {
                 start: [`Deploying the bundle for target ${target}...`].concat(
@@ -511,13 +518,21 @@ export class CliWrapper {
         authProvider: AuthProvider,
         workspaceFolder: Uri,
         configfilePath?: string,
-        logger?: logging.NamedLogger
+        logger?: logging.NamedLogger,
+        force = false
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
             "destroy",
             this.cliPath,
-            ["bundle", "destroy", "--target", target, "--auto-approve"],
+            [
+                "bundle",
+                "destroy",
+                "--target",
+                target,
+                "--auto-approve",
+                ...(force ? ["--force-lock"] : []),
+            ],
             workspaceFolder,
             {
                 start: `Destroying the bundle for target ${target}...`,

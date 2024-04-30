@@ -310,6 +310,18 @@
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks",
                 "icon": "$(trash)"
+            },
+            {
+                "command": "databricks.bundle.forceDeploy",
+                "title": "Force deploy bundle",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
+            },
+            {
+                "command": "databricks.bundle.forceDestroy",
+                "title": "Force destroy bundle",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
             }
         ],
         "viewsContainers": {
@@ -428,6 +440,14 @@
                     "command": "databricks.bundle.destroy",
                     "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.forceDeploy",
+                    "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle"
+                },
+                {
+                    "command": "databricks.bundle.forceDestroy",
+                    "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle"
                 },
                 {
                     "command": "databricks.bundle.variable.openFile",

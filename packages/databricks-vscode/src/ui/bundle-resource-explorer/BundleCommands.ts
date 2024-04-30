@@ -85,13 +85,13 @@ export class BundleCommands implements Disposable {
     private deployMutex = new Mutex();
 
     @Mutex.synchronise("deployMutex")
-    async deploy() {
+    async deploy(force = false) {
         try {
             this.whenContext.setDeploymentState("deploying");
             await window.withProgress(
                 {location: ProgressLocation.Notification, cancellable: false},
                 async () => {
-                    await this.bundleRemoteStateModel.deploy();
+                    await this.bundleRemoteStateModel.deploy(force);
                 }
             );
 
@@ -112,6 +112,11 @@ export class BundleCommands implements Disposable {
     @onError({log: true, popup: false})
     public async deployCommand() {
         await this.deploy();
+    }
+
+    @onError({log: true, popup: false})
+    public async forceDeployCommand() {
+        await this.deploy(true);
     }
 
     @onError({popup: {prefix: "Error running resource."}})
@@ -147,8 +152,7 @@ export class BundleCommands implements Disposable {
         this.bundleRunStatusManager.cancel(treeNode.resourceKey);
     }
 
-    @onError({log: true, popup: false})
-    async destroy() {
+    async destroy(force = false) {
         if ((await this.configModel.get("mode")) !== "development") {
             const confirm = await window.showErrorMessage(
                 "Are you sure you want to destroy this bundle and all resources associated with it?",
@@ -167,7 +171,7 @@ export class BundleCommands implements Disposable {
             await window.withProgress(
                 {location: ProgressLocation.Notification, cancellable: false},
                 async () => {
-                    await this.bundleRemoteStateModel.destroy();
+                    await this.bundleRemoteStateModel.destroy(force);
                 }
             );
 
@@ -183,6 +187,16 @@ export class BundleCommands implements Disposable {
         } finally {
             this.whenContext.setDeploymentState("idle");
         }
+    }
+
+    @onError({log: true, popup: false})
+    public async destroyCommand() {
+        await this.destroy();
+    }
+
+    @onError({log: true, popup: false})
+    public async forceDestroyCommand() {
+        await this.destroy(true);
     }
 
     dispose() {
