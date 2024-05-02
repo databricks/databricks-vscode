@@ -183,6 +183,16 @@ export async function activate(
         `${path.delimiter}${context.asAbsolutePath("./bin")}`
     );
 
+    // Export CLI_UPSTREAM vars to the terminal to see if extension users use the CLI directly
+    context.environmentVariableCollection.replace(
+        "DATABRICKS_CLI_UPSTREAM",
+        "databricks-vscode-terminal"
+    );
+    context.environmentVariableCollection.replace(
+        "DATABRICKS_CLI_UPSTREAM_VERSION",
+        packageMetadata.version
+    );
+
     // We always use bundled terraform and databricks provider.
     // Updating environment collection means that the variables will be set in all terminals.
     // If users use different CLI version in their terminal it will only pick the variables if
