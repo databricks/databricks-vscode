@@ -1,3 +1,9 @@
+# Release: v2.1.1-preview
+
+## packages/databricks-vscode-types
+
+## (2024-05-02)
+
 # Release: v2.1.0-preview
 
 ## packages/databricks-vscode-types

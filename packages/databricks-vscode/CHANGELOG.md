@@ -1,3 +1,15 @@
+# Release: v2.1.1-preview
+
+## packages/databricks-vscode
+
+## (2024-05-02)
+
+-   Add support for `--force-lock` for deploy and destroy (#1206) ([1047e97](https://github.com/databricks/databricks-vscode/commit/1047e97)), closes [#1206](https://github.com/databricks/databricks-vscode/issues/1206)
+-   Add support for `bundle destroy` command (#1205) ([a342738](https://github.com/databricks/databricks-vscode/commit/a342738)), closes [#1205](https://github.com/databricks/databricks-vscode/issues/1205)
+-   Cleanup commands (#1204) ([ac79ea0](https://github.com/databricks/databricks-vscode/commit/ac79ea0)), closes [#1204](https://github.com/databricks/databricks-vscode/issues/1204)
+-   Update CLI to 0.219.0 (#1212) ([53d0f2c](https://github.com/databricks/databricks-vscode/commit/53d0f2c)), closes [#1212](https://github.com/databricks/databricks-vscode/issues/1212)
+-   Update Databricks CLI to v0.218.1 (#1208) ([d3fb173](https://github.com/databricks/databricks-vscode/commit/d3fb173)), closes [#1208](https://github.com/databricks/databricks-vscode/issues/1208)
+
 # Release: v2.1.0-preview
 
 ## packages/databricks-vscode
