@@ -1,3 +1,15 @@
+# Release: v2.1.1-preview
+
+## packages/databricks-vscode
+
+## (2024-05-02)
+
+-   Add support for `--force-lock` for deploy and destroy
+-   Add support for `bundle destroy` command
+-   Cleanup extension commands
+-   Export `DATABRICKS_CLI_UPSTREAM` to the terminals
+-   Update CLI to 0.219.0
+
 # Release: v2.1.0-preview
 
 ## packages/databricks-vscode
