@@ -9,7 +9,6 @@
 -   Cleanup extension commands
 -   Update CLI to 0.219.0
 
-
 # Release: v2.1.0-preview
 
 ## packages/databricks-vscode
