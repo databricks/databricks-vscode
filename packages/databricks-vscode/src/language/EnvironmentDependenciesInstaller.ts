@@ -1,4 +1,4 @@
-import {EventEmitter, window} from "vscode";
+import {EventEmitter, OutputChannel, window} from "vscode";
 
 import {Disposable} from "vscode";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
@@ -9,7 +9,18 @@ export class EnvironmentDependenciesInstaller implements Disposable {
     private onDidInstallAttemptEmitter = new EventEmitter<void>();
     public onDidTryInstallation = this.onDidInstallAttemptEmitter.event;
 
+    private _outputChannel?: OutputChannel;
+
     constructor(private readonly pythonExtension: MsPythonExtensionWrapper) {}
+
+    get outputChannel() {
+        if (!this._outputChannel) {
+            this._outputChannel =
+                window.createOutputChannel("Databricks Connect");
+            this.disposables.push(this._outputChannel);
+        }
+        return this._outputChannel;
+    }
 
     dispose() {
         this.disposables.forEach((i) => i.dispose());
@@ -18,20 +29,26 @@ export class EnvironmentDependenciesInstaller implements Disposable {
     async install(version?: string) {
         version = version ?? DATABRICKS_CONNECT_VERSION;
         try {
+            this.outputChannel.clear();
+            this.outputChannel.show();
             await this.pythonExtension.uninstallPackageFromEnvironment(
-                "pyspark"
+                "pyspark",
+                this.outputChannel
             );
             await this.pythonExtension.uninstallPackageFromEnvironment(
-                "databricks-connect"
+                "databricks-connect",
+                this.outputChannel
             );
             await this.pythonExtension.installPackageInEnvironment(
                 "databricks-connect",
-                version
+                version,
+                this.outputChannel
             );
         } catch (e: unknown) {
             if (e instanceof Error) {
                 window.showErrorMessage(e.message);
             }
+            this.outputChannel.show();
         }
         this.onDidInstallAttemptEmitter.fire();
     }
