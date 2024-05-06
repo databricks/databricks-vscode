@@ -4,8 +4,8 @@
 
 ## (2024-05-06)
 
--   Bring back `login` public API (#1217) ([e224333](https://github.com/databricks/databricks-vscode/commit/e224333)), closes [#1217](https://github.com/databricks/databricks-vscode/issues/1217)
--   Install dbconnect in a child process (#1216) ([151e4e5](https://github.com/databricks/databricks-vscode/commit/151e4e5)), closes [#1216](https://github.com/databricks/databricks-vscode/issues/1216)
+-   Bring back `login` public API
+-   Install dbconnect in a child process
 
 # Release: v2.1.1-preview
 
