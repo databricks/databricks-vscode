@@ -1,3 +1,11 @@
+# Release: v2.1.2-preview
+
+## packages/databricks-vscode-types
+
+## (2024-05-06)
+
+-   Bring back `login` public API (#1217) ([e224333](https://github.com/databricks/databricks-vscode/commit/e224333)), closes [#1217](https://github.com/databricks/databricks-vscode/issues/1217)
+
 # Release: v2.1.1-preview
 
 ## packages/databricks-vscode-types
