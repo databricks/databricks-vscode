@@ -23,7 +23,11 @@ export enum Events {
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type AutoLoginSource = "init" | "hostChange" | "targetChange";
-export type ManualLoginSource = "authTypeSwitch" | "authTypeLogin" | "command";
+export type ManualLoginSource =
+    | "authTypeSwitch"
+    | "authTypeLogin"
+    | "command"
+    | "api";
 export type BundleRunResourceType = "pipelines" | "jobs";
 
 /** Documentation about all of the properties and metrics of the event. */

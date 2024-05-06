@@ -12,6 +12,7 @@ export interface PublicApi {
     connectionManager: {
         onDidChangeState: Event<ConnectionState>;
 
+        login(interactive?: boolean, force?: boolean): Promise<void>;
         waitForConnect(): Promise<void>;
 
         get state(): ConnectionState;
