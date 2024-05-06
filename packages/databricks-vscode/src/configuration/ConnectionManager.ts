@@ -23,6 +23,7 @@ import {Mutex} from "../locking";
 import {MetadataService} from "./auth/MetadataService";
 import {Events, Telemetry} from "../telemetry";
 import {AutoLoginSource, ManualLoginSource} from "../telemetry/constants";
+import {Barrier} from "../locking/Barrier";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -58,6 +59,8 @@ export class ConnectionManager implements Disposable {
     public readonly onDidChangeCluster = this.onDidChangeClusterEmitter.event;
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
+
+    private readonly initialization = new Barrier();
 
     constructor(
         private cli: CliWrapper,
@@ -169,6 +172,7 @@ export class ConnectionManager implements Disposable {
                     this.loginWithSavedAuth.bind(this, "targetChange")
                 )
             );
+            this.initialization.resolve();
         }
     }
 
@@ -203,6 +207,14 @@ export class ConnectionManager implements Disposable {
 
     get authType(): SdkAuthType | undefined {
         return this.apiClient?.config.authType;
+    }
+
+    // Only used through public API
+    public async login(interactive?: boolean, force?: boolean) {
+        await this.initialization.promise;
+        if (this.state !== "CONNECTED" || force) {
+            await this.configureLogin("api");
+        }
     }
 
     private async loginWithSavedAuth(source: AutoLoginSource) {
