@@ -1,3 +1,12 @@
+# Release: v2.1.2-preview
+
+## packages/databricks-vscode
+
+## (2024-05-06)
+
+-   Bring back `login` public API
+-   Install dbconnect in a child process
+
 # Release: v2.1.1-preview
 
 ## packages/databricks-vscode
