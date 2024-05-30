@@ -1,8 +1,11 @@
 import os
+import sys
+import logging
+from runpy import run_path
 
 # Load environment variables from .databricks/.databricks.env
 # We only look for the folder in the current working directory
-# since for all commands laucnhed from 
+# since for all commands laucnhed from root workspace
 def load_env_file_from_cwd(path: str):
     if not os.path.isdir(path):
         return
@@ -17,17 +20,29 @@ def load_env_file_from_cwd(path: str):
             os.environ[key] = value
     return
 
-load_env_file_from_cwd(os.getcwd())
+
+script = sys.argv[1]
+sys.argv = sys.argv[1:]
+logging.debug(f"Running ${script}")
+logging.debug(f"args: ${sys.argv[1:]}")
+
+try: 
+    cur_dir = os.path.dirname(script)
+except Exception as e:
+    logging.error(f"Failed to get current directory: {e}")
+    cur_dir = os.getcwd()
+
+root_dir = os.getcwd()
+load_env_file_from_cwd(root_dir)
 
 log_level = os.environ.get("DATABRICKS_VSCODE_LOG_LEVEL")
 log_level = log_level if log_level is not None else "WARN"
 
-import logging
 logging.basicConfig(level=log_level)
 
 db_globals = {}
 
-from databricks.sdk.runtime import dbutils
+from databricks.sdk.runtime import dbutils  # noqa: E402
 db_globals['dbutils'] = dbutils
 
 # "table", "sc", "sqlContext" are missing
@@ -50,12 +65,7 @@ def getArgument(*args, **kwargs):
 
 db_globals['getArgument'] = getArgument
 
-from runpy import run_path
-import sys
-
-script = sys.argv[1]
-sys.argv = sys.argv[1:]
-logging.debug(f"Running ${script}")
-logging.debug(f"args: ${sys.argv[1:]}")
+sys.path.insert(0, root_dir)
+sys.path.insert(0, cur_dir)
 
 run_path(script, init_globals=db_globals, run_name="__main__")
