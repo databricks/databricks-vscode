@@ -1,4 +1,4 @@
-import {Uri} from "vscode";
+import {Uri, WorkspaceFolder} from "vscode";
 import {BundleFileSet, getAbsoluteGlobPath} from "./BundleFileSet";
 import {expect} from "chai";
 import path from "path";
@@ -6,6 +6,8 @@ import * as tmp from "tmp-promise";
 import * as fs from "fs/promises";
 import {BundleSchema} from "./types";
 import * as yaml from "yaml";
+import {instance, mock, when} from "ts-mockito";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 describe(__filename, async function () {
     let tmpdir: tmp.DirectoryResult;
@@ -17,6 +19,16 @@ describe(__filename, async function () {
     afterEach(async () => {
         await tmpdir.cleanup();
     });
+
+    function getWorkspaceFolderManagerMock() {
+        const mockWorkspaceFolderManager = mock<WorkspaceFolderManager>();
+        const mockWorkspaceFolder = mock<WorkspaceFolder>();
+        when(mockWorkspaceFolder.uri).thenReturn(Uri.file(tmpdir.path));
+        when(mockWorkspaceFolderManager.activeWorkspaceFolder).thenReturn(
+            instance(mockWorkspaceFolder)
+        );
+        return instance(mockWorkspaceFolderManager);
+    }
 
     it("should return the correct absolute glob path", () => {
         const tmpdirUri = Uri.file(tmpdir.path);
@@ -34,7 +46,9 @@ describe(__filename, async function () {
 
     it("should find the correct root bundle yaml", async () => {
         const tmpdirUri = Uri.file(tmpdir.path);
-        const bundleFileSet = new BundleFileSet(tmpdirUri);
+        const bundleFileSet = new BundleFileSet(
+            getWorkspaceFolderManagerMock()
+        );
 
         expect(await bundleFileSet.getRootFile()).to.be.undefined;
 
@@ -47,7 +61,9 @@ describe(__filename, async function () {
 
     it("should return undefined if more than one root bundle yaml is found", async () => {
         const tmpdirUri = Uri.file(tmpdir.path);
-        const bundleFileSet = new BundleFileSet(tmpdirUri);
+        const bundleFileSet = new BundleFileSet(
+            getWorkspaceFolderManagerMock()
+        );
 
         await fs.writeFile(path.join(tmpdirUri.fsPath, "bundle.yaml"), "");
         await fs.writeFile(path.join(tmpdirUri.fsPath, "databricks.yaml"), "");
@@ -80,7 +96,9 @@ describe(__filename, async function () {
 
         it("should return correct included files", async () => {
             const tmpdirUri = Uri.file(tmpdir.path);
-            const bundleFileSet = new BundleFileSet(tmpdirUri);
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock()
+            );
 
             expect(await bundleFileSet.getIncludedFilesGlob()).to.equal(
                 `{included.yaml,${path.join("includes", "**", "*.yaml")}}`
@@ -102,7 +120,9 @@ describe(__filename, async function () {
 
         it("should return all bundle files", async () => {
             const tmpdirUri = Uri.file(tmpdir.path);
-            const bundleFileSet = new BundleFileSet(tmpdirUri);
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock()
+            );
 
             const actual = (await bundleFileSet.allFiles()).map(
                 (v) => v.fsPath
@@ -117,7 +137,9 @@ describe(__filename, async function () {
 
         it("isRootBundleFile should return true only for root bundle file", async () => {
             const tmpdirUri = Uri.file(tmpdir.path);
-            const bundleFileSet = new BundleFileSet(tmpdirUri);
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock()
+            );
 
             const possibleRoots = [
                 "bundle.yaml",
@@ -143,7 +165,9 @@ describe(__filename, async function () {
 
         it("isIncludedBundleFile should return true only for included files", async () => {
             const tmpdirUri = Uri.file(tmpdir.path);
-            const bundleFileSet = new BundleFileSet(tmpdirUri);
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock()
+            );
 
             expect(
                 await bundleFileSet.isIncludedBundleFile(
@@ -168,7 +192,9 @@ describe(__filename, async function () {
 
         it("isBundleFile should return true only for bundle files", async () => {
             const tmpdirUri = Uri.file(tmpdir.path);
-            const bundleFileSet = new BundleFileSet(tmpdirUri);
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock()
+            );
 
             const possibleBundleFiles = [
                 "bundle.yaml",

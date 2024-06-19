@@ -8,6 +8,7 @@ import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
 import {Loggers} from "../../logger";
 import {onError} from "../../utils/onErrorDecorator";
 import {BundleValidateModel} from "./BundleValidateModel";
+import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
 export type BundleVariable = Required<BundleSchema>["variables"][string] & {
     valueInTarget?: string;
@@ -23,10 +24,15 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
     protected mutex: Mutex = new Mutex();
     private target: string | undefined;
     private overrideFileWatcher: FileSystemWatcher | undefined;
+
+    get workspaceRoot() {
+        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    }
+
     constructor(
         private readonly configModel: ConfigModel,
         private readonly bundleValidateModel: BundleValidateModel,
-        private readonly workspaceRoot: Uri
+        private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
         super();
         this.disposables.push(

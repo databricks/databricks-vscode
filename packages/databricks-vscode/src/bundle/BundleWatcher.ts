@@ -1,7 +1,7 @@
 import {Disposable, EventEmitter, Uri, workspace} from "vscode";
 import {BundleFileSet, getAbsoluteGlobPath} from "./BundleFileSet";
-import {WithMutex} from "../locking";
 import path from "path";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 export class BundleWatcher implements Disposable {
     private disposables: Disposable[] = [];
@@ -18,15 +18,30 @@ export class BundleWatcher implements Disposable {
     private readonly _onDidDelete = new EventEmitter<Uri>();
     public readonly onDidDelete = this._onDidDelete.event;
 
-    private bundleFileSet: WithMutex<BundleFileSet>;
+    private initCleanup: Disposable;
+    constructor(
+        private readonly bundleFileSet: BundleFileSet,
+        private readonly workspaceFolderManager: WorkspaceFolderManager
+    ) {
+        this.initCleanup = this.init();
+        this.disposables.push(
+            this.workspaceFolderManager.onDidChangeActiveWorkspaceFolder(() => {
+                this.initCleanup.dispose();
+                this.initCleanup = this.init();
+                this.bundleFileSet.bundleDataCache.invalidate();
+            })
+        );
+    }
 
-    constructor(bundleFileSet: BundleFileSet, workspaceUri: Uri) {
-        this.bundleFileSet = new WithMutex(bundleFileSet);
+    private init() {
         const yamlWatcher = workspace.createFileSystemWatcher(
-            getAbsoluteGlobPath(path.join("**", "*.{yaml,yml}"), workspaceUri)
+            getAbsoluteGlobPath(
+                path.join("**", "*.{yaml,yml}"),
+                this.workspaceFolderManager.activeWorkspaceFolder.uri
+            )
         );
 
-        this.disposables.push(
+        const disposables: Disposable[] = [
             yamlWatcher,
             yamlWatcher.onDidCreate((e) => {
                 this.yamlFileChangeHandler(e, "CREATE");
@@ -36,22 +51,28 @@ export class BundleWatcher implements Disposable {
             }),
             yamlWatcher.onDidDelete((e) => {
                 this.yamlFileChangeHandler(e, "DELETE");
-            })
-        );
+            }),
+        ];
+
+        return {
+            dispose: () => {
+                disposables.forEach((i) => i.dispose());
+            },
+        };
     }
 
     private async yamlFileChangeHandler(
         e: Uri,
         type: "CREATE" | "CHANGE" | "DELETE"
     ) {
-        if (!(await this.bundleFileSet.value.isBundleFile(e))) {
+        if (!(await this.bundleFileSet.isBundleFile(e))) {
             return;
         }
 
-        this.bundleFileSet.value.bundleDataCache.invalidate();
+        this.bundleFileSet.bundleDataCache.invalidate();
         this._onDidChange.fire();
         // to provide additional granularity, we also fire an event when the root bundle file changes
-        if (this.bundleFileSet.value.isRootBundleFile(e)) {
+        if (this.bundleFileSet.isRootBundleFile(e)) {
             this._onDidChangeRootFile.fire();
         }
         switch (type) {
@@ -66,5 +87,6 @@ export class BundleWatcher implements Disposable {
 
     dispose() {
         this.disposables.forEach((i) => i.dispose());
+        this.initCleanup.dispose();
     }
 }

@@ -5,7 +5,7 @@ import {
     AuthType as SdkAuthType,
 } from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
-import {EventEmitter, Uri, window, Disposable} from "vscode";
+import {EventEmitter, window, Disposable} from "vscode";
 import {CliWrapper, ProcessError} from "../cli/CliWrapper";
 import {
     SyncDestinationMapper,
@@ -17,13 +17,14 @@ import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {ConfigModel} from "./models/ConfigModel";
-import {onError} from "../utils/onErrorDecorator";
+import {onError, withOnErrorHandler} from "../utils/onErrorDecorator";
 import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
 import {Mutex} from "../locking";
 import {MetadataService} from "./auth/MetadataService";
 import {Events, Telemetry} from "../telemetry";
 import {AutoLoginSource, ManualLoginSource} from "../telemetry/constants";
 import {Barrier} from "../locking/Barrier";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -39,6 +40,7 @@ export class ConnectionManager implements Disposable {
     private disposables: Disposable[] = [];
     private _state: ConnectionState = "DISCONNECTED";
     private loginLogoutMutex: Mutex = new Mutex();
+    private savedAuthMutex: Mutex = new Mutex();
 
     private _workspaceClient?: WorkspaceClient;
     private _syncDestinationMapper?: SyncDestinationMapper;
@@ -62,10 +64,14 @@ export class ConnectionManager implements Disposable {
 
     private readonly initialization = new Barrier();
 
+    get workspaceUri() {
+        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    }
+
     constructor(
         private cli: CliWrapper,
         private readonly configModel: ConfigModel,
-        private readonly workspaceUri: Uri,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly customWhenContext: CustomWhenContext,
         private readonly telemetry: Telemetry
     ) {
@@ -170,6 +176,14 @@ export class ConnectionManager implements Disposable {
                 ),
                 this.configModel.onDidChangeTarget(
                     this.loginWithSavedAuth.bind(this, "targetChange")
+                ),
+                this.workspaceFolderManager.onDidChangeActiveWorkspaceFolder(
+                    withOnErrorHandler(
+                        async () => {
+                            await this.configModel.setTarget(undefined);
+                        },
+                        {log: true}
+                    )
                 )
             );
             this.initialization.resolve();
@@ -218,21 +232,27 @@ export class ConnectionManager implements Disposable {
     }
 
     private async loginWithSavedAuth(source: AutoLoginSource) {
-        const recordEvent = this.telemetry.start(Events.AUTO_LOGIN);
-        try {
-            await this.disconnect();
-            const authProvider = await this.resolveAuth();
-            if (authProvider) {
-                await this.connect(authProvider);
-            } else {
-                await this.logout();
-            }
-            recordEvent({success: this.state === "CONNECTED", source});
-        } catch (e) {
-            await this.disconnect();
-            recordEvent({success: false, source});
-            throw e;
+        if (this.savedAuthMutex.locked) {
+            return;
         }
+
+        await this.savedAuthMutex.synchronise(async () => {
+            const recordEvent = this.telemetry.start(Events.AUTO_LOGIN);
+            try {
+                await this.disconnect();
+                const authProvider = await this.resolveAuth();
+                if (authProvider) {
+                    await this.connect(authProvider);
+                } else {
+                    await this.logout();
+                }
+                recordEvent({success: this.state === "CONNECTED", source});
+            } catch (e) {
+                await this.disconnect();
+                recordEvent({success: false, source});
+                throw e;
+            }
+        });
     }
 
     @onError({popup: {prefix: "Failed to login."}})

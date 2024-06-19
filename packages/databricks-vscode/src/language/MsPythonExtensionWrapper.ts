@@ -13,6 +13,7 @@ import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
 import {Mutex} from "../locking";
 import * as childProcess from "node:child_process";
 import {promisify} from "node:util";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 export const execFile = promisify(childProcess.execFile);
 
 export class MsPythonExtensionWrapper implements Disposable {
@@ -22,7 +23,7 @@ export class MsPythonExtensionWrapper implements Disposable {
     private _terminal?: Terminal;
     constructor(
         pythonExtension: Extension<MsPythonExtensionApi>,
-        private readonly workspaceFolder: Uri,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly stateStorage: StateStorage
     ) {
         this.api = pythonExtension.exports as MsPythonExtensionApi;
@@ -79,7 +80,7 @@ export class MsPythonExtensionWrapper implements Disposable {
     get pythonEnvironment() {
         return this.api.environments?.resolveEnvironment(
             this.api.environments?.getActiveEnvironmentPath(
-                this.workspaceFolder
+                this.workspaceFolderManager.activeWorkspaceFolder
             )
         );
     }
