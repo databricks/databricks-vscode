@@ -1,4 +1,3 @@
-import {Uri} from "vscode";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {Mutex} from "../../locking";
@@ -9,6 +8,7 @@ import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
+import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export type BundleResourceModifiedStatus = "created" | "deleted" | "updated";
@@ -45,9 +45,13 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     protected mutex = new Mutex();
     private logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
+    get workspaceFolder() {
+        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    }
+
     constructor(
         private readonly cli: CliWrapper,
-        private readonly workspaceFolder: Uri,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly workspaceConfigs: WorkspaceConfigs
     ) {
         super();

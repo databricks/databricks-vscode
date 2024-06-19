@@ -12,16 +12,27 @@ import {EnvVarGenerators, FileUtils} from "../utils";
 import {Mutex} from "../locking/Mutex";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import path from "path";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 export class DatabricksEnvFileManager implements Disposable {
     private disposables: Disposable[] = [];
     private userEnvFileWatcherDisposables: Disposable[] = [];
     private mutex = new Mutex();
-    public readonly databricksEnvPath: Uri;
     private userEnvPath?: Uri;
-    private readonly systemVariableResolver = new SystemVariables(
-        this.workspacePath
-    );
+
+    get databricksEnvPath() {
+        return Uri.joinPath(
+            this.workspacePath,
+            ".databricks",
+            ".databricks.env"
+        );
+    }
+    private get systemVariableResolver() {
+        return new SystemVariables(this.workspacePath);
+    }
+    private get workspacePath() {
+        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    }
 
     private readonly onDidChangeEnvironmentVariablesEmitter =
         new EventEmitter<void>();
@@ -29,18 +40,11 @@ export class DatabricksEnvFileManager implements Disposable {
         this.onDidChangeEnvironmentVariablesEmitter.event;
 
     constructor(
-        private readonly workspacePath: Uri,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly featureManager: FeatureManager,
         private readonly connectionManager: ConnectionManager,
         private readonly configModel: ConfigModel
-    ) {
-        this.systemVariableResolver = new SystemVariables(this.workspacePath);
-        this.databricksEnvPath = Uri.joinPath(
-            this.workspacePath,
-            ".databricks",
-            ".databricks.env"
-        );
-    }
+    ) {}
 
     private updateUserEnvFileWatcher() {
         const userEnvPath = workspaceConfigs.msPythonEnvFile
@@ -114,10 +118,10 @@ export class DatabricksEnvFileManager implements Disposable {
                 },
                 this
             ),
-            this.connectionManager.onDidChangeCluster(async () => {
+            this.connectionManager.onDidChangeCluster(() => {
                 this.writeFile();
             }, this),
-            this.connectionManager.onDidChangeState(async () => {
+            this.connectionManager.onDidChangeState(() => {
                 this.writeFile();
             }, this)
         );

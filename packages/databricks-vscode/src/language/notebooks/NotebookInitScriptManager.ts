@@ -1,6 +1,5 @@
 import {
     Disposable,
-    Uri,
     ExtensionContext,
     window,
     OutputChannel,
@@ -24,6 +23,7 @@ import {FileUtils} from "../../utils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {LocalUri} from "../../sync/SyncDestination";
 import {DatabricksEnvFileManager} from "../../file-managers/DatabricksEnvFileManager";
+import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
 const execFile = promisify(ef);
 
@@ -51,7 +51,7 @@ export class NotebookInitScriptManager implements Disposable {
     private currentEnvPath?: string | null = null;
 
     constructor(
-        private readonly workspacePath: Uri,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly extensionContext: ExtensionContext,
         private readonly connectionManager: ConnectionManager,
         private readonly featureManager: FeatureManager,
@@ -236,7 +236,8 @@ export class NotebookInitScriptManager implements Disposable {
                 ["-m", "IPython", file],
                 {
                     env,
-                    cwd: this.workspacePath.fsPath,
+                    cwd: this.workspaceFolderManager.activeWorkspaceFolder.uri
+                        .fsPath,
                 }
             );
             const correctlyFormatttedErrors = stderr
@@ -278,6 +279,10 @@ export class NotebookInitScriptManager implements Disposable {
         fromCommand = false,
         @context ctx?: Context
     ) {
+        if (this.connectionManager.state !== "CONNECTED") {
+            return;
+        }
+
         // If we are not in a jupyter notebook or a databricks notebook,
         // then we don't need to verify the init script
         if (
@@ -290,7 +295,7 @@ export class NotebookInitScriptManager implements Disposable {
         }
 
         await FileUtils.waitForDatabricksProject(
-            this.workspacePath,
+            this.workspaceFolderManager.activeWorkspaceFolder.uri,
             this.connectionManager
         );
 

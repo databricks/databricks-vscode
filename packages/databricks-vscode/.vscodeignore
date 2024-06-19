@@ -18,3 +18,4 @@ logs/
 extension/
 **/*.vsix
 .build/
+tmp/**

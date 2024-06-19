@@ -72,6 +72,7 @@ import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariab
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
+import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -173,7 +174,17 @@ export async function activate(
         return undefined;
     }
 
-    const workspaceUri = workspace.workspaceFolders[0].uri;
+    const workspaceFolderManager = new WorkspaceFolderManager(
+        customWhenContext
+    );
+
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.selectWorkspaceFolder",
+            workspaceFolderManager.selectDatabricksWorkspaceFolderCommand,
+            workspaceFolderManager
+        )
+    );
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
@@ -231,7 +242,7 @@ export async function activate(
 
     const pythonExtensionWrapper = new MsPythonExtensionWrapper(
         pythonExtension,
-        workspaceUri,
+        workspaceFolderManager,
         stateStorage
     );
 
@@ -262,22 +273,27 @@ export async function activate(
     );
 
     // Configuration group
-    const bundleFileSet = new BundleFileSet(workspaceUri);
-    const bundleFileWatcher = new BundleWatcher(bundleFileSet, workspaceUri);
+    const bundleFileSet = new BundleFileSet(workspaceFolderManager);
+    const bundleFileWatcher = new BundleWatcher(
+        bundleFileSet,
+        workspaceFolderManager
+    );
     const bundleValidateModel = new BundleValidateModel(
         bundleFileWatcher,
         cli,
-        workspaceUri
+        workspaceFolderManager
     );
 
-    const overrideableConfigModel = new OverrideableConfigModel(workspaceUri);
+    const overrideableConfigModel = new OverrideableConfigModel(
+        workspaceFolderManager
+    );
     const bundlePreValidateModel = new BundlePreValidateModel(
         bundleFileSet,
         bundleFileWatcher
     );
     const bundleRemoteStateModel = new BundleRemoteStateModel(
         cli,
-        workspaceUri,
+        workspaceFolderManager,
         workspaceConfigs
     );
     const configModel = new ConfigModel(
@@ -292,7 +308,7 @@ export async function activate(
     const connectionManager = new ConnectionManager(
         cli,
         configModel,
-        workspaceUri,
+        workspaceFolderManager,
         customWhenContext,
         telemetry
     );
@@ -325,7 +341,7 @@ export async function activate(
         connectionManager,
         configModel,
         bundleFileSet,
-        workspaceUri,
+        workspaceFolderManager,
         telemetry
     );
     context.subscriptions.push(
@@ -351,7 +367,7 @@ export async function activate(
         connectionManager
     );
     const workspaceFsCommands = new WorkspaceFsCommands(
-        workspaceUri,
+        workspaceFolderManager,
         connectionManager,
         workspaceFsDataProvider
     );
@@ -422,14 +438,14 @@ export async function activate(
     );
 
     const databricksEnvFileManager = new DatabricksEnvFileManager(
-        workspaceUri,
+        workspaceFolderManager,
         featureManager,
         connectionManager,
         configModel
     );
 
     const notebookInitScriptManager = new NotebookInitScriptManager(
-        workspaceUri,
+        workspaceFolderManager,
         context,
         connectionManager,
         featureManager,
@@ -463,6 +479,10 @@ export async function activate(
     databricksEnvFileManager.init();
     context.subscriptions.push(
         databricksEnvFileManager,
+        workspaceFolderManager.onDidChangeActiveWorkspaceFolder(() => {
+            databricksEnvFileManager.dispose();
+            databricksEnvFileManager.init();
+        }),
         showRestartNotebookDialogue(databricksEnvFileManager)
     );
     featureManager.isEnabled("environment.dependencies");
@@ -470,7 +490,7 @@ export async function activate(
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
         stateStorage,
-        workspaceUri.fsPath,
+        workspaceFolderManager,
         pythonExtensionWrapper,
         environmentDependenciesInstaller
     );
@@ -488,7 +508,8 @@ export async function activate(
         bundleProjectManager,
         configModel,
         cli,
-        featureManager
+        featureManager,
+        workspaceFolderManager
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,
@@ -675,7 +696,7 @@ export async function activate(
     const bundleVariableModel = new BundleVariableModel(
         configModel,
         bundleValidateModel,
-        workspaceUri
+        workspaceFolderManager
     );
     cli.bundleVariableModel = bundleVariableModel;
     const bundleVariableTreeDataProvider = new BundleVariableTreeDataProvider(
@@ -815,7 +836,7 @@ export async function activate(
         );
     });
 
-    setDbnbCellLimits(workspaceUri, connectionManager).catch((e) => {
+    setDbnbCellLimits(workspaceFolderManager, connectionManager).catch((e) => {
         logging.NamedLogger.getOrCreate(Loggers.Extension).error(
             "Error while setting jupyter configs for parsing databricks notebooks",
             e
@@ -847,19 +868,25 @@ export async function activate(
     const recordInitializationEvent = telemetry.start(
         Events.EXTENSION_INITIALIZATION
     );
-    bundleProjectManager
-        .configureWorkspace()
-        .catch((e) => {
-            recordInitializationEvent({success: false});
-            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                "Failed to configure workspace",
-                e
-            );
-            window.showErrorMessage(e);
-        })
-        .finally(() => {
-            customWhenContext.setInitialized();
-        });
+
+    const configureWorkspace = () => {
+        bundleProjectManager
+            .configureWorkspace()
+            .catch((e) => {
+                recordInitializationEvent({success: false});
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    "Failed to configure workspace",
+                    e
+                );
+                window.showErrorMessage(e);
+            })
+            .finally(() => {
+                customWhenContext.setInitialized();
+            });
+    };
+
+    configureWorkspace();
+    workspaceFolderManager.onDidChangeActiveWorkspaceFolder(configureWorkspace);
 
     customWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATION);

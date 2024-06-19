@@ -7,6 +7,7 @@ import {BundleSchema} from "./types";
 import {readFile, writeFile} from "fs/promises";
 import {CachedValue} from "../locking/CachedValue";
 import minimatch from "minimatch";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
 const subProjectFilePattern: string = path.join("**", rootFilePattern);
@@ -61,7 +62,17 @@ export class BundleFileSet {
             return bundle as BundleSchema;
         });
 
-    constructor(private readonly workspaceRoot: Uri) {}
+    private get workspaceRoot() {
+        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    }
+
+    constructor(
+        private readonly workspaceFolderManager: WorkspaceFolderManager
+    ) {
+        workspaceFolderManager.onDidChangeActiveWorkspaceFolder(() => {
+            this.bundleDataCache.invalidate();
+        });
+    }
 
     async getRootFile() {
         const rootFile = await glob.glob(

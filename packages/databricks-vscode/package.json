@@ -544,7 +544,7 @@
                 {
                     "submenu": "databricks.run",
                     "group": "navigation@0",
-                    "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb"
+                    "when": "databricks.context.isActiveFileInActiveWorkspace && resourceLangId =~ /^(python|scala|r|sql)$/ || databricks.context.isActiveFileInActiveWorkspace && resourceExtname == .ipynb"
                 }
             ],
             "databricks.run": [
@@ -881,7 +881,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.219.0"
+        "version": "0.221.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",

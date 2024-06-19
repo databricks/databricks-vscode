@@ -5,11 +5,12 @@ import {
     WorkspaceFsUtils,
 } from "../sdk-extensions";
 import {context, Context} from "@databricks/databricks-sdk/dist/context";
-import {Disposable, Uri, window} from "vscode";
+import {Disposable, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Loggers} from "../logger";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 const withLogContext = logging.withLogContext;
 
@@ -17,7 +18,7 @@ export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
     constructor(
-        private workspaceFolder: Uri,
+        private workspaceFolderManager: WorkspaceFolderManager,
         private connectionManager: ConnectionManager,
         private workspaceFsDataProvider: WorkspaceFsDataProvider
     ) {}
@@ -75,7 +76,7 @@ export class WorkspaceFsCommands implements Disposable {
         const root = await this.getValidRoot(rootPath, ctx);
 
         const inputPath = await createDirWizard(
-            this.workspaceFolder,
+            this.workspaceFolderManager.activeWorkspaceFolder.uri,
             "Directory Name",
             root
         );

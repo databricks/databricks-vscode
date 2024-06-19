@@ -18,6 +18,7 @@ import {randomUUID} from "crypto";
 import {onError} from "../utils/onErrorDecorator";
 import {BundleInitWizard, promptToOpenSubProjects} from "./BundleInitWizard";
 import {EventReporter, Events, Telemetry} from "../telemetry";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -36,6 +37,10 @@ export class BundleProjectManager {
     private subProjects?: {relative: string; absolute: Uri}[];
     private legacyProjectConfig?: ProjectConfigFile;
 
+    get workspaceUri() {
+        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    }
+
     constructor(
         private context: ExtensionContext,
         private cli: CliWrapper,
@@ -43,10 +48,15 @@ export class BundleProjectManager {
         private connectionManager: ConnectionManager,
         private configModel: ConfigModel,
         private bundleFileSet: BundleFileSet,
-        private workspaceUri: Uri,
+        private workspaceFolderManager: WorkspaceFolderManager,
         private telemetry: Telemetry
     ) {
         this.disposables.push(
+            this.workspaceFolderManager.onDidChangeActiveWorkspaceFolder(
+                async () => {
+                    await this.isBundleProjectCache.refresh();
+                }
+            ),
             this.bundleFileSet.bundleDataCache.onDidChange(async () => {
                 try {
                     await this.isBundleProjectCache.refresh();

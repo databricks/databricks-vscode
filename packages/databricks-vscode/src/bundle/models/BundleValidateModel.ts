@@ -1,4 +1,3 @@
-import {Uri} from "vscode";
 import {BundleWatcher} from "../BundleWatcher";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {Mutex} from "../../locking";
@@ -10,6 +9,7 @@ import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithS
 import {withOnErrorHandler} from "../../utils/onErrorDecorator";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
+import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
 export type BundleValidateState = {
     clusterId?: string;
@@ -25,7 +25,7 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
     constructor(
         private readonly bundleWatcher: BundleWatcher,
         private readonly cli: CliWrapper,
-        private readonly workspaceFolder: Uri
+        private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
         super();
         this.disposables.push(
@@ -62,7 +62,11 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
     }
 
     protected async readState(): Promise<BundleValidateState> {
-        if (this.target === undefined || this.authProvider === undefined) {
+        if (
+            !this.target ||
+            !this.authProvider ||
+            !this.workspaceFolderManager.activeWorkspaceFolder
+        ) {
             return {};
         }
 
@@ -71,7 +75,7 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
                 await this.cli.bundleValidate(
                     this.target,
                     this.authProvider,
-                    this.workspaceFolder,
+                    this.workspaceFolderManager.activeWorkspaceFolder?.uri,
                     workspaceConfigs.databrickscfgLocation,
                     this.logger
                 )

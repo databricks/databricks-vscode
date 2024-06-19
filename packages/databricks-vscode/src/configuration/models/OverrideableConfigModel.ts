@@ -4,6 +4,7 @@ import {BaseModelWithStateCache} from "./BaseModelWithStateCache";
 import {Uri} from "vscode";
 import path from "path";
 import {existsSync} from "fs";
+import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
 export type OverrideableConfigState = {
     authProfile?: string;
@@ -57,7 +58,13 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         );
     }
 
-    constructor(private readonly workspaceRoot: Uri) {
+    get workspaceRoot() {
+        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    }
+
+    constructor(
+        private readonly workspaceFolderManager: WorkspaceFolderManager
+    ) {
         super();
     }
 

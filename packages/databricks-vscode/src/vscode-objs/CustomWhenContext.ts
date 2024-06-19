@@ -78,4 +78,12 @@ export class CustomWhenContext {
             )
         );
     }
+
+    setIsActiveFileInActiveWorkspace(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.isActiveFileInActiveWorkspace",
+            value
+        );
+    }
 }

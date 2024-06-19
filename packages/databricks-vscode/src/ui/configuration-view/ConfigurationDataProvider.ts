@@ -20,6 +20,8 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {EnvironmentComponent} from "./EnvironmentComponent";
+import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
+import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
 /**
  * Data provider for the cluster tree view
@@ -40,6 +42,7 @@ export class ConfigurationDataProvider
 
     private disposables: Array<Disposable> = [];
     private components: Array<BaseComponent> = [
+        new WorkspaceFolderComponent(this.workspaceFolderManager),
         new BundleTargetComponent(this.configModel),
         new AuthTypeComponent(
             this.connectionManager,
@@ -59,7 +62,8 @@ export class ConfigurationDataProvider
         private readonly bundleProjectManager: BundleProjectManager,
         private readonly configModel: ConfigModel,
         private readonly cli: CliWrapper,
-        private readonly featureManager: FeatureManager
+        private readonly featureManager: FeatureManager,
+        private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
         this.disposables.push(
             this.bundleProjectManager.onDidChangeStatus(async () => {
