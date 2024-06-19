@@ -66,7 +66,6 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
         super();
-        this.disposables.push();
     }
 
     public setTarget(target: string | undefined) {

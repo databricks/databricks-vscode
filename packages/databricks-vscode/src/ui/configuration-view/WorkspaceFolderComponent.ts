@@ -18,7 +18,10 @@ export class WorkspaceFolderComponent extends BaseComponent {
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
         const activeWorkspaceFolder =
             this.workspaceFolderManager.activeWorkspaceFolder;
-        if (activeWorkspaceFolder === undefined) {
+        if (
+            activeWorkspaceFolder === undefined ||
+            !this.workspaceFolderManager.enableUi
+        ) {
             return [];
         }
 

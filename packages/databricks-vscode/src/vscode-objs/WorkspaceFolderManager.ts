@@ -26,11 +26,13 @@ export class WorkspaceFolderManager implements Disposable {
     );
 
     constructor(public readonly customWhenContext: CustomWhenContext) {
-        this.button.text =
-            this._activeWorkspaceFolder?.name ?? "No Databricks Project";
-        this.button.tooltip = "Selected databricks project";
-        this.button.command = "databricks.selectWorkspaceFolder";
-        this.button.show();
+        if (this.enableUi) {
+            this.button.text =
+                this._activeWorkspaceFolder?.name ?? "No Databricks Project";
+            this.button.tooltip = "Selected databricks project";
+            this.button.command = "databricks.selectWorkspaceFolder";
+            this.button.show();
+        }
 
         this.disposables.push(
             this.button,
@@ -78,8 +80,11 @@ export class WorkspaceFolderManager implements Disposable {
 
         this._activeWorkspaceFolder = folder;
         this.didChangeActiveWorkspaceFolder.fire(folder);
-        this.button.text = folder?.name ?? "No Databricks Project";
-        this.button.show();
+
+        if (this.enableUi) {
+            this.button.text = folder?.name ?? "No Databricks Project";
+            this.button.show();
+        }
     }
 
     get folders() {
@@ -124,6 +129,11 @@ export class WorkspaceFolderManager implements Disposable {
         }
         this.setActiveWorkspaceFolder(choice.workspaceFolder);
     }
+
+    get enableUi() {
+        return this.folders && this.folders?.length !== 1;
+    }
+
     dispose() {
         this.disposables.forEach((i) => i.dispose());
     }
