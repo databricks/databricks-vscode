@@ -131,7 +131,7 @@ export class WorkspaceFolderManager implements Disposable {
     }
 
     get enableUi() {
-        return this.folders && this.folders?.length !== 1;
+        return this.folders && this.folders?.length > 1;
     }
 
     dispose() {
