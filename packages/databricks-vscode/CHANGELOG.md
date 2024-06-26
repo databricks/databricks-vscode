@@ -1,3 +1,13 @@
+# Release: v2.2.0-preview
+
+## packages/databricks-vscode
+
+## (2024-06-26)
+
+-   Add cwd and project root to sys.path for dbconnect runner
+-   Add support for multiple vscode workspaces
+-   Update CLI to 0.221.0
+
 # Release: v2.1.2-preview
 
 ## packages/databricks-vscode
