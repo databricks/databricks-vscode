@@ -1,3 +1,11 @@
+# Release: v2.2.1-preview
+
+## packages/databricks-vscode
+
+## (2024-06-27)
+
+-   Add exception handlers to bootstrap python code (#1258) ([b40f14c](https://github.com/databricks/databricks-vscode/commit/b40f14c)), closes [#1258](https://github.com/databricks/databricks-vscode/issues/1258)
+
 # Release: v2.2.0-preview
 
 ## packages/databricks-vscode
