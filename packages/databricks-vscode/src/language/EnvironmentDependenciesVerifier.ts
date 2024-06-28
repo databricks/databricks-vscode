@@ -143,9 +143,9 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     }
 
     private matchEnvironmentVersion(
+        env: ResolvedEnvironment | undefined,
         major: number,
-        minor: number,
-        env?: ResolvedEnvironment
+        minor: number
     ): boolean {
         if (!env || !env.version || !env.environment) {
             return false;
@@ -153,60 +153,56 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         return env.version.major === major && env.version.minor === minor;
     }
 
-    private formatEnvironmentVersion(env?: ResolvedEnvironment): string {
+    private printEnvironment(env?: ResolvedEnvironment): string {
         return env?.version && env.environment
-            ? `${env.version.major}.${env.version.minor}.${env.version.micro}`
-            : "unknown";
+            ? `Current version is ${env.version.major}.${env.version.minor}.${env.version.micro}.`
+            : "No active environment found.";
     }
 
     async checkPythonEnvironment(): Promise<FeatureStepState> {
         const env = await this.pythonExtension.pythonEnvironment;
         const dbrVersionParts =
             this.connectionManager.cluster?.dbrVersion || [];
+        // DBR 13 and 14 require python 3.10
         if (
             (dbrVersionParts[0] === 13 || dbrVersionParts[0] === 14) &&
-            !this.matchEnvironmentVersion(3, 10, env)
+            !this.matchEnvironmentVersion(env, 3, 10)
         ) {
             return this.rejectStep(
                 "checkPythonEnvironment",
                 "Activate an environment with Python 3.10",
-                `The version should match cluster requirements. Current version is ${this.formatEnvironmentVersion(
-                    env
-                )}.`,
+                `The version should match DBR ${
+                    dbrVersionParts[0]
+                } requirements. ${this.printEnvironment(env)}`,
                 this.selectPythonInterpreter.bind(this)
             );
         }
+        // DBR 15 requires python 3.11
         if (
             dbrVersionParts[0] === 15 &&
-            !this.matchEnvironmentVersion(3, 11, env)
+            !this.matchEnvironmentVersion(env, 3, 11)
         ) {
             return this.rejectStep(
                 "checkPythonEnvironment",
                 "Activate an environment with Python 3.11",
-                `The version should match cluster requirements. Current version is ${this.formatEnvironmentVersion(
-                    env
-                )}.`,
+                `The version should match DBR ${
+                    dbrVersionParts[0]
+                } requirements. ${this.printEnvironment(env)}`,
                 this.selectPythonInterpreter.bind(this)
             );
         }
-        if (
-            env?.version &&
-            (env.version.major !== 3 || env.version.minor < 10)
-        ) {
+        // If we don't now DBR version (no cluster is connected),
+        // we still check that environment is active and has python >= 3.10
+        const envVersionTooLow =
+            env?.version && (env.version.major !== 3 || env.version.minor < 10);
+        const noEnvironment = !env?.environment;
+        if (noEnvironment || envVersionTooLow) {
             return this.rejectStep(
                 "checkPythonEnvironment",
                 "Activate an environment with Python >= 3.10",
-                `Databricks Connect requires python >= 3.10. Current version is ${this.formatEnvironmentVersion(
+                `Databricks Connect requires python >= 3.10. ${this.printEnvironment(
                     env
-                )}.`,
-                this.selectPythonInterpreter.bind(this)
-            );
-        }
-        if (!env?.environment) {
-            return this.rejectStep(
-                "checkPythonEnvironment",
-                "Activate a virtual environment",
-                "No active virtual environment",
+                )}`,
                 this.selectPythonInterpreter.bind(this)
             );
         }
@@ -214,7 +210,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         if (!executable) {
             return this.rejectStep(
                 "checkPythonEnvironment",
-                "Select Python Interpreter",
+                "Activate an environment with Python >= 3.10",
                 "No python executable found",
                 this.selectPythonInterpreter.bind(this)
             );
