@@ -4,7 +4,7 @@
 
 ## (2024-07-03)
 
--   Fix CLI output parsing (#1270) ([7070fd3](https://github.com/databricks/databricks-vscode/commit/7070fd3)), closes [#1270](https://github.com/databricks/databricks-vscode/issues/1270)
+-   Fix CLI output parsing
 
 # Release: v2.2.1-preview
 
