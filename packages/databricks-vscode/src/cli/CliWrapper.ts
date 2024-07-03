@@ -61,7 +61,7 @@ export class ProcessError extends Error {
     }
 }
 
-async function waitForProcess(
+export async function waitForProcess(
     p: ChildProcessWithoutNullStreams,
     onStdOut?: (data: string) => void,
     onStdError?: (data: string) => void
@@ -87,13 +87,13 @@ async function waitForProcess(
             if (code === 0) {
                 resolve();
             } else {
-                reject(new ProcessError(stderr.join("\n"), code));
+                reject(new ProcessError(stderr.join(""), code));
             }
         });
         p.on("error", (e) => new ProcessError(e.message, null));
     });
 
-    return {stdout: stdout.join("\n"), stderr: stderr.join("\n")};
+    return {stdout: stdout.join(""), stderr: stderr.join("")};
 }
 
 async function runBundleCommand(
