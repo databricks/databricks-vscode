@@ -1,3 +1,13 @@
+# Release: v1.3.1
+
+## packages/databricks-vscode
+
+## <small>1.3.1 (2024-07-03)</small>
+
+-   Fix env loading in notebooks (#1266) ([75e93c5](https://github.com/databricks/databricks-vscode/commit/75e93c5)), closes [#1266](https://github.com/databricks/databricks-vscode/issues/1266)
+-   Update Databricks CLI to v0.216.0 (#1156) ([8867b46](https://github.com/databricks/databricks-vscode/commit/8867b46)), closes [#1156](https://github.com/databricks/databricks-vscode/issues/1156)
+-   Update Databricks CLI to v0.218.1 (#1197) ([937b46c](https://github.com/databricks/databricks-vscode/commit/937b46c)), closes [#1197](https://github.com/databricks/databricks-vscode/issues/1197)
+
 # Release: v1.3.0
 
 ## packages/databricks-vscode
