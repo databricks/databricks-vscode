@@ -1,3 +1,12 @@
+# Release: v1.3.1
+
+## packages/databricks-vscode
+
+## <small>1.3.1 (2024-07-03)</small>
+
+-   Fix loading of environment variables for notebook execution
+-   Update Databricks CLI to v0.218.1
+
 # Release: v1.3.0
 
 ## packages/databricks-vscode
