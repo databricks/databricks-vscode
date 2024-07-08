@@ -85,16 +85,16 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
         this.disposables.push(
             this.overrideFileWatcher,
             this.overrideFileWatcher.onDidChange(async () => {
-                await this.stateCache.refresh();
                 await this.bundleValidateModel.refresh();
+                await this.stateCache.refresh();
             }),
             this.overrideFileWatcher.onDidCreate(async () => {
-                await this.stateCache.refresh();
                 await this.bundleValidateModel.refresh();
+                await this.stateCache.refresh();
             }),
             this.overrideFileWatcher.onDidDelete(async () => {
-                await this.stateCache.refresh();
                 await this.bundleValidateModel.refresh();
+                await this.stateCache.refresh();
             })
         );
     }
@@ -204,32 +204,21 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
     }
 
     async getEnvVariables(): Promise<Record<string, string>> {
-        const variables = (await this.stateCache.value).variables ?? {};
+        const overrides = await this.getVariableOverrides();
         return Object.fromEntries(
-            Object.entries(variables)
-                .filter(
-                    ([key]) => variables[key].vscodeOverrideValue !== undefined
-                )
-                .map(([key, value]) => [
-                    `BUNDLE_VAR_${key}`,
-                    value.vscodeOverrideValue,
-                ])
+            Object.entries(overrides)
+                .filter(([key]) => overrides[key] !== undefined)
+                .map(([key, value]) => [`BUNDLE_VAR_${key}`, value])
         ) as Record<string, string>;
     }
 
     async getFileContent() {
-        const variables = (await this.stateCache.value).variables ?? {};
+        const variables = await this.getVariableOverrides();
         return JSON.stringify(
             Object.fromEntries(
                 Object.entries(variables)
-                    .filter((v) => v[1].lookup === undefined)
-                    .map(([key, value]) => [
-                        key,
-                        value.vscodeOverrideValue ??
-                            value.valueInTarget ??
-                            value.default ??
-                            "",
-                    ])
+                    .filter((v) => v[1] !== undefined)
+                    .map(([key, value]) => [key, value ?? ""])
             ),
             null,
             4
