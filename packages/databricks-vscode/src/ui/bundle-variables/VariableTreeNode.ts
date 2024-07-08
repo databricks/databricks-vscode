@@ -28,7 +28,7 @@ export class VariableTreeNode implements BundleVariableTreeNode {
             return [
                 new TreeItemTreeNode({
                     label: "Default",
-                    description: this.value.valueInTarget,
+                    description: this.value.default ?? this.value.valueInTarget,
                 }),
             ];
         }
