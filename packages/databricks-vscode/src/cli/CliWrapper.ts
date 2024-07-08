@@ -47,6 +47,25 @@ export class ProcessError extends Error {
     }
 
     showErrorMessage(prefix?: string) {
+        if (this.message.includes("no value assigned to required variable")) {
+            window
+                .showErrorMessage(
+                    (prefix?.trimEnd().concat(" ") ?? "") +
+                        `No value assigned to required variables.`,
+                    "Assign Values"
+                )
+                .then((choice) => {
+                    if (choice === "Assign Values") {
+                        commands.executeCommand("databricks.bundle.showLogs");
+                        commands.executeCommand("dabsVariableView.focus");
+                        commands.executeCommand(
+                            "databricks.bundle.variable.openFile"
+                        );
+                    }
+                });
+            return;
+        }
+
         window
             .showErrorMessage(
                 (prefix?.trimEnd().concat(" ") ?? "") +
