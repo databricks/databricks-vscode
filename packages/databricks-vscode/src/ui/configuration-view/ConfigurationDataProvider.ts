@@ -22,6 +22,7 @@ import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {EnvironmentComponent} from "./EnvironmentComponent";
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
+import {CodeSynchronizer} from "../../sync";
 
 /**
  * Data provider for the cluster tree view
@@ -50,7 +51,11 @@ export class ConfigurationDataProvider
             this.cli
         ),
         new ClusterComponent(this.connectionManager, this.configModel),
-        new SyncDestinationComponent(this.connectionManager, this.configModel),
+        new SyncDestinationComponent(
+            this.connectionManager,
+            this.configModel,
+            this.codeSynchronizer
+        ),
         new EnvironmentComponent(
             this.featureManager,
             this.connectionManager,
@@ -59,6 +64,7 @@ export class ConfigurationDataProvider
     ];
     constructor(
         private readonly connectionManager: ConnectionManager,
+        private readonly codeSynchronizer: CodeSynchronizer,
         private readonly bundleProjectManager: BundleProjectManager,
         private readonly configModel: ConfigModel,
         private readonly cli: CliWrapper,

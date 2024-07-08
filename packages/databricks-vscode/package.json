@@ -322,6 +322,27 @@
                 "title": "Force destroy bundle",
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
+            },
+            {
+                "command": "databricks.sync.start",
+                "title": "Start synchronization",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet",
+                "icon": "$(sync)"
+            },
+            {
+                "command": "databricks.sync.startFull",
+                "title": "Start synchronization (full sync)",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet",
+                "icon": "$(sync)"
+            },
+            {
+                "command": "databricks.sync.stop",
+                "title": "Stop synchronization",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet",
+                "icon": "$(sync-ignored)"
             }
         ],
         "viewsContainers": {
@@ -538,6 +559,16 @@
                     "when": "view == configurationView && viewItem =~ /^databricks.environment.checkEnvironmentDependencies.success$/",
                     "group": "inline@0",
                     "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.sync.start",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-stopped.*$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.sync.stop",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-running.*$/",
+                    "group": "inline@0"
                 }
             ],
             "editor/title": [
