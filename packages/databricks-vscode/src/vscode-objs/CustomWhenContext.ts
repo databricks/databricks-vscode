@@ -35,6 +35,14 @@ export class CustomWhenContext {
         );
     }
 
+    isDevTarget(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.bundle.isDevTarget",
+            value
+        );
+    }
+
     setSubProjectsAvailable(value: boolean) {
         commands.executeCommand(
             "setContext",

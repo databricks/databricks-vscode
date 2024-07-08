@@ -327,21 +327,21 @@
                 "command": "databricks.sync.start",
                 "title": "Start synchronization",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.startFull",
                 "title": "Start synchronization (full sync)",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.stop",
                 "title": "Stop synchronization",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
                 "icon": "$(sync-ignored)"
             }
         ],
@@ -562,12 +562,12 @@
                 },
                 {
                     "command": "databricks.sync.start",
-                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-stopped.*$/",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-stopped.*$/ && databricks.context.bundle.isDevTarget",
                     "group": "inline@0"
                 },
                 {
                     "command": "databricks.sync.stop",
-                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-running.*$/",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-running.*$/ && databricks.context.bundle.isDevTarget",
                     "group": "inline@0"
                 }
             ],

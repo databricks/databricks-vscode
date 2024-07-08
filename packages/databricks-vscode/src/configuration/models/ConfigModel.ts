@@ -154,6 +154,13 @@ export class ConfigModel implements Disposable {
     @onError({popup: true})
     public async init() {
         await this.readTarget();
+        this.disposables.push(
+            this.onDidChangeKey("mode")(async () => {
+                this.vscodeWhenContext.isDevTarget(
+                    (await this.configCache.value).mode === "development"
+                );
+            })
+        );
     }
 
     get targets() {

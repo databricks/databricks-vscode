@@ -75,7 +75,7 @@ export class SyncDestinationComponent extends BaseComponent {
     }
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
         const workspaceFsPath = await this.configModel.get("remoteRootPath");
-
+        const mode = await this.configModel.get("mode");
         if (workspaceFsPath === undefined) {
             return [];
         }
@@ -91,7 +91,12 @@ export class SyncDestinationComponent extends BaseComponent {
             {
                 label: "Workspace Folder",
                 tooltip: url ? undefined : "Created after deploy",
-                collapsibleState: TreeItemCollapsibleState.Collapsed,
+                description:
+                    mode === "development" ? undefined : workspaceFsPath,
+                collapsibleState:
+                    mode === "development"
+                        ? TreeItemCollapsibleState.Collapsed
+                        : TreeItemCollapsibleState.None,
                 contextValue,
                 iconPath: getIconForSyncState(this.codeSynchronizer),
                 resourceUri: url
@@ -117,7 +122,10 @@ export class SyncDestinationComponent extends BaseComponent {
             return this.getRoot();
         }
 
-        if (parent.id !== TREE_ICON_ID) {
+        if (
+            parent.id !== TREE_ICON_ID ||
+            (await this.configModel.get("mode")) !== "development"
+        ) {
             return [];
         }
 
