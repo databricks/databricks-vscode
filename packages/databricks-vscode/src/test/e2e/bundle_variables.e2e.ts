@@ -16,13 +16,13 @@ import {BundleSchema} from "../../bundle/types.ts";
 describe("Bundle Variables", async function () {
     let workbench: Workbench;
     let vscodeWorkspaceRoot: string;
-    let clusterId: string;
     let schemaDef: BundleSchema;
 
     this.timeout(3 * 60 * 1000);
 
     async function createProjectWithJob() {
         const projectName = getUniqueResourceName("bundle_variables");
+        /* eslint-disable @typescript-eslint/naming-convention */
         schemaDef = getBasicBundleConfig({
             bundle: {
                 name: projectName,
@@ -48,10 +48,6 @@ describe("Bundle Variables", async function () {
 
     before(async function () {
         assert(
-            process.env.TEST_DEFAULT_CLUSTER_ID,
-            "TEST_DEFAULT_CLUSTER_ID env var doesn't exist"
-        );
-        assert(
             process.env.WORKSPACE_PATH,
             "WORKSPACE_PATH env var doesn't exist"
         );
@@ -60,7 +56,6 @@ describe("Bundle Variables", async function () {
             "DATABRICKS_HOST env var doesn't exist"
         );
 
-        clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
         workbench = await browser.getWorkbench();
         vscodeWorkspaceRoot = process.env.WORKSPACE_PATH;
         await createProjectWithJob();
@@ -80,27 +75,28 @@ describe("Bundle Variables", async function () {
     async function assertVariableValue(
         section: CustomTreeSection,
         variableName: string,
-        expected: {value?: string; defaultValue?: string; lookup?: string}
+        expected: {value?: string; defaultValue?: string}
     ) {
         await section.expand();
         const variableTreeItem = await section.findItem(variableName);
         assert(variableTreeItem);
-        console.log(
+        assert.strictEqual(
             await variableTreeItem.getDescription(),
-            expected.value,
-            (await variableTreeItem.getDescription()) === expected.value
+            expected.value
         );
-        assert((await variableTreeItem.getDescription()) === expected.value);
 
         if (expected.defaultValue) {
             const defaultValueTreeItem = (
                 await section.openItem(variableName)
             )[0];
             assert(defaultValueTreeItem);
-            assert((await defaultValueTreeItem.getLabel()) === "Default");
-            assert(
-                (await defaultValueTreeItem.getDescription()) ===
-                    expected.defaultValue
+            assert.strictEqual(
+                await defaultValueTreeItem.getLabel(),
+                "Default"
+            );
+            assert.strictEqual(
+                await defaultValueTreeItem.getDescription(),
+                expected.defaultValue
             );
         }
     }
