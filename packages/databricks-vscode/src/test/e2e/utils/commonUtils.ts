@@ -138,86 +138,27 @@ export async function dismissNotifications() {
 }
 
 export async function waitForSyncComplete() {
-    await browser.waitUntil(
-        async () => {
-            return await getViewSubSection("CONFIGURATION", "Sync Destination");
-        },
-        {
-            timeout: 20000,
-            interval: 2000,
-            timeoutMsg: "Couldn't find sync destination tree items.",
-        }
-    );
-    await browser.waitUntil(
-        async () => {
-            const repoConfigItem = await getViewSubSection(
-                "CONFIGURATION",
-                "Sync Destination"
-            );
-            if (repoConfigItem === undefined) {
-                return false;
-            }
-            await repoConfigItem.expand();
+    const viewSection = (await getViewSection("CONFIGURATION")) as
+        | CustomTreeSection
+        | undefined;
 
-            let status: TreeItem | undefined = undefined;
-            for (const i of await repoConfigItem.getChildren()) {
-                if ((await i.getLabel()).includes("State")) {
-                    status = i;
-                    break;
+    assert(viewSection, "CONFIGURATION section doesn't exist");
+
+    await browser.waitUntil(
+        async () => {
+            const subTreeItems = await viewSection.openItem("Workspace Folder");
+            for (const item of subTreeItems) {
+                if ((await item.getLabel()).includes("State")) {
+                    const status = await item.getDescription();
+                    return status === "WATCHING_FOR_CHANGES";
                 }
             }
-            if (status === undefined) {
-                return false;
-            }
-
-            const description = await status?.getDescription();
-            return (
-                description !== undefined &&
-                description.includes("WATCHING_FOR_CHANGES")
-            );
+            return false;
         },
         {
-            timeout: 60000,
+            timeout: 60_000,
             interval: 2000,
             timeoutMsg: "Couldn't finish sync in 1m",
-        }
-    );
-}
-
-export async function startSyncIfStopped() {
-    browser.waitUntil(
-        async () => {
-            const repoConfigItem = await getViewSubSection(
-                "CONFIGURATION",
-                "Sync Destination"
-            );
-            if (repoConfigItem === undefined) {
-                return false;
-            }
-            await repoConfigItem.expand();
-
-            let status: TreeItem | undefined = undefined;
-            for (const i of await repoConfigItem.getChildren()) {
-                if ((await i.getLabel()).includes("State")) {
-                    status = i;
-                    break;
-                }
-            }
-            if (status === undefined) {
-                return false;
-            }
-
-            if ((await status.getDescription())?.includes("STOPPED")) {
-                const buttons = await repoConfigItem.getActionButtons();
-                if (buttons.length === 0) {
-                    return false;
-                }
-                await buttons[0].elem.click();
-            }
-            return true;
-        },
-        {
-            timeout: 20000,
         }
     );
 }

@@ -62,6 +62,9 @@ export class SyncDestinationComponent extends BaseComponent {
             }),
             this.codeSynchronizer.onDidChangeState(() => {
                 this.onDidChangeEmitter.fire();
+            }),
+            this.configModel.onDidChangeKey("mode")(async () => {
+                this.onDidChangeEmitter.fire();
             })
         );
     }
