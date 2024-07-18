@@ -1,3 +1,13 @@
+# Release: v2.3.0-preview
+
+## packages/databricks-vscode
+
+## (2024-07-18)
+
+-   Bring back sync functionality.
+-   Show correct default value for variables in bundle variable UI.
+-   Update CLI to v0.223.2.
+
 # Release: v2.2.2-preview
 
 ## packages/databricks-vscode
