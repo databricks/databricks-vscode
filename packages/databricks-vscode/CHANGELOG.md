@@ -4,8 +4,9 @@
 
 ## (2024-07-18)
 
--   Bring back sync functionality (#1278) ([0116d3a](https://github.com/databricks/databricks-vscode/commit/0116d3a)), closes [#1278](https://github.com/databricks/databricks-vscode/issues/1278)
--   Show correct default value for variables in bundle variable UI (#1277) ([e68f2bf](https://github.com/databricks/databricks-vscode/commit/e68f2bf)), closes [#1277](https://github.com/databricks/databricks-vscode/issues/1277) [#1272](https://github.com/databricks/databricks-vscode/issues/1272)
+-   Bring back sync functionality.
+-   Show correct default value for variables in bundle variable UI.
+-   Update CLI to v0.223.2.
 
 # Release: v2.2.2-preview
 
