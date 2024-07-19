@@ -60,7 +60,7 @@
                 "command": "databricks.connection.configureLogin",
                 "icon": "$(gear)",
                 "title": "Sign in to Databricks workspace",
-                "enablement": "databricks.context.activated",
+                "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
@@ -143,6 +143,7 @@
             {
                 "command": "databricks.autocomplete.configure",
                 "title": "Configure autocomplete for Databricks globals",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
@@ -234,7 +235,6 @@
                 "command": "databricks.bundle.initNewProject",
                 "icon": "$(new-folder)",
                 "title": "Initialize new project",
-                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
@@ -368,7 +368,7 @@
                 },
                 {
                     "id": "dabsVariableView",
-                    "name": "Bundle Variables View",
+                    "name": "Bundle Variables",
                     "visibility": "visible",
                     "when": "databricks.context.bundle.isTargetSet"
                 },
@@ -402,11 +402,6 @@
             },
             {
                 "view": "configurationView",
-                "contents": "To learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)",
-                "when": "databricks.context.initialized"
-            },
-            {
-                "view": "configurationView",
                 "contents": "Initializing...",
                 "when": "workspaceFolderCount > 0 && !databricks.context.initialized"
             },
@@ -414,6 +409,10 @@
                 "view": "configurationView",
                 "contents": "The workspace is empty.\n[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
                 "when": "workspaceFolderCount == 0"
+            },
+            {
+                "view": "configurationView",
+                "contents": "To learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
             }
         ],
         "menus": {
@@ -575,7 +574,7 @@
                 {
                     "submenu": "databricks.run",
                     "group": "navigation@0",
-                    "when": "databricks.context.isActiveFileInActiveWorkspace && resourceLangId =~ /^(python|scala|r|sql)$/ || databricks.context.isActiveFileInActiveWorkspace && resourceExtname == .ipynb"
+                    "when": "databricks.context.isActiveFileInActiveWorkspace && databricks.context.showRunAsWorkflow || databricks.context.isActiveFileInActiveWorkspace && resourceExtname == .ipynb"
                 }
             ],
             "databricks.run": [
@@ -586,7 +585,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "resourceLangId == python || resourceLangId == scala || resourceLangId == r || resourceLangId == sql || resourceExtname == .ipynb",
+                    "when": "databricks.context.showRunAsWorkflow",
                     "group": "1_remote@2"
                 },
                 {
@@ -607,7 +606,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "resourceLangId == python || resourceExtname == .ipynb"
+                    "when": "databricks.context.showRunAsWorkflow"
                 },
                 {
                     "command": "databricks.wsfs.createFolder",
@@ -641,7 +640,7 @@
             "explorer/context": [
                 {
                     "submenu": "databricks.run",
-                    "when": "resourceLangId == python || resourceExtname == .ipynb"
+                    "when": "resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow"
                 }
             ]
         },

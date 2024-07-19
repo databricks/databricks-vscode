@@ -94,4 +94,12 @@ export class CustomWhenContext {
             value
         );
     }
+
+    setShowRunAsWorkflow(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.showRunAsWorkflow",
+            value
+        );
+    }
 }
