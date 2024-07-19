@@ -585,7 +585,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "databricks.context.showRunAsWorkflow",
+                    "when": "resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow",
                     "group": "1_remote@2"
                 },
                 {
@@ -606,7 +606,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "databricks.context.showRunAsWorkflow"
+                    "when": "resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow"
                 },
                 {
                     "command": "databricks.wsfs.createFolder",
