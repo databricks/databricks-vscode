@@ -17,6 +17,7 @@ import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
+import {quote} from "shell-quote";
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
@@ -332,24 +333,19 @@ export const config: Options.Testrunner = {
             const binary: string = capabilities["wdio:vscodeOptions"]
                 .binary as string;
             let cli: string;
-            let spawnArgs: ExecFileOptions;
             switch (process.platform) {
                 case "win32":
                     cli = path.resolve(binary, "..", "bin", "code");
-                    spawnArgs = {
-                        shell: true,
-                    };
                     break;
                 case "darwin":
-                    cli = path.resolve(
-                        binary,
-                        "..",
-                        "..",
-                        "Resources/app/bin/code"
-                    );
-                    spawnArgs = {
-                        shell: false,
-                    };
+                    cli = quote([
+                        path.resolve(
+                            binary,
+                            "..",
+                            "..",
+                            "Resources/app/bin/code"
+                        ),
+                    ]);
                     break;
             }
             await new Promise((resolve, reject) => {
@@ -358,17 +354,20 @@ export const config: Options.Testrunner = {
                         "--install-extension",
                         item,
                     ]);
+
                 execFile(
                     cli,
                     [
                         "--extensions-dir",
-                        EXTENSION_DIR,
+                        quote([EXTENSION_DIR]),
                         ...extensionDependencies,
                         "--install-extension",
                         VSIX_PATH,
                         "--force",
                     ],
-                    spawnArgs,
+                    {
+                        shell: true,
+                    },
                     (error, stdout, stderr) => {
                         if (stdout) {
                             console.log(stdout);

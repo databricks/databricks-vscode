@@ -262,7 +262,7 @@ export class CliWrapper {
         if (syncType === "full") {
             args.push("--full");
         }
-        return {command: this.cliPath, args};
+        return {command: this.escapedCliPath, args};
     }
 
     private getListProfilesCommand(): Command {
@@ -412,7 +412,7 @@ export class CliWrapper {
     ) {
         return await runBundleCommand(
             "validate",
-            this.cliPath,
+            this.escapedCliPath,
             ["bundle", "validate", "--target", target],
             workspaceFolder,
             {
@@ -438,7 +438,7 @@ export class CliWrapper {
     ) {
         return await runBundleCommand(
             "summarize",
-            this.cliPath,
+            this.escapedCliPath,
             [
                 "bundle",
                 "summary",
@@ -512,7 +512,7 @@ export class CliWrapper {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
             "deploy",
-            this.cliPath,
+            this.escapedCliPath,
             [
                 "bundle",
                 "deploy",
@@ -546,7 +546,7 @@ export class CliWrapper {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
             "destroy",
-            this.cliPath,
+            this.escapedCliPath,
             [
                 "bundle",
                 "destroy",
@@ -591,7 +591,7 @@ export class CliWrapper {
         });
 
         return {
-            cmd: this.cliPath,
+            cmd: this.escapedCliPath,
             args: ["bundle", "run", "--target", target, resourceKey],
             options: {
                 cwd: workspaceFolder.fsPath,
