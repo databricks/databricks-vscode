@@ -33,25 +33,14 @@ async function main() {
             requiresArg: true,
         }).argv;
 
-    // const res = spawn(argv.cli!, [
-    //     "bundle",
-    //     "debug",
-    //     "terraform",
-    //     "--output",
-    //     "json",
-    // ]);
-    const dependencies = JSON.parse(`{
-        "terraform": {
-          "version": "1.5.5",
-          "checksum": {
-            "linux_arm64": "b055aefe343d0b710d8a7afd31aeb702b37bbf4493bb9385a709991e48dfbcd2",
-            "linux_amd64": "ad0c696c870c8525357b5127680cd79c0bdf58179af9acd091d43b1d6482da4a"
-          },
-          "providerHost": "registry.terraform.io",
-          "providerSource": "databricks/databricks",
-          "providerVersion": "1.48.0"
-        }
-      }`);
+    const res = spawn(argv.cli!, [
+        "bundle",
+        "debug",
+        "terraform",
+        "--output",
+        "json",
+    ]);
+    const dependencies = JSON.parse(res.stdout.toString());
     const terraform = dependencies.terraform as TerraformMetadataFromCli;
     assert(terraform, "cli must return terraform dependencies");
     assert(terraform.version, "cli must return terraform version");
