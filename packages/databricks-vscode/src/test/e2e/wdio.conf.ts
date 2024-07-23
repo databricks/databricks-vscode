@@ -595,7 +595,11 @@ async function startCluster(
             await workspaceClient.clusters.start({
                 cluster_id: clusterId,
             })
-        ).wait();
+        ).wait({
+            onProgress: async (state) => {
+                console.log(`Cluster state: ${state.state}`);
+            },
+        });
     } catch (e: unknown) {
         if (!(e instanceof ApiError && e.message.includes("INVALID_STATE"))) {
             throw e;
