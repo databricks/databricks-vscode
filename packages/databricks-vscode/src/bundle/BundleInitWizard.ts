@@ -188,12 +188,12 @@ export class BundleInitWizard {
             "bundle",
             "init",
             "--output-dir",
-            this.cli.escapePathArgument(parentFolder.fsPath),
+            ShellUtils.escapePathArgument(parentFolder.fsPath),
         ].join(" ");
         const initialPrompt = `clear; echo "Executing: databricks ${args}\nFollow the steps below to create your new Databricks project.\n"`;
         const finalPrompt = `echo "\nPress any key to close the terminal and continue ..."; ${ShellUtils.readCmd()}; exit`;
         terminal.sendText(
-            `${initialPrompt}; ${this.cli.cliPath} ${args}; ${finalPrompt}`
+            `${initialPrompt}; ${this.cli.escapedCliPath} ${args}; ${finalPrompt}`
         );
         return new Promise<void>((resolve) => {
             const closeEvent = window.onDidCloseTerminal(async (t) => {

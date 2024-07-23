@@ -19,6 +19,7 @@ import {quote} from "shell-quote";
 import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
+import {isPowershell} from "../utils/shellUtils";
 
 const withLogContext = logging.withLogContext;
 const execFile = promisify(execFileCb);
@@ -236,8 +237,10 @@ export class CliWrapper {
         };
     }
 
-    escapePathArgument(arg: string): string {
-        return `"${arg.replaceAll('"', '\\"')}"`;
+    get escapedCliPath(): string {
+        return isPowershell()
+            ? `& "${this.cliPath.replace('"', '\\"')}"`
+            : `'${this.cliPath.replaceAll("'", "\\'")}'`;
     }
 
     /**

@@ -24,7 +24,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const {version, name, engines} = packageJson;
 
-const EXTENSION_DIR = path.resolve(tmpdir(), "extension-test", "extension");
+const EXTENSION_DIR = path.resolve(tmpdir(), "extension test", "extension");
 const VSIX_PATH = path.resolve(
     __dirname,
     "..",
