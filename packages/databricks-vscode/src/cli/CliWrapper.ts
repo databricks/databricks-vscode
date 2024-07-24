@@ -31,9 +31,13 @@ export const execFile = async (
     stderr: string;
 }> => {
     if (process.platform === "win32") {
-        file = ShellUtils.escapeCommand(file);
-        args = args.map(ShellUtils.escapeArgument);
-        options = {...options, shell: true};
+        const realArgs = [ShellUtils.escapeCommand(file)]
+            .concat(args.map(ShellUtils.escapeArgument).join(" "))
+            .join(" ");
+
+        file = "cmd.exe";
+        args = ["/d", "/s", "/c", `"${realArgs}"`];
+        options = {...options, windowsVerbatimArguments: true};
     }
     const res = await promisify(execFileCb)(file, args, options);
     return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
@@ -176,12 +180,13 @@ async function runBundleCommand(
     };
 
     if (process.platform === "win32") {
-        options = {
-            ...options,
-            shell: true,
-        };
-        cmd = ShellUtils.escapeCommand(cmd);
-        args = args.map(ShellUtils.escapeArgument);
+        const realArgs = [ShellUtils.escapeCommand(cmd)]
+            .concat(args.map(ShellUtils.escapeArgument).join(" "))
+            .join(" ");
+
+        cmd = "cmd.exe";
+        args = ["/d", "/s", "/c", `"${realArgs}"`];
+        options = {...options, windowsVerbatimArguments: true};
     }
     try {
         const p = spawn(cmd, args, options);
