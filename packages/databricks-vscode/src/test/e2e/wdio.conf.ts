@@ -85,6 +85,7 @@ const execFile = async (
 
         file = "cmd.exe";
         args = ["/d", "/s", "/c", `"${realArgs}"`];
+        console.log("execFile", file, args);
         options = {...options, windowsVerbatimArguments: true};
     }
     const res = await promisify(execFileCb)(file, args, options);
@@ -405,6 +406,7 @@ export const config: Options.Testrunner = {
             (item) => ["--install-extension", item]
         );
 
+        console.log("running vscode cli");
         const res = await execFile(cli, [
             "--extensions-dir",
             EXTENSION_DIR,
