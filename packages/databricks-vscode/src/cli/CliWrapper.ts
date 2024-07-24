@@ -160,7 +160,6 @@ async function runBundleCommand(
         const p = spawn(cmd, args, {
             cwd: workspaceFolder.fsPath,
             env: removeUndefinedKeys(env),
-            shell: true,
         });
 
         const {stdout, stderr} = await waitForProcess(p, onStdOut, onStdError);
@@ -262,7 +261,7 @@ export class CliWrapper {
         if (syncType === "full") {
             args.push("--full");
         }
-        return {command: this.escapedCliPath, args};
+        return {command: this.cliPath, args};
     }
 
     private getListProfilesCommand(): Command {
@@ -412,7 +411,7 @@ export class CliWrapper {
     ) {
         return await runBundleCommand(
             "validate",
-            this.escapedCliPath,
+            this.cliPath,
             ["bundle", "validate", "--target", target],
             workspaceFolder,
             {
@@ -438,7 +437,7 @@ export class CliWrapper {
     ) {
         return await runBundleCommand(
             "summarize",
-            this.escapedCliPath,
+            this.cliPath,
             [
                 "bundle",
                 "summary",
@@ -512,7 +511,7 @@ export class CliWrapper {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
             "deploy",
-            this.escapedCliPath,
+            this.cliPath,
             [
                 "bundle",
                 "deploy",
@@ -546,7 +545,7 @@ export class CliWrapper {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
             "destroy",
-            this.escapedCliPath,
+            this.cliPath,
             [
                 "bundle",
                 "destroy",
@@ -591,12 +590,11 @@ export class CliWrapper {
         });
 
         return {
-            cmd: this.escapedCliPath,
+            cmd: this.cliPath,
             args: ["bundle", "run", "--target", target, resourceKey],
             options: {
                 cwd: workspaceFolder.fsPath,
                 env,
-                shell: true,
             },
         };
     }

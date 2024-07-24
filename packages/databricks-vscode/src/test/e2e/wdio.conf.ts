@@ -122,7 +122,7 @@ export const config: Options.Testrunner = {
                     ),
                     storagePath: VSCODE_STORAGE_DIR,
                     vscodeArgs: {
-                        extensionsDir: quote([EXTENSION_DIR]),
+                        extensionsDir: EXTENSION_DIR,
                         disableExtensions: false,
                     },
                     workspacePath: WORKSPACE_PATH,
@@ -337,9 +337,12 @@ export const config: Options.Testrunner = {
                 cli = path.resolve(binary, "..", "bin", "code");
                 break;
             case "darwin":
-                cli = quote([
-                    path.resolve(binary, "..", "..", "Resources/app/bin/code"),
-                ]);
+                cli = path.resolve(
+                    binary,
+                    "..",
+                    "..",
+                    "Resources/app/bin/code"
+                );
                 break;
         }
         await new Promise((resolve, reject) => {
@@ -353,15 +356,12 @@ export const config: Options.Testrunner = {
                 cli,
                 [
                     "--extensions-dir",
-                    quote([EXTENSION_DIR]),
+                    EXTENSION_DIR,
                     ...extensionDependencies,
                     "--install-extension",
                     VSIX_PATH,
                     "--force",
                 ],
-                {
-                    shell: true,
-                },
                 (error, stdout, stderr) => {
                     if (stdout) {
                         console.log(stdout);
