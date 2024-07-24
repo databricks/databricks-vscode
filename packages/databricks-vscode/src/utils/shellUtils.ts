@@ -15,13 +15,10 @@ export function escapePathArgument(arg: string): string {
     return `"${arg.replaceAll('"', '\\"')}"`;
 }
 
-const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
+const metaCharsRegExp = /([()\][%!^"`<>&|;,*?])/g;
 
 export function escapeCommand(arg: string): string {
-    // Escape meta chars
-    arg = arg.replace(metaCharsRegExp, "^$1");
-
-    return arg;
+    return `"${arg}"`;
 }
 
 export function escapeArgument(arg: string): string {
