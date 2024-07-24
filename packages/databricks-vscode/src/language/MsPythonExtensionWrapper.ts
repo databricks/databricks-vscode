@@ -12,9 +12,8 @@ import {StateStorage} from "../vscode-objs/StateStorage";
 import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
 import {Mutex} from "../locking";
 import * as childProcess from "node:child_process";
-import {promisify} from "node:util";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
-export const execFile = promisify(childProcess.execFile);
+import {execFile} from "../cli/CliWrapper";
 
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;

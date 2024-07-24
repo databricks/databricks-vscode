@@ -10,14 +10,14 @@ import assert from "assert";
 import fs from "fs/promises";
 import {ApiError, Config, WorkspaceClient} from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
-import {execFile, ExecFileOptions} from "node:child_process";
+import {execFile as execFileCb} from "node:child_process";
 import {cpSync, mkdirSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
-import {quote} from "shell-quote";
+import {promisify} from "node:util";
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
@@ -34,6 +34,58 @@ const VSIX_PATH = path.resolve(
     `${name}-${version}.vsix`
 );
 const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
+
+const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
+
+export function escapeCommand(arg: string): string {
+    // Escape meta chars
+    arg = arg.replace(metaCharsRegExp, "^$1");
+
+    return arg;
+}
+
+export function escapeArgument(arg: string): string {
+    // Convert to string
+    arg = `${arg}`;
+
+    // Algorithm below is based on https://qntm.org/cmd
+
+    // Sequence of backslashes followed by a double quote:
+    // double up all the backslashes and escape the double quote
+    arg = arg.replace(/(\\*)"/g, '$1$1\\"');
+
+    // Sequence of backslashes followed by the end of the string
+    // (which will become a double quote later):
+    // double up all the backslashes
+    arg = arg.replace(/(\\*)$/, "$1$1");
+
+    // All other backslashes occur literally
+
+    // Quote the whole thing:
+    arg = `"${arg}"`;
+
+    // Escape meta chars
+    arg = arg.replace(metaCharsRegExp, "^$1");
+
+    return arg;
+}
+
+const execFile = async (
+    file: string,
+    args: string[],
+    options: any = {}
+): Promise<{
+    stdout: string;
+    stderr: string;
+}> => {
+    if (process.platform === "win32") {
+        file = escapeCommand(file);
+        args = args.map(escapeArgument);
+        options = {...options, shell: true};
+    }
+    const res = await promisify(execFileCb)(file, args, options);
+    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+};
 
 export const config: Options.Testrunner = {
     //
@@ -328,7 +380,7 @@ export const config: Options.Testrunner = {
      * @param {Array.<String>} specs List of spec file paths that are to be run
      * @param {String} cid worker id (e.g. 0-0)
      */
-    beforeSession: async function (config, capabilities, specs, cid) {
+    beforeSession: async function (config, capabilities) {
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
         let cli: string;

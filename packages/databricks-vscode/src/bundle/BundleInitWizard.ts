@@ -188,7 +188,7 @@ export class BundleInitWizard {
             "bundle",
             "init",
             "--output-dir",
-            ShellUtils.escapePathArgument(parentFolder.fsPath),
+            ShellUtils.escapeArgument(parentFolder.fsPath),
         ].join(" ");
         const initialPrompt = `clear; echo "Executing: databricks ${args}\nFollow the steps below to create your new Databricks project.\n"`;
         const finalPrompt = `echo "\nPress any key to close the terminal and continue ..."; ${ShellUtils.readCmd()}; exit`;

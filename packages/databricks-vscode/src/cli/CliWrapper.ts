@@ -12,7 +12,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {LoggerManager, Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
-import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
+import {EnvVarGenerators, FileUtils, ShellUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
@@ -22,7 +22,22 @@ import path from "path";
 import {isPowershell} from "../utils/shellUtils";
 
 const withLogContext = logging.withLogContext;
-const execFile = promisify(execFileCb);
+export const execFile = async (
+    file: string,
+    args: string[],
+    options: any = {}
+): Promise<{
+    stdout: string;
+    stderr: string;
+}> => {
+    if (process.platform === "win32") {
+        file = ShellUtils.escapeCommand(file);
+        args = args.map(ShellUtils.escapeArgument);
+        options = {...options, shell: true};
+    }
+    const res = await promisify(execFileCb)(file, args, options);
+    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+};
 
 export interface Command {
     command: string;
@@ -155,12 +170,21 @@ async function runBundleCommand(
     });
 
     logger?.debug(quote([cmd, ...args]), {bundleOpName});
+    let options: SpawnOptionsWithoutStdio = {
+        cwd: workspaceFolder.fsPath,
+        env: removeUndefinedKeys(env),
+    };
 
+    if (process.platform === "win32") {
+        options = {
+            ...options,
+            shell: true,
+        };
+        cmd = ShellUtils.escapeCommand(cmd);
+        args = args.map(ShellUtils.escapeArgument);
+    }
     try {
-        const p = spawn(cmd, args, {
-            cwd: workspaceFolder.fsPath,
-            env: removeUndefinedKeys(env),
-        });
+        const p = spawn(cmd, args, options);
 
         const {stdout, stderr} = await waitForProcess(p, onStdOut, onStdError);
         logger?.info(displayLogs.end, {
