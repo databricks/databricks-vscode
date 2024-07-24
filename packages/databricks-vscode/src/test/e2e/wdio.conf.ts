@@ -10,7 +10,7 @@ import assert from "assert";
 import fs from "fs/promises";
 import {ApiError, Config, WorkspaceClient} from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
-import {execFile as execFileCb, spawn} from "node:child_process";
+import {execFile as execFileCb} from "node:child_process";
 import {cpSync, mkdirSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
@@ -84,29 +84,11 @@ const execFile = async (
             .join(" ");
 
         file = "cmd.exe";
-        args = ["/s", "/c", `"${realArgs}"`];
+        args = ["/d", "/s", "/c", `"${realArgs}"`];
         options = {...options, windowsVerbatimArguments: true};
     }
-    const stdout: string[] = [],
-        stderr: string[] = [];
-    const res = await new Promise((resolve, reject) => {
-        const s = spawn(file, args, options);
-        s.on("error", (err) => {
-            stderr.push(err.message);
-            reject(err);
-        });
-        s.on("exit", (code) => {
-            if (code === 0) {
-                resolve(undefined);
-            } else {
-                reject(new Error(`Command exited with code ${code}`));
-            }
-        });
-        s.on("message", (message) => {
-            stdout.push(message.toString());
-        });
-    });
-    return {stdout: stdout.join(""), stderr: stderr.join("")};
+    const res = await promisify(execFileCb)(file, args, options);
+    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
 };
 
 export const config: Options.Testrunner = {
@@ -405,7 +387,7 @@ export const config: Options.Testrunner = {
     beforeSession: async function (config, capabilities) {
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
-        let cli: string;
+        let cli: string = "";
         switch (process.platform) {
             case "win32":
                 cli = path.resolve(binary, "..", "bin", "code");
@@ -419,38 +401,20 @@ export const config: Options.Testrunner = {
                 );
                 break;
         }
-        await new Promise((resolve, reject) => {
-            const extensionDependencies =
-                packageJson.extensionDependencies.flatMap((item) => [
-                    "--install-extension",
-                    item,
-                ]);
+        const extensionDependencies = packageJson.extensionDependencies.flatMap(
+            (item) => ["--install-extension", item]
+        );
 
-            execFile(
-                cli,
-                [
-                    "--extensions-dir",
-                    EXTENSION_DIR,
-                    ...extensionDependencies,
-                    "--install-extension",
-                    VSIX_PATH,
-                    "--force",
-                ],
-                (error, stdout, stderr) => {
-                    if (stdout) {
-                        console.log(stdout);
-                    }
-                    if (error) {
-                        console.error(error);
-                        reject(error);
-                    }
-                    if (stderr) {
-                        console.error(stderr);
-                    }
-                    resolve(undefined);
-                }
-            );
-        });
+        const res = await execFile(cli, [
+            "--extensions-dir",
+            EXTENSION_DIR,
+            ...extensionDependencies,
+            "--install-extension",
+            VSIX_PATH,
+            "--force",
+        ]);
+
+        console.log(res.stdout, res.stderr);
     },
 
     /**
