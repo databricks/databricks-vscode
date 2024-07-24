@@ -79,10 +79,11 @@ const execFile = async (
     stderr: string;
 }> => {
     if (process.platform === "win32") {
-        file = "cmd.exe";
         const realArgs = [escapeCommand(file)]
             .concat(args.map(escapeArgument).join(" "))
             .join(" ");
+
+        file = "cmd.exe";
         args = ["/d", "/s", "/c", `"${realArgs}"`];
         options = {...options, windowsVerbatimArguments: true};
     }
