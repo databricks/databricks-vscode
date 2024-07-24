@@ -122,7 +122,7 @@ export const config: Options.Testrunner = {
                     ),
                     storagePath: VSCODE_STORAGE_DIR,
                     vscodeArgs: {
-                        extensionsDir: EXTENSION_DIR,
+                        extensionsDir: quote([EXTENSION_DIR]),
                         disableExtensions: false,
                     },
                     workspacePath: WORKSPACE_PATH,
@@ -329,91 +329,54 @@ export const config: Options.Testrunner = {
      * @param {String} cid worker id (e.g. 0-0)
      */
     beforeSession: async function (config, capabilities, specs, cid) {
-        if (cid === "0-0") {
-            const binary: string = capabilities["wdio:vscodeOptions"]
-                .binary as string;
-            let cli: string;
-            switch (process.platform) {
-                case "win32":
-                    cli = path.resolve(binary, "..", "bin", "code");
-                    break;
-                case "darwin":
-                    cli = quote([
-                        path.resolve(
-                            binary,
-                            "..",
-                            "..",
-                            "Resources/app/bin/code"
-                        ),
-                    ]);
-                    break;
-            }
-            await new Promise((resolve, reject) => {
-                const extensionDependencies =
-                    packageJson.extensionDependencies.flatMap((item) => [
-                        "--install-extension",
-                        item,
-                    ]);
-
-                execFile(
-                    cli,
-                    [
-                        "--extensions-dir",
-                        quote([EXTENSION_DIR]),
-                        ...extensionDependencies,
-                        "--install-extension",
-                        VSIX_PATH,
-                        "--force",
-                    ],
-                    {
-                        shell: true,
-                    },
-                    (error, stdout, stderr) => {
-                        if (stdout) {
-                            console.log(stdout);
-                        }
-                        if (error) {
-                            console.error(stderr);
-                            console.error(error);
-                            reject(error);
-                        }
-                        resolve(undefined);
-                    }
-                );
-            });
-            await fs.writeFile(path.join(WORKSPACE_PATH, "lock.unlock"), "");
-            console.log(
-                `lock file ${path.join(WORKSPACE_PATH, `lock.unlock`)}`
-            );
-        } else {
-            const startTime = Date.now();
-            await new Promise((resolve, reject) => {
-                console.log(
-                    `${cid} waiting for extension to install; file ${path.join(
-                        WORKSPACE_PATH,
-                        "lock.unlock"
-                    )}`
-                );
-                const interval = setInterval(async () => {
-                    try {
-                        await fs.stat(path.join(WORKSPACE_PATH, "lock.unlock"));
-                        clearInterval(interval);
-                        resolve(undefined);
-                    } catch (e) {
-                        console.log(
-                            `${cid} waiting for extension to install; file ${path.join(
-                                WORKSPACE_PATH,
-                                "lock.unlock"
-                            )}`
-                        );
-                        if (Date.now() - startTime > 60_000) {
-                            clearInterval(interval);
-                            reject("Timeout waiting for extension to install");
-                        }
-                    }
-                }, 5_000);
-            });
+        const binary: string = capabilities["wdio:vscodeOptions"]
+            .binary as string;
+        let cli: string;
+        switch (process.platform) {
+            case "win32":
+                cli = path.resolve(binary, "..", "bin", "code");
+                break;
+            case "darwin":
+                cli = quote([
+                    path.resolve(binary, "..", "..", "Resources/app/bin/code"),
+                ]);
+                break;
         }
+        await new Promise((resolve, reject) => {
+            const extensionDependencies =
+                packageJson.extensionDependencies.flatMap((item) => [
+                    "--install-extension",
+                    item,
+                ]);
+
+            execFile(
+                cli,
+                [
+                    "--extensions-dir",
+                    quote([EXTENSION_DIR]),
+                    ...extensionDependencies,
+                    "--install-extension",
+                    VSIX_PATH,
+                    "--force",
+                ],
+                {
+                    shell: true,
+                },
+                (error, stdout, stderr) => {
+                    if (stdout) {
+                        console.log(stdout);
+                    }
+                    if (error) {
+                        console.error(error);
+                        reject(error);
+                    }
+                    if (stderr) {
+                        console.error(stderr);
+                    }
+                    resolve(undefined);
+                }
+            );
+        });
     },
 
     /**
