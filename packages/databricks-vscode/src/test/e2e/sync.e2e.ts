@@ -78,7 +78,6 @@ describe("Sync", async function () {
             token: process.env.DATABRICKS_TOKEN,
         });
         await createProject();
-        await dismissNotifications();
     });
 
     it("should wait for extension activation", async () => {
@@ -88,7 +87,6 @@ describe("Sync", async function () {
 
     it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
-        await dismissNotifications();
     });
 
     it("should sync files", async () => {
