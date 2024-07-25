@@ -176,12 +176,8 @@ async function runBundleCommand(
     };
 
     if (process.platform === "win32") {
-        const realArgs = [ShellUtils.escapeCommand(cmd)]
-            .concat(args.map(ShellUtils.escapeArgument).join(" "))
-            .join(" ");
-
-        cmd = "cmd.exe";
-        args = ["/d", "/s", "/c", `"${realArgs}"`];
+        args = args.map(ShellUtils.escapeArgument);
+        cmd = ShellUtils.escapeCommand(cmd);
         options = {...options, windowsVerbatimArguments: true};
     }
     try {

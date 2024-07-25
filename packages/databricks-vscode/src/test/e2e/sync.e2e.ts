@@ -86,6 +86,29 @@ describe("Sync", async function () {
     // });
 
     it("should wait for connection", async () => {
+        await browser.waitUntil(
+            async () => {
+                await browser.executeWorkbench(async (vscode) => {
+                    await vscode.commands.executeCommand(
+                        "workbench.panel.output.focus"
+                    );
+                });
+                const outputView = await (await browser.getWorkbench())
+                    .getBottomBar()
+                    .openOutputView();
+
+                if (
+                    (await outputView.getCurrentChannel()) !==
+                    "Databricks Bundle Logs"
+                ) {
+                    await outputView.selectChannel("Databricks Bundle Logs");
+                    return false;
+                }
+
+                return true;
+            },
+            {interval: 2_000, timeout: 60_000}
+        );
         await waitForLogin("DEFAULT");
     });
 
