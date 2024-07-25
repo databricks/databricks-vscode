@@ -17,15 +17,12 @@ import {Loggers} from "../../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Mutex} from "../../locking";
 import {MsPythonExtensionWrapper} from "../MsPythonExtensionWrapper";
-import {execFile as ef} from "child_process";
-import {promisify} from "util";
 import {FileUtils} from "../../utils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {LocalUri} from "../../sync/SyncDestination";
 import {DatabricksEnvFileManager} from "../../file-managers/DatabricksEnvFileManager";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
-
-const execFile = promisify(ef);
+import {execFile} from "../../cli/CliWrapper";
 
 async function isDbnbTextEditor(editor?: TextEditor) {
     try {

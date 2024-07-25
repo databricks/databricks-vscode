@@ -12,16 +12,32 @@ import {logging} from "@databricks/databricks-sdk";
 import {LoggerManager, Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
-import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
+import {EnvVarGenerators, FileUtils, ShellUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
 import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
+import {isPowershell} from "../utils/shellUtils";
 
 const withLogContext = logging.withLogContext;
-const execFile = promisify(execFileCb);
+export const execFile = async (
+    file: string,
+    args: string[],
+    options: any = {}
+): Promise<{
+    stdout: string;
+    stderr: string;
+}> => {
+    if (process.platform === "win32") {
+        args = args.map(ShellUtils.escapeArgument);
+        file = ShellUtils.escapeCommand(file);
+        options = {...options, windowsVerbatimArguments: true};
+    }
+    const res = await promisify(execFileCb)(file, args, options);
+    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+};
 
 export interface Command {
     command: string;
@@ -154,13 +170,18 @@ async function runBundleCommand(
     });
 
     logger?.debug(quote([cmd, ...args]), {bundleOpName});
+    let options: SpawnOptionsWithoutStdio = {
+        cwd: workspaceFolder.fsPath,
+        env: removeUndefinedKeys(env),
+    };
 
+    if (process.platform === "win32") {
+        args = args.map(ShellUtils.escapeArgument);
+        cmd = ShellUtils.escapeCommand(cmd);
+        options = {...options, windowsVerbatimArguments: true};
+    }
     try {
-        const p = spawn(cmd, args, {
-            cwd: workspaceFolder.fsPath,
-            env: removeUndefinedKeys(env),
-            shell: true,
-        });
+        const p = spawn(cmd, args, options);
 
         const {stdout, stderr} = await waitForProcess(p, onStdOut, onStdError);
         logger?.info(displayLogs.end, {
@@ -236,8 +257,10 @@ export class CliWrapper {
         };
     }
 
-    escapePathArgument(arg: string): string {
-        return `"${arg.replaceAll('"', '\\"')}"`;
+    get escapedCliPath(): string {
+        return isPowershell()
+            ? `& "${this.cliPath.replace('"', '\\"')}"`
+            : `'${this.cliPath.replaceAll("'", "\\'")}'`;
     }
 
     /**
@@ -300,6 +323,8 @@ export class CliWrapper {
                         "Failed to parse Databricks Config File, please make sure it's in the correct ini format";
                 } else if (e.message.includes("spawn UNKNOWN")) {
                     msg = `Failed to parse Databricks Config File using databricks CLI, please make sure you have permissions to execute this binary: "${this.cliPath}"`;
+                } else {
+                    msg += e.message;
                 }
             }
             ctx?.logger?.error(msg, e);
@@ -593,7 +618,6 @@ export class CliWrapper {
             options: {
                 cwd: workspaceFolder.fsPath,
                 env,
-                shell: true,
             },
         };
     }

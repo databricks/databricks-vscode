@@ -1,5 +1,4 @@
 import {
-    ExecUtils,
     ProductVersion,
     WorkspaceClient,
     logging,
@@ -8,6 +7,7 @@ import {Disposable, window} from "vscode";
 import {DatabricksCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 import {Loggers} from "../../logger";
+import {execFile} from "../../cli/CliWrapper";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const extensionVersion = require("../../../package.json")
@@ -92,7 +92,7 @@ export class DatabricksCliCheck implements Disposable {
 
     private async login(): Promise<void> {
         try {
-            await ExecUtils.execFile(this.authProvider.cliPath, [
+            await execFile(this.authProvider.cliPath, [
                 "auth",
                 "login",
                 "--host",
