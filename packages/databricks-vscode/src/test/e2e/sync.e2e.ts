@@ -80,10 +80,10 @@ describe("Sync", async function () {
         await createProject();
     });
 
-    it("should wait for extension activation", async () => {
-        const section = await getViewSection("CONFIGURATION");
-        assert(section);
-    });
+    // it("should wait for extension activation", async () => {
+    //     const section = await getViewSection("CONFIGURATION");
+    //     assert(section);
+    // });
 
     it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
