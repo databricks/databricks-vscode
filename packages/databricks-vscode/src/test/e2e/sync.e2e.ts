@@ -90,7 +90,7 @@ describe("Sync", async function () {
             async () => {
                 await browser.executeWorkbench(async (vscode) => {
                     await vscode.commands.executeCommand(
-                        "workbench.panel.output.focus"
+                        "databricks.internal.showOutput"
                     );
                 });
                 const outputView = await (await browser.getWorkbench())
@@ -98,10 +98,9 @@ describe("Sync", async function () {
                     .openOutputView();
 
                 if (
-                    (await outputView.getCurrentChannel()) !==
-                    "Databricks Bundle Logs"
+                    (await outputView.getCurrentChannel()) !== "Databricks Logs"
                 ) {
-                    await outputView.selectChannel("Databricks Bundle Logs");
+                    await outputView.selectChannel("Databricks Logs");
                     return false;
                 }
 

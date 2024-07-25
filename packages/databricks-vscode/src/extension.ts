@@ -322,6 +322,9 @@ export async function activate(
         bundleRemoteStateModel,
         configModel,
         connectionManager,
+        commands.registerCommand("databricks.internal.showOutput", () => {
+            loggerManager.showOutputChannel("Databricks Logs");
+        }),
         connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
                 Metadata.USER,
