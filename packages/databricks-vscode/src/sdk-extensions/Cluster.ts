@@ -173,16 +173,16 @@ export class Cluster {
             ));
         }
 
-        const permissionApi = new iam.PermissionsService(this.client);
-        const perms = await permissionApi.get({
-            request_object_id: this.id,
-            request_object_type: "clusters",
+        const perms = await this.clusterApi.getPermissions({
+            cluster_id: this.id,
         });
-
         return (this._hasExecutePerms =
             (perms.access_control_list ?? []).find((ac) => {
                 return (
                     ac.user_name === userDetails.userName ||
+                    // `users` is a system group for "All Workspace Users"
+                    // https://docs.databricks.com/en/admin/users-groups/groups.html
+                    ac.group_name === "users" ||
                     userDetails.groups
                         ?.map((v) => v.display)
                         .includes(ac.group_name ?? "")
