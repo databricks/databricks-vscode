@@ -102,7 +102,7 @@ describe("Bundle Variables", async function () {
     }
 
     it("should find bundle variable explorer and load default variables", async function () {
-        const section = (await getViewSection("BUNDLE VARIABLES VIEW")) as
+        const section = (await getViewSection("BUNDLE VARIABLES")) as
             | CustomTreeSection
             | undefined;
         assert(section);
@@ -131,7 +131,7 @@ describe("Bundle Variables", async function () {
         );
         await editor.save();
 
-        const section = (await getViewSection("BUNDLE VARIABLES VIEW")) as
+        const section = (await getViewSection("BUNDLE VARIABLES")) as
             | CustomTreeSection
             | undefined;
         assert(section);
@@ -154,7 +154,7 @@ describe("Bundle Variables", async function () {
     });
 
     it("should revert overrides", async function () {
-        const section = (await getViewSection("BUNDLE VARIABLES VIEW")) as
+        const section = (await getViewSection("BUNDLE VARIABLES")) as
             | CustomTreeSection
             | undefined;
         assert(section);
@@ -189,7 +189,7 @@ describe("Bundle Variables", async function () {
 
         await writeRootBundleConfig(schemaDef, vscodeWorkspaceRoot);
 
-        const section = (await getViewSection("BUNDLE VARIABLES VIEW")) as
+        const section = (await getViewSection("BUNDLE VARIABLES")) as
             | CustomTreeSection
             | undefined;
         assert(section);
