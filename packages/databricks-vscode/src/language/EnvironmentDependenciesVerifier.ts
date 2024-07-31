@@ -156,7 +156,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     private printEnvironment(env?: ResolvedEnvironment): string {
         return env?.version && env.environment
             ? `Current version is ${env.version.major}.${env.version.minor}.${env.version.micro}.`
-            : "No active environment found.";
+            : "No active environments found.";
     }
 
     async checkPythonEnvironment(): Promise<FeatureStepState> {
@@ -191,7 +191,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 this.selectPythonInterpreter.bind(this)
             );
         }
-        // If we don't now DBR version (no cluster is connected),
+        // If we don't know DBR version (no cluster is connected or new version is released and the extension isn't updated yet),
         // we still check that environment is active and has python >= 3.10
         const envVersionTooLow =
             env?.version && (env.version.major !== 3 || env.version.minor < 10);
