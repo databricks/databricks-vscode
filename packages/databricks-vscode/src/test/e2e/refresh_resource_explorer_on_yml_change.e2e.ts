@@ -56,6 +56,7 @@ describe("Automatically refresh resource explorer", async function () {
         const schemaDef: BundleSchema = getBasicBundleConfig({
             bundle: {
                 name: projectName,
+                deployment: {},
             },
             targets: {
                 dev_test: {

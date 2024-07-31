@@ -52,7 +52,7 @@ def logErrorAndContinue(f):
 def load_env_from_leaf(path: str) -> bool:
     curdir = path if os.path.isdir(path) else os.path.dirname(path)
     env_file_path = os.path.join(curdir, ".databricks", ".databricks.env")
-    if os.path.exists(os.path.dirname(env_file_path)):
+    if os.path.exists(env_file_path):
         with open(env_file_path, "r") as f:
             for line in f.readlines():
                 key, value = line.strip().split("=", 1)

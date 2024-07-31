@@ -73,6 +73,8 @@ import {ConfigurationTreeViewManager} from "./ui/configuration-view/Configuratio
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
+import {SyncCommands} from "./sync/SyncCommands";
+import {CodeSynchronizer} from "./sync";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -503,8 +505,34 @@ export async function activate(
         )
     );
 
+    const codeSynchroniser = new CodeSynchronizer(
+        connectionManager,
+        configModel,
+        cli,
+        packageMetadata
+    );
+
+    const syncCommands = new SyncCommands(codeSynchroniser);
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.sync.start",
+            syncCommands.startCommand("incremental"),
+            syncCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.sync.startFull",
+            syncCommands.startCommand("full"),
+            syncCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.sync.stop",
+            syncCommands.stopCommand(),
+            syncCommands
+        )
+    );
     const configurationDataProvider = new ConfigurationDataProvider(
         connectionManager,
+        codeSynchroniser,
         bundleProjectManager,
         configModel,
         cli,

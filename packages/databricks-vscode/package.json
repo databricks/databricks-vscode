@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.2.1",
+    "version": "2.3.0",
     "engines": {
         "vscode": "^1.86.0"
     },
@@ -322,6 +322,27 @@
                 "title": "Force destroy bundle",
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
+            },
+            {
+                "command": "databricks.sync.start",
+                "title": "Start synchronization",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
+                "icon": "$(sync)"
+            },
+            {
+                "command": "databricks.sync.startFull",
+                "title": "Start synchronization (full sync)",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
+                "icon": "$(sync)"
+            },
+            {
+                "command": "databricks.sync.stop",
+                "title": "Stop synchronization",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
+                "icon": "$(sync-ignored)"
             }
         ],
         "viewsContainers": {
@@ -538,6 +559,16 @@
                     "when": "view == configurationView && viewItem =~ /^databricks.environment.checkEnvironmentDependencies.success$/",
                     "group": "inline@0",
                     "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.sync.start",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-stopped.*$/ && databricks.context.bundle.isDevTarget",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.sync.stop",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-running.*$/ && databricks.context.bundle.isDevTarget",
+                    "group": "inline@0"
                 }
             ],
             "editor/title": [
@@ -881,7 +912,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.221.0"
+        "version": "0.223.2"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",

@@ -147,6 +147,11 @@ export class ConfigModel implements Disposable {
             ),
             this.bundleRemoteStateModel.onDidChange(async () => {
                 await this.configCache.refresh();
+            }),
+            this.onDidChangeKey("mode")(async () => {
+                this.vscodeWhenContext.isDevTarget(
+                    (await this.configCache.value).mode === "development"
+                );
             })
         );
     }

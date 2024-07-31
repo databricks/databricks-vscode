@@ -101,7 +101,7 @@ export class ClusterComponent extends BaseComponent {
             return [
                 {
                     label: LabelUtils.highlightedLabel("Select a cluster"),
-                    collapsibleState: TreeItemCollapsibleState.Expanded,
+                    collapsibleState: TreeItemCollapsibleState.None,
                     contextValue: getContextValue("none"),
                     iconPath: new ThemeIcon(
                         "server",
@@ -135,7 +135,7 @@ export class ClusterComponent extends BaseComponent {
                 label: "Cluster",
                 tooltip: url ? undefined : "Created after deploy",
                 description: cluster.name,
-                collapsibleState: TreeItemCollapsibleState.Expanded,
+                collapsibleState: TreeItemCollapsibleState.Collapsed,
                 contextValue: url ? `${contextValue}.has-url` : contextValue,
                 resourceUri: url
                     ? undefined

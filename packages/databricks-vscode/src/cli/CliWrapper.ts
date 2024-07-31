@@ -47,6 +47,25 @@ export class ProcessError extends Error {
     }
 
     showErrorMessage(prefix?: string) {
+        if (this.message.includes("no value assigned to required variable")) {
+            window
+                .showErrorMessage(
+                    (prefix?.trimEnd().concat(" ") ?? "") +
+                        `No value assigned to required variables.`,
+                    "Assign Values"
+                )
+                .then((choice) => {
+                    if (choice === "Assign Values") {
+                        commands.executeCommand("databricks.bundle.showLogs");
+                        commands.executeCommand("dabsVariableView.focus");
+                        commands.executeCommand(
+                            "databricks.bundle.variable.openFile"
+                        );
+                    }
+                });
+            return;
+        }
+
         window
             .showErrorMessage(
                 (prefix?.trimEnd().concat(" ") ?? "") +
@@ -61,7 +80,7 @@ export class ProcessError extends Error {
     }
 }
 
-async function waitForProcess(
+export async function waitForProcess(
     p: ChildProcessWithoutNullStreams,
     onStdOut?: (data: string) => void,
     onStdError?: (data: string) => void
@@ -87,13 +106,13 @@ async function waitForProcess(
             if (code === 0) {
                 resolve();
             } else {
-                reject(new ProcessError(stderr.join("\n"), code));
+                reject(new ProcessError(stderr.join(""), code));
             }
         });
         p.on("error", (e) => new ProcessError(e.message, null));
     });
 
-    return {stdout: stdout.join("\n"), stderr: stderr.join("\n")};
+    return {stdout: stdout.join(""), stderr: stderr.join("")};
 }
 
 async function runBundleCommand(
