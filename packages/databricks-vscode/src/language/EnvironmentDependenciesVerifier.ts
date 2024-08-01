@@ -171,7 +171,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             return this.rejectStep(
                 "checkPythonEnvironment",
                 "Activate an environment with Python 3.10",
-                `The version should match DBR ${
+                `The python version should match DBR ${
                     dbrVersionParts[0]
                 } requirements. ${this.printEnvironment(env)}`,
                 this.selectPythonInterpreter.bind(this)
