@@ -1,8 +1,6 @@
 import assert from "node:assert";
 import {
-    dismissNotifications,
     getUniqueResourceName,
-    getViewSection,
     waitForLogin,
     waitForSyncComplete,
 } from "./utils/commonUtils.ts";
