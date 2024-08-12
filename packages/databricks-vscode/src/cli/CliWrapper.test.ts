@@ -250,7 +250,6 @@ nothing = true
                     PATH: process.env.PATH,
                     /* eslint-enable @typescript-eslint/naming-convention */
                 }),
-                shell: true,
             },
         };
         try {
