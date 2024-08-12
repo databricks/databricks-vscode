@@ -1,6 +1,8 @@
 import assert from "node:assert";
 import {
+    dismissNotifications,
     getUniqueResourceName,
+    getViewSection,
     waitForLogin,
     waitForSyncComplete,
 } from "./utils/commonUtils.ts";
@@ -76,37 +78,17 @@ describe("Sync", async function () {
             token: process.env.DATABRICKS_TOKEN,
         });
         await createProject();
+        await dismissNotifications();
     });
 
-    // it("should wait for extension activation", async () => {
-    //     const section = await getViewSection("CONFIGURATION");
-    //     assert(section);
-    // });
+    it("should wait for extension activation", async () => {
+        const section = await getViewSection("CONFIGURATION");
+        assert(section);
+    });
 
     it("should wait for connection", async () => {
-        await browser.waitUntil(
-            async () => {
-                await browser.executeWorkbench(async (vscode) => {
-                    await vscode.commands.executeCommand(
-                        "databricks.internal.showOutput"
-                    );
-                });
-                const outputView = await (await browser.getWorkbench())
-                    .getBottomBar()
-                    .openOutputView();
-
-                if (
-                    (await outputView.getCurrentChannel()) !== "Databricks Logs"
-                ) {
-                    await outputView.selectChannel("Databricks Logs");
-                    return false;
-                }
-
-                return true;
-            },
-            {interval: 2_000, timeout: 60_000}
-        );
         await waitForLogin("DEFAULT");
+        await dismissNotifications();
     });
 
     it("should sync files", async () => {
