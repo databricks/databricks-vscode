@@ -8,6 +8,7 @@ import {Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
 import {FeatureStepState} from "../feature-manager/FeatureManager";
+import {ResolvedEnvironment} from "./MsPythonExtensionApi";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     constructor(
@@ -22,9 +23,10 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             "checkEnvironmentDependencies",
         ]);
         this.disposables.push(
-            this.connectionManager.onDidChangeCluster((cluster) => {
+            this.connectionManager.onDidChangeCluster(async (cluster) => {
                 this.checkCluster(cluster);
                 if (cluster) {
+                    await this.checkPythonEnvironment();
                     this.checkEnvironmentDependencies();
                 }
             }, this),
@@ -140,40 +142,76 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         return this.acceptStep("checkWorkspaceHasUc");
     }
 
+    private matchEnvironmentVersion(
+        env: ResolvedEnvironment | undefined,
+        major: number,
+        minor: number
+    ): boolean {
+        if (!env || !env.version || !env.environment) {
+            return false;
+        }
+        return env.version.major === major && env.version.minor === minor;
+    }
+
+    private printEnvironment(env?: ResolvedEnvironment): string {
+        return env?.version && env.environment
+            ? `Current version is ${env.version.major}.${env.version.minor}.${env.version.micro}.`
+            : "No active environments found.";
+    }
+
     async checkPythonEnvironment(): Promise<FeatureStepState> {
+        const env = await this.pythonExtension.pythonEnvironment;
+        const dbrVersionParts =
+            this.connectionManager.cluster?.dbrVersion || [];
+        // DBR 13 and 14 require python 3.10
+        if (
+            (dbrVersionParts[0] === 13 || dbrVersionParts[0] === 14) &&
+            !this.matchEnvironmentVersion(env, 3, 10)
+        ) {
+            return this.rejectStep(
+                "checkPythonEnvironment",
+                "Activate an environment with Python 3.10",
+                `The python version should match DBR ${
+                    dbrVersionParts[0]
+                } requirements. ${this.printEnvironment(env)}`,
+                this.selectPythonInterpreter.bind(this)
+            );
+        }
+        // DBR 15 requires python 3.11
+        if (
+            dbrVersionParts[0] === 15 &&
+            !this.matchEnvironmentVersion(env, 3, 11)
+        ) {
+            return this.rejectStep(
+                "checkPythonEnvironment",
+                "Activate an environment with Python 3.11",
+                `The version should match DBR ${
+                    dbrVersionParts[0]
+                } requirements. ${this.printEnvironment(env)}`,
+                this.selectPythonInterpreter.bind(this)
+            );
+        }
+        // If we don't know DBR version (no cluster is connected or new version is released and the extension isn't updated yet),
+        // we still check that environment is active and has python >= 3.10
+        const envVersionTooLow =
+            env?.version && (env.version.major !== 3 || env.version.minor < 10);
+        const noEnvironment = !env?.environment;
+        if (noEnvironment || envVersionTooLow) {
+            return this.rejectStep(
+                "checkPythonEnvironment",
+                "Activate an environment with Python >= 3.10",
+                `Databricks Connect requires python >= 3.10. ${this.printEnvironment(
+                    env
+                )}`,
+                this.selectPythonInterpreter.bind(this)
+            );
+        }
         const executable = await this.pythonExtension.getPythonExecutable();
         if (!executable) {
             return this.rejectStep(
                 "checkPythonEnvironment",
-                "Select Python Interpreter",
+                "Activate an environment with Python >= 3.10",
                 "No python executable found",
-                this.selectPythonInterpreter.bind(this)
-            );
-        }
-        const env = await this.pythonExtension.pythonEnvironment;
-        if (
-            env?.version &&
-            !(
-                env.version.major > 3 ||
-                (env.version.major === 3 && env.version.minor >= 10)
-            )
-        ) {
-            return this.rejectStep(
-                "checkPythonEnvironment",
-                "Select Python >= 3.10.0",
-                `Databricks Connect requires python >= 3.10.0. Current version is ${[
-                    env.version.major,
-                    env.version.minor,
-                    env.version.micro,
-                ].join(".")}.`,
-                this.selectPythonInterpreter.bind(this)
-            );
-        }
-        if (!env?.environment) {
-            return this.rejectStep(
-                "checkPythonEnvironment",
-                "Activate virtual environment",
-                "No active virtual environment",
                 this.selectPythonInterpreter.bind(this)
             );
         }
