@@ -12,7 +12,7 @@ import {logging} from "@databricks/databricks-sdk";
 import {LoggerManager, Loggers} from "../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Cloud} from "../utils/constants";
-import {EnvVarGenerators, FileUtils, ShellUtils, UrlUtils} from "../utils";
+import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
@@ -30,10 +30,8 @@ function getEscapedCommandAndAgrs(
     if (process.platform === "win32") {
         args = [
             "/d",
-            "/s",
             "/c",
-            `""${cmd}""`,
-            ...args.map(ShellUtils.escapeArgument),
+            `""${cmd}" ${args.map((a) => `"${a}"`).join(" ")}"`,
         ];
         cmd = "cmd.exe";
         options = {...options, windowsVerbatimArguments: true};
