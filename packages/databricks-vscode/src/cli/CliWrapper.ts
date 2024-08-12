@@ -22,6 +22,25 @@ import path from "path";
 import {isPowershell} from "../utils/shellUtils";
 
 const withLogContext = logging.withLogContext;
+function getEscapedCommandAndAgrs(
+    cmd: string,
+    args: string[],
+    options: SpawnOptionsWithoutStdio
+) {
+    if (process.platform === "win32") {
+        args = [
+            "/d",
+            "/s",
+            "/c",
+            `""${cmd}""`,
+            ...args.map(ShellUtils.escapeArgument),
+        ];
+        cmd = "cmd.exe";
+        options = {...options, windowsVerbatimArguments: true};
+    }
+    return {cmd, args, options};
+}
+
 export const execFile = async (
     file: string,
     args: string[],
@@ -30,18 +49,12 @@ export const execFile = async (
     stdout: string;
     stderr: string;
 }> => {
-    if (process.platform === "win32") {
-        args = [
-            "/d",
-            "/s",
-            "/c",
-            `""${file}""`,
-            ...args.map(ShellUtils.escapeArgument),
-        ];
-        file = "cmd.exe";
-        options = {...options, windowsVerbatimArguments: true};
-    }
-    const res = await promisify(execFileCb)(file, args, options);
+    const {
+        cmd,
+        args: escapedArgs,
+        options: escapedOptions,
+    } = getEscapedCommandAndAgrs(file, args, options);
+    const res = await promisify(execFileCb)(cmd, escapedArgs, escapedOptions);
     return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
 };
 
@@ -181,11 +194,7 @@ async function runBundleCommand(
         env: removeUndefinedKeys(env),
     };
 
-    if (process.platform === "win32") {
-        args = args.map(ShellUtils.escapeArgument);
-        cmd = ShellUtils.escapeCommand(cmd);
-        options = {...options, windowsVerbatimArguments: true};
-    }
+    ({cmd, args, options} = getEscapedCommandAndAgrs(cmd, args, options));
     try {
         const p = spawn(cmd, args, options);
 
