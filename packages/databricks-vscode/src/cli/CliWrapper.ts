@@ -31,8 +31,14 @@ export const execFile = async (
     stderr: string;
 }> => {
     if (process.platform === "win32") {
-        args = args.map(ShellUtils.escapeArgument);
-        file = ShellUtils.escapeCommand(file);
+        args = [
+            "/d",
+            "/s",
+            "/c",
+            `""${file}""`,
+            ...args.map(ShellUtils.escapeArgument),
+        ];
+        file = "cmd.exe";
         options = {...options, windowsVerbatimArguments: true};
     }
     const res = await promisify(execFileCb)(file, args, options);

@@ -18,7 +18,8 @@ export function escapePathArgument(arg: string): string {
 const metaCharsRegExp = /([()\][%!^"`<>&|;,*?])/g;
 
 export function escapeCommand(arg: string): string {
-    return `"${arg}"`;
+    // Escape meta chars
+    return arg.replaceAll(metaCharsRegExp, "^$1");
 }
 
 export function escapeArgument(arg: string): string {
