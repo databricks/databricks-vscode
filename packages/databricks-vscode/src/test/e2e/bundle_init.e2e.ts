@@ -67,6 +67,8 @@ describe("Bundle Init", async function () {
         expect(await pick.getLabel()).toBe(parentDir);
         await pick.select();
 
+        await dismissNotifications();
+
         // Wait for the databricks cli terminal window to pop up and select all
         // default options for the default template
         const editorView = workbench.getEditorView();
@@ -74,6 +76,7 @@ describe("Bundle Init", async function () {
         const initTab = await getTabByTitle(title);
         assert(initTab, "Can't find a tab for project-init terminal wizard");
         await initTab.select();
+        await sleep(1000);
 
         //select temaplate type
         await browser.keys("default-python".split(""));

@@ -19,9 +19,42 @@ import {quote} from "shell-quote";
 import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
+import {isPowershell} from "../utils/shellUtils";
 
 const withLogContext = logging.withLogContext;
-const execFile = promisify(execFileCb);
+function getEscapedCommandAndAgrs(
+    cmd: string,
+    args: string[],
+    options: SpawnOptionsWithoutStdio
+) {
+    if (process.platform === "win32") {
+        args = [
+            "/d", //Disables execution of AutoRun commands, which are like .bashrc commands.
+            "/c", //Carries out the command specified by <string> and then exits the command processor.
+            `""${cmd}" ${args.map((a) => `"${a}"`).join(" ")}"`,
+        ];
+        cmd = "cmd.exe";
+        options = {...options, windowsVerbatimArguments: true};
+    }
+    return {cmd, args, options};
+}
+
+export const execFile = async (
+    file: string,
+    args: string[],
+    options: any = {}
+): Promise<{
+    stdout: string;
+    stderr: string;
+}> => {
+    const {
+        cmd,
+        args: escapedArgs,
+        options: escapedOptions,
+    } = getEscapedCommandAndAgrs(file, args, options);
+    const res = await promisify(execFileCb)(cmd, escapedArgs, escapedOptions);
+    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+};
 
 export interface Command {
     command: string;
@@ -154,13 +187,14 @@ async function runBundleCommand(
     });
 
     logger?.debug(quote([cmd, ...args]), {bundleOpName});
+    let options: SpawnOptionsWithoutStdio = {
+        cwd: workspaceFolder.fsPath,
+        env: removeUndefinedKeys(env),
+    };
 
+    ({cmd, args, options} = getEscapedCommandAndAgrs(cmd, args, options));
     try {
-        const p = spawn(cmd, args, {
-            cwd: workspaceFolder.fsPath,
-            env: removeUndefinedKeys(env),
-            shell: true,
-        });
+        const p = spawn(cmd, args, options);
 
         const {stdout, stderr} = await waitForProcess(p, onStdOut, onStdError);
         logger?.info(displayLogs.end, {
@@ -236,8 +270,10 @@ export class CliWrapper {
         };
     }
 
-    escapePathArgument(arg: string): string {
-        return `"${arg.replaceAll('"', '\\"')}"`;
+    get escapedCliPath(): string {
+        return isPowershell()
+            ? `& "${this.cliPath.replace('"', '\\"')}"`
+            : `'${this.cliPath.replaceAll("'", "\\'")}'`;
     }
 
     /**
@@ -300,6 +336,8 @@ export class CliWrapper {
                         "Failed to parse Databricks Config File, please make sure it's in the correct ini format";
                 } else if (e.message.includes("spawn UNKNOWN")) {
                     msg = `Failed to parse Databricks Config File using databricks CLI, please make sure you have permissions to execute this binary: "${this.cliPath}"`;
+                } else {
+                    msg += e.message;
                 }
             }
             ctx?.logger?.error(msg, e);
@@ -593,7 +631,6 @@ export class CliWrapper {
             options: {
                 cwd: workspaceFolder.fsPath,
                 env,
-                shell: true,
             },
         };
     }
