@@ -10,3 +10,7 @@ export function readCmd() {
     }
     return "read";
 }
+
+export function escapePathArgument(arg: string): string {
+    return `"${arg.replaceAll('"', '\\"')}"`;
+}
