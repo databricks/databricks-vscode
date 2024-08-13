@@ -1,3 +1,14 @@
+# Release: v2.3.1-preview
+
+## packages/databricks-vscode
+
+## (2024-08-13)
+
+-   Fix: Allow CLI path to have spaces.
+-   Fix: Show the correct title for Cluster Selector.
+-   Fix: Check whether local python version matches version required by selected cluster for Databricks Connect v2.
+-   Update CLI to v0.225.0.
+
 # Release: v2.3.0-preview
 
 ## packages/databricks-vscode
