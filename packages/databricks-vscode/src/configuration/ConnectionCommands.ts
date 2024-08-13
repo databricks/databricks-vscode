@@ -119,7 +119,7 @@ export class ConnectionCommands implements Disposable {
     }
 
     attachClusterQuickPickCommand() {
-        return async () => {
+        return async (title?: string) => {
             const workspaceClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
             if (!workspaceClient || !me) {
@@ -130,7 +130,8 @@ export class ConnectionCommands implements Disposable {
             const quickPick = window.createQuickPick<
                 ClusterItem | QuickPickItem
             >();
-            quickPick.title = "Select Cluster";
+            quickPick.title =
+                typeof title === "string" ? title : "Select Cluster";
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
 

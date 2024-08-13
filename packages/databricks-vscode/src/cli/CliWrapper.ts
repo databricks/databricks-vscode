@@ -29,8 +29,8 @@ function getEscapedCommandAndAgrs(
 ) {
     if (process.platform === "win32") {
         args = [
-            "/d",
-            "/c",
+            "/d", //Disables execution of AutoRun commands, which are like .bashrc commands.
+            "/c", //Carries out the command specified by <string> and then exits the command processor.
             `""${cmd}" ${args.map((a) => `"${a}"`).join(" ")}"`,
         ];
         cmd = "cmd.exe";
