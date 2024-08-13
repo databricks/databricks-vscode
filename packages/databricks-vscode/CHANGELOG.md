@@ -4,9 +4,9 @@
 
 ## (2024-08-13)
 
--   Allow CLI path to have spaces (#1295) ([5dc0308](https://github.com/databricks/databricks-vscode/commit/5dc0308)), closes [#1295](https://github.com/databricks/databricks-vscode/issues/1295)
--   Fix Cluster Selector (#1289) ([31eeb6b](https://github.com/databricks/databricks-vscode/commit/31eeb6b)), closes [#1289](https://github.com/databricks/databricks-vscode/issues/1289)
--   Improve environment checks (#1260) ([c96b05f](https://github.com/databricks/databricks-vscode/commit/c96b05f)), closes [#1260](https://github.com/databricks/databricks-vscode/issues/1260)
+-   Fix: Allow CLI path to have spaces.
+-   Fix: Show the correct title for Cluster Selector.
+-   Fix: Check whether local python version matches version required by selected cluster for Databricks Connect v2. 
 
 # Release: v2.3.0-preview
 
