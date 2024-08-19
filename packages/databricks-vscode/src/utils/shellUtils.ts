@@ -11,6 +11,13 @@ export function readCmd() {
     return "read";
 }
 
+export function escapeExecutableForTerminal(exe: string): string {
+    if (isPowershell()) {
+        return `& "${exe}"`;
+    }
+    return `"${exe}"`;
+}
+
 export function escapePathArgument(arg: string): string {
     return `"${arg.replaceAll('"', '\\"')}"`;
 }

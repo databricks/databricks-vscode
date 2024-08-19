@@ -13,6 +13,10 @@ import {DatabricksPythonDebugConfiguration} from "./DatabricksDebugConfiguration
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
 import {FeatureManager} from "../feature-manager/FeatureManager";
+import {
+    escapeExecutableForTerminal,
+    escapePathArgument,
+} from "../utils/shellUtils";
 
 /**
  * Run related commands
@@ -143,6 +147,7 @@ export class RunCommands {
         const executable = await this.pythonExtension.getPythonExecutable();
         if (!executable) {
             window.showErrorMessage("No python executable found");
+            return;
         }
 
         const terminal = window.activeTerminal ?? window.createTerminal();
@@ -151,7 +156,9 @@ export class RunCommands {
         );
         terminal.show();
         terminal.sendText(
-            `${executable} ${bootstrapPath} ${targetResource.fsPath}`
+            `${escapeExecutableForTerminal(executable)} ${escapePathArgument(
+                bootstrapPath
+            )} ${escapePathArgument(targetResource.fsPath)}`
         );
     }
 }

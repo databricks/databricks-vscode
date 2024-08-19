@@ -12,6 +12,7 @@ import {Events, Telemetry} from "../../telemetry";
 import * as lodash from "lodash";
 import {ProcessError} from "../../cli/CliWrapper";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
+import {humaniseMode} from "../utils/BundleUtils";
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
@@ -88,6 +89,20 @@ export class BundleCommands implements Disposable {
     async deploy(force = false) {
         try {
             this.whenContext.setDeploymentState("deploying");
+            const mode = await this.configModel.get("mode");
+            const target = this.configModel.target;
+            if (mode !== "development") {
+                const choice = await window.showInformationMessage(
+                    `Deploying bundle to ${humaniseMode(
+                        mode
+                    )} target "${target}".`,
+                    {modal: true},
+                    "Continue"
+                );
+                if (choice !== "Continue") {
+                    throw new Error("Deployment cancelled.");
+                }
+            }
             await window.withProgress(
                 {location: ProgressLocation.Notification, cancellable: false},
                 async () => {

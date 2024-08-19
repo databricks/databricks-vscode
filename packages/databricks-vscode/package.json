@@ -387,12 +387,12 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "There are multiple Databricks projects in the workspace:\n[Open existing Databricks Project](command:databricks.bundle.openSubProject)",
+                "contents": "There are multiple Databricks projects in the folder:\n[Open existing Databricks Project](command:databricks.bundle.openSubProject)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
-                "contents": "Migrate current workspace to a Databricks Project: \n[Migrate to a Databricks Project](command:databricks.bundle.startManualMigration)",
+                "contents": "Migrate current folder to a Databricks Project: \n[Migrate current folder to a Databricks Project](command:databricks.bundle.startManualMigration)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
@@ -412,7 +412,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "The workspace is empty.\n[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
+                "contents": "This folder is empty.\n[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
                 "when": "workspaceFolderCount == 0"
             }
         ],

@@ -4,7 +4,13 @@ import {
     execFile as execFileCb,
     spawn,
 } from "child_process";
-import {ExtensionContext, window, Uri, commands} from "vscode";
+import {
+    ExtensionContext,
+    window,
+    Uri,
+    commands,
+    CancellationToken,
+} from "vscode";
 import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -39,10 +45,31 @@ function getEscapedCommandAndAgrs(
     return {cmd, args, options};
 }
 
+export async function cancellableExecFile(
+    file: string,
+    args: string[],
+    options: Omit<SpawnOptionsWithoutStdio, "signal"> = {},
+    cancellationToken?: CancellationToken
+): Promise<{
+    stdout: string;
+    stderr: string;
+}> {
+    const abortController = new AbortController();
+    cancellationToken?.onCancellationRequested(() => abortController.abort());
+    const signal = abortController.signal;
+
+    const res = await promisify(execFileCb)(file, args, {
+        ...options,
+        signal,
+    });
+    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+}
+
 export const execFile = async (
     file: string,
     args: string[],
-    options: any = {}
+    options: Omit<SpawnOptionsWithoutStdio, "signal"> = {},
+    cancellationToken?: CancellationToken
 ): Promise<{
     stdout: string;
     stderr: string;
@@ -52,8 +79,13 @@ export const execFile = async (
         args: escapedArgs,
         options: escapedOptions,
     } = getEscapedCommandAndAgrs(file, args, options);
-    const res = await promisify(execFileCb)(cmd, escapedArgs, escapedOptions);
-    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+
+    return await cancellableExecFile(
+        cmd,
+        escapedArgs,
+        escapedOptions,
+        cancellationToken
+    );
 };
 
 export interface Command {
