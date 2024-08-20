@@ -100,7 +100,10 @@ export class BundleCommands implements Disposable {
                     "Continue"
                 );
                 if (choice !== "Continue") {
-                    throw new Error("Deployment cancelled.");
+                    window.showErrorMessage(
+                        "Databricks: Deployment cancelled."
+                    );
+                    return;
                 }
             }
             await window.withProgress(
