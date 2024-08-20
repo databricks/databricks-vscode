@@ -843,19 +843,6 @@
                         "default": false,
                         "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
                     },
-                    "databricks.sync.destinationType": {
-                        "type": "string",
-                        "default": "workspace",
-                        "enum": [
-                            "workspace",
-                            "repo"
-                        ],
-                        "description": "Use a folder in Workspace or a Databricks Repo as sync destination (Reload for changes to take effect).",
-                        "enumDescriptions": [
-                            "Use a folder in Workspace as sync destination",
-                            "Use a Repo as sync destination"
-                        ]
-                    },
                     "databricks.overrideDatabricksConfigFile": {
                         "type": "string",
                         "default": "",
@@ -878,11 +865,6 @@
                         },
                         "uniqueItems": true,
                         "description": "Opt into experimental features."
-                    },
-                    "databricks.python.envFile": {
-                        "type": "string",
-                        "default": "",
-                        "description": "Similar to python.envFile. Absolute path to a file containing environment variable definitions."
                     },
                     "databricks.wsfs.rearrangeCells": {
                         "type": "boolean",
