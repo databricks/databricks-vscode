@@ -1,6 +1,5 @@
 import {
     Disposable,
-    Event,
     EventEmitter,
     QuickPickItem,
     QuickPickItemKind,
