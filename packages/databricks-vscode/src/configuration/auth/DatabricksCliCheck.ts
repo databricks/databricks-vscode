@@ -1,4 +1,6 @@
 import {
+    CancellationToken,
+    Context,
     ProductVersion,
     WorkspaceClient,
     logging,
@@ -25,10 +27,10 @@ export class DatabricksCliCheck implements Disposable {
         this.disposables = [];
     }
 
-    async check(): Promise<boolean> {
+    async check(cancellationToken?: CancellationToken): Promise<boolean> {
         const steps: Record<StepName, Step<boolean, StepName>> = {
             tryLogin: async () => {
-                if (await this.tryLogin()) {
+                if (await this.tryLogin(cancellationToken)) {
                     return {type: "success", result: true};
                 } else {
                     return {type: "next", next: "login"};
@@ -36,7 +38,7 @@ export class DatabricksCliCheck implements Disposable {
             },
             login: async () => {
                 try {
-                    await this.login();
+                    await this.login(cancellationToken);
                 } catch (e: any) {
                     return {
                         type: "error",
@@ -49,7 +51,13 @@ export class DatabricksCliCheck implements Disposable {
 
         let result: boolean;
         try {
-            result = await orchestrate(steps, "tryLogin", 6);
+            result = await orchestrate(
+                steps,
+                "tryLogin",
+                6,
+                undefined,
+                cancellationToken
+            );
         } catch (e: any) {
             let message: string;
             if (e instanceof OrchestrationLoopError) {
@@ -68,7 +76,9 @@ export class DatabricksCliCheck implements Disposable {
         return result;
     }
 
-    private async tryLogin(): Promise<boolean> {
+    private async tryLogin(
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
         const workspaceClient = new WorkspaceClient(
             {
                 host: this.authProvider.host.toString(),
@@ -82,7 +92,9 @@ export class DatabricksCliCheck implements Disposable {
         );
 
         try {
-            await workspaceClient.currentUser.me();
+            await workspaceClient.currentUser.me(
+                new Context({cancellationToken})
+            );
         } catch (e: any) {
             return false;
         }
@@ -90,14 +102,14 @@ export class DatabricksCliCheck implements Disposable {
         return true;
     }
 
-    private async login(): Promise<void> {
+    private async login(cancellationToken?: CancellationToken): Promise<void> {
         try {
-            await execFile(this.authProvider.cliPath, [
-                "auth",
-                "login",
-                "--host",
-                this.authProvider.host.toString(),
-            ]);
+            await execFile(
+                this.authProvider.cliPath,
+                ["auth", "login", "--host", this.authProvider.host.toString()],
+                {},
+                cancellationToken
+            );
         } catch (e: any) {
             throw new Error(
                 `Login failed with Databricks CLI failed: ${

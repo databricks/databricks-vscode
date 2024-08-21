@@ -122,10 +122,10 @@ export class LoginWizard {
             return;
         }
 
-        const choice = await window.showErrorMessage(
+        const choice = await window.showInformationMessage(
             `Authentication using ${authProvider.describe()} failed.`,
-            "Select a different auth method",
-            "Cancel"
+            {modal: true},
+            "Select a different auth method"
         );
         if (choice === "Select a different auth method") {
             //Show input again with the select auth step.

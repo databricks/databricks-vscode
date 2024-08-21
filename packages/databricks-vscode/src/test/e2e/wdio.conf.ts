@@ -606,6 +606,7 @@ async function startCluster(
         if (!(e instanceof ApiError && e.message.includes("INVALID_STATE"))) {
             throw e;
         }
+        console.log(e.message);
     }
 
     console.log(`Cluster started`);
