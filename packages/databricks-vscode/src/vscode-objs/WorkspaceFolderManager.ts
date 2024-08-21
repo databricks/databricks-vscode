@@ -4,6 +4,7 @@ import {
     QuickPickItem,
     QuickPickItemKind,
     StatusBarAlignment,
+    TextEditor,
     WorkspaceFolder,
     window,
     workspace,
@@ -34,6 +35,8 @@ export class WorkspaceFolderManager implements Disposable {
             this.button.show();
         }
 
+        this.setIsActiveFileInActiveWorkspace(window.activeTextEditor);
+
         this.disposables.push(
             this.button,
             workspace.onDidChangeWorkspaceFolders((e) => {
@@ -51,17 +54,24 @@ export class WorkspaceFolderManager implements Disposable {
                     return;
                 }
             }),
-            window.onDidChangeActiveTextEditor((e) => {
-                const isActiveFileInActiveWorkspace =
-                    this.activeWorkspaceFolder !== undefined &&
-                    e !== undefined &&
-                    e.document.uri.fsPath.startsWith(
-                        this.activeWorkspaceFolder?.uri.fsPath
-                    );
-                customWhenContext.setIsActiveFileInActiveWorkspace(
-                    isActiveFileInActiveWorkspace
-                );
+            window.onDidChangeActiveTextEditor((editor) => {
+                this.setIsActiveFileInActiveWorkspace(editor);
+            }),
+            this.onDidChangeActiveWorkspaceFolder(() => {
+                this.setIsActiveFileInActiveWorkspace(window.activeTextEditor);
             })
+        );
+    }
+
+    private setIsActiveFileInActiveWorkspace(activeEditor?: TextEditor) {
+        const isActiveFileInActiveWorkspace =
+            this.activeWorkspaceFolder !== undefined &&
+            activeEditor !== undefined &&
+            activeEditor.document.uri.fsPath.startsWith(
+                this.activeWorkspaceFolder?.uri.fsPath
+            );
+        this.customWhenContext.setIsActiveFileInActiveWorkspace(
+            isActiveFileInActiveWorkspace
         );
     }
 
