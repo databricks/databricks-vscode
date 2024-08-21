@@ -202,7 +202,7 @@ async function runBundleCommand(
             logger?.info(data, {bundleOpName});
         },
         onStdError: (data: string) => {
-            logger?.warn(data, {bundleOpName});
+            logger?.info(data, {bundleOpName});
         },
     };
     const {onStdOut, onStdError} = {
