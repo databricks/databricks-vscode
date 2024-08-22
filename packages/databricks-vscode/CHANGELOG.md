@@ -4,12 +4,12 @@
 
 ## (2024-08-22)
 
--   Allow cancelling login, fix spaces in path for dbconnect and minor UI fixes (#1315) ([93a7c36](https://github.com/databricks/databricks-vscode/commit/93a7c36)), closes [#1315](https://github.com/databricks/databricks-vscode/issues/1315)
--   Bump CLI to 0.227 (#1323) ([d4d6db9](https://github.com/databricks/databricks-vscode/commit/d4d6db9)), closes [#1323](https://github.com/databricks/databricks-vscode/issues/1323)
--   Cleanup redundant commands and fix errors when resetting bundle variables (#1292) ([d1682f9](https://github.com/databricks/databricks-vscode/commit/d1682f9)), closes [#1292](https://github.com/databricks/databricks-vscode/issues/1292)
--   Fix deployment tag and README links on Marketplace (#1321) ([ccb96b2](https://github.com/databricks/databricks-vscode/commit/ccb96b2)), closes [#1321](https://github.com/databricks/databricks-vscode/issues/1321)
--   Fix run button visibility logic (#1319) ([efcb26b](https://github.com/databricks/databricks-vscode/commit/efcb26b)), closes [#1319](https://github.com/databricks/databricks-vscode/issues/1319)
--   Use Info log level for the CLI stderr (#1320) ([ded5382](https://github.com/databricks/databricks-vscode/commit/ded5382)), closes [#1320](https://github.com/databricks/databricks-vscode/issues/1320)
+-   Allow cancelling login, fix spaces in path for dbconnect and minor UI fixes
+-   Bump CLI to 0.227
+-   Cleanup redundant commands and fix errors when resetting bundle variables
+-   Fix deployment tag and README links on Marketplace
+-   Fix run button visibility logic
+-   Use Info log level for the CLI stderr
 
 # Release: v2.3.1-preview
 
