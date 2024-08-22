@@ -137,11 +137,9 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
                     .filter((v) => v[1] !== undefined)
             );
         } catch (e: any) {
-            if (e.code !== "ENOENT") {
-                throw e;
-            }
             NamedLogger.getOrCreate(Loggers.Extension).debug(
-                "No bundle variable overrides found."
+                "No bundle variable overrides found.",
+                e
             );
             return {};
         }
@@ -252,7 +250,7 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
         try {
             await workspace.fs.delete(this.bundleVariableFilePath);
         } catch (e: any) {
-            if (e.code !== "ENOENT") {
+            if (e.code !== "ENOENT" && e.code !== "FileNotFound") {
                 throw e;
             }
         }
