@@ -5,7 +5,7 @@ import {
     WorkspaceClient,
     logging,
 } from "@databricks/databricks-sdk";
-import {ProgressLocation, window} from "vscode";
+import {CancellationToken, ProgressLocation, window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
@@ -64,9 +64,13 @@ export abstract class AuthProvider {
      * This function should not throw an error and each implementing class must
      * handle it's own error messages and retry loops.
      */
-    protected abstract _check(): Promise<boolean>;
+    protected abstract _check(token?: CancellationToken): Promise<boolean>;
 
-    public async check(force = false, showProgress = true): Promise<boolean> {
+    public async check(
+        force = false,
+        showProgress = true,
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
         if (force) {
             this.checked = false;
         }
@@ -74,22 +78,48 @@ export abstract class AuthProvider {
             return true;
         }
 
-        const checkFn = async () => {
-            this.checked = await this._check();
+        const checkFn = async (token?: CancellationToken) => {
+            this.checked = await this._check(token);
         };
 
         if (!showProgress) {
-            await checkFn();
+            await checkFn(cancellationToken);
             return this.checked;
         }
 
+        let cancellationRequested = false;
+        let task: Promise<void> = Promise.resolve();
         await window.withProgress(
             {
                 location: ProgressLocation.Notification,
                 title: `Databricks: Logging in using ${this.describe()}`,
+                cancellable: true,
             },
-            async () => await checkFn()
+            async (progress, token) => {
+                task = checkFn(token);
+                await Promise.race([
+                    task,
+                    new Promise((resolve) =>
+                        token.onCancellationRequested(resolve)
+                    ),
+                ]);
+                cancellationRequested = token.isCancellationRequested;
+            }
         );
+        if (cancellationRequested) {
+            await window.withProgress(
+                {
+                    location: ProgressLocation.Notification,
+                    title: `Databricks: Cancelling login using ${this.describe()}`,
+                },
+                async () => {
+                    await task;
+                }
+            );
+            window.showErrorMessage("Databricks: Login cancelled");
+            this.checked = false;
+        }
+
         if (this.checked) {
             window.showInformationMessage(
                 `Databricks: Successfully logged in using ${this.describe()}`
@@ -230,8 +260,8 @@ export class ProfileAuthProvider extends AuthProvider {
         return ProfileAuthProvider.getSdkConfig(this.profile);
     }
 
-    protected async _check() {
-        while (true) {
+    protected async _check(cancellationToken?: CancellationToken) {
+        while (cancellationToken?.isCancellationRequested !== true) {
             try {
                 const sdkConfig = await this.getSdkConfig();
                 const authProvider = AuthProvider.fromSdkConfig(
@@ -245,7 +275,11 @@ export class ProfileAuthProvider extends AuthProvider {
                     return true;
                 }
 
-                return await authProvider.check(false, false);
+                return await authProvider.check(
+                    false,
+                    false,
+                    cancellationToken
+                );
             } catch (e) {
                 let message: string = `Can't login with config profile ${this.profile}`;
                 if (e instanceof Error) {
@@ -266,6 +300,7 @@ export class ProfileAuthProvider extends AuthProvider {
                 return false;
             }
         }
+        return false;
     }
 }
 
@@ -312,9 +347,11 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         };
     }
 
-    protected async _check(): Promise<boolean> {
+    protected async _check(
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
         const databricksCliCheck = new DatabricksCliCheck(this);
-        return databricksCliCheck.check();
+        return databricksCliCheck.check(cancellationToken);
     }
 }
 
@@ -378,9 +415,11 @@ export class AzureCliAuthProvider extends AuthProvider {
         return envVars;
     }
 
-    protected async _check(): Promise<boolean> {
+    protected async _check(
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
         const cliCheck = new AzureCliCheck(this);
-        const result = await cliCheck.check();
+        const result = await cliCheck.check(cancellationToken);
         this._tenantId = cliCheck.tenantId;
         this._appId = cliCheck.azureLoginAppId;
         return result;
@@ -419,8 +458,10 @@ export class PersonalAccessTokenAuthProvider extends AuthProvider {
             token: this.token,
         };
     }
-    protected async _check(): Promise<boolean> {
-        while (true) {
+    protected async _check(
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
+        while (cancellationToken?.isCancellationRequested !== true) {
             try {
                 const workspaceClient = await this.getWorkspaceClient();
                 await workspaceClient.currentUser.me();
@@ -445,6 +486,7 @@ export class PersonalAccessTokenAuthProvider extends AuthProvider {
                 return false;
             }
         }
+        return false;
     }
     protected _getSdkConfig(): Config {
         return new Config({

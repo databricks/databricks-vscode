@@ -10,13 +10,14 @@ import assert from "assert";
 import fs from "fs/promises";
 import {ApiError, Config, WorkspaceClient} from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
-import {execFile, ExecFileOptions} from "node:child_process";
+import {execFile as execFileCb} from "node:child_process";
 import {cpSync, mkdirSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
+import {promisify} from "node:util";
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
@@ -24,7 +25,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const {version, name, engines} = packageJson;
 
-const EXTENSION_DIR = path.resolve(tmpdir(), "extension-test", "extension");
+const EXTENSION_DIR = path.resolve(tmpdir(), "extension test", "extension");
 const VSIX_PATH = path.resolve(
     __dirname,
     "..",
@@ -33,6 +34,63 @@ const VSIX_PATH = path.resolve(
     `${name}-${version}.vsix`
 );
 const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
+
+const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
+
+export function escapeCommand(arg: string): string {
+    // Escape meta chars
+    arg = arg.replace(metaCharsRegExp, "^$1");
+
+    return arg;
+}
+
+export function escapeArgument(arg: string): string {
+    // Convert to string
+    arg = `${arg}`;
+
+    // Algorithm below is based on https://qntm.org/cmd
+
+    // Sequence of backslashes followed by a double quote:
+    // double up all the backslashes and escape the double quote
+    arg = arg.replace(/(\\*)"/g, '$1$1\\"');
+
+    // Sequence of backslashes followed by the end of the string
+    // (which will become a double quote later):
+    // double up all the backslashes
+    arg = arg.replace(/(\\*)$/, "$1$1");
+
+    // All other backslashes occur literally
+
+    // Quote the whole thing:
+    arg = `"${arg}"`;
+
+    // Escape meta chars
+    arg = arg.replace(metaCharsRegExp, "^$1");
+
+    return arg;
+}
+
+const execFile = async (
+    file: string,
+    args: string[],
+    options: any = {}
+): Promise<{
+    stdout: string;
+    stderr: string;
+}> => {
+    if (process.platform === "win32") {
+        const realArgs = [escapeCommand(file)]
+            .concat(args.map(escapeArgument).join(" "))
+            .join(" ");
+
+        file = "cmd.exe";
+        args = ["/d", "/s", "/c", `"${realArgs}"`];
+        console.log("execFile", file, args);
+        options = {...options, windowsVerbatimArguments: true};
+    }
+    const res = await promisify(execFileCb)(file, args, options);
+    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+};
 
 export const config: Options.Testrunner = {
     //
@@ -208,7 +266,7 @@ export const config: Options.Testrunner = {
     framework: "mocha",
     //
     // The number of times to retry the entire specfile when it fails as a whole
-    specFileRetries: 1,
+    specFileRetries: 0,
     //
     // Delay in seconds between the spec file retry attempts
     specFileRetriesDelay: 0,
@@ -327,94 +385,38 @@ export const config: Options.Testrunner = {
      * @param {Array.<String>} specs List of spec file paths that are to be run
      * @param {String} cid worker id (e.g. 0-0)
      */
-    beforeSession: async function (config, capabilities, specs, cid) {
-        if (cid === "0-0") {
-            const binary: string = capabilities["wdio:vscodeOptions"]
-                .binary as string;
-            let cli: string;
-            let spawnArgs: ExecFileOptions;
-            switch (process.platform) {
-                case "win32":
-                    cli = path.resolve(binary, "..", "bin", "code");
-                    spawnArgs = {
-                        shell: true,
-                    };
-                    break;
-                case "darwin":
-                    cli = path.resolve(
-                        binary,
-                        "..",
-                        "..",
-                        "Resources/app/bin/code"
-                    );
-                    spawnArgs = {
-                        shell: false,
-                    };
-                    break;
-            }
-            await new Promise((resolve, reject) => {
-                const extensionDependencies =
-                    packageJson.extensionDependencies.flatMap((item) => [
-                        "--install-extension",
-                        item,
-                    ]);
-                execFile(
-                    cli,
-                    [
-                        "--extensions-dir",
-                        EXTENSION_DIR,
-                        ...extensionDependencies,
-                        "--install-extension",
-                        VSIX_PATH,
-                        "--force",
-                    ],
-                    spawnArgs,
-                    (error, stdout, stderr) => {
-                        if (stdout) {
-                            console.log(stdout);
-                        }
-                        if (error) {
-                            console.error(stderr);
-                            console.error(error);
-                            reject(error);
-                        }
-                        resolve(undefined);
-                    }
+    beforeSession: async function (config, capabilities) {
+        const binary: string = capabilities["wdio:vscodeOptions"]
+            .binary as string;
+        let cli: string = "";
+        switch (process.platform) {
+            case "win32":
+                cli = path.resolve(binary, "..", "bin", "code");
+                break;
+            case "darwin":
+                cli = path.resolve(
+                    binary,
+                    "..",
+                    "..",
+                    "Resources/app/bin/code"
                 );
-            });
-            await fs.writeFile(path.join(WORKSPACE_PATH, "lock.unlock"), "");
-            console.log(
-                `lock file ${path.join(WORKSPACE_PATH, `lock.unlock`)}`
-            );
-        } else {
-            const startTime = Date.now();
-            await new Promise((resolve, reject) => {
-                console.log(
-                    `${cid} waiting for extension to install; file ${path.join(
-                        WORKSPACE_PATH,
-                        "lock.unlock"
-                    )}`
-                );
-                const interval = setInterval(async () => {
-                    try {
-                        await fs.stat(path.join(WORKSPACE_PATH, "lock.unlock"));
-                        clearInterval(interval);
-                        resolve(undefined);
-                    } catch (e) {
-                        console.log(
-                            `${cid} waiting for extension to install; file ${path.join(
-                                WORKSPACE_PATH,
-                                "lock.unlock"
-                            )}`
-                        );
-                        if (Date.now() - startTime > 60_000) {
-                            clearInterval(interval);
-                            reject("Timeout waiting for extension to install");
-                        }
-                    }
-                }, 5_000);
-            });
+                break;
         }
+        const extensionDependencies = packageJson.extensionDependencies.flatMap(
+            (item) => ["--install-extension", item]
+        );
+
+        console.log("running vscode cli");
+        const res = await execFile(cli, [
+            "--extensions-dir",
+            EXTENSION_DIR,
+            ...extensionDependencies,
+            "--install-extension",
+            VSIX_PATH,
+            "--force",
+        ]);
+
+        console.log(res.stdout, res.stderr);
     },
 
     /**
@@ -595,11 +597,16 @@ async function startCluster(
             await workspaceClient.clusters.start({
                 cluster_id: clusterId,
             })
-        ).wait();
+        ).wait({
+            onProgress: async (state) => {
+                console.log(`Cluster state: ${state.state}`);
+            },
+        });
     } catch (e: unknown) {
         if (!(e instanceof ApiError && e.message.includes("INVALID_STATE"))) {
             throw e;
         }
+        console.log(e.message);
     }
 
     console.log(`Cluster started`);

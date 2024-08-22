@@ -18,6 +18,7 @@ import {Events, Telemetry} from "../telemetry";
 import {OverrideableConfigModel} from "../configuration/models/OverrideableConfigModel";
 import {writeFile, mkdir} from "fs/promises";
 import path from "path";
+import {escapePathArgument} from "../utils/shellUtils";
 
 export async function promptToOpenSubProjects(
     projects: {absolute: Uri; relative: string}[],
@@ -188,12 +189,12 @@ export class BundleInitWizard {
             "bundle",
             "init",
             "--output-dir",
-            this.cli.escapePathArgument(parentFolder.fsPath),
+            escapePathArgument(parentFolder.fsPath),
         ].join(" ");
         const initialPrompt = `clear; echo "Executing: databricks ${args}\nFollow the steps below to create your new Databricks project.\n"`;
         const finalPrompt = `echo "\nPress any key to close the terminal and continue ..."; ${ShellUtils.readCmd()}; exit`;
         terminal.sendText(
-            `${initialPrompt}; ${this.cli.cliPath} ${args}; ${finalPrompt}`
+            `${initialPrompt}; ${this.cli.escapedCliPath} ${args}; ${finalPrompt}`
         );
         return new Promise<void>((resolve) => {
             const closeEvent = window.onDidCloseTerminal(async (t) => {
