@@ -1,3 +1,16 @@
+# Release: v2.3.2-preview
+
+## packages/databricks-vscode
+
+## (2024-08-22)
+
+-   Allow cancelling login, fix spaces in path for dbconnect and minor UI fixes
+-   Bump CLI to 0.227
+-   Cleanup redundant commands and fix errors when resetting bundle variables
+-   Fix deployment tag and README links on Marketplace
+-   Fix run button visibility logic
+-   Use Info log level for the CLI stderr
+
 # Release: v2.3.1-preview
 
 ## packages/databricks-vscode
