@@ -1,14 +1,19 @@
 import {
-    ExecUtils,
+    Context,
     ProductVersion,
     WorkspaceClient,
     logging,
 } from "@databricks/databricks-sdk";
-import {commands, Disposable, Uri, window} from "vscode";
+import {CancellationToken, commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 import {ShellUtils} from "../../utils";
+import {execFile} from "../../cli/CliWrapper";
+import {
+    FileNotFoundException,
+    isFileNotFound,
+} from "@databricks/databricks-sdk/dist/config/execUtils";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -25,6 +30,25 @@ type AzureStepName =
     | "installCli"
     | "isLoggedIn"
     | "loginAzureCli";
+
+async function execFileWithShell(
+    cmd: string,
+    args: Array<string>,
+    cancellationToken?: CancellationToken
+): Promise<{
+    stdout: string;
+    stderr: string;
+}> {
+    try {
+        return await execFile(cmd, args, {shell: true}, cancellationToken);
+    } catch (e) {
+        if (isFileNotFound(e)) {
+            throw new FileNotFoundException(e.message);
+        } else {
+            throw e;
+        }
+    }
+}
 
 export class AzureCliCheck implements Disposable {
     private disposables: Disposable[] = [];
@@ -47,7 +71,9 @@ export class AzureCliCheck implements Disposable {
         this.disposables = [];
     }
 
-    public async check(): Promise<boolean> {
+    public async check(
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
         this.tenantId = this.authProvider.tenantId;
 
         let loginAttempts = 0;
@@ -55,7 +81,10 @@ export class AzureCliCheck implements Disposable {
         const steps: Record<AzureStepName, Step<boolean, AzureStepName>> = {
             tryLogin: async () => {
                 loginAttempts += 1;
-                const result = await this.tryLogin(this.authProvider.host);
+                const result = await this.tryLogin(
+                    this.authProvider.host,
+                    cancellationToken
+                );
                 if (result.iss) {
                     this.tenantId = result.iss;
                     return {
@@ -95,7 +124,7 @@ export class AzureCliCheck implements Disposable {
                 }
             },
             findCli: async () => {
-                if (await this.hasAzureCli()) {
+                if (await this.hasAzureCli(cancellationToken)) {
                     return {
                         type: "next",
                         next: "isLoggedIn",
@@ -115,7 +144,7 @@ export class AzureCliCheck implements Disposable {
                 };
             },
             isLoggedIn: async () => {
-                if (await this.isAzureCliLoggedIn()) {
+                if (await this.isAzureCliLoggedIn(cancellationToken)) {
                     return {
                         type: "next",
                         next: "tryLogin",
@@ -127,7 +156,9 @@ export class AzureCliCheck implements Disposable {
                 };
             },
             loginAzureCli: async () => {
-                if (await this.loginAzureCli(this.tenantId)) {
+                if (
+                    await this.loginAzureCli(this.tenantId, cancellationToken)
+                ) {
                     return {
                         type: "next",
                         next: "tryLogin",
@@ -147,7 +178,8 @@ export class AzureCliCheck implements Disposable {
                 steps,
                 "findCli",
                 20,
-                this.logger
+                this.logger,
+                cancellationToken
             );
         } catch (e: any) {
             let message: string;
@@ -165,7 +197,10 @@ export class AzureCliCheck implements Disposable {
         return result;
     }
 
-    private async tryLogin(host: URL): Promise<{
+    private async tryLogin(
+        host: URL,
+        cancellationToken?: CancellationToken
+    ): Promise<{
         iss?: string;
         aud?: string;
         canLogin: boolean;
@@ -184,7 +219,9 @@ export class AzureCliCheck implements Disposable {
             }
         );
         try {
-            await workspaceClient.currentUser.me();
+            await workspaceClient.currentUser.me(
+                new Context({cancellationToken})
+            );
         } catch (e: any) {
             // parse error message
             let m = e.message.match(
@@ -226,11 +263,15 @@ export class AzureCliCheck implements Disposable {
     }
 
     // check if Azure CLI is installed
-    public async hasAzureCli(): Promise<boolean> {
+    public async hasAzureCli(
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
         try {
-            const {stdout} = await ExecUtils.execFileWithShell(this.azBinPath, [
-                "--version",
-            ]);
+            const {stdout} = await execFileWithShell(
+                this.azBinPath,
+                ["--version"],
+                cancellationToken
+            );
             if (stdout.indexOf("azure-cli") !== -1) {
                 return true;
             }
@@ -259,18 +300,25 @@ export class AzureCliCheck implements Disposable {
     }
 
     // check if Azure CLI is logged in
-    public async isAzureCliLoggedIn(): Promise<boolean> {
+    public async isAzureCliLoggedIn(
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
         try {
-            await ExecUtils.execFileWithShell(this.azBinPath, [
-                "cloud",
-                "set",
-                "--name",
-                this.getAzureCloud(this.authProvider.host),
-            ]);
-
-            const {stdout, stderr} = await ExecUtils.execFileWithShell(
+            await execFileWithShell(
                 this.azBinPath,
-                ["account", "list"]
+                [
+                    "cloud",
+                    "set",
+                    "--name",
+                    this.getAzureCloud(this.authProvider.host),
+                ],
+                cancellationToken
+            );
+
+            const {stdout, stderr} = await execFileWithShell(
+                this.azBinPath,
+                ["account", "list"],
+                cancellationToken
             );
             if (stdout === "[]") {
                 return false;
@@ -295,7 +343,10 @@ export class AzureCliCheck implements Disposable {
     }
 
     // login using azure CLI
-    public async loginAzureCli(tenant = ""): Promise<boolean> {
+    public async loginAzureCli(
+        tenant = "",
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
         let message = 'You need to run "az login" to login with Azure.';
         if (tenant) {
             message = `You need to tun "az login --allow-no-subscriptions -t ${tenant}" to login with Azure.`;
@@ -321,6 +372,10 @@ export class AzureCliCheck implements Disposable {
                 }; echo "Press any key to close the terminal and continue ..."; ${ShellUtils.readCmd()}; exit`
             );
 
+            cancellationToken?.onCancellationRequested(() =>
+                terminal.dispose()
+            );
+
             return await Promise.race<boolean>([
                 new Promise<boolean>((resolve) => {
                     setTimeout(() => {
@@ -332,7 +387,10 @@ export class AzureCliCheck implements Disposable {
                     this.disposables.push(
                         window.onDidCloseTerminal((t) => {
                             if (t === terminal) {
-                                resolve(true);
+                                resolve(
+                                    cancellationToken?.isCancellationRequested !==
+                                        true
+                                );
                                 this.dispose();
                             }
                         })

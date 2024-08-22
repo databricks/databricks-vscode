@@ -41,6 +41,7 @@ export class ConnectionManager implements Disposable {
     private _state: ConnectionState = "DISCONNECTED";
     private loginLogoutMutex: Mutex = new Mutex();
     private savedAuthMutex: Mutex = new Mutex();
+    private configureLoginMutex: Mutex = new Mutex();
 
     private _workspaceClient?: WorkspaceClient;
     private _syncDestinationMapper?: SyncDestinationMapper;
@@ -373,21 +374,29 @@ export class ConnectionManager implements Disposable {
         popup: {prefix: "Can't configure workspace. "},
     })
     async configureLogin(source: ManualLoginSource) {
-        const recordEvent = this.telemetry.start(Events.MANUAL_LOGIN);
-        try {
-            const authProvider = await LoginWizard.run(
-                this.cli,
-                this.configModel.target,
-                await this.configModel.get("host")
+        if (this.configureLoginMutex.locked) {
+            window.showErrorMessage(
+                "Databricks: Already configuring workspace"
             );
-            if (authProvider) {
-                await this.connect(authProvider);
-            }
-            recordEvent({success: this.state === "CONNECTED", source});
-        } catch (e) {
-            recordEvent({success: false, source});
-            throw e;
+            return;
         }
+        await this.configureLoginMutex.synchronise(async () => {
+            const recordEvent = this.telemetry.start(Events.MANUAL_LOGIN);
+            try {
+                const authProvider = await LoginWizard.run(
+                    this.cli,
+                    this.configModel.target,
+                    await this.configModel.get("host")
+                );
+                if (authProvider) {
+                    await this.connect(authProvider);
+                }
+                recordEvent({success: this.state === "CONNECTED", source});
+            } catch (e) {
+                recordEvent({success: false, source});
+                throw e;
+            }
+        });
     }
 
     @onError({

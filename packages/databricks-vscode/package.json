@@ -387,12 +387,12 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
-                "contents": "There are multiple Databricks projects in the workspace:\n[Open existing Databricks Project](command:databricks.bundle.openSubProject)",
+                "contents": "There are multiple Databricks projects in the folder:\n[Open existing Databricks Project](command:databricks.bundle.openSubProject)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
-                "contents": "Migrate current workspace to a Databricks Project: \n[Migrate to a Databricks Project](command:databricks.bundle.startManualMigration)",
+                "contents": "Migrate current folder to a Databricks Project: \n[Migrate current folder to a Databricks Project](command:databricks.bundle.startManualMigration)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
@@ -412,7 +412,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "The workspace is empty.\n[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
+                "contents": "This folder is empty.\n[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
                 "when": "workspaceFolderCount == 0"
             }
         ],
@@ -843,19 +843,6 @@
                         "default": false,
                         "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
                     },
-                    "databricks.sync.destinationType": {
-                        "type": "string",
-                        "default": "workspace",
-                        "enum": [
-                            "workspace",
-                            "repo"
-                        ],
-                        "description": "Use a folder in Workspace or a Databricks Repo as sync destination (Reload for changes to take effect).",
-                        "enumDescriptions": [
-                            "Use a folder in Workspace as sync destination",
-                            "Use a Repo as sync destination"
-                        ]
-                    },
                     "databricks.overrideDatabricksConfigFile": {
                         "type": "string",
                         "default": "",
@@ -878,11 +865,6 @@
                         },
                         "uniqueItems": true,
                         "description": "Opt into experimental features."
-                    },
-                    "databricks.python.envFile": {
-                        "type": "string",
-                        "default": "",
-                        "description": "Similar to python.envFile. Absolute path to a file containing environment variable definitions."
                     },
                     "databricks.wsfs.rearrangeCells": {
                         "type": "boolean",

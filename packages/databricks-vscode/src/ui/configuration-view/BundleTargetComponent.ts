@@ -4,18 +4,12 @@ import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {UrlError} from "../../utils/urlUtils";
 import {LabelUtils} from "../utils";
+import {humaniseMode} from "../utils/BundleUtils";
 
 const TREE_ICON_ID = "TARGET";
 
 function getTreeIconId(key: string) {
     return `${TREE_ICON_ID}.${key}`;
-}
-
-function humaniseMode(mode?: string) {
-    if (mode === undefined) {
-        return "";
-    }
-    return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
 export class BundleTargetComponent extends BaseComponent {
