@@ -66,11 +66,6 @@ const StorageConfigurations = {
         location: "global",
         defaultValue: "0.0.0",
     }),
-
-    "databricks.preview-tnc.accepted": withType<boolean>()({
-        location: "global",
-        defaultValue: false,
-    }),
 };
 
 type Keys = keyof typeof StorageConfigurations;
