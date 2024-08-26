@@ -1,5 +1,3 @@
-# ⚠️ Note
-
 # Databricks Extension for Visual Studio Code
 
 The Databricks extension for VS Code allows you to develop for the Databricks Lakehouse platform from VS Code.
@@ -8,7 +6,7 @@ The Databricks extension for VS Code allows you to develop for the Databricks La
 
 # Features
 
--   Create a Databricks Project [Databricks Asset Bundle]()
+-   Create [Databricks Asset Bundle](https://docs.databricks.com/en/dev-tools/bundles/index.html)
 -   Manage, run and deploy Databricks assets (jobs, DLT Pipelines)
 -   Synchronize code to a Databricks workspace
 -   Run Python files on a Databricks cluster
@@ -60,7 +58,7 @@ The extension uses an interactive cluster to run code. To select an interactive 
 
 ## <a id="running-code"></a>Running Code
 
-Once you have your project configured you can deploy your local code to the repo and run it on a cluster.
+Once you have your project configured you can deploy your local code to the selected Databricks workspace and run it on a cluster.
 
 ### <a id="running-pyspark-code"></a>Running PySpark code
 
