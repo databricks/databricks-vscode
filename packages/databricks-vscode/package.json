@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.3.2",
+    "version": "2.4.0",
     "engines": {
         "vscode": "^1.86.0"
     },
