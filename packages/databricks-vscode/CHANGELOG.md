@@ -1,8 +1,10 @@
-# Release: v2.4.0-preview
+# Release: v2.4.0
 
 ## packages/databricks-vscode
 
 ## (2024-08-26)
+
+-   Remove private preview warning
 
 # Release: v2.3.2-preview
 
