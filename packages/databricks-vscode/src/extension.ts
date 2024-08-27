@@ -5,8 +5,6 @@ import {
     extensions,
     window,
     workspace,
-    env,
-    Uri,
 } from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
