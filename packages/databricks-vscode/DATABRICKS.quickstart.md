@@ -1,4 +1,4 @@
-# Databricks Extension for Visual Studio Code
+# Databricks extension for Visual Studio Code
 
 The Databricks extension for Visual Studio Code enables you to connect to your remote Databricks workspaces from Visual Studio Code.
 
