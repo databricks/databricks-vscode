@@ -4,7 +4,7 @@
 
 ## 1.4.0 (2024-08-28)
 
--   Added a notification about upcoming V2 release:
+-   Added a notification about the upcoming V2 release:
     > **Version 2 of the extension will soon be made the default. With this update it is easier to set up your project, integrate with Databricks Asset Bundles, and run your code remotely. [Learn more](https://docs.databricks.com/dev-tools/vscode-ext/install.html).**
 
 # Release: v1.3.1
