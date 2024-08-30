@@ -4,6 +4,7 @@ import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "path";
 import {exists} from "fs-extra";
 import * as semver from "semver";
+import {openExternal} from "./utils/urlUtils";
 
 export async function findFileFowWhatsNew(
     context: ExtensionContext,
@@ -31,6 +32,18 @@ export async function findFileFowWhatsNew(
     }
 
     return context.asAbsolutePath("CHANGELOG.md");
+}
+
+async function showV2Notification() {
+    const choice = await window.showInformationMessage(
+        "Version 2 of the extension will soon be made the default. With this update it is easier to set up your project, integrate with Databricks Asset Bundles, and run your code remotely.",
+        "Learn more"
+    );
+    if (choice === "Learn more") {
+        openExternal(
+            "https://docs.databricks.com/dev-tools/vscode-ext/index.html"
+        );
+    }
 }
 
 export async function showWhatsNewPopup(
@@ -62,6 +75,7 @@ export async function showWhatsNewPopup(
 
     if (window.state.focused) {
         commands.executeCommand("markdown.showPreview", Uri.file(markdownFile));
+        showV2Notification();
         return;
     }
 
@@ -70,6 +84,7 @@ export async function showWhatsNewPopup(
             return;
         }
         commands.executeCommand("markdown.showPreview", Uri.file(markdownFile));
+        showV2Notification();
         listener.dispose();
     });
     context.subscriptions.push(listener);
