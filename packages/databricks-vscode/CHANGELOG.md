@@ -1,3 +1,11 @@
+# Release: v2.3.4-preview
+
+## packages/databricks-vscode
+
+## (2024-08-30)
+
+-   Fix the marketplace note (#1337) ([4f4debb](https://github.com/databricks/databricks-vscode/commit/4f4debb)), closes [#1337](https://github.com/databricks/databricks-vscode/issues/1337)
+
 # Release: v2.3.3-preview
 
 ## packages/databricks-vscode
