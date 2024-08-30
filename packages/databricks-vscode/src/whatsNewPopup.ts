@@ -1,4 +1,4 @@
-import {ExtensionContext, Uri, commands, window, env} from "vscode";
+import {ExtensionContext, Uri, commands, window} from "vscode";
 import {PackageJsonUtils} from "./utils";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "path";
