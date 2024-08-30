@@ -1,3 +1,11 @@
+# Release: v2.3.3-preview
+
+## packages/databricks-vscode
+
+## (2024-08-30)
+
+-   Update marketplace note
+
 # Release: v2.3.2-preview
 
 ## packages/databricks-vscode
