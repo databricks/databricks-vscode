@@ -1,6 +1,6 @@
 # ⚠️ Note
 
-    > **Version 2 of the extension will soon be made the default. With this update it is easier to set up your project, integrate with Databricks Asset Bundles, and run your code remotely. [Learn more](https://docs.databricks.com/dev-tools/vscode-ext/install.html).**
+    > **Version 2 of the extension will soon be made the default. With this update it is easier to set up your project, integrate with Databricks Asset Bundles, and run your code remotely. [Learn more](https://docs.databricks.com/dev-tools/vscode-ext/index.html).**
 
 # Databricks extension for Visual Studio Code
 
