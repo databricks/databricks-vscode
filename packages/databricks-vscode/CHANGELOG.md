@@ -1,3 +1,11 @@
+# Release: v2.3.3-preview
+
+## packages/databricks-vscode
+
+## (2024-08-30)
+
+-   Update marketplace note (#1332) ([f2b43b8](https://github.com/databricks/databricks-vscode/commit/f2b43b8)), closes [#1332](https://github.com/databricks/databricks-vscode/issues/1332)
+
 # Release: v2.3.2-preview
 
 ## packages/databricks-vscode
