@@ -68,6 +68,8 @@ Once you have your project configured you can deploy your local code to the sele
 
 This will deploy the code to the selected Databricks workspace and run it on the cluster. The result is printed in the "debug" output panel.
 
+![run-python-code](./images/cmd-exec-run.gif)
+
 ### <a id="running-code-as-workflows"></a>Running Notebooks as a Workflow
 
 1. Create a python file or a python based notebook
@@ -75,6 +77,8 @@ This will deploy the code to the selected Databricks workspace and run it on the
 2. Click the "Databricks Run" icon in the tab bar and select "Run File as Workflow on Databricks"
 
 This will run the file using the Jobs API on the configured cluster and render the result in a WebView.
+
+![run-as-workflow](./images/run-as-workflow.gif)
 
 ### <a id="running-notebook"></a>Debugging and running Notebooks cell-by-cell using Databricks Connect
 
@@ -92,6 +96,8 @@ Databricks Asset Bundles make it possible to describe Databricks resources such 
 2. Click on the "Deploy" button.
 3. You can monitor the deployment status in the log output window.
 
+![deploy](./images/deploy.gif)
+
 ### <a id="deploy-run-job-pipeline"></a>Run a Job or Pipeline
 
 You can run a job or a pipeline managed by Databricks Asset Bundles, from the "Bundle Resource Explorer" view.
@@ -101,6 +107,8 @@ You can run a job or a pipeline managed by Databricks Asset Bundles, from the "B
 3. Click on the "Run" button.
 
 This deploys the bundle and runs the job or pipeline. You can monitor the run progress in the output terminal window. You can also open the run, job or pipeline in workspace by clicking on the "Open link externally" button.
+
+![run-job-pipeline](./images/deploy-and-run.gif)
 
 #### Use the interactive cluster for running jobs
 
