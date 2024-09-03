@@ -112,9 +112,7 @@ export class DatabricksCliCheck implements Disposable {
             );
         } catch (e: any) {
             throw new Error(
-                `Login failed with Databricks CLI failed: ${
-                    e.stderr || e.message
-                }`
+                `Login failed with Databricks CLI: ${e.stderr || e.message}`
             );
         }
     }
