@@ -82,7 +82,7 @@ This will run the file using the Jobs API on the configured cluster and render t
 
 ### <a id="running-notebook"></a>Debugging and running Notebooks cell-by-cell using Databricks Connect
 
-The extension provides easy setup for cell-by-cell running and debugging notebooks locally using Databricks Connect. For more details on how to set up Databricks Connect, refer to the [full docs](TODO::link).
+The extension provides easy setup for cell-by-cell running and debugging notebooks locally using Databricks Connect. For more details on how to set up Databricks Connect, refer to the [full docs](https://docs.databricks.com/en/dev-tools/vscode-ext/notebooks.html).
 
 ## <a id="dabs"></a>Deploying Databricks Asset Bundles
 
