@@ -5,8 +5,6 @@ import {
     extensions,
     window,
     workspace,
-    env,
-    Uri,
 } from "vscode";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
@@ -66,7 +64,6 @@ import {BundleProjectManager} from "./bundle/BundleProjectManager";
 import {TreeItemDecorationProvider} from "./ui/DecorationProvider";
 import {BundleInitWizard} from "./bundle/BundleInitWizard";
 import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigurationProvider";
-import {isIntegrationTest} from "./utils/developmentUtils";
 import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
@@ -90,44 +87,6 @@ export async function activate(
 
     const stateStorage = new StateStorage(context);
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
-
-    if (
-        !stateStorage.get("databricks.preview-tnc.accepted") &&
-        !isIntegrationTest()
-    ) {
-        const acceptTnc = await window.showInformationMessage(
-            `Databricks Extension v${packageMetadata.version} is in private preview`,
-            {
-                modal: true,
-                detail:
-                    `Please note that you should only be using this functionality if you are part of our private` +
-                    `preview and have accepted our terms and conditions regarding this preview.` +
-                    `In order to enroll in the private preview please contact us and we will get you added`,
-            },
-            "Contact us",
-            "Continue if you are already enrolled"
-        );
-        switch (acceptTnc) {
-            case "Contact us":
-                env.openExternal(
-                    Uri.parse(
-                        "mailto:dabs-preview@databricks.com?subject=Databricks+Extension+v2+Private+Preview+Enrollment+Request"
-                    )
-                );
-                window.showErrorMessage(
-                    "Databricks Extension is not activated"
-                );
-                return;
-            case "Continue if you are already enrolled":
-                stateStorage.set("databricks.preview-tnc.accepted", true);
-                break;
-            default:
-                window.showErrorMessage(
-                    "Databricks Extension is not activated"
-                );
-                return;
-        }
-    }
 
     if (!(await PackageJsonUtils.checkArchCompat(context))) {
         return undefined;

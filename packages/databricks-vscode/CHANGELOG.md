@@ -1,3 +1,12 @@
+# Release: v2.4.0
+
+## packages/databricks-vscode
+
+## (2024-08-26)
+
+-   Remove private preview warning
+-   Bump CLI to 0.227.1
+
 # Release: v2.3.4-preview
 
 ## packages/databricks-vscode
