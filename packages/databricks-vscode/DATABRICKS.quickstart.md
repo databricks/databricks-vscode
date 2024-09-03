@@ -1,104 +1,134 @@
-# ⚠️ Note
+# Databricks extension for Visual Studio Code
 
-> **The quickstart guide for `2.*.*` version of the extension is still work-in-progress. For now, please use the documentation we provided to you. Please reach out to your Databricks representative if you don't have access to the relevant docs.**
-
-# Databricks Extension for Visual Studio Code
-
-The Databricks extension for VS Code allows you to develop for the Databricks Lakehouse platform from VS Code.
+The Databricks extension for Visual Studio Code enables you to connect to your remote Databricks workspaces from Visual Studio Code.
 
 > 📘 **Note**: The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html) contains comprehesive documentation about the Databricks extension.
 
 # Features
 
--   Synchronize code to a Databricks workspace
--   Run Python files on a Databricks cluster
--   Run notebooks and Python files as Workflows
+-   Define, deploy, and run Databricks Asset Bundles to apply CI/CD patterns to your Databricks jobs, Delta Live Tables pipelines, and MLOps Stacks.
+-   Run local Python code files on Databricks clusters.
+-   Run notebooks and local Python code files as Databricks jobs.
+-   Set up and configure your debugging environment and Databricks Connect using a simple checklist that triggers selection dialogs.
+-   Debug notebooks cell by cell with Databricks Connect.
+-   Synchronize local code with code in your Databricks workspace.
 
 ## <a id="toc"></a>Table of Contents
 
 -   [Getting Started](#setup-steps)
-    -   [Configure Extension](#configure-extension)
-    -   [Running Code](#running-code)
-        -   [Running PySpark Code](#running-pyspark-code)
-        -   [Running PySpark Code and Notebooks as Workflows](#running-code-as-workflows)
-        -   [Advanced: Running using custom run configurations](#run-configurations)
--   [Extension Settings](#settings)
--   [`Databricks:` Commands](#commands)
+    -   [Create a Databricks project](#create-databricks-project)
+    -   [Run Python code](#running-code)
+        -   [Running Python files](#running-pyspark-code)
+        -   [Running Notebooks as Workflows](#running-code-as-workflows)
+        -   [Debugging and running Notebooks cell-by-cell using Databricks Connect](#running-notebook)
+    -   [Deploying Databricks Asset Bundles](#dabs)
+        -   [What are Databricks Asset Bundles?](#what-is-dab)
+        -   [Deploying Databricks Asset Bundles](#deploy-dab)
+        -   [Run a Job or Pipeline](#deploy-run-job-pipeline)
+-   [Changes from v1](#changes-from-v1)
+    -   [Migrate a project from Databricks extension v1 to v2](#migrate-from-v1)
+    -   [What is databricks.yml?](#what-is-databricksyml)
+    -   [No environment variables in terminals](#no-env-vars)
 
 ---
 
 # <a id="setup-steps"></a>Getting Started
 
-## <a id="configure-extension"></a>Configure Extension
+## <a id="create-databricks-project"></a>Create a Databricks project
+
+1. Open the Databricks extension panel by clicking on the Databricks icon on the left sidebar.
+2. Click on the "Create a new Databricks project" button.
+3. Follow the selection dialogs to create a Databricks configuration profile or select an existing one.
+4. Select a folder to create your project in.
+5. Follow the selection dialogs to create a new Databricks project.
+6. Select the newly created project to open it, using the selector that appears.
+7. VS Code will reopen with the new project loaded, and the extension will automatically login using the selected profile.
+
+![create-databricks-project](./images/dabs_vsc.gif)
+
+If your folder has multiple [Databricks Asset Bundles](#dabs), you can select which one to use by clicking "Open Existing Databricks project" button and selecting the desired project.
+
+## <a id="select-cluster"></a>Select a cluster
+
+The extension uses an interactive cluster to run code. To select an interactive cluster:
 
 1. Open the Databricks panel by clicking on the Databricks icon on the left
-2. Click the "Configure Databricks" button
-3. Follow the wizard to select or configure a CLI profile
-4. Click the "gear" icon in the clusters tree item to select an interactive cluster for running code on
-    1. You can also select the first entry in the list to create a new cluster. Selecting the item will take you into the Databricks web application.
-    2. We recommend creating a Personal Compute Cluster.
-5. Click the "gear" icon in the Repo tree item to select a repo to sync code to
-    1. You can also select the first entry in the list to create a new Databricks repo
+2. Click on the "Select Cluster" button.
+    - If you wish to change the selected cluster, click on the "Configure Cluster" gear icon, next to the name of the selected cluster.
 
-![configure](./images/configure.gif)
+## <a id="running-code"></a>Run Python code
 
-## <a id="running-code"></a>Running Code
+Once you have your project configured you can deploy your local code to the selected Databricks workspace and run it on a cluster.
 
-Once you have your project configured you can sync your local code to the repo and run it on a cluster. You can use the https://github.com/databricks/ide-best-practices repository as an example.
-
-### <a id="running-pyspark-code"></a>Running PySpark code
+### <a id="running-pyspark-code"></a>Running Python files
 
 1. Create python file
 2. Add PySpark code to the python file.
-3. Click the "Run" icon in the tab bar and select "Upload and Run File on Databricks"
+3. Click the "Databricks Run" icon in the tab bar and select "Upload and Run File on Databricks"
 
-This will start the code synchronization and run the active python file on the configured cluster. The result is printed in the "debug" output panel.
+This will deploy the code to the selected Databricks workspace and run it on the cluster. The result is printed in the "debug" output panel.
 
-![run](./images/run.gif)
+![run-python-code](./images/cmd-exec-run.gif)
 
-### <a id="running-code-as-workflows"></a>Running PySpark and notebooks as a Workflow
+### <a id="running-code-as-workflows"></a>Running Notebooks as a Workflow
 
 1. Create a python file or a python based notebook
     1. You can create a python based notebook by exporting a notebook from the Databricks web application or use a notebook that is already tracked in git, such as https://github.com/databricks/notebook-best-practices
-2. Click the "Run" icon in the tab bar and select "Run File as Workflow on Databricks"
+2. Click the "Databricks Run" icon in the tab bar and select "Run File as Workflow on Databricks"
 
 This will run the file using the Jobs API on the configured cluster and render the result in a WebView.
 
-### <a id="run-configurations"></a>Advanced: Running using custom run configurations
+![run-as-workflow](./images/run-as-workflow.gif)
 
-Both ways of running code on a cluster are also available in custom run configurations. In the "Run and Debug" panel you can click "Add configuration..." and select either "Databricks: Launch" or "Databricks: Launch as Workflow". Using run configuration you can also pass in command line arguments and run your code by simply pressing `F5`.
+### <a id="running-notebook"></a>Debugging and running Notebooks cell-by-cell using Databricks Connect
 
-![configure](./images/custom-runner.gif)
+The extension provides easy setup for cell-by-cell running and debugging notebooks locally using Databricks Connect. For more details on how to set up Databricks Connect, refer to the [full docs](https://docs.databricks.com/en/dev-tools/vscode-ext/notebooks.html).
 
-## <a id="settings"></a>Extension Settings
+## <a id="dabs"></a>Deploying Databricks Asset Bundles
 
-This extension contributes the following settings:
+### <a id="what-is-dab"></a>What are Databricks Asset Bundles?
 
--   `databricks.logs.maxFieldLength`: The maximum length of each field displayed in logs outputs panel
--   `databricks.logs.truncationDepth`: The max depth of logs to show without truncation
--   `databricks.logs.maxArrayLength`: The maximum number of items to show for array fields
--   `databricks.logs.enabled`: Enable/disable logging. Reload window for changes to take effect
--   `databricks.clusters.onlyShowAccessibleClusters`: Only show clusters that the user has access to
+Databricks Asset Bundles make it possible to describe Databricks resources such as jobs, pipelines, and notebooks as source files. These source files provide an end-to-end definition of a project, including how it should be structured, tested, and deployed, which makes it easier to collaborate on projects during active development. For more information, see [Databricks Asset Bundles](https://docs.databricks.com/en/dev-tools/bundles/index.html).
 
-## <a id="commands"></a>`Databricks:` Commands
+### <a id="deploy-dab"></a>Deploying Databricks Asset Bundles?
 
-The Databricks extension provides commands (prefixed with `Databricks:`) to the VS Code _command
-palette_, available by selecting _View > Command Palette_ or by typing
-`CTRL-SHIFT-p` (macOS: `CMD-SHIFT-p`).
+1. In the Databricks extension panel, find the "Bundle Resource Explorer" view.
+2. Click on the "Deploy" button.
+3. You can monitor the deployment status in the log output window.
 
-| Databricks Command                               | Description                                                                                                                          |
-| :----------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
-| `Databricks: Configure workspace`                | Configure the Databricks workspace to use for the current project                                                                    |
-| `Databricks: Logout`                             | Logs you out from your Databricks workspace                                                                                          |
-| `Databricks: Configure cluster`                  | Select an interactive cluster to use for running PySpark code in this project                                                        |
-| `Databricks: Detach cluster`                     | Detach configured cluster                                                                                                            |
-| `Databricks: Configure sync destination`         | Configure target directory for synchronizing code to the configured Databricks workspace                                             |
-| `Databricks: Detach sync destination`            | Detach the configured sync destination                                                                                               |
-| `Databricks: Start synchronization`              | Start synchronizing local code to the Databricks workspace. This command performs an incremental sync.                               |
-| `Databricks: Start synchronization (full sync)`  | Start synchronizing local code to the Databricks workspace. This command performs full sync even if an incremental sync is possible. |
-| `Databricks: Stop synchronization`               | Stop sync process.                                                                                                                   |
-| `Databricks: Upload and Run File on Databricks`  | Runs the selected Python file on the configured Databricks cluster                                                                   |
-| `Databricks: Run File as Workflow on Databricks` | Runs the selected Python file as a Workflow in the configured Databricks cluster                                                     |
-| `Databricks: Show Quickstart`                    | Show the Quickstart panel                                                                                                            |
-| `Databricks: Open Databricks configuration file` | Opens the Databricks configuration file for the current project                                                                      |
-| `Databricks: Open full log`                      | Opens the log output folder for the current project                                                                                  |
+![deploy](./images/deploy.gif)
+
+### <a id="deploy-run-job-pipeline"></a>Run a Job or Pipeline
+
+You can run a job or a pipeline managed by Databricks Asset Bundles, from the "Bundle Resource Explorer" view.
+
+1. In the Databricks extension panel, find the "Bundle Resource Explorer" view.
+2. Hover over the job or pipeline that you want to run.
+3. Click on the "Run" button.
+
+This deploys the bundle and runs the job or pipeline. You can monitor the run progress in the output terminal window. You can also open the run, job or pipeline in workspace by clicking on the "Open link externally" button.
+
+![run-job-pipeline](./images/deploy-and-run.gif)
+
+#### Use the interactive cluster for running jobs
+
+By default, a job is run using a jobs cluster. You can change this behavior and use the interactive cluster selected previously ([Select a cluster](#select-cluster)) to run the job.
+
+1. In the Databricks extension panel, find the "Configuration" view.
+2. Check the "Override Jobs cluster in bundle" checkbox.
+
+# <a id="changes-from-v1"></a> Key behavior changes for users of Databricks extension v1
+
+## <a id="migrate-from-v1"></a>Migrate a project from Databricks extension v1 to v2
+
+If you are using Databricks extension v1, your project will automatically be migrated a [Databricks Asset Bundle](#what-is-dab) when you open it in v2. The migration process will create a new [`databricks.yml`](#what-is-databricksyml) file in the root of your project and move the configurations from the old `.databricks/project.json` to the new `databricks.yml` file.
+
+> **Note**: This means that you will start seeing a `databricks.yml` file in your project root directory and in your version control system change logs. We recommend comitting this file to your version control system.
+
+## <a id="what-is-databricksyml"></a>What is databricks.yml?
+
+A `databricks.yml` file is a configuration file that describes a bundle. It contains the configuration such as the workspace host and definitions of resources such as jobs and pipelines. For more information on `databricks.yml`, refer to the [full docs](https://docs.databricks.com/en/dev-tools/bundles/index.html).
+
+## <a id="no-env-vars"></a>No environment variables in terminals
+
+Environment variables in terminals is no longer supported. If you were using environment variables in v1, you will need to manually load the `.databricks/.databricks.env` file in your terminal before running any commands.
