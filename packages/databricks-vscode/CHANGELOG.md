@@ -4,7 +4,7 @@
 
 ## (2024-09-05)
 
--   Bump CLI to 0.228 (#1344) ([3b04c91](https://github.com/databricks/databricks-vscode/commit/3b04c91)), closes [#1344](https://github.com/databricks/databricks-vscode/issues/1344)
+-   Bump CLI to 0.228.0
 
 # Release: v2.4.0
 
