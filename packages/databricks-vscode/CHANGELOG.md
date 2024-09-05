@@ -1,3 +1,11 @@
+# Release: v2.4.1
+
+## packages/databricks-vscode
+
+## (2024-09-05)
+
+-   Bump CLI to 0.228.0
+
 # Release: v2.4.0
 
 ## packages/databricks-vscode
