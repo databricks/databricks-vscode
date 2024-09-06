@@ -1,3 +1,11 @@
+# Release: v2.4.2
+
+## packages/databricks-vscode
+
+## (2024-09-06)
+
+-   Remove README note about upcoming release
+
 # Release: v2.4.1
 
 ## packages/databricks-vscode
