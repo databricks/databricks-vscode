@@ -4,7 +4,7 @@
 
 ## (2024-09-06)
 
--   Remove README note about upcoming release (#1346) ([756a570](https://github.com/databricks/databricks-vscode/commit/756a570)), closes [#1346](https://github.com/databricks/databricks-vscode/issues/1346)
+-   Remove README note about upcoming release
 
 # Release: v2.4.1
 
