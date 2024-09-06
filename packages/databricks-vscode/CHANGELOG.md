@@ -1,3 +1,11 @@
+# Release: v2.4.2
+
+## packages/databricks-vscode
+
+## (2024-09-06)
+
+-   Remove README note about upcoming release (#1346) ([756a570](https://github.com/databricks/databricks-vscode/commit/756a570)), closes [#1346](https://github.com/databricks/databricks-vscode/issues/1346)
+
 # Release: v2.4.1
 
 ## packages/databricks-vscode
