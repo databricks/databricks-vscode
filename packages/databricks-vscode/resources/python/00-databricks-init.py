@@ -379,11 +379,7 @@ def register_spark_progress(spark, show_progress: bool):
         SI_BYTE_SUFFIXES = ("EiB", "PiB", "TiB", "GiB", "MiB", "KiB", "B")
 
         def __init__(
-<<<<<<< HEAD
             self
-=======
-            self,
->>>>>>> b1ceb52 (Inline code from pyspark)
         ) -> None:
             self._ticks = None
             self._tick = None
