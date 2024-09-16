@@ -5,6 +5,7 @@ import {logging, Headers} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {TerraformMetadata} from "./terraformUtils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../../package.json");
@@ -115,11 +116,14 @@ export async function getDbConnectEnvVars(
 ) {
     const userAgent = getUserAgent(connectionManager);
     const existingSparkUa = process.env.SPARK_CONNECT_USER_AGENT ?? "";
+
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         //We append our user agent to any existing SPARK_CONNECT_USER_AGENT defined in the
         //environment of the parent process of VS Code.
         SPARK_CONNECT_USER_AGENT: [existingSparkUa, userAgent].join(" ").trim(),
+        DATABRICKS_CONNECT_PROGRESS:
+            workspaceConfigs.showDbConnectProgress.toString(),
         DATABRICKS_PROJECT_ROOT: workspacePath.fsPath,
         ...((await getSparkRemoteEnvVar(connectionManager)) || {}),
     };

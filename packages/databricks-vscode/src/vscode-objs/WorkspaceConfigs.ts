@@ -105,6 +105,14 @@ export const workspaceConfigs = {
         );
     },
 
+    get showDbConnectProgress(): boolean {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<boolean>("connect.progress") ?? true
+        );
+    },
+
     get ipythonDir(): string | undefined {
         const dir = workspace
             .getConfiguration("databricks")

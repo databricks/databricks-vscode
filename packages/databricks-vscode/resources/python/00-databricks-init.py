@@ -103,7 +103,13 @@ class EnvLoader:
 
     def __get__(self, instance, owner):
         if self.env_name in os.environ:
-            return self.transform(os.environ[self.env_name])
+            if self.transform is not bool:
+                return self.transform(os.environ[self.env_name])
+            
+            if os.environ[self.env_name].lower() == "true" or os.environ[self.env_name] == "1":
+                return True
+            elif os.environ[self.env_name].lower() == "false" or os.environ[self.env_name] == "0":
+                return False            
 
         if self.required:
             raise AttributeError(
@@ -119,6 +125,7 @@ class EnvLoader:
 class LocalDatabricksNotebookConfig:
     project_root: str = EnvLoader("DATABRICKS_PROJECT_ROOT", required=True)
     dataframe_display_limit: int = EnvLoader("DATABRICKS_DF_DISPLAY_LIMIT", 20)
+    show_progress: bool = EnvLoader("DATABRICKS_CONNECT_PROGRESS", default=True)
 
     def __new__(cls):
         annotations = cls.__dict__['__annotations__']
@@ -363,7 +370,6 @@ def register_formatters(notebook_config: LocalDatabricksNotebookConfig):
 @disposable
 def register_spark_progress(spark):
     try:
-        from pyspark.sql.connect.shell.progress import Progress
         import ipywidgets as widgets
     except Exception as e:
         return
@@ -374,12 +380,14 @@ def register_spark_progress(spark):
 
         def __init__(
             self,
+            cfg: LocalDatabricksNotebookConfig
         ) -> None:
             self._ticks = None
             self._tick = None
             self._started = time.time()
             self._bytes_read = 0
             self._running = 0
+            self.show_progress = cfg.show_progress
             self.init_ui()
 
         def init_ui(self):
@@ -391,12 +399,8 @@ def register_spark_progress(spark):
                 orientation='horizontal'
             )
             self.w_status = widgets.Label(value="")
-            if self.is_enabled():
+            if self.show_progress:
                 display(widgets.HBox([self.w_progress, self.w_status]))
-
-        def is_enabled(self):
-            env_var = os.getenv("DATABRICKS_CONNECT_PROGRESS")
-            return env_var is None or (env_var.lower() != "false" and env_var.lower() != "0")
 
         def update_ticks(
             self,
@@ -437,7 +441,7 @@ def register_spark_progress(spark):
             self.op_id = ""     
 
         def reset(self):
-            self.p = Progress()
+            self.p = Progress(cfg)
 
         def __call__(self,
             stages,
