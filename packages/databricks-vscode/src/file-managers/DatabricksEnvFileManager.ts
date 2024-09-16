@@ -19,6 +19,7 @@ export class DatabricksEnvFileManager implements Disposable {
     private userEnvFileWatcherDisposables: Disposable[] = [];
     private mutex = new Mutex();
     private userEnvPath?: Uri;
+    private showDatabricksConnectProgess = true;
 
     get databricksEnvPath() {
         return Uri.joinPath(
@@ -44,7 +45,23 @@ export class DatabricksEnvFileManager implements Disposable {
         private readonly featureManager: FeatureManager,
         private readonly connectionManager: ConnectionManager,
         private readonly configModel: ConfigModel
-    ) {}
+    ) {
+        this.showDatabricksConnectProgess =
+            workspaceConfigs.showDatabricksConnectProgress;
+    }
+
+    private async updateShowDatabricksConnectProgessWatcher() {
+        if (
+            this.showDatabricksConnectProgess ===
+            workspaceConfigs.showDatabricksConnectProgress
+        ) {
+            return;
+        }
+
+        this.showDatabricksConnectProgess =
+            workspaceConfigs.showDatabricksConnectProgress;
+        await this.writeFile();
+    }
 
     private updateUserEnvFileWatcher() {
         const userEnvPath = workspaceConfigs.msPythonEnvFile
@@ -111,6 +128,11 @@ export class DatabricksEnvFileManager implements Disposable {
                 this,
                 this.disposables
             ),
+            workspace.onDidChangeConfiguration(
+                this.updateShowDatabricksConnectProgessWatcher,
+                this,
+                this.disposables
+            ),
             this.featureManager.onDidChangeState(
                 "environment.dependencies",
                 () => {
@@ -160,7 +182,8 @@ export class DatabricksEnvFileManager implements Disposable {
                 ...(this.getDatabrickseEnvVars() || {}),
                 ...((await EnvVarGenerators.getDbConnectEnvVars(
                     this.connectionManager,
-                    this.workspacePath
+                    this.workspacePath,
+                    this.showDatabricksConnectProgess
                 )) || {}),
                 ...this.getIdeEnvVars(),
                 ...((await this.getUserEnvVars()) || {}),

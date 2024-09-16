@@ -105,7 +105,7 @@ export const workspaceConfigs = {
         );
     },
 
-    get showDbConnectProgress(): boolean {
+    get showDatabricksConnectProgress(): boolean {
         return (
             workspace
                 .getConfiguration("databricks")
