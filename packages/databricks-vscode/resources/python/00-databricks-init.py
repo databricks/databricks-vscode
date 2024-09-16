@@ -391,7 +391,12 @@ def register_spark_progress(spark):
                 orientation='horizontal'
             )
             self.w_status = widgets.Label(value="")
-            display(widgets.HBox([self.w_progress, self.w_status]))
+            if self.is_enabled():
+                display(widgets.HBox([self.w_progress, self.w_status]))
+
+        def is_enabled(self):
+            env_var = os.getenv("DATABRICKS_CONNECT_PROGRESS")
+            return env_var is None or (env_var.lower() != "false" and env_var.lower() != "0")
 
         def update_ticks(
             self,
