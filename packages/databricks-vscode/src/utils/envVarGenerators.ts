@@ -122,7 +122,9 @@ export async function getDbConnectEnvVars(
         //We append our user agent to any existing SPARK_CONNECT_USER_AGENT defined in the
         //environment of the parent process of VS Code.
         SPARK_CONNECT_USER_AGENT: [existingSparkUa, userAgent].join(" ").trim(),
-        DATABRICKS_CONNECT_PROGRESS: showDatabricksConnectProgess.toString(),
+        SPARK_CONNECT_PROGRESS_BAR_ENABLED: showDatabricksConnectProgess
+            ? "1"
+            : "0",
         DATABRICKS_PROJECT_ROOT: workspacePath.fsPath,
         ...((await getSparkRemoteEnvVar(connectionManager)) || {}),
     };

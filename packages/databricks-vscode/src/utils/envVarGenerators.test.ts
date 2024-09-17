@@ -110,7 +110,7 @@ describe(__filename, () => {
             assert.deepEqual(actual, {
                 SPARK_CONNECT_USER_AGENT: "test/0.0.1",
                 DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
-                DATABRICKS_CONNECT_PROGRESS: "true",
+                SPARK_CONNECT_PROGRESS_BAR_ENABLED: "true",
             });
         });
 
@@ -127,7 +127,7 @@ describe(__filename, () => {
             assert.deepEqual(actual, {
                 SPARK_CONNECT_USER_AGENT: "existing test/0.0.1",
                 DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
-                DATABRICKS_CONNECT_PROGRESS: "true",
+                SPARK_CONNECT_PROGRESS_BAR_ENABLED: "true",
             });
         });
 
@@ -150,7 +150,7 @@ describe(__filename, () => {
             assert.deepEqual(actual, {
                 SPARK_CONNECT_USER_AGENT: "test/0.0.1",
                 DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
-                DATABRICKS_CONNECT_PROGRESS: "true",
+                SPARK_CONNECT_PROGRESS_BAR_ENABLED: "true",
                 SPARK_REMOTE: `sc://${
                     Uri.parse(mockHost).authority
                 }:443/;token=token;use_ssl=true;x-databricks-cluster-id=${mockClusterId}`,
@@ -176,7 +176,7 @@ describe(__filename, () => {
             assert.deepEqual(actual, {
                 SPARK_CONNECT_USER_AGENT: "test/0.0.1",
                 DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
-                DATABRICKS_CONNECT_PROGRESS: "true",
+                SPARK_CONNECT_PROGRESS_BAR_ENABLED: "true",
             });
         });
     });

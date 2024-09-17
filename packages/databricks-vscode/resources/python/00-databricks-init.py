@@ -125,7 +125,7 @@ class EnvLoader:
 class LocalDatabricksNotebookConfig:
     project_root: str = EnvLoader("DATABRICKS_PROJECT_ROOT", required=True)
     dataframe_display_limit: int = EnvLoader("DATABRICKS_DF_DISPLAY_LIMIT", 20)
-    show_progress: bool = EnvLoader("DATABRICKS_CONNECT_PROGRESS", default=True)
+    show_progress: bool = EnvLoader("SPARK_CONNECT_PROGRESS_BAR_ENABLED", default=False)
 
     def __new__(cls):
         annotations = cls.__dict__['__annotations__']
@@ -368,7 +368,7 @@ def register_formatters(notebook_config: LocalDatabricksNotebookConfig):
 
 @logErrorAndContinue
 @disposable
-def register_spark_progress(spark):
+def register_spark_progress(spark, show_progress: bool):
     try:
         import ipywidgets as widgets
     except Exception as e:
@@ -379,15 +379,13 @@ def register_spark_progress(spark):
         SI_BYTE_SUFFIXES = ("EiB", "PiB", "TiB", "GiB", "MiB", "KiB", "B")
 
         def __init__(
-            self,
-            cfg: LocalDatabricksNotebookConfig
+            self
         ) -> None:
             self._ticks = None
             self._tick = None
             self._started = time.time()
             self._bytes_read = 0
             self._running = 0
-            self.show_progress = cfg.show_progress
             self.init_ui()
 
         def init_ui(self):
@@ -399,7 +397,7 @@ def register_spark_progress(spark):
                 orientation='horizontal'
             )
             self.w_status = widgets.Label(value="")
-            if self.show_progress:
+            if show_progress:
                 display(widgets.HBox([self.w_progress, self.w_status]))
 
         def update_ticks(
@@ -441,7 +439,7 @@ def register_spark_progress(spark):
             self.op_id = ""     
 
         def reset(self):
-            self.p = Progress(cfg)
+            self.p = Progress()
 
         def __call__(self,
             stages,
@@ -486,10 +484,16 @@ try:
     if not load_env_from_leaf(os.getcwd()):
         sys.exit(1)
     cfg = LocalDatabricksNotebookConfig()
+
+    # disable build-in progress bar
+    show_progress = cfg.show_progress
+    if "SPARK_CONNECT_PROGRESS_BAR_ENABLED" in os.environ:
+        del os.environ["SPARK_CONNECT_PROGRESS_BAR_ENABLED"]
+
     create_and_register_databricks_globals()
     register_magics(cfg)
     register_formatters(cfg)
-    register_spark_progress(globals()["spark"])
+    register_spark_progress(globals()["spark"], show_progress)
     update_sys_path(cfg)
     make_matplotlib_inline()
 
