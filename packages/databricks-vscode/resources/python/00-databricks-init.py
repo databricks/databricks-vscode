@@ -386,7 +386,6 @@ def register_spark_progress(spark, show_progress: bool):
             self._started = time.time()
             self._bytes_read = 0
             self._running = 0
-            self.show_progress = cfg.show_progress
             self.init_ui()
 
         def init_ui(self):
