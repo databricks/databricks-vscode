@@ -43,4 +43,6 @@ export function getSimplifiedRunState(run?: Run): SimplifiedRunState {
             }
             return "Terminated";
     }
+
+    return "Unknown";
 }
