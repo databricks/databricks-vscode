@@ -26,6 +26,11 @@ const StorageConfigurations = {
         defaultValue: {},
     }),
 
+    "databricks.bundle.skipGitignoreCheck": withType<string[]>()({
+        location: "workspace",
+        defaultValue: [],
+    }),
+
     "databricks.wsfs.skipSwitchToWorkspace": withType<boolean>()({
         location: "workspace",
         defaultValue: false,

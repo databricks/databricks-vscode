@@ -1,3 +1,9 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import {exists} from "fs-extra";
+import {exec} from "child_process";
+import {promisify} from "node:util";
 import {Disposable, ProgressLocation, window} from "vscode";
 import {BundleRemoteStateModel} from "../../bundle/models/BundleRemoteStateModel";
 import {onError} from "../../utils/onErrorDecorator";
@@ -13,6 +19,11 @@ import * as lodash from "lodash";
 import {ProcessError} from "../../cli/CliWrapper";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {humaniseMode} from "../utils/BundleUtils";
+import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
+import {StateStorage} from "../../vscode-objs/StateStorage";
+
+const execPromise = promisify(exec);
+
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
@@ -35,7 +46,9 @@ export class BundleCommands implements Disposable {
         private readonly bundleValidateModel: BundleValidateModel,
         private readonly configModel: ConfigModel,
         private readonly whenContext: CustomWhenContext,
-        private readonly telemetry: Telemetry
+        private readonly telemetry: Telemetry,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
+        private readonly stateStorage: StateStorage
     ) {
         this.disposables.push(
             this.bundleValidateModel.onDidChange(async () => {
@@ -89,6 +102,7 @@ export class BundleCommands implements Disposable {
     async deploy(force = false) {
         try {
             this.whenContext.setDeploymentState("deploying");
+            await this.checkGitignoreRules();
             const mode = await this.configModel.get("mode");
             const target = this.configModel.target;
             if (mode !== "development") {
@@ -219,5 +233,68 @@ export class BundleCommands implements Disposable {
 
     dispose() {
         this.disposables.forEach((i) => i.dispose());
+    }
+
+    private async checkGitignoreRules(): Promise<void> {
+        const workspaceFolderPath =
+            this.workspaceFolderManager.activeWorkspaceFolder.uri.fsPath;
+
+        const foldersToSkip = this.stateStorage.get(
+            "databricks.bundle.skipGitignoreCheck"
+        );
+
+        if (foldersToSkip?.includes(workspaceFolderPath)) {
+            return;
+        }
+
+        const possibleEnvironments = [
+            {name: ".venv", path: path.join(workspaceFolderPath, ".venv")},
+            {name: ".conda", path: path.join(workspaceFolderPath, ".conda")},
+        ];
+
+        const existingEnvironments = [];
+        for (const env of possibleEnvironments) {
+            if (await exists(env.path)) {
+                existingEnvironments.push(env);
+            }
+        }
+
+        const nonIgnoredEnvironments = [];
+        for (const env of existingEnvironments) {
+            if (!(await isFolderIgnoredByGit(env.path))) {
+                nonIgnoredEnvironments.push(env);
+            }
+        }
+        if (nonIgnoredEnvironments.length === 0) {
+            return;
+        }
+
+        const choice = await window.showInformationMessage(
+            `.gitignore doesn't contain your virtual environment. Would you like to update .gitignore rules to avoid uploading it to your Databricks workspace?`,
+            {modal: true},
+            "Update .gitignore",
+            "Don't update for this project"
+        );
+        if (choice === "Update .gitignore") {
+            const gitignorePath = path.join(workspaceFolderPath, ".gitignore");
+            const newContent = nonIgnoredEnvironments
+                .map((env) => env.name)
+                .join(os.EOL);
+            await fs.appendFile(gitignorePath, os.EOL + newContent + os.EOL);
+        } else if (choice === "Don't update for this project") {
+            this.stateStorage.set("databricks.bundle.skipGitignoreCheck", [
+                ...foldersToSkip,
+                workspaceFolderPath,
+            ]);
+        }
+    }
+}
+
+async function isFolderIgnoredByGit(folderPath: string): Promise<boolean> {
+    try {
+        const {stdout} = await execPromise(`git check-ignore ${folderPath}`);
+        return stdout.trim() === folderPath;
+    } catch (error) {
+        return false;
     }
 }

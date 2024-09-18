@@ -640,7 +640,9 @@ export async function activate(
         bundleValidateModel,
         configModel,
         customWhenContext,
-        telemetry
+        telemetry,
+        workspaceFolderManager,
+        stateStorage
     );
     const decorationProvider = new TreeItemDecorationProvider(
         bundleResourceExplorerTreeDataProvider,
