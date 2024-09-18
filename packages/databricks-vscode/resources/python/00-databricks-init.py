@@ -3,11 +3,14 @@ import functools
 import json
 from typing import Any, Union, List
 import os
+import sys
 import time
 import shlex
 import warnings
 import tempfile
 
+# prevent sum from pyskaprk.sql.functions from shadowing the builtin sum
+builtinSum = sys.modules['builtins'].sum
 
 def logError(function_name: str, e: Union[str, Exception]):
     import sys
@@ -403,14 +406,20 @@ def register_spark_progress(spark, show_progress: bool):
         def update_ticks(
             self,
             stages,
-            inflight_tasks: int
+            inflight_tasks: int,
+            done: bool
         ) -> None:
-            total_tasks = sum(map(lambda x: x.num_tasks, stages))
-            completed_tasks = sum(map(lambda x: x.num_completed_tasks, stages))
+            total_tasks = builtinSum(map(lambda x: x.num_tasks, stages))
+            completed_tasks = builtinSum(map(lambda x: x.num_completed_tasks, stages))
             if total_tasks > 0:
                 self._ticks = total_tasks
                 self._tick = completed_tasks
-                self._bytes_read = sum(map(lambda x: x.num_bytes_read, stages))
+                self._bytes_read = builtinSum(map(lambda x: x.num_bytes_read, stages))
+
+                if done:
+                    self._tick = self._ticks
+                    self._running = 0
+
                 if self._tick is not None and self._tick >= 0:
                     self.output()            
                 self._running = inflight_tasks
@@ -432,7 +441,6 @@ def register_spark_progress(spark, show_progress: bool):
                 i += 1
             result = float(size) / Progress.SI_BYTE_SIZES[i]
             return f"{result:.1f} {Progress.SI_BYTE_SUFFIXES[i]}"
-        
 
     class ProgressHandler:
         def __init__(self):
@@ -454,7 +462,7 @@ def register_spark_progress(spark, show_progress: bool):
                 self.op_id = operation_id
                 self.reset()
 
-            self.p.update_ticks(stages, inflight_tasks)
+            self.p.update_ticks(stages, inflight_tasks, done)
                     
     spark.clearProgressHandlers()
     spark.registerProgressHandler(ProgressHandler())
