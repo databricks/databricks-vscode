@@ -81,13 +81,11 @@ export class WorkflowRunner implements Disposable {
     }) {
         const panel = await this.getPanelForUri(program.uri);
 
-        const cancellation = new CancellationTokenSource();
-        panel.onDidDispose(() => cancellation.cancel());
+        const panelCancellation = new CancellationTokenSource();
+        panel.onDidDispose(() => panelCancellation.cancel());
 
         if (token) {
-            token.onCancellationRequested(() => {
-                cancellation.cancel();
-            });
+            token.onCancellationRequested(() => panelCancellation.cancel());
         }
 
         try {
@@ -100,6 +98,11 @@ export class WorkflowRunner implements Disposable {
             }
             return;
         }
+
+        if (panelCancellation.token.isCancellationRequested) {
+            return;
+        }
+
         if (token?.isCancellationRequested) {
             panel.showError({
                 message: "Execution terminated by user.",
@@ -159,7 +162,7 @@ export class WorkflowRunner implements Disposable {
                         ) => {
                             panel.updateState(cluster, state, run);
                         },
-                        token: cancellation.token,
+                        token: panelCancellation.token,
                     })
                 );
             } else {
@@ -184,7 +187,7 @@ export class WorkflowRunner implements Disposable {
                     ) => {
                         panel.updateState(cluster, state, run);
                     },
-                    token: cancellation.token,
+                    token: panelCancellation.token,
                 });
                 //TODO: Respone logs will contain bootstrap code path in the error stack trace. Remove it.
                 panel.showStdoutResult(response.logs || "");
