@@ -944,6 +944,7 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
         "lodash": "^4.17.21",
+        "minimatch": "^10.0.1",
         "shell-quote": "^1.8.1",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
