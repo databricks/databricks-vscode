@@ -4,11 +4,10 @@
 
 ## (2024-09-25)
 
--   Bump CLI to 228.1 and regenerate schema (#1369) ([896668b](https://github.com/databricks/databricks-vscode/commit/896668b)), closes [#1369](https://github.com/databricks/databricks-vscode/issues/1369)
--   Cancel workflow run if the webview panel is closed before the run even started (#1365) ([d090ec7](https://github.com/databricks/databricks-vscode/commit/d090ec7)), closes [#1365](https://github.com/databricks/databricks-vscode/issues/1365)
--   DB Connect Progress: Make sure we always end up at 100% (#1363) ([e51e62b](https://github.com/databricks/databricks-vscode/commit/e51e62b)), closes [#1363](https://github.com/databricks/databricks-vscode/issues/1363)
--   Dbconnect progress (#1355) ([a9f79d2](https://github.com/databricks/databricks-vscode/commit/a9f79d2)), closes [#1355](https://github.com/databricks/databricks-vscode/issues/1355)
--   Let users cancel deploy and destroy actions (#1375) ([33602dd](https://github.com/databricks/databricks-vscode/commit/33602dd)), closes [#1375](https://github.com/databricks/databricks-vscode/issues/1375)
+-   Update Databricks CLI to 228.1 
+-   Cancel workflow run if the webview panel is closed before the run even started
+-   Add DBConnect Progress widget
+-   Let users cancel `deploy` and `destroy` bundle operations
 
 # Release: v2.4.2
 
