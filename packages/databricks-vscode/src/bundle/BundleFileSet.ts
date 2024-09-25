@@ -6,7 +6,7 @@ import path from "path";
 import {BundleSchema} from "./types";
 import {readFile, writeFile} from "fs/promises";
 import {CachedValue} from "../locking/CachedValue";
-import minimatch from "minimatch";
+import {minimatch} from "minimatch";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
