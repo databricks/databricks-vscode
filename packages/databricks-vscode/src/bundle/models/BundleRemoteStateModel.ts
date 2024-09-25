@@ -9,6 +9,7 @@ import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
+import {CancellationToken} from "vscode";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export type BundleResourceModifiedStatus = "created" | "deleted" | "updated";
@@ -63,7 +64,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     }
 
     @Mutex.synchronise("mutex")
-    public async deploy(force = false) {
+    public async deploy(force = false, token?: CancellationToken) {
         if (this.target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -77,12 +78,13 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.workspaceFolder,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
-            force
+            force,
+            token
         );
     }
 
     @Mutex.synchronise("mutex")
-    public async destroy(force = false) {
+    public async destroy(force = false, token: CancellationToken) {
         if (this.target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -96,7 +98,8 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.workspaceFolder,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
-            force
+            force,
+            token
         );
     }
 

@@ -145,6 +145,12 @@ export class ProcessError extends Error {
     }
 }
 
+export class CancellationError extends Error {
+    constructor() {
+        super("Cancelled");
+    }
+}
+
 export async function waitForProcess(
     p: ChildProcessWithoutNullStreams,
     onStdOut?: (data: string) => void,
@@ -195,7 +201,8 @@ async function runBundleCommand(
     outputHandlers: {
         onStdOut?: (data: string) => void;
         onStdError?: (data: string) => void;
-    } = {}
+    } = {},
+    cancellationToken?: CancellationToken
 ) {
     const defaultOutputHandlers = {
         onStdOut: (data: string) => {
@@ -219,15 +226,17 @@ async function runBundleCommand(
     });
 
     logger?.debug(quote([cmd, ...args]), {bundleOpName});
+    const abortController = new AbortController();
+    cancellationToken?.onCancellationRequested(() => abortController.abort());
     let options: SpawnOptionsWithoutStdio = {
         cwd: workspaceFolder.fsPath,
         env: removeUndefinedKeys(env),
+        signal: abortController.signal,
     };
 
     ({cmd, args, options} = getEscapedCommandAndAgrs(cmd, args, options));
     try {
         const p = spawn(cmd, args, options);
-
         const {stdout, stderr} = await waitForProcess(p, onStdOut, onStdError);
         logger?.info(displayLogs.end, {
             bundleOpName,
@@ -235,11 +244,18 @@ async function runBundleCommand(
         logger?.debug("output", {stdout, stderr, bundleOpName});
         return {stdout, stderr};
     } catch (e: any) {
-        logger?.error(`${displayLogs.error} ${e.message ?? ""}`, {
-            ...e,
-            bundleOpName,
-        });
-        throw new ProcessError(e.message, e.code);
+        if (cancellationToken?.isCancellationRequested) {
+            logger?.warn(`${displayLogs.error} Reason: Cancelled`, {
+                bundleOpName,
+            });
+            throw new CancellationError();
+        } else {
+            logger?.error(`${displayLogs.error} ${e.message ?? ""}`, {
+                ...e,
+                bundleOpName,
+            });
+            throw new ProcessError(e.message, e.code);
+        }
     }
 }
 /**
@@ -574,7 +590,8 @@ export class CliWrapper {
         workspaceFolder: Uri,
         configfilePath?: string,
         logger?: logging.NamedLogger,
-        force = false
+        force = false,
+        token?: CancellationToken
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
@@ -598,7 +615,9 @@ export class CliWrapper {
                 error: "Failed to deploy the bundle.",
             },
             await this.getBundleCommandEnvVars(authProvider, configfilePath),
-            logger
+            logger,
+            {},
+            token
         );
     }
 
@@ -608,7 +627,8 @@ export class CliWrapper {
         workspaceFolder: Uri,
         configfilePath?: string,
         logger?: logging.NamedLogger,
-        force = false
+        force = false,
+        token?: CancellationToken
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
@@ -629,7 +649,9 @@ export class CliWrapper {
                 error: "Failed to destroy the bundle.",
             },
             await this.getBundleCommandEnvVars(authProvider, configfilePath),
-            logger
+            logger,
+            {},
+            token
         );
     }
 

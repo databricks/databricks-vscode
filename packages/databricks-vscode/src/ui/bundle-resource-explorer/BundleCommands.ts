@@ -91,11 +91,11 @@ export class BundleCommands implements Disposable {
             this.whenContext.setDeploymentState("deploying");
             const mode = await this.configModel.get("mode");
             const target = this.configModel.target;
+            const prettyMode = humaniseMode(mode);
+            const title = `Deploying the bundle to ${prettyMode} target "${target}".`;
             if (mode !== "development") {
                 const choice = await window.showInformationMessage(
-                    `Deploying bundle to ${humaniseMode(
-                        mode
-                    )} target "${target}".`,
+                    title,
                     {modal: true},
                     "Continue"
                 );
@@ -107,9 +107,13 @@ export class BundleCommands implements Disposable {
                 }
             }
             await window.withProgress(
-                {location: ProgressLocation.Notification, cancellable: false},
-                async () => {
-                    await this.bundleRemoteStateModel.deploy(force);
+                {
+                    location: ProgressLocation.Notification,
+                    title: title,
+                    cancellable: true,
+                },
+                async (progress, token) => {
+                    await this.bundleRemoteStateModel.deploy(force, token);
                 }
             );
 
@@ -187,9 +191,13 @@ export class BundleCommands implements Disposable {
         try {
             this.whenContext.setDeploymentState("deploying");
             await window.withProgress(
-                {location: ProgressLocation.Notification, cancellable: false},
-                async () => {
-                    await this.bundleRemoteStateModel.destroy(force);
+                {
+                    location: ProgressLocation.Notification,
+                    title: "Destroying the bundle",
+                    cancellable: true,
+                },
+                async (progress, token) => {
+                    await this.bundleRemoteStateModel.destroy(force, token);
                 }
             );
 
