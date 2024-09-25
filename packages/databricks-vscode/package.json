@@ -897,7 +897,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.228.0"
+        "version": "0.228.1"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
@@ -913,7 +913,7 @@
         "package:cli:link": "rm -f ./bin/databricks && mkdir -p bin && ln -s ../../../../cli/cli bin/databricks",
         "package:wrappers:write": "ts-node ./scripts/writeIpynbWrapper.ts -s ./resources/python/notebook.workflow-wrapper.py -o ./resources/python/generated/notebook.workflow-wrapper.json",
         "package:jupyter-init-script:write": "ts-node ./scripts/writeJupyterInitFileWithVersion.ts",
-        "package:bundle-schema:write": "yarn package:cli:fetch && ts-node ./scripts/writeBundleSchema.ts ./bin/databricks ./src/bundle/BundleSchema.d.ts",
+        "package:bundle-schema:write": "yarn package:cli:fetch && ts-node ./scripts/writeBundleSchema.ts ./bin/databricks ./src/bundle/BundleSchema.ts",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
@@ -944,6 +944,7 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
         "lodash": "^4.17.21",
+        "minimatch": "^10.0.1",
         "shell-quote": "^1.8.1",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
@@ -979,11 +980,11 @@
         "eslint-plugin-local-rules": "^2.0.1",
         "fs-extra": "^11.2.0",
         "glob": "^10.3.10",
-        "json-schema-to-typescript": "^13.1.1",
         "mocha": "^10.2.0",
         "mock-require": "^3.0.3",
         "nyc": "^15.1.0",
         "prettier": "^3.1.1",
+        "quicktype-core": "^23.0.0",
         "tmp-promise": "^3.0.3",
         "ts-mocha": "^10.0.0",
         "ts-mockito": "^2.6.1",

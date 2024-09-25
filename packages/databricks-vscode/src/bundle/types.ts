@@ -1,25 +1,19 @@
 import {BundleSchema as OriginalBundleSchema} from "./BundleSchema";
 
-export type BundleTarget = Omit<
-    Required<OriginalBundleSchema>["targets"][string],
-    "variables"
-> & {
-    // Use custom override for in-target variable type, because CLI < v0.215.0
-    // uses the same class for both in-target and global variables.
-    // TODO: Remove this override when fixed in CLI (> v0.215.0).
-    variables?: {
-        [k: string]: (
-            | string
-            | Required<
-                  Required<OriginalBundleSchema>["variables"][string]
-              >["lookup"]
-        ) & {value?: string};
-    };
-};
+type RemoveStringFromUnion<T> = T extends string ? never : T;
+type RemoveStringFromUnionTypes<T> = T extends object
+    ? {
+          [K in keyof T]: T[K] extends string | undefined
+              ? T[K]
+              : RemoveStringFromUnionTypes<T[K]>;
+      }
+    : RemoveStringFromUnion<T>;
 
-export type BundleSchema = Omit<OriginalBundleSchema, "targets"> & {
-    targets?: {[k: string]: BundleTarget};
-};
+// CLI generates schema with additional string types added for almost complex sub types (to support complex variables).
+// We usually work with `bundle validate` or `summary` outputs, which have expanded variables, so we don't need
+// to account for additional string types.
+export type BundleSchema = RemoveStringFromUnionTypes<OriginalBundleSchema>;
+export type BundleTarget = Required<BundleSchema>["targets"][string];
 
 export type Resources<T> = T extends {resources?: infer D} ? D : never;
 export type ResourceKey<T> = keyof Resources<T>;
