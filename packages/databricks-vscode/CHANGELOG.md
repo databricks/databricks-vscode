@@ -4,7 +4,7 @@
 
 ## (2024-09-25)
 
--   Update Databricks CLI to 228.1 
+-   Update Databricks CLI to 228.1
 -   Cancel workflow run if the webview panel is closed before the run even started
 -   Add DBConnect Progress widget
 -   Let users cancel `deploy` and `destroy` bundle operations
