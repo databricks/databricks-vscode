@@ -1,3 +1,14 @@
+# Release: v2.4.3
+
+## packages/databricks-vscode
+
+## (2024-09-25)
+
+-   Update Databricks CLI to 228.1
+-   Cancel workflow run if the webview panel is closed before the run even started
+-   Add DBConnect Progress widget
+-   Let users cancel `deploy` and `destroy` bundle operations
+
 # Release: v2.4.2
 
 ## packages/databricks-vscode
