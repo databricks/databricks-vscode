@@ -155,6 +155,9 @@ export class BundleProjectManager {
         this.customWhenContext.setSubProjectsAvailable(
             this.subProjects?.length > 0
         );
+        this.telemetry.recordEvent(Events.BUNDLE_SUB_PROJECTS, {
+            count: this.subProjects?.length ?? 0,
+        });
     }
 
     public async openSubProjects() {
@@ -163,12 +166,19 @@ export class BundleProjectManager {
         }
     }
 
+    private setPendingManualMigration() {
+        this.customWhenContext.setPendingManualMigration(true);
+        this.telemetry.recordEvent(Events.CONNECTION_STATE_CHANGED, {
+            newState: "PENDING_MANUAL_MIGRATION",
+        });
+    }
+
     private async detectLegacyProjectConfig() {
         this.legacyProjectConfig = await this.loadLegacyProjectConfig();
         // If we have subprojects, we can't migrate automatically. We show the user option to
         // manually migrate the project (create a new databricks.yml based on selected auth)
         if (!this.legacyProjectConfig || (this.subProjects?.length ?? 0) > 0) {
-            this.customWhenContext.setPendingManualMigration(true);
+            this.setPendingManualMigration();
             return;
         }
         this.logger.debug(
@@ -182,7 +192,7 @@ export class BundleProjectManager {
             );
         } catch (error) {
             recordEvent({success: false});
-            this.customWhenContext.setPendingManualMigration(true);
+            this.setPendingManualMigration();
             const message =
                 "Failed to perform automatic migration to Databricks Asset Bundles.";
             this.logger.error(message, error);
@@ -214,7 +224,7 @@ export class BundleProjectManager {
             this.logger.debug(
                 "Legacy project auth was not successful, showing 'configure' welcome screen"
             );
-            this.customWhenContext.setPendingManualMigration(true);
+            this.setPendingManualMigration();
             recordEvent({success: false});
             return;
         }

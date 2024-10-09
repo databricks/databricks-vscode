@@ -18,6 +18,7 @@ export enum Events {
     MANUAL_MIGRATION = "manualMigration",
     BUNDLE_RUN = "bundleRun",
     BUNDLE_INIT = "bundleInit",
+    BUNDLE_SUB_PROJECTS = "bundleSubProjects",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -138,6 +139,14 @@ export class EventTypes {
         } & DurationMeasurement
     > = {
         comment: "Initialize a new bundle project",
+    };
+    [Events.BUNDLE_SUB_PROJECTS]: EventType<{
+        count: number;
+    }> = {
+        comment: "Sub-projects in the active workspace folder",
+        count: {
+            comment: "Amount of sub-projects in the active workspace folder",
+        },
     };
     [Events.CONNECTION_STATE_CHANGED]: EventType<{
         newState: string;
