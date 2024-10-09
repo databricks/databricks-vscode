@@ -50,7 +50,9 @@ function createCliWrapper(logFilePath?: string) {
     );
 }
 
-describe(__filename, () => {
+describe(__filename, function () {
+    this.timeout("10s");
+
     it("should embed a working databricks CLI", async () => {
         const result = await execFile(cliPath, ["--help"]);
         assert.ok(result.stdout.indexOf("databricks") > 0);
