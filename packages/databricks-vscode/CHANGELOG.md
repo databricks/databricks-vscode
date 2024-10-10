@@ -4,7 +4,7 @@
 
 ## (2024-10-10)
 
--   Try to get saved profile from the legacy config (#1387) ([e2fb4a3](https://github.com/databricks/databricks-vscode/commit/e2fb4a3)), closes [#1387](https://github.com/databricks/databricks-vscode/issues/1387)
+-   Use saved profile from the legacy config
 
 # Release: v2.4.4
 
