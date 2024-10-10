@@ -25,6 +25,7 @@ import {Events, Telemetry} from "../telemetry";
 import {AutoLoginSource, ManualLoginSource} from "../telemetry/constants";
 import {Barrier} from "../locking/Barrier";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {ProjectConfigFile} from "../file-managers/ProjectConfigFile";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -256,6 +257,16 @@ export class ConnectionManager implements Disposable {
         });
     }
 
+    private async loadLegacyProjectConfig() {
+        try {
+            return await ProjectConfigFile.loadConfig(this.workspaceUri.fsPath);
+        } catch (error) {
+            const logger = NamedLogger.getOrCreate("Extension");
+            logger.error(`Error loading legacy config`, error);
+            return undefined;
+        }
+    }
+
     @onError({popup: {prefix: "Failed to login."}})
     @Mutex.synchronise("loginLogoutMutex")
     private async resolveAuth() {
@@ -267,8 +278,13 @@ export class ConnectionManager implements Disposable {
         }
 
         // Try to load a profile user had previously selected for this target
-        const savedProfile = (await this.configModel.get("overrides"))
+        let savedProfile = (await this.configModel.get("overrides"))
             ?.authProfile;
+        // Check if the profile is saved in the legacy project.json file
+        if (!savedProfile) {
+            const legacyConfig = await this.loadLegacyProjectConfig();
+            savedProfile = legacyConfig?.profile;
+        }
         if (savedProfile !== undefined) {
             const authProvider = await ProfileAuthProvider.from(
                 savedProfile,

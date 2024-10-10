@@ -53,16 +53,14 @@ export class ProjectConfigFile {
         return await ProfileAuthProvider.from(config.profile, cli);
     }
 
-    static async load(
-        rootPath: string,
-        cli: CliWrapper
-    ): Promise<ProjectConfigFile | undefined> {
+    static async loadConfig(
+        rootPath: string
+    ): Promise<Record<string, any> | undefined> {
         const projectConfigFilePath = path.join(
             path.normalize(rootPath),
             ".databricks",
             "project.json"
         );
-
         let rawConfig;
         try {
             rawConfig = await fs.readFile(projectConfigFilePath, {
@@ -75,9 +73,18 @@ export class ProjectConfigFile {
                 throw error;
             }
         }
+        return JSON.parse(rawConfig);
+    }
 
+    static async load(
+        rootPath: string,
+        cli: CliWrapper
+    ): Promise<ProjectConfigFile | undefined> {
+        const config = await ProjectConfigFile.loadConfig(rootPath);
+        if (!config) {
+            return undefined;
+        }
         let authProvider: AuthProvider;
-        const config = JSON.parse(rawConfig);
         if (!config.authType && config.profile) {
             authProvider = await this.importOldConfig(config, cli);
         } else {

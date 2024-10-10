@@ -113,8 +113,8 @@ describe(__filename, async function () {
                     path.join(tmpdirUri.fsPath, "includes", "included.yaml")
                 ),
             ].map((v) => v.fsPath);
-            expect(Array.from(new Set(actual).values())).to.deep.equal(
-                Array.from(new Set(expected).values())
+            expect(Array.from(new Set(actual).values()).sort()).to.deep.equal(
+                Array.from(new Set(expected).values()).sort()
             );
         });
 
