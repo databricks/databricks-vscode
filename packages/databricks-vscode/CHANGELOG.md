@@ -1,3 +1,11 @@
+# Release: v2.4.5
+
+## packages/databricks-vscode
+
+## (2024-10-10)
+
+-   Use saved profile from the legacy config
+
 # Release: v2.4.4
 
 ## packages/databricks-vscode
