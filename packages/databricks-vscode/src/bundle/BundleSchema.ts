@@ -20,7 +20,7 @@ export interface BundleSchema {
     sync?: SyncClass | string;
     targets?: {[key: string]: TargetClass | string} | string;
     variables?: {[key: string]: VariableValue} | string;
-    workspace?: BundleSchem15 | string;
+    workspace?: BundleSchem18 | string;
 }
 
 export interface ArtifactClass {
@@ -36,6 +36,7 @@ export interface PurpleBundleSchem {
 }
 
 export interface BundleClass {
+    cluster_id?: string;
     compute_id?: string;
     databricks_cli_version?: string;
     deployment?: FluffyBundleSchem | string;
@@ -87,6 +88,7 @@ export interface PresetsClass {
 }
 
 export interface ResourcesClass {
+    clusters?: {[key: string]: TentacledBundleSchem | string} | string;
     experiments?: {[key: string]: ExperimentClass | string} | string;
     jobs?: {[key: string]: JobClass | string} | string;
     model_serving_endpoints?:
@@ -96,1221 +98,10 @@ export interface ResourcesClass {
     pipelines?: {[key: string]: PipelineClass | string} | string;
     quality_monitors?: {[key: string]: QualityMonitorClass | string} | string;
     registered_models?: {[key: string]: RegisteredModelClass | string} | string;
-    schemas?: {[key: string]: BundleSchem14 | string} | string;
-}
-
-export interface ExperimentClass {
-    /**
-     * Location where artifacts for the experiment are stored.
-     */
-    artifact_location?: string;
-    /**
-     * Creation time
-     */
-    creation_time?: number | string;
-    /**
-     * Unique identifier for the experiment.
-     */
-    experiment_id?: string;
-    /**
-     * Last update time
-     */
-    last_update_time?: number | string;
-    /**
-     * Current life cycle stage of the experiment: "active" or "deleted".
-     * Deleted experiments are not returned by APIs.
-     */
-    lifecycle_stage?: string;
-    /**
-     * Human readable name that identifies the experiment.
-     */
-    name?: string;
-    permissions?: Array<PermissionClass | string> | string;
-    /**
-     * Tags: Additional metadata key-value pairs.
-     */
-    tags?: Array<TentacledBundleSchem | string> | string;
+    schemas?: {[key: string]: BundleSchem17 | string} | string;
 }
 
 export interface TentacledBundleSchem {
-    /**
-     * The tag key.
-     */
-    key?: string;
-    /**
-     * The tag value.
-     */
-    value?: string;
-}
-
-export interface JobClass {
-    /**
-     * An optional continuous property for this job. The continuous property will ensure that
-     * there is always one run executing. Only one of `schedule` and `continuous` can be used.
-     */
-    continuous?: ContinuousClass | string;
-    /**
-     * Deployment information for jobs managed by external sources.
-     */
-    deployment?: StickyBundleSchem | string;
-    /**
-     * An optional description for the job. The maximum length is 27700 characters in UTF-8
-     * encoding.
-     */
-    description?: string;
-    /**
-     * Edit mode of the job.
-     *
-     * * `UI_LOCKED`: The job is in a locked UI state and cannot be modified.
-     * * `EDITABLE`: The job is in an editable state and can be modified.
-     */
-    edit_mode?: EditMode;
-    /**
-     * An optional set of email addresses that is notified when runs of this job begin or
-     * complete as well as when this job is deleted.
-     */
-    email_notifications?: IndigoBundleSchem | string;
-    /**
-     * A list of task execution environment specifications that can be referenced by tasks of
-     * this job.
-     */
-    environments?: Array<EnvironmentClass | string> | string;
-    /**
-     * Used to tell what is the format of the job. This field is ignored in Create/Update/Reset
-     * calls. When using the Jobs API 2.1 this value is always set to `"MULTI_TASK"`.
-     */
-    format?: Format;
-    /**
-     * An optional specification for a remote Git repository containing the source code used by
-     * tasks. Version-controlled source code is supported by notebook, dbt, Python script, and
-     * SQL File tasks.
-     *
-     * If `git_source` is set, these tasks retrieve the file from the remote repository by
-     * default. However, this behavior can be overridden by setting `source` to `WORKSPACE` on
-     * the task.
-     *
-     * Note: dbt and SQL File tasks support only version-controlled sources. If dbt or SQL File
-     * tasks are used, `git_source` must be defined on the job.
-     */
-    git_source?: GitSourceClass | string;
-    health?: HealthClass | string;
-    /**
-     * A list of job cluster specifications that can be shared and reused by tasks of this job.
-     * Libraries cannot be declared in a shared job cluster. You must declare dependent
-     * libraries in task settings.
-     */
-    job_clusters?: Array<JobClusterClass | string> | string;
-    /**
-     * An optional maximum allowed number of concurrent runs of the job.
-     * Set this value if you want to be able to execute multiple runs of the same job
-     * concurrently.
-     * This is useful for example if you trigger your job on a frequent schedule and want to
-     * allow consecutive runs to overlap with each other, or if you want to trigger multiple
-     * runs which differ by their input parameters.
-     * This setting affects only new runs. For example, suppose the job’s concurrency is 4 and
-     * there are 4 concurrent active runs. Then setting the concurrency to 3 won’t kill any of
-     * the active runs.
-     * However, from then on, new runs are skipped unless there are fewer than 3 active runs.
-     * This value cannot exceed 1000. Setting this value to `0` causes all new runs to be
-     * skipped.
-     */
-    max_concurrent_runs?: number | string;
-    /**
-     * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
-     */
-    name?: string;
-    /**
-     * Optional notification settings that are used when sending notifications to each of the
-     * `email_notifications` and `webhook_notifications` for this job.
-     */
-    notification_settings?: CunningBundleSchem | string;
-    /**
-     * Job-level parameter definitions
-     */
-    parameters?: Array<ParameterClass | string> | string;
-    permissions?: Array<PermissionClass | string> | string;
-    /**
-     * The queue settings of the job.
-     */
-    queue?: QueueClass | string;
-    run_as?: RunAsClass | string;
-    /**
-     * An optional periodic schedule for this job. The default behavior is that the job only
-     * runs when triggered by clicking “Run Now” in the Jobs UI or sending an API request to
-     * `runNow`.
-     */
-    schedule?: MagentaBundleSchem | string;
-    /**
-     * A map of tags associated with the job. These are forwarded to the cluster as cluster tags
-     * for jobs clusters, and are subject to the same limitations as cluster tags. A maximum of
-     * 25 tags can be added to the job.
-     */
-    tags?: {[key: string]: string} | string;
-    /**
-     * A list of task specifications to be executed by this job.
-     */
-    tasks?: Array<TaskClass | string> | string;
-    /**
-     * An optional timeout applied to each run of this job. A value of `0` means no timeout.
-     */
-    timeout_seconds?: number | string;
-    /**
-     * A configuration to trigger a run when certain conditions are met. The default behavior is
-     * that the job runs only when triggered by clicking “Run Now” in the Jobs UI or sending an
-     * API request to `runNow`.
-     */
-    trigger?: BundleSchem2 | string;
-    /**
-     * A collection of system notification IDs to notify when runs of this job begin or complete.
-     */
-    webhook_notifications?: WebhookNotificationsClass | string;
-}
-
-export interface ContinuousClass {
-    /**
-     * Indicate whether the continuous execution of the job is paused or not. Defaults to
-     * UNPAUSED.
-     */
-    pause_status?: PauseStatus;
-}
-
-/**
- * Indicate whether the continuous execution of the job is paused or not. Defaults to
- * UNPAUSED.
- *
- * Indicate whether this schedule is paused or not.
- *
- * Whether this trigger is paused or not.
- *
- * Read only field that indicates whether a schedule is paused or not.
- *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
- *
- * Nodes for this cluster will only be placed on AWS instances with this instance profile.
- * If
- * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
- * profile must have previously been added to the Databricks environment by an account
- * administrator.
- *
- * This feature may only be available to certain customer plans.
- *
- * If this field is ommitted, we will pull in the default from the conf if it exists.
- *
- * Identifier for the availability zone/datacenter in which the cluster resides.
- * This string will be of a form like "us-west-2a". The provided availability
- * zone must be in the same region as the Databricks deployment. For example, "us-west-2a"
- * is not a valid zone id if the Databricks deployment resides in the "us-east-1" region.
- * This is an optional field at cluster creation, and if not specified, a default zone will
- * be used.
- * If the zone specified is "auto", will try to place cluster in a zone with high
- * availability,
- * and will retry placement in a different AZ if there is not enough capacity.
- * The list of available zones as well as the default value can be found by using the
- * `List Zones` method.
- *
- * <needs content added>
- *
- * dbfs destination, e.g. `dbfs:/my/path`
- *
- * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
- * If `canned_cal` is set, please make sure the cluster iam role has `s3:PutObjectAcl`
- * permission on
- * the destination bucket and prefix. The full list of possible canned acl can be found at
- * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
- * Please also note that by default only the object owner gets full controls. If you are
- * using cross account
- * role for writing data, you may want to set `bucket-owner-full-control` to make bucket
- * owner able to
- * read the logs.
- *
- * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be delivered using
- * cluster iam role, please make sure you set cluster iam role and the role has write access
- * to the
- * destination. Please also note that you cannot use AWS keys to deliver logs.
- *
- * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will be used only
- * when
- * encryption is enabled and the default type is `sse-s3`.
- *
- * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or endpoint needs
- * to be set.
- * If both are set, endpoint will be used.
- *
- * (Optional) Kms key which will be used if encryption is enabled and encryption type is set
- * to `sse-kms`.
- *
- * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If both are set,
- * endpoint will be used.
- *
- * Cluster name requested by the user. This doesn't have to be unique.
- * If not specified at creation, the cluster name will be an empty string.
- *
- *
- * Password of the user
- *
- * Name of the user
- *
- * URL of the docker image.
- *
- * The optional ID of the instance pool for the driver of the cluster belongs.
- * The pool cluster uses the instance pool with id (instance_pool_id) if the driver pool is
- * not
- * assigned.
- *
- * The node type of the Spark driver. Note that this field is optional;
- * if unset, the driver node type will be set as the same value
- * as `node_type_id` defined above.
- *
- *
- * If provided, the cluster will impersonate the google service account when accessing
- * gcloud services (like GCS). The google service account
- * must have previously been added to the Databricks environment by an account
- * administrator.
- *
- * Identifier for the availability zone in which the cluster resides.
- * This can be one of the following:
- * - "HA" => High availability, spread nodes across availability zones for a Databricks
- * deployment region [default]
- * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
- * - A GCP availability zone => Pick One of the available zones for (machine type + region)
- * from https://cloud.google.com/compute/docs/regions-zones.
- *
- * abfss destination, e.g.
- * `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
- *
- * local file destination, e.g. `file:/my/local/file.sh`
- *
- * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
- *
- * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
- *
- * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
- *
- * The optional ID of the instance pool to which the cluster belongs.
- *
- * This field encodes, through a single value, the resources available to each of
- * the Spark nodes in this cluster. For example, the Spark nodes can be provisioned
- * and optimized for memory or compute intensive workloads. A list of available node
- * types can be retrieved by using the :method:clusters/listNodeTypes API call.
- *
- *
- * The ID of the cluster policy used to create the cluster if applicable.
- *
- * Single user name if data_security_mode is `SINGLE_USER`
- *
- * The Spark version of the cluster, e.g. `3.3.x-scala2.11`.
- * A list of available Spark versions can be retrieved by using
- * the :method:clusters/sparkVersions API call.
- *
- *
- * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
- *
- * Default value of the parameter.
- *
- * The name of the defined parameter. May only contain alphanumeric characters, `_`, `-`,
- * and `.`
- *
- * Application ID of an active service principal. Setting this field requires the
- * `servicePrincipal/user` role.
- *
- * The email of an active workspace user. Non-admin users can only set this field to their
- * own email.
- *
- * A Cron expression using Quartz syntax that describes the schedule for a job. See [Cron
- * Trigger](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html)
- * for details. This field is required.
- *
- * A Java timezone ID. The schedule for a job is resolved with respect to this timezone. See
- * [Java TimeZone](https://docs.oracle.com/javase/7/docs/api/java/util/TimeZone.html) for
- * details. This field is required.
- *
- * The left operand of the condition task. Can be either a string value or a job state or
- * parameter reference.
- *
- * The right operand of the condition task. Can be either a string value or a job state or
- * parameter reference.
- *
- * Optional name of the catalog to use. The value is the top level in the 3-level namespace
- * of Unity Catalog (catalog / schema / relation). The catalog value can only be specified
- * if a warehouse_id is specified. Requires dbt-databricks >= 1.1.1.
- *
- * Optional (relative) path to the profiles directory. Can only be specified if no
- * warehouse_id is specified. If no warehouse_id is specified and this folder is unset, the
- * root directory is used.
- *
- * Path to the project directory. Optional for Git sourced tasks, in which
- * case if no value is provided, the root of the Git repository is used.
- *
- * Optional schema to write to. This parameter is only used when a warehouse_id is also
- * provided. If not provided, the `default` schema is used.
- *
- * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide
- * the profile and connection details to dbt. It can be overridden on a per-command basis by
- * using the `--profiles-dir` command line argument.
- *
- * Can only be specified on condition task dependencies. The outcome of the dependent task
- * that must be met for this task to run.
- *
- * The name of the task this task depends on.
- *
- * An optional description for this task.
- *
- * The key that references an environment spec in a job. This field is required for Python
- * script, Python wheel and dbt tasks when using serverless compute.
- *
- * If existing_cluster_id, the ID of an existing cluster that is used for all runs.
- * When running jobs or tasks on an existing cluster, you may need to manually restart
- * the cluster if it stops responding. We suggest running jobs and tasks on new clusters for
- * greater reliability
- *
- * Array for task to iterate on. This can be a JSON string or a reference to
- * an array parameter.
- *
- * If job_cluster_key, this task is executed reusing the cluster specified in
- * `job.settings.job_clusters`.
- *
- * The name of the CRAN package to install.
- *
- * The repository where the package can be found. If not specified, the default CRAN repo is
- * used.
- *
- * Deprecated. URI of the egg library to install. Installing Python egg files is deprecated
- * and is not supported in Databricks Runtime 14.0 and above.
- *
- * URI of the JAR library to install. Supported URIs include Workspace paths, Unity Catalog
- * Volumes paths, and S3 URIs.
- * For example: `{ "jar": "/Workspace/path/to/library.jar" }`, `{ "jar" :
- * "/Volumes/path/to/library.jar" }` or
- * `{ "jar": "s3://my-bucket/library.jar" }`.
- * If S3 is used, please make sure the cluster has read access on the library. You may need
- * to
- * launch the cluster with an IAM role to access the S3 URI.
- *
- * Gradle-style maven coordinates. For example: "org.jsoup:jsoup:1.7.2".
- *
- * Maven repo to install the Maven package from. If omitted, both Maven Central Repository
- * and Spark Packages are searched.
- *
- * The name of the pypi package to install. An optional exact version specification is also
- * supported. Examples: "simplejson" and "simplejson==3.8.0".
- *
- * The repository where the package can be found. If not specified, the default pip index is
- * used.
- *
- * URI of the requirements.txt file to install. Only Workspace paths and Unity Catalog
- * Volumes paths are supported.
- * For example: `{ "requirements": "/Workspace/path/to/requirements.txt" }` or `{
- * "requirements" : "/Volumes/path/to/requirements.txt" }`
- *
- * URI of the wheel library to install. Supported URIs include Workspace paths, Unity
- * Catalog Volumes paths, and S3 URIs.
- * For example: `{ "whl": "/Workspace/path/to/library.whl" }`, `{ "whl" :
- * "/Volumes/path/to/library.whl" }` or
- * `{ "whl": "s3://my-bucket/library.whl" }`.
- * If S3 is used, please make sure the cluster has read access on the library. You may need
- * to
- * launch the cluster with an IAM role to access the S3 URI.
- *
- * The path of the notebook to be run in the Databricks workspace or remote repository.
- * For notebooks stored in the Databricks workspace, the path must be absolute and begin
- * with a slash.
- * For notebooks stored in a remote repository, the path must be relative. This field is
- * required.
- *
- * Optional `warehouse_id` to run the notebook on a SQL warehouse. Classic SQL warehouses
- * are NOT supported, please use serverless or pro SQL warehouses.
- *
- * Note that SQL warehouses only support SQL cells; if the notebook contains non-SQL cells,
- * the run will fail.
- *
- * The full name of the pipeline task to execute.
- *
- * Named entry point to use, if it does not exist in the metadata of the package it executes
- * the function from the package directly using `$packageName.$entryPoint()`
- *
- * Name of the package to execute
- *
- * Deprecated since 04/2016. Provide a `jar` through the `libraries` field instead. For an
- * example, see :method:jobs/create.
- *
- * The full name of the class containing the main method to be executed. This class must be
- * contained in a JAR provided as a library.
- *
- * The code must use `SparkContext.getOrCreate` to obtain a Spark context; otherwise, runs
- * of the job fail.
- *
- * The Python file to be executed. Cloud file URIs (such as dbfs:/, s3:/, adls:/, gcs:/) and
- * workspace paths are supported. For python files stored in the Databricks workspace, the
- * path must be absolute and begin with `/`. For files stored in a remote repository, the
- * path must be relative. This field is required.
- *
- * The canonical identifier of the SQL alert.
- *
- * The canonical identifier of the destination to receive email notification. This parameter
- * is mutually exclusive with user_name. You cannot set both destination_id and user_name
- * for subscription notifications.
- *
- * The user name to receive the subscription email. This parameter is mutually exclusive
- * with destination_id. You cannot set both destination_id and user_name for subscription
- * notifications.
- *
- * Subject of the email sent to subscribers of this task.
- *
- * The canonical identifier of the SQL dashboard.
- *
- * Path of the SQL file. Must be relative if the source is a remote Git repository and
- * absolute for workspace paths.
- *
- * The canonical identifier of the SQL query.
- *
- * The canonical identifier of the SQL warehouse. Recommended to use with serverless or pro
- * SQL warehouses. Classic SQL warehouses are only supported for SQL alert, dashboard and
- * query tasks and are limited to scheduled single-task jobs.
- *
- * A unique name for the task. This field is used to refer to this task from other tasks.
- * This field is required and must be unique within its parent job.
- * On Update or Reset, this field is used to reference the tasks to be updated or reset.
- *
- * URL to be monitored for file arrivals. The path must point to the root or a subpath of
- * the external location.
- *
- * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
- * name if the inference table is already enabled.
- *
- * The name of the schema in Unity Catalog. NOTE: On update, you cannot change the schema
- * name if the inference table is already enabled.
- *
- * The prefix of the table in Unity Catalog. NOTE: On update, you cannot change the prefix
- * name if the inference table is already enabled.
- *
- * The name of the entity to be served. The entity may be a model in the Databricks Model
- * Registry, a model in the Unity Catalog (UC),
- * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the
- * object should be given in the form of
- * __catalog_name__.__schema_name__.__model_name__.
- *
- *
- * The version of the model in Databricks Model Registry to be served or empty if the entity
- * is a FEATURE_SPEC.
- *
- * The Databricks secret key reference for an AWS access key ID with permissions to interact
- * with Bedrock services. If you prefer to paste your API key directly, see
- * `aws_access_key_id`. You must provide an API key using one of the following fields:
- * `aws_access_key_id` or `aws_access_key_id_plaintext`.
- *
- * An AWS access key ID with permissions to interact with Bedrock services provided as a
- * plaintext string. If you prefer to reference your key using Databricks Secrets, see
- * `aws_access_key_id`. You must provide an API key using one of the following fields:
- * `aws_access_key_id` or `aws_access_key_id_plaintext`.
- *
- * The AWS region to use. Bedrock has to be enabled there.
- *
- * The Databricks secret key reference for an AWS secret access key paired with the access
- * key ID, with permissions to interact with Bedrock services. If you prefer to paste your
- * API key directly, see `aws_secret_access_key_plaintext`. You must provide an API key
- * using one of the following fields: `aws_secret_access_key` or
- * `aws_secret_access_key_plaintext`.
- *
- * An AWS secret access key paired with the access key ID, with permissions to interact with
- * Bedrock services provided as a plaintext string. If you prefer to reference your key
- * using Databricks Secrets, see `aws_secret_access_key`. You must provide an API key using
- * one of the following fields: `aws_secret_access_key` or
- * `aws_secret_access_key_plaintext`.
- *
- * The Databricks secret key reference for an Anthropic API key. If you prefer to paste your
- * API key directly, see `anthropic_api_key_plaintext`. You must provide an API key using
- * one of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
- *
- * The Anthropic API key provided as a plaintext string. If you prefer to reference your key
- * using Databricks Secrets, see `anthropic_api_key`. You must provide an API key using one
- * of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
- *
- * This is an optional field to provide a customized base URL for the Cohere API.
- * If left unspecified, the standard Cohere base URL is used.
- *
- *
- * The Databricks secret key reference for a Cohere API key. If you prefer to paste your API
- * key directly, see `cohere_api_key_plaintext`. You must provide an API key using one of
- * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
- *
- * The Cohere API key provided as a plaintext string. If you prefer to reference your key
- * using Databricks Secrets, see `cohere_api_key`. You must provide an API key using one of
- * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
- *
- * The Databricks secret key reference for a Databricks API token that corresponds to a user
- * or service
- * principal with Can Query access to the model serving endpoint pointed to by this external
- * model.
- * If you prefer to paste your API key directly, see `databricks_api_token_plaintext`.
- * You must provide an API key using one of the following fields: `databricks_api_token` or
- * `databricks_api_token_plaintext`.
- *
- *
- * The Databricks API token that corresponds to a user or service
- * principal with Can Query access to the model serving endpoint pointed to by this external
- * model provided as a plaintext string.
- * If you prefer to reference your key using Databricks Secrets, see `databricks_api_token`.
- * You must provide an API key using one of the following fields: `databricks_api_token` or
- * `databricks_api_token_plaintext`.
- *
- *
- * The URL of the Databricks workspace containing the model serving endpoint pointed to by
- * this external model.
- *
- *
- * The name of the external model.
- *
- * The task type of the external model.
- *
- * ARN of the instance profile that the served entity uses to access AWS resources.
- *
- * The name of a served entity. It must be unique across an endpoint. A served entity name
- * can consist of alphanumeric characters, dashes, and underscores.
- * If not specified for an external model, this field defaults to external_model.name, with
- * '.' and ':' replaced with '-', and if not specified for other
- * entities, it defaults to <entity-name>-<entity-version>.
- *
- *
- * The workload size of the served entity. The workload size corresponds to a range of
- * provisioned concurrency that the compute autoscales between.
- * A single unit of provisioned concurrency can process one request at a time.
- * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
- * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
- * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
- * workload size is 0.
- *
- *
- * The workload type of the served entity. The workload type selects which type of compute
- * to use in the endpoint. The default value for this parameter is
- * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
- * types like GPU_SMALL and others.
- * See the available [GPU
- * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
- *
- *
- * ARN of the instance profile that the served model will use to access AWS resources.
- *
- * The name of the model in Databricks Model Registry to be served or if the model resides
- * in Unity Catalog, the full name of model,
- * in the form of __catalog_name__.__schema_name__.__model_name__.
- *
- *
- * The version of the model in Databricks Model Registry or Unity Catalog to be served.
- *
- * The name of a served model. It must be unique across an endpoint. If not specified, this
- * field will default to <model-name>-<model-version>.
- * A served model name can consist of alphanumeric characters, dashes, and underscores.
- *
- *
- * The name of the served model this route configures traffic for.
- *
- * The name of the serving endpoint. This field is required and must be unique across a
- * Databricks workspace.
- * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
- *
- *
- * Key field for a serving endpoint tag.
- *
- * Optional value field for a serving endpoint tag.
- *
- * Description of this `registered_model`.
- *
- * Current stage for this `model_version`.
- *
- * Description of this `model_version`.
- *
- * Unique name of the model
- *
- * MLflow run ID used when creating `model_version`, if `source` was generated by an
- * experiment run stored in MLflow tracking server.
- *
- * Run Link: Direct link to the run that generated this version
- *
- * URI indicating the location of the source model artifacts, used when creating
- * `model_version`
- *
- * Details on current `status`, if it is pending or failed.
- *
- * User that created this `model_version`.
- *
- * Model's version number.
- *
- * Unique name for the model.
- *
- * User that created this `registered_model`
- *
- * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
- * specified, tables in this pipeline are published to a `target` schema inside `catalog`
- * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
- * published to Unity Catalog.
- *
- * DLT Release Channel that specifies which version to use.
- *
- * The node type of the Spark driver.
- * Note that this field is optional; if unset, the driver node type will be set as the same
- * value
- * as `node_type_id` defined above.
- *
- * A label for the cluster specification, either `default` to configure the default cluster,
- * or `maintenance` to configure the maintenance cluster. This field is optional. The
- * default value is `default`.
- *
- * The path to the file containing metadata about the deployment.
- *
- * Pipeline product edition.
- *
- * Immutable. The Unity Catalog connection this gateway pipeline uses to communicate with
- * the source.
- *
- * Required, Immutable. The name of the catalog for the gateway pipeline's storage
- * location.
- *
- * Optional. The Unity Catalog-compatible name for the gateway storage location.
- * This is the destination to use for the data that is extracted by the gateway.
- * Delta Live Tables system will automatically create the storage location under the catalog
- * and schema.
- *
- *
- * Required, Immutable. The name of the schema for the gateway pipelines's storage
- * location.
- *
- * Unique identifier for this pipeline.
- *
- * Immutable. The Unity Catalog connection this ingestion pipeline uses to communicate with
- * the source. Specify either ingestion_gateway_id or connection_name.
- *
- * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
- * communicate with the source. Specify either ingestion_gateway_id or connection_name.
- *
- * Required. Destination catalog to store tables.
- *
- * Required. Destination schema to store tables in. Tables with the same name as the source
- * tables are created in this destination schema. The pipeline fails If a table with the
- * same name already exists.
- *
- * The source catalog name. Might be optional depending on the type of source.
- *
- * Required. Schema name in the source database.
- *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
- * exists. If not set, the source table name is used.
- *
- * Source catalog name. Might be optional depending on the type of source.
- *
- * Schema name in the source database. Might be optional depending on the type of source.
- *
- * Required. Table name in the source database.
- *
- * The absolute path of the file.
- *
- * URI of the jar to be installed. Currently only DBFS is supported.
- *
- *
- * The absolute path of the notebook.
- *
- * URI of the whl to be installed.
- *
- * Friendly identifier for this pipeline.
- *
- * DBFS root directory for storing checkpoints and tables.
- *
- * Target schema (database) to add tables in this pipeline to. If not specified, no data is
- * published to the Hive metastore or Unity Catalog. To publish to Unity Catalog, also
- * specify `catalog`.
- *
- * The directory to store monitoring assets (e.g. dashboard, metric tables).
- *
- * Name of the baseline table from which drift metrics are computed from.
- * Columns in the monitored table should also be present in the baseline table.
- *
- *
- * Jinja template for a SQL expression that specifies how to compute the metric. See [create
- * metric
- * definition](https://docs.databricks.com/en/lakehouse-monitoring/custom-metrics.html#create-definition).
- *
- * Name of the metric in the output tables.
- *
- * The output type of the custom metric.
- *
- * Optional column that contains the ground truth for the prediction.
- *
- * Column that contains the id of the model generating the predictions. Metrics will be
- * computed per model id by
- * default, and also across all model ids.
- *
- *
- * Column that contains the output/prediction from the model.
- *
- * Optional column that contains the prediction probabilities for each class in a
- * classification problem type.
- * The values in this column should be a map, mapping each class label to the prediction
- * probability for a given
- * sample. The map should be of PySpark MapType().
- *
- *
- * Column that contains the timestamps of requests. The column must be one of the following:
- * - A ``TimestampType`` column
- * - A column whose values can be converted to timestamps through the pyspark
- * ``to_timestamp``
- * [function](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_timestamp.html).
- *
- *
- * Schema where output metric tables are created.
- *
- * The expression that determines when to run the monitor. See
- * [examples](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
- *
- *
- * The timezone id (e.g., ``"PST"``) in which to evaluate the quartz expression.
- *
- *
- * Optional argument to specify the warehouse for dashboard creation. If not specified, the
- * first running
- * warehouse will be used.
- *
- *
- * The name of the catalog where the schema and the registered model reside
- *
- * The comment attached to the registered model
- *
- * The name of the registered model
- *
- * The name of the schema where the registered model resides
- *
- * The storage location on the cloud under which model version data files are stored
- *
- * Name of parent catalog.
- *
- * User-provided free-form text description.
- *
- * Name of schema, relative to parent catalog.
- *
- * Storage root URL for managed tables within schema.
- *
- * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
- * Anthropic, Cohere, AI21Labs, Amazon.
- *
- * The name of the provider for the external model. Currently, the supported providers are
- * 'ai21labs', 'anthropic',
- * 'amazon-bedrock', 'cohere', 'databricks-model-serving', 'google-cloud-vertex-ai',
- * 'openai', and 'palm'.",
- *
- *
- * The workload size of the served model. The workload size corresponds to a range of
- * provisioned concurrency that the compute will autoscale between.
- * A single unit of provisioned concurrency can process one request at a time.
- * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
- * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
- * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
- * workload size will be 0.
- *
- *
- * The workload type of the served model. The workload type selects which type of compute to
- * use in the endpoint. The default value for this parameter is
- * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
- * types like GPU_SMALL and others.
- * See the available [GPU
- * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
- *
- *
- * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are
- * supported, with 'endpoint' being the default if not specified.
- *
- * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is
- * supported.
- *
- * Current status of `model_version`
- *
- * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
- * allocating cluster resources based on workload volume, with minimal impact to
- * the data processing latency of your pipelines. Enhanced Autoscaling is available
- * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
- * clusters.
- *
- *
- * The SCD type to use to ingest the table.
- *
- * Can only be one of ``"CUSTOM_METRIC_TYPE_AGGREGATE"``, ``"CUSTOM_METRIC_TYPE_DERIVED"``,
- * or ``"CUSTOM_METRIC_TYPE_DRIFT"``.
- * The ``"CUSTOM_METRIC_TYPE_AGGREGATE"`` and ``"CUSTOM_METRIC_TYPE_DERIVED"`` metrics
- * are computed on a single table, whereas the ``"CUSTOM_METRIC_TYPE_DRIFT"`` compare
- * metrics across
- * baseline and input table, or across the two consecutive time windows.
- * - CUSTOM_METRIC_TYPE_AGGREGATE: only depend on the existing columns in your table
- * - CUSTOM_METRIC_TYPE_DERIVED: depend on previously computed aggregate metrics
- * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
- *
- *
- * Problem type the model aims to solve. Determines the type of model-quality metrics that
- * will be computed.
- */
-export enum PauseStatus {
-    Paused = "PAUSED",
-    Unpaused = "UNPAUSED",
-}
-
-export interface StickyBundleSchem {
-    /**
-     * The kind of deployment that manages the job.
-     *
-     * * `BUNDLE`: The job is managed by Databricks Asset Bundle.
-     */
-    kind: Kind;
-    /**
-     * Path of the file that contains deployment metadata.
-     */
-    metadata_file_path?: string;
-}
-
-/**
- * The kind of deployment that manages the job.
- *
- * * `BUNDLE`: The job is managed by Databricks Asset Bundle.
- *
- * * `BUNDLE`: The job is managed by Databricks Asset Bundle.
- *
- * The deployment method that manages the pipeline.
- *
- * The deployment method that manages the pipeline:
- * - BUNDLE: The pipeline is managed by a Databricks Asset Bundle.
- */
-export enum Kind {
-    Bundle = "BUNDLE",
-}
-
-/**
- * Edit mode of the job.
- *
- * * `UI_LOCKED`: The job is in a locked UI state and cannot be modified.
- * * `EDITABLE`: The job is in an editable state and can be modified.
- */
-export enum EditMode {
-    Editable = "EDITABLE",
-    UILocked = "UI_LOCKED",
-}
-
-export interface IndigoBundleSchem {
-    /**
-     * If true, do not send email to recipients specified in `on_failure` if the run is skipped.
-     */
-    no_alert_for_skipped_runs?: boolean | string;
-    /**
-     * A list of email addresses to be notified when the duration of a run exceeds the threshold
-     * specified for the `RUN_DURATION_SECONDS` metric in the `health` field. If no rule for the
-     * `RUN_DURATION_SECONDS` metric is specified in the `health` field for the job,
-     * notifications are not sent.
-     */
-    on_duration_warning_threshold_exceeded?: string[] | string;
-    /**
-     * A list of email addresses to be notified when a run unsuccessfully completes. A run is
-     * considered to have completed unsuccessfully if it ends with an `INTERNAL_ERROR`
-     * `life_cycle_state` or a `FAILED`, or `TIMED_OUT` result_state. If this is not specified
-     * on job creation, reset, or update the list is empty, and notifications are not sent.
-     */
-    on_failure?: string[] | string;
-    /**
-     * A list of email addresses to be notified when a run begins. If not specified on job
-     * creation, reset, or update, the list is empty, and notifications are not sent.
-     */
-    on_start?: string[] | string;
-    /**
-     * A list of email addresses to notify when any streaming backlog thresholds are exceeded
-     * for any stream.
-     * Streaming backlog thresholds can be set in the `health` field using the following
-     * metrics: `STREAMING_BACKLOG_BYTES`, `STREAMING_BACKLOG_RECORDS`,
-     * `STREAMING_BACKLOG_SECONDS`, or `STREAMING_BACKLOG_FILES`.
-     * Alerting is based on the 10-minute average of these metrics. If the issue persists,
-     * notifications are resent every 30 minutes.
-     */
-    on_streaming_backlog_exceeded?: string[] | string;
-    /**
-     * A list of email addresses to be notified when a run successfully completes. A run is
-     * considered to have completed successfully if it ends with a `TERMINATED`
-     * `life_cycle_state` and a `SUCCESS` result_state. If not specified on job creation, reset,
-     * or update, the list is empty, and notifications are not sent.
-     */
-    on_success?: string[] | string;
-}
-
-export interface EnvironmentClass {
-    /**
-     * The key of an environment. It has to be unique within a job.
-     */
-    environment_key: string;
-    spec?: SpecClass | string;
-}
-
-/**
- * The environment entity used to preserve serverless environment side panel and jobs'
- * environment for non-notebook task.
- * In this minimal environment spec, only pip dependencies are supported.
- */
-export interface SpecClass {
-    /**
-     * Client version used by the environment
-     * The client is the user-facing environment of the runtime.
-     * Each client comes with a specific set of pre-installed libraries.
-     * The version is a string, consisting of the major client version.
-     */
-    client: string;
-    /**
-     * List of pip dependencies, as supported by the version of pip in this environment.
-     * Each dependency is a pip requirement file line
-     * https://pip.pypa.io/en/stable/reference/requirements-file-format/
-     * Allowed dependency could be <requirement specifier>, <archive url/path>, <local project
-     * path>(WSFS or Volumes in Databricks), <vcs project url>
-     * E.g. dependencies: ["foo==0.0.1", "-r /Workspace/test/requirements.txt"]
-     */
-    dependencies?: string[] | string;
-}
-
-/**
- * Used to tell what is the format of the job. This field is ignored in Create/Update/Reset
- * calls. When using the Jobs API 2.1 this value is always set to `"MULTI_TASK"`.
- */
-export enum Format {
-    MultiTask = "MULTI_TASK",
-    SingleTask = "SINGLE_TASK",
-}
-
-/**
- * An optional specification for a remote Git repository containing the source code used by
- * tasks. Version-controlled source code is supported by notebook, dbt, Python script, and
- * SQL File tasks.
- *
- * If `git_source` is set, these tasks retrieve the file from the remote repository by
- * default. However, this behavior can be overridden by setting `source` to `WORKSPACE` on
- * the task.
- *
- * Note: dbt and SQL File tasks support only version-controlled sources. If dbt or SQL File
- * tasks are used, `git_source` must be defined on the job.
- */
-export interface GitSourceClass {
-    /**
-     * Name of the branch to be checked out and used by this job. This field cannot be specified
-     * in conjunction with git_tag or git_commit.
-     */
-    git_branch?: string;
-    /**
-     * Commit to be checked out and used by this job. This field cannot be specified in
-     * conjunction with git_branch or git_tag.
-     */
-    git_commit?: string;
-    /**
-     * Unique identifier of the service used to host the Git repository. The value is case
-     * insensitive.
-     */
-    git_provider: GitProvider;
-    git_snapshot?: GitSnapshotClass | string;
-    /**
-     * Name of the tag to be checked out and used by this job. This field cannot be specified in
-     * conjunction with git_branch or git_commit.
-     */
-    git_tag?: string;
-    /**
-     * URL of the repository to be cloned by this job.
-     */
-    git_url: string;
-    /**
-     * The source of the job specification in the remote repository when the job is source
-     * controlled.
-     */
-    job_source?: JobSourceClass | string;
-}
-
-/**
- * Unique identifier of the service used to host the Git repository. The value is case
- * insensitive.
- */
-export enum GitProvider {
-    AwsCodeCommit = "awsCodeCommit",
-    AzureDevOpsServices = "azureDevOpsServices",
-    BitbucketCloud = "bitbucketCloud",
-    BitbucketServer = "bitbucketServer",
-    GitHub = "gitHub",
-    GitHubEnterprise = "gitHubEnterprise",
-    GitLab = "gitLab",
-    GitLabEnterpriseEdition = "gitLabEnterpriseEdition",
-}
-
-/**
- * Read-only state of the remote repository at the time the job was run. This field is only
- * included on job runs.
- */
-export interface GitSnapshotClass {
-    /**
-     * Commit that was used to execute the run. If git_branch was specified, this points to the
-     * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
-     * commit the tag points to.
-     */
-    used_commit?: string;
-}
-
-/**
- * The source of the job specification in the remote repository when the job is source
- * controlled.
- */
-export interface JobSourceClass {
-    /**
-     * Dirty state indicates the job is not fully synced with the job specification in the
-     * remote repository.
-     *
-     * Possible values are:
-     * * `NOT_SYNCED`: The job is not yet synced with the remote job specification. Import the
-     * remote job specification from UI to make the job fully synced.
-     * * `DISCONNECTED`: The job is temporary disconnected from the remote job specification and
-     * is allowed for live edit. Import the remote job specification again from UI to make the
-     * job fully synced.
-     */
-    dirty_state?: DirtyState;
-    /**
-     * Name of the branch which the job is imported from.
-     */
-    import_from_git_branch: string;
-    /**
-     * Path of the job YAML file that contains the job specification.
-     */
-    job_config_path: string;
-}
-
-/**
- * Dirty state indicates the job is not fully synced with the job specification in the
- * remote repository.
- *
- * Possible values are:
- * * `NOT_SYNCED`: The job is not yet synced with the remote job specification. Import the
- * remote job specification from UI to make the job fully synced.
- * * `DISCONNECTED`: The job is temporary disconnected from the remote job specification and
- * is allowed for live edit. Import the remote job specification again from UI to make the
- * job fully synced.
- *
- * Dirty state indicates the job is not fully synced with the job specification
- * in the remote repository.
- *
- * Possible values are:
- * * `NOT_SYNCED`: The job is not yet synced with the remote job specification. Import the
- * remote job specification from UI to make the job fully synced.
- * * `DISCONNECTED`: The job is temporary disconnected from the remote job specification and
- * is allowed for live edit. Import the remote job specification again from UI to make the
- * job fully synced.
- */
-export enum DirtyState {
-    Disconnected = "DISCONNECTED",
-    NotSynced = "NOT_SYNCED",
-}
-
-/**
- * An optional set of health rules that can be defined for this job.
- */
-export interface HealthClass {
-    rules?: Array<RuleClass | string> | string;
-}
-
-export interface RuleClass {
-    metric: Metric;
-    op: RuleOp;
-    /**
-     * Specifies the threshold value that the health metric should obey to satisfy the health
-     * rule.
-     */
-    value: number | string;
-}
-
-/**
- * Specifies the health metric that is being evaluated for a particular health rule.
- *
- * * `RUN_DURATION_SECONDS`: Expected total time for a run in seconds.
- * * `STREAMING_BACKLOG_BYTES`: An estimate of the maximum bytes of data waiting to be
- * consumed across all streams. This metric is in Private Preview.
- * * `STREAMING_BACKLOG_RECORDS`: An estimate of the maximum offset lag across all streams.
- * This metric is in Private Preview.
- * * `STREAMING_BACKLOG_SECONDS`: An estimate of the maximum consumer delay across all
- * streams. This metric is in Private Preview.
- * * `STREAMING_BACKLOG_FILES`: An estimate of the maximum number of outstanding files
- * across all streams. This metric is in Private Preview.
- */
-export enum Metric {
-    RunDurationSeconds = "RUN_DURATION_SECONDS",
-    StreamingBacklogBytes = "STREAMING_BACKLOG_BYTES",
-    StreamingBacklogFiles = "STREAMING_BACKLOG_FILES",
-    StreamingBacklogRecords = "STREAMING_BACKLOG_RECORDS",
-    StreamingBacklogSeconds = "STREAMING_BACKLOG_SECONDS",
-}
-
-/**
- * Specifies the operator used to compare the health metric value with the specified
- * threshold.
- */
-export enum RuleOp {
-    GreaterThan = "GREATER_THAN",
-}
-
-export interface JobClusterClass {
-    /**
-     * A unique name for the job cluster. This field is required and must be unique within the
-     * job.
-     * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
-     * task execution.
-     */
-    job_cluster_key: string;
-    /**
-     * If new_cluster, a description of a cluster that is created for each task.
-     */
-    new_cluster: NewClusterClass | string;
-}
-
-export interface NewClusterClass {
     /**
      * When set to true, fixed and default values from the policy will be used for fields that
      * are omitted. When set to false, only fixed values from the policy will be applied.
@@ -1320,7 +111,7 @@ export interface NewClusterClass {
      * Parameters needed in order to automatically scale clusters up and down based on load.
      * Note: autoscaling works best with DB runtime versions 3.0 or later.
      */
-    autoscale?: IndecentBundleSchem | string;
+    autoscale?: StickyBundleSchem | string;
     /**
      * Automatically terminates the cluster after it is inactive for this time in minutes. If
      * not set,
@@ -1426,6 +217,7 @@ export interface NewClusterClass {
      * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number | string;
+    permissions?: Array<PermissionClass | string> | string;
     /**
      * The ID of the cluster policy used to create the cluster if applicable.
      */
@@ -1474,7 +266,7 @@ export interface NewClusterClass {
     workload_type?: WorkloadTypeClass | string;
 }
 
-export interface IndecentBundleSchem {
+export interface StickyBundleSchem {
     /**
      * The maximum number of workers to which the cluster can scale up when overloaded.
      * Note that `max_workers` must be strictly greater than `min_workers`.
@@ -1851,7 +643,7 @@ export interface InitScriptClass {
      * destination needs to be provided. e.g.
      * `{ "file" : { "destination" : "file:/my/local/file.sh" } }`
      */
-    file?: HilariousBundleSchem | string;
+    file?: IndigoBundleSchem | string;
     /**
      * destination needs to be provided. e.g.
      * `{ "gcs": { "destination": "gs://my-bucket/file.sh" } }`
@@ -1873,7 +665,7 @@ export interface InitScriptClass {
      * destination needs to be provided. e.g.
      * `{ "workspace" : { "destination" : "/Users/user1@databricks.com/my-init.sh" } }`
      */
-    workspace?: AmbitiousBundleSchem | string;
+    workspace?: IndecentBundleSchem | string;
 }
 
 export interface AbfssClass {
@@ -1884,7 +676,7 @@ export interface AbfssClass {
     destination: string;
 }
 
-export interface HilariousBundleSchem {
+export interface IndigoBundleSchem {
     /**
      * local file destination, e.g. `file:/my/local/file.sh`
      */
@@ -1905,7 +697,7 @@ export interface VolumesClass {
     destination: string;
 }
 
-export interface AmbitiousBundleSchem {
+export interface IndecentBundleSchem {
     /**
      * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
      */
@@ -1913,9 +705,13 @@ export interface AmbitiousBundleSchem {
 }
 
 /**
- * Decides which runtime engine to be use, e.g. Standard vs. Photon. If unspecified, the
- * runtime
- * engine is inferred from spark_version.
+ * Determines the cluster's runtime engine, either standard or Photon.
+ *
+ * This field is not compatible with legacy `spark_version` values that contain `-photon-`.
+ * Remove `-photon-` from the `spark_version` and set `runtime_engine` to `PHOTON`.
+ *
+ * If left unspecified, the runtime engine defaults to standard unless the spark_version
+ * contains -photon-, in which case Photon will be used.
  */
 export enum RuntimeEngine {
     Null = "NULL",
@@ -1939,6 +735,1267 @@ export interface ClientsClass {
      * With notebooks set, this cluster can be used for notebooks
      */
     notebooks?: boolean | string;
+}
+
+export interface ExperimentClass {
+    /**
+     * Location where artifacts for the experiment are stored.
+     */
+    artifact_location?: string;
+    /**
+     * Creation time
+     */
+    creation_time?: number | string;
+    /**
+     * Unique identifier for the experiment.
+     */
+    experiment_id?: string;
+    /**
+     * Last update time
+     */
+    last_update_time?: number | string;
+    /**
+     * Current life cycle stage of the experiment: "active" or "deleted".
+     * Deleted experiments are not returned by APIs.
+     */
+    lifecycle_stage?: string;
+    /**
+     * Human readable name that identifies the experiment.
+     */
+    name?: string;
+    permissions?: Array<PermissionClass | string> | string;
+    /**
+     * Tags: Additional metadata key-value pairs.
+     */
+    tags?: Array<HilariousBundleSchem | string> | string;
+}
+
+export interface HilariousBundleSchem {
+    /**
+     * The tag key.
+     */
+    key?: string;
+    /**
+     * The tag value.
+     */
+    value?: string;
+}
+
+export interface JobClass {
+    /**
+     * An optional continuous property for this job. The continuous property will ensure that
+     * there is always one run executing. Only one of `schedule` and `continuous` can be used.
+     */
+    continuous?: ContinuousClass | string;
+    /**
+     * An optional description for the job. The maximum length is 27700 characters in UTF-8
+     * encoding.
+     */
+    description?: string;
+    /**
+     * An optional set of email addresses that is notified when runs of this job begin or
+     * complete as well as when this job is deleted.
+     */
+    email_notifications?: AmbitiousBundleSchem | string;
+    /**
+     * A list of task execution environment specifications that can be referenced by serverless
+     * tasks of this job.
+     * An environment is required to be present for serverless tasks.
+     * For serverless notebook tasks, the environment is accessible in the notebook environment
+     * panel.
+     * For other serverless tasks, the task environment is required to be specified using
+     * environment_key in the task settings.
+     */
+    environments?: Array<EnvironmentClass | string> | string;
+    /**
+     * An optional specification for a remote Git repository containing the source code used by
+     * tasks. Version-controlled source code is supported by notebook, dbt, Python script, and
+     * SQL File tasks.
+     *
+     * If `git_source` is set, these tasks retrieve the file from the remote repository by
+     * default. However, this behavior can be overridden by setting `source` to `WORKSPACE` on
+     * the task.
+     *
+     * Note: dbt and SQL File tasks support only version-controlled sources. If dbt or SQL File
+     * tasks are used, `git_source` must be defined on the job.
+     */
+    git_source?: GitSourceClass | string;
+    health?: HealthClass | string;
+    /**
+     * A list of job cluster specifications that can be shared and reused by tasks of this job.
+     * Libraries cannot be declared in a shared job cluster. You must declare dependent
+     * libraries in task settings.
+     */
+    job_clusters?: Array<JobClusterClass | string> | string;
+    /**
+     * An optional maximum allowed number of concurrent runs of the job.
+     * Set this value if you want to be able to execute multiple runs of the same job
+     * concurrently.
+     * This is useful for example if you trigger your job on a frequent schedule and want to
+     * allow consecutive runs to overlap with each other, or if you want to trigger multiple
+     * runs which differ by their input parameters.
+     * This setting affects only new runs. For example, suppose the job’s concurrency is 4 and
+     * there are 4 concurrent active runs. Then setting the concurrency to 3 won’t kill any of
+     * the active runs.
+     * However, from then on, new runs are skipped unless there are fewer than 3 active runs.
+     * This value cannot exceed 1000. Setting this value to `0` causes all new runs to be
+     * skipped.
+     */
+    max_concurrent_runs?: number | string;
+    /**
+     * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
+     */
+    name?: string;
+    /**
+     * Optional notification settings that are used when sending notifications to each of the
+     * `email_notifications` and `webhook_notifications` for this job.
+     */
+    notification_settings?: CunningBundleSchem | string;
+    /**
+     * Job-level parameter definitions
+     */
+    parameters?: Array<ParameterClass | string> | string;
+    permissions?: Array<PermissionClass | string> | string;
+    /**
+     * The queue settings of the job.
+     */
+    queue?: QueueClass | string;
+    run_as?: RunAsClass | string;
+    /**
+     * An optional periodic schedule for this job. The default behavior is that the job only
+     * runs when triggered by clicking “Run Now” in the Jobs UI or sending an API request to
+     * `runNow`.
+     */
+    schedule?: MagentaBundleSchem | string;
+    /**
+     * A map of tags associated with the job. These are forwarded to the cluster as cluster tags
+     * for jobs clusters, and are subject to the same limitations as cluster tags. A maximum of
+     * 25 tags can be added to the job.
+     */
+    tags?: {[key: string]: string} | string;
+    /**
+     * A list of task specifications to be executed by this job.
+     */
+    tasks?: Array<TaskClass | string> | string;
+    /**
+     * An optional timeout applied to each run of this job. A value of `0` means no timeout.
+     */
+    timeout_seconds?: number | string;
+    /**
+     * A configuration to trigger a run when certain conditions are met. The default behavior is
+     * that the job runs only when triggered by clicking “Run Now” in the Jobs UI or sending an
+     * API request to `runNow`.
+     */
+    trigger?: BundleSchem2 | string;
+    /**
+     * A collection of system notification IDs to notify when runs of this job begin or complete.
+     */
+    webhook_notifications?: WebhookNotificationsClass | string;
+}
+
+export interface ContinuousClass {
+    /**
+     * Indicate whether the continuous execution of the job is paused or not. Defaults to
+     * UNPAUSED.
+     */
+    pause_status?: PauseStatus;
+}
+
+/**
+ * Indicate whether the continuous execution of the job is paused or not. Defaults to
+ * UNPAUSED.
+ *
+ * Indicate whether this schedule is paused or not.
+ *
+ * Whether this trigger is paused or not.
+ *
+ * Read only field that indicates whether a schedule is paused or not.
+ *
+ * Nodes for this cluster will only be placed on AWS instances with this instance profile.
+ * If
+ * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
+ * profile must have previously been added to the Databricks environment by an account
+ * administrator.
+ *
+ * This feature may only be available to certain customer plans.
+ *
+ * If this field is ommitted, we will pull in the default from the conf if it exists.
+ *
+ * Identifier for the availability zone/datacenter in which the cluster resides.
+ * This string will be of a form like "us-west-2a". The provided availability
+ * zone must be in the same region as the Databricks deployment. For example, "us-west-2a"
+ * is not a valid zone id if the Databricks deployment resides in the "us-east-1" region.
+ * This is an optional field at cluster creation, and if not specified, a default zone will
+ * be used.
+ * If the zone specified is "auto", will try to place cluster in a zone with high
+ * availability,
+ * and will retry placement in a different AZ if there is not enough capacity.
+ * The list of available zones as well as the default value can be found by using the
+ * `List Zones` method.
+ *
+ * <needs content added>
+ *
+ * dbfs destination, e.g. `dbfs:/my/path`
+ *
+ * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
+ * If `canned_cal` is set, please make sure the cluster iam role has `s3:PutObjectAcl`
+ * permission on
+ * the destination bucket and prefix. The full list of possible canned acl can be found at
+ * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
+ * Please also note that by default only the object owner gets full controls. If you are
+ * using cross account
+ * role for writing data, you may want to set `bucket-owner-full-control` to make bucket
+ * owner able to
+ * read the logs.
+ *
+ * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be delivered using
+ * cluster iam role, please make sure you set cluster iam role and the role has write access
+ * to the
+ * destination. Please also note that you cannot use AWS keys to deliver logs.
+ *
+ * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will be used only
+ * when
+ * encryption is enabled and the default type is `sse-s3`.
+ *
+ * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or endpoint needs
+ * to be set.
+ * If both are set, endpoint will be used.
+ *
+ * (Optional) Kms key which will be used if encryption is enabled and encryption type is set
+ * to `sse-kms`.
+ *
+ * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If both are set,
+ * endpoint will be used.
+ *
+ * Cluster name requested by the user. This doesn't have to be unique.
+ * If not specified at creation, the cluster name will be an empty string.
+ *
+ *
+ * Password of the user
+ *
+ * Name of the user
+ *
+ * URL of the docker image.
+ *
+ * The optional ID of the instance pool for the driver of the cluster belongs.
+ * The pool cluster uses the instance pool with id (instance_pool_id) if the driver pool is
+ * not
+ * assigned.
+ *
+ * The node type of the Spark driver. Note that this field is optional;
+ * if unset, the driver node type will be set as the same value
+ * as `node_type_id` defined above.
+ *
+ *
+ * If provided, the cluster will impersonate the google service account when accessing
+ * gcloud services (like GCS). The google service account
+ * must have previously been added to the Databricks environment by an account
+ * administrator.
+ *
+ * Identifier for the availability zone in which the cluster resides.
+ * This can be one of the following:
+ * - "HA" => High availability, spread nodes across availability zones for a Databricks
+ * deployment region [default]
+ * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+ * - A GCP availability zone => Pick One of the available zones for (machine type + region)
+ * from https://cloud.google.com/compute/docs/regions-zones.
+ *
+ * abfss destination, e.g.
+ * `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+ *
+ * local file destination, e.g. `file:/my/local/file.sh`
+ *
+ * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+ *
+ * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+ *
+ * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
+ *
+ * The optional ID of the instance pool to which the cluster belongs.
+ *
+ * This field encodes, through a single value, the resources available to each of
+ * the Spark nodes in this cluster. For example, the Spark nodes can be provisioned
+ * and optimized for memory or compute intensive workloads. A list of available node
+ * types can be retrieved by using the :method:clusters/listNodeTypes API call.
+ *
+ *
+ * The ID of the cluster policy used to create the cluster if applicable.
+ *
+ * Single user name if data_security_mode is `SINGLE_USER`
+ *
+ * The Spark version of the cluster, e.g. `3.3.x-scala2.11`.
+ * A list of available Spark versions can be retrieved by using
+ * the :method:clusters/sparkVersions API call.
+ *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
+ *
+ * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
+ *
+ * Default value of the parameter.
+ *
+ * The name of the defined parameter. May only contain alphanumeric characters, `_`, `-`,
+ * and `.`
+ *
+ * Application ID of an active service principal. Setting this field requires the
+ * `servicePrincipal/user` role.
+ *
+ * The email of an active workspace user. Non-admin users can only set this field to their
+ * own email.
+ *
+ * A Cron expression using Quartz syntax that describes the schedule for a job. See [Cron
+ * Trigger](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html)
+ * for details. This field is required.
+ *
+ * A Java timezone ID. The schedule for a job is resolved with respect to this timezone. See
+ * [Java TimeZone](https://docs.oracle.com/javase/7/docs/api/java/util/TimeZone.html) for
+ * details. This field is required.
+ *
+ * The left operand of the condition task. Can be either a string value or a job state or
+ * parameter reference.
+ *
+ * The right operand of the condition task. Can be either a string value or a job state or
+ * parameter reference.
+ *
+ * Optional name of the catalog to use. The value is the top level in the 3-level namespace
+ * of Unity Catalog (catalog / schema / relation). The catalog value can only be specified
+ * if a warehouse_id is specified. Requires dbt-databricks >= 1.1.1.
+ *
+ * Optional (relative) path to the profiles directory. Can only be specified if no
+ * warehouse_id is specified. If no warehouse_id is specified and this folder is unset, the
+ * root directory is used.
+ *
+ * Path to the project directory. Optional for Git sourced tasks, in which
+ * case if no value is provided, the root of the Git repository is used.
+ *
+ * Optional schema to write to. This parameter is only used when a warehouse_id is also
+ * provided. If not provided, the `default` schema is used.
+ *
+ * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide
+ * the profile and connection details to dbt. It can be overridden on a per-command basis by
+ * using the `--profiles-dir` command line argument.
+ *
+ * Can only be specified on condition task dependencies. The outcome of the dependent task
+ * that must be met for this task to run.
+ *
+ * The name of the task this task depends on.
+ *
+ * An optional description for this task.
+ *
+ * The key that references an environment spec in a job. This field is required for Python
+ * script, Python wheel and dbt tasks when using serverless compute.
+ *
+ * If existing_cluster_id, the ID of an existing cluster that is used for all runs.
+ * When running jobs or tasks on an existing cluster, you may need to manually restart
+ * the cluster if it stops responding. We suggest running jobs and tasks on new clusters for
+ * greater reliability
+ *
+ * Array for task to iterate on. This can be a JSON string or a reference to
+ * an array parameter.
+ *
+ * If job_cluster_key, this task is executed reusing the cluster specified in
+ * `job.settings.job_clusters`.
+ *
+ * The name of the CRAN package to install.
+ *
+ * The repository where the package can be found. If not specified, the default CRAN repo is
+ * used.
+ *
+ * Deprecated. URI of the egg library to install. Installing Python egg files is deprecated
+ * and is not supported in Databricks Runtime 14.0 and above.
+ *
+ * URI of the JAR library to install. Supported URIs include Workspace paths, Unity Catalog
+ * Volumes paths, and S3 URIs.
+ * For example: `{ "jar": "/Workspace/path/to/library.jar" }`, `{ "jar" :
+ * "/Volumes/path/to/library.jar" }` or
+ * `{ "jar": "s3://my-bucket/library.jar" }`.
+ * If S3 is used, please make sure the cluster has read access on the library. You may need
+ * to
+ * launch the cluster with an IAM role to access the S3 URI.
+ *
+ * Gradle-style maven coordinates. For example: "org.jsoup:jsoup:1.7.2".
+ *
+ * Maven repo to install the Maven package from. If omitted, both Maven Central Repository
+ * and Spark Packages are searched.
+ *
+ * The name of the pypi package to install. An optional exact version specification is also
+ * supported. Examples: "simplejson" and "simplejson==3.8.0".
+ *
+ * The repository where the package can be found. If not specified, the default pip index is
+ * used.
+ *
+ * URI of the requirements.txt file to install. Only Workspace paths and Unity Catalog
+ * Volumes paths are supported.
+ * For example: `{ "requirements": "/Workspace/path/to/requirements.txt" }` or `{
+ * "requirements" : "/Volumes/path/to/requirements.txt" }`
+ *
+ * URI of the wheel library to install. Supported URIs include Workspace paths, Unity
+ * Catalog Volumes paths, and S3 URIs.
+ * For example: `{ "whl": "/Workspace/path/to/library.whl" }`, `{ "whl" :
+ * "/Volumes/path/to/library.whl" }` or
+ * `{ "whl": "s3://my-bucket/library.whl" }`.
+ * If S3 is used, please make sure the cluster has read access on the library. You may need
+ * to
+ * launch the cluster with an IAM role to access the S3 URI.
+ *
+ * The path of the notebook to be run in the Databricks workspace or remote repository.
+ * For notebooks stored in the Databricks workspace, the path must be absolute and begin
+ * with a slash.
+ * For notebooks stored in a remote repository, the path must be relative. This field is
+ * required.
+ *
+ * Optional `warehouse_id` to run the notebook on a SQL warehouse. Classic SQL warehouses
+ * are NOT supported, please use serverless or pro SQL warehouses.
+ *
+ * Note that SQL warehouses only support SQL cells; if the notebook contains non-SQL cells,
+ * the run will fail.
+ *
+ * The full name of the pipeline task to execute.
+ *
+ * Named entry point to use, if it does not exist in the metadata of the package it executes
+ * the function from the package directly using `$packageName.$entryPoint()`
+ *
+ * Name of the package to execute
+ *
+ * Deprecated since 04/2016. Provide a `jar` through the `libraries` field instead. For an
+ * example, see :method:jobs/create.
+ *
+ * The full name of the class containing the main method to be executed. This class must be
+ * contained in a JAR provided as a library.
+ *
+ * The code must use `SparkContext.getOrCreate` to obtain a Spark context; otherwise, runs
+ * of the job fail.
+ *
+ * The Python file to be executed. Cloud file URIs (such as dbfs:/, s3:/, adls:/, gcs:/) and
+ * workspace paths are supported. For python files stored in the Databricks workspace, the
+ * path must be absolute and begin with `/`. For files stored in a remote repository, the
+ * path must be relative. This field is required.
+ *
+ * The canonical identifier of the SQL alert.
+ *
+ * The canonical identifier of the destination to receive email notification. This parameter
+ * is mutually exclusive with user_name. You cannot set both destination_id and user_name
+ * for subscription notifications.
+ *
+ * The user name to receive the subscription email. This parameter is mutually exclusive
+ * with destination_id. You cannot set both destination_id and user_name for subscription
+ * notifications.
+ *
+ * Subject of the email sent to subscribers of this task.
+ *
+ * The canonical identifier of the SQL dashboard.
+ *
+ * Path of the SQL file. Must be relative if the source is a remote Git repository and
+ * absolute for workspace paths.
+ *
+ * The canonical identifier of the SQL query.
+ *
+ * The canonical identifier of the SQL warehouse. Recommended to use with serverless or pro
+ * SQL warehouses. Classic SQL warehouses are only supported for SQL alert, dashboard and
+ * query tasks and are limited to scheduled single-task jobs.
+ *
+ * A unique name for the task. This field is used to refer to this task from other tasks.
+ * This field is required and must be unique within its parent job.
+ * On Update or Reset, this field is used to reference the tasks to be updated or reset.
+ *
+ * URL to be monitored for file arrivals. The path must point to the root or a subpath of
+ * the external location.
+ *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
+ * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
+ * name if the inference table is already enabled.
+ *
+ * The name of the schema in Unity Catalog. NOTE: On update, you cannot change the schema
+ * name if the inference table is already enabled.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you cannot change the prefix
+ * name if the inference table is already enabled.
+ *
+ * The name of the entity to be served. The entity may be a model in the Databricks Model
+ * Registry, a model in the Unity Catalog (UC),
+ * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the
+ * object should be given in the form of
+ * __catalog_name__.__schema_name__.__model_name__.
+ *
+ *
+ * The version of the model in Databricks Model Registry to be served or empty if the entity
+ * is a FEATURE_SPEC.
+ *
+ * The Databricks secret key reference for an AWS access key ID with permissions to interact
+ * with Bedrock services. If you prefer to paste your API key directly, see
+ * `aws_access_key_id`. You must provide an API key using one of the following fields:
+ * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+ *
+ * An AWS access key ID with permissions to interact with Bedrock services provided as a
+ * plaintext string. If you prefer to reference your key using Databricks Secrets, see
+ * `aws_access_key_id`. You must provide an API key using one of the following fields:
+ * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+ *
+ * The AWS region to use. Bedrock has to be enabled there.
+ *
+ * The Databricks secret key reference for an AWS secret access key paired with the access
+ * key ID, with permissions to interact with Bedrock services. If you prefer to paste your
+ * API key directly, see `aws_secret_access_key_plaintext`. You must provide an API key
+ * using one of the following fields: `aws_secret_access_key` or
+ * `aws_secret_access_key_plaintext`.
+ *
+ * An AWS secret access key paired with the access key ID, with permissions to interact with
+ * Bedrock services provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `aws_secret_access_key`. You must provide an API key using
+ * one of the following fields: `aws_secret_access_key` or
+ * `aws_secret_access_key_plaintext`.
+ *
+ * The Databricks secret key reference for an Anthropic API key. If you prefer to paste your
+ * API key directly, see `anthropic_api_key_plaintext`. You must provide an API key using
+ * one of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+ *
+ * The Anthropic API key provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `anthropic_api_key`. You must provide an API key using one
+ * of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+ *
+ * This is an optional field to provide a customized base URL for the Cohere API.
+ * If left unspecified, the standard Cohere base URL is used.
+ *
+ *
+ * The Databricks secret key reference for a Cohere API key. If you prefer to paste your API
+ * key directly, see `cohere_api_key_plaintext`. You must provide an API key using one of
+ * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+ *
+ * The Cohere API key provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `cohere_api_key`. You must provide an API key using one of
+ * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+ *
+ * The Databricks secret key reference for a Databricks API token that corresponds to a user
+ * or service
+ * principal with Can Query access to the model serving endpoint pointed to by this external
+ * model.
+ * If you prefer to paste your API key directly, see `databricks_api_token_plaintext`.
+ * You must provide an API key using one of the following fields: `databricks_api_token` or
+ * `databricks_api_token_plaintext`.
+ *
+ *
+ * The Databricks API token that corresponds to a user or service
+ * principal with Can Query access to the model serving endpoint pointed to by this external
+ * model provided as a plaintext string.
+ * If you prefer to reference your key using Databricks Secrets, see `databricks_api_token`.
+ * You must provide an API key using one of the following fields: `databricks_api_token` or
+ * `databricks_api_token_plaintext`.
+ *
+ *
+ * The URL of the Databricks workspace containing the model serving endpoint pointed to by
+ * this external model.
+ *
+ *
+ * The name of the external model.
+ *
+ * The task type of the external model.
+ *
+ * ARN of the instance profile that the served entity uses to access AWS resources.
+ *
+ * The name of a served entity. It must be unique across an endpoint. A served entity name
+ * can consist of alphanumeric characters, dashes, and underscores.
+ * If not specified for an external model, this field defaults to external_model.name, with
+ * '.' and ':' replaced with '-', and if not specified for other
+ * entities, it defaults to <entity-name>-<entity-version>.
+ *
+ *
+ * The workload size of the served entity. The workload size corresponds to a range of
+ * provisioned concurrency that the compute autoscales between.
+ * A single unit of provisioned concurrency can process one request at a time.
+ * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
+ * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+ * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
+ * workload size is 0.
+ *
+ *
+ * The workload type of the served entity. The workload type selects which type of compute
+ * to use in the endpoint. The default value for this parameter is
+ * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
+ * types like GPU_SMALL and others.
+ * See the available [GPU
+ * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+ *
+ *
+ * ARN of the instance profile that the served model will use to access AWS resources.
+ *
+ * The name of the model in Databricks Model Registry to be served or if the model resides
+ * in Unity Catalog, the full name of model,
+ * in the form of __catalog_name__.__schema_name__.__model_name__.
+ *
+ *
+ * The version of the model in Databricks Model Registry or Unity Catalog to be served.
+ *
+ * The name of a served model. It must be unique across an endpoint. If not specified, this
+ * field will default to <model-name>-<model-version>.
+ * A served model name can consist of alphanumeric characters, dashes, and underscores.
+ *
+ *
+ * The name of the served model this route configures traffic for.
+ *
+ * The name of the serving endpoint. This field is required and must be unique across a
+ * Databricks workspace.
+ * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
+ *
+ *
+ * Key field for a serving endpoint tag.
+ *
+ * Optional value field for a serving endpoint tag.
+ *
+ * Description of this `registered_model`.
+ *
+ * Current stage for this `model_version`.
+ *
+ * Description of this `model_version`.
+ *
+ * Unique name of the model
+ *
+ * MLflow run ID used when creating `model_version`, if `source` was generated by an
+ * experiment run stored in MLflow tracking server.
+ *
+ * Run Link: Direct link to the run that generated this version
+ *
+ * URI indicating the location of the source model artifacts, used when creating
+ * `model_version`
+ *
+ * Details on current `status`, if it is pending or failed.
+ *
+ * User that created this `model_version`.
+ *
+ * Model's version number.
+ *
+ * Unique name for the model.
+ *
+ * User that created this `registered_model`
+ *
+ * Budget policy of this pipeline.
+ *
+ * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
+ * specified, tables in this pipeline are published to a `target` schema inside `catalog`
+ * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
+ * published to Unity Catalog.
+ *
+ * DLT Release Channel that specifies which version to use.
+ *
+ * The node type of the Spark driver.
+ * Note that this field is optional; if unset, the driver node type will be set as the same
+ * value
+ * as `node_type_id` defined above.
+ *
+ * A label for the cluster specification, either `default` to configure the default cluster,
+ * or `maintenance` to configure the maintenance cluster. This field is optional. The
+ * default value is `default`.
+ *
+ * The path to the file containing metadata about the deployment.
+ *
+ * Pipeline product edition.
+ *
+ * Immutable. The Unity Catalog connection this gateway pipeline uses to communicate with
+ * the source.
+ *
+ * Required, Immutable. The name of the catalog for the gateway pipeline's storage
+ * location.
+ *
+ * Optional. The Unity Catalog-compatible name for the gateway storage location.
+ * This is the destination to use for the data that is extracted by the gateway.
+ * Delta Live Tables system will automatically create the storage location under the catalog
+ * and schema.
+ *
+ *
+ * Required, Immutable. The name of the schema for the gateway pipelines's storage
+ * location.
+ *
+ * Unique identifier for this pipeline.
+ *
+ * Immutable. The Unity Catalog connection this ingestion pipeline uses to communicate with
+ * the source. Specify either ingestion_gateway_id or connection_name.
+ *
+ * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
+ * communicate with the source. Specify either ingestion_gateway_id or connection_name.
+ *
+ * Required. Destination catalog to store tables.
+ *
+ * Required. Destination schema to store tables in. Tables with the same name as the source
+ * tables are created in this destination schema. The pipeline fails If a table with the
+ * same name already exists.
+ *
+ * The source catalog name. Might be optional depending on the type of source.
+ *
+ * Required. Schema name in the source database.
+ *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Optional. Destination table name. The pipeline fails If a table with that name already
+ * exists. If not set, the source table name is used.
+ *
+ * Source catalog name. Might be optional depending on the type of source.
+ *
+ * Schema name in the source database. Might be optional depending on the type of source.
+ *
+ * Required. Table name in the source database.
+ *
+ * The absolute path of the file.
+ *
+ * URI of the jar to be installed. Currently only DBFS is supported.
+ *
+ *
+ * The absolute path of the notebook.
+ *
+ * URI of the whl to be installed.
+ *
+ * Friendly identifier for this pipeline.
+ *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
+ * DBFS root directory for storing checkpoints and tables.
+ *
+ * Target schema (database) to add tables in this pipeline to. If not specified, no data is
+ * published to the Hive metastore or Unity Catalog. To publish to Unity Catalog, also
+ * specify `catalog`.
+ *
+ * The directory to store monitoring assets (e.g. dashboard, metric tables).
+ *
+ * Name of the baseline table from which drift metrics are computed from.
+ * Columns in the monitored table should also be present in the baseline table.
+ *
+ *
+ * Jinja template for a SQL expression that specifies how to compute the metric. See [create
+ * metric
+ * definition](https://docs.databricks.com/en/lakehouse-monitoring/custom-metrics.html#create-definition).
+ *
+ * Name of the metric in the output tables.
+ *
+ * The output type of the custom metric.
+ *
+ * Optional column that contains the ground truth for the prediction.
+ *
+ * Column that contains the id of the model generating the predictions. Metrics will be
+ * computed per model id by
+ * default, and also across all model ids.
+ *
+ *
+ * Column that contains the output/prediction from the model.
+ *
+ * Optional column that contains the prediction probabilities for each class in a
+ * classification problem type.
+ * The values in this column should be a map, mapping each class label to the prediction
+ * probability for a given
+ * sample. The map should be of PySpark MapType().
+ *
+ *
+ * Column that contains the timestamps of requests. The column must be one of the following:
+ * - A ``TimestampType`` column
+ * - A column whose values can be converted to timestamps through the pyspark
+ * ``to_timestamp``
+ * [function](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_timestamp.html).
+ *
+ *
+ * Schema where output metric tables are created.
+ *
+ * The expression that determines when to run the monitor. See
+ * [examples](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
+ *
+ *
+ * The timezone id (e.g., ``"PST"``) in which to evaluate the quartz expression.
+ *
+ *
+ * Optional argument to specify the warehouse for dashboard creation. If not specified, the
+ * first running
+ * warehouse will be used.
+ *
+ *
+ * The name of the catalog where the schema and the registered model reside
+ *
+ * The comment attached to the registered model
+ *
+ * The name of the registered model
+ *
+ * The name of the schema where the registered model resides
+ *
+ * The storage location on the cloud under which model version data files are stored
+ *
+ * Name of parent catalog.
+ *
+ * User-provided free-form text description.
+ *
+ * Name of schema, relative to parent catalog.
+ *
+ * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
+ *
+ * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
+ * Anthropic, Cohere, AI21Labs, Amazon.
+ *
+ * The name of the provider for the external model. Currently, the supported providers are
+ * 'ai21labs', 'anthropic',
+ * 'amazon-bedrock', 'cohere', 'databricks-model-serving', 'google-cloud-vertex-ai',
+ * 'openai', and 'palm'.",
+ *
+ *
+ * The workload size of the served model. The workload size corresponds to a range of
+ * provisioned concurrency that the compute will autoscale between.
+ * A single unit of provisioned concurrency can process one request at a time.
+ * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
+ * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+ * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
+ * workload size will be 0.
+ *
+ *
+ * The workload type of the served model. The workload type selects which type of compute to
+ * use in the endpoint. The default value for this parameter is
+ * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
+ * types like GPU_SMALL and others.
+ * See the available [GPU
+ * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+ *
+ *
+ * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are
+ * supported, with 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is
+ * supported.
+ *
+ * Current status of `model_version`
+ *
+ * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
+ * allocating cluster resources based on workload volume, with minimal impact to
+ * the data processing latency of your pipelines. Enhanced Autoscaling is available
+ * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
+ * clusters.
+ *
+ *
+ * The SCD type to use to ingest the table.
+ *
+ * Can only be one of ``"CUSTOM_METRIC_TYPE_AGGREGATE"``, ``"CUSTOM_METRIC_TYPE_DERIVED"``,
+ * or ``"CUSTOM_METRIC_TYPE_DRIFT"``.
+ * The ``"CUSTOM_METRIC_TYPE_AGGREGATE"`` and ``"CUSTOM_METRIC_TYPE_DERIVED"`` metrics
+ * are computed on a single table, whereas the ``"CUSTOM_METRIC_TYPE_DRIFT"`` compare
+ * metrics across
+ * baseline and input table, or across the two consecutive time windows.
+ * - CUSTOM_METRIC_TYPE_AGGREGATE: only depend on the existing columns in your table
+ * - CUSTOM_METRIC_TYPE_DERIVED: depend on previously computed aggregate metrics
+ * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
+ *
+ *
+ * Problem type the model aims to solve. Determines the type of model-quality metrics that
+ * will be computed.
+ */
+export enum PauseStatus {
+    Paused = "PAUSED",
+    Unpaused = "UNPAUSED",
+}
+
+export interface AmbitiousBundleSchem {
+    /**
+     * If true, do not send email to recipients specified in `on_failure` if the run is skipped.
+     * This field is `deprecated`. Please use the
+     * `notification_settings.no_alert_for_skipped_runs` field.
+     */
+    no_alert_for_skipped_runs?: boolean | string;
+    /**
+     * A list of email addresses to be notified when the duration of a run exceeds the threshold
+     * specified for the `RUN_DURATION_SECONDS` metric in the `health` field. If no rule for the
+     * `RUN_DURATION_SECONDS` metric is specified in the `health` field for the job,
+     * notifications are not sent.
+     */
+    on_duration_warning_threshold_exceeded?: string[] | string;
+    /**
+     * A list of email addresses to be notified when a run unsuccessfully completes. A run is
+     * considered to have completed unsuccessfully if it ends with an `INTERNAL_ERROR`
+     * `life_cycle_state` or a `FAILED`, or `TIMED_OUT` result_state. If this is not specified
+     * on job creation, reset, or update the list is empty, and notifications are not sent.
+     */
+    on_failure?: string[] | string;
+    /**
+     * A list of email addresses to be notified when a run begins. If not specified on job
+     * creation, reset, or update, the list is empty, and notifications are not sent.
+     */
+    on_start?: string[] | string;
+    /**
+     * A list of email addresses to notify when any streaming backlog thresholds are exceeded
+     * for any stream.
+     * Streaming backlog thresholds can be set in the `health` field using the following
+     * metrics: `STREAMING_BACKLOG_BYTES`, `STREAMING_BACKLOG_RECORDS`,
+     * `STREAMING_BACKLOG_SECONDS`, or `STREAMING_BACKLOG_FILES`.
+     * Alerting is based on the 10-minute average of these metrics. If the issue persists,
+     * notifications are resent every 30 minutes.
+     */
+    on_streaming_backlog_exceeded?: string[] | string;
+    /**
+     * A list of email addresses to be notified when a run successfully completes. A run is
+     * considered to have completed successfully if it ends with a `TERMINATED`
+     * `life_cycle_state` and a `SUCCESS` result_state. If not specified on job creation, reset,
+     * or update, the list is empty, and notifications are not sent.
+     */
+    on_success?: string[] | string;
+}
+
+export interface EnvironmentClass {
+    /**
+     * The key of an environment. It has to be unique within a job.
+     */
+    environment_key: string;
+    spec?: SpecClass | string;
+}
+
+/**
+ * The environment entity used to preserve serverless environment side panel and jobs'
+ * environment for non-notebook task.
+ * In this minimal environment spec, only pip dependencies are supported.
+ */
+export interface SpecClass {
+    /**
+     * Client version used by the environment
+     * The client is the user-facing environment of the runtime.
+     * Each client comes with a specific set of pre-installed libraries.
+     * The version is a string, consisting of the major client version.
+     */
+    client: string;
+    /**
+     * List of pip dependencies, as supported by the version of pip in this environment.
+     * Each dependency is a pip requirement file line
+     * https://pip.pypa.io/en/stable/reference/requirements-file-format/
+     * Allowed dependency could be <requirement specifier>, <archive url/path>, <local project
+     * path>(WSFS or Volumes in Databricks), <vcs project url>
+     * E.g. dependencies: ["foo==0.0.1", "-r /Workspace/test/requirements.txt"]
+     */
+    dependencies?: string[] | string;
+}
+
+/**
+ * An optional specification for a remote Git repository containing the source code used by
+ * tasks. Version-controlled source code is supported by notebook, dbt, Python script, and
+ * SQL File tasks.
+ *
+ * If `git_source` is set, these tasks retrieve the file from the remote repository by
+ * default. However, this behavior can be overridden by setting `source` to `WORKSPACE` on
+ * the task.
+ *
+ * Note: dbt and SQL File tasks support only version-controlled sources. If dbt or SQL File
+ * tasks are used, `git_source` must be defined on the job.
+ */
+export interface GitSourceClass {
+    /**
+     * Name of the branch to be checked out and used by this job. This field cannot be specified
+     * in conjunction with git_tag or git_commit.
+     */
+    git_branch?: string;
+    /**
+     * Commit to be checked out and used by this job. This field cannot be specified in
+     * conjunction with git_branch or git_tag.
+     */
+    git_commit?: string;
+    /**
+     * Unique identifier of the service used to host the Git repository. The value is case
+     * insensitive.
+     */
+    git_provider: GitProvider;
+    /**
+     * Name of the tag to be checked out and used by this job. This field cannot be specified in
+     * conjunction with git_branch or git_commit.
+     */
+    git_tag?: string;
+    /**
+     * URL of the repository to be cloned by this job.
+     */
+    git_url: string;
+}
+
+/**
+ * Unique identifier of the service used to host the Git repository. The value is case
+ * insensitive.
+ */
+export enum GitProvider {
+    AwsCodeCommit = "awsCodeCommit",
+    AzureDevOpsServices = "azureDevOpsServices",
+    BitbucketCloud = "bitbucketCloud",
+    BitbucketServer = "bitbucketServer",
+    GitHub = "gitHub",
+    GitHubEnterprise = "gitHubEnterprise",
+    GitLab = "gitLab",
+    GitLabEnterpriseEdition = "gitLabEnterpriseEdition",
+}
+
+/**
+ * An optional set of health rules that can be defined for this job.
+ */
+export interface HealthClass {
+    rules?: Array<RuleClass | string> | string;
+}
+
+export interface RuleClass {
+    metric: Metric;
+    op: RuleOp;
+    /**
+     * Specifies the threshold value that the health metric should obey to satisfy the health
+     * rule.
+     */
+    value: number | string;
+}
+
+/**
+ * Specifies the health metric that is being evaluated for a particular health rule.
+ *
+ * * `RUN_DURATION_SECONDS`: Expected total time for a run in seconds.
+ * * `STREAMING_BACKLOG_BYTES`: An estimate of the maximum bytes of data waiting to be
+ * consumed across all streams. This metric is in Private Preview.
+ * * `STREAMING_BACKLOG_RECORDS`: An estimate of the maximum offset lag across all streams.
+ * This metric is in Private Preview.
+ * * `STREAMING_BACKLOG_SECONDS`: An estimate of the maximum consumer delay across all
+ * streams. This metric is in Private Preview.
+ * * `STREAMING_BACKLOG_FILES`: An estimate of the maximum number of outstanding files
+ * across all streams. This metric is in Private Preview.
+ */
+export enum Metric {
+    RunDurationSeconds = "RUN_DURATION_SECONDS",
+    StreamingBacklogBytes = "STREAMING_BACKLOG_BYTES",
+    StreamingBacklogFiles = "STREAMING_BACKLOG_FILES",
+    StreamingBacklogRecords = "STREAMING_BACKLOG_RECORDS",
+    StreamingBacklogSeconds = "STREAMING_BACKLOG_SECONDS",
+}
+
+/**
+ * Specifies the operator used to compare the health metric value with the specified
+ * threshold.
+ */
+export enum RuleOp {
+    GreaterThan = "GREATER_THAN",
+}
+
+export interface JobClusterClass {
+    /**
+     * A unique name for the job cluster. This field is required and must be unique within the
+     * job.
+     * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+     * task execution.
+     */
+    job_cluster_key: string;
+    /**
+     * If new_cluster, a description of a cluster that is created for each task.
+     */
+    new_cluster: NewClusterClass | string;
+}
+
+export interface NewClusterClass {
+    /**
+     * When set to true, fixed and default values from the policy will be used for fields that
+     * are omitted. When set to false, only fixed values from the policy will be applied.
+     */
+    apply_policy_default_values?: boolean | string;
+    /**
+     * Parameters needed in order to automatically scale clusters up and down based on load.
+     * Note: autoscaling works best with DB runtime versions 3.0 or later.
+     */
+    autoscale?: StickyBundleSchem | string;
+    /**
+     * Automatically terminates the cluster after it is inactive for this time in minutes. If
+     * not set,
+     * this cluster will not be automatically terminated. If specified, the threshold must be
+     * between
+     * 10 and 10000 minutes.
+     * Users can also set this value to 0 to explicitly disable automatic termination.
+     */
+    autotermination_minutes?: number | string;
+    /**
+     * Attributes related to clusters running on Amazon Web Services.
+     * If not specified at cluster creation, a set of default values will be used.
+     */
+    aws_attributes?: AwsAttributesClass | string;
+    /**
+     * Attributes related to clusters running on Microsoft Azure.
+     * If not specified at cluster creation, a set of default values will be used.
+     */
+    azure_attributes?: AzureAttributesClass | string;
+    /**
+     * The configuration for delivering spark logs to a long-term storage destination.
+     * Two kinds of destinations (dbfs and s3) are supported. Only one destination can be
+     * specified
+     * for one cluster. If the conf is given, the logs will be delivered to the destination
+     * every
+     * `5 mins`. The destination of driver logs is `$destination/$clusterId/driver`, while
+     * the destination of executor logs is `$destination/$clusterId/executor`.
+     */
+    cluster_log_conf?: ClusterLogConfClass | string;
+    /**
+     * Cluster name requested by the user. This doesn't have to be unique.
+     * If not specified at creation, the cluster name will be an empty string.
+     */
+    cluster_name?: string;
+    /**
+     * Additional tags for cluster resources. Databricks will tag all cluster resources (e.g.,
+     * AWS
+     * instances and EBS volumes) with these tags in addition to `default_tags`. Notes:
+     *
+     * - Currently, Databricks allows at most 45 custom tags
+     *
+     * - Clusters can only reuse cloud resources if the resources' tags are a subset of the
+     * cluster tags
+     */
+    custom_tags?: {[key: string]: string} | string;
+    data_security_mode?: DataSecurityMode;
+    docker_image?: DockerImageClass | string;
+    /**
+     * The optional ID of the instance pool for the driver of the cluster belongs.
+     * The pool cluster uses the instance pool with id (instance_pool_id) if the driver pool is
+     * not
+     * assigned.
+     */
+    driver_instance_pool_id?: string;
+    /**
+     * The node type of the Spark driver. Note that this field is optional;
+     * if unset, the driver node type will be set as the same value
+     * as `node_type_id` defined above.
+     */
+    driver_node_type_id?: string;
+    /**
+     * Autoscaling Local Storage: when enabled, this cluster will dynamically acquire additional
+     * disk
+     * space when its Spark workers are running low on disk space. This feature requires
+     * specific AWS
+     * permissions to function correctly - refer to the User Guide for more details.
+     */
+    enable_elastic_disk?: boolean | string;
+    /**
+     * Whether to enable LUKS on cluster VMs' local disks
+     */
+    enable_local_disk_encryption?: boolean | string;
+    /**
+     * Attributes related to clusters running on Google Cloud Platform.
+     * If not specified at cluster creation, a set of default values will be used.
+     */
+    gcp_attributes?: GcpAttributesClass | string;
+    /**
+     * The configuration for storing init scripts. Any number of destinations can be specified.
+     * The scripts are executed sequentially in the order provided. If `cluster_log_conf` is
+     * specified, init script logs are sent to `<destination>/<cluster-ID>/init_scripts`.
+     */
+    init_scripts?: Array<InitScriptClass | string> | string;
+    /**
+     * The optional ID of the instance pool to which the cluster belongs.
+     */
+    instance_pool_id?: string;
+    /**
+     * This field encodes, through a single value, the resources available to each of
+     * the Spark nodes in this cluster. For example, the Spark nodes can be provisioned
+     * and optimized for memory or compute intensive workloads. A list of available node
+     * types can be retrieved by using the :method:clusters/listNodeTypes API call.
+     */
+    node_type_id?: string;
+    /**
+     * Number of worker nodes that this cluster should have. A cluster has one Spark Driver
+     * and `num_workers` Executors for a total of `num_workers` + 1 Spark nodes.
+     *
+     * Note: When reading the properties of a cluster, this field reflects the desired number
+     * of workers rather than the actual current number of workers. For instance, if a cluster
+     * is resized from 5 to 10 workers, this field will immediately be updated to reflect
+     * the target size of 10 workers, whereas the workers listed in `spark_info` will gradually
+     * increase from 5 to 10 as the new nodes are provisioned.
+     */
+    num_workers?: number | string;
+    /**
+     * The ID of the cluster policy used to create the cluster if applicable.
+     */
+    policy_id?: string;
+    runtime_engine?: RuntimeEngine;
+    /**
+     * Single user name if data_security_mode is `SINGLE_USER`
+     */
+    single_user_name?: string;
+    /**
+     * An object containing a set of optional, user-specified Spark configuration key-value
+     * pairs.
+     * Users can also pass in a string of extra JVM options to the driver and the executors via
+     * `spark.driver.extraJavaOptions` and `spark.executor.extraJavaOptions` respectively.
+     */
+    spark_conf?: {[key: string]: string} | string;
+    /**
+     * An object containing a set of optional, user-specified environment variable key-value
+     * pairs.
+     * Please note that key-value pair of the form (X,Y) will be exported as is (i.e.,
+     * `export X='Y'`) while launching the driver and workers.
+     *
+     * In order to specify an additional set of `SPARK_DAEMON_JAVA_OPTS`, we recommend appending
+     * them to `$SPARK_DAEMON_JAVA_OPTS` as shown in the example below. This ensures that all
+     * default databricks managed environmental variables are included as well.
+     *
+     * Example Spark environment variables:
+     * `{"SPARK_WORKER_MEMORY": "28000m", "SPARK_LOCAL_DIRS": "/local_disk0"}` or
+     * `{"SPARK_DAEMON_JAVA_OPTS": "$SPARK_DAEMON_JAVA_OPTS
+     * -Dspark.shuffle.service.enabled=true"}`
+     */
+    spark_env_vars?: {[key: string]: string} | string;
+    /**
+     * The Spark version of the cluster, e.g. `3.3.x-scala2.11`.
+     * A list of available Spark versions can be retrieved by using
+     * the :method:clusters/sparkVersions API call.
+     */
+    spark_version?: string;
+    /**
+     * SSH public key contents that will be added to each Spark node in this cluster. The
+     * corresponding private keys can be used to login with the user name `ubuntu` on port
+     * `2200`.
+     * Up to 10 keys can be specified.
+     */
+    ssh_public_keys?: string[] | string;
+    workload_type?: WorkloadTypeClass | string;
 }
 
 export interface CunningBundleSchem {
@@ -1974,12 +2031,12 @@ export interface QueueClass {
 }
 
 /**
- * Write-only setting, available only in Create/Update/Reset and Submit calls. Specifies the
- * user or service principal that the job runs as. If not specified, the job runs as the
- * user who created the job.
+ * Write-only setting. Specifies the user, service principal or group that the job/pipeline
+ * runs as. If not specified, the job/pipeline runs as the user who created the
+ * job/pipeline.
  *
- * Only `user_name` or `service_principal_name` can be specified. If both are specified, an
- * error is thrown.
+ * Exactly one of `user_name`, `service_principal_name`, `group_name` should be specified.
+ * If not, an error is thrown.
  */
 export interface RunAsClass {
     /**
@@ -2356,6 +2413,8 @@ export interface DependsOnClass {
 export interface FriskyBundleSchem {
     /**
      * If true, do not send email to recipients specified in `on_failure` if the run is skipped.
+     * This field is `deprecated`. Please use the
+     * `notification_settings.no_alert_for_skipped_runs` field.
      */
     no_alert_for_skipped_runs?: boolean | string;
     /**
@@ -2669,6 +2728,9 @@ export interface RunJobTaskClass {
      * doe","age":"35"}}`) cannot exceed 10,000 bytes.
      */
     notebook_params?: {[key: string]: string} | string;
+    /**
+     * Controls whether the pipeline should perform a full refresh
+     */
     pipeline_params?: PipelineParamsClass | string;
     python_named_params?: {[key: string]: string} | string;
     /**
@@ -3035,6 +3097,11 @@ export enum Condition {
 
 export interface ModelServingEndpointClass {
     /**
+     * The AI Gateway configuration for the serving endpoint. NOTE: only external model
+     * endpoints are supported as of now.
+     */
+    ai_gateway?: AIGatewayClass | string;
+    /**
      * The core config of the serving endpoint.
      */
     config: ConfigClass | string;
@@ -3046,10 +3113,10 @@ export interface ModelServingEndpointClass {
     name: string;
     permissions?: Array<PermissionClass | string> | string;
     /**
-     * Rate limits to be applied to the serving endpoint. NOTE: only external and foundation
-     * model endpoints are supported as of now.
+     * Rate limits to be applied to the serving endpoint. NOTE: this field is deprecated, please
+     * use AI Gateway to manage rate limits.
      */
-    rate_limits?: Array<RateLimitClass | string> | string;
+    rate_limits?: Array<BundleSchem4 | string> | string;
     /**
      * Enable route optimization for the serving endpoint.
      */
@@ -3057,7 +3124,2321 @@ export interface ModelServingEndpointClass {
     /**
      * Tags to be attached to the serving endpoint and automatically propagated to billing logs.
      */
-    tags?: Array<BundleSchem3 | string> | string;
+    tags?: Array<BundleSchem5 | string> | string;
+}
+
+export interface AIGatewayClass {
+    /**
+     * Configuration for AI Guardrails to prevent unwanted data and unsafe data in requests and
+     * responses.
+     */
+    guardrails?: GuardrailsClass | string;
+    /**
+     * Configuration for payload logging using inference tables. Use these tables to monitor and
+     * audit data being sent to and received from model APIs and to improve model quality.
+     */
+    inference_table_config?: InferenceTableConfigClass | string;
+    /**
+     * Configuration for rate limits which can be set to limit endpoint traffic.
+     */
+    rate_limits?: Array<BundleSchem3 | string> | string;
+    /**
+     * Configuration to enable usage tracking using system tables. These tables allow you to
+     * monitor operational usage on endpoints and their associated costs.
+     */
+    usage_tracking_config?: UsageTrackingConfigClass | string;
+}
+
+export interface GuardrailsClass {
+    /**
+     * Configuration for input guardrail filters.
+     */
+    input?: InputClass | string;
+    /**
+     * Configuration for output guardrail filters.
+     */
+    output?: InputClass | string;
+}
+
+export interface InputClass {
+    /**
+     * List of invalid keywords. AI guardrail uses keyword or string matching to decide if the
+     * keyword exists in the request or response content.
+     */
+    invalid_keywords?: string[] | string;
+    /**
+     * Configuration for guardrail PII filter.
+     */
+    pii?: PiiClass | string;
+    /**
+     * Indicates whether the safety filter is enabled.
+     */
+    safety?: boolean | string;
+    /**
+     * The list of allowed topics. Given a chat request, this guardrail flags the request if its
+     * topic is not in the allowed topics.
+     */
+    valid_topics?: string[] | string;
+}
+
+export interface PiiClass {
+    /**
+     * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+     * input guardrail and the request contains PII, the request is not sent to the model server
+     * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+     * response contains PII, the PII info in the response is redacted and 400 status code is
+     * returned.
+     */
+    behavior: Behavior;
+}
+
+/**
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Nodes for this cluster will only be placed on AWS instances with this instance profile.
+ * If
+ * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
+ * profile must have previously been added to the Databricks environment by an account
+ * administrator.
+ *
+ * This feature may only be available to certain customer plans.
+ *
+ * If this field is ommitted, we will pull in the default from the conf if it exists.
+ *
+ * Identifier for the availability zone/datacenter in which the cluster resides.
+ * This string will be of a form like "us-west-2a". The provided availability
+ * zone must be in the same region as the Databricks deployment. For example, "us-west-2a"
+ * is not a valid zone id if the Databricks deployment resides in the "us-east-1" region.
+ * This is an optional field at cluster creation, and if not specified, a default zone will
+ * be used.
+ * If the zone specified is "auto", will try to place cluster in a zone with high
+ * availability,
+ * and will retry placement in a different AZ if there is not enough capacity.
+ * The list of available zones as well as the default value can be found by using the
+ * `List Zones` method.
+ *
+ * <needs content added>
+ *
+ * dbfs destination, e.g. `dbfs:/my/path`
+ *
+ * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
+ * If `canned_cal` is set, please make sure the cluster iam role has `s3:PutObjectAcl`
+ * permission on
+ * the destination bucket and prefix. The full list of possible canned acl can be found at
+ * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
+ * Please also note that by default only the object owner gets full controls. If you are
+ * using cross account
+ * role for writing data, you may want to set `bucket-owner-full-control` to make bucket
+ * owner able to
+ * read the logs.
+ *
+ * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be delivered using
+ * cluster iam role, please make sure you set cluster iam role and the role has write access
+ * to the
+ * destination. Please also note that you cannot use AWS keys to deliver logs.
+ *
+ * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will be used only
+ * when
+ * encryption is enabled and the default type is `sse-s3`.
+ *
+ * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or endpoint needs
+ * to be set.
+ * If both are set, endpoint will be used.
+ *
+ * (Optional) Kms key which will be used if encryption is enabled and encryption type is set
+ * to `sse-kms`.
+ *
+ * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If both are set,
+ * endpoint will be used.
+ *
+ * Cluster name requested by the user. This doesn't have to be unique.
+ * If not specified at creation, the cluster name will be an empty string.
+ *
+ *
+ * Password of the user
+ *
+ * Name of the user
+ *
+ * URL of the docker image.
+ *
+ * The optional ID of the instance pool for the driver of the cluster belongs.
+ * The pool cluster uses the instance pool with id (instance_pool_id) if the driver pool is
+ * not
+ * assigned.
+ *
+ * The node type of the Spark driver. Note that this field is optional;
+ * if unset, the driver node type will be set as the same value
+ * as `node_type_id` defined above.
+ *
+ *
+ * If provided, the cluster will impersonate the google service account when accessing
+ * gcloud services (like GCS). The google service account
+ * must have previously been added to the Databricks environment by an account
+ * administrator.
+ *
+ * Identifier for the availability zone in which the cluster resides.
+ * This can be one of the following:
+ * - "HA" => High availability, spread nodes across availability zones for a Databricks
+ * deployment region [default]
+ * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+ * - A GCP availability zone => Pick One of the available zones for (machine type + region)
+ * from https://cloud.google.com/compute/docs/regions-zones.
+ *
+ * abfss destination, e.g.
+ * `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+ *
+ * local file destination, e.g. `file:/my/local/file.sh`
+ *
+ * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+ *
+ * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+ *
+ * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
+ *
+ * The optional ID of the instance pool to which the cluster belongs.
+ *
+ * This field encodes, through a single value, the resources available to each of
+ * the Spark nodes in this cluster. For example, the Spark nodes can be provisioned
+ * and optimized for memory or compute intensive workloads. A list of available node
+ * types can be retrieved by using the :method:clusters/listNodeTypes API call.
+ *
+ *
+ * The ID of the cluster policy used to create the cluster if applicable.
+ *
+ * Single user name if data_security_mode is `SINGLE_USER`
+ *
+ * The Spark version of the cluster, e.g. `3.3.x-scala2.11`.
+ * A list of available Spark versions can be retrieved by using
+ * the :method:clusters/sparkVersions API call.
+ *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
+ *
+ * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
+ *
+ * Default value of the parameter.
+ *
+ * The name of the defined parameter. May only contain alphanumeric characters, `_`, `-`,
+ * and `.`
+ *
+ * Application ID of an active service principal. Setting this field requires the
+ * `servicePrincipal/user` role.
+ *
+ * The email of an active workspace user. Non-admin users can only set this field to their
+ * own email.
+ *
+ * A Cron expression using Quartz syntax that describes the schedule for a job. See [Cron
+ * Trigger](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html)
+ * for details. This field is required.
+ *
+ * A Java timezone ID. The schedule for a job is resolved with respect to this timezone. See
+ * [Java TimeZone](https://docs.oracle.com/javase/7/docs/api/java/util/TimeZone.html) for
+ * details. This field is required.
+ *
+ * The left operand of the condition task. Can be either a string value or a job state or
+ * parameter reference.
+ *
+ * The right operand of the condition task. Can be either a string value or a job state or
+ * parameter reference.
+ *
+ * Optional name of the catalog to use. The value is the top level in the 3-level namespace
+ * of Unity Catalog (catalog / schema / relation). The catalog value can only be specified
+ * if a warehouse_id is specified. Requires dbt-databricks >= 1.1.1.
+ *
+ * Optional (relative) path to the profiles directory. Can only be specified if no
+ * warehouse_id is specified. If no warehouse_id is specified and this folder is unset, the
+ * root directory is used.
+ *
+ * Path to the project directory. Optional for Git sourced tasks, in which
+ * case if no value is provided, the root of the Git repository is used.
+ *
+ * Optional schema to write to. This parameter is only used when a warehouse_id is also
+ * provided. If not provided, the `default` schema is used.
+ *
+ * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide
+ * the profile and connection details to dbt. It can be overridden on a per-command basis by
+ * using the `--profiles-dir` command line argument.
+ *
+ * Can only be specified on condition task dependencies. The outcome of the dependent task
+ * that must be met for this task to run.
+ *
+ * The name of the task this task depends on.
+ *
+ * An optional description for this task.
+ *
+ * The key that references an environment spec in a job. This field is required for Python
+ * script, Python wheel and dbt tasks when using serverless compute.
+ *
+ * If existing_cluster_id, the ID of an existing cluster that is used for all runs.
+ * When running jobs or tasks on an existing cluster, you may need to manually restart
+ * the cluster if it stops responding. We suggest running jobs and tasks on new clusters for
+ * greater reliability
+ *
+ * Array for task to iterate on. This can be a JSON string or a reference to
+ * an array parameter.
+ *
+ * If job_cluster_key, this task is executed reusing the cluster specified in
+ * `job.settings.job_clusters`.
+ *
+ * The name of the CRAN package to install.
+ *
+ * The repository where the package can be found. If not specified, the default CRAN repo is
+ * used.
+ *
+ * Deprecated. URI of the egg library to install. Installing Python egg files is deprecated
+ * and is not supported in Databricks Runtime 14.0 and above.
+ *
+ * URI of the JAR library to install. Supported URIs include Workspace paths, Unity Catalog
+ * Volumes paths, and S3 URIs.
+ * For example: `{ "jar": "/Workspace/path/to/library.jar" }`, `{ "jar" :
+ * "/Volumes/path/to/library.jar" }` or
+ * `{ "jar": "s3://my-bucket/library.jar" }`.
+ * If S3 is used, please make sure the cluster has read access on the library. You may need
+ * to
+ * launch the cluster with an IAM role to access the S3 URI.
+ *
+ * Gradle-style maven coordinates. For example: "org.jsoup:jsoup:1.7.2".
+ *
+ * Maven repo to install the Maven package from. If omitted, both Maven Central Repository
+ * and Spark Packages are searched.
+ *
+ * The name of the pypi package to install. An optional exact version specification is also
+ * supported. Examples: "simplejson" and "simplejson==3.8.0".
+ *
+ * The repository where the package can be found. If not specified, the default pip index is
+ * used.
+ *
+ * URI of the requirements.txt file to install. Only Workspace paths and Unity Catalog
+ * Volumes paths are supported.
+ * For example: `{ "requirements": "/Workspace/path/to/requirements.txt" }` or `{
+ * "requirements" : "/Volumes/path/to/requirements.txt" }`
+ *
+ * URI of the wheel library to install. Supported URIs include Workspace paths, Unity
+ * Catalog Volumes paths, and S3 URIs.
+ * For example: `{ "whl": "/Workspace/path/to/library.whl" }`, `{ "whl" :
+ * "/Volumes/path/to/library.whl" }` or
+ * `{ "whl": "s3://my-bucket/library.whl" }`.
+ * If S3 is used, please make sure the cluster has read access on the library. You may need
+ * to
+ * launch the cluster with an IAM role to access the S3 URI.
+ *
+ * The path of the notebook to be run in the Databricks workspace or remote repository.
+ * For notebooks stored in the Databricks workspace, the path must be absolute and begin
+ * with a slash.
+ * For notebooks stored in a remote repository, the path must be relative. This field is
+ * required.
+ *
+ * Optional `warehouse_id` to run the notebook on a SQL warehouse. Classic SQL warehouses
+ * are NOT supported, please use serverless or pro SQL warehouses.
+ *
+ * Note that SQL warehouses only support SQL cells; if the notebook contains non-SQL cells,
+ * the run will fail.
+ *
+ * The full name of the pipeline task to execute.
+ *
+ * Named entry point to use, if it does not exist in the metadata of the package it executes
+ * the function from the package directly using `$packageName.$entryPoint()`
+ *
+ * Name of the package to execute
+ *
+ * Deprecated since 04/2016. Provide a `jar` through the `libraries` field instead. For an
+ * example, see :method:jobs/create.
+ *
+ * The full name of the class containing the main method to be executed. This class must be
+ * contained in a JAR provided as a library.
+ *
+ * The code must use `SparkContext.getOrCreate` to obtain a Spark context; otherwise, runs
+ * of the job fail.
+ *
+ * The Python file to be executed. Cloud file URIs (such as dbfs:/, s3:/, adls:/, gcs:/) and
+ * workspace paths are supported. For python files stored in the Databricks workspace, the
+ * path must be absolute and begin with `/`. For files stored in a remote repository, the
+ * path must be relative. This field is required.
+ *
+ * The canonical identifier of the SQL alert.
+ *
+ * The canonical identifier of the destination to receive email notification. This parameter
+ * is mutually exclusive with user_name. You cannot set both destination_id and user_name
+ * for subscription notifications.
+ *
+ * The user name to receive the subscription email. This parameter is mutually exclusive
+ * with destination_id. You cannot set both destination_id and user_name for subscription
+ * notifications.
+ *
+ * Subject of the email sent to subscribers of this task.
+ *
+ * The canonical identifier of the SQL dashboard.
+ *
+ * Path of the SQL file. Must be relative if the source is a remote Git repository and
+ * absolute for workspace paths.
+ *
+ * The canonical identifier of the SQL query.
+ *
+ * The canonical identifier of the SQL warehouse. Recommended to use with serverless or pro
+ * SQL warehouses. Classic SQL warehouses are only supported for SQL alert, dashboard and
+ * query tasks and are limited to scheduled single-task jobs.
+ *
+ * A unique name for the task. This field is used to refer to this task from other tasks.
+ * This field is required and must be unique within its parent job.
+ * On Update or Reset, this field is used to reference the tasks to be updated or reset.
+ *
+ * URL to be monitored for file arrivals. The path must point to the root or a subpath of
+ * the external location.
+ *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
+ * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
+ * name if the inference table is already enabled.
+ *
+ * The name of the schema in Unity Catalog. NOTE: On update, you cannot change the schema
+ * name if the inference table is already enabled.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you cannot change the prefix
+ * name if the inference table is already enabled.
+ *
+ * The name of the entity to be served. The entity may be a model in the Databricks Model
+ * Registry, a model in the Unity Catalog (UC),
+ * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the
+ * object should be given in the form of
+ * __catalog_name__.__schema_name__.__model_name__.
+ *
+ *
+ * The version of the model in Databricks Model Registry to be served or empty if the entity
+ * is a FEATURE_SPEC.
+ *
+ * The Databricks secret key reference for an AWS access key ID with permissions to interact
+ * with Bedrock services. If you prefer to paste your API key directly, see
+ * `aws_access_key_id`. You must provide an API key using one of the following fields:
+ * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+ *
+ * An AWS access key ID with permissions to interact with Bedrock services provided as a
+ * plaintext string. If you prefer to reference your key using Databricks Secrets, see
+ * `aws_access_key_id`. You must provide an API key using one of the following fields:
+ * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+ *
+ * The AWS region to use. Bedrock has to be enabled there.
+ *
+ * The Databricks secret key reference for an AWS secret access key paired with the access
+ * key ID, with permissions to interact with Bedrock services. If you prefer to paste your
+ * API key directly, see `aws_secret_access_key_plaintext`. You must provide an API key
+ * using one of the following fields: `aws_secret_access_key` or
+ * `aws_secret_access_key_plaintext`.
+ *
+ * An AWS secret access key paired with the access key ID, with permissions to interact with
+ * Bedrock services provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `aws_secret_access_key`. You must provide an API key using
+ * one of the following fields: `aws_secret_access_key` or
+ * `aws_secret_access_key_plaintext`.
+ *
+ * The Databricks secret key reference for an Anthropic API key. If you prefer to paste your
+ * API key directly, see `anthropic_api_key_plaintext`. You must provide an API key using
+ * one of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+ *
+ * The Anthropic API key provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `anthropic_api_key`. You must provide an API key using one
+ * of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+ *
+ * This is an optional field to provide a customized base URL for the Cohere API.
+ * If left unspecified, the standard Cohere base URL is used.
+ *
+ *
+ * The Databricks secret key reference for a Cohere API key. If you prefer to paste your API
+ * key directly, see `cohere_api_key_plaintext`. You must provide an API key using one of
+ * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+ *
+ * The Cohere API key provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `cohere_api_key`. You must provide an API key using one of
+ * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+ *
+ * The Databricks secret key reference for a Databricks API token that corresponds to a user
+ * or service
+ * principal with Can Query access to the model serving endpoint pointed to by this external
+ * model.
+ * If you prefer to paste your API key directly, see `databricks_api_token_plaintext`.
+ * You must provide an API key using one of the following fields: `databricks_api_token` or
+ * `databricks_api_token_plaintext`.
+ *
+ *
+ * The Databricks API token that corresponds to a user or service
+ * principal with Can Query access to the model serving endpoint pointed to by this external
+ * model provided as a plaintext string.
+ * If you prefer to reference your key using Databricks Secrets, see `databricks_api_token`.
+ * You must provide an API key using one of the following fields: `databricks_api_token` or
+ * `databricks_api_token_plaintext`.
+ *
+ *
+ * The URL of the Databricks workspace containing the model serving endpoint pointed to by
+ * this external model.
+ *
+ *
+ * The name of the external model.
+ *
+ * The task type of the external model.
+ *
+ * ARN of the instance profile that the served entity uses to access AWS resources.
+ *
+ * The name of a served entity. It must be unique across an endpoint. A served entity name
+ * can consist of alphanumeric characters, dashes, and underscores.
+ * If not specified for an external model, this field defaults to external_model.name, with
+ * '.' and ':' replaced with '-', and if not specified for other
+ * entities, it defaults to <entity-name>-<entity-version>.
+ *
+ *
+ * The workload size of the served entity. The workload size corresponds to a range of
+ * provisioned concurrency that the compute autoscales between.
+ * A single unit of provisioned concurrency can process one request at a time.
+ * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
+ * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+ * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
+ * workload size is 0.
+ *
+ *
+ * The workload type of the served entity. The workload type selects which type of compute
+ * to use in the endpoint. The default value for this parameter is
+ * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
+ * types like GPU_SMALL and others.
+ * See the available [GPU
+ * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+ *
+ *
+ * ARN of the instance profile that the served model will use to access AWS resources.
+ *
+ * The name of the model in Databricks Model Registry to be served or if the model resides
+ * in Unity Catalog, the full name of model,
+ * in the form of __catalog_name__.__schema_name__.__model_name__.
+ *
+ *
+ * The version of the model in Databricks Model Registry or Unity Catalog to be served.
+ *
+ * The name of a served model. It must be unique across an endpoint. If not specified, this
+ * field will default to <model-name>-<model-version>.
+ * A served model name can consist of alphanumeric characters, dashes, and underscores.
+ *
+ *
+ * The name of the served model this route configures traffic for.
+ *
+ * The name of the serving endpoint. This field is required and must be unique across a
+ * Databricks workspace.
+ * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
+ *
+ *
+ * Key field for a serving endpoint tag.
+ *
+ * Optional value field for a serving endpoint tag.
+ *
+ * Description of this `registered_model`.
+ *
+ * Current stage for this `model_version`.
+ *
+ * Description of this `model_version`.
+ *
+ * Unique name of the model
+ *
+ * MLflow run ID used when creating `model_version`, if `source` was generated by an
+ * experiment run stored in MLflow tracking server.
+ *
+ * Run Link: Direct link to the run that generated this version
+ *
+ * URI indicating the location of the source model artifacts, used when creating
+ * `model_version`
+ *
+ * Details on current `status`, if it is pending or failed.
+ *
+ * User that created this `model_version`.
+ *
+ * Model's version number.
+ *
+ * Unique name for the model.
+ *
+ * User that created this `registered_model`
+ *
+ * Budget policy of this pipeline.
+ *
+ * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
+ * specified, tables in this pipeline are published to a `target` schema inside `catalog`
+ * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
+ * published to Unity Catalog.
+ *
+ * DLT Release Channel that specifies which version to use.
+ *
+ * The node type of the Spark driver.
+ * Note that this field is optional; if unset, the driver node type will be set as the same
+ * value
+ * as `node_type_id` defined above.
+ *
+ * A label for the cluster specification, either `default` to configure the default cluster,
+ * or `maintenance` to configure the maintenance cluster. This field is optional. The
+ * default value is `default`.
+ *
+ * The path to the file containing metadata about the deployment.
+ *
+ * Pipeline product edition.
+ *
+ * Immutable. The Unity Catalog connection this gateway pipeline uses to communicate with
+ * the source.
+ *
+ * Required, Immutable. The name of the catalog for the gateway pipeline's storage
+ * location.
+ *
+ * Optional. The Unity Catalog-compatible name for the gateway storage location.
+ * This is the destination to use for the data that is extracted by the gateway.
+ * Delta Live Tables system will automatically create the storage location under the catalog
+ * and schema.
+ *
+ *
+ * Required, Immutable. The name of the schema for the gateway pipelines's storage
+ * location.
+ *
+ * Unique identifier for this pipeline.
+ *
+ * Immutable. The Unity Catalog connection this ingestion pipeline uses to communicate with
+ * the source. Specify either ingestion_gateway_id or connection_name.
+ *
+ * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
+ * communicate with the source. Specify either ingestion_gateway_id or connection_name.
+ *
+ * Required. Destination catalog to store tables.
+ *
+ * Required. Destination schema to store tables in. Tables with the same name as the source
+ * tables are created in this destination schema. The pipeline fails If a table with the
+ * same name already exists.
+ *
+ * The source catalog name. Might be optional depending on the type of source.
+ *
+ * Required. Schema name in the source database.
+ *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Optional. Destination table name. The pipeline fails If a table with that name already
+ * exists. If not set, the source table name is used.
+ *
+ * Source catalog name. Might be optional depending on the type of source.
+ *
+ * Schema name in the source database. Might be optional depending on the type of source.
+ *
+ * Required. Table name in the source database.
+ *
+ * The absolute path of the file.
+ *
+ * URI of the jar to be installed. Currently only DBFS is supported.
+ *
+ *
+ * The absolute path of the notebook.
+ *
+ * URI of the whl to be installed.
+ *
+ * Friendly identifier for this pipeline.
+ *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
+ * DBFS root directory for storing checkpoints and tables.
+ *
+ * Target schema (database) to add tables in this pipeline to. If not specified, no data is
+ * published to the Hive metastore or Unity Catalog. To publish to Unity Catalog, also
+ * specify `catalog`.
+ *
+ * The directory to store monitoring assets (e.g. dashboard, metric tables).
+ *
+ * Name of the baseline table from which drift metrics are computed from.
+ * Columns in the monitored table should also be present in the baseline table.
+ *
+ *
+ * Jinja template for a SQL expression that specifies how to compute the metric. See [create
+ * metric
+ * definition](https://docs.databricks.com/en/lakehouse-monitoring/custom-metrics.html#create-definition).
+ *
+ * Name of the metric in the output tables.
+ *
+ * The output type of the custom metric.
+ *
+ * Optional column that contains the ground truth for the prediction.
+ *
+ * Column that contains the id of the model generating the predictions. Metrics will be
+ * computed per model id by
+ * default, and also across all model ids.
+ *
+ *
+ * Column that contains the output/prediction from the model.
+ *
+ * Optional column that contains the prediction probabilities for each class in a
+ * classification problem type.
+ * The values in this column should be a map, mapping each class label to the prediction
+ * probability for a given
+ * sample. The map should be of PySpark MapType().
+ *
+ *
+ * Column that contains the timestamps of requests. The column must be one of the following:
+ * - A ``TimestampType`` column
+ * - A column whose values can be converted to timestamps through the pyspark
+ * ``to_timestamp``
+ * [function](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_timestamp.html).
+ *
+ *
+ * Schema where output metric tables are created.
+ *
+ * The expression that determines when to run the monitor. See
+ * [examples](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
+ *
+ *
+ * The timezone id (e.g., ``"PST"``) in which to evaluate the quartz expression.
+ *
+ *
+ * Optional argument to specify the warehouse for dashboard creation. If not specified, the
+ * first running
+ * warehouse will be used.
+ *
+ *
+ * The name of the catalog where the schema and the registered model reside
+ *
+ * The comment attached to the registered model
+ *
+ * The name of the registered model
+ *
+ * The name of the schema where the registered model resides
+ *
+ * The storage location on the cloud under which model version data files are stored
+ *
+ * Name of parent catalog.
+ *
+ * User-provided free-form text description.
+ *
+ * Name of schema, relative to parent catalog.
+ *
+ * Storage root URL for managed tables within schema.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
+ *
+ * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
+ * Anthropic, Cohere, AI21Labs, Amazon.
+ *
+ * The name of the provider for the external model. Currently, the supported providers are
+ * 'ai21labs', 'anthropic',
+ * 'amazon-bedrock', 'cohere', 'databricks-model-serving', 'google-cloud-vertex-ai',
+ * 'openai', and 'palm'.",
+ *
+ *
+ * The workload size of the served model. The workload size corresponds to a range of
+ * provisioned concurrency that the compute will autoscale between.
+ * A single unit of provisioned concurrency can process one request at a time.
+ * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
+ * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+ * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
+ * workload size will be 0.
+ *
+ *
+ * The workload type of the served model. The workload type selects which type of compute to
+ * use in the endpoint. The default value for this parameter is
+ * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
+ * types like GPU_SMALL and others.
+ * See the available [GPU
+ * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+ *
+ *
+ * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are
+ * supported, with 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is
+ * supported.
+ *
+ * Current status of `model_version`
+ *
+ * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
+ * allocating cluster resources based on workload volume, with minimal impact to
+ * the data processing latency of your pipelines. Enhanced Autoscaling is available
+ * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
+ * clusters.
+ *
+ *
+ * The SCD type to use to ingest the table.
+ *
+ * Can only be one of ``"CUSTOM_METRIC_TYPE_AGGREGATE"``, ``"CUSTOM_METRIC_TYPE_DERIVED"``,
+ * or ``"CUSTOM_METRIC_TYPE_DRIFT"``.
+ * The ``"CUSTOM_METRIC_TYPE_AGGREGATE"`` and ``"CUSTOM_METRIC_TYPE_DERIVED"`` metrics
+ * are computed on a single table, whereas the ``"CUSTOM_METRIC_TYPE_DRIFT"`` compare
+ * metrics across
+ * baseline and input table, or across the two consecutive time windows.
+ * - CUSTOM_METRIC_TYPE_AGGREGATE: only depend on the existing columns in your table
+ * - CUSTOM_METRIC_TYPE_DERIVED: depend on previously computed aggregate metrics
+ * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
+ *
+ *
+ * Problem type the model aims to solve. Determines the type of model-quality metrics that
+ * will be computed.
+ *
+ * Read only field that indicates whether a schedule is paused or not.
+ */
+export enum Behavior {
+    Block = "BLOCK",
+    None = "NONE",
+}
+
+export interface InferenceTableConfigClass {
+    /**
+     * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+     * On update, you have to disable inference table first in order to change the catalog name.
+     */
+    catalog_name?: string;
+    /**
+     * Indicates whether the inference table is enabled.
+     */
+    enabled?: boolean | string;
+    /**
+     * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+     * On update, you have to disable inference table first in order to change the schema name.
+     */
+    schema_name?: string;
+    /**
+     * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+     * table first in order to change the prefix name.
+     */
+    table_name_prefix?: string;
+}
+
+export interface BundleSchem3 {
+    /**
+     * Used to specify how many calls are allowed for a key within the renewal_period.
+     */
+    calls: number | string;
+    /**
+     * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+     * 'endpoint' being the default if not specified.
+     */
+    key?: Key;
+    /**
+     * Renewal period field for a rate limit. Currently, only 'minute' is supported.
+     */
+    renewal_period: RenewalPeriod;
+}
+
+/**
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Nodes for this cluster will only be placed on AWS instances with this instance profile.
+ * If
+ * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
+ * profile must have previously been added to the Databricks environment by an account
+ * administrator.
+ *
+ * This feature may only be available to certain customer plans.
+ *
+ * If this field is ommitted, we will pull in the default from the conf if it exists.
+ *
+ * Identifier for the availability zone/datacenter in which the cluster resides.
+ * This string will be of a form like "us-west-2a". The provided availability
+ * zone must be in the same region as the Databricks deployment. For example, "us-west-2a"
+ * is not a valid zone id if the Databricks deployment resides in the "us-east-1" region.
+ * This is an optional field at cluster creation, and if not specified, a default zone will
+ * be used.
+ * If the zone specified is "auto", will try to place cluster in a zone with high
+ * availability,
+ * and will retry placement in a different AZ if there is not enough capacity.
+ * The list of available zones as well as the default value can be found by using the
+ * `List Zones` method.
+ *
+ * <needs content added>
+ *
+ * dbfs destination, e.g. `dbfs:/my/path`
+ *
+ * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
+ * If `canned_cal` is set, please make sure the cluster iam role has `s3:PutObjectAcl`
+ * permission on
+ * the destination bucket and prefix. The full list of possible canned acl can be found at
+ * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
+ * Please also note that by default only the object owner gets full controls. If you are
+ * using cross account
+ * role for writing data, you may want to set `bucket-owner-full-control` to make bucket
+ * owner able to
+ * read the logs.
+ *
+ * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be delivered using
+ * cluster iam role, please make sure you set cluster iam role and the role has write access
+ * to the
+ * destination. Please also note that you cannot use AWS keys to deliver logs.
+ *
+ * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will be used only
+ * when
+ * encryption is enabled and the default type is `sse-s3`.
+ *
+ * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or endpoint needs
+ * to be set.
+ * If both are set, endpoint will be used.
+ *
+ * (Optional) Kms key which will be used if encryption is enabled and encryption type is set
+ * to `sse-kms`.
+ *
+ * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If both are set,
+ * endpoint will be used.
+ *
+ * Cluster name requested by the user. This doesn't have to be unique.
+ * If not specified at creation, the cluster name will be an empty string.
+ *
+ *
+ * Password of the user
+ *
+ * Name of the user
+ *
+ * URL of the docker image.
+ *
+ * The optional ID of the instance pool for the driver of the cluster belongs.
+ * The pool cluster uses the instance pool with id (instance_pool_id) if the driver pool is
+ * not
+ * assigned.
+ *
+ * The node type of the Spark driver. Note that this field is optional;
+ * if unset, the driver node type will be set as the same value
+ * as `node_type_id` defined above.
+ *
+ *
+ * If provided, the cluster will impersonate the google service account when accessing
+ * gcloud services (like GCS). The google service account
+ * must have previously been added to the Databricks environment by an account
+ * administrator.
+ *
+ * Identifier for the availability zone in which the cluster resides.
+ * This can be one of the following:
+ * - "HA" => High availability, spread nodes across availability zones for a Databricks
+ * deployment region [default]
+ * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+ * - A GCP availability zone => Pick One of the available zones for (machine type + region)
+ * from https://cloud.google.com/compute/docs/regions-zones.
+ *
+ * abfss destination, e.g.
+ * `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+ *
+ * local file destination, e.g. `file:/my/local/file.sh`
+ *
+ * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+ *
+ * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+ *
+ * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
+ *
+ * The optional ID of the instance pool to which the cluster belongs.
+ *
+ * This field encodes, through a single value, the resources available to each of
+ * the Spark nodes in this cluster. For example, the Spark nodes can be provisioned
+ * and optimized for memory or compute intensive workloads. A list of available node
+ * types can be retrieved by using the :method:clusters/listNodeTypes API call.
+ *
+ *
+ * The ID of the cluster policy used to create the cluster if applicable.
+ *
+ * Single user name if data_security_mode is `SINGLE_USER`
+ *
+ * The Spark version of the cluster, e.g. `3.3.x-scala2.11`.
+ * A list of available Spark versions can be retrieved by using
+ * the :method:clusters/sparkVersions API call.
+ *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
+ *
+ * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
+ *
+ * Default value of the parameter.
+ *
+ * The name of the defined parameter. May only contain alphanumeric characters, `_`, `-`,
+ * and `.`
+ *
+ * Application ID of an active service principal. Setting this field requires the
+ * `servicePrincipal/user` role.
+ *
+ * The email of an active workspace user. Non-admin users can only set this field to their
+ * own email.
+ *
+ * A Cron expression using Quartz syntax that describes the schedule for a job. See [Cron
+ * Trigger](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html)
+ * for details. This field is required.
+ *
+ * A Java timezone ID. The schedule for a job is resolved with respect to this timezone. See
+ * [Java TimeZone](https://docs.oracle.com/javase/7/docs/api/java/util/TimeZone.html) for
+ * details. This field is required.
+ *
+ * The left operand of the condition task. Can be either a string value or a job state or
+ * parameter reference.
+ *
+ * The right operand of the condition task. Can be either a string value or a job state or
+ * parameter reference.
+ *
+ * Optional name of the catalog to use. The value is the top level in the 3-level namespace
+ * of Unity Catalog (catalog / schema / relation). The catalog value can only be specified
+ * if a warehouse_id is specified. Requires dbt-databricks >= 1.1.1.
+ *
+ * Optional (relative) path to the profiles directory. Can only be specified if no
+ * warehouse_id is specified. If no warehouse_id is specified and this folder is unset, the
+ * root directory is used.
+ *
+ * Path to the project directory. Optional for Git sourced tasks, in which
+ * case if no value is provided, the root of the Git repository is used.
+ *
+ * Optional schema to write to. This parameter is only used when a warehouse_id is also
+ * provided. If not provided, the `default` schema is used.
+ *
+ * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide
+ * the profile and connection details to dbt. It can be overridden on a per-command basis by
+ * using the `--profiles-dir` command line argument.
+ *
+ * Can only be specified on condition task dependencies. The outcome of the dependent task
+ * that must be met for this task to run.
+ *
+ * The name of the task this task depends on.
+ *
+ * An optional description for this task.
+ *
+ * The key that references an environment spec in a job. This field is required for Python
+ * script, Python wheel and dbt tasks when using serverless compute.
+ *
+ * If existing_cluster_id, the ID of an existing cluster that is used for all runs.
+ * When running jobs or tasks on an existing cluster, you may need to manually restart
+ * the cluster if it stops responding. We suggest running jobs and tasks on new clusters for
+ * greater reliability
+ *
+ * Array for task to iterate on. This can be a JSON string or a reference to
+ * an array parameter.
+ *
+ * If job_cluster_key, this task is executed reusing the cluster specified in
+ * `job.settings.job_clusters`.
+ *
+ * The name of the CRAN package to install.
+ *
+ * The repository where the package can be found. If not specified, the default CRAN repo is
+ * used.
+ *
+ * Deprecated. URI of the egg library to install. Installing Python egg files is deprecated
+ * and is not supported in Databricks Runtime 14.0 and above.
+ *
+ * URI of the JAR library to install. Supported URIs include Workspace paths, Unity Catalog
+ * Volumes paths, and S3 URIs.
+ * For example: `{ "jar": "/Workspace/path/to/library.jar" }`, `{ "jar" :
+ * "/Volumes/path/to/library.jar" }` or
+ * `{ "jar": "s3://my-bucket/library.jar" }`.
+ * If S3 is used, please make sure the cluster has read access on the library. You may need
+ * to
+ * launch the cluster with an IAM role to access the S3 URI.
+ *
+ * Gradle-style maven coordinates. For example: "org.jsoup:jsoup:1.7.2".
+ *
+ * Maven repo to install the Maven package from. If omitted, both Maven Central Repository
+ * and Spark Packages are searched.
+ *
+ * The name of the pypi package to install. An optional exact version specification is also
+ * supported. Examples: "simplejson" and "simplejson==3.8.0".
+ *
+ * The repository where the package can be found. If not specified, the default pip index is
+ * used.
+ *
+ * URI of the requirements.txt file to install. Only Workspace paths and Unity Catalog
+ * Volumes paths are supported.
+ * For example: `{ "requirements": "/Workspace/path/to/requirements.txt" }` or `{
+ * "requirements" : "/Volumes/path/to/requirements.txt" }`
+ *
+ * URI of the wheel library to install. Supported URIs include Workspace paths, Unity
+ * Catalog Volumes paths, and S3 URIs.
+ * For example: `{ "whl": "/Workspace/path/to/library.whl" }`, `{ "whl" :
+ * "/Volumes/path/to/library.whl" }` or
+ * `{ "whl": "s3://my-bucket/library.whl" }`.
+ * If S3 is used, please make sure the cluster has read access on the library. You may need
+ * to
+ * launch the cluster with an IAM role to access the S3 URI.
+ *
+ * The path of the notebook to be run in the Databricks workspace or remote repository.
+ * For notebooks stored in the Databricks workspace, the path must be absolute and begin
+ * with a slash.
+ * For notebooks stored in a remote repository, the path must be relative. This field is
+ * required.
+ *
+ * Optional `warehouse_id` to run the notebook on a SQL warehouse. Classic SQL warehouses
+ * are NOT supported, please use serverless or pro SQL warehouses.
+ *
+ * Note that SQL warehouses only support SQL cells; if the notebook contains non-SQL cells,
+ * the run will fail.
+ *
+ * The full name of the pipeline task to execute.
+ *
+ * Named entry point to use, if it does not exist in the metadata of the package it executes
+ * the function from the package directly using `$packageName.$entryPoint()`
+ *
+ * Name of the package to execute
+ *
+ * Deprecated since 04/2016. Provide a `jar` through the `libraries` field instead. For an
+ * example, see :method:jobs/create.
+ *
+ * The full name of the class containing the main method to be executed. This class must be
+ * contained in a JAR provided as a library.
+ *
+ * The code must use `SparkContext.getOrCreate` to obtain a Spark context; otherwise, runs
+ * of the job fail.
+ *
+ * The Python file to be executed. Cloud file URIs (such as dbfs:/, s3:/, adls:/, gcs:/) and
+ * workspace paths are supported. For python files stored in the Databricks workspace, the
+ * path must be absolute and begin with `/`. For files stored in a remote repository, the
+ * path must be relative. This field is required.
+ *
+ * The canonical identifier of the SQL alert.
+ *
+ * The canonical identifier of the destination to receive email notification. This parameter
+ * is mutually exclusive with user_name. You cannot set both destination_id and user_name
+ * for subscription notifications.
+ *
+ * The user name to receive the subscription email. This parameter is mutually exclusive
+ * with destination_id. You cannot set both destination_id and user_name for subscription
+ * notifications.
+ *
+ * Subject of the email sent to subscribers of this task.
+ *
+ * The canonical identifier of the SQL dashboard.
+ *
+ * Path of the SQL file. Must be relative if the source is a remote Git repository and
+ * absolute for workspace paths.
+ *
+ * The canonical identifier of the SQL query.
+ *
+ * The canonical identifier of the SQL warehouse. Recommended to use with serverless or pro
+ * SQL warehouses. Classic SQL warehouses are only supported for SQL alert, dashboard and
+ * query tasks and are limited to scheduled single-task jobs.
+ *
+ * A unique name for the task. This field is used to refer to this task from other tasks.
+ * This field is required and must be unique within its parent job.
+ * On Update or Reset, this field is used to reference the tasks to be updated or reset.
+ *
+ * URL to be monitored for file arrivals. The path must point to the root or a subpath of
+ * the external location.
+ *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
+ * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
+ * name if the inference table is already enabled.
+ *
+ * The name of the schema in Unity Catalog. NOTE: On update, you cannot change the schema
+ * name if the inference table is already enabled.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you cannot change the prefix
+ * name if the inference table is already enabled.
+ *
+ * The name of the entity to be served. The entity may be a model in the Databricks Model
+ * Registry, a model in the Unity Catalog (UC),
+ * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the
+ * object should be given in the form of
+ * __catalog_name__.__schema_name__.__model_name__.
+ *
+ *
+ * The version of the model in Databricks Model Registry to be served or empty if the entity
+ * is a FEATURE_SPEC.
+ *
+ * The Databricks secret key reference for an AWS access key ID with permissions to interact
+ * with Bedrock services. If you prefer to paste your API key directly, see
+ * `aws_access_key_id`. You must provide an API key using one of the following fields:
+ * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+ *
+ * An AWS access key ID with permissions to interact with Bedrock services provided as a
+ * plaintext string. If you prefer to reference your key using Databricks Secrets, see
+ * `aws_access_key_id`. You must provide an API key using one of the following fields:
+ * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+ *
+ * The AWS region to use. Bedrock has to be enabled there.
+ *
+ * The Databricks secret key reference for an AWS secret access key paired with the access
+ * key ID, with permissions to interact with Bedrock services. If you prefer to paste your
+ * API key directly, see `aws_secret_access_key_plaintext`. You must provide an API key
+ * using one of the following fields: `aws_secret_access_key` or
+ * `aws_secret_access_key_plaintext`.
+ *
+ * An AWS secret access key paired with the access key ID, with permissions to interact with
+ * Bedrock services provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `aws_secret_access_key`. You must provide an API key using
+ * one of the following fields: `aws_secret_access_key` or
+ * `aws_secret_access_key_plaintext`.
+ *
+ * The Databricks secret key reference for an Anthropic API key. If you prefer to paste your
+ * API key directly, see `anthropic_api_key_plaintext`. You must provide an API key using
+ * one of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+ *
+ * The Anthropic API key provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `anthropic_api_key`. You must provide an API key using one
+ * of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+ *
+ * This is an optional field to provide a customized base URL for the Cohere API.
+ * If left unspecified, the standard Cohere base URL is used.
+ *
+ *
+ * The Databricks secret key reference for a Cohere API key. If you prefer to paste your API
+ * key directly, see `cohere_api_key_plaintext`. You must provide an API key using one of
+ * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+ *
+ * The Cohere API key provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `cohere_api_key`. You must provide an API key using one of
+ * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+ *
+ * The Databricks secret key reference for a Databricks API token that corresponds to a user
+ * or service
+ * principal with Can Query access to the model serving endpoint pointed to by this external
+ * model.
+ * If you prefer to paste your API key directly, see `databricks_api_token_plaintext`.
+ * You must provide an API key using one of the following fields: `databricks_api_token` or
+ * `databricks_api_token_plaintext`.
+ *
+ *
+ * The Databricks API token that corresponds to a user or service
+ * principal with Can Query access to the model serving endpoint pointed to by this external
+ * model provided as a plaintext string.
+ * If you prefer to reference your key using Databricks Secrets, see `databricks_api_token`.
+ * You must provide an API key using one of the following fields: `databricks_api_token` or
+ * `databricks_api_token_plaintext`.
+ *
+ *
+ * The URL of the Databricks workspace containing the model serving endpoint pointed to by
+ * this external model.
+ *
+ *
+ * The name of the external model.
+ *
+ * The task type of the external model.
+ *
+ * ARN of the instance profile that the served entity uses to access AWS resources.
+ *
+ * The name of a served entity. It must be unique across an endpoint. A served entity name
+ * can consist of alphanumeric characters, dashes, and underscores.
+ * If not specified for an external model, this field defaults to external_model.name, with
+ * '.' and ':' replaced with '-', and if not specified for other
+ * entities, it defaults to <entity-name>-<entity-version>.
+ *
+ *
+ * The workload size of the served entity. The workload size corresponds to a range of
+ * provisioned concurrency that the compute autoscales between.
+ * A single unit of provisioned concurrency can process one request at a time.
+ * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
+ * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+ * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
+ * workload size is 0.
+ *
+ *
+ * The workload type of the served entity. The workload type selects which type of compute
+ * to use in the endpoint. The default value for this parameter is
+ * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
+ * types like GPU_SMALL and others.
+ * See the available [GPU
+ * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+ *
+ *
+ * ARN of the instance profile that the served model will use to access AWS resources.
+ *
+ * The name of the model in Databricks Model Registry to be served or if the model resides
+ * in Unity Catalog, the full name of model,
+ * in the form of __catalog_name__.__schema_name__.__model_name__.
+ *
+ *
+ * The version of the model in Databricks Model Registry or Unity Catalog to be served.
+ *
+ * The name of a served model. It must be unique across an endpoint. If not specified, this
+ * field will default to <model-name>-<model-version>.
+ * A served model name can consist of alphanumeric characters, dashes, and underscores.
+ *
+ *
+ * The name of the served model this route configures traffic for.
+ *
+ * The name of the serving endpoint. This field is required and must be unique across a
+ * Databricks workspace.
+ * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
+ *
+ *
+ * Key field for a serving endpoint tag.
+ *
+ * Optional value field for a serving endpoint tag.
+ *
+ * Description of this `registered_model`.
+ *
+ * Current stage for this `model_version`.
+ *
+ * Description of this `model_version`.
+ *
+ * Unique name of the model
+ *
+ * MLflow run ID used when creating `model_version`, if `source` was generated by an
+ * experiment run stored in MLflow tracking server.
+ *
+ * Run Link: Direct link to the run that generated this version
+ *
+ * URI indicating the location of the source model artifacts, used when creating
+ * `model_version`
+ *
+ * Details on current `status`, if it is pending or failed.
+ *
+ * User that created this `model_version`.
+ *
+ * Model's version number.
+ *
+ * Unique name for the model.
+ *
+ * User that created this `registered_model`
+ *
+ * Budget policy of this pipeline.
+ *
+ * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
+ * specified, tables in this pipeline are published to a `target` schema inside `catalog`
+ * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
+ * published to Unity Catalog.
+ *
+ * DLT Release Channel that specifies which version to use.
+ *
+ * The node type of the Spark driver.
+ * Note that this field is optional; if unset, the driver node type will be set as the same
+ * value
+ * as `node_type_id` defined above.
+ *
+ * A label for the cluster specification, either `default` to configure the default cluster,
+ * or `maintenance` to configure the maintenance cluster. This field is optional. The
+ * default value is `default`.
+ *
+ * The path to the file containing metadata about the deployment.
+ *
+ * Pipeline product edition.
+ *
+ * Immutable. The Unity Catalog connection this gateway pipeline uses to communicate with
+ * the source.
+ *
+ * Required, Immutable. The name of the catalog for the gateway pipeline's storage
+ * location.
+ *
+ * Optional. The Unity Catalog-compatible name for the gateway storage location.
+ * This is the destination to use for the data that is extracted by the gateway.
+ * Delta Live Tables system will automatically create the storage location under the catalog
+ * and schema.
+ *
+ *
+ * Required, Immutable. The name of the schema for the gateway pipelines's storage
+ * location.
+ *
+ * Unique identifier for this pipeline.
+ *
+ * Immutable. The Unity Catalog connection this ingestion pipeline uses to communicate with
+ * the source. Specify either ingestion_gateway_id or connection_name.
+ *
+ * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
+ * communicate with the source. Specify either ingestion_gateway_id or connection_name.
+ *
+ * Required. Destination catalog to store tables.
+ *
+ * Required. Destination schema to store tables in. Tables with the same name as the source
+ * tables are created in this destination schema. The pipeline fails If a table with the
+ * same name already exists.
+ *
+ * The source catalog name. Might be optional depending on the type of source.
+ *
+ * Required. Schema name in the source database.
+ *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Optional. Destination table name. The pipeline fails If a table with that name already
+ * exists. If not set, the source table name is used.
+ *
+ * Source catalog name. Might be optional depending on the type of source.
+ *
+ * Schema name in the source database. Might be optional depending on the type of source.
+ *
+ * Required. Table name in the source database.
+ *
+ * The absolute path of the file.
+ *
+ * URI of the jar to be installed. Currently only DBFS is supported.
+ *
+ *
+ * The absolute path of the notebook.
+ *
+ * URI of the whl to be installed.
+ *
+ * Friendly identifier for this pipeline.
+ *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
+ * DBFS root directory for storing checkpoints and tables.
+ *
+ * Target schema (database) to add tables in this pipeline to. If not specified, no data is
+ * published to the Hive metastore or Unity Catalog. To publish to Unity Catalog, also
+ * specify `catalog`.
+ *
+ * The directory to store monitoring assets (e.g. dashboard, metric tables).
+ *
+ * Name of the baseline table from which drift metrics are computed from.
+ * Columns in the monitored table should also be present in the baseline table.
+ *
+ *
+ * Jinja template for a SQL expression that specifies how to compute the metric. See [create
+ * metric
+ * definition](https://docs.databricks.com/en/lakehouse-monitoring/custom-metrics.html#create-definition).
+ *
+ * Name of the metric in the output tables.
+ *
+ * The output type of the custom metric.
+ *
+ * Optional column that contains the ground truth for the prediction.
+ *
+ * Column that contains the id of the model generating the predictions. Metrics will be
+ * computed per model id by
+ * default, and also across all model ids.
+ *
+ *
+ * Column that contains the output/prediction from the model.
+ *
+ * Optional column that contains the prediction probabilities for each class in a
+ * classification problem type.
+ * The values in this column should be a map, mapping each class label to the prediction
+ * probability for a given
+ * sample. The map should be of PySpark MapType().
+ *
+ *
+ * Column that contains the timestamps of requests. The column must be one of the following:
+ * - A ``TimestampType`` column
+ * - A column whose values can be converted to timestamps through the pyspark
+ * ``to_timestamp``
+ * [function](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_timestamp.html).
+ *
+ *
+ * Schema where output metric tables are created.
+ *
+ * The expression that determines when to run the monitor. See
+ * [examples](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
+ *
+ *
+ * The timezone id (e.g., ``"PST"``) in which to evaluate the quartz expression.
+ *
+ *
+ * Optional argument to specify the warehouse for dashboard creation. If not specified, the
+ * first running
+ * warehouse will be used.
+ *
+ *
+ * The name of the catalog where the schema and the registered model reside
+ *
+ * The comment attached to the registered model
+ *
+ * The name of the registered model
+ *
+ * The name of the schema where the registered model resides
+ *
+ * The storage location on the cloud under which model version data files are stored
+ *
+ * Name of parent catalog.
+ *
+ * User-provided free-form text description.
+ *
+ * Name of schema, relative to parent catalog.
+ *
+ * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
+ *
+ * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
+ * Anthropic, Cohere, AI21Labs, Amazon.
+ *
+ * The name of the provider for the external model. Currently, the supported providers are
+ * 'ai21labs', 'anthropic',
+ * 'amazon-bedrock', 'cohere', 'databricks-model-serving', 'google-cloud-vertex-ai',
+ * 'openai', and 'palm'.",
+ *
+ *
+ * The workload size of the served model. The workload size corresponds to a range of
+ * provisioned concurrency that the compute will autoscale between.
+ * A single unit of provisioned concurrency can process one request at a time.
+ * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
+ * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+ * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
+ * workload size will be 0.
+ *
+ *
+ * The workload type of the served model. The workload type selects which type of compute to
+ * use in the endpoint. The default value for this parameter is
+ * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
+ * types like GPU_SMALL and others.
+ * See the available [GPU
+ * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+ *
+ *
+ * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are
+ * supported, with 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is
+ * supported.
+ *
+ * Current status of `model_version`
+ *
+ * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
+ * allocating cluster resources based on workload volume, with minimal impact to
+ * the data processing latency of your pipelines. Enhanced Autoscaling is available
+ * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
+ * clusters.
+ *
+ *
+ * The SCD type to use to ingest the table.
+ *
+ * Can only be one of ``"CUSTOM_METRIC_TYPE_AGGREGATE"``, ``"CUSTOM_METRIC_TYPE_DERIVED"``,
+ * or ``"CUSTOM_METRIC_TYPE_DRIFT"``.
+ * The ``"CUSTOM_METRIC_TYPE_AGGREGATE"`` and ``"CUSTOM_METRIC_TYPE_DERIVED"`` metrics
+ * are computed on a single table, whereas the ``"CUSTOM_METRIC_TYPE_DRIFT"`` compare
+ * metrics across
+ * baseline and input table, or across the two consecutive time windows.
+ * - CUSTOM_METRIC_TYPE_AGGREGATE: only depend on the existing columns in your table
+ * - CUSTOM_METRIC_TYPE_DERIVED: depend on previously computed aggregate metrics
+ * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
+ *
+ *
+ * Problem type the model aims to solve. Determines the type of model-quality metrics that
+ * will be computed.
+ *
+ * Read only field that indicates whether a schedule is paused or not.
+ */
+export enum Key {
+    Endpoint = "endpoint",
+    User = "user",
+}
+
+/**
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
+ *
+ * Nodes for this cluster will only be placed on AWS instances with this instance profile.
+ * If
+ * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
+ * profile must have previously been added to the Databricks environment by an account
+ * administrator.
+ *
+ * This feature may only be available to certain customer plans.
+ *
+ * If this field is ommitted, we will pull in the default from the conf if it exists.
+ *
+ * Identifier for the availability zone/datacenter in which the cluster resides.
+ * This string will be of a form like "us-west-2a". The provided availability
+ * zone must be in the same region as the Databricks deployment. For example, "us-west-2a"
+ * is not a valid zone id if the Databricks deployment resides in the "us-east-1" region.
+ * This is an optional field at cluster creation, and if not specified, a default zone will
+ * be used.
+ * If the zone specified is "auto", will try to place cluster in a zone with high
+ * availability,
+ * and will retry placement in a different AZ if there is not enough capacity.
+ * The list of available zones as well as the default value can be found by using the
+ * `List Zones` method.
+ *
+ * <needs content added>
+ *
+ * dbfs destination, e.g. `dbfs:/my/path`
+ *
+ * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
+ * If `canned_cal` is set, please make sure the cluster iam role has `s3:PutObjectAcl`
+ * permission on
+ * the destination bucket and prefix. The full list of possible canned acl can be found at
+ * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
+ * Please also note that by default only the object owner gets full controls. If you are
+ * using cross account
+ * role for writing data, you may want to set `bucket-owner-full-control` to make bucket
+ * owner able to
+ * read the logs.
+ *
+ * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be delivered using
+ * cluster iam role, please make sure you set cluster iam role and the role has write access
+ * to the
+ * destination. Please also note that you cannot use AWS keys to deliver logs.
+ *
+ * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will be used only
+ * when
+ * encryption is enabled and the default type is `sse-s3`.
+ *
+ * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or endpoint needs
+ * to be set.
+ * If both are set, endpoint will be used.
+ *
+ * (Optional) Kms key which will be used if encryption is enabled and encryption type is set
+ * to `sse-kms`.
+ *
+ * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If both are set,
+ * endpoint will be used.
+ *
+ * Cluster name requested by the user. This doesn't have to be unique.
+ * If not specified at creation, the cluster name will be an empty string.
+ *
+ *
+ * Password of the user
+ *
+ * Name of the user
+ *
+ * URL of the docker image.
+ *
+ * The optional ID of the instance pool for the driver of the cluster belongs.
+ * The pool cluster uses the instance pool with id (instance_pool_id) if the driver pool is
+ * not
+ * assigned.
+ *
+ * The node type of the Spark driver. Note that this field is optional;
+ * if unset, the driver node type will be set as the same value
+ * as `node_type_id` defined above.
+ *
+ *
+ * If provided, the cluster will impersonate the google service account when accessing
+ * gcloud services (like GCS). The google service account
+ * must have previously been added to the Databricks environment by an account
+ * administrator.
+ *
+ * Identifier for the availability zone in which the cluster resides.
+ * This can be one of the following:
+ * - "HA" => High availability, spread nodes across availability zones for a Databricks
+ * deployment region [default]
+ * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
+ * - A GCP availability zone => Pick One of the available zones for (machine type + region)
+ * from https://cloud.google.com/compute/docs/regions-zones.
+ *
+ * abfss destination, e.g.
+ * `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
+ *
+ * local file destination, e.g. `file:/my/local/file.sh`
+ *
+ * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
+ *
+ * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+ *
+ * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
+ *
+ * The optional ID of the instance pool to which the cluster belongs.
+ *
+ * This field encodes, through a single value, the resources available to each of
+ * the Spark nodes in this cluster. For example, the Spark nodes can be provisioned
+ * and optimized for memory or compute intensive workloads. A list of available node
+ * types can be retrieved by using the :method:clusters/listNodeTypes API call.
+ *
+ *
+ * The ID of the cluster policy used to create the cluster if applicable.
+ *
+ * Single user name if data_security_mode is `SINGLE_USER`
+ *
+ * The Spark version of the cluster, e.g. `3.3.x-scala2.11`.
+ * A list of available Spark versions can be retrieved by using
+ * the :method:clusters/sparkVersions API call.
+ *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
+ *
+ * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
+ *
+ * Default value of the parameter.
+ *
+ * The name of the defined parameter. May only contain alphanumeric characters, `_`, `-`,
+ * and `.`
+ *
+ * Application ID of an active service principal. Setting this field requires the
+ * `servicePrincipal/user` role.
+ *
+ * The email of an active workspace user. Non-admin users can only set this field to their
+ * own email.
+ *
+ * A Cron expression using Quartz syntax that describes the schedule for a job. See [Cron
+ * Trigger](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html)
+ * for details. This field is required.
+ *
+ * A Java timezone ID. The schedule for a job is resolved with respect to this timezone. See
+ * [Java TimeZone](https://docs.oracle.com/javase/7/docs/api/java/util/TimeZone.html) for
+ * details. This field is required.
+ *
+ * The left operand of the condition task. Can be either a string value or a job state or
+ * parameter reference.
+ *
+ * The right operand of the condition task. Can be either a string value or a job state or
+ * parameter reference.
+ *
+ * Optional name of the catalog to use. The value is the top level in the 3-level namespace
+ * of Unity Catalog (catalog / schema / relation). The catalog value can only be specified
+ * if a warehouse_id is specified. Requires dbt-databricks >= 1.1.1.
+ *
+ * Optional (relative) path to the profiles directory. Can only be specified if no
+ * warehouse_id is specified. If no warehouse_id is specified and this folder is unset, the
+ * root directory is used.
+ *
+ * Path to the project directory. Optional for Git sourced tasks, in which
+ * case if no value is provided, the root of the Git repository is used.
+ *
+ * Optional schema to write to. This parameter is only used when a warehouse_id is also
+ * provided. If not provided, the `default` schema is used.
+ *
+ * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide
+ * the profile and connection details to dbt. It can be overridden on a per-command basis by
+ * using the `--profiles-dir` command line argument.
+ *
+ * Can only be specified on condition task dependencies. The outcome of the dependent task
+ * that must be met for this task to run.
+ *
+ * The name of the task this task depends on.
+ *
+ * An optional description for this task.
+ *
+ * The key that references an environment spec in a job. This field is required for Python
+ * script, Python wheel and dbt tasks when using serverless compute.
+ *
+ * If existing_cluster_id, the ID of an existing cluster that is used for all runs.
+ * When running jobs or tasks on an existing cluster, you may need to manually restart
+ * the cluster if it stops responding. We suggest running jobs and tasks on new clusters for
+ * greater reliability
+ *
+ * Array for task to iterate on. This can be a JSON string or a reference to
+ * an array parameter.
+ *
+ * If job_cluster_key, this task is executed reusing the cluster specified in
+ * `job.settings.job_clusters`.
+ *
+ * The name of the CRAN package to install.
+ *
+ * The repository where the package can be found. If not specified, the default CRAN repo is
+ * used.
+ *
+ * Deprecated. URI of the egg library to install. Installing Python egg files is deprecated
+ * and is not supported in Databricks Runtime 14.0 and above.
+ *
+ * URI of the JAR library to install. Supported URIs include Workspace paths, Unity Catalog
+ * Volumes paths, and S3 URIs.
+ * For example: `{ "jar": "/Workspace/path/to/library.jar" }`, `{ "jar" :
+ * "/Volumes/path/to/library.jar" }` or
+ * `{ "jar": "s3://my-bucket/library.jar" }`.
+ * If S3 is used, please make sure the cluster has read access on the library. You may need
+ * to
+ * launch the cluster with an IAM role to access the S3 URI.
+ *
+ * Gradle-style maven coordinates. For example: "org.jsoup:jsoup:1.7.2".
+ *
+ * Maven repo to install the Maven package from. If omitted, both Maven Central Repository
+ * and Spark Packages are searched.
+ *
+ * The name of the pypi package to install. An optional exact version specification is also
+ * supported. Examples: "simplejson" and "simplejson==3.8.0".
+ *
+ * The repository where the package can be found. If not specified, the default pip index is
+ * used.
+ *
+ * URI of the requirements.txt file to install. Only Workspace paths and Unity Catalog
+ * Volumes paths are supported.
+ * For example: `{ "requirements": "/Workspace/path/to/requirements.txt" }` or `{
+ * "requirements" : "/Volumes/path/to/requirements.txt" }`
+ *
+ * URI of the wheel library to install. Supported URIs include Workspace paths, Unity
+ * Catalog Volumes paths, and S3 URIs.
+ * For example: `{ "whl": "/Workspace/path/to/library.whl" }`, `{ "whl" :
+ * "/Volumes/path/to/library.whl" }` or
+ * `{ "whl": "s3://my-bucket/library.whl" }`.
+ * If S3 is used, please make sure the cluster has read access on the library. You may need
+ * to
+ * launch the cluster with an IAM role to access the S3 URI.
+ *
+ * The path of the notebook to be run in the Databricks workspace or remote repository.
+ * For notebooks stored in the Databricks workspace, the path must be absolute and begin
+ * with a slash.
+ * For notebooks stored in a remote repository, the path must be relative. This field is
+ * required.
+ *
+ * Optional `warehouse_id` to run the notebook on a SQL warehouse. Classic SQL warehouses
+ * are NOT supported, please use serverless or pro SQL warehouses.
+ *
+ * Note that SQL warehouses only support SQL cells; if the notebook contains non-SQL cells,
+ * the run will fail.
+ *
+ * The full name of the pipeline task to execute.
+ *
+ * Named entry point to use, if it does not exist in the metadata of the package it executes
+ * the function from the package directly using `$packageName.$entryPoint()`
+ *
+ * Name of the package to execute
+ *
+ * Deprecated since 04/2016. Provide a `jar` through the `libraries` field instead. For an
+ * example, see :method:jobs/create.
+ *
+ * The full name of the class containing the main method to be executed. This class must be
+ * contained in a JAR provided as a library.
+ *
+ * The code must use `SparkContext.getOrCreate` to obtain a Spark context; otherwise, runs
+ * of the job fail.
+ *
+ * The Python file to be executed. Cloud file URIs (such as dbfs:/, s3:/, adls:/, gcs:/) and
+ * workspace paths are supported. For python files stored in the Databricks workspace, the
+ * path must be absolute and begin with `/`. For files stored in a remote repository, the
+ * path must be relative. This field is required.
+ *
+ * The canonical identifier of the SQL alert.
+ *
+ * The canonical identifier of the destination to receive email notification. This parameter
+ * is mutually exclusive with user_name. You cannot set both destination_id and user_name
+ * for subscription notifications.
+ *
+ * The user name to receive the subscription email. This parameter is mutually exclusive
+ * with destination_id. You cannot set both destination_id and user_name for subscription
+ * notifications.
+ *
+ * Subject of the email sent to subscribers of this task.
+ *
+ * The canonical identifier of the SQL dashboard.
+ *
+ * Path of the SQL file. Must be relative if the source is a remote Git repository and
+ * absolute for workspace paths.
+ *
+ * The canonical identifier of the SQL query.
+ *
+ * The canonical identifier of the SQL warehouse. Recommended to use with serverless or pro
+ * SQL warehouses. Classic SQL warehouses are only supported for SQL alert, dashboard and
+ * query tasks and are limited to scheduled single-task jobs.
+ *
+ * A unique name for the task. This field is used to refer to this task from other tasks.
+ * This field is required and must be unique within its parent job.
+ * On Update or Reset, this field is used to reference the tasks to be updated or reset.
+ *
+ * URL to be monitored for file arrivals. The path must point to the root or a subpath of
+ * the external location.
+ *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
+ * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
+ * name if the inference table is already enabled.
+ *
+ * The name of the schema in Unity Catalog. NOTE: On update, you cannot change the schema
+ * name if the inference table is already enabled.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you cannot change the prefix
+ * name if the inference table is already enabled.
+ *
+ * The name of the entity to be served. The entity may be a model in the Databricks Model
+ * Registry, a model in the Unity Catalog (UC),
+ * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the
+ * object should be given in the form of
+ * __catalog_name__.__schema_name__.__model_name__.
+ *
+ *
+ * The version of the model in Databricks Model Registry to be served or empty if the entity
+ * is a FEATURE_SPEC.
+ *
+ * The Databricks secret key reference for an AWS access key ID with permissions to interact
+ * with Bedrock services. If you prefer to paste your API key directly, see
+ * `aws_access_key_id`. You must provide an API key using one of the following fields:
+ * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+ *
+ * An AWS access key ID with permissions to interact with Bedrock services provided as a
+ * plaintext string. If you prefer to reference your key using Databricks Secrets, see
+ * `aws_access_key_id`. You must provide an API key using one of the following fields:
+ * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+ *
+ * The AWS region to use. Bedrock has to be enabled there.
+ *
+ * The Databricks secret key reference for an AWS secret access key paired with the access
+ * key ID, with permissions to interact with Bedrock services. If you prefer to paste your
+ * API key directly, see `aws_secret_access_key_plaintext`. You must provide an API key
+ * using one of the following fields: `aws_secret_access_key` or
+ * `aws_secret_access_key_plaintext`.
+ *
+ * An AWS secret access key paired with the access key ID, with permissions to interact with
+ * Bedrock services provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `aws_secret_access_key`. You must provide an API key using
+ * one of the following fields: `aws_secret_access_key` or
+ * `aws_secret_access_key_plaintext`.
+ *
+ * The Databricks secret key reference for an Anthropic API key. If you prefer to paste your
+ * API key directly, see `anthropic_api_key_plaintext`. You must provide an API key using
+ * one of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+ *
+ * The Anthropic API key provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `anthropic_api_key`. You must provide an API key using one
+ * of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+ *
+ * This is an optional field to provide a customized base URL for the Cohere API.
+ * If left unspecified, the standard Cohere base URL is used.
+ *
+ *
+ * The Databricks secret key reference for a Cohere API key. If you prefer to paste your API
+ * key directly, see `cohere_api_key_plaintext`. You must provide an API key using one of
+ * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+ *
+ * The Cohere API key provided as a plaintext string. If you prefer to reference your key
+ * using Databricks Secrets, see `cohere_api_key`. You must provide an API key using one of
+ * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+ *
+ * The Databricks secret key reference for a Databricks API token that corresponds to a user
+ * or service
+ * principal with Can Query access to the model serving endpoint pointed to by this external
+ * model.
+ * If you prefer to paste your API key directly, see `databricks_api_token_plaintext`.
+ * You must provide an API key using one of the following fields: `databricks_api_token` or
+ * `databricks_api_token_plaintext`.
+ *
+ *
+ * The Databricks API token that corresponds to a user or service
+ * principal with Can Query access to the model serving endpoint pointed to by this external
+ * model provided as a plaintext string.
+ * If you prefer to reference your key using Databricks Secrets, see `databricks_api_token`.
+ * You must provide an API key using one of the following fields: `databricks_api_token` or
+ * `databricks_api_token_plaintext`.
+ *
+ *
+ * The URL of the Databricks workspace containing the model serving endpoint pointed to by
+ * this external model.
+ *
+ *
+ * The name of the external model.
+ *
+ * The task type of the external model.
+ *
+ * ARN of the instance profile that the served entity uses to access AWS resources.
+ *
+ * The name of a served entity. It must be unique across an endpoint. A served entity name
+ * can consist of alphanumeric characters, dashes, and underscores.
+ * If not specified for an external model, this field defaults to external_model.name, with
+ * '.' and ':' replaced with '-', and if not specified for other
+ * entities, it defaults to <entity-name>-<entity-version>.
+ *
+ *
+ * The workload size of the served entity. The workload size corresponds to a range of
+ * provisioned concurrency that the compute autoscales between.
+ * A single unit of provisioned concurrency can process one request at a time.
+ * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
+ * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+ * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
+ * workload size is 0.
+ *
+ *
+ * The workload type of the served entity. The workload type selects which type of compute
+ * to use in the endpoint. The default value for this parameter is
+ * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
+ * types like GPU_SMALL and others.
+ * See the available [GPU
+ * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+ *
+ *
+ * ARN of the instance profile that the served model will use to access AWS resources.
+ *
+ * The name of the model in Databricks Model Registry to be served or if the model resides
+ * in Unity Catalog, the full name of model,
+ * in the form of __catalog_name__.__schema_name__.__model_name__.
+ *
+ *
+ * The version of the model in Databricks Model Registry or Unity Catalog to be served.
+ *
+ * The name of a served model. It must be unique across an endpoint. If not specified, this
+ * field will default to <model-name>-<model-version>.
+ * A served model name can consist of alphanumeric characters, dashes, and underscores.
+ *
+ *
+ * The name of the served model this route configures traffic for.
+ *
+ * The name of the serving endpoint. This field is required and must be unique across a
+ * Databricks workspace.
+ * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
+ *
+ *
+ * Key field for a serving endpoint tag.
+ *
+ * Optional value field for a serving endpoint tag.
+ *
+ * Description of this `registered_model`.
+ *
+ * Current stage for this `model_version`.
+ *
+ * Description of this `model_version`.
+ *
+ * Unique name of the model
+ *
+ * MLflow run ID used when creating `model_version`, if `source` was generated by an
+ * experiment run stored in MLflow tracking server.
+ *
+ * Run Link: Direct link to the run that generated this version
+ *
+ * URI indicating the location of the source model artifacts, used when creating
+ * `model_version`
+ *
+ * Details on current `status`, if it is pending or failed.
+ *
+ * User that created this `model_version`.
+ *
+ * Model's version number.
+ *
+ * Unique name for the model.
+ *
+ * User that created this `registered_model`
+ *
+ * Budget policy of this pipeline.
+ *
+ * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
+ * specified, tables in this pipeline are published to a `target` schema inside `catalog`
+ * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
+ * published to Unity Catalog.
+ *
+ * DLT Release Channel that specifies which version to use.
+ *
+ * The node type of the Spark driver.
+ * Note that this field is optional; if unset, the driver node type will be set as the same
+ * value
+ * as `node_type_id` defined above.
+ *
+ * A label for the cluster specification, either `default` to configure the default cluster,
+ * or `maintenance` to configure the maintenance cluster. This field is optional. The
+ * default value is `default`.
+ *
+ * The path to the file containing metadata about the deployment.
+ *
+ * Pipeline product edition.
+ *
+ * Immutable. The Unity Catalog connection this gateway pipeline uses to communicate with
+ * the source.
+ *
+ * Required, Immutable. The name of the catalog for the gateway pipeline's storage
+ * location.
+ *
+ * Optional. The Unity Catalog-compatible name for the gateway storage location.
+ * This is the destination to use for the data that is extracted by the gateway.
+ * Delta Live Tables system will automatically create the storage location under the catalog
+ * and schema.
+ *
+ *
+ * Required, Immutable. The name of the schema for the gateway pipelines's storage
+ * location.
+ *
+ * Unique identifier for this pipeline.
+ *
+ * Immutable. The Unity Catalog connection this ingestion pipeline uses to communicate with
+ * the source. Specify either ingestion_gateway_id or connection_name.
+ *
+ * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
+ * communicate with the source. Specify either ingestion_gateway_id or connection_name.
+ *
+ * Required. Destination catalog to store tables.
+ *
+ * Required. Destination schema to store tables in. Tables with the same name as the source
+ * tables are created in this destination schema. The pipeline fails If a table with the
+ * same name already exists.
+ *
+ * The source catalog name. Might be optional depending on the type of source.
+ *
+ * Required. Schema name in the source database.
+ *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Optional. Destination table name. The pipeline fails If a table with that name already
+ * exists. If not set, the source table name is used.
+ *
+ * Source catalog name. Might be optional depending on the type of source.
+ *
+ * Schema name in the source database. Might be optional depending on the type of source.
+ *
+ * Required. Table name in the source database.
+ *
+ * The absolute path of the file.
+ *
+ * URI of the jar to be installed. Currently only DBFS is supported.
+ *
+ *
+ * The absolute path of the notebook.
+ *
+ * URI of the whl to be installed.
+ *
+ * Friendly identifier for this pipeline.
+ *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
+ * DBFS root directory for storing checkpoints and tables.
+ *
+ * Target schema (database) to add tables in this pipeline to. If not specified, no data is
+ * published to the Hive metastore or Unity Catalog. To publish to Unity Catalog, also
+ * specify `catalog`.
+ *
+ * The directory to store monitoring assets (e.g. dashboard, metric tables).
+ *
+ * Name of the baseline table from which drift metrics are computed from.
+ * Columns in the monitored table should also be present in the baseline table.
+ *
+ *
+ * Jinja template for a SQL expression that specifies how to compute the metric. See [create
+ * metric
+ * definition](https://docs.databricks.com/en/lakehouse-monitoring/custom-metrics.html#create-definition).
+ *
+ * Name of the metric in the output tables.
+ *
+ * The output type of the custom metric.
+ *
+ * Optional column that contains the ground truth for the prediction.
+ *
+ * Column that contains the id of the model generating the predictions. Metrics will be
+ * computed per model id by
+ * default, and also across all model ids.
+ *
+ *
+ * Column that contains the output/prediction from the model.
+ *
+ * Optional column that contains the prediction probabilities for each class in a
+ * classification problem type.
+ * The values in this column should be a map, mapping each class label to the prediction
+ * probability for a given
+ * sample. The map should be of PySpark MapType().
+ *
+ *
+ * Column that contains the timestamps of requests. The column must be one of the following:
+ * - A ``TimestampType`` column
+ * - A column whose values can be converted to timestamps through the pyspark
+ * ``to_timestamp``
+ * [function](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_timestamp.html).
+ *
+ *
+ * Schema where output metric tables are created.
+ *
+ * The expression that determines when to run the monitor. See
+ * [examples](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
+ *
+ *
+ * The timezone id (e.g., ``"PST"``) in which to evaluate the quartz expression.
+ *
+ *
+ * Optional argument to specify the warehouse for dashboard creation. If not specified, the
+ * first running
+ * warehouse will be used.
+ *
+ *
+ * The name of the catalog where the schema and the registered model reside
+ *
+ * The comment attached to the registered model
+ *
+ * The name of the registered model
+ *
+ * The name of the schema where the registered model resides
+ *
+ * The storage location on the cloud under which model version data files are stored
+ *
+ * Name of parent catalog.
+ *
+ * User-provided free-form text description.
+ *
+ * Name of schema, relative to parent catalog.
+ *
+ * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
+ * Anthropic, Cohere, AI21Labs, Amazon.
+ *
+ * The name of the provider for the external model. Currently, the supported providers are
+ * 'ai21labs', 'anthropic',
+ * 'amazon-bedrock', 'cohere', 'databricks-model-serving', 'google-cloud-vertex-ai',
+ * 'openai', and 'palm'.",
+ *
+ *
+ * The workload size of the served model. The workload size corresponds to a range of
+ * provisioned concurrency that the compute will autoscale between.
+ * A single unit of provisioned concurrency can process one request at a time.
+ * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
+ * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
+ * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
+ * workload size will be 0.
+ *
+ *
+ * The workload type of the served model. The workload type selects which type of compute to
+ * use in the endpoint. The default value for this parameter is
+ * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
+ * types like GPU_SMALL and others.
+ * See the available [GPU
+ * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+ *
+ *
+ * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are
+ * supported, with 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is
+ * supported.
+ *
+ * Current status of `model_version`
+ *
+ * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
+ * allocating cluster resources based on workload volume, with minimal impact to
+ * the data processing latency of your pipelines. Enhanced Autoscaling is available
+ * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
+ * clusters.
+ *
+ *
+ * The SCD type to use to ingest the table.
+ *
+ * Can only be one of ``"CUSTOM_METRIC_TYPE_AGGREGATE"``, ``"CUSTOM_METRIC_TYPE_DERIVED"``,
+ * or ``"CUSTOM_METRIC_TYPE_DRIFT"``.
+ * The ``"CUSTOM_METRIC_TYPE_AGGREGATE"`` and ``"CUSTOM_METRIC_TYPE_DERIVED"`` metrics
+ * are computed on a single table, whereas the ``"CUSTOM_METRIC_TYPE_DRIFT"`` compare
+ * metrics across
+ * baseline and input table, or across the two consecutive time windows.
+ * - CUSTOM_METRIC_TYPE_AGGREGATE: only depend on the existing columns in your table
+ * - CUSTOM_METRIC_TYPE_DERIVED: depend on previously computed aggregate metrics
+ * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
+ *
+ *
+ * Problem type the model aims to solve. Determines the type of model-quality metrics that
+ * will be computed.
+ *
+ * Read only field that indicates whether a schedule is paused or not.
+ */
+export enum RenewalPeriod {
+    Minute = "minute",
+}
+
+export interface UsageTrackingConfigClass {
+    /**
+     * Whether to enable usage tracking.
+     */
+    enabled?: boolean | string;
 }
 
 export interface ConfigClass {
@@ -3285,55 +5666,6 @@ export interface AmazonBedrockConfigClass {
  * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
  * Anthropic, Cohere, AI21Labs, Amazon.
  *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
- *
  * Nodes for this cluster will only be placed on AWS instances with this instance profile.
  * If
  * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
@@ -3450,6 +5782,45 @@ export interface AmazonBedrockConfigClass {
  * A list of available Spark versions can be retrieved by using
  * the :method:clusters/sparkVersions API call.
  *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
  *
  * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
  *
@@ -3622,6 +5993,16 @@ export interface AmazonBedrockConfigClass {
  * URL to be monitored for file arrivals. The path must point to the root or a subpath of
  * the external location.
  *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
  * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
  * name if the inference table is already enabled.
  *
@@ -3787,6 +6168,8 @@ export interface AmazonBedrockConfigClass {
  *
  * User that created this `registered_model`
  *
+ * Budget policy of this pipeline.
+ *
  * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
  * specified, tables in this pipeline are published to a `target` schema inside `catalog`
  * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
@@ -3864,6 +6247,9 @@ export interface AmazonBedrockConfigClass {
  *
  * Friendly identifier for this pipeline.
  *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
  * DBFS root directory for storing checkpoints and tables.
  *
  * Target schema (database) to add tables in this pipeline to. If not specified, no data is
@@ -3938,6 +6324,17 @@ export interface AmazonBedrockConfigClass {
  * Name of schema, relative to parent catalog.
  *
  * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
  *
  * The name of the provider for the external model. Currently, the supported providers are
  * 'ai21labs', 'anthropic',
@@ -4097,55 +6494,6 @@ export interface PalmConfigClass {
  * 'openai', and 'palm'.",
  *
  *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
- *
  * Nodes for this cluster will only be placed on AWS instances with this instance profile.
  * If
  * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
@@ -4262,6 +6610,45 @@ export interface PalmConfigClass {
  * A list of available Spark versions can be retrieved by using
  * the :method:clusters/sparkVersions API call.
  *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
  *
  * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
  *
@@ -4434,6 +6821,16 @@ export interface PalmConfigClass {
  * URL to be monitored for file arrivals. The path must point to the root or a subpath of
  * the external location.
  *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
  * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
  * name if the inference table is already enabled.
  *
@@ -4599,6 +6996,8 @@ export interface PalmConfigClass {
  *
  * User that created this `registered_model`
  *
+ * Budget policy of this pipeline.
+ *
  * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
  * specified, tables in this pipeline are published to a `target` schema inside `catalog`
  * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
@@ -4676,6 +7075,9 @@ export interface PalmConfigClass {
  *
  * Friendly identifier for this pipeline.
  *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
  * DBFS root directory for storing checkpoints and tables.
  *
  * Target schema (database) to add tables in this pipeline to. If not specified, no data is
@@ -4750,6 +7152,17 @@ export interface PalmConfigClass {
  * Name of schema, relative to parent catalog.
  *
  * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
  *
  * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
  * Anthropic, Cohere, AI21Labs, Amazon.
@@ -4887,55 +7300,6 @@ export interface ServedModelClass {
  * workload size will be 0.
  *
  *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
- *
  * Nodes for this cluster will only be placed on AWS instances with this instance profile.
  * If
  * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
@@ -5052,6 +7416,45 @@ export interface ServedModelClass {
  * A list of available Spark versions can be retrieved by using
  * the :method:clusters/sparkVersions API call.
  *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
  *
  * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
  *
@@ -5224,6 +7627,16 @@ export interface ServedModelClass {
  * URL to be monitored for file arrivals. The path must point to the root or a subpath of
  * the external location.
  *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
  * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
  * name if the inference table is already enabled.
  *
@@ -5389,6 +7802,8 @@ export interface ServedModelClass {
  *
  * User that created this `registered_model`
  *
+ * Budget policy of this pipeline.
+ *
  * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
  * specified, tables in this pipeline are published to a `target` schema inside `catalog`
  * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
@@ -5466,6 +7881,9 @@ export interface ServedModelClass {
  *
  * Friendly identifier for this pipeline.
  *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
  * DBFS root directory for storing checkpoints and tables.
  *
  * Target schema (database) to add tables in this pipeline to. If not specified, no data is
@@ -5540,6 +7958,17 @@ export interface ServedModelClass {
  * Name of schema, relative to parent catalog.
  *
  * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
  *
  * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
  * Anthropic, Cohere, AI21Labs, Amazon.
@@ -5606,55 +8035,6 @@ export enum WorkloadSize {
  * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
  *
  *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
- *
  * Nodes for this cluster will only be placed on AWS instances with this instance profile.
  * If
  * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
@@ -5771,6 +8151,45 @@ export enum WorkloadSize {
  * A list of available Spark versions can be retrieved by using
  * the :method:clusters/sparkVersions API call.
  *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
  *
  * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
  *
@@ -5943,6 +8362,16 @@ export enum WorkloadSize {
  * URL to be monitored for file arrivals. The path must point to the root or a subpath of
  * the external location.
  *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
  * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
  * name if the inference table is already enabled.
  *
@@ -6108,6 +8537,8 @@ export enum WorkloadSize {
  *
  * User that created this `registered_model`
  *
+ * Budget policy of this pipeline.
+ *
  * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
  * specified, tables in this pipeline are published to a `target` schema inside `catalog`
  * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
@@ -6185,6 +8616,9 @@ export enum WorkloadSize {
  *
  * Friendly identifier for this pipeline.
  *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
  * DBFS root directory for storing checkpoints and tables.
  *
  * Target schema (database) to add tables in this pipeline to. If not specified, no data is
@@ -6259,6 +8693,17 @@ export enum WorkloadSize {
  * Name of schema, relative to parent catalog.
  *
  * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
  *
  * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
  * Anthropic, Cohere, AI21Labs, Amazon.
@@ -6338,7 +8783,7 @@ export interface RouteClass {
     traffic_percentage: number | string;
 }
 
-export interface RateLimitClass {
+export interface BundleSchem4 {
     /**
      * Used to specify how many calls are allowed for a key within the renewal_period.
      */
@@ -6355,1444 +8800,7 @@ export interface RateLimitClass {
     renewal_period: RenewalPeriod;
 }
 
-/**
- * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are
- * supported, with 'endpoint' being the default if not specified.
- *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
- *
- * Nodes for this cluster will only be placed on AWS instances with this instance profile.
- * If
- * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
- * profile must have previously been added to the Databricks environment by an account
- * administrator.
- *
- * This feature may only be available to certain customer plans.
- *
- * If this field is ommitted, we will pull in the default from the conf if it exists.
- *
- * Identifier for the availability zone/datacenter in which the cluster resides.
- * This string will be of a form like "us-west-2a". The provided availability
- * zone must be in the same region as the Databricks deployment. For example, "us-west-2a"
- * is not a valid zone id if the Databricks deployment resides in the "us-east-1" region.
- * This is an optional field at cluster creation, and if not specified, a default zone will
- * be used.
- * If the zone specified is "auto", will try to place cluster in a zone with high
- * availability,
- * and will retry placement in a different AZ if there is not enough capacity.
- * The list of available zones as well as the default value can be found by using the
- * `List Zones` method.
- *
- * <needs content added>
- *
- * dbfs destination, e.g. `dbfs:/my/path`
- *
- * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
- * If `canned_cal` is set, please make sure the cluster iam role has `s3:PutObjectAcl`
- * permission on
- * the destination bucket and prefix. The full list of possible canned acl can be found at
- * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
- * Please also note that by default only the object owner gets full controls. If you are
- * using cross account
- * role for writing data, you may want to set `bucket-owner-full-control` to make bucket
- * owner able to
- * read the logs.
- *
- * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be delivered using
- * cluster iam role, please make sure you set cluster iam role and the role has write access
- * to the
- * destination. Please also note that you cannot use AWS keys to deliver logs.
- *
- * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will be used only
- * when
- * encryption is enabled and the default type is `sse-s3`.
- *
- * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or endpoint needs
- * to be set.
- * If both are set, endpoint will be used.
- *
- * (Optional) Kms key which will be used if encryption is enabled and encryption type is set
- * to `sse-kms`.
- *
- * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If both are set,
- * endpoint will be used.
- *
- * Cluster name requested by the user. This doesn't have to be unique.
- * If not specified at creation, the cluster name will be an empty string.
- *
- *
- * Password of the user
- *
- * Name of the user
- *
- * URL of the docker image.
- *
- * The optional ID of the instance pool for the driver of the cluster belongs.
- * The pool cluster uses the instance pool with id (instance_pool_id) if the driver pool is
- * not
- * assigned.
- *
- * The node type of the Spark driver. Note that this field is optional;
- * if unset, the driver node type will be set as the same value
- * as `node_type_id` defined above.
- *
- *
- * If provided, the cluster will impersonate the google service account when accessing
- * gcloud services (like GCS). The google service account
- * must have previously been added to the Databricks environment by an account
- * administrator.
- *
- * Identifier for the availability zone in which the cluster resides.
- * This can be one of the following:
- * - "HA" => High availability, spread nodes across availability zones for a Databricks
- * deployment region [default]
- * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
- * - A GCP availability zone => Pick One of the available zones for (machine type + region)
- * from https://cloud.google.com/compute/docs/regions-zones.
- *
- * abfss destination, e.g.
- * `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
- *
- * local file destination, e.g. `file:/my/local/file.sh`
- *
- * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
- *
- * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
- *
- * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
- *
- * The optional ID of the instance pool to which the cluster belongs.
- *
- * This field encodes, through a single value, the resources available to each of
- * the Spark nodes in this cluster. For example, the Spark nodes can be provisioned
- * and optimized for memory or compute intensive workloads. A list of available node
- * types can be retrieved by using the :method:clusters/listNodeTypes API call.
- *
- *
- * The ID of the cluster policy used to create the cluster if applicable.
- *
- * Single user name if data_security_mode is `SINGLE_USER`
- *
- * The Spark version of the cluster, e.g. `3.3.x-scala2.11`.
- * A list of available Spark versions can be retrieved by using
- * the :method:clusters/sparkVersions API call.
- *
- *
- * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
- *
- * Default value of the parameter.
- *
- * The name of the defined parameter. May only contain alphanumeric characters, `_`, `-`,
- * and `.`
- *
- * Application ID of an active service principal. Setting this field requires the
- * `servicePrincipal/user` role.
- *
- * The email of an active workspace user. Non-admin users can only set this field to their
- * own email.
- *
- * A Cron expression using Quartz syntax that describes the schedule for a job. See [Cron
- * Trigger](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html)
- * for details. This field is required.
- *
- * A Java timezone ID. The schedule for a job is resolved with respect to this timezone. See
- * [Java TimeZone](https://docs.oracle.com/javase/7/docs/api/java/util/TimeZone.html) for
- * details. This field is required.
- *
- * The left operand of the condition task. Can be either a string value or a job state or
- * parameter reference.
- *
- * The right operand of the condition task. Can be either a string value or a job state or
- * parameter reference.
- *
- * Optional name of the catalog to use. The value is the top level in the 3-level namespace
- * of Unity Catalog (catalog / schema / relation). The catalog value can only be specified
- * if a warehouse_id is specified. Requires dbt-databricks >= 1.1.1.
- *
- * Optional (relative) path to the profiles directory. Can only be specified if no
- * warehouse_id is specified. If no warehouse_id is specified and this folder is unset, the
- * root directory is used.
- *
- * Path to the project directory. Optional for Git sourced tasks, in which
- * case if no value is provided, the root of the Git repository is used.
- *
- * Optional schema to write to. This parameter is only used when a warehouse_id is also
- * provided. If not provided, the `default` schema is used.
- *
- * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide
- * the profile and connection details to dbt. It can be overridden on a per-command basis by
- * using the `--profiles-dir` command line argument.
- *
- * Can only be specified on condition task dependencies. The outcome of the dependent task
- * that must be met for this task to run.
- *
- * The name of the task this task depends on.
- *
- * An optional description for this task.
- *
- * The key that references an environment spec in a job. This field is required for Python
- * script, Python wheel and dbt tasks when using serverless compute.
- *
- * If existing_cluster_id, the ID of an existing cluster that is used for all runs.
- * When running jobs or tasks on an existing cluster, you may need to manually restart
- * the cluster if it stops responding. We suggest running jobs and tasks on new clusters for
- * greater reliability
- *
- * Array for task to iterate on. This can be a JSON string or a reference to
- * an array parameter.
- *
- * If job_cluster_key, this task is executed reusing the cluster specified in
- * `job.settings.job_clusters`.
- *
- * The name of the CRAN package to install.
- *
- * The repository where the package can be found. If not specified, the default CRAN repo is
- * used.
- *
- * Deprecated. URI of the egg library to install. Installing Python egg files is deprecated
- * and is not supported in Databricks Runtime 14.0 and above.
- *
- * URI of the JAR library to install. Supported URIs include Workspace paths, Unity Catalog
- * Volumes paths, and S3 URIs.
- * For example: `{ "jar": "/Workspace/path/to/library.jar" }`, `{ "jar" :
- * "/Volumes/path/to/library.jar" }` or
- * `{ "jar": "s3://my-bucket/library.jar" }`.
- * If S3 is used, please make sure the cluster has read access on the library. You may need
- * to
- * launch the cluster with an IAM role to access the S3 URI.
- *
- * Gradle-style maven coordinates. For example: "org.jsoup:jsoup:1.7.2".
- *
- * Maven repo to install the Maven package from. If omitted, both Maven Central Repository
- * and Spark Packages are searched.
- *
- * The name of the pypi package to install. An optional exact version specification is also
- * supported. Examples: "simplejson" and "simplejson==3.8.0".
- *
- * The repository where the package can be found. If not specified, the default pip index is
- * used.
- *
- * URI of the requirements.txt file to install. Only Workspace paths and Unity Catalog
- * Volumes paths are supported.
- * For example: `{ "requirements": "/Workspace/path/to/requirements.txt" }` or `{
- * "requirements" : "/Volumes/path/to/requirements.txt" }`
- *
- * URI of the wheel library to install. Supported URIs include Workspace paths, Unity
- * Catalog Volumes paths, and S3 URIs.
- * For example: `{ "whl": "/Workspace/path/to/library.whl" }`, `{ "whl" :
- * "/Volumes/path/to/library.whl" }` or
- * `{ "whl": "s3://my-bucket/library.whl" }`.
- * If S3 is used, please make sure the cluster has read access on the library. You may need
- * to
- * launch the cluster with an IAM role to access the S3 URI.
- *
- * The path of the notebook to be run in the Databricks workspace or remote repository.
- * For notebooks stored in the Databricks workspace, the path must be absolute and begin
- * with a slash.
- * For notebooks stored in a remote repository, the path must be relative. This field is
- * required.
- *
- * Optional `warehouse_id` to run the notebook on a SQL warehouse. Classic SQL warehouses
- * are NOT supported, please use serverless or pro SQL warehouses.
- *
- * Note that SQL warehouses only support SQL cells; if the notebook contains non-SQL cells,
- * the run will fail.
- *
- * The full name of the pipeline task to execute.
- *
- * Named entry point to use, if it does not exist in the metadata of the package it executes
- * the function from the package directly using `$packageName.$entryPoint()`
- *
- * Name of the package to execute
- *
- * Deprecated since 04/2016. Provide a `jar` through the `libraries` field instead. For an
- * example, see :method:jobs/create.
- *
- * The full name of the class containing the main method to be executed. This class must be
- * contained in a JAR provided as a library.
- *
- * The code must use `SparkContext.getOrCreate` to obtain a Spark context; otherwise, runs
- * of the job fail.
- *
- * The Python file to be executed. Cloud file URIs (such as dbfs:/, s3:/, adls:/, gcs:/) and
- * workspace paths are supported. For python files stored in the Databricks workspace, the
- * path must be absolute and begin with `/`. For files stored in a remote repository, the
- * path must be relative. This field is required.
- *
- * The canonical identifier of the SQL alert.
- *
- * The canonical identifier of the destination to receive email notification. This parameter
- * is mutually exclusive with user_name. You cannot set both destination_id and user_name
- * for subscription notifications.
- *
- * The user name to receive the subscription email. This parameter is mutually exclusive
- * with destination_id. You cannot set both destination_id and user_name for subscription
- * notifications.
- *
- * Subject of the email sent to subscribers of this task.
- *
- * The canonical identifier of the SQL dashboard.
- *
- * Path of the SQL file. Must be relative if the source is a remote Git repository and
- * absolute for workspace paths.
- *
- * The canonical identifier of the SQL query.
- *
- * The canonical identifier of the SQL warehouse. Recommended to use with serverless or pro
- * SQL warehouses. Classic SQL warehouses are only supported for SQL alert, dashboard and
- * query tasks and are limited to scheduled single-task jobs.
- *
- * A unique name for the task. This field is used to refer to this task from other tasks.
- * This field is required and must be unique within its parent job.
- * On Update or Reset, this field is used to reference the tasks to be updated or reset.
- *
- * URL to be monitored for file arrivals. The path must point to the root or a subpath of
- * the external location.
- *
- * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
- * name if the inference table is already enabled.
- *
- * The name of the schema in Unity Catalog. NOTE: On update, you cannot change the schema
- * name if the inference table is already enabled.
- *
- * The prefix of the table in Unity Catalog. NOTE: On update, you cannot change the prefix
- * name if the inference table is already enabled.
- *
- * The name of the entity to be served. The entity may be a model in the Databricks Model
- * Registry, a model in the Unity Catalog (UC),
- * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the
- * object should be given in the form of
- * __catalog_name__.__schema_name__.__model_name__.
- *
- *
- * The version of the model in Databricks Model Registry to be served or empty if the entity
- * is a FEATURE_SPEC.
- *
- * The Databricks secret key reference for an AWS access key ID with permissions to interact
- * with Bedrock services. If you prefer to paste your API key directly, see
- * `aws_access_key_id`. You must provide an API key using one of the following fields:
- * `aws_access_key_id` or `aws_access_key_id_plaintext`.
- *
- * An AWS access key ID with permissions to interact with Bedrock services provided as a
- * plaintext string. If you prefer to reference your key using Databricks Secrets, see
- * `aws_access_key_id`. You must provide an API key using one of the following fields:
- * `aws_access_key_id` or `aws_access_key_id_plaintext`.
- *
- * The AWS region to use. Bedrock has to be enabled there.
- *
- * The Databricks secret key reference for an AWS secret access key paired with the access
- * key ID, with permissions to interact with Bedrock services. If you prefer to paste your
- * API key directly, see `aws_secret_access_key_plaintext`. You must provide an API key
- * using one of the following fields: `aws_secret_access_key` or
- * `aws_secret_access_key_plaintext`.
- *
- * An AWS secret access key paired with the access key ID, with permissions to interact with
- * Bedrock services provided as a plaintext string. If you prefer to reference your key
- * using Databricks Secrets, see `aws_secret_access_key`. You must provide an API key using
- * one of the following fields: `aws_secret_access_key` or
- * `aws_secret_access_key_plaintext`.
- *
- * The Databricks secret key reference for an Anthropic API key. If you prefer to paste your
- * API key directly, see `anthropic_api_key_plaintext`. You must provide an API key using
- * one of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
- *
- * The Anthropic API key provided as a plaintext string. If you prefer to reference your key
- * using Databricks Secrets, see `anthropic_api_key`. You must provide an API key using one
- * of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
- *
- * This is an optional field to provide a customized base URL for the Cohere API.
- * If left unspecified, the standard Cohere base URL is used.
- *
- *
- * The Databricks secret key reference for a Cohere API key. If you prefer to paste your API
- * key directly, see `cohere_api_key_plaintext`. You must provide an API key using one of
- * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
- *
- * The Cohere API key provided as a plaintext string. If you prefer to reference your key
- * using Databricks Secrets, see `cohere_api_key`. You must provide an API key using one of
- * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
- *
- * The Databricks secret key reference for a Databricks API token that corresponds to a user
- * or service
- * principal with Can Query access to the model serving endpoint pointed to by this external
- * model.
- * If you prefer to paste your API key directly, see `databricks_api_token_plaintext`.
- * You must provide an API key using one of the following fields: `databricks_api_token` or
- * `databricks_api_token_plaintext`.
- *
- *
- * The Databricks API token that corresponds to a user or service
- * principal with Can Query access to the model serving endpoint pointed to by this external
- * model provided as a plaintext string.
- * If you prefer to reference your key using Databricks Secrets, see `databricks_api_token`.
- * You must provide an API key using one of the following fields: `databricks_api_token` or
- * `databricks_api_token_plaintext`.
- *
- *
- * The URL of the Databricks workspace containing the model serving endpoint pointed to by
- * this external model.
- *
- *
- * The name of the external model.
- *
- * The task type of the external model.
- *
- * ARN of the instance profile that the served entity uses to access AWS resources.
- *
- * The name of a served entity. It must be unique across an endpoint. A served entity name
- * can consist of alphanumeric characters, dashes, and underscores.
- * If not specified for an external model, this field defaults to external_model.name, with
- * '.' and ':' replaced with '-', and if not specified for other
- * entities, it defaults to <entity-name>-<entity-version>.
- *
- *
- * The workload size of the served entity. The workload size corresponds to a range of
- * provisioned concurrency that the compute autoscales between.
- * A single unit of provisioned concurrency can process one request at a time.
- * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
- * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
- * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
- * workload size is 0.
- *
- *
- * The workload type of the served entity. The workload type selects which type of compute
- * to use in the endpoint. The default value for this parameter is
- * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
- * types like GPU_SMALL and others.
- * See the available [GPU
- * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
- *
- *
- * ARN of the instance profile that the served model will use to access AWS resources.
- *
- * The name of the model in Databricks Model Registry to be served or if the model resides
- * in Unity Catalog, the full name of model,
- * in the form of __catalog_name__.__schema_name__.__model_name__.
- *
- *
- * The version of the model in Databricks Model Registry or Unity Catalog to be served.
- *
- * The name of a served model. It must be unique across an endpoint. If not specified, this
- * field will default to <model-name>-<model-version>.
- * A served model name can consist of alphanumeric characters, dashes, and underscores.
- *
- *
- * The name of the served model this route configures traffic for.
- *
- * The name of the serving endpoint. This field is required and must be unique across a
- * Databricks workspace.
- * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
- *
- *
- * Key field for a serving endpoint tag.
- *
- * Optional value field for a serving endpoint tag.
- *
- * Description of this `registered_model`.
- *
- * Current stage for this `model_version`.
- *
- * Description of this `model_version`.
- *
- * Unique name of the model
- *
- * MLflow run ID used when creating `model_version`, if `source` was generated by an
- * experiment run stored in MLflow tracking server.
- *
- * Run Link: Direct link to the run that generated this version
- *
- * URI indicating the location of the source model artifacts, used when creating
- * `model_version`
- *
- * Details on current `status`, if it is pending or failed.
- *
- * User that created this `model_version`.
- *
- * Model's version number.
- *
- * Unique name for the model.
- *
- * User that created this `registered_model`
- *
- * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
- * specified, tables in this pipeline are published to a `target` schema inside `catalog`
- * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
- * published to Unity Catalog.
- *
- * DLT Release Channel that specifies which version to use.
- *
- * The node type of the Spark driver.
- * Note that this field is optional; if unset, the driver node type will be set as the same
- * value
- * as `node_type_id` defined above.
- *
- * A label for the cluster specification, either `default` to configure the default cluster,
- * or `maintenance` to configure the maintenance cluster. This field is optional. The
- * default value is `default`.
- *
- * The path to the file containing metadata about the deployment.
- *
- * Pipeline product edition.
- *
- * Immutable. The Unity Catalog connection this gateway pipeline uses to communicate with
- * the source.
- *
- * Required, Immutable. The name of the catalog for the gateway pipeline's storage
- * location.
- *
- * Optional. The Unity Catalog-compatible name for the gateway storage location.
- * This is the destination to use for the data that is extracted by the gateway.
- * Delta Live Tables system will automatically create the storage location under the catalog
- * and schema.
- *
- *
- * Required, Immutable. The name of the schema for the gateway pipelines's storage
- * location.
- *
- * Unique identifier for this pipeline.
- *
- * Immutable. The Unity Catalog connection this ingestion pipeline uses to communicate with
- * the source. Specify either ingestion_gateway_id or connection_name.
- *
- * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
- * communicate with the source. Specify either ingestion_gateway_id or connection_name.
- *
- * Required. Destination catalog to store tables.
- *
- * Required. Destination schema to store tables in. Tables with the same name as the source
- * tables are created in this destination schema. The pipeline fails If a table with the
- * same name already exists.
- *
- * The source catalog name. Might be optional depending on the type of source.
- *
- * Required. Schema name in the source database.
- *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
- * exists. If not set, the source table name is used.
- *
- * Source catalog name. Might be optional depending on the type of source.
- *
- * Schema name in the source database. Might be optional depending on the type of source.
- *
- * Required. Table name in the source database.
- *
- * The absolute path of the file.
- *
- * URI of the jar to be installed. Currently only DBFS is supported.
- *
- *
- * The absolute path of the notebook.
- *
- * URI of the whl to be installed.
- *
- * Friendly identifier for this pipeline.
- *
- * DBFS root directory for storing checkpoints and tables.
- *
- * Target schema (database) to add tables in this pipeline to. If not specified, no data is
- * published to the Hive metastore or Unity Catalog. To publish to Unity Catalog, also
- * specify `catalog`.
- *
- * The directory to store monitoring assets (e.g. dashboard, metric tables).
- *
- * Name of the baseline table from which drift metrics are computed from.
- * Columns in the monitored table should also be present in the baseline table.
- *
- *
- * Jinja template for a SQL expression that specifies how to compute the metric. See [create
- * metric
- * definition](https://docs.databricks.com/en/lakehouse-monitoring/custom-metrics.html#create-definition).
- *
- * Name of the metric in the output tables.
- *
- * The output type of the custom metric.
- *
- * Optional column that contains the ground truth for the prediction.
- *
- * Column that contains the id of the model generating the predictions. Metrics will be
- * computed per model id by
- * default, and also across all model ids.
- *
- *
- * Column that contains the output/prediction from the model.
- *
- * Optional column that contains the prediction probabilities for each class in a
- * classification problem type.
- * The values in this column should be a map, mapping each class label to the prediction
- * probability for a given
- * sample. The map should be of PySpark MapType().
- *
- *
- * Column that contains the timestamps of requests. The column must be one of the following:
- * - A ``TimestampType`` column
- * - A column whose values can be converted to timestamps through the pyspark
- * ``to_timestamp``
- * [function](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_timestamp.html).
- *
- *
- * Schema where output metric tables are created.
- *
- * The expression that determines when to run the monitor. See
- * [examples](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
- *
- *
- * The timezone id (e.g., ``"PST"``) in which to evaluate the quartz expression.
- *
- *
- * Optional argument to specify the warehouse for dashboard creation. If not specified, the
- * first running
- * warehouse will be used.
- *
- *
- * The name of the catalog where the schema and the registered model reside
- *
- * The comment attached to the registered model
- *
- * The name of the registered model
- *
- * The name of the schema where the registered model resides
- *
- * The storage location on the cloud under which model version data files are stored
- *
- * Name of parent catalog.
- *
- * User-provided free-form text description.
- *
- * Name of schema, relative to parent catalog.
- *
- * Storage root URL for managed tables within schema.
- *
- * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
- * Anthropic, Cohere, AI21Labs, Amazon.
- *
- * The name of the provider for the external model. Currently, the supported providers are
- * 'ai21labs', 'anthropic',
- * 'amazon-bedrock', 'cohere', 'databricks-model-serving', 'google-cloud-vertex-ai',
- * 'openai', and 'palm'.",
- *
- *
- * The workload size of the served model. The workload size corresponds to a range of
- * provisioned concurrency that the compute will autoscale between.
- * A single unit of provisioned concurrency can process one request at a time.
- * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
- * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
- * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
- * workload size will be 0.
- *
- *
- * The workload type of the served model. The workload type selects which type of compute to
- * use in the endpoint. The default value for this parameter is
- * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
- * types like GPU_SMALL and others.
- * See the available [GPU
- * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
- *
- *
- * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is
- * supported.
- *
- * Current status of `model_version`
- *
- * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
- * allocating cluster resources based on workload volume, with minimal impact to
- * the data processing latency of your pipelines. Enhanced Autoscaling is available
- * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
- * clusters.
- *
- *
- * The SCD type to use to ingest the table.
- *
- * Can only be one of ``"CUSTOM_METRIC_TYPE_AGGREGATE"``, ``"CUSTOM_METRIC_TYPE_DERIVED"``,
- * or ``"CUSTOM_METRIC_TYPE_DRIFT"``.
- * The ``"CUSTOM_METRIC_TYPE_AGGREGATE"`` and ``"CUSTOM_METRIC_TYPE_DERIVED"`` metrics
- * are computed on a single table, whereas the ``"CUSTOM_METRIC_TYPE_DRIFT"`` compare
- * metrics across
- * baseline and input table, or across the two consecutive time windows.
- * - CUSTOM_METRIC_TYPE_AGGREGATE: only depend on the existing columns in your table
- * - CUSTOM_METRIC_TYPE_DERIVED: depend on previously computed aggregate metrics
- * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
- *
- *
- * Problem type the model aims to solve. Determines the type of model-quality metrics that
- * will be computed.
- *
- * Read only field that indicates whether a schedule is paused or not.
- */
-export enum Key {
-    Endpoint = "endpoint",
-    User = "user",
-}
-
-/**
- * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is
- * supported.
- *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
- *
- * Nodes for this cluster will only be placed on AWS instances with this instance profile.
- * If
- * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
- * profile must have previously been added to the Databricks environment by an account
- * administrator.
- *
- * This feature may only be available to certain customer plans.
- *
- * If this field is ommitted, we will pull in the default from the conf if it exists.
- *
- * Identifier for the availability zone/datacenter in which the cluster resides.
- * This string will be of a form like "us-west-2a". The provided availability
- * zone must be in the same region as the Databricks deployment. For example, "us-west-2a"
- * is not a valid zone id if the Databricks deployment resides in the "us-east-1" region.
- * This is an optional field at cluster creation, and if not specified, a default zone will
- * be used.
- * If the zone specified is "auto", will try to place cluster in a zone with high
- * availability,
- * and will retry placement in a different AZ if there is not enough capacity.
- * The list of available zones as well as the default value can be found by using the
- * `List Zones` method.
- *
- * <needs content added>
- *
- * dbfs destination, e.g. `dbfs:/my/path`
- *
- * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
- * If `canned_cal` is set, please make sure the cluster iam role has `s3:PutObjectAcl`
- * permission on
- * the destination bucket and prefix. The full list of possible canned acl can be found at
- * http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl.
- * Please also note that by default only the object owner gets full controls. If you are
- * using cross account
- * role for writing data, you may want to set `bucket-owner-full-control` to make bucket
- * owner able to
- * read the logs.
- *
- * S3 destination, e.g. `s3://my-bucket/some-prefix` Note that logs will be delivered using
- * cluster iam role, please make sure you set cluster iam role and the role has write access
- * to the
- * destination. Please also note that you cannot use AWS keys to deliver logs.
- *
- * (Optional) The encryption type, it could be `sse-s3` or `sse-kms`. It will be used only
- * when
- * encryption is enabled and the default type is `sse-s3`.
- *
- * S3 endpoint, e.g. `https://s3-us-west-2.amazonaws.com`. Either region or endpoint needs
- * to be set.
- * If both are set, endpoint will be used.
- *
- * (Optional) Kms key which will be used if encryption is enabled and encryption type is set
- * to `sse-kms`.
- *
- * S3 region, e.g. `us-west-2`. Either region or endpoint needs to be set. If both are set,
- * endpoint will be used.
- *
- * Cluster name requested by the user. This doesn't have to be unique.
- * If not specified at creation, the cluster name will be an empty string.
- *
- *
- * Password of the user
- *
- * Name of the user
- *
- * URL of the docker image.
- *
- * The optional ID of the instance pool for the driver of the cluster belongs.
- * The pool cluster uses the instance pool with id (instance_pool_id) if the driver pool is
- * not
- * assigned.
- *
- * The node type of the Spark driver. Note that this field is optional;
- * if unset, the driver node type will be set as the same value
- * as `node_type_id` defined above.
- *
- *
- * If provided, the cluster will impersonate the google service account when accessing
- * gcloud services (like GCS). The google service account
- * must have previously been added to the Databricks environment by an account
- * administrator.
- *
- * Identifier for the availability zone in which the cluster resides.
- * This can be one of the following:
- * - "HA" => High availability, spread nodes across availability zones for a Databricks
- * deployment region [default]
- * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
- * - A GCP availability zone => Pick One of the available zones for (machine type + region)
- * from https://cloud.google.com/compute/docs/regions-zones.
- *
- * abfss destination, e.g.
- * `abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>`.
- *
- * local file destination, e.g. `file:/my/local/file.sh`
- *
- * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
- *
- * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
- *
- * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
- *
- * The optional ID of the instance pool to which the cluster belongs.
- *
- * This field encodes, through a single value, the resources available to each of
- * the Spark nodes in this cluster. For example, the Spark nodes can be provisioned
- * and optimized for memory or compute intensive workloads. A list of available node
- * types can be retrieved by using the :method:clusters/listNodeTypes API call.
- *
- *
- * The ID of the cluster policy used to create the cluster if applicable.
- *
- * Single user name if data_security_mode is `SINGLE_USER`
- *
- * The Spark version of the cluster, e.g. `3.3.x-scala2.11`.
- * A list of available Spark versions can be retrieved by using
- * the :method:clusters/sparkVersions API call.
- *
- *
- * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
- *
- * Default value of the parameter.
- *
- * The name of the defined parameter. May only contain alphanumeric characters, `_`, `-`,
- * and `.`
- *
- * Application ID of an active service principal. Setting this field requires the
- * `servicePrincipal/user` role.
- *
- * The email of an active workspace user. Non-admin users can only set this field to their
- * own email.
- *
- * A Cron expression using Quartz syntax that describes the schedule for a job. See [Cron
- * Trigger](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html)
- * for details. This field is required.
- *
- * A Java timezone ID. The schedule for a job is resolved with respect to this timezone. See
- * [Java TimeZone](https://docs.oracle.com/javase/7/docs/api/java/util/TimeZone.html) for
- * details. This field is required.
- *
- * The left operand of the condition task. Can be either a string value or a job state or
- * parameter reference.
- *
- * The right operand of the condition task. Can be either a string value or a job state or
- * parameter reference.
- *
- * Optional name of the catalog to use. The value is the top level in the 3-level namespace
- * of Unity Catalog (catalog / schema / relation). The catalog value can only be specified
- * if a warehouse_id is specified. Requires dbt-databricks >= 1.1.1.
- *
- * Optional (relative) path to the profiles directory. Can only be specified if no
- * warehouse_id is specified. If no warehouse_id is specified and this folder is unset, the
- * root directory is used.
- *
- * Path to the project directory. Optional for Git sourced tasks, in which
- * case if no value is provided, the root of the Git repository is used.
- *
- * Optional schema to write to. This parameter is only used when a warehouse_id is also
- * provided. If not provided, the `default` schema is used.
- *
- * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide
- * the profile and connection details to dbt. It can be overridden on a per-command basis by
- * using the `--profiles-dir` command line argument.
- *
- * Can only be specified on condition task dependencies. The outcome of the dependent task
- * that must be met for this task to run.
- *
- * The name of the task this task depends on.
- *
- * An optional description for this task.
- *
- * The key that references an environment spec in a job. This field is required for Python
- * script, Python wheel and dbt tasks when using serverless compute.
- *
- * If existing_cluster_id, the ID of an existing cluster that is used for all runs.
- * When running jobs or tasks on an existing cluster, you may need to manually restart
- * the cluster if it stops responding. We suggest running jobs and tasks on new clusters for
- * greater reliability
- *
- * Array for task to iterate on. This can be a JSON string or a reference to
- * an array parameter.
- *
- * If job_cluster_key, this task is executed reusing the cluster specified in
- * `job.settings.job_clusters`.
- *
- * The name of the CRAN package to install.
- *
- * The repository where the package can be found. If not specified, the default CRAN repo is
- * used.
- *
- * Deprecated. URI of the egg library to install. Installing Python egg files is deprecated
- * and is not supported in Databricks Runtime 14.0 and above.
- *
- * URI of the JAR library to install. Supported URIs include Workspace paths, Unity Catalog
- * Volumes paths, and S3 URIs.
- * For example: `{ "jar": "/Workspace/path/to/library.jar" }`, `{ "jar" :
- * "/Volumes/path/to/library.jar" }` or
- * `{ "jar": "s3://my-bucket/library.jar" }`.
- * If S3 is used, please make sure the cluster has read access on the library. You may need
- * to
- * launch the cluster with an IAM role to access the S3 URI.
- *
- * Gradle-style maven coordinates. For example: "org.jsoup:jsoup:1.7.2".
- *
- * Maven repo to install the Maven package from. If omitted, both Maven Central Repository
- * and Spark Packages are searched.
- *
- * The name of the pypi package to install. An optional exact version specification is also
- * supported. Examples: "simplejson" and "simplejson==3.8.0".
- *
- * The repository where the package can be found. If not specified, the default pip index is
- * used.
- *
- * URI of the requirements.txt file to install. Only Workspace paths and Unity Catalog
- * Volumes paths are supported.
- * For example: `{ "requirements": "/Workspace/path/to/requirements.txt" }` or `{
- * "requirements" : "/Volumes/path/to/requirements.txt" }`
- *
- * URI of the wheel library to install. Supported URIs include Workspace paths, Unity
- * Catalog Volumes paths, and S3 URIs.
- * For example: `{ "whl": "/Workspace/path/to/library.whl" }`, `{ "whl" :
- * "/Volumes/path/to/library.whl" }` or
- * `{ "whl": "s3://my-bucket/library.whl" }`.
- * If S3 is used, please make sure the cluster has read access on the library. You may need
- * to
- * launch the cluster with an IAM role to access the S3 URI.
- *
- * The path of the notebook to be run in the Databricks workspace or remote repository.
- * For notebooks stored in the Databricks workspace, the path must be absolute and begin
- * with a slash.
- * For notebooks stored in a remote repository, the path must be relative. This field is
- * required.
- *
- * Optional `warehouse_id` to run the notebook on a SQL warehouse. Classic SQL warehouses
- * are NOT supported, please use serverless or pro SQL warehouses.
- *
- * Note that SQL warehouses only support SQL cells; if the notebook contains non-SQL cells,
- * the run will fail.
- *
- * The full name of the pipeline task to execute.
- *
- * Named entry point to use, if it does not exist in the metadata of the package it executes
- * the function from the package directly using `$packageName.$entryPoint()`
- *
- * Name of the package to execute
- *
- * Deprecated since 04/2016. Provide a `jar` through the `libraries` field instead. For an
- * example, see :method:jobs/create.
- *
- * The full name of the class containing the main method to be executed. This class must be
- * contained in a JAR provided as a library.
- *
- * The code must use `SparkContext.getOrCreate` to obtain a Spark context; otherwise, runs
- * of the job fail.
- *
- * The Python file to be executed. Cloud file URIs (such as dbfs:/, s3:/, adls:/, gcs:/) and
- * workspace paths are supported. For python files stored in the Databricks workspace, the
- * path must be absolute and begin with `/`. For files stored in a remote repository, the
- * path must be relative. This field is required.
- *
- * The canonical identifier of the SQL alert.
- *
- * The canonical identifier of the destination to receive email notification. This parameter
- * is mutually exclusive with user_name. You cannot set both destination_id and user_name
- * for subscription notifications.
- *
- * The user name to receive the subscription email. This parameter is mutually exclusive
- * with destination_id. You cannot set both destination_id and user_name for subscription
- * notifications.
- *
- * Subject of the email sent to subscribers of this task.
- *
- * The canonical identifier of the SQL dashboard.
- *
- * Path of the SQL file. Must be relative if the source is a remote Git repository and
- * absolute for workspace paths.
- *
- * The canonical identifier of the SQL query.
- *
- * The canonical identifier of the SQL warehouse. Recommended to use with serverless or pro
- * SQL warehouses. Classic SQL warehouses are only supported for SQL alert, dashboard and
- * query tasks and are limited to scheduled single-task jobs.
- *
- * A unique name for the task. This field is used to refer to this task from other tasks.
- * This field is required and must be unique within its parent job.
- * On Update or Reset, this field is used to reference the tasks to be updated or reset.
- *
- * URL to be monitored for file arrivals. The path must point to the root or a subpath of
- * the external location.
- *
- * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
- * name if the inference table is already enabled.
- *
- * The name of the schema in Unity Catalog. NOTE: On update, you cannot change the schema
- * name if the inference table is already enabled.
- *
- * The prefix of the table in Unity Catalog. NOTE: On update, you cannot change the prefix
- * name if the inference table is already enabled.
- *
- * The name of the entity to be served. The entity may be a model in the Databricks Model
- * Registry, a model in the Unity Catalog (UC),
- * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the
- * object should be given in the form of
- * __catalog_name__.__schema_name__.__model_name__.
- *
- *
- * The version of the model in Databricks Model Registry to be served or empty if the entity
- * is a FEATURE_SPEC.
- *
- * The Databricks secret key reference for an AWS access key ID with permissions to interact
- * with Bedrock services. If you prefer to paste your API key directly, see
- * `aws_access_key_id`. You must provide an API key using one of the following fields:
- * `aws_access_key_id` or `aws_access_key_id_plaintext`.
- *
- * An AWS access key ID with permissions to interact with Bedrock services provided as a
- * plaintext string. If you prefer to reference your key using Databricks Secrets, see
- * `aws_access_key_id`. You must provide an API key using one of the following fields:
- * `aws_access_key_id` or `aws_access_key_id_plaintext`.
- *
- * The AWS region to use. Bedrock has to be enabled there.
- *
- * The Databricks secret key reference for an AWS secret access key paired with the access
- * key ID, with permissions to interact with Bedrock services. If you prefer to paste your
- * API key directly, see `aws_secret_access_key_plaintext`. You must provide an API key
- * using one of the following fields: `aws_secret_access_key` or
- * `aws_secret_access_key_plaintext`.
- *
- * An AWS secret access key paired with the access key ID, with permissions to interact with
- * Bedrock services provided as a plaintext string. If you prefer to reference your key
- * using Databricks Secrets, see `aws_secret_access_key`. You must provide an API key using
- * one of the following fields: `aws_secret_access_key` or
- * `aws_secret_access_key_plaintext`.
- *
- * The Databricks secret key reference for an Anthropic API key. If you prefer to paste your
- * API key directly, see `anthropic_api_key_plaintext`. You must provide an API key using
- * one of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
- *
- * The Anthropic API key provided as a plaintext string. If you prefer to reference your key
- * using Databricks Secrets, see `anthropic_api_key`. You must provide an API key using one
- * of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
- *
- * This is an optional field to provide a customized base URL for the Cohere API.
- * If left unspecified, the standard Cohere base URL is used.
- *
- *
- * The Databricks secret key reference for a Cohere API key. If you prefer to paste your API
- * key directly, see `cohere_api_key_plaintext`. You must provide an API key using one of
- * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
- *
- * The Cohere API key provided as a plaintext string. If you prefer to reference your key
- * using Databricks Secrets, see `cohere_api_key`. You must provide an API key using one of
- * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
- *
- * The Databricks secret key reference for a Databricks API token that corresponds to a user
- * or service
- * principal with Can Query access to the model serving endpoint pointed to by this external
- * model.
- * If you prefer to paste your API key directly, see `databricks_api_token_plaintext`.
- * You must provide an API key using one of the following fields: `databricks_api_token` or
- * `databricks_api_token_plaintext`.
- *
- *
- * The Databricks API token that corresponds to a user or service
- * principal with Can Query access to the model serving endpoint pointed to by this external
- * model provided as a plaintext string.
- * If you prefer to reference your key using Databricks Secrets, see `databricks_api_token`.
- * You must provide an API key using one of the following fields: `databricks_api_token` or
- * `databricks_api_token_plaintext`.
- *
- *
- * The URL of the Databricks workspace containing the model serving endpoint pointed to by
- * this external model.
- *
- *
- * The name of the external model.
- *
- * The task type of the external model.
- *
- * ARN of the instance profile that the served entity uses to access AWS resources.
- *
- * The name of a served entity. It must be unique across an endpoint. A served entity name
- * can consist of alphanumeric characters, dashes, and underscores.
- * If not specified for an external model, this field defaults to external_model.name, with
- * '.' and ':' replaced with '-', and if not specified for other
- * entities, it defaults to <entity-name>-<entity-version>.
- *
- *
- * The workload size of the served entity. The workload size corresponds to a range of
- * provisioned concurrency that the compute autoscales between.
- * A single unit of provisioned concurrency can process one request at a time.
- * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
- * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
- * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
- * workload size is 0.
- *
- *
- * The workload type of the served entity. The workload type selects which type of compute
- * to use in the endpoint. The default value for this parameter is
- * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
- * types like GPU_SMALL and others.
- * See the available [GPU
- * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
- *
- *
- * ARN of the instance profile that the served model will use to access AWS resources.
- *
- * The name of the model in Databricks Model Registry to be served or if the model resides
- * in Unity Catalog, the full name of model,
- * in the form of __catalog_name__.__schema_name__.__model_name__.
- *
- *
- * The version of the model in Databricks Model Registry or Unity Catalog to be served.
- *
- * The name of a served model. It must be unique across an endpoint. If not specified, this
- * field will default to <model-name>-<model-version>.
- * A served model name can consist of alphanumeric characters, dashes, and underscores.
- *
- *
- * The name of the served model this route configures traffic for.
- *
- * The name of the serving endpoint. This field is required and must be unique across a
- * Databricks workspace.
- * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
- *
- *
- * Key field for a serving endpoint tag.
- *
- * Optional value field for a serving endpoint tag.
- *
- * Description of this `registered_model`.
- *
- * Current stage for this `model_version`.
- *
- * Description of this `model_version`.
- *
- * Unique name of the model
- *
- * MLflow run ID used when creating `model_version`, if `source` was generated by an
- * experiment run stored in MLflow tracking server.
- *
- * Run Link: Direct link to the run that generated this version
- *
- * URI indicating the location of the source model artifacts, used when creating
- * `model_version`
- *
- * Details on current `status`, if it is pending or failed.
- *
- * User that created this `model_version`.
- *
- * Model's version number.
- *
- * Unique name for the model.
- *
- * User that created this `registered_model`
- *
- * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
- * specified, tables in this pipeline are published to a `target` schema inside `catalog`
- * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
- * published to Unity Catalog.
- *
- * DLT Release Channel that specifies which version to use.
- *
- * The node type of the Spark driver.
- * Note that this field is optional; if unset, the driver node type will be set as the same
- * value
- * as `node_type_id` defined above.
- *
- * A label for the cluster specification, either `default` to configure the default cluster,
- * or `maintenance` to configure the maintenance cluster. This field is optional. The
- * default value is `default`.
- *
- * The path to the file containing metadata about the deployment.
- *
- * Pipeline product edition.
- *
- * Immutable. The Unity Catalog connection this gateway pipeline uses to communicate with
- * the source.
- *
- * Required, Immutable. The name of the catalog for the gateway pipeline's storage
- * location.
- *
- * Optional. The Unity Catalog-compatible name for the gateway storage location.
- * This is the destination to use for the data that is extracted by the gateway.
- * Delta Live Tables system will automatically create the storage location under the catalog
- * and schema.
- *
- *
- * Required, Immutable. The name of the schema for the gateway pipelines's storage
- * location.
- *
- * Unique identifier for this pipeline.
- *
- * Immutable. The Unity Catalog connection this ingestion pipeline uses to communicate with
- * the source. Specify either ingestion_gateway_id or connection_name.
- *
- * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
- * communicate with the source. Specify either ingestion_gateway_id or connection_name.
- *
- * Required. Destination catalog to store tables.
- *
- * Required. Destination schema to store tables in. Tables with the same name as the source
- * tables are created in this destination schema. The pipeline fails If a table with the
- * same name already exists.
- *
- * The source catalog name. Might be optional depending on the type of source.
- *
- * Required. Schema name in the source database.
- *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
- * exists. If not set, the source table name is used.
- *
- * Source catalog name. Might be optional depending on the type of source.
- *
- * Schema name in the source database. Might be optional depending on the type of source.
- *
- * Required. Table name in the source database.
- *
- * The absolute path of the file.
- *
- * URI of the jar to be installed. Currently only DBFS is supported.
- *
- *
- * The absolute path of the notebook.
- *
- * URI of the whl to be installed.
- *
- * Friendly identifier for this pipeline.
- *
- * DBFS root directory for storing checkpoints and tables.
- *
- * Target schema (database) to add tables in this pipeline to. If not specified, no data is
- * published to the Hive metastore or Unity Catalog. To publish to Unity Catalog, also
- * specify `catalog`.
- *
- * The directory to store monitoring assets (e.g. dashboard, metric tables).
- *
- * Name of the baseline table from which drift metrics are computed from.
- * Columns in the monitored table should also be present in the baseline table.
- *
- *
- * Jinja template for a SQL expression that specifies how to compute the metric. See [create
- * metric
- * definition](https://docs.databricks.com/en/lakehouse-monitoring/custom-metrics.html#create-definition).
- *
- * Name of the metric in the output tables.
- *
- * The output type of the custom metric.
- *
- * Optional column that contains the ground truth for the prediction.
- *
- * Column that contains the id of the model generating the predictions. Metrics will be
- * computed per model id by
- * default, and also across all model ids.
- *
- *
- * Column that contains the output/prediction from the model.
- *
- * Optional column that contains the prediction probabilities for each class in a
- * classification problem type.
- * The values in this column should be a map, mapping each class label to the prediction
- * probability for a given
- * sample. The map should be of PySpark MapType().
- *
- *
- * Column that contains the timestamps of requests. The column must be one of the following:
- * - A ``TimestampType`` column
- * - A column whose values can be converted to timestamps through the pyspark
- * ``to_timestamp``
- * [function](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_timestamp.html).
- *
- *
- * Schema where output metric tables are created.
- *
- * The expression that determines when to run the monitor. See
- * [examples](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
- *
- *
- * The timezone id (e.g., ``"PST"``) in which to evaluate the quartz expression.
- *
- *
- * Optional argument to specify the warehouse for dashboard creation. If not specified, the
- * first running
- * warehouse will be used.
- *
- *
- * The name of the catalog where the schema and the registered model reside
- *
- * The comment attached to the registered model
- *
- * The name of the registered model
- *
- * The name of the schema where the registered model resides
- *
- * The storage location on the cloud under which model version data files are stored
- *
- * Name of parent catalog.
- *
- * User-provided free-form text description.
- *
- * Name of schema, relative to parent catalog.
- *
- * Storage root URL for managed tables within schema.
- *
- * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
- * Anthropic, Cohere, AI21Labs, Amazon.
- *
- * The name of the provider for the external model. Currently, the supported providers are
- * 'ai21labs', 'anthropic',
- * 'amazon-bedrock', 'cohere', 'databricks-model-serving', 'google-cloud-vertex-ai',
- * 'openai', and 'palm'.",
- *
- *
- * The workload size of the served model. The workload size corresponds to a range of
- * provisioned concurrency that the compute will autoscale between.
- * A single unit of provisioned concurrency can process one request at a time.
- * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
- * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
- * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
- * workload size will be 0.
- *
- *
- * The workload type of the served model. The workload type selects which type of compute to
- * use in the endpoint. The default value for this parameter is
- * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
- * types like GPU_SMALL and others.
- * See the available [GPU
- * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
- *
- *
- * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are
- * supported, with 'endpoint' being the default if not specified.
- *
- * Current status of `model_version`
- *
- * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
- * allocating cluster resources based on workload volume, with minimal impact to
- * the data processing latency of your pipelines. Enhanced Autoscaling is available
- * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
- * clusters.
- *
- *
- * The SCD type to use to ingest the table.
- *
- * Can only be one of ``"CUSTOM_METRIC_TYPE_AGGREGATE"``, ``"CUSTOM_METRIC_TYPE_DERIVED"``,
- * or ``"CUSTOM_METRIC_TYPE_DRIFT"``.
- * The ``"CUSTOM_METRIC_TYPE_AGGREGATE"`` and ``"CUSTOM_METRIC_TYPE_DERIVED"`` metrics
- * are computed on a single table, whereas the ``"CUSTOM_METRIC_TYPE_DRIFT"`` compare
- * metrics across
- * baseline and input table, or across the two consecutive time windows.
- * - CUSTOM_METRIC_TYPE_AGGREGATE: only depend on the existing columns in your table
- * - CUSTOM_METRIC_TYPE_DERIVED: depend on previously computed aggregate metrics
- * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
- *
- *
- * Problem type the model aims to solve. Determines the type of model-quality metrics that
- * will be computed.
- *
- * Read only field that indicates whether a schedule is paused or not.
- */
-export enum RenewalPeriod {
-    Minute = "minute",
-}
-
-export interface BundleSchem3 {
+export interface BundleSchem5 {
     /**
      * Key field for a serving endpoint tag.
      */
@@ -7829,7 +8837,7 @@ export interface ModelClass {
     /**
      * Tags: Additional metadata key-value pairs for this `registered_model`.
      */
-    tags?: Array<BundleSchem5 | string> | string;
+    tags?: Array<BundleSchem7 | string> | string;
     /**
      * User that created this `registered_model`
      */
@@ -7882,7 +8890,7 @@ export interface LatestVersionClass {
     /**
      * Tags: Additional metadata key-value pairs for this `model_version`.
      */
-    tags?: Array<BundleSchem4 | string> | string;
+    tags?: Array<BundleSchem6 | string> | string;
     /**
      * User that created this `model_version`.
      */
@@ -7895,55 +8903,6 @@ export interface LatestVersionClass {
 
 /**
  * Current status of `model_version`
- *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
  *
  * Nodes for this cluster will only be placed on AWS instances with this instance profile.
  * If
@@ -8061,6 +9020,45 @@ export interface LatestVersionClass {
  * A list of available Spark versions can be retrieved by using
  * the :method:clusters/sparkVersions API call.
  *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
  *
  * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
  *
@@ -8233,6 +9231,16 @@ export interface LatestVersionClass {
  * URL to be monitored for file arrivals. The path must point to the root or a subpath of
  * the external location.
  *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
  * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
  * name if the inference table is already enabled.
  *
@@ -8398,6 +9406,8 @@ export interface LatestVersionClass {
  *
  * User that created this `registered_model`
  *
+ * Budget policy of this pipeline.
+ *
  * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
  * specified, tables in this pipeline are published to a `target` schema inside `catalog`
  * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
@@ -8475,6 +9485,9 @@ export interface LatestVersionClass {
  *
  * Friendly identifier for this pipeline.
  *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
  * DBFS root directory for storing checkpoints and tables.
  *
  * Target schema (database) to add tables in this pipeline to. If not specified, no data is
@@ -8549,6 +9562,17 @@ export interface LatestVersionClass {
  * Name of schema, relative to parent catalog.
  *
  * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
  *
  * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
  * Anthropic, Cohere, AI21Labs, Amazon.
@@ -8613,7 +9637,7 @@ export enum Status {
     Ready = "READY",
 }
 
-export interface BundleSchem4 {
+export interface BundleSchem6 {
     /**
      * The tag key.
      */
@@ -8624,7 +9648,7 @@ export interface BundleSchem4 {
     value?: string;
 }
 
-export interface BundleSchem5 {
+export interface BundleSchem7 {
     /**
      * The tag key.
      */
@@ -8636,6 +9660,10 @@ export interface BundleSchem5 {
 }
 
 export interface PipelineClass {
+    /**
+     * Budget policy of this pipeline.
+     */
+    budget_policy_id?: string;
     /**
      * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
      * specified, tables in this pipeline are published to a `target` schema inside `catalog`
@@ -8650,7 +9678,7 @@ export interface PipelineClass {
     /**
      * Cluster settings for this pipeline deployment.
      */
-    clusters?: Array<ClusterClass | string> | string;
+    clusters?: Array<BundleSchem8 | string> | string;
     /**
      * String-String configuration for this pipeline execution.
      */
@@ -8662,7 +9690,7 @@ export interface PipelineClass {
     /**
      * Deployment type of this pipeline.
      */
-    deployment?: BundleSchem7 | string;
+    deployment?: BundleSchem10 | string;
     /**
      * Whether the pipeline is in Development mode. Defaults to false.
      */
@@ -8691,7 +9719,7 @@ export interface PipelineClass {
     /**
      * Libraries or code needed by this deployment.
      */
-    libraries?: Array<BundleSchem10 | string> | string;
+    libraries?: Array<BundleSchem13 | string> | string;
     /**
      * Friendly identifier for this pipeline.
      */
@@ -8705,6 +9733,11 @@ export interface PipelineClass {
      * Whether Photon is enabled for this pipeline.
      */
     photon?: boolean | string;
+    /**
+     * The default schema (database) where tables are read from or published to. The presence of
+     * this field implies that the pipeline is in direct publishing mode.
+     */
+    schema?: string;
     /**
      * Whether serverless compute is enabled for this pipeline.
      */
@@ -8722,10 +9755,10 @@ export interface PipelineClass {
     /**
      * Which pipeline trigger to use. Deprecated: Use `continuous` instead.
      */
-    trigger?: BundleSchem12 | string;
+    trigger?: BundleSchem15 | string;
 }
 
-export interface ClusterClass {
+export interface BundleSchem8 {
     /**
      * Note: This field won't be persisted. Only API users will check this field.
      */
@@ -8734,7 +9767,7 @@ export interface ClusterClass {
      * Parameters needed in order to automatically scale clusters up and down based on load.
      * Note: autoscaling works best with DB runtime versions 3.0 or later.
      */
-    autoscale?: BundleSchem6 | string;
+    autoscale?: BundleSchem9 | string;
     /**
      * Attributes related to clusters running on Amazon Web Services.
      * If not specified at cluster creation, a set of default values will be used.
@@ -8857,7 +9890,7 @@ export interface ClusterClass {
     ssh_public_keys?: string[] | string;
 }
 
-export interface BundleSchem6 {
+export interface BundleSchem9 {
     /**
      * The maximum number of workers to which the cluster can scale up when overloaded.
      * `max_workers` must be strictly greater than `min_workers`.
@@ -8885,55 +9918,6 @@ export interface BundleSchem6 {
  * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
  * clusters.
  *
- *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
  *
  * Nodes for this cluster will only be placed on AWS instances with this instance profile.
  * If
@@ -9051,6 +10035,45 @@ export interface BundleSchem6 {
  * A list of available Spark versions can be retrieved by using
  * the :method:clusters/sparkVersions API call.
  *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
  *
  * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
  *
@@ -9223,6 +10246,16 @@ export interface BundleSchem6 {
  * URL to be monitored for file arrivals. The path must point to the root or a subpath of
  * the external location.
  *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
  * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
  * name if the inference table is already enabled.
  *
@@ -9388,6 +10421,8 @@ export interface BundleSchem6 {
  *
  * User that created this `registered_model`
  *
+ * Budget policy of this pipeline.
+ *
  * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
  * specified, tables in this pipeline are published to a `target` schema inside `catalog`
  * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
@@ -9465,6 +10500,9 @@ export interface BundleSchem6 {
  *
  * Friendly identifier for this pipeline.
  *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
  * DBFS root directory for storing checkpoints and tables.
  *
  * Target schema (database) to add tables in this pipeline to. If not specified, no data is
@@ -9540,6 +10578,17 @@ export interface BundleSchem6 {
  *
  * Storage root URL for managed tables within schema.
  *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
+ *
  * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
  * Anthropic, Cohere, AI21Labs, Amazon.
  *
@@ -9597,7 +10646,7 @@ export enum Mode {
     Legacy = "LEGACY",
 }
 
-export interface BundleSchem7 {
+export interface BundleSchem10 {
     /**
      * The deployment method that manages the pipeline.
      */
@@ -9606,6 +10655,16 @@ export interface BundleSchem7 {
      * The path to the file containing metadata about the deployment.
      */
     metadata_file_path?: string;
+}
+
+/**
+ * The deployment method that manages the pipeline.
+ *
+ * The deployment method that manages the pipeline:
+ * - BUNDLE: The pipeline is managed by a Databricks Asset Bundle.
+ */
+export enum Kind {
+    Bundle = "BUNDLE",
 }
 
 export interface FiltersClass {
@@ -9669,14 +10728,14 @@ export interface ObjectClass {
     /**
      * Select tables from a specific source schema.
      */
-    schema?: BundleSchem8 | string;
+    schema?: BundleSchem11 | string;
     /**
      * Select tables from a specific source table.
      */
-    table?: BundleSchem9 | string;
+    table?: BundleSchem12 | string;
 }
 
-export interface BundleSchem8 {
+export interface BundleSchem11 {
     /**
      * Required. Destination catalog to store tables.
      */
@@ -9721,55 +10780,6 @@ export interface TableConfigurationClass {
 
 /**
  * The SCD type to use to ingest the table.
- *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
  *
  * Nodes for this cluster will only be placed on AWS instances with this instance profile.
  * If
@@ -9887,6 +10897,45 @@ export interface TableConfigurationClass {
  * A list of available Spark versions can be retrieved by using
  * the :method:clusters/sparkVersions API call.
  *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
  *
  * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
  *
@@ -10059,6 +11108,16 @@ export interface TableConfigurationClass {
  * URL to be monitored for file arrivals. The path must point to the root or a subpath of
  * the external location.
  *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
  * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
  * name if the inference table is already enabled.
  *
@@ -10224,6 +11283,8 @@ export interface TableConfigurationClass {
  *
  * User that created this `registered_model`
  *
+ * Budget policy of this pipeline.
+ *
  * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
  * specified, tables in this pipeline are published to a `target` schema inside `catalog`
  * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
@@ -10301,6 +11362,9 @@ export interface TableConfigurationClass {
  *
  * Friendly identifier for this pipeline.
  *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
  * DBFS root directory for storing checkpoints and tables.
  *
  * Target schema (database) to add tables in this pipeline to. If not specified, no data is
@@ -10376,6 +11440,17 @@ export interface TableConfigurationClass {
  *
  * Storage root URL for managed tables within schema.
  *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
+ *
  * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
  * Anthropic, Cohere, AI21Labs, Amazon.
  *
@@ -10438,7 +11513,7 @@ export enum ScdType {
     ScdType2 = "SCD_TYPE_2",
 }
 
-export interface BundleSchem9 {
+export interface BundleSchem12 {
     /**
      * Required. Destination catalog to store table.
      */
@@ -10471,11 +11546,11 @@ export interface BundleSchem9 {
     table_configuration?: TableConfigurationClass | string;
 }
 
-export interface BundleSchem10 {
+export interface BundleSchem13 {
     /**
      * The path to a file that defines a pipeline and is stored in the Databricks Repos.
      */
-    file?: BundleSchem11 | string;
+    file?: BundleSchem14 | string;
     /**
      * URI of the jar to be installed. Currently only DBFS is supported.
      */
@@ -10494,7 +11569,7 @@ export interface BundleSchem10 {
     whl?: string;
 }
 
-export interface BundleSchem11 {
+export interface BundleSchem14 {
     /**
      * The absolute path of the file.
      */
@@ -10525,7 +11600,7 @@ export interface NotificationClass {
     email_recipients?: string[] | string;
 }
 
-export interface BundleSchem12 {
+export interface BundleSchem15 {
     cron?: CronClass | string;
     manual?: ManualClass | string;
 }
@@ -10573,7 +11648,7 @@ export interface QualityMonitorClass {
     /**
      * The schedule for automatically updating and refreshing metric tables.
      */
-    schedule?: BundleSchem13 | string;
+    schedule?: BundleSchem16 | string;
     /**
      * Whether to skip creating a default dashboard summarizing data quality metrics.
      */
@@ -10649,55 +11724,6 @@ export interface CustomMetricClass {
  * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
  *
  *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
- *
  * Nodes for this cluster will only be placed on AWS instances with this instance profile.
  * If
  * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
@@ -10814,6 +11840,45 @@ export interface CustomMetricClass {
  * A list of available Spark versions can be retrieved by using
  * the :method:clusters/sparkVersions API call.
  *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
  *
  * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
  *
@@ -10986,6 +12051,16 @@ export interface CustomMetricClass {
  * URL to be monitored for file arrivals. The path must point to the root or a subpath of
  * the external location.
  *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
  * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
  * name if the inference table is already enabled.
  *
@@ -11151,6 +12226,8 @@ export interface CustomMetricClass {
  *
  * User that created this `registered_model`
  *
+ * Budget policy of this pipeline.
+ *
  * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
  * specified, tables in this pipeline are published to a `target` schema inside `catalog`
  * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
@@ -11228,6 +12305,9 @@ export interface CustomMetricClass {
  *
  * Friendly identifier for this pipeline.
  *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
  * DBFS root directory for storing checkpoints and tables.
  *
  * Target schema (database) to add tables in this pipeline to. If not specified, no data is
@@ -11302,6 +12382,17 @@ export interface CustomMetricClass {
  * Name of schema, relative to parent catalog.
  *
  * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
  *
  * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
  * Anthropic, Cohere, AI21Labs, Amazon.
@@ -11414,55 +12505,6 @@ export interface InferenceLogClass {
  * Problem type the model aims to solve. Determines the type of model-quality metrics that
  * will be computed.
  *
- * Location where artifacts for the experiment are stored.
- *
- * Unique identifier for the experiment.
- *
- * Current life cycle stage of the experiment: "active" or "deleted".
- * Deleted experiments are not returned by APIs.
- *
- * Human readable name that identifies the experiment.
- *
- * The tag key.
- *
- * The tag value.
- *
- * Path of the file that contains deployment metadata.
- *
- * An optional description for the job. The maximum length is 27700 characters in UTF-8
- * encoding.
- *
- * The key of an environment. It has to be unique within a job.
- *
- * Client version used by the environment
- * The client is the user-facing environment of the runtime.
- * Each client comes with a specific set of pre-installed libraries.
- * The version is a string, consisting of the major client version.
- *
- * Name of the branch to be checked out and used by this job. This field cannot be specified
- * in conjunction with git_tag or git_commit.
- *
- * Commit to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_tag.
- *
- * Commit that was used to execute the run. If git_branch was specified, this points to the
- * HEAD of the branch at the time of the run; if git_tag was specified, this points to the
- * commit the tag points to.
- *
- * Name of the tag to be checked out and used by this job. This field cannot be specified in
- * conjunction with git_branch or git_commit.
- *
- * URL of the repository to be cloned by this job.
- *
- * Name of the branch which the job is imported from.
- *
- * Path of the job YAML file that contains the job specification.
- *
- * A unique name for the job cluster. This field is required and must be unique within the
- * job.
- * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
- * task execution.
- *
  * Nodes for this cluster will only be placed on AWS instances with this instance profile.
  * If
  * ommitted, nodes will be placed on instances without an IAM instance profile. The instance
@@ -11579,6 +12621,45 @@ export interface InferenceLogClass {
  * A list of available Spark versions can be retrieved by using
  * the :method:clusters/sparkVersions API call.
  *
+ *
+ * Location where artifacts for the experiment are stored.
+ *
+ * Unique identifier for the experiment.
+ *
+ * Current life cycle stage of the experiment: "active" or "deleted".
+ * Deleted experiments are not returned by APIs.
+ *
+ * Human readable name that identifies the experiment.
+ *
+ * The tag key.
+ *
+ * The tag value.
+ *
+ * An optional description for the job. The maximum length is 27700 characters in UTF-8
+ * encoding.
+ *
+ * The key of an environment. It has to be unique within a job.
+ *
+ * Client version used by the environment
+ * The client is the user-facing environment of the runtime.
+ * Each client comes with a specific set of pre-installed libraries.
+ * The version is a string, consisting of the major client version.
+ *
+ * Name of the branch to be checked out and used by this job. This field cannot be specified
+ * in conjunction with git_tag or git_commit.
+ *
+ * Commit to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_tag.
+ *
+ * Name of the tag to be checked out and used by this job. This field cannot be specified in
+ * conjunction with git_branch or git_commit.
+ *
+ * URL of the repository to be cloned by this job.
+ *
+ * A unique name for the job cluster. This field is required and must be unique within the
+ * job.
+ * `JobTaskSettings` may refer to this field to determine which cluster to launch for the
+ * task execution.
  *
  * An optional name for the job. The maximum length is 4096 bytes in UTF-8 encoding.
  *
@@ -11751,6 +12832,16 @@ export interface InferenceLogClass {
  * URL to be monitored for file arrivals. The path must point to the root or a subpath of
  * the external location.
  *
+ * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the catalog
+ * name.
+ *
+ * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
+ * On update, you have to disable inference table first in order to change the schema name.
+ *
+ * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
+ * table first in order to change the prefix name.
+ *
  * The name of the catalog in Unity Catalog. NOTE: On update, you cannot change the catalog
  * name if the inference table is already enabled.
  *
@@ -11916,6 +13007,8 @@ export interface InferenceLogClass {
  *
  * User that created this `registered_model`
  *
+ * Budget policy of this pipeline.
+ *
  * A catalog in Unity Catalog to publish data from this pipeline to. If `target` is
  * specified, tables in this pipeline are published to a `target` schema inside `catalog`
  * (for example, `catalog`.`target`.`table`). If `target` is not specified, no data is
@@ -11993,6 +13086,9 @@ export interface InferenceLogClass {
  *
  * Friendly identifier for this pipeline.
  *
+ * The default schema (database) where tables are read from or published to. The presence of
+ * this field implies that the pipeline is in direct publishing mode.
+ *
  * DBFS root directory for storing checkpoints and tables.
  *
  * Target schema (database) to add tables in this pipeline to. If not specified, no data is
@@ -12067,6 +13163,17 @@ export interface InferenceLogClass {
  * Name of schema, relative to parent catalog.
  *
  * Storage root URL for managed tables within schema.
+ *
+ * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
+ * input guardrail and the request contains PII, the request is not sent to the model server
+ * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
+ * response contains PII, the PII info in the response is redacted and 400 status code is
+ * returned.
+ *
+ * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
+ * 'endpoint' being the default if not specified.
+ *
+ * Renewal period field for a rate limit. Currently, only 'minute' is supported.
  *
  * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
  * Anthropic, Cohere, AI21Labs, Amazon.
@@ -12150,7 +13257,7 @@ export interface OnNewClassificationTagDetectedClass {
     email_addresses?: string[] | string;
 }
 
-export interface BundleSchem13 {
+export interface BundleSchem16 {
     /**
      * Read only field that indicates whether a schedule is paused or not.
      */
@@ -12216,7 +13323,7 @@ export interface GrantClass {
     privileges: string[] | string;
 }
 
-export interface BundleSchem14 {
+export interface BundleSchem17 {
     /**
      * Name of parent catalog.
      */
@@ -12246,6 +13353,7 @@ export interface SyncClass {
 export interface TargetClass {
     artifacts?: {[key: string]: ArtifactClass | string} | string;
     bundle?: BundleClass | string;
+    cluster_id?: string;
     compute_id?: string;
     default?: boolean | string;
     git?: GitClass | string;
@@ -12256,10 +13364,10 @@ export interface TargetClass {
     run_as?: RunAsClass | string;
     sync?: SyncClass | string;
     variables?: {[key: string]: any} | string;
-    workspace?: BundleSchem15 | string;
+    workspace?: BundleSchem18 | string;
 }
 
-export interface BundleSchem15 {
+export interface BundleSchem18 {
     artifact_path?: string;
     auth_type?: string;
     azure_client_id?: string;
@@ -12273,6 +13381,7 @@ export interface BundleSchem15 {
     google_service_account?: string;
     host?: string;
     profile?: string;
+    resource_path?: string;
     root_path?: string;
     state_path?: string;
 }
@@ -12556,7 +13665,7 @@ const typeMap: any = {
             {
                 json: "workspace",
                 js: "workspace",
-                typ: u(undefined, u(r("BundleSchem15"), "")),
+                typ: u(undefined, u(r("BundleSchem18"), "")),
             },
         ],
         false
@@ -12578,6 +13687,7 @@ const typeMap: any = {
     PurpleBundleSchem: o([{json: "source", js: "source", typ: ""}], false),
     BundleClass: o(
         [
+            {json: "cluster_id", js: "cluster_id", typ: u(undefined, "")},
             {json: "compute_id", js: "compute_id", typ: u(undefined, "")},
             {
                 json: "databricks_cli_version",
@@ -12690,6 +13800,11 @@ const typeMap: any = {
     ResourcesClass: o(
         [
             {
+                json: "clusters",
+                js: "clusters",
+                typ: u(undefined, u(m(u(r("TentacledBundleSchem"), "")), "")),
+            },
+            {
                 json: "experiments",
                 js: "experiments",
                 typ: u(undefined, u(m(u(r("ExperimentClass"), "")), "")),
@@ -12730,303 +13845,12 @@ const typeMap: any = {
             {
                 json: "schemas",
                 js: "schemas",
-                typ: u(undefined, u(m(u(r("BundleSchem14"), "")), "")),
-            },
-        ],
-        false
-    ),
-    ExperimentClass: o(
-        [
-            {
-                json: "artifact_location",
-                js: "artifact_location",
-                typ: u(undefined, ""),
-            },
-            {
-                json: "creation_time",
-                js: "creation_time",
-                typ: u(undefined, u(0, "")),
-            },
-            {json: "experiment_id", js: "experiment_id", typ: u(undefined, "")},
-            {
-                json: "last_update_time",
-                js: "last_update_time",
-                typ: u(undefined, u(0, "")),
-            },
-            {
-                json: "lifecycle_stage",
-                js: "lifecycle_stage",
-                typ: u(undefined, ""),
-            },
-            {json: "name", js: "name", typ: u(undefined, "")},
-            {
-                json: "permissions",
-                js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
-            },
-            {
-                json: "tags",
-                js: "tags",
-                typ: u(undefined, u(a(u(r("TentacledBundleSchem"), "")), "")),
+                typ: u(undefined, u(m(u(r("BundleSchem17"), "")), "")),
             },
         ],
         false
     ),
     TentacledBundleSchem: o(
-        [
-            {json: "key", js: "key", typ: u(undefined, "")},
-            {json: "value", js: "value", typ: u(undefined, "")},
-        ],
-        false
-    ),
-    JobClass: o(
-        [
-            {
-                json: "continuous",
-                js: "continuous",
-                typ: u(undefined, u(r("ContinuousClass"), "")),
-            },
-            {
-                json: "deployment",
-                js: "deployment",
-                typ: u(undefined, u(r("StickyBundleSchem"), "")),
-            },
-            {json: "description", js: "description", typ: u(undefined, "")},
-            {
-                json: "edit_mode",
-                js: "edit_mode",
-                typ: u(undefined, r("EditMode")),
-            },
-            {
-                json: "email_notifications",
-                js: "email_notifications",
-                typ: u(undefined, u(r("IndigoBundleSchem"), "")),
-            },
-            {
-                json: "environments",
-                js: "environments",
-                typ: u(undefined, u(a(u(r("EnvironmentClass"), "")), "")),
-            },
-            {json: "format", js: "format", typ: u(undefined, r("Format"))},
-            {
-                json: "git_source",
-                js: "git_source",
-                typ: u(undefined, u(r("GitSourceClass"), "")),
-            },
-            {
-                json: "health",
-                js: "health",
-                typ: u(undefined, u(r("HealthClass"), "")),
-            },
-            {
-                json: "job_clusters",
-                js: "job_clusters",
-                typ: u(undefined, u(a(u(r("JobClusterClass"), "")), "")),
-            },
-            {
-                json: "max_concurrent_runs",
-                js: "max_concurrent_runs",
-                typ: u(undefined, u(0, "")),
-            },
-            {json: "name", js: "name", typ: u(undefined, "")},
-            {
-                json: "notification_settings",
-                js: "notification_settings",
-                typ: u(undefined, u(r("CunningBundleSchem"), "")),
-            },
-            {
-                json: "parameters",
-                js: "parameters",
-                typ: u(undefined, u(a(u(r("ParameterClass"), "")), "")),
-            },
-            {
-                json: "permissions",
-                js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
-            },
-            {
-                json: "queue",
-                js: "queue",
-                typ: u(undefined, u(r("QueueClass"), "")),
-            },
-            {
-                json: "run_as",
-                js: "run_as",
-                typ: u(undefined, u(r("RunAsClass"), "")),
-            },
-            {
-                json: "schedule",
-                js: "schedule",
-                typ: u(undefined, u(r("MagentaBundleSchem"), "")),
-            },
-            {json: "tags", js: "tags", typ: u(undefined, u(m(""), ""))},
-            {
-                json: "tasks",
-                js: "tasks",
-                typ: u(undefined, u(a(u(r("TaskClass"), "")), "")),
-            },
-            {
-                json: "timeout_seconds",
-                js: "timeout_seconds",
-                typ: u(undefined, u(0, "")),
-            },
-            {
-                json: "trigger",
-                js: "trigger",
-                typ: u(undefined, u(r("BundleSchem2"), "")),
-            },
-            {
-                json: "webhook_notifications",
-                js: "webhook_notifications",
-                typ: u(undefined, u(r("WebhookNotificationsClass"), "")),
-            },
-        ],
-        false
-    ),
-    ContinuousClass: o(
-        [
-            {
-                json: "pause_status",
-                js: "pause_status",
-                typ: u(undefined, r("PauseStatus")),
-            },
-        ],
-        false
-    ),
-    StickyBundleSchem: o(
-        [
-            {json: "kind", js: "kind", typ: r("Kind")},
-            {
-                json: "metadata_file_path",
-                js: "metadata_file_path",
-                typ: u(undefined, ""),
-            },
-        ],
-        false
-    ),
-    IndigoBundleSchem: o(
-        [
-            {
-                json: "no_alert_for_skipped_runs",
-                js: "no_alert_for_skipped_runs",
-                typ: u(undefined, u(true, "")),
-            },
-            {
-                json: "on_duration_warning_threshold_exceeded",
-                js: "on_duration_warning_threshold_exceeded",
-                typ: u(undefined, u(a(""), "")),
-            },
-            {
-                json: "on_failure",
-                js: "on_failure",
-                typ: u(undefined, u(a(""), "")),
-            },
-            {json: "on_start", js: "on_start", typ: u(undefined, u(a(""), ""))},
-            {
-                json: "on_streaming_backlog_exceeded",
-                js: "on_streaming_backlog_exceeded",
-                typ: u(undefined, u(a(""), "")),
-            },
-            {
-                json: "on_success",
-                js: "on_success",
-                typ: u(undefined, u(a(""), "")),
-            },
-        ],
-        false
-    ),
-    EnvironmentClass: o(
-        [
-            {json: "environment_key", js: "environment_key", typ: ""},
-            {
-                json: "spec",
-                js: "spec",
-                typ: u(undefined, u(r("SpecClass"), "")),
-            },
-        ],
-        false
-    ),
-    SpecClass: o(
-        [
-            {json: "client", js: "client", typ: ""},
-            {
-                json: "dependencies",
-                js: "dependencies",
-                typ: u(undefined, u(a(""), "")),
-            },
-        ],
-        false
-    ),
-    GitSourceClass: o(
-        [
-            {json: "git_branch", js: "git_branch", typ: u(undefined, "")},
-            {json: "git_commit", js: "git_commit", typ: u(undefined, "")},
-            {json: "git_provider", js: "git_provider", typ: r("GitProvider")},
-            {
-                json: "git_snapshot",
-                js: "git_snapshot",
-                typ: u(undefined, u(r("GitSnapshotClass"), "")),
-            },
-            {json: "git_tag", js: "git_tag", typ: u(undefined, "")},
-            {json: "git_url", js: "git_url", typ: ""},
-            {
-                json: "job_source",
-                js: "job_source",
-                typ: u(undefined, u(r("JobSourceClass"), "")),
-            },
-        ],
-        false
-    ),
-    GitSnapshotClass: o(
-        [{json: "used_commit", js: "used_commit", typ: u(undefined, "")}],
-        false
-    ),
-    JobSourceClass: o(
-        [
-            {
-                json: "dirty_state",
-                js: "dirty_state",
-                typ: u(undefined, r("DirtyState")),
-            },
-            {
-                json: "import_from_git_branch",
-                js: "import_from_git_branch",
-                typ: "",
-            },
-            {json: "job_config_path", js: "job_config_path", typ: ""},
-        ],
-        false
-    ),
-    HealthClass: o(
-        [
-            {
-                json: "rules",
-                js: "rules",
-                typ: u(undefined, u(a(u(r("RuleClass"), "")), "")),
-            },
-        ],
-        false
-    ),
-    RuleClass: o(
-        [
-            {json: "metric", js: "metric", typ: r("Metric")},
-            {json: "op", js: "op", typ: r("RuleOp")},
-            {json: "value", js: "value", typ: u(0, "")},
-        ],
-        false
-    ),
-    JobClusterClass: o(
-        [
-            {json: "job_cluster_key", js: "job_cluster_key", typ: ""},
-            {
-                json: "new_cluster",
-                js: "new_cluster",
-                typ: u(r("NewClusterClass"), ""),
-            },
-        ],
-        false
-    ),
-    NewClusterClass: o(
         [
             {
                 json: "apply_policy_default_values",
@@ -13036,7 +13860,7 @@ const typeMap: any = {
             {
                 json: "autoscale",
                 js: "autoscale",
-                typ: u(undefined, u(r("IndecentBundleSchem"), "")),
+                typ: u(undefined, u(r("StickyBundleSchem"), "")),
             },
             {
                 json: "autotermination_minutes",
@@ -13115,6 +13939,11 @@ const typeMap: any = {
                 js: "num_workers",
                 typ: u(undefined, u(0, "")),
             },
+            {
+                json: "permissions",
+                js: "permissions",
+                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+            },
             {json: "policy_id", js: "policy_id", typ: u(undefined, "")},
             {
                 json: "runtime_engine",
@@ -13150,7 +13979,7 @@ const typeMap: any = {
         ],
         false
     ),
-    IndecentBundleSchem: o(
+    StickyBundleSchem: o(
         [
             {
                 json: "max_workers",
@@ -13352,7 +14181,7 @@ const typeMap: any = {
             {
                 json: "file",
                 js: "file",
-                typ: u(undefined, u(r("HilariousBundleSchem"), "")),
+                typ: u(undefined, u(r("IndigoBundleSchem"), "")),
             },
             {json: "gcs", js: "gcs", typ: u(undefined, u(r("GcsClass"), ""))},
             {json: "s3", js: "s3", typ: u(undefined, u(r("S3Class"), ""))},
@@ -13364,19 +14193,19 @@ const typeMap: any = {
             {
                 json: "workspace",
                 js: "workspace",
-                typ: u(undefined, u(r("AmbitiousBundleSchem"), "")),
+                typ: u(undefined, u(r("IndecentBundleSchem"), "")),
             },
         ],
         false
     ),
     AbfssClass: o([{json: "destination", js: "destination", typ: ""}], false),
-    HilariousBundleSchem: o(
+    IndigoBundleSchem: o(
         [{json: "destination", js: "destination", typ: ""}],
         false
     ),
     GcsClass: o([{json: "destination", js: "destination", typ: ""}], false),
     VolumesClass: o([{json: "destination", js: "destination", typ: ""}], false),
-    AmbitiousBundleSchem: o(
+    IndecentBundleSchem: o(
         [{json: "destination", js: "destination", typ: ""}],
         false
     ),
@@ -13391,6 +14220,369 @@ const typeMap: any = {
                 json: "notebooks",
                 js: "notebooks",
                 typ: u(undefined, u(true, "")),
+            },
+        ],
+        false
+    ),
+    ExperimentClass: o(
+        [
+            {
+                json: "artifact_location",
+                js: "artifact_location",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "creation_time",
+                js: "creation_time",
+                typ: u(undefined, u(0, "")),
+            },
+            {json: "experiment_id", js: "experiment_id", typ: u(undefined, "")},
+            {
+                json: "last_update_time",
+                js: "last_update_time",
+                typ: u(undefined, u(0, "")),
+            },
+            {
+                json: "lifecycle_stage",
+                js: "lifecycle_stage",
+                typ: u(undefined, ""),
+            },
+            {json: "name", js: "name", typ: u(undefined, "")},
+            {
+                json: "permissions",
+                js: "permissions",
+                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+            },
+            {
+                json: "tags",
+                js: "tags",
+                typ: u(undefined, u(a(u(r("HilariousBundleSchem"), "")), "")),
+            },
+        ],
+        false
+    ),
+    HilariousBundleSchem: o(
+        [
+            {json: "key", js: "key", typ: u(undefined, "")},
+            {json: "value", js: "value", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    JobClass: o(
+        [
+            {
+                json: "continuous",
+                js: "continuous",
+                typ: u(undefined, u(r("ContinuousClass"), "")),
+            },
+            {json: "description", js: "description", typ: u(undefined, "")},
+            {
+                json: "email_notifications",
+                js: "email_notifications",
+                typ: u(undefined, u(r("AmbitiousBundleSchem"), "")),
+            },
+            {
+                json: "environments",
+                js: "environments",
+                typ: u(undefined, u(a(u(r("EnvironmentClass"), "")), "")),
+            },
+            {
+                json: "git_source",
+                js: "git_source",
+                typ: u(undefined, u(r("GitSourceClass"), "")),
+            },
+            {
+                json: "health",
+                js: "health",
+                typ: u(undefined, u(r("HealthClass"), "")),
+            },
+            {
+                json: "job_clusters",
+                js: "job_clusters",
+                typ: u(undefined, u(a(u(r("JobClusterClass"), "")), "")),
+            },
+            {
+                json: "max_concurrent_runs",
+                js: "max_concurrent_runs",
+                typ: u(undefined, u(0, "")),
+            },
+            {json: "name", js: "name", typ: u(undefined, "")},
+            {
+                json: "notification_settings",
+                js: "notification_settings",
+                typ: u(undefined, u(r("CunningBundleSchem"), "")),
+            },
+            {
+                json: "parameters",
+                js: "parameters",
+                typ: u(undefined, u(a(u(r("ParameterClass"), "")), "")),
+            },
+            {
+                json: "permissions",
+                js: "permissions",
+                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+            },
+            {
+                json: "queue",
+                js: "queue",
+                typ: u(undefined, u(r("QueueClass"), "")),
+            },
+            {
+                json: "run_as",
+                js: "run_as",
+                typ: u(undefined, u(r("RunAsClass"), "")),
+            },
+            {
+                json: "schedule",
+                js: "schedule",
+                typ: u(undefined, u(r("MagentaBundleSchem"), "")),
+            },
+            {json: "tags", js: "tags", typ: u(undefined, u(m(""), ""))},
+            {
+                json: "tasks",
+                js: "tasks",
+                typ: u(undefined, u(a(u(r("TaskClass"), "")), "")),
+            },
+            {
+                json: "timeout_seconds",
+                js: "timeout_seconds",
+                typ: u(undefined, u(0, "")),
+            },
+            {
+                json: "trigger",
+                js: "trigger",
+                typ: u(undefined, u(r("BundleSchem2"), "")),
+            },
+            {
+                json: "webhook_notifications",
+                js: "webhook_notifications",
+                typ: u(undefined, u(r("WebhookNotificationsClass"), "")),
+            },
+        ],
+        false
+    ),
+    ContinuousClass: o(
+        [
+            {
+                json: "pause_status",
+                js: "pause_status",
+                typ: u(undefined, r("PauseStatus")),
+            },
+        ],
+        false
+    ),
+    AmbitiousBundleSchem: o(
+        [
+            {
+                json: "no_alert_for_skipped_runs",
+                js: "no_alert_for_skipped_runs",
+                typ: u(undefined, u(true, "")),
+            },
+            {
+                json: "on_duration_warning_threshold_exceeded",
+                js: "on_duration_warning_threshold_exceeded",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {
+                json: "on_failure",
+                js: "on_failure",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {json: "on_start", js: "on_start", typ: u(undefined, u(a(""), ""))},
+            {
+                json: "on_streaming_backlog_exceeded",
+                js: "on_streaming_backlog_exceeded",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {
+                json: "on_success",
+                js: "on_success",
+                typ: u(undefined, u(a(""), "")),
+            },
+        ],
+        false
+    ),
+    EnvironmentClass: o(
+        [
+            {json: "environment_key", js: "environment_key", typ: ""},
+            {
+                json: "spec",
+                js: "spec",
+                typ: u(undefined, u(r("SpecClass"), "")),
+            },
+        ],
+        false
+    ),
+    SpecClass: o(
+        [
+            {json: "client", js: "client", typ: ""},
+            {
+                json: "dependencies",
+                js: "dependencies",
+                typ: u(undefined, u(a(""), "")),
+            },
+        ],
+        false
+    ),
+    GitSourceClass: o(
+        [
+            {json: "git_branch", js: "git_branch", typ: u(undefined, "")},
+            {json: "git_commit", js: "git_commit", typ: u(undefined, "")},
+            {json: "git_provider", js: "git_provider", typ: r("GitProvider")},
+            {json: "git_tag", js: "git_tag", typ: u(undefined, "")},
+            {json: "git_url", js: "git_url", typ: ""},
+        ],
+        false
+    ),
+    HealthClass: o(
+        [
+            {
+                json: "rules",
+                js: "rules",
+                typ: u(undefined, u(a(u(r("RuleClass"), "")), "")),
+            },
+        ],
+        false
+    ),
+    RuleClass: o(
+        [
+            {json: "metric", js: "metric", typ: r("Metric")},
+            {json: "op", js: "op", typ: r("RuleOp")},
+            {json: "value", js: "value", typ: u(0, "")},
+        ],
+        false
+    ),
+    JobClusterClass: o(
+        [
+            {json: "job_cluster_key", js: "job_cluster_key", typ: ""},
+            {
+                json: "new_cluster",
+                js: "new_cluster",
+                typ: u(r("NewClusterClass"), ""),
+            },
+        ],
+        false
+    ),
+    NewClusterClass: o(
+        [
+            {
+                json: "apply_policy_default_values",
+                js: "apply_policy_default_values",
+                typ: u(undefined, u(true, "")),
+            },
+            {
+                json: "autoscale",
+                js: "autoscale",
+                typ: u(undefined, u(r("StickyBundleSchem"), "")),
+            },
+            {
+                json: "autotermination_minutes",
+                js: "autotermination_minutes",
+                typ: u(undefined, u(0, "")),
+            },
+            {
+                json: "aws_attributes",
+                js: "aws_attributes",
+                typ: u(undefined, u(r("AwsAttributesClass"), "")),
+            },
+            {
+                json: "azure_attributes",
+                js: "azure_attributes",
+                typ: u(undefined, u(r("AzureAttributesClass"), "")),
+            },
+            {
+                json: "cluster_log_conf",
+                js: "cluster_log_conf",
+                typ: u(undefined, u(r("ClusterLogConfClass"), "")),
+            },
+            {json: "cluster_name", js: "cluster_name", typ: u(undefined, "")},
+            {
+                json: "custom_tags",
+                js: "custom_tags",
+                typ: u(undefined, u(m(""), "")),
+            },
+            {
+                json: "data_security_mode",
+                js: "data_security_mode",
+                typ: u(undefined, r("DataSecurityMode")),
+            },
+            {
+                json: "docker_image",
+                js: "docker_image",
+                typ: u(undefined, u(r("DockerImageClass"), "")),
+            },
+            {
+                json: "driver_instance_pool_id",
+                js: "driver_instance_pool_id",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "driver_node_type_id",
+                js: "driver_node_type_id",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "enable_elastic_disk",
+                js: "enable_elastic_disk",
+                typ: u(undefined, u(true, "")),
+            },
+            {
+                json: "enable_local_disk_encryption",
+                js: "enable_local_disk_encryption",
+                typ: u(undefined, u(true, "")),
+            },
+            {
+                json: "gcp_attributes",
+                js: "gcp_attributes",
+                typ: u(undefined, u(r("GcpAttributesClass"), "")),
+            },
+            {
+                json: "init_scripts",
+                js: "init_scripts",
+                typ: u(undefined, u(a(u(r("InitScriptClass"), "")), "")),
+            },
+            {
+                json: "instance_pool_id",
+                js: "instance_pool_id",
+                typ: u(undefined, ""),
+            },
+            {json: "node_type_id", js: "node_type_id", typ: u(undefined, "")},
+            {
+                json: "num_workers",
+                js: "num_workers",
+                typ: u(undefined, u(0, "")),
+            },
+            {json: "policy_id", js: "policy_id", typ: u(undefined, "")},
+            {
+                json: "runtime_engine",
+                js: "runtime_engine",
+                typ: u(undefined, r("RuntimeEngine")),
+            },
+            {
+                json: "single_user_name",
+                js: "single_user_name",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "spark_conf",
+                js: "spark_conf",
+                typ: u(undefined, u(m(""), "")),
+            },
+            {
+                json: "spark_env_vars",
+                js: "spark_env_vars",
+                typ: u(undefined, u(m(""), "")),
+            },
+            {json: "spark_version", js: "spark_version", typ: u(undefined, "")},
+            {
+                json: "ssh_public_keys",
+                js: "ssh_public_keys",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {
+                json: "workload_type",
+                js: "workload_type",
+                typ: u(undefined, u(r("WorkloadTypeClass"), "")),
             },
         ],
         false
@@ -14102,6 +15294,11 @@ const typeMap: any = {
     ),
     ModelServingEndpointClass: o(
         [
+            {
+                json: "ai_gateway",
+                js: "ai_gateway",
+                typ: u(undefined, u(r("AIGatewayClass"), "")),
+            },
             {json: "config", js: "config", typ: u(r("ConfigClass"), "")},
             {json: "name", js: "name", typ: ""},
             {
@@ -14112,7 +15309,7 @@ const typeMap: any = {
             {
                 json: "rate_limits",
                 js: "rate_limits",
-                typ: u(undefined, u(a(u(r("RateLimitClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem4"), "")), "")),
             },
             {
                 json: "route_optimized",
@@ -14122,9 +15319,99 @@ const typeMap: any = {
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("BundleSchem3"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem5"), "")), "")),
             },
         ],
+        false
+    ),
+    AIGatewayClass: o(
+        [
+            {
+                json: "guardrails",
+                js: "guardrails",
+                typ: u(undefined, u(r("GuardrailsClass"), "")),
+            },
+            {
+                json: "inference_table_config",
+                js: "inference_table_config",
+                typ: u(undefined, u(r("InferenceTableConfigClass"), "")),
+            },
+            {
+                json: "rate_limits",
+                js: "rate_limits",
+                typ: u(undefined, u(a(u(r("BundleSchem3"), "")), "")),
+            },
+            {
+                json: "usage_tracking_config",
+                js: "usage_tracking_config",
+                typ: u(undefined, u(r("UsageTrackingConfigClass"), "")),
+            },
+        ],
+        false
+    ),
+    GuardrailsClass: o(
+        [
+            {
+                json: "input",
+                js: "input",
+                typ: u(undefined, u(r("InputClass"), "")),
+            },
+            {
+                json: "output",
+                js: "output",
+                typ: u(undefined, u(r("InputClass"), "")),
+            },
+        ],
+        false
+    ),
+    InputClass: o(
+        [
+            {
+                json: "invalid_keywords",
+                js: "invalid_keywords",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {json: "pii", js: "pii", typ: u(undefined, u(r("PiiClass"), ""))},
+            {json: "safety", js: "safety", typ: u(undefined, u(true, ""))},
+            {
+                json: "valid_topics",
+                js: "valid_topics",
+                typ: u(undefined, u(a(""), "")),
+            },
+        ],
+        false
+    ),
+    PiiClass: o(
+        [{json: "behavior", js: "behavior", typ: r("Behavior")}],
+        false
+    ),
+    InferenceTableConfigClass: o(
+        [
+            {json: "catalog_name", js: "catalog_name", typ: u(undefined, "")},
+            {json: "enabled", js: "enabled", typ: u(undefined, u(true, ""))},
+            {json: "schema_name", js: "schema_name", typ: u(undefined, "")},
+            {
+                json: "table_name_prefix",
+                js: "table_name_prefix",
+                typ: u(undefined, ""),
+            },
+        ],
+        false
+    ),
+    BundleSchem3: o(
+        [
+            {json: "calls", js: "calls", typ: u(0, "")},
+            {json: "key", js: "key", typ: u(undefined, r("Key"))},
+            {
+                json: "renewal_period",
+                js: "renewal_period",
+                typ: r("RenewalPeriod"),
+            },
+        ],
+        false
+    ),
+    UsageTrackingConfigClass: o(
+        [{json: "enabled", js: "enabled", typ: u(undefined, u(true, ""))}],
         false
     ),
     ConfigClass: o(
@@ -14509,7 +15796,7 @@ const typeMap: any = {
         ],
         false
     ),
-    RateLimitClass: o(
+    BundleSchem4: o(
         [
             {json: "calls", js: "calls", typ: u(0, "")},
             {json: "key", js: "key", typ: u(undefined, r("Key"))},
@@ -14521,7 +15808,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem3: o(
+    BundleSchem5: o(
         [
             {json: "key", js: "key", typ: ""},
             {json: "value", js: "value", typ: u(undefined, "")},
@@ -14555,7 +15842,7 @@ const typeMap: any = {
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("BundleSchem5"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem7"), "")), "")),
             },
             {json: "user_id", js: "user_id", typ: u(undefined, "")},
         ],
@@ -14588,21 +15875,21 @@ const typeMap: any = {
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("BundleSchem4"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem6"), "")), "")),
             },
             {json: "user_id", js: "user_id", typ: u(undefined, "")},
             {json: "version", js: "version", typ: u(undefined, "")},
         ],
         false
     ),
-    BundleSchem4: o(
+    BundleSchem6: o(
         [
             {json: "key", js: "key", typ: u(undefined, "")},
             {json: "value", js: "value", typ: u(undefined, "")},
         ],
         false
     ),
-    BundleSchem5: o(
+    BundleSchem7: o(
         [
             {json: "key", js: "key", typ: u(undefined, "")},
             {json: "value", js: "value", typ: u(undefined, "")},
@@ -14611,12 +15898,17 @@ const typeMap: any = {
     ),
     PipelineClass: o(
         [
+            {
+                json: "budget_policy_id",
+                js: "budget_policy_id",
+                typ: u(undefined, ""),
+            },
             {json: "catalog", js: "catalog", typ: u(undefined, "")},
             {json: "channel", js: "channel", typ: u(undefined, "")},
             {
                 json: "clusters",
                 js: "clusters",
-                typ: u(undefined, u(a(u(r("ClusterClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem8"), "")), "")),
             },
             {
                 json: "configuration",
@@ -14631,7 +15923,7 @@ const typeMap: any = {
             {
                 json: "deployment",
                 js: "deployment",
-                typ: u(undefined, u(r("BundleSchem7"), "")),
+                typ: u(undefined, u(r("BundleSchem10"), "")),
             },
             {
                 json: "development",
@@ -14658,7 +15950,7 @@ const typeMap: any = {
             {
                 json: "libraries",
                 js: "libraries",
-                typ: u(undefined, u(a(u(r("BundleSchem10"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem13"), "")), "")),
             },
             {json: "name", js: "name", typ: u(undefined, "")},
             {
@@ -14672,6 +15964,7 @@ const typeMap: any = {
                 typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
             },
             {json: "photon", js: "photon", typ: u(undefined, u(true, ""))},
+            {json: "schema", js: "schema", typ: u(undefined, "")},
             {
                 json: "serverless",
                 js: "serverless",
@@ -14682,12 +15975,12 @@ const typeMap: any = {
             {
                 json: "trigger",
                 js: "trigger",
-                typ: u(undefined, u(r("BundleSchem12"), "")),
+                typ: u(undefined, u(r("BundleSchem15"), "")),
             },
         ],
         false
     ),
-    ClusterClass: o(
+    BundleSchem8: o(
         [
             {
                 json: "apply_policy_default_values",
@@ -14697,7 +15990,7 @@ const typeMap: any = {
             {
                 json: "autoscale",
                 js: "autoscale",
-                typ: u(undefined, u(r("BundleSchem6"), "")),
+                typ: u(undefined, u(r("BundleSchem9"), "")),
             },
             {
                 json: "aws_attributes",
@@ -14775,7 +16068,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem6: o(
+    BundleSchem9: o(
         [
             {json: "max_workers", js: "max_workers", typ: u(0, "")},
             {json: "min_workers", js: "min_workers", typ: u(0, "")},
@@ -14783,7 +16076,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem7: o(
+    BundleSchem10: o(
         [
             {json: "kind", js: "kind", typ: u(undefined, r("Kind"))},
             {
@@ -14852,17 +16145,17 @@ const typeMap: any = {
             {
                 json: "schema",
                 js: "schema",
-                typ: u(undefined, u(r("BundleSchem8"), "")),
+                typ: u(undefined, u(r("BundleSchem11"), "")),
             },
             {
                 json: "table",
                 js: "table",
-                typ: u(undefined, u(r("BundleSchem9"), "")),
+                typ: u(undefined, u(r("BundleSchem12"), "")),
             },
         ],
         false
     ),
-    BundleSchem8: o(
+    BundleSchem11: o(
         [
             {
                 json: "destination_catalog",
@@ -14904,7 +16197,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem9: o(
+    BundleSchem12: o(
         [
             {
                 json: "destination_catalog",
@@ -14936,12 +16229,12 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem10: o(
+    BundleSchem13: o(
         [
             {
                 json: "file",
                 js: "file",
-                typ: u(undefined, u(r("BundleSchem11"), "")),
+                typ: u(undefined, u(r("BundleSchem14"), "")),
             },
             {json: "jar", js: "jar", typ: u(undefined, "")},
             {
@@ -14958,7 +16251,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem11: o(
+    BundleSchem14: o(
         [{json: "path", js: "path", typ: u(undefined, "")}],
         false
     ),
@@ -14977,7 +16270,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem12: o(
+    BundleSchem15: o(
         [
             {
                 json: "cron",
@@ -15036,7 +16329,7 @@ const typeMap: any = {
             {
                 json: "schedule",
                 js: "schedule",
-                typ: u(undefined, u(r("BundleSchem13"), "")),
+                typ: u(undefined, u(r("BundleSchem16"), "")),
             },
             {
                 json: "skip_builtin_dashboard",
@@ -15123,7 +16416,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem13: o(
+    BundleSchem16: o(
         [
             {
                 json: "pause_status",
@@ -15173,7 +16466,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem14: o(
+    BundleSchem17: o(
         [
             {json: "catalog_name", js: "catalog_name", typ: ""},
             {json: "comment", js: "comment", typ: u(undefined, "")},
@@ -15212,6 +16505,7 @@ const typeMap: any = {
                 js: "bundle",
                 typ: u(undefined, u(r("BundleClass"), "")),
             },
+            {json: "cluster_id", js: "cluster_id", typ: u(undefined, "")},
             {json: "compute_id", js: "compute_id", typ: u(undefined, "")},
             {json: "default", js: "default", typ: u(undefined, u(true, ""))},
             {json: "git", js: "git", typ: u(undefined, u(r("GitClass"), ""))},
@@ -15249,12 +16543,12 @@ const typeMap: any = {
             {
                 json: "workspace",
                 js: "workspace",
-                typ: u(undefined, u(r("BundleSchem15"), "")),
+                typ: u(undefined, u(r("BundleSchem18"), "")),
             },
         ],
         false
     ),
-    BundleSchem15: o(
+    BundleSchem18: o(
         [
             {json: "artifact_path", js: "artifact_path", typ: u(undefined, "")},
             {json: "auth_type", js: "auth_type", typ: u(undefined, "")},
@@ -15297,6 +16591,7 @@ const typeMap: any = {
             },
             {json: "host", js: "host", typ: u(undefined, "")},
             {json: "profile", js: "profile", typ: u(undefined, "")},
+            {json: "resource_path", js: "resource_path", typ: u(undefined, "")},
             {json: "root_path", js: "root_path", typ: u(undefined, "")},
             {json: "state_path", js: "state_path", typ: u(undefined, "")},
         ],
@@ -15339,29 +16634,6 @@ const typeMap: any = {
         ],
         false
     ),
-    PauseStatus: ["PAUSED", "UNPAUSED"],
-    Kind: ["BUNDLE"],
-    EditMode: ["EDITABLE", "UI_LOCKED"],
-    Format: ["MULTI_TASK", "SINGLE_TASK"],
-    GitProvider: [
-        "awsCodeCommit",
-        "azureDevOpsServices",
-        "bitbucketCloud",
-        "bitbucketServer",
-        "gitHub",
-        "gitHubEnterprise",
-        "gitLab",
-        "gitLabEnterpriseEdition",
-    ],
-    DirtyState: ["DISCONNECTED", "NOT_SYNCED"],
-    Metric: [
-        "RUN_DURATION_SECONDS",
-        "STREAMING_BACKLOG_BYTES",
-        "STREAMING_BACKLOG_FILES",
-        "STREAMING_BACKLOG_RECORDS",
-        "STREAMING_BACKLOG_SECONDS",
-    ],
-    RuleOp: ["GREATER_THAN"],
     AwsAttributesAvailability: ["ON_DEMAND", "SPOT", "SPOT_WITH_FALLBACK"],
     EbsVolumeType: ["GENERAL_PURPOSE_SSD", "THROUGHPUT_OPTIMIZED_HDD"],
     AzureAttributesAvailability: [
@@ -15384,6 +16656,25 @@ const typeMap: any = {
         "PREEMPTIBLE_WITH_FALLBACK_GCP",
     ],
     RuntimeEngine: ["NULL", "PHOTON", "STANDARD"],
+    PauseStatus: ["PAUSED", "UNPAUSED"],
+    GitProvider: [
+        "awsCodeCommit",
+        "azureDevOpsServices",
+        "bitbucketCloud",
+        "bitbucketServer",
+        "gitHub",
+        "gitHubEnterprise",
+        "gitLab",
+        "gitLabEnterpriseEdition",
+    ],
+    Metric: [
+        "RUN_DURATION_SECONDS",
+        "STREAMING_BACKLOG_BYTES",
+        "STREAMING_BACKLOG_FILES",
+        "STREAMING_BACKLOG_RECORDS",
+        "STREAMING_BACKLOG_SECONDS",
+    ],
+    RuleOp: ["GREATER_THAN"],
     ConditionTaskOp: [
         "EQUAL_TO",
         "GREATER_THAN",
@@ -15403,6 +16694,9 @@ const typeMap: any = {
     ],
     Unit: ["DAYS", "HOURS", "WEEKS"],
     Condition: ["ALL_UPDATED", "ANY_UPDATED"],
+    Behavior: ["BLOCK", "NONE"],
+    Key: ["endpoint", "user"],
+    RenewalPeriod: ["minute"],
     BedrockProvider: ["ai21labs", "amazon", "anthropic", "cohere"],
     Provider: [
         "ai21labs",
@@ -15422,10 +16716,9 @@ const typeMap: any = {
         "GPU_SMALL",
         "MULTIGPU_MEDIUM",
     ],
-    Key: ["endpoint", "user"],
-    RenewalPeriod: ["minute"],
     Status: ["FAILED_REGISTRATION", "PENDING_REGISTRATION", "READY"],
     Mode: ["ENHANCED", "LEGACY"],
+    Kind: ["BUNDLE"],
     ScdType: ["SCD_TYPE_1", "SCD_TYPE_2"],
     Type: [
         "CUSTOM_METRIC_TYPE_AGGREGATE",
