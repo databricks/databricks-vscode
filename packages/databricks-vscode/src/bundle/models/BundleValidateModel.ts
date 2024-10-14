@@ -83,7 +83,9 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
         ) as BundleTarget;
 
         return {
-            clusterId: validateOutput?.bundle?.compute_id,
+            clusterId:
+                validateOutput?.bundle?.compute_id ??
+                validateOutput?.bundle?.cluster_id,
             remoteRootPath: validateOutput?.workspace?.file_path,
             ...validateOutput,
         };
