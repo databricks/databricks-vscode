@@ -43,6 +43,9 @@ describe("Run files", async function () {
 
     beforeEach(async () => {
         await openFile("hello.py");
+        // We enable the run command when the active editor is changed.
+        // We wait here to avoid race conditions between the extension logic enabling this command and tests executing it.
+        await sleep(1000);
     });
 
     it("should run a python file on a cluster", async () => {
@@ -54,7 +57,6 @@ describe("Run files", async function () {
             .openDebugConsoleView();
 
         while (true) {
-            await dismissNotifications();
             await sleep(2000);
             const text = await (await debugOutput.elem).getHTML();
             if (text && text.includes("hello world")) {
@@ -66,7 +68,6 @@ describe("Run files", async function () {
     it("should run a python file as a workflow", async () => {
         const workbench = await driver.getWorkbench();
         await workbench.executeQuickPick("Databricks: Run File as Workflow");
-        await dismissNotifications();
         await waitForWorkflowWebview("hello world");
     });
 });

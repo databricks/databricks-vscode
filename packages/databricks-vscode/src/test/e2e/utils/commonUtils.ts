@@ -233,7 +233,23 @@ export function getUniqueResourceName(name?: string) {
 
 export async function waitForWorkflowWebview(expectedOutput: string) {
     const workbench = await browser.getWorkbench();
-    const webView = await workbench.getWebviewByTitle(/Databricks Job Run/);
+    const title = /Databricks Job Run/;
+    await browser.waitUntil(
+        async () => {
+            try {
+                const webView = await workbench.getWebviewByTitle(title);
+                return webView !== undefined;
+            } catch (e) {
+                return false;
+            }
+        },
+        {
+            timeout: 5_000,
+            interval: 1_000,
+            timeoutMsg: "Webview did not open",
+        }
+    );
+    const webView = await workbench.getWebviewByTitle(title);
     await webView.open();
 
     await browser.waitUntil(
