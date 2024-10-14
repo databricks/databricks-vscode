@@ -75,7 +75,6 @@ describe("Run notebooks", async function () {
         await openFile("notebook.py");
         const workbench = await driver.getWorkbench();
         await workbench.executeQuickPick("Databricks: Run File as Workflow");
-        await dismissNotifications();
         await waitForWorkflowWebview("a/b c");
     });
 
@@ -83,7 +82,6 @@ describe("Run notebooks", async function () {
         await openFile("notebook.ipynb");
         const workbench = await driver.getWorkbench();
         await workbench.executeQuickPick("Databricks: Run File as Workflow");
-        await dismissNotifications();
         await waitForWorkflowWebview("hello world");
     });
 });

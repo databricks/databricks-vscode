@@ -54,7 +54,6 @@ describe("Run files", async function () {
             .openDebugConsoleView();
 
         while (true) {
-            await dismissNotifications();
             await sleep(2000);
             const text = await (await debugOutput.elem).getHTML();
             if (text && text.includes("hello world")) {
@@ -66,7 +65,6 @@ describe("Run files", async function () {
     it("should run a python file as a workflow", async () => {
         const workbench = await driver.getWorkbench();
         await workbench.executeQuickPick("Databricks: Run File as Workflow");
-        await dismissNotifications();
         await waitForWorkflowWebview("hello world");
     });
 });
