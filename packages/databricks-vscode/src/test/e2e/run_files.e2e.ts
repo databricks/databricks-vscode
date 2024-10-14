@@ -43,6 +43,9 @@ describe("Run files", async function () {
 
     beforeEach(async () => {
         await openFile("hello.py");
+        // We enable the run command when the active editor is changed.
+        // We wait here to avoid race conditions between the extension logic enabling this command and tests executing it.
+        await sleep(1000);
     });
 
     it("should run a python file on a cluster", async () => {
