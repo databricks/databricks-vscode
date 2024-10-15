@@ -18,6 +18,7 @@ import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
+import {Cluster} from "../../sdk-extensions/Cluster.ts";
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
@@ -592,22 +593,13 @@ async function startCluster(
 ) {
     console.log(`Starting cluster: ${clusterId}`);
 
-    try {
-        await (
-            await workspaceClient.clusters.start({
-                cluster_id: clusterId,
-            })
-        ).wait({
-            onProgress: async (state) => {
-                console.log(`Cluster state: ${state.state}`);
-            },
-        });
-    } catch (e: unknown) {
-        if (!(e instanceof ApiError && e.message.includes("INVALID_STATE"))) {
-            throw e;
-        }
-        console.log(e.message);
-    }
+    const cluster = await Cluster.fromClusterId(
+        workspaceClient.apiClient,
+        clusterId
+    );
+    await cluster.start(undefined, (state) =>
+        console.log("Cluster state: ", state)
+    );
 
     console.log(`Cluster started`);
 }
