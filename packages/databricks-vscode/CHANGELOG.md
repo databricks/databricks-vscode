@@ -4,7 +4,7 @@
 
 ## (2024-10-15)
 
--   Bump CLI to 230, use verbose deploy (#1390) ([ca13f5e](https://github.com/databricks/databricks-vscode/commit/ca13f5e)), closes [#1390](https://github.com/databricks/databricks-vscode/issues/1390)
+-   Update CLI to 0.230, use verbose deploy command
 
 # Release: v2.4.5
 
