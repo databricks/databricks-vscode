@@ -1,3 +1,11 @@
+# Release: v2.4.6
+
+## packages/databricks-vscode
+
+## (2024-10-15)
+
+-   Update CLI to 0.230, use verbose deploy command
+
 # Release: v2.4.5
 
 ## packages/databricks-vscode
