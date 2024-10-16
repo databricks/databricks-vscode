@@ -569,6 +569,9 @@ async function startCluster(
 ) {
     console.log(`Starting cluster: ${clusterId}`);
 
+    console.log(">>>>", ClusterExt);
+    console.log("%%%$", JSON.stringify(ClusterExt, null, 2));
+
     const cluster = await ClusterExt.Cluster.fromClusterId(
         workspaceClient.apiClient,
         clusterId
