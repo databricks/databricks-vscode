@@ -8,7 +8,7 @@ import path from "node:path";
 import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
-import {ApiError, Config, WorkspaceClient} from "@databricks/databricks-sdk";
+import {Config, WorkspaceClient} from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile as execFileCb} from "node:child_process";
 import {cpSync, mkdirSync, rmSync} from "node:fs";
@@ -99,28 +99,6 @@ export const config: Options.Testrunner = {
     // Runner Configuration
     // ====================
     //
-    //
-    // =====================
-    // ts-node Configurations
-    // =====================
-    //
-    // You can write tests using TypeScript to get autocompletion and type safety.
-    // You will need typescript and ts-node installed as devDependencies.
-    // WebdriverIO will automatically detect if these dependencies are installed
-    // and will compile your config and tests for you.
-    // If you need to configure how ts-node runs please use the
-    // environment variables for ts-node or use wdio config's autoCompileOpts section.
-    //
-
-    autoCompileOpts: {
-        autoCompile: true,
-        // see https://github.com/TypeStrong/ts-node#cli-and-programmatic-options
-        // for all available options
-        tsNodeOpts: {
-            transpileOnly: true,
-            project: path.join(__dirname, "tsconfig.json"),
-        },
-    },
 
     //
     // ==================
@@ -167,36 +145,34 @@ export const config: Options.Testrunner = {
     // Sauce Labs platform configurator - a great tool to configure your capabilities:
     // https://saucelabs.com/platform/platform-configurator
     //
-    get capabilities() {
-        return [
-            {
-                "browserName": "vscode",
-                "browserVersion": engines.vscode.replace("^", ""),
-                "wdio:vscodeOptions": {
-                    extensionPath: path.resolve(
-                        __dirname,
-                        "resources",
-                        "dummy-test"
-                    ),
-                    storagePath: VSCODE_STORAGE_DIR,
-                    vscodeArgs: {
-                        extensionsDir: EXTENSION_DIR,
-                        disableExtensions: false,
-                    },
-                    workspacePath: WORKSPACE_PATH,
-                    userSettings: {
-                        "editor.fontSize": 14,
-                        "files.simpleDialog.enable": true,
-                        "workbench.editor.enablePreview": true,
-                        "window.newWindowDimensions": "default",
-                        "window.openFoldersInNewWindow": "off",
-                        "extensions.autoCheckUpdates": false,
-                        "extensions.autoUpdate": false,
-                    },
+    capabilities: [
+        {
+            "browserName": "vscode",
+            "browserVersion": engines.vscode.replace("^", ""),
+            "wdio:vscodeOptions": {
+                extensionPath: path.resolve(
+                    __dirname,
+                    "resources",
+                    "dummy-test"
+                ),
+                storagePath: VSCODE_STORAGE_DIR,
+                vscodeArgs: {
+                    extensionsDir: EXTENSION_DIR,
+                    disableExtensions: false,
+                },
+                workspacePath: WORKSPACE_PATH,
+                userSettings: {
+                    "editor.fontSize": 14,
+                    "files.simpleDialog.enable": true,
+                    "workbench.editor.enablePreview": true,
+                    "window.newWindowDimensions": "default",
+                    "window.openFoldersInNewWindow": "off",
+                    "extensions.autoCheckUpdates": false,
+                    "extensions.autoUpdate": false,
                 },
             },
-        ];
-    },
+        },
+    ],
 
     //
     // ===================
