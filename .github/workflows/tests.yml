@@ -158,6 +158,9 @@ jobs:
             - name: Building packages
               run: yarn run build
 
+            - name: Print workspace path
+              run: echo "Workspace path is '${{ github.workspace }}'"
+
             - name: Integration Tests
               run: yarn run test:integ:extension --spec ${{ matrix.spec.path }}
               working-directory: packages/databricks-vscode
