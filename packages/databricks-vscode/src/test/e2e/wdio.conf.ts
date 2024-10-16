@@ -569,10 +569,13 @@ async function startCluster(
 ) {
     console.log(`Starting cluster: ${clusterId}`);
 
-    console.log(">>>>", ClusterExt);
-    console.log("%%%$", JSON.stringify(ClusterExt, null, 2));
-
-    const cluster = await ClusterExt.Cluster.fromClusterId(
+    let Cluster = ClusterExt.Cluster;
+    // Github Actions compile the code in a different way somehow (TODO: investigate)
+    if (!Cluster) {
+        // @ts-expect-error Property 'default' does not exist
+        Cluster = ClusterExt.default.Cluster;
+    }
+    const cluster = await Cluster.fromClusterId(
         workspaceClient.apiClient,
         clusterId
     );
