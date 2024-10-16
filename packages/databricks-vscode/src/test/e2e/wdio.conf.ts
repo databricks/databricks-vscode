@@ -618,7 +618,7 @@ async function startCluster(
         case "TERMINATING":
         case "RESTARTING":
             console.log("Waiting and retrying...");
-            sleep(5000);
+            await sleep(5000);
             await startCluster(workspaceClient, clusterId);
             break;
         default:
