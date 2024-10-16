@@ -13,10 +13,10 @@ jobs:
             matrix:
                 arch:
                     [
-                        { cli_arch: darwin_amd64, os: macos-latest },
-                        { cli_arch: windows_amd64, os: windows-latest },
+                        {cli_arch: darwin_amd64, os: macos-latest},
+                        {cli_arch: windows_amd64, os: windows-latest},
                     ]
-                node-version: [18.x]
+                node-version: [20.x]
                 vscode-version: [stable]
         uses: ./.github/workflows/tests.yml
         with:
