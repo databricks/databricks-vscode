@@ -141,7 +141,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: packages/databricks-vscode/tmp/wdio-vscode-service
-          key: ${{ inputs.cli_arch }}-${{ steps.vscode-engine.outputs.vscode }}-wdio
+          key: ${{ inputs.cli_arch }}-${{ steps.vscode-engine.outputs.vscode }}-wdio-v9
 
       - name: mkdir packages/databricks-vscode/tmp/wdio-vscode-service
         run: mkdir -p packages/databricks-vscode/tmp/wdio-vscode-service
