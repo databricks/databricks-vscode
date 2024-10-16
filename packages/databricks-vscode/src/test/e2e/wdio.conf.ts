@@ -18,7 +18,7 @@ import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
-import {Cluster} from "../../sdk-extensions/Cluster.ts";
+import * as ClusterExt from "../../sdk-extensions/Cluster.ts";
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
@@ -569,7 +569,7 @@ async function startCluster(
 ) {
     console.log(`Starting cluster: ${clusterId}`);
 
-    const cluster = await Cluster.fromClusterId(
+    const cluster = await ClusterExt.Cluster.fromClusterId(
         workspaceClient.apiClient,
         clusterId
     );

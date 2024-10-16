@@ -165,7 +165,7 @@ jobs:
               run: yarn run test:integ:extension --spec ${{ matrix.spec.path }}
               working-directory: packages/databricks-vscode
               env:
-                  TSCONFIG_PATH: ${{github.workspace}}/packages/databricks-vscode/tsconfig.json
+                  TSCONFIG_PATH: ${{ github.workspace }}/packages/databricks-vscode/tsconfig.json
 
             - name: Upload test logs
               if: failure()
