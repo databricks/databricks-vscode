@@ -18,6 +18,7 @@ import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
+import {attempt} from "lodash";
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
@@ -588,9 +589,13 @@ function getWorkspaceClient(config: Config) {
 
 async function startCluster(
     workspaceClient: WorkspaceClient,
-    clusterId: string
+    clusterId: string,
+    attempt = 0
 ) {
     console.log(`Cluster ID: ${clusterId}`);
+    if (attempt > 100) {
+        throw new Error("Failed to start the cluster: too many attempts");
+    }
     const cluster = await workspaceClient.clusters.get({
         cluster_id: clusterId,
     });
@@ -618,8 +623,8 @@ async function startCluster(
         case "TERMINATING":
         case "RESTARTING":
             console.log("Waiting and retrying...");
-            await sleep(5000);
-            await startCluster(workspaceClient, clusterId);
+            await sleep(10000);
+            await startCluster(workspaceClient, clusterId, attempt + 1);
             break;
         default:
             throw new Error(`Unknown cluster state: ${cluster.state}`);
