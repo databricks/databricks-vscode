@@ -590,24 +590,38 @@ async function startCluster(
     workspaceClient: WorkspaceClient,
     clusterId: string
 ) {
-    console.log(`Starting cluster: ${clusterId}`);
-
-    try {
-        await (
-            await workspaceClient.clusters.start({
-                cluster_id: clusterId,
-            })
-        ).wait({
-            onProgress: async (state) => {
-                console.log(`Cluster state: ${state.state}`);
-            },
-        });
-    } catch (e: unknown) {
-        if (!(e instanceof ApiError && e.message.includes("INVALID_STATE"))) {
-            throw e;
-        }
-        console.log(e.message);
+    console.log(`Cluster ID: ${clusterId}`);
+    const cluster = await workspaceClient.clusters.get({
+        cluster_id: clusterId,
+    });
+    console.log(`Cluster State: ${cluster.state}`);
+    switch (cluster.state) {
+        case "RUNNING":
+            console.log("Cluster is already running");
+            break;
+        case "TERMINATED":
+        case "ERROR":
+        case "UNKNOWN":
+            console.log("Starting the cluster...");
+            await (
+                await workspaceClient.clusters.start({
+                    cluster_id: clusterId,
+                })
+            ).wait({
+                onProgress: async (state) => {
+                    console.log(`Cluster state: ${state.state}`);
+                },
+            });
+            break;
+        case "PENDING":
+        case "RESIZING":
+        case "TERMINATING":
+        case "RESTARTING":
+            console.log("Waiting and retrying...");
+            sleep(5000);
+            await startCluster(workspaceClient, clusterId);
+            break;
+        default:
+            throw new Error(`Unknown cluster state: ${cluster.state}`);
     }
-
-    console.log(`Cluster started`);
 }
