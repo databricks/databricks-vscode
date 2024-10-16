@@ -24,7 +24,7 @@ const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const {version, name, engines} = packageJson;
+const {version, name} = packageJson;
 
 const EXTENSION_DIR = path.resolve(tmpdir(), "extension test", "extension");
 const VSIX_PATH = path.resolve(
@@ -148,7 +148,7 @@ export const config: Options.Testrunner = {
     capabilities: [
         {
             "browserName": "vscode",
-            "browserVersion": engines.vscode.replace("^", ""),
+            "browserVersion": "stable",
             "wdio:vscodeOptions": {
                 extensionPath: path.resolve(
                     __dirname,
