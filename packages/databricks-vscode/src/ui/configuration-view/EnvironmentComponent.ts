@@ -64,7 +64,7 @@ export class EnvironmentComponent extends BaseComponent {
         const environmentState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
-        const children = [];
+        const children: ConfigurationTreeItem[] = [];
         for (const [id, step] of environmentState.steps) {
             if (!step.available) {
                 children.push({
@@ -93,6 +93,13 @@ export class EnvironmentComponent extends BaseComponent {
                     tooltip: step.message,
                     iconPath: new ThemeIcon("check"),
                 });
+                if (step.warning) {
+                    children.push({
+                        contextValue: getItemContext(id, true),
+                        label: step.warning,
+                        iconPath: new ThemeIcon("warning"),
+                    });
+                }
             }
         }
         return children;

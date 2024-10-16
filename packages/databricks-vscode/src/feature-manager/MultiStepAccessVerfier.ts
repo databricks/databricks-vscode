@@ -76,12 +76,13 @@ export abstract class MultiStepAccessVerifier implements Feature {
         });
     }
 
-    acceptStep(id: string, title?: string, message?: string) {
+    acceptStep(id: string, title?: string, message?: string, warning?: string) {
         return this.updateStep({
             id: id,
             available: true,
             title,
             message,
+            warning,
         });
     }
 

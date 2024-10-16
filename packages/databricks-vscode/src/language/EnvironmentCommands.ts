@@ -1,4 +1,4 @@
-import {window} from "vscode";
+import {window, commands} from "vscode";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Cluster} from "../sdk-extensions";
@@ -12,6 +12,7 @@ export class EnvironmentCommands {
     ) {}
 
     async setup(stepId?: string) {
+        commands.executeCommand("configurationView.focus");
         await window.withProgress(
             {location: {viewId: "configurationView"}},
             () => this._setup(stepId)
@@ -24,6 +25,9 @@ export class EnvironmentCommands {
             true
         );
         if (state.available) {
+            window.showInformationMessage(
+                "Python environment and Databricks Connect are already set up."
+            );
             return true;
         }
         for (const [, step] of state.steps) {
