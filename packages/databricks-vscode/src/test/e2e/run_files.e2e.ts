@@ -65,6 +65,33 @@ describe("Run files", async function () {
         }
     });
 
+    it("should cancel a run during deployment", async () => {
+        const workbench = await driver.getWorkbench();
+        await workbench.executeQuickPick("Databricks: Upload and Run File");
+        await browser.waitUntil(async () => {
+            const notifications = await workbench.getNotifications();
+            for (const notification of notifications) {
+                const message = await notification.getMessage();
+                if (message.includes("Deploying")) {
+                    await notification.takeAction("Cancel");
+                    return true;
+                }
+            }
+            return false;
+        });
+        const debugOutput = await workbench
+            .getBottomBar()
+            .openDebugConsoleView();
+        while (true) {
+            const text = await (await debugOutput.elem).getHTML();
+            if (text && text.includes("Cancelled")) {
+                break;
+            } else {
+                await sleep(2000);
+            }
+        }
+    });
+
     it("should run a python file as a workflow", async () => {
         const workbench = await driver.getWorkbench();
         await workbench.executeQuickPick("Databricks: Run File as Workflow");
