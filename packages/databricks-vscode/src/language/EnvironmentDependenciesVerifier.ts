@@ -161,38 +161,6 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
 
     async checkPythonEnvironment(): Promise<FeatureStepState> {
         const env = await this.pythonExtension.pythonEnvironment;
-        const dbrVersionParts =
-            this.connectionManager.cluster?.dbrVersion || [];
-        // DBR 13 and 14 require python 3.10
-        if (
-            (dbrVersionParts[0] === 13 || dbrVersionParts[0] === 14) &&
-            !this.matchEnvironmentVersion(env, 3, 10)
-        ) {
-            return this.rejectStep(
-                "checkPythonEnvironment",
-                "Activate an environment with Python 3.10",
-                `The python version should match DBR ${
-                    dbrVersionParts[0]
-                } requirements. ${this.printEnvironment(env)}`,
-                this.selectPythonInterpreter.bind(this)
-            );
-        }
-        // DBR 15 requires python 3.11
-        if (
-            dbrVersionParts[0] === 15 &&
-            !this.matchEnvironmentVersion(env, 3, 11)
-        ) {
-            return this.rejectStep(
-                "checkPythonEnvironment",
-                "Activate an environment with Python 3.11",
-                `The version should match DBR ${
-                    dbrVersionParts[0]
-                } requirements. ${this.printEnvironment(env)}`,
-                this.selectPythonInterpreter.bind(this)
-            );
-        }
-        // If we don't know DBR version (no cluster is connected or new version is released and the extension isn't updated yet),
-        // we still check that environment is active and has python >= 3.10
         const envVersionTooLow =
             env?.version && (env.version.major !== 3 || env.version.minor < 10);
         const noEnvironment = !env?.environment;
@@ -215,10 +183,30 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 this.selectPythonInterpreter.bind(this)
             );
         }
+        const dbrVersionParts =
+            this.connectionManager.cluster?.dbrVersion || [];
+        let warning;
+        if (
+            (dbrVersionParts[0] === 13 || dbrVersionParts[0] === 14) &&
+            !this.matchEnvironmentVersion(env, 3, 10)
+        ) {
+            warning = `Use python 3.10 to match DBR ${
+                dbrVersionParts[0]
+            } requirements. ${this.printEnvironment(env)}`;
+        }
+        if (
+            dbrVersionParts[0] === 15 &&
+            !this.matchEnvironmentVersion(env, 3, 11)
+        ) {
+            warning = `Use python 3.11 to match DBR ${
+                dbrVersionParts[0]
+            } requirements. ${this.printEnvironment(env)}`;
+        }
         return this.acceptStep(
             "checkPythonEnvironment",
             `Active Environment: ${env.environment.name}`,
-            env.executable.uri?.fsPath
+            env.executable.uri?.fsPath,
+            warning
         );
     }
 

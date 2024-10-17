@@ -20,6 +20,7 @@ export interface FeatureStepState {
     available: boolean;
     title?: string;
     message?: string;
+    warning?: string;
     action?: FeatureEnableAction;
     isDisabledByFf?: boolean;
 }
