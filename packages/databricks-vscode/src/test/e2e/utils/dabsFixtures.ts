@@ -9,7 +9,7 @@ import lodash from "lodash";
 
 type SimpleJob = Pick<
     Resource<BundleTarget, "jobs">,
-    "name" | "tasks" | "job_clusters" | "compute"
+    "name" | "tasks" | "job_clusters"
 >;
 
 export function getSimpleJobsResource(def: Omit<SimpleJob, "name">) {
@@ -36,8 +36,7 @@ export function getSimpleJobsResource(def: Omit<SimpleJob, "name">) {
         if (
             task.job_cluster_key === undefined &&
             task.new_cluster === undefined &&
-            task.existing_cluster_id === undefined &&
-            task.compute_key === undefined
+            task.existing_cluster_id === undefined
         ) {
             task.job_cluster_key = "job_cluster";
         }
