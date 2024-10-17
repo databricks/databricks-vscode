@@ -227,7 +227,6 @@ async function runBundleCommand(
 
     logger?.debug(quote([cmd, ...args]), {bundleOpName});
     const abortController = new AbortController();
-    cancellationToken?.onCancellationRequested(() => abortController.abort());
     let options: SpawnOptionsWithoutStdio = {
         cwd: workspaceFolder.fsPath,
         env: removeUndefinedKeys(env),
@@ -237,6 +236,15 @@ async function runBundleCommand(
     ({cmd, args, options} = getEscapedCommandAndAgrs(cmd, args, options));
     try {
         const p = spawn(cmd, args, options);
+        cancellationToken?.onCancellationRequested(() => {
+            if (process.platform === "win32" && p.pid) {
+                // On windows aborting the signal doesn't kill the CLI.
+                // Use taskkill here with the "force" and "tree" flags (to kill sub-processes too)
+                spawn("taskkill", ["/pid", String(p.pid), "/T", "/F"]);
+            } else {
+                abortController.abort();
+            }
+        });
         const {stdout, stderr} = await waitForProcess(p, onStdOut, onStdError);
         logger?.info(displayLogs.end, {
             bundleOpName,
