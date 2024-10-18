@@ -586,22 +586,22 @@
                 {
                     "command": "databricks.run.runEditorContents",
                     "when": "databricks.context.activated && resourceLangId == python",
-                    "group": "1_remote@1"
+                    "group": "2_remote@1"
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
                     "when": "databricks.context.activated && resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow",
-                    "group": "1_remote@2"
+                    "group": "2_remote@2"
                 },
                 {
                     "command": "databricks.run.dbconnect.debug",
                     "when": "databricks.context.activated && resourceLangId == python",
-                    "group": "2_local@1"
+                    "group": "3_local@1"
                 },
                 {
                     "command": "databricks.run.dbconnect.run",
                     "when": "databricks.context.activated && resourceLangId == python",
-                    "group": "2_local@2"
+                    "group": "3_local@2"
                 }
             ],
             "commandPalette": [
