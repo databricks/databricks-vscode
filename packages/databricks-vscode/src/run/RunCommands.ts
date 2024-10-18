@@ -1,11 +1,4 @@
-import {
-    commands,
-    debug,
-    ExtensionContext,
-    Uri,
-    window,
-    WorkspaceFolder,
-} from "vscode";
+import {commands, debug, ExtensionContext, Uri, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {FileUtils} from "../utils";
 import {LocalUri} from "../sync/SyncDestination";
@@ -17,6 +10,8 @@ import {
     escapeExecutableForTerminal,
     escapePathArgument,
 } from "../utils/shellUtils";
+import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 /**
  * Run related commands
@@ -24,11 +19,33 @@ import {
 export class RunCommands {
     constructor(
         private connection: ConnectionManager,
-        private readonly workspaceFolder: WorkspaceFolder,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly featureManager: FeatureManager,
-        private readonly context: ExtensionContext
-    ) {}
+        private readonly context: ExtensionContext,
+        private readonly customWhenContext: CustomWhenContext
+    ) {
+        this.context.subscriptions.push(
+            window.onDidChangeActiveTextEditor(async () =>
+                this.updateRunAsWorkflowContext()
+            )
+        );
+        this.updateRunAsWorkflowContext();
+    }
+
+    async updateRunAsWorkflowContext() {
+        const uri = window.activeTextEditor?.document.uri;
+        if (
+            uri &&
+            uri.scheme === "file" &&
+            ((await FileUtils.isNotebook(new LocalUri(uri))) ||
+                uri.fsPath.endsWith(".py"))
+        ) {
+            this.customWhenContext.setShowRunAsWorkflow(true);
+        } else {
+            this.customWhenContext.setShowRunAsWorkflow(false);
+        }
+    }
 
     /**
      * Run a Python file using the command execution API
@@ -130,7 +147,10 @@ export class RunCommands {
             env: {...process.env},
         };
 
-        debug.startDebugging(this.workspaceFolder, config);
+        debug.startDebugging(
+            this.workspaceFolderManager.activeWorkspaceFolder,
+            config
+        );
     }
 
     async runFileUsingDbconnect(resource?: Uri) {

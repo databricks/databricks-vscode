@@ -72,7 +72,6 @@ import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
-import {LocalUri} from "./sync/SyncDestination";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -730,10 +729,11 @@ export async function activate(
 
     const runCommands = new RunCommands(
         connectionManager,
-        workspace.workspaceFolders[0],
+        workspaceFolderManager,
         pythonExtensionWrapper,
         featureManager,
-        context
+        context,
+        customWhenContext
     );
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
@@ -777,20 +777,6 @@ export async function activate(
             runCommands.runEditorContentsAsWorkflowCommand(),
             runCommands
         ),
-        window.onDidChangeActiveTextEditor(async (e) => {
-            const uri = e?.document.uri;
-
-            if (
-                uri &&
-                uri.scheme === "file" &&
-                ((await FileUtils.isNotebook(new LocalUri(uri))) ||
-                    uri.fsPath.endsWith(".py"))
-            ) {
-                customWhenContext.setShowRunAsWorkflow(true);
-            } else {
-                customWhenContext.setShowRunAsWorkflow(false);
-            }
-        }),
         debug.registerDebugAdapterDescriptorFactory("databricks", debugFactory),
         debugFactory,
         debug.registerDebugAdapterDescriptorFactory(

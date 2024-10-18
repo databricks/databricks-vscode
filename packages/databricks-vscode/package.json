@@ -579,24 +579,29 @@
             ],
             "databricks.run": [
                 {
+                    "command": "databricks.connection.configureLogin",
+                    "when": "databricks.context.activated && !databricks.context.loggedIn",
+                    "group": "1_login@0"
+                },
+                {
                     "command": "databricks.run.runEditorContents",
-                    "when": "resourceLangId == python",
-                    "group": "1_remote@1"
+                    "when": "databricks.context.activated && resourceLangId == python",
+                    "group": "2_remote@1"
                 },
                 {
                     "command": "databricks.run.runEditorContentsAsWorkflow",
-                    "when": "resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow",
-                    "group": "1_remote@2"
+                    "when": "databricks.context.activated && resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow",
+                    "group": "2_remote@2"
                 },
                 {
                     "command": "databricks.run.dbconnect.debug",
-                    "when": "resourceLangId == python",
-                    "group": "2_local@1"
+                    "when": "databricks.context.activated && resourceLangId == python",
+                    "group": "3_local@1"
                 },
                 {
                     "command": "databricks.run.dbconnect.run",
-                    "when": "resourceLangId == python",
-                    "group": "2_local@2"
+                    "when": "databricks.context.activated && resourceLangId == python",
+                    "group": "3_local@2"
                 }
             ],
             "commandPalette": [
