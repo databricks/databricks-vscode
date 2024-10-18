@@ -392,7 +392,7 @@ export class ConnectionManager implements Disposable {
     async configureLogin(source: ManualLoginSource) {
         if (this.configureLoginMutex.locked) {
             window.showErrorMessage(
-                "Databricks: Already configuring workspace"
+                "Databricks: sign in is already in progress"
             );
             return;
         }

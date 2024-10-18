@@ -5,6 +5,7 @@ import {
     QuickPickItemKind,
     ThemeIcon,
     window,
+    commands,
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
@@ -73,6 +74,7 @@ export class ConnectionCommands implements Disposable {
     }
 
     async configureLoginCommand(arg?: {id: string}) {
+        commands.executeCommand("configurationView.focus");
         let source: ManualLoginSource = "command";
         if (arg?.id === AUTH_TYPE_SWITCH_ID) {
             source = "authTypeSwitch";
