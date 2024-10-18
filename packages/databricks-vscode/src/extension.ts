@@ -72,7 +72,6 @@ import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
-import {LocalUri} from "./sync/SyncDestination";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
