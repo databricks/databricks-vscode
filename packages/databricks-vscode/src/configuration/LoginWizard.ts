@@ -21,10 +21,7 @@ import {
     ProfileAuthProvider,
 } from "./auth/AuthProvider";
 import {FileUtils, UrlUtils} from "../utils";
-import {
-    loadConfigFile,
-    AuthType as SdkAuthType,
-} from "@databricks/databricks-sdk";
+import {AuthType as SdkAuthType} from "@databricks/databricks-sdk";
 import {randomUUID} from "crypto";
 import ini from "ini";
 import {appendFile, copyFile} from "fs/promises";
@@ -32,6 +29,7 @@ import path from "path";
 import os from "os";
 import {createFile} from "fs-extra";
 import {getDatabricksConfigFilePath} from "../utils/fileUtils";
+import {stat} from "node:fs/promises";
 
 interface AuthTypeQuickPickItem extends QuickPickItem {
     authType?: SdkAuthType;
@@ -388,7 +386,7 @@ export async function saveNewProfile(
     const configFilePath: string = getDatabricksConfigFilePath().fsPath;
     let shouldBackup = true;
     try {
-        await loadConfigFile(configFilePath);
+        await stat(configFilePath);
     } catch (e) {
         shouldBackup = false;
         await createFile(configFilePath);
@@ -450,11 +448,14 @@ export async function listProfiles(cliWrapper: CliWrapper) {
             title: "Loading Databricks profiles",
         },
         async () => {
-            const profiles = (
-                await cliWrapper.listProfiles(
-                    FileUtils.getDatabricksConfigFilePath().fsPath
-                )
-            ).filter((profile) => {
+            const cfgPath = FileUtils.getDatabricksConfigFilePath().fsPath;
+            try {
+                await stat(cfgPath);
+            } catch (e) {
+                return [];
+            }
+            const allProfiles = await cliWrapper.listProfiles(cfgPath);
+            const profiles = allProfiles.filter((profile) => {
                 try {
                     UrlUtils.normalizeHost(profile.host!.toString());
                     return true;
@@ -462,7 +463,6 @@ export async function listProfiles(cliWrapper: CliWrapper) {
                     return false;
                 }
             });
-
             return profiles;
         }
     );
