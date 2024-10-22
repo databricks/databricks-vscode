@@ -72,9 +72,9 @@ describe("Run files", async function () {
             const notifications = await workbench.getNotifications();
             for (const notification of notifications) {
                 const message = await notification.getMessage();
-                if (message.includes("Deploying")) {
+                if (message.includes("Uploading bundle assets")) {
                     // Make sure the CLI is actually spawned before cancelling
-                    await sleep(1000);
+                    await sleep(500);
                     await notification.takeAction("Cancel");
                     return true;
                 }

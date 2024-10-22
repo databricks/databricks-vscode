@@ -92,7 +92,7 @@ export class BundleCommands implements Disposable {
             await window.withProgress(
                 {
                     location: ProgressLocation.Notification,
-                    title: "Synchronising bundle assets",
+                    title: "Uploading bundle assets",
                     cancellable: true,
                 },
                 async (progress, token) => {
