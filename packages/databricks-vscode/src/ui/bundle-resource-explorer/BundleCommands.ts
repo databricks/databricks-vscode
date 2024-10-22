@@ -86,6 +86,33 @@ export class BundleCommands implements Disposable {
     private deployMutex = new Mutex();
 
     @Mutex.synchronise("deployMutex")
+    async sync() {
+        try {
+            this.whenContext.setDeploymentState("deploying");
+            await window.withProgress(
+                {
+                    location: ProgressLocation.Notification,
+                    title: "Synchronising bundle assets",
+                    cancellable: true,
+                },
+                async (progress, token) => {
+                    await this.bundleRemoteStateModel.sync(token);
+                }
+            );
+        } catch (e) {
+            if (!(e instanceof Error)) {
+                throw e;
+            }
+            if (e instanceof ProcessError) {
+                e.showErrorMessage("Error synchronising bundle assets.");
+            }
+            throw e;
+        } finally {
+            this.whenContext.setDeploymentState("idle");
+        }
+    }
+
+    @Mutex.synchronise("deployMutex")
     async deploy(force = false) {
         try {
             this.whenContext.setDeploymentState("deploying");

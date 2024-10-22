@@ -11,7 +11,6 @@ import {
     commands,
     CancellationToken,
 } from "vscode";
-import {SyncDestinationMapper} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {logging} from "@databricks/databricks-sdk";
@@ -335,14 +334,10 @@ export class CliWrapper {
     /**
      * Constructs the databricks sync command
      */
-    getSyncCommand(
-        syncDestination: SyncDestinationMapper,
-        syncType: SyncType
-    ): Command {
+    getSyncCommand(syncType: SyncType): Command {
         const args = [
+            "bundle",
             "sync",
-            ".",
-            syncDestination.remoteUri.path,
             "--watch",
             "--output",
             "json",
@@ -656,6 +651,32 @@ export class CliWrapper {
                 start: `Destroying the bundle for target ${target}...`,
                 end: "Bundle destroyed successfully.",
                 error: "Failed to destroy the bundle.",
+            },
+            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            logger,
+            {},
+            token
+        );
+    }
+
+    async bundleSync(
+        target: string,
+        authProvider: AuthProvider,
+        workspaceFolder: Uri,
+        configfilePath?: string,
+        logger?: logging.NamedLogger,
+        token?: CancellationToken
+    ) {
+        await commands.executeCommand("databricks.bundle.showLogs");
+        return await runBundleCommand(
+            "sync",
+            this.cliPath,
+            ["bundle", "sync", "--target", target, "--output", "text"],
+            workspaceFolder,
+            {
+                start: `Uploading bundle assets for target ${target}...`,
+                end: "Bundle assets uploaded successfully.",
+                error: "Failed to upload bundle assets.",
             },
             await this.getBundleCommandEnvVars(authProvider, configfilePath),
             logger,

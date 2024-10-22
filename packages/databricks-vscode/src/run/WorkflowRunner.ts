@@ -89,11 +89,11 @@ export class WorkflowRunner implements Disposable {
         }
 
         try {
-            await this.bundleCommands.deploy();
+            await this.bundleCommands.sync();
         } catch (e: unknown) {
             if (e instanceof Error) {
                 panel.showError({
-                    message: `Can't deploy assets to databricks workspace. \nReason: ${e.message}`,
+                    message: `Can't upload assets to databricks workspace. \nReason: ${e.message}`,
                 });
             }
             return;

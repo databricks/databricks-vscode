@@ -103,6 +103,25 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         );
     }
 
+    @Mutex.synchronise("mutex")
+    public async sync(token: CancellationToken) {
+        if (this.target === undefined) {
+            throw new Error("Target is undefined");
+        }
+        if (this.authProvider === undefined) {
+            throw new Error("No authentication method is set");
+        }
+
+        await this.cli.bundleSync(
+            this.target,
+            this.authProvider,
+            this.workspaceFolder,
+            this.workspaceConfigs.databrickscfgLocation,
+            this.logger,
+            token
+        );
+    }
+
     public async getRunCommand(resourceKey: string) {
         if (this.target === undefined) {
             throw new Error("Target is undefined");

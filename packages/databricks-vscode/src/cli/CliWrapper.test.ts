@@ -1,10 +1,5 @@
 import * as assert from "assert";
 import {Uri} from "vscode";
-import {
-    LocalUri,
-    RemoteUri,
-    SyncDestinationMapper,
-} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
@@ -79,25 +74,16 @@ describe(__filename, function () {
     it("should create sync commands", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
-        const mapper = new SyncDestinationMapper(
-            new LocalUri(Uri.file("/user/project")),
-            new RemoteUri(
-                Uri.from({
-                    scheme: "wsfs",
-                    path: "/Repos/user@databricks.com/project",
-                })
-            )
-        );
 
         const syncCommand = `${cliPath} sync . /Repos/user@databricks.com/project --watch --output json`;
         const loggingArgs = `--log-level debug --log-file ${logFilePath} --log-format json`;
-        let {command, args} = cli.getSyncCommand(mapper, "incremental");
+        let {command, args} = cli.getSyncCommand("incremental");
         assert.equal(
             [command, ...args].join(" "),
             [syncCommand, loggingArgs].join(" ")
         );
 
-        ({command, args} = cli.getSyncCommand(mapper, "full"));
+        ({command, args} = cli.getSyncCommand("full"));
         assert.equal(
             [command, ...args].join(" "),
             [syncCommand, loggingArgs, "--full"].join(" ")
@@ -106,7 +92,7 @@ describe(__filename, function () {
         const configsSpy = spy(workspaceConfigs);
         mocks.push(configsSpy);
         when(configsSpy.loggingEnabled).thenReturn(false);
-        ({command, args} = cli.getSyncCommand(mapper, "incremental"));
+        ({command, args} = cli.getSyncCommand("incremental"));
         assert.equal([command, ...args].join(" "), syncCommand);
     });
 
