@@ -48,23 +48,6 @@ describe("Run files", async function () {
         await sleep(1000);
     });
 
-    it("should run a python file on a cluster", async () => {
-        const workbench = await driver.getWorkbench();
-        await workbench.executeQuickPick("Databricks: Upload and Run File");
-
-        const debugOutput = await workbench
-            .getBottomBar()
-            .openDebugConsoleView();
-
-        while (true) {
-            await sleep(2000);
-            const text = await (await debugOutput.elem).getHTML();
-            if (text && text.includes("hello world")) {
-                break;
-            }
-        }
-    });
-
     it("should cancel a run during deployment", async () => {
         const workbench = await driver.getWorkbench();
         await workbench.executeQuickPick("Databricks: Upload and Run File");
@@ -88,6 +71,23 @@ describe("Run files", async function () {
                 break;
             } else {
                 await sleep(2000);
+            }
+        }
+    });
+
+    it("should run a python file on a cluster", async () => {
+        const workbench = await driver.getWorkbench();
+        await workbench.executeQuickPick("Databricks: Upload and Run File");
+
+        const debugOutput = await workbench
+            .getBottomBar()
+            .openDebugConsoleView();
+
+        while (true) {
+            await sleep(2000);
+            const text = await (await debugOutput.elem).getHTML();
+            if (text && text.includes("hello world")) {
+                break;
             }
         }
     });
