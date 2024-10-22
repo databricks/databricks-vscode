@@ -75,7 +75,7 @@ describe(__filename, function () {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
 
-        const syncCommand = `${cliPath} sync . /Repos/user@databricks.com/project --watch --output json`;
+        const syncCommand = `${cliPath} bundle sync --watch --output json`;
         const loggingArgs = `--log-level debug --log-file ${logFilePath} --log-format json`;
         let {command, args} = cli.getSyncCommand("incremental");
         assert.equal(
