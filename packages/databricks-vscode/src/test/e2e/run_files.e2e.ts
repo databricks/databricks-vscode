@@ -73,8 +73,6 @@ describe("Run files", async function () {
             for (const notification of notifications) {
                 const message = await notification.getMessage();
                 if (message.includes("Uploading bundle assets")) {
-                    // Make sure the CLI is actually spawned before cancelling
-                    await sleep(500);
                     await notification.takeAction("Cancel");
                     return true;
                 }
