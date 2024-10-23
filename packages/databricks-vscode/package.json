@@ -882,7 +882,7 @@
                     "databricks.connect.progress": {
                         "type": "boolean",
                         "default": true,
-                        "description": "Show PySpark progress bar when using Databricks Connect."
+                        "markdownDescription": "Show PySpark progress bar when using Databricks Connect. Requires `ipywidgets` package and `pyspark@3.5.0+`."
                     },
                     "databricks.ipythonDir": {
                         "type": "string",
