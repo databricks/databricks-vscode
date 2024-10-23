@@ -114,11 +114,13 @@ export class BundleProjectManager {
             this.logger.debug(
                 "Detected an existing bundle project, initializing project services"
             );
+            this.customWhenContext.setIsBundleProject(true);
             return this.initProjectServices();
         } else {
             this.logger.debug(
                 "No bundle config detected, disposing project services"
             );
+            this.customWhenContext.setIsBundleProject(false);
             await this.disposeProjectServices();
         }
     }

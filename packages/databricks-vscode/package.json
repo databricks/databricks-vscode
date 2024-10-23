@@ -387,6 +387,11 @@
         "viewsWelcome": [
             {
                 "view": "configurationView",
+                "contents": "Initializing...",
+                "when": "workspaceFolderCount > 0 && !databricks.context.initialized"
+            },
+            {
+                "view": "configurationView",
                 "contents": "There are multiple Databricks projects in the folder:\n[Open existing Databricks Project](command:databricks.bundle.openSubProject)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
             },
@@ -398,12 +403,12 @@
             {
                 "view": "configurationView",
                 "contents": "[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized"
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.isBundleProject"
             },
             {
                 "view": "configurationView",
-                "contents": "Initializing...",
-                "when": "workspaceFolderCount > 0 && !databricks.context.initialized"
+                "contents": "Loading configuration",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.isBundleProject"
             },
             {
                 "view": "configurationView",
@@ -877,7 +882,7 @@
                     "databricks.connect.progress": {
                         "type": "boolean",
                         "default": true,
-                        "description": "Show PySpark progress bar when using Databricks Connect."
+                        "markdownDescription": "Show PySpark progress bar when using Databricks Connect. Requires `ipywidgets` package and `pyspark@3.5.0+`."
                     },
                     "databricks.ipythonDir": {
                         "type": "string",
@@ -923,7 +928,7 @@
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && tsc --build --force",
-        "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && tsc --build --watch --force",
+        "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && tsc --build --watch --force --verbose",
         "fix": "eslint src --ext ts --fix && prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",
