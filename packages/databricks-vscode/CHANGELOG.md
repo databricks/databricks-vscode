@@ -7,7 +7,7 @@
 -   Don't initialise spark progress widget if it's not supported
 -   Fix CLI cancellation on windows
 -   Improve environment setup UX
--   Improve the process of profiles loading 
+-   Improve the process of profiles loading
 -   Improve run button UX
 -   Prevent welcome view flashes
 -   Update the CLI to v0.231.0
