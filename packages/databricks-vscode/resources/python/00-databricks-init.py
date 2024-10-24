@@ -376,6 +376,9 @@ def register_spark_progress(spark, show_progress: bool):
         import ipywidgets as widgets
     except Exception as e:
         return
+    
+    if not hasattr(spark, "clearProgressHandlers") or not hasattr(spark, "registerProgressHandler"):
+        return
 
     class Progress:
         SI_BYTE_SIZES = (1 << 60, 1 << 50, 1 << 40, 1 << 30, 1 << 20, 1 << 10, 1)

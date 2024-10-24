@@ -3,6 +3,7 @@ import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
     dismissNotifications,
+    executeCommandWhenAvailable,
     openFile,
     waitForLogin,
     waitForWorkflowWebview,
@@ -43,14 +44,11 @@ describe("Run files", async function () {
 
     beforeEach(async () => {
         await openFile("hello.py");
-        // We enable the run command when the active editor is changed.
-        // We wait here to avoid race conditions between the extension logic enabling this command and tests executing it.
-        await sleep(1000);
     });
 
     it("should cancel a run during deployment", async () => {
         const workbench = await driver.getWorkbench();
-        await workbench.executeQuickPick("Databricks: Upload and Run File");
+        await executeCommandWhenAvailable("Databricks: Upload and Run File");
         await browser.waitUntil(async () => {
             const notifications = await workbench.getNotifications();
             for (const notification of notifications) {
@@ -77,7 +75,7 @@ describe("Run files", async function () {
 
     it("should run a python file on a cluster", async () => {
         const workbench = await driver.getWorkbench();
-        await workbench.executeQuickPick("Databricks: Upload and Run File");
+        await executeCommandWhenAvailable("Databricks: Upload and Run File");
 
         const debugOutput = await workbench
             .getBottomBar()
@@ -93,8 +91,7 @@ describe("Run files", async function () {
     });
 
     it("should run a python file as a workflow", async () => {
-        const workbench = await driver.getWorkbench();
-        await workbench.executeQuickPick("Databricks: Run File as Workflow");
+        await executeCommandWhenAvailable("Databricks: Run File as Workflow");
         await waitForWorkflowWebview("hello world");
     });
 });

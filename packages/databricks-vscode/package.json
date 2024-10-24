@@ -882,7 +882,7 @@
                     "databricks.connect.progress": {
                         "type": "boolean",
                         "default": true,
-                        "description": "Show PySpark progress bar when using Databricks Connect."
+                        "markdownDescription": "Show PySpark progress bar when using Databricks Connect. Requires `ipywidgets` package and `pyspark@3.5.0+`."
                     },
                     "databricks.ipythonDir": {
                         "type": "string",
@@ -907,7 +907,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.230.0"
+        "version": "0.231.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",

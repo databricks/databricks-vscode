@@ -303,3 +303,15 @@ export async function openFile(fileName: string) {
         return title.includes(fileName);
     });
 }
+
+export async function executeCommandWhenAvailable(command: string) {
+    const workbench = await driver.getWorkbench();
+    return browser.waitUntil(async () => {
+        try {
+            await workbench.executeQuickPick(command);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    });
+}
