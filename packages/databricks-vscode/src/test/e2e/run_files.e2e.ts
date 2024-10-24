@@ -46,23 +46,6 @@ describe("Run files", async function () {
         await openFile("hello.py");
     });
 
-    it("should run a python file on a cluster", async () => {
-        const workbench = await driver.getWorkbench();
-        await executeCommandWhenAvailable("Databricks: Upload and Run File");
-
-        const debugOutput = await workbench
-            .getBottomBar()
-            .openDebugConsoleView();
-
-        while (true) {
-            await sleep(2000);
-            const text = await (await debugOutput.elem).getHTML();
-            if (text && text.includes("hello world")) {
-                break;
-            }
-        }
-    });
-
     it("should cancel a run during deployment", async () => {
         const workbench = await driver.getWorkbench();
         await executeCommandWhenAvailable("Databricks: Upload and Run File");
@@ -70,9 +53,7 @@ describe("Run files", async function () {
             const notifications = await workbench.getNotifications();
             for (const notification of notifications) {
                 const message = await notification.getMessage();
-                if (message.includes("Deploying")) {
-                    // Make sure the CLI is actually spawned before cancelling
-                    await sleep(1000);
+                if (message.includes("Uploading bundle assets")) {
                     await notification.takeAction("Cancel");
                     return true;
                 }
@@ -92,9 +73,25 @@ describe("Run files", async function () {
         }
     });
 
-    it("should run a python file as a workflow", async () => {
+    it("should run a python file on a cluster", async () => {
         const workbench = await driver.getWorkbench();
-        await workbench.executeQuickPick("Databricks: Run File as Workflow");
+        await executeCommandWhenAvailable("Databricks: Upload and Run File");
+
+        const debugOutput = await workbench
+            .getBottomBar()
+            .openDebugConsoleView();
+
+        while (true) {
+            await sleep(2000);
+            const text = await (await debugOutput.elem).getHTML();
+            if (text && text.includes("hello world")) {
+                break;
+            }
+        }
+    });
+
+    it("should run a python file as a workflow", async () => {
+        await executeCommandWhenAvailable("Databricks: Run File as Workflow");
         await waitForWorkflowWebview("hello world");
     });
 });

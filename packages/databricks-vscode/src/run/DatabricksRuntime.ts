@@ -137,9 +137,9 @@ export class DatabricksRuntime implements Disposable {
                 throw new Error("No sync destination found");
             }
 
-            log("Deploying assets to databricks workspace...");
+            log("Uploading assets to databricks workspace...");
             this.state = "SYNCING";
-            await this.bundleCommands.deploy();
+            await this.bundleCommands.sync();
 
             await commands.executeCommand("workbench.panel.repl.view.focus");
 

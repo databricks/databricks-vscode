@@ -249,12 +249,12 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         Object.defineProperties(this, {
             cmd: {
                 get: () => {
-                    return this.getSyncCommand(ctx).command;
+                    return this.getSyncCommand().command;
                 },
             },
             args: {
                 get: () => {
-                    return this.getSyncCommand(ctx).args;
+                    return this.getSyncCommand().args;
                 },
             },
             options: {
@@ -311,21 +311,12 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         } as SpawnOptions;
     }
 
-    @withLogContext(Loggers.Extension)
-    getSyncCommand(@context ctx?: Context): Command {
+    getSyncCommand(): Command {
         if (this.command) {
             return this.command;
         }
-        const syncDestination = this.connection.syncDestinationMapper;
 
-        if (!syncDestination) {
-            throw this.showErrorAndKillThis(
-                "Can't start sync: Databricks synchronization destination not configured!",
-                ctx
-            );
-        }
-
-        this.command = this.cli.getSyncCommand(syncDestination, this.syncType);
+        this.command = this.cli.getSyncCommand(this.syncType);
 
         return this.command;
     }
