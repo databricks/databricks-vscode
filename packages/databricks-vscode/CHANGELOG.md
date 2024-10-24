@@ -1,3 +1,19 @@
+# Release: v2.4.7
+
+## packages/databricks-vscode
+
+## (2024-10-24)
+
+-   Don't initialise spark progress widget if it's not supported
+-   Fix CLI cancellation on windows
+-   Focus configuration view when users attempt to login or setup Databricks Connect
+-   Let users install Databricks Connect even if python version doesn't match DBR requirements
+-   Show login command in the run button conext menu if the extension is logged out
+-   Don't show error notifications during login process if `.databrickscfg` file doesn't exist
+-   Prevent welcome view flashes when opening the configuration panel
+-   Update the CLI to v0.231.0
+-   Use `bundle sync` instead of `bundle deploy` for remote run commands
+
 # Release: v2.4.6
 
 ## packages/databricks-vscode
