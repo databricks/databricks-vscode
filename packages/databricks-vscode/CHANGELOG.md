@@ -1,3 +1,19 @@
+# Release: v2.4.7
+
+## packages/databricks-vscode
+
+## (2024-10-24)
+
+-   Add e2e tests for the deployment cancellation (#1396) ([94bf23b](https://github.com/databricks/databricks-vscode/commit/94bf23b)), closes [#1396](https://github.com/databricks/databricks-vscode/issues/1396)
+-   Don't initialise spark progress widget if it's not supported (#1402) ([afe75eb](https://github.com/databricks/databricks-vscode/commit/afe75eb)), closes [#1402](https://github.com/databricks/databricks-vscode/issues/1402)
+-   Fix CLI cancellation on windows (#1393) ([9c864af](https://github.com/databricks/databricks-vscode/commit/9c864af)), closes [#1393](https://github.com/databricks/databricks-vscode/issues/1393)
+-   Improve environment setup UX (#1395) ([97daab1](https://github.com/databricks/databricks-vscode/commit/97daab1)), closes [#1395](https://github.com/databricks/databricks-vscode/issues/1395)
+-   Improve profiles loading (#1398) ([95ab5c6](https://github.com/databricks/databricks-vscode/commit/95ab5c6)), closes [#1398](https://github.com/databricks/databricks-vscode/issues/1398)
+-   Improve run button UX (#1397) ([c1c4a43](https://github.com/databricks/databricks-vscode/commit/c1c4a43)), closes [#1397](https://github.com/databricks/databricks-vscode/issues/1397)
+-   Prevent welcome view flashes (#1399) ([261e06c](https://github.com/databricks/databricks-vscode/commit/261e06c)), closes [#1399](https://github.com/databricks/databricks-vscode/issues/1399)
+-   Update the CLI to v0.231.0 (#1407) ([05114fa](https://github.com/databricks/databricks-vscode/commit/05114fa)), closes [#1407](https://github.com/databricks/databricks-vscode/issues/1407)
+-   Use "bundle sync" instead of "bundle deploy" for remote run commands (#1401) ([7afb87f](https://github.com/databricks/databricks-vscode/commit/7afb87f)), closes [#1401](https://github.com/databricks/databricks-vscode/issues/1401)
+
 # Release: v2.4.6
 
 ## packages/databricks-vscode
