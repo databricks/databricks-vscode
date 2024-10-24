@@ -1,9 +1,9 @@
 import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
-import {sleep} from "wdio-vscode-service";
 import {
     dismissNotifications,
+    executeCommandWhenAvailable,
     openFile,
     waitForLogin,
     waitForWorkflowWebview,
@@ -74,21 +74,13 @@ describe("Run notebooks", async function () {
 
     it("should run a notebook.py file as a workflow", async () => {
         await openFile("notebook.py");
-        // We enable the run command when the active editor is changed.
-        // We wait here to avoid race conditions between the extension logic enabling this command and tests executing it.
-        await sleep(1000);
-        const workbench = await driver.getWorkbench();
-        await workbench.executeQuickPick("Databricks: Run File as Workflow");
+        await executeCommandWhenAvailable("Databricks: Run File as Workflow");
         await waitForWorkflowWebview("a/b c");
     });
 
     it("should run a notebook.ipynb file as a workflow", async () => {
         await openFile("notebook.ipynb");
-        // We enable the run command when the active editor is changed.
-        // We wait here to avoid race conditions between the extension logic enabling this command and tests executing it.
-        await sleep(1000);
-        const workbench = await driver.getWorkbench();
-        await workbench.executeQuickPick("Databricks: Run File as Workflow");
+        await executeCommandWhenAvailable("Databricks: Run File as Workflow");
         await waitForWorkflowWebview("hello world");
     });
 });
