@@ -266,7 +266,8 @@ export const config: Options.Testrunner = {
     framework: "mocha",
     //
     // The number of times to retry the entire specfile when it fails as a whole
-    specFileRetries: 0,
+    // With new Github runners we experience web-driver craches and lost connections, hence the retry here
+    specFileRetries: 1,
     //
     // Delay in seconds between the spec file retry attempts
     specFileRetriesDelay: 0,
