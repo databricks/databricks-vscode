@@ -13,7 +13,6 @@ import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 export type BundleVariable = Required<BundleSchema>["variables"][string] & {
     valueInTarget?: string;
     vscodeOverrideValue?: string;
-    required: boolean;
 };
 
 export type BundleVariableModelState = {
@@ -180,8 +179,8 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
             variables[key] = {
                 ...definition,
                 lookup:
-                    typeof inTargetVariable === "object"
-                        ? inTargetVariable
+                    typeof inTargetVariable?.lookup === "object"
+                        ? inTargetVariable.lookup
                         : definition.lookup,
 
                 // If the value is not required based on our heuristic check, we use the value from the validate
@@ -194,7 +193,6 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
                           : inTargetPostValidateVariables[key]?.value ??
                             definition.default,
                 vscodeOverrideValue: overrides[key],
-                required: isRequired,
             };
         }
 
