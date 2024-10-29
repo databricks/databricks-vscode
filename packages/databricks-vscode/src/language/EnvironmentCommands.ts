@@ -5,7 +5,6 @@ import {Cluster} from "../sdk-extensions";
 import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
 import {Environment} from "./MsPythonExtensionApi";
 import {environmentName} from "../utils/environmentUtils";
-import {env} from "yargs";
 
 export class EnvironmentCommands {
     constructor(
