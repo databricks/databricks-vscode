@@ -1,8 +1,11 @@
-import {window, commands} from "vscode";
+import {window, commands, QuickPickItem} from "vscode";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Cluster} from "../sdk-extensions";
 import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
+import {Environment} from "./MsPythonExtensionApi";
+import {environmentName} from "../utils/environmentUtils";
+import {env} from "yargs";
 
 export class EnvironmentCommands {
     constructor(
@@ -55,9 +58,41 @@ export class EnvironmentCommands {
         const environments =
             await this.pythonExtension.getAvailableEnvironments();
         if (environments.length > 0) {
-            await this.pythonExtension.selectPythonInterpreter();
+            await this.showEnvironmentsQuickPick(environments);
         } else {
             await this.pythonExtension.createPythonEnvironment();
+        }
+    }
+
+    async showEnvironmentsQuickPick(environments: Environment[]) {
+        const envPicks: (QuickPickItem & {path?: string})[] = environments.map(
+            (env) => ({
+                label: environmentName(env),
+                description: env.path,
+                path: env.path,
+            })
+        );
+        const createNewLabel = "$(add) Create new environment";
+        const usePythonExtensionLabel =
+            "$(gear) Use Python Extension to setup environments";
+        const staticPicks: QuickPickItem[] = [
+            {label: createNewLabel, alwaysShow: true},
+            {label: usePythonExtensionLabel, alwaysShow: true},
+        ];
+        const selectedPick = await window.showQuickPick(
+            envPicks.concat(staticPicks),
+            {title: "Select Python Environment"}
+        );
+        if (selectedPick) {
+            if (selectedPick.label === createNewLabel) {
+                await this.pythonExtension.createPythonEnvironment();
+            } else if (selectedPick.label === usePythonExtensionLabel) {
+                await this.pythonExtension.selectPythonInterpreter();
+            } else if (selectedPick.path) {
+                await this.pythonExtension.api.environments.updateActiveEnvironmentPath(
+                    selectedPick.path
+                );
+            }
         }
     }
 
