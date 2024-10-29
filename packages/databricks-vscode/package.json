@@ -277,6 +277,13 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.environment.setup",
+                "title": "Setup python environment",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.environment.selectPythonInterpreter",
                 "title": "Change Python environment",
                 "icon": "$(gear)",

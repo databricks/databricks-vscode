@@ -1,4 +1,4 @@
-import {EventEmitter, OutputChannel, window} from "vscode";
+import {commands, EventEmitter, OutputChannel, window} from "vscode";
 
 import {Disposable} from "vscode";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
@@ -96,7 +96,10 @@ export class EnvironmentDependenciesInstaller implements Disposable {
             case "Change version":
                 return this.installWithVersionPrompt();
             case "Change environment":
-                return this.pythonExtension.selectPythonInterpreter();
+                await commands.executeCommand(
+                    "databricks.environment.selectPythonInterpreter"
+                );
+                return;
         }
     }
 }
