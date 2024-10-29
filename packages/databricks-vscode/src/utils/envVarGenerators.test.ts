@@ -31,7 +31,7 @@ describe(__filename, () => {
         when(mockConnectionManager.databricksWorkspace).thenReturn(
             instance(mockDatabricksWorkspace)
         );
-        when(mockDatabricksWorkspace.host).thenReturn(Uri.parse(mockHost));
+        when(mockDatabricksWorkspace.host).thenReturn(new URL(mockHost));
 
         when(mockCluster.id).thenReturn(mockClusterId);
         when(mockConnectionManager.cluster).thenReturn(instance(mockCluster));
@@ -58,7 +58,6 @@ describe(__filename, () => {
             DATABRICKS_AUTH_TYPE: "metadata-service",
             DATABRICKS_METADATA_SERVICE_URL:
                 "http://example.com/metadata-service",
-            DATABRICKS_CLUSTER_ID: mockClusterId,
         });
     });
 
@@ -104,12 +103,14 @@ describe(__filename, () => {
 
             const actual = await getDbConnectEnvVars(
                 instance(mockConnectionManager),
-                mockWorkspacePath
+                mockWorkspacePath,
+                true
             );
 
             assert.deepEqual(actual, {
                 SPARK_CONNECT_USER_AGENT: "test/0.0.1",
                 DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
+                SPARK_CONNECT_PROGRESS_BAR_ENABLED: "1",
             });
         });
 
@@ -119,17 +120,18 @@ describe(__filename, () => {
 
             const actual = await getDbConnectEnvVars(
                 instance(mockConnectionManager),
-                mockWorkspacePath
+                mockWorkspacePath,
+                true
             );
 
             assert.deepEqual(actual, {
                 SPARK_CONNECT_USER_AGENT: "existing test/0.0.1",
                 DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
+                SPARK_CONNECT_PROGRESS_BAR_ENABLED: "1",
             });
         });
 
-        it("should generate correct dbconnect env vars when auth type is profile", async () => {
-            when(mockAuthProvider.authType).thenReturn("profile");
+        it("should generate correct dbconnect env vars when auth type is pat", async () => {
             const mockConfig = mock(Config);
             when(mockApiClient.config).thenReturn(instance(mockConfig));
             when(mockConfig.authenticate(anything())).thenCall(
@@ -137,17 +139,44 @@ describe(__filename, () => {
                     headers.set("Authorization", "Bearer token");
                 }
             );
+            when(mockConnectionManager.authType).thenReturn("pat");
+
             const actual = await getDbConnectEnvVars(
                 instance(mockConnectionManager),
-                mockWorkspacePath
+                mockWorkspacePath,
+                true
             );
 
             assert.deepEqual(actual, {
                 SPARK_CONNECT_USER_AGENT: "test/0.0.1",
                 DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
+                SPARK_CONNECT_PROGRESS_BAR_ENABLED: "1",
                 SPARK_REMOTE: `sc://${
                     Uri.parse(mockHost).authority
                 }:443/;token=token;use_ssl=true;x-databricks-cluster-id=${mockClusterId}`,
+            });
+        });
+
+        it("should generate correct dbconnect env vars when auth type is not pat", async () => {
+            const mockConfig = mock(Config);
+            when(mockApiClient.config).thenReturn(instance(mockConfig));
+            when(mockConfig.authenticate(anything())).thenCall(
+                (headers: Headers) => {
+                    headers.set("Authorization", "Bearer token");
+                }
+            );
+            when(mockConnectionManager.authType).thenReturn("azure-cli");
+
+            const actual = await getDbConnectEnvVars(
+                instance(mockConnectionManager),
+                mockWorkspacePath,
+                true
+            );
+
+            assert.deepEqual(actual, {
+                SPARK_CONNECT_USER_AGENT: "test/0.0.1",
+                DATABRICKS_PROJECT_ROOT: mockWorkspacePath.fsPath,
+                SPARK_CONNECT_PROGRESS_BAR_ENABLED: "1",
             });
         });
     });

@@ -1,10 +1,12 @@
 import {compute, Time, TimeUnits} from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
 import {CancellationTokenSource, Disposable} from "vscode";
-
+import lodash from "lodash";
+import {logging, context, Context} from "@databricks/databricks-sdk";
+import {Loggers} from "../logger";
 export class ClusterManager implements Disposable {
     private cancellationTokenSource?: CancellationTokenSource;
-    private refreshTimer?: NodeJS.Timer;
+    private refreshTimer?: NodeJS.Timeout;
 
     constructor(
         readonly cluster: Cluster,
@@ -14,10 +16,19 @@ export class ClusterManager implements Disposable {
         this.setInterval();
     }
 
-    private setInterval() {
+    @logging.withLogContext(Loggers.Extension)
+    private setInterval(@context ctx?: Context) {
         this.refreshTimer = setInterval(async () => {
-            await this.cluster.refresh();
-            this.onChange(this.cluster.state);
+            const oldState = this.cluster.state;
+            try {
+                await this.cluster.refresh();
+            } catch (e: any) {
+                ctx?.logger?.error("Error refreshing cluster", e);
+            }
+
+            if (!lodash.isEqual(oldState, this.cluster.state)) {
+                this.onChange(this.cluster.state);
+            }
         }, this.refreshTimeout.toMillSeconds().value);
     }
 

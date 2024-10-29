@@ -2,33 +2,13 @@ name: VSCode Extensions CI
 
 on:
     push:
-        branches: [main]
+        branches: [main, bundle-integ]
     pull_request:
-        branches: [main]
+        branches: [main, bundle-integ]
 
 jobs:
-    run-tests:
-        strategy:
-            fail-fast: false
-            matrix:
-                arch:
-                    [
-                        { cli_arch: darwin_amd64, os: macos-latest },
-                        { cli_arch: windows_amd64, os: windows-latest },
-                    ]
-                node-version: [18.x]
-                vscode-version: [stable]
-        uses: ./.github/workflows/tests.yml
-        with:
-            os: ${{ matrix.arch.os }}
-            node-version: ${{ matrix.node-version }}
-            vscode-version: ${{ matrix.vscode-version }}
-            cli_arch: ${{ matrix.arch.cli_arch }}
-        secrets: inherit
-
     package:
-        name: Package VSIX
-        needs: "run-tests"
+        name: Package Arm64 VSIX
         runs-on: "macos-latest"
         steps:
             - uses: actions/checkout@v3
@@ -53,7 +33,7 @@ jobs:
             - run: mkdir -p packages/databricks-vscode/artifacts
 
             - name: Build VSIX
-              run: yarn package -o artifacts -t darwin-x64
+              run: yarn package -o artifacts -t darwin-arm64
               working-directory: packages/databricks-vscode
 
             - name: Upload artifacts

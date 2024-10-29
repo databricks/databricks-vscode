@@ -7,6 +7,13 @@ export async function openExternal(url: string) {
     await env.openExternal(Uri.parse(addHttpsIfNoProtocol(url), true));
 }
 
+export class UrlError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "UrlError";
+    }
+}
+
 export function normalizeHost(host: string): URL {
     let url: URL;
 
@@ -16,10 +23,10 @@ export function normalizeHost(host: string): URL {
     try {
         url = new URL(host);
     } catch (e) {
-        throw new Error("Invalid host name");
+        throw new UrlError("Invalid host name");
     }
     if (url.protocol !== "https:") {
-        throw new Error("Invalid protocol");
+        throw new UrlError("Invalid protocol");
     }
 
     return new URL(`https://${url.hostname}`);

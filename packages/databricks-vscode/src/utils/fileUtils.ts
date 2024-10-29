@@ -1,7 +1,8 @@
 import {TextDecoder} from "util";
-import {Uri, workspace} from "vscode";
+import {Uri, workspace, FileSystemError, window} from "vscode";
 import {LocalUri} from "../sync/SyncDestination";
-import {ConnectionManager} from "../configuration/ConnectionManager";
+import type {ConnectionManager} from "../configuration/ConnectionManager";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {exists} from "fs-extra";
 import path from "path";
 import {homedir} from "os";
@@ -47,4 +48,32 @@ export async function waitForDatabricksProject(
 
 export function getHomedir() {
     return process.env.HOME ?? homedir();
+}
+
+export function getDatabricksConfigFilePath() {
+    const homeDir = getHomedir();
+    let filePath =
+        workspaceConfigs.databrickscfgLocation ??
+        path.join(homeDir, ".databrickscfg");
+
+    if (filePath.startsWith("~/")) {
+        filePath = path.join(homeDir, filePath.slice(2));
+    }
+    return Uri.file(path.normalize(filePath));
+}
+
+export async function openDatabricksConfigFile() {
+    const uri = getDatabricksConfigFilePath();
+    try {
+        await workspace.fs.stat(uri);
+    } catch (e) {
+        if (e instanceof FileSystemError && e.code === "FileNotFound") {
+            await workspace.fs.writeFile(uri, Buffer.from(""));
+        } else {
+            throw e;
+        }
+    }
+
+    const doc = await workspace.openTextDocument(uri);
+    await window.showTextDocument(doc);
 }

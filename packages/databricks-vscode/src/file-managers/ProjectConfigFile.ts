@@ -5,9 +5,7 @@ import {
     ProfileAuthProvider,
 } from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
-import {Loggers} from "../logger";
-import {Config, logging} from "@databricks/databricks-sdk";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {CliWrapper} from "../cli/CliWrapper";
 
 export interface ProjectConfig {
     authProvider: AuthProvider;
@@ -36,16 +34,8 @@ export class ProjectConfigFile {
         return this.config.clusterId;
     }
 
-    set clusterId(clusterId: string | undefined) {
-        this.config.clusterId = clusterId;
-    }
-
     get workspacePath(): Uri | undefined {
         return this.config.workspacePath;
-    }
-
-    set workspacePath(workspacePath: Uri | undefined) {
-        this.config.workspacePath = workspacePath;
     }
 
     toJSON(): Record<string, unknown> {
@@ -56,85 +46,49 @@ export class ProjectConfigFile {
         };
     }
 
-    async write() {
-        try {
-            const originalConfig = await ProjectConfigFile.load(
-                this.rootPath,
-                this.cliPath
-            );
-            if (
-                JSON.stringify(originalConfig.toJSON(), null, 2) ===
-                JSON.stringify(this.toJSON(), null, 2)
-            ) {
-                return;
-            }
-        } catch (e) {}
-
-        const fileName = ProjectConfigFile.getProjectConfigFilePath(
-            this.rootPath
-        );
-        await fs.mkdir(path.dirname(fileName), {recursive: true});
-
-        await fs.writeFile(fileName, JSON.stringify(this, null, 2), {
-            encoding: "utf-8",
-        });
+    static async importOldConfig(
+        config: any,
+        cli: CliWrapper
+    ): Promise<ProfileAuthProvider> {
+        return await ProfileAuthProvider.from(config.profile, cli);
     }
 
-    static async importOldConfig(config: any): Promise<ProfileAuthProvider> {
-        const sdkConfig = new Config({
-            profile: config.profile,
-            configFile:
-                workspaceConfigs.databrickscfgLocation ??
-                process.env.DATABRICKS_CONFIG_FILE,
-            env: {},
-        });
-
-        await sdkConfig.ensureResolved();
-
-        return new ProfileAuthProvider(
-            new URL(sdkConfig.host!),
-            sdkConfig.profile!
+    static async loadConfig(
+        rootPath: string
+    ): Promise<Record<string, any> | undefined> {
+        const projectConfigFilePath = path.join(
+            path.normalize(rootPath),
+            ".databricks",
+            "project.json"
         );
-    }
-
-    static async load(
-        rootPath: string,
-        cliPath: string
-    ): Promise<ProjectConfigFile> {
-        const projectConfigFilePath = this.getProjectConfigFilePath(rootPath);
-
         let rawConfig;
         try {
             rawConfig = await fs.readFile(projectConfigFilePath, {
                 encoding: "utf-8",
             });
-        } catch (e: any) {
-            if (e.code && e.code === "ENOENT") {
-                throw new ConfigFileError(
-                    `Project config file does not exist: ${projectConfigFilePath}`
-                );
+        } catch (error: any) {
+            if (error?.code === "ENOENT") {
+                return undefined;
             } else {
-                throw e;
+                throw error;
             }
         }
+        return JSON.parse(rawConfig);
+    }
 
+    static async load(
+        rootPath: string,
+        cli: CliWrapper
+    ): Promise<ProjectConfigFile | undefined> {
+        const config = await ProjectConfigFile.loadConfig(rootPath);
+        if (!config) {
+            return undefined;
+        }
         let authProvider: AuthProvider;
-        let config: any;
-        try {
-            config = JSON.parse(rawConfig);
-            if (!config.authType && config.profile) {
-                authProvider = await this.importOldConfig(config);
-            } else {
-                authProvider = AuthProvider.fromJSON(config, cliPath);
-            }
-        } catch (e: any) {
-            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                "Error parsing project config file",
-                e
-            );
-            throw new ConfigFileError(
-                `Error parsing project config file: ${e.message}`
-            );
+        if (!config.authType && config.profile) {
+            authProvider = await this.importOldConfig(config, cli);
+        } else {
+            authProvider = AuthProvider.fromJSON(config, cli);
         }
         return new ProjectConfigFile(
             {
@@ -149,7 +103,7 @@ export class ProjectConfigFile {
                         : undefined,
             },
             rootPath,
-            cliPath
+            cli.cliPath
         );
     }
 

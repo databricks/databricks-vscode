@@ -3,6 +3,7 @@ import {SyncTask, TASK_SYNC_TYPE} from "../cli/SyncTasks";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {PackageMetaData} from "../utils/packageJsonUtils";
+import {ConfigModel} from "../configuration/models/ConfigModel";
 
 export type SyncState =
     | "IN_PROGRESS"
@@ -31,6 +32,7 @@ export class CodeSynchronizer implements Disposable {
 
     constructor(
         private connection: ConnectionManager,
+        private readonly configModel: ConfigModel,
         private cli: CliWrapper,
         private packageMetadata: PackageMetaData
     ) {
@@ -77,6 +79,7 @@ export class CodeSynchronizer implements Disposable {
         this._onDidChangeStateEmitter.fire(this._state);
         const task = new SyncTask(
             this.connection,
+            this.configModel,
             this.cli,
             syncType,
             this.packageMetadata,
@@ -109,28 +112,10 @@ export class CodeSynchronizer implements Disposable {
         this.disposables.forEach((d) => d.dispose());
     }
 
-    // This function waits for sync to reach WATCHING_FOR_CHANGES which is a
-    // necessary condition to execute local code on databricks. This state denotes
-    // all local changes have been synced to remote workspace
-    async waitForSyncComplete(): Promise<void> {
-        if (this._state !== "WATCHING_FOR_CHANGES") {
-            return await new Promise((resolve) => {
-                const changeListener = this.onDidChangeState(() => {
-                    if (
-                        [
-                            "WATCHING_FOR_CHANGES",
-                            "FILES_IN_REPOS_DISABLED",
-                            "FILES_IN_WORKSPACE_DISABLED",
-                            "ERROR",
-                        ].includes(this.state)
-                    ) {
-                        changeListener.dispose();
-                        resolve();
-                    }
-                }, this);
-
-                this.disposables.push(changeListener);
-            });
-        }
+    get isRunning() {
+        return (
+            this.state === "IN_PROGRESS" ||
+            this.state === "WATCHING_FOR_CHANGES"
+        );
     }
 }

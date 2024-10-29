@@ -1,6 +1,6 @@
 {
     "name": "@databricks/databricks-vscode",
-    "version": "1.2.2",
+    "version": "2.4.7",
     "private": true,
     "workspaces": [
         "packages/*"
@@ -14,7 +14,7 @@
     },
     "scripts": {
         "install:sdk": "yarn fetch:sdk && chmod a+x scripts/install_sdk.sh && scripts/install_sdk.sh",
-        "fetch:sdk": "rm -rf vendor && mkdir vendor && gh release download -R databricks/databricks-sdk-js v0.5.2 -p '*.tgz' && mv *.tgz vendor/databricks-sdk.tgz",
+        "fetch:sdk": "rm -rf vendor && mkdir vendor && gh release download -R databricks/databricks-sdk-js v0.6.2 -p '*.tgz' && mv *.tgz vendor/databricks-sdk.tgz",
         "test": "yarn workspaces foreach run test",
         "test:integ": "yarn workspaces foreach run test:integ",
         "build": "yarn workspaces foreach run build",
@@ -34,15 +34,15 @@
     "homepage": "https://github.com/databricks/databricks-vscode#readme",
     "packageManager": "yarn@3.2.1",
     "devDependencies": {
-        "@types/node": "^20.5.0",
-        "@typescript-eslint/eslint-plugin": "^6.0.0",
-        "@typescript-eslint/parser": "^6.0.0",
-        "conventional-changelog-cli": "^3.0.0",
-        "eslint": "^8.51.0",
-        "eslint-config-prettier": "^8.8.0",
+        "@types/node": "^20.10.4",
+        "@typescript-eslint/eslint-plugin": "^6.14.0",
+        "@typescript-eslint/parser": "^6.14.0",
+        "conventional-changelog-cli": "^4.1.0",
+        "eslint": "^8.55.0",
+        "eslint-config-prettier": "^9.1.0",
         "eslint-plugin-no-only-tests": "^3.1.0",
         "ts-mockito": "^2.6.1",
-        "typescript": "5.1.6"
+        "typescript": "^5.3.3"
     },
     "resolutions": {
         "json5": "2.2.2"

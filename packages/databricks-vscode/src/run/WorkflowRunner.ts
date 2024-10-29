@@ -4,7 +4,6 @@ import {basename} from "node:path";
 import {
     CancellationToken,
     CancellationTokenSource,
-    commands,
     Disposable,
     ExtensionContext,
     Uri,
@@ -12,13 +11,12 @@ import {
     window,
 } from "vscode";
 import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";
-import {CodeSynchronizer} from "../sync/CodeSynchronizer";
 import {FileUtils} from "../utils";
 import {WorkflowOutputPanel} from "./WorkflowOutputPanel";
 import Convert from "ansi-to-html";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWrapper";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();
@@ -26,7 +24,7 @@ export class WorkflowRunner implements Disposable {
 
     constructor(
         private context: ExtensionContext,
-        private codeSynchronizer: CodeSynchronizer,
+        private bundleCommands: BundleCommands,
         private readonly connectionManager: ConnectionManager
     ) {}
 
@@ -71,56 +69,43 @@ export class WorkflowRunner implements Disposable {
         parameters = {},
         args = [],
         cluster,
-        syncDestination,
+        syncDestinationMapper,
         token,
     }: {
         program: LocalUri;
         parameters?: Record<string, string>;
         args?: Array<string>;
         cluster: Cluster;
-        syncDestination: SyncDestinationMapper;
+        syncDestinationMapper: SyncDestinationMapper;
         token?: CancellationToken;
     }) {
         const panel = await this.getPanelForUri(program.uri);
 
-        const cancellation = new CancellationTokenSource();
-        panel.onDidDispose(() => cancellation.cancel());
+        const panelCancellation = new CancellationTokenSource();
+        panel.onDidDispose(() => panelCancellation.cancel());
 
         if (token) {
-            token.onCancellationRequested(() => {
-                cancellation.cancel();
-            });
+            token.onCancellationRequested(() => panelCancellation.cancel());
         }
 
-        if (
-            !["IN_PROGRESS", "WATCHING_FOR_CHANGES"].includes(
-                this.codeSynchronizer.state
-            )
-        ) {
-            await commands.executeCommand("databricks.sync.start");
+        try {
+            await this.bundleCommands.sync();
+        } catch (e: unknown) {
+            if (e instanceof Error) {
+                panel.showError({
+                    message: `Can't upload assets to databricks workspace. \nReason: ${e.message}`,
+                });
+            }
+            return;
         }
 
-        // We wait for sync to complete so that the local files are consistant
-        // with the remote repo files
-        await Promise.race([
-            this.codeSynchronizer.waitForSyncComplete(),
-            new Promise<undefined>(
-                (resolve) =>
-                    token?.onCancellationRequested(() => resolve(undefined))
-            ),
-        ]);
+        if (panelCancellation.token.isCancellationRequested) {
+            return;
+        }
+
         if (token?.isCancellationRequested) {
             panel.showError({
                 message: "Execution terminated by user.",
-            });
-            this.codeSynchronizer.stop();
-            return;
-        }
-        if (this.codeSynchronizer.state !== "WATCHING_FOR_CHANGES") {
-            panel.showError({
-                message: `Can't sync ${program}. \nReason: ${
-                    this.codeSynchronizer.reason ?? this.codeSynchronizer.state
-                }`,
             });
             return;
         }
@@ -152,18 +137,15 @@ export class WorkflowRunner implements Disposable {
             const notebookType = await FileUtils.isNotebook(program);
             if (notebookType) {
                 let remoteFilePath: string =
-                    syncDestination.localToRemoteNotebook(program).path;
-                if (
-                    workspaceConfigs.enableFilesInWorkspace &&
-                    syncDestination.remoteUri.type === "workspace"
-                ) {
+                    syncDestinationMapper.localToRemoteNotebook(program).path;
+                if (syncDestinationMapper.remoteUri.type === "workspace") {
                     const wrappedFile = await new WorkspaceFsWorkflowWrapper(
                         this.connectionManager,
                         this.context
                     ).createNotebookWrapper(
                         program,
-                        syncDestination.localToRemote(program),
-                        syncDestination.remoteUri,
+                        syncDestinationMapper.localToRemote(program),
+                        syncDestinationMapper.remoteUri,
                         notebookType
                     );
                     remoteFilePath = wrappedFile
@@ -173,50 +155,39 @@ export class WorkflowRunner implements Disposable {
                 panel.showExportedRun(
                     await cluster.runNotebookAndWait({
                         path: remoteFilePath,
-                        parameters: {
-                            // eslint-disable-next-line @typescript-eslint/naming-convention
-                            DATABRICKS_SOURCE_FILE:
-                                syncDestination.localToRemote(program)
-                                    .workspacePrefixPath,
-                            // eslint-disable-next-line @typescript-eslint/naming-convention
-                            DATABRICKS_PROJECT_ROOT:
-                                syncDestination.remoteUri.workspacePrefixPath,
-                            ...parameters,
-                        },
+                        parameters,
                         onProgress: (
                             state: jobs.RunLifeCycleState,
                             run: WorkflowRun
                         ) => {
                             panel.updateState(cluster, state, run);
                         },
-                        token: cancellation.token,
+                        token: panelCancellation.token,
                     })
                 );
             } else {
-                const originalFileUri = syncDestination.localToRemote(program);
+                const originalFileUri =
+                    syncDestinationMapper.localToRemote(program);
                 const wrappedFile =
-                    workspaceConfigs.enableFilesInWorkspace &&
-                    syncDestination.remoteUri.type === "workspace"
+                    syncDestinationMapper.remoteUri.type === "workspace"
                         ? await new WorkspaceFsWorkflowWrapper(
                               this.connectionManager,
                               this.context
-                          ).createPythonFileWrapper(originalFileUri)
+                          ).createPythonFileWrapper(
+                              originalFileUri,
+                              syncDestinationMapper.remoteUri
+                          )
                         : undefined;
                 const response = await cluster.runPythonAndWait({
                     path: wrappedFile ? wrappedFile.path : originalFileUri.path,
-                    args: (args ?? []).concat([
-                        "--databricks-source-file",
-                        originalFileUri.workspacePrefixPath,
-                        "--databricks-project-root",
-                        syncDestination.remoteUri.workspacePrefixPath,
-                    ]),
+                    args: args ?? [],
                     onProgress: (
                         state: jobs.RunLifeCycleState,
                         run: WorkflowRun
                     ) => {
                         panel.updateState(cluster, state, run);
                     },
-                    token: cancellation.token,
+                    token: panelCancellation.token,
                 });
                 //TODO: Respone logs will contain bootstrap code path in the error stack trace. Remove it.
                 panel.showStdoutResult(response.logs || "");

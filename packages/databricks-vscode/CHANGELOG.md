@@ -1,3 +1,262 @@
+# Release: v2.4.7
+
+## packages/databricks-vscode
+
+## (2024-10-24)
+
+-   Don't initialise spark progress widget if it's not supported
+-   Fix CLI cancellation on windows
+-   Focus configuration view when users attempt to login or setup Databricks Connect
+-   Let users install Databricks Connect even if python version doesn't match DBR requirements
+-   Show login command in the run button conext menu if the extension is logged out
+-   Don't show error notifications during login process if `.databrickscfg` file doesn't exist
+-   Prevent welcome view flashes when opening the configuration panel
+-   Update the CLI to v0.231.0
+-   Use `bundle sync` instead of `bundle deploy` for remote run commands
+
+# Release: v2.4.6
+
+## packages/databricks-vscode
+
+## (2024-10-15)
+
+-   Update CLI to 0.230, use verbose deploy command
+
+# Release: v2.4.5
+
+## packages/databricks-vscode
+
+## (2024-10-10)
+
+-   Use saved profile from the legacy config
+
+# Release: v2.4.4
+
+## packages/databricks-vscode
+
+## (2024-09-26)
+
+# Release: v2.4.3
+
+## packages/databricks-vscode
+
+## (2024-09-25)
+
+-   Update Databricks CLI to 228.1
+-   Cancel workflow run if the webview panel is closed before the run even started
+-   Add DBConnect Progress widget
+-   Let users cancel `deploy` and `destroy` bundle operations
+
+# Release: v2.4.2
+
+## packages/databricks-vscode
+
+## (2024-09-06)
+
+-   Remove README note about upcoming release
+
+# Release: v2.4.1
+
+## packages/databricks-vscode
+
+## (2024-09-05)
+
+-   Bump CLI to 0.228.0
+
+# Release: v2.4.0
+
+## packages/databricks-vscode
+
+## (2024-08-26)
+
+-   Remove private preview warning
+-   Bump CLI to 0.227.1
+
+# Release: v2.3.4-preview
+
+## packages/databricks-vscode
+
+## (2024-08-30)
+
+-   Fix the marketplace note
+
+# Release: v2.3.3-preview
+
+## packages/databricks-vscode
+
+## (2024-08-30)
+
+-   Update marketplace note
+
+# Release: v2.3.2-preview
+
+## packages/databricks-vscode
+
+## (2024-08-22)
+
+-   Allow cancelling login, fix spaces in path for dbconnect and minor UI fixes
+-   Bump CLI to 0.227
+-   Cleanup redundant commands and fix errors when resetting bundle variables
+-   Fix deployment tag and README links on Marketplace
+-   Fix run button visibility logic
+-   Use Info log level for the CLI stderr
+
+# Release: v2.3.1-preview
+
+## packages/databricks-vscode
+
+## (2024-08-13)
+
+-   Fix: Allow CLI path to have spaces.
+-   Fix: Show the correct title for Cluster Selector.
+-   Fix: Check whether local python version matches version required by selected cluster for Databricks Connect v2.
+-   Update CLI to v0.225.0.
+
+# Release: v2.3.0-preview
+
+## packages/databricks-vscode
+
+## (2024-07-18)
+
+-   Bring back sync functionality.
+-   Show correct default value for variables in bundle variable UI.
+-   Update CLI to v0.223.2.
+
+# Release: v2.2.2-preview
+
+## packages/databricks-vscode
+
+## (2024-07-03)
+
+-   Fix CLI output parsing
+
+# Release: v2.2.1-preview
+
+## packages/databricks-vscode
+
+## (2024-06-27)
+
+-   Add exception handlers to bootstrap python code
+
+# Release: v2.2.0-preview
+
+## packages/databricks-vscode
+
+## (2024-06-26)
+
+-   Add cwd and project root to sys.path for dbconnect runner
+-   Add support for multiple vscode workspaces
+-   Update CLI to 0.221.0
+
+# Release: v2.1.2-preview
+
+## packages/databricks-vscode
+
+## (2024-05-06)
+
+-   Bring back `login` public API
+-   Install dbconnect in a child process
+
+# Release: v2.1.1-preview
+
+## packages/databricks-vscode
+
+## (2024-05-02)
+
+-   Add support for `--force-lock` for deploy and destroy
+-   Add support for `bundle destroy` command
+-   Cleanup extension commands
+-   Export `DATABRICKS_CLI_UPSTREAM` to the terminals
+-   Update CLI to 0.219.0
+
+# Release: v2.1.0-preview
+
+## packages/databricks-vscode
+
+## (2024-04-24)
+
+-   Feature: Add a interface for specifying bundle variables.
+-   Feature: Allow opting out of cluster override and make it more visible in UI.
+-   Feature: Update databricks CLI to v0.218.0. Databricks Asset Bundles (DABs) are now GA!
+-   Feature: Add UI and wizard to help manage virtual environments and Databricks Connect v2 versions.
+
+# Release: v2.0.4-preview
+
+## packages/databricks-vscode
+
+## (2024-04-09)
+
+-   Fix: avoid terraform errors on DABs projects with older version of databricks terraform provider
+
+# Release: v2.0.3-preview
+
+## packages/databricks-vscode
+
+## (2024-04-08)
+
+-   Bundle cli dependencies
+
+# Release: v2.0.2-preview
+
+## packages/databricks-vscode
+
+## (2024-04-03)
+
+-   Fix: Add currently selected python environment to path for wheel builds.
+-   Fix: Add extension name to the private preview terms and conditions popup.
+-   Bump databricks cli to v0.216.0.
+-   Revamp the welcome views so that users can see all the critical actions in all scenarios.
+-   Fix: Ignore stderr for validate and summary commands
+-   Fix: Use packaged CLI if a cli path is not specified in .databrickscfg profile
+
+# Release: v2.0.1-preview
+
+## packages/databricks-vscode
+
+## <small>v2.0.1-preview (2024-03-07)</small>
+
+-   Databricks Asset Bundles (DABs) are now available in VS Code which allows you to:
+    -   easily set up, author and run Databricks projects from VS Code.
+    -   leverage the DABs Resource Explorer so you can easily see all your Jobs and Pipelines in one place and run them with one click.
+-   All our run methods are now consolidated into 1 run menu.
+-   Update databricks cli to v0.215.0.
+
+<img src="./images/dabs_vsc.gif" alt="dabs_demo" width="800"/>
+
+# Release: v1.2.5
+
+## packages/databricks-vscode
+
+## <small>1.2.5 (2024-01-10)</small>
+
+-   Explicitly clear terminal environment variables before injecting new ones.
+-   Fix race conditions around setting environment variable for the metadata url.
+-   Show warning when the extension doesn't have permissions to execute the CLI.
+-   Store `lastInstalledExtensionVersion` in the global storage so we only show `what's new` once.
+-   Update the license.
+-   Update Databricks CLI to v0.211.0.
+-   Fix the telemetry.
+
+# Release: v1.2.4
+
+## packages/databricks-vscode
+
+## <small>1.2.4 (2023-12-05)</small>
+
+-   Fix: set notebook directory as current directory for pip installs from workspace fs, closes [#958](https://github.com/databricks/databricks-vscode/issues/958)
+-   Fix: show error for a corrupted config file
+-   Feature: update Databricks CLI to v0.210.1
+
+# Release: v1.2.3
+
+## packages/databricks-vscode
+
+## <small>1.2.3 (2023-11-06)</small>
+
+-   Fix: Make configuration wizard sticky
+-   Feature: Use databricks CLI log-file option to capture the logs. This deprecates the `databricks.cli.verboseMode` option.
+-   Feature: Upgrade databricks cli to `v0.209.0`.
+
 # Release: v1.2.2
 
 ## packages/databricks-vscode

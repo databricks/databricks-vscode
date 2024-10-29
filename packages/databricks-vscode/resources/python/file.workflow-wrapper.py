@@ -4,26 +4,8 @@ import runpy
 import sys
 import os
 
-databricks_arg_idx = []
-for i, arg in enumerate(sys.argv):
-    if i == 0:
-        continue
-    if sys.argv[i-1] == "--databricks-source-file":
-        python_file = arg
-    elif sys.argv[i-1] == "--databricks-project-root":
-        project_root = arg
-    else:
-        continue
-    databricks_arg_idx.extend([i, i-1])
-
-if python_file is None:
-    raise Exception("--databricks-source-file argument not specified")
-
-if project_root is None:
-    raise Exception("--databricks-project-root argument not specified")
-
-#remove databricks args from argv
-sys.argv = [value for i,value in enumerate(sys.argv) if i not in databricks_arg_idx]
+python_file = '{{DATABRICKS_SOURCE_FILE}}'
+project_root = '{{DATABRICKS_PROJECT_ROOT}}'
 
 # change working directory
 os.chdir(os.path.dirname(python_file))
@@ -45,9 +27,13 @@ user_ns = {
     "sqlContext": sqlContext,
 }
 
-# Set log level to "ERROR". See https://kb.databricks.com/notebooks/cmd-c-on-object-id-p0.html
-import logging; logger = spark._jvm.org.apache.log4j;
-logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
+try:
+    # Set log level to "ERROR". See https://kb.databricks.com/notebooks/cmd-c-on-object-id-p0.html
+    import logging; logger = spark._jvm.org.apache.log4j;
+    logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
+except Exception as e:
+    logging.debug("Failed to set py4j.java_gateway log level to ERROR", exc_info=True)
+    pass
 
 runpy.run_path(python_file, run_name="__main__", init_globals=user_ns)
 None

@@ -1,10 +1,8 @@
 import {logging} from "@databricks/databricks-sdk";
-
-export type Step<S, N> = () => Promise<
-    SuccessResult<S> | NextResult<N> | ErrorResult
->;
+import {CancellationToken} from "vscode";
 
 type StepResult<S, N> = SuccessResult<S> | NextResult<N> | ErrorResult;
+export type Step<S, N> = () => Promise<StepResult<S, N>>;
 
 export interface SuccessResult<T> {
     type: "success";
@@ -31,18 +29,44 @@ export async function orchestrate<S, KEYS extends string>(
     steps: Record<KEYS, Step<S, KEYS>>,
     start: KEYS,
     maxSteps = 20,
-    logger?: logging.NamedLogger
+    logger?: logging.NamedLogger,
+    cancellationToken?: CancellationToken
 ): Promise<S> {
     let counter = 0;
 
     let step: KEYS | undefined = start;
-    while (step && steps[step]) {
+    function isCancelled() {
+        return cancellationToken?.isCancellationRequested === true;
+    }
+    while (step && steps[step] && !isCancelled()) {
         counter += 1;
         if (counter > maxSteps) {
             throw new OrchestrationLoopError();
         }
-        const result: StepResult<S, KEYS> = await steps[step]();
-        logger?.info(`Azire CLI check: ${step}`, result);
+
+        let result: StepResult<S, KEYS> | undefined = undefined;
+        const task: Promise<StepResult<S, KEYS> | undefined> = (async () => {
+            return await steps[step!]();
+        })().catch((e) => {
+            if (!isCancelled()) {
+                throw e;
+            }
+            return undefined;
+        });
+
+        result = await Promise.race([
+            task,
+            new Promise<undefined>((resolve) => {
+                cancellationToken?.onCancellationRequested(() =>
+                    resolve(undefined)
+                );
+            }),
+        ]);
+        if (result === undefined || isCancelled()) {
+            throw new OrchestrationLoopError();
+        }
+
+        logger?.info(`Auth check: ${step}`, result);
 
         if (result.type === "error") {
             throw result.error;
@@ -56,5 +80,5 @@ export async function orchestrate<S, KEYS extends string>(
             step = result.next;
         }
     }
-    throw new Error("Missing return step");
+    throw new OrchestrationLoopError();
 }

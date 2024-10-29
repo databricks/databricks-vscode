@@ -20,10 +20,10 @@ import {
     ExtensionContext,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {CodeSynchronizer} from "../sync/CodeSynchronizer";
-import {WorkspaceFsAccessVerifier} from "../workspace-fs";
 import {DatabricksRuntime} from "./DatabricksRuntime";
 import {Subject} from "./Subject";
+import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
+import {ConfigModel} from "../configuration/models/ConfigModel";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -47,9 +47,9 @@ export class DatabricksDebugAdapterFactory
 {
     constructor(
         private connection: ConnectionManager,
-        private codeSynchroniser: CodeSynchronizer,
-        private context: ExtensionContext,
-        private wsfsAccessVerifier: WorkspaceFsAccessVerifier
+        private configModel: ConfigModel,
+        private bundleCommands: BundleCommands,
+        private context: ExtensionContext
     ) {}
 
     dispose() {}
@@ -58,9 +58,9 @@ export class DatabricksDebugAdapterFactory
         return new DebugAdapterInlineImplementation(
             new DatabricksDebugSession(
                 this.connection,
-                this.codeSynchroniser,
-                this.context,
-                this.wsfsAccessVerifier
+                this.configModel,
+                this.bundleCommands,
+                this.context
             )
         );
     }
@@ -73,17 +73,17 @@ export class DatabricksDebugSession extends LoggingDebugSession {
 
     constructor(
         connection: ConnectionManager,
-        codeSynchronizer: CodeSynchronizer,
-        context: ExtensionContext,
-        wsfsAccessVerifier: WorkspaceFsAccessVerifier
+        configModel: ConfigModel,
+        bundleCommands: BundleCommands,
+        context: ExtensionContext
     ) {
         super();
 
         this.runtime = new DatabricksRuntime(
             connection,
-            codeSynchronizer,
-            context,
-            wsfsAccessVerifier
+            configModel,
+            bundleCommands,
+            context
         );
 
         this.disposables.push(

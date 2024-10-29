@@ -8,28 +8,24 @@ import path from "node:path";
 import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
-import {
-    ApiError,
-    Config,
-    WorkspaceClient,
-    workspace,
-} from "@databricks/databricks-sdk";
+import {Config, WorkspaceClient} from "@databricks/databricks-sdk";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
-import {execFile, ExecFileOptions} from "node:child_process";
+import {execFile as execFileCb} from "node:child_process";
 import {cpSync, mkdirSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
+import {getUniqueResourceName} from "./utils/commonUtils.ts";
+import {promisify} from "node:util";
 
-const WORKSPACE_PATH = path.resolve(tmpdir(), "workspace");
+const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const {version, name, engines} = packageJson;
 
-const REPO_NAME = "vscode-integ-test";
-const EXTENSION_DIR = path.resolve(tmpdir(), "extension-test", "extension");
+const EXTENSION_DIR = path.resolve(tmpdir(), "extension test", "extension");
 const VSIX_PATH = path.resolve(
     __dirname,
     "..",
@@ -38,6 +34,63 @@ const VSIX_PATH = path.resolve(
     `${name}-${version}.vsix`
 );
 const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
+
+const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
+
+export function escapeCommand(arg: string): string {
+    // Escape meta chars
+    arg = arg.replace(metaCharsRegExp, "^$1");
+
+    return arg;
+}
+
+export function escapeArgument(arg: string): string {
+    // Convert to string
+    arg = `${arg}`;
+
+    // Algorithm below is based on https://qntm.org/cmd
+
+    // Sequence of backslashes followed by a double quote:
+    // double up all the backslashes and escape the double quote
+    arg = arg.replace(/(\\*)"/g, '$1$1\\"');
+
+    // Sequence of backslashes followed by the end of the string
+    // (which will become a double quote later):
+    // double up all the backslashes
+    arg = arg.replace(/(\\*)$/, "$1$1");
+
+    // All other backslashes occur literally
+
+    // Quote the whole thing:
+    arg = `"${arg}"`;
+
+    // Escape meta chars
+    arg = arg.replace(metaCharsRegExp, "^$1");
+
+    return arg;
+}
+
+const execFile = async (
+    file: string,
+    args: string[],
+    options: any = {}
+): Promise<{
+    stdout: string;
+    stderr: string;
+}> => {
+    if (process.platform === "win32") {
+        const realArgs = [escapeCommand(file)]
+            .concat(args.map(escapeArgument).join(" "))
+            .join(" ");
+
+        file = "cmd.exe";
+        args = ["/d", "/s", "/c", `"${realArgs}"`];
+        console.log("execFile", file, args);
+        options = {...options, windowsVerbatimArguments: true};
+    }
+    const res = await promisify(execFileCb)(file, args, options);
+    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+};
 
 export const config: Options.Testrunner = {
     //
@@ -84,7 +137,7 @@ export const config: Options.Testrunner = {
     // then the current working directory is where your `package.json` resides, so `wdio`
     // will be called from there.
     //
-    specs: [__dirname + "/**/*.e2e.ts"],
+    specs: [path.join(__dirname, "**", "*.e2e.ts")],
     // Patterns to exclude.
     exclude: [
         // 'path/to/excluded/files'
@@ -194,7 +247,15 @@ export const config: Options.Testrunner = {
     // Services take over a specific job you don't want to take care of. They enhance
     // your test setup with almost no effort. Unlike plugins, they don't add new
     // commands. Instead, they hook themselves up into the test process.
-    services: [["vscode", {cachePath: "/tmp/wdio-vscode-service"}]],
+    services: [
+        [
+            "vscode",
+            {cachePath: path.join(process.cwd(), "tmp", "wdio-vscode-service")},
+        ],
+    ],
+
+    // cahePath above is for vscode binaries, this one is for the chromedriver
+    cacheDir: path.join(process.cwd(), "tmp", "wdio-vscode-service"),
 
     // Framework you want to run your specs with.
     // The following are supported: Mocha, Jasmine, and Cucumber
@@ -205,7 +266,7 @@ export const config: Options.Testrunner = {
     framework: "mocha",
     //
     // The number of times to retry the entire specfile when it fails as a whole
-    specFileRetries: 1,
+    specFileRetries: 0,
     //
     // Delay in seconds between the spec file retry attempts
     specFileRetriesDelay: 0,
@@ -263,19 +324,14 @@ export const config: Options.Testrunner = {
             );
 
             await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
-            await fs.mkdir(WORKSPACE_PATH);
+            console.log(`Creating vscode workspace folder: ${WORKSPACE_PATH}`);
+            await fs.mkdir(WORKSPACE_PATH, {recursive: true});
 
             const client = getWorkspaceClient(config);
-            const repoPath = await createRepo(client);
-            const workspaceFolderPath = await createWsFolder(client);
-            const configFile = await writeDatabricksConfig(config);
             await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
 
             process.env.DATABRICKS_HOST = config.host!;
-            process.env.DATABRICKS_CONFIG_FILE = configFile;
-            process.env.WORKSPACE_PATH = WORKSPACE_PATH;
-            process.env.TEST_REPO_PATH = repoPath;
-            process.env.TEST_WORKSPACE_FOLDER_PATH = workspaceFolderPath;
+            process.env.DATABRICKS_VSCODE_INTEGRATION_TEST = "true";
         } catch (e) {
             console.error(e);
             process.exit(1);
@@ -286,13 +342,30 @@ export const config: Options.Testrunner = {
      * Gets executed before a worker process is spawned and can be used to initialise specific service
      * for that worker as well as modify runtime environments in an async fashion.
      * @param  {String} cid      capability id (e.g 0-0)
-     * @param  {[type]} caps     object containing capabilities for session that will be spawn in the worker
+     * @param  {Array.<Object>} capabilities     object containing capabilities for session that will be spawn in the worker
      * @param  {[type]} specs    specs to be run in the worker process
      * @param  {[type]} args     object that will be merged with the main configuration once worker is initialized
      * @param  {[type]} execArgv list of string arguments passed to the worker process
      */
-    // onWorkerStart: function (cid, caps, specs, args, execArgv) {
-    // },
+    onWorkerStart: async function (cid, capabilities) {
+        const sdkConfig = new Config({});
+        await sdkConfig.ensureResolved();
+
+        const testRoot = path.join(
+            WORKSPACE_PATH,
+            getUniqueResourceName("root_dir")
+        );
+        await fs.mkdir(testRoot, {
+            recursive: true,
+        });
+        const configFile = await writeDatabricksConfig(sdkConfig, testRoot);
+
+        process.env.DATABRICKS_CONFIG_FILE = configFile;
+        process.env.WORKSPACE_PATH = testRoot;
+        if (capabilities["wdio:vscodeOptions"]) {
+            capabilities["wdio:vscodeOptions"].workspacePath = testRoot;
+        }
+    },
 
     /**
      * Gets executed just after a worker process has exited.
@@ -315,14 +388,10 @@ export const config: Options.Testrunner = {
     beforeSession: async function (config, capabilities) {
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
-        let cli: string;
-        let spawnArgs: ExecFileOptions;
+        let cli: string = "";
         switch (process.platform) {
             case "win32":
                 cli = path.resolve(binary, "..", "bin", "code");
-                spawnArgs = {
-                    shell: true,
-                };
                 break;
             case "darwin":
                 cli = path.resolve(
@@ -331,56 +400,23 @@ export const config: Options.Testrunner = {
                     "..",
                     "Resources/app/bin/code"
                 );
-                spawnArgs = {
-                    shell: false,
-                };
                 break;
         }
-        for (let i = 0; i < 2; i++) {
-            try {
-                await new Promise((resolve, reject) => {
-                    const extensionDependencies =
-                        packageJson.extensionDependencies.flatMap((item) => [
-                            "--install-extension",
-                            item,
-                        ]);
-                    execFile(
-                        cli,
-                        [
-                            "--extensions-dir",
-                            EXTENSION_DIR,
-                            ...extensionDependencies,
-                            "--install-extension",
-                            VSIX_PATH,
-                            "--force",
-                        ],
-                        spawnArgs,
-                        (error, stdout, stderr) => {
-                            if (stdout) {
-                                console.log(stdout);
-                            }
-                            if (error) {
-                                console.error(stderr);
-                                console.error(error);
-                                reject(error);
-                            }
-                            resolve(undefined);
-                        }
-                    );
-                });
-            } catch (error) {
-                if (i === 1) {
-                    throw error;
-                }
-                continue;
-            }
-            break;
-        }
+        const extensionDependencies = packageJson.extensionDependencies.flatMap(
+            (item) => ["--install-extension", item]
+        );
 
-        await fs.rm(path.join(WORKSPACE_PATH, ".databricks"), {
-            recursive: true,
-            force: true,
-        });
+        console.log("running vscode cli");
+        const res = await execFile(cli, [
+            "--extensions-dir",
+            EXTENSION_DIR,
+            ...extensionDependencies,
+            "--install-extension",
+            VSIX_PATH,
+            "--force",
+        ]);
+
+        console.log(res.stdout, res.stderr);
     },
 
     /**
@@ -480,7 +516,7 @@ export const config: Options.Testrunner = {
     afterSession: async function (config, capabilities, specs) {
         await sleep(2000);
         try {
-            const fileList = await glob(
+            const logFileList = await glob(
                 path.join(
                     VSCODE_STORAGE_DIR,
                     "**",
@@ -488,8 +524,8 @@ export const config: Options.Testrunner = {
                     "*.json"
                 )
             );
-            console.log(fileList);
-            fileList.forEach((file) => {
+            console.log(logFileList);
+            logFileList.forEach((file) => {
                 cpSync(
                     file,
                     path.join(
@@ -530,20 +566,14 @@ export const config: Options.Testrunner = {
     // }
 };
 
-async function writeDatabricksConfig(config: Config) {
-    assert(
-        process.env["TEST_DEFAULT_CLUSTER_ID"],
-        "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
-    );
-
-    const configFile = path.join(WORKSPACE_PATH, ".databrickscfg");
+async function writeDatabricksConfig(config: Config, rootPath: string) {
+    const configFile = path.join(rootPath, ".databrickscfg");
     await fs.writeFile(
         configFile,
         `[DEFAULT]
 host = ${config.host!}
 token = ${config.token!}`
     );
-
     return configFile;
 }
 
@@ -556,74 +586,46 @@ function getWorkspaceClient(config: Config) {
     return client;
 }
 
-/**
- * Create a repo for the integration tests to use
- */
-async function createRepo(workspaceClient: WorkspaceClient): Promise<string> {
-    const me = (await workspaceClient.currentUser.me()).userName!;
-    const repoPath = `/Repos/${me}/${REPO_NAME}`;
-
-    console.log(`Creating test Repo: ${repoPath}`);
-
-    let repo: workspace.RepoInfo | undefined;
-    try {
-        for await (const r of workspaceClient.repos.list({
-            path_prefix: repoPath,
-        })) {
-            if (r.path === repoPath) {
-                repo = r;
-                break;
-            }
-        }
-        assert(repo, `Couldn't find repo at ${repoPath}`);
-    } catch (e) {
-        repo = await workspaceClient.repos.create({
-            path: repoPath,
-            url: "https://github.com/fjakobs/empty-repo.git",
-            provider: "github",
-        });
-    }
-
-    return repo.path!;
-}
-
-/**
- * Create a workspace folder for the integration tests to use
- */
-async function createWsFolder(
-    workspaceClient: WorkspaceClient
-): Promise<string> {
-    const me = (await workspaceClient.currentUser.me()).userName!;
-    const wsFolderPath = `/Users/${me}/.ide/${REPO_NAME}`;
-
-    console.log(`Creating test Workspace Folder: ${wsFolderPath}`);
-
-    await workspaceClient.workspace.mkdirs({path: wsFolderPath});
-    const status = await workspaceClient.workspace.getStatus({
-        path: wsFolderPath,
-    });
-
-    assert.equal(status.object_type, "DIRECTORY");
-    return status.path!;
-}
-
 async function startCluster(
     workspaceClient: WorkspaceClient,
-    clusterId: string
+    clusterId: string,
+    attempt = 0
 ) {
-    console.log(`Starting cluster: ${clusterId}`);
-
-    try {
-        await (
-            await workspaceClient.clusters.start({
-                cluster_id: clusterId,
-            })
-        ).wait();
-    } catch (e: unknown) {
-        if (!(e instanceof ApiError && e.message.includes("INVALID_STATE"))) {
-            throw e;
-        }
+    console.log(`Cluster ID: ${clusterId}`);
+    if (attempt > 100) {
+        throw new Error("Failed to start the cluster: too many attempts");
     }
-
-    console.log(`Cluster started`);
+    const cluster = await workspaceClient.clusters.get({
+        cluster_id: clusterId,
+    });
+    console.log(`Cluster State: ${cluster.state}`);
+    switch (cluster.state) {
+        case "RUNNING":
+            console.log("Cluster is already running");
+            break;
+        case "TERMINATED":
+        case "ERROR":
+        case "UNKNOWN":
+            console.log("Starting the cluster...");
+            await (
+                await workspaceClient.clusters.start({
+                    cluster_id: clusterId,
+                })
+            ).wait({
+                onProgress: async (state) => {
+                    console.log(`Cluster state: ${state.state}`);
+                },
+            });
+            break;
+        case "PENDING":
+        case "RESIZING":
+        case "TERMINATING":
+        case "RESTARTING":
+            console.log("Waiting and retrying...");
+            await sleep(10000);
+            await startCluster(workspaceClient, clusterId, attempt + 1);
+            break;
+        default:
+            throw new Error(`Unknown cluster state: ${cluster.state}`);
+    }
 }

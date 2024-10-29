@@ -1,4 +1,4 @@
-import {Event, EventEmitter, Disposable} from "vscode";
+import {Event, Disposable} from "vscode";
 import {Mutex} from "../locking";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {DisabledFeature} from "./DisabledFeature";
@@ -7,26 +7,27 @@ import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../logger";
 
 export type FeatureEnableAction = (...args: any[]) => Promise<void>;
-export type FeatureId = "debugging.dbconnect" | "notebooks.dbconnect";
-/**
- * The state of a feature.
- * *available*: If feature is enabled.
- * *reason*: If feature is disabled, this is the human readable reason for feature being disabled.
- * *action*: If feature is disabled, this optionally contains the function which tries to solve the issue
- * and enable the feature.
- */
+export type FeatureId = "environment.dependencies";
+
 export interface FeatureState {
-    avaliable: boolean;
-    reason?: string;
+    available: boolean;
+    message?: string;
+    steps: Map<string, FeatureStepState>;
+}
+
+export interface FeatureStepState {
+    id: string;
+    available: boolean;
+    title?: string;
+    message?: string;
+    warning?: string;
     action?: FeatureEnableAction;
     isDisabledByFf?: boolean;
-    // Dirty is expected to only ever be et by featureManager.
-    // This forces a refresh of the cache because any incoming feature state will
-    // be different from the cached value, by not having this flag set.
-    _dirty?: boolean;
 }
 
 export interface Feature extends Disposable {
+    mutex: Mutex;
+    state: FeatureState;
     check: () => Promise<void>;
     onDidChangeState: Event<FeatureState>;
 }
@@ -41,18 +42,9 @@ export interface Feature extends Disposable {
  */
 export class FeatureManager<T = FeatureId> implements Disposable {
     private disposables: Disposable[] = [];
-
-    private features: Map<
-        T,
-        {
-            feature: Feature;
-            onDidChangeStateEmitter: EventEmitter<FeatureState>;
-            onDidChangeState: Event<FeatureState>;
-            mutex: Mutex;
-        }
-    > = new Map();
-
+    private features: Map<T, Feature> = new Map();
     private stateCache: Map<T, FeatureState> = new Map();
+
     constructor(private readonly disabledFeatures: (T | FeatureId)[]) {}
 
     registerFeature(
@@ -67,28 +59,12 @@ export class FeatureManager<T = FeatureId> implements Disposable {
             !workspaceConfigs.experimetalFeatureOverides.includes(id as string)
                 ? new DisabledFeature()
                 : featureFactory();
-
-        const eventEmitter = new EventEmitter<FeatureState>();
         this.disposables.push(
-            feature,
-            feature.onDidChangeState((e) => {
-                if (
-                    !this.stateCache.has(id) ||
-                    (this.stateCache.has(id) &&
-                        JSON.stringify(this.stateCache.get(id)) !==
-                            JSON.stringify(e))
-                ) {
-                    this.stateCache.set(id, e);
-                    eventEmitter.fire(e);
-                }
-            }, this)
+            feature.onDidChangeState((state) => {
+                this.stateCache.set(id, state);
+            })
         );
-        this.features.set(id, {
-            feature,
-            onDidChangeStateEmitter: eventEmitter,
-            onDidChangeState: eventEmitter.event,
-            mutex: new Mutex(),
-        });
+        this.features.set(id, feature);
     }
 
     onDidChangeState(id: T, f: (state: FeatureState) => any, thisArgs?: any) {
@@ -107,49 +83,30 @@ export class FeatureManager<T = FeatureId> implements Disposable {
     async isEnabled(id: T, force = false): Promise<FeatureState> {
         const feature = this.features.get(id);
         if (!feature) {
+            throw new Error(`Feature ${id} has not been registered`);
+        }
+        if (this.disabledFeatures.includes(id)) {
             return {
-                avaliable: false,
-                reason: `Feature ${id} has not been registered`,
+                available: false,
+                steps: new Map(),
+                message: "Feature is disabled",
             };
         }
-        await feature.mutex.wait();
-        try {
+        return await feature.mutex.synchronise(async () => {
             const cachedState = this.stateCache.get(id);
-            if (cachedState) {
-                if (!force) {
-                    return cachedState;
-                }
-                cachedState._dirty = true;
+            if (cachedState && !force) {
+                return cachedState;
             }
-
-            const state = await new Promise<FeatureState>((resolve, reject) => {
-                const changeListener = this.onDidChangeState(
-                    id,
-                    (state) => {
-                        changeListener.dispose();
-                        resolve(state);
-                    },
-                    this
-                );
-                feature.feature.check().catch((e) => {
-                    changeListener.dispose();
-                    reject(e);
-                });
-            }).catch((e) => {
+            try {
+                await feature.check();
+            } catch (e) {
                 logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                     `Error checking feature state ${id}`,
                     e
                 );
-            });
-
-            if (state !== undefined) {
-                return state;
             }
-
-            throw new Error(`Feature ${id} is not available`);
-        } finally {
-            feature.mutex.signal();
-        }
+            return feature.state;
+        });
     }
 
     dispose() {

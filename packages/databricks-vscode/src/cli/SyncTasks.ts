@@ -20,6 +20,7 @@ import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {PackageMetaData} from "../utils/packageJsonUtils";
 import {RWLock} from "../locking";
 import {EnvVarGenerators} from "../utils";
+import {ConfigModel} from "../configuration/models/ConfigModel";
 
 const {withLogContext} = logging;
 
@@ -38,6 +39,7 @@ const cliToTaskSyncType = new Map<SyncType, TaskSyncType>([
 export class SyncTask extends Task {
     constructor(
         connection: ConnectionManager,
+        configModel: ConfigModel,
         cli: CliWrapper,
         syncType: SyncType,
         packageMetadata: PackageMetaData,
@@ -54,6 +56,7 @@ export class SyncTask extends Task {
             new CustomExecution(async (): Promise<Pseudoterminal> => {
                 return new LazyCustomSyncTerminal(
                     connection,
+                    configModel,
                     cli,
                     syncType,
                     packageMetadata,
@@ -229,6 +232,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
 
     constructor(
         private connection: ConnectionManager,
+        private configModel: ConfigModel,
         private cli: CliWrapper,
         private syncType: SyncType,
         private packageMetadata: PackageMetaData,
@@ -245,12 +249,12 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
         Object.defineProperties(this, {
             cmd: {
                 get: () => {
-                    return this.getSyncCommand(ctx).command;
+                    return this.getSyncCommand().command;
                 },
             },
             args: {
                 get: () => {
-                    return this.getSyncCommand(ctx).args;
+                    return this.getSyncCommand().args;
                 },
             },
             options: {
@@ -297,28 +301,22 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 HOME: process.env.HOME,
                 PATH: process.env.PATH,
                 ...EnvVarGenerators.removeUndefinedKeys(
-                    EnvVarGenerators.getCommonDatabricksEnvVars(this.connection)
+                    EnvVarGenerators.getCommonDatabricksEnvVars(
+                        this.connection,
+                        this.configModel
+                    )
                 ),
                 /* eslint-enable @typescript-eslint/naming-convention */
             },
         } as SpawnOptions;
     }
 
-    @withLogContext(Loggers.Extension)
-    getSyncCommand(@context ctx?: Context): Command {
+    getSyncCommand(): Command {
         if (this.command) {
             return this.command;
         }
-        const syncDestination = this.connection.syncDestinationMapper;
 
-        if (!syncDestination) {
-            throw this.showErrorAndKillThis(
-                "Can't start sync: Databricks synchronization destination not configured!",
-                ctx
-            );
-        }
-
-        this.command = this.cli.getSyncCommand(syncDestination, this.syncType);
+        this.command = this.cli.getSyncCommand(this.syncType);
 
         return this.command;
     }

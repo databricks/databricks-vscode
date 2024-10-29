@@ -5,15 +5,12 @@ import {
     WorkspaceFsUtils,
 } from "../sdk-extensions";
 import {context, Context} from "@databricks/databricks-sdk/dist/context";
-import {Disposable, Uri, window} from "vscode";
+import {Disposable, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
 import {Loggers} from "../logger";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {createDirWizard} from "./createDirectoryWizard";
 import {WorkspaceFsDataProvider} from "./WorkspaceFsDataProvider";
-import path from "node:path";
-import {StateStorage} from "../vscode-objs/StateStorage";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 const withLogContext = logging.withLogContext;
 
@@ -21,51 +18,16 @@ export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
     constructor(
-        private workspaceFolder: Uri,
-        private readonly stateStorage: StateStorage,
+        private workspaceFolderManager: WorkspaceFolderManager,
         private connectionManager: ConnectionManager,
         private workspaceFsDataProvider: WorkspaceFsDataProvider
-    ) {
-        this.disposables.push(
-            this.connectionManager.onDidChangeState(async (state) => {
-                if (
-                    state !== "CONNECTED" ||
-                    !workspaceConfigs.enableFilesInWorkspace ||
-                    this.connectionManager.syncDestinationMapper !== undefined
-                ) {
-                    return;
-                }
-
-                const root = await this.getValidRoot(
-                    this.connectionManager.databricksWorkspace?.currentFsRoot
-                        .path
-                );
-
-                const element = await root?.mkdir(
-                    `${path.basename(
-                        this.workspaceFolder.fsPath
-                    )}-${this.stateStorage
-                        .get("databricks.fixedUUID")
-                        .slice(0, 8)}`
-                );
-                if (element) {
-                    await this.connectionManager.attachSyncDestination(
-                        new RemoteUri(element.path)
-                    );
-                }
-            })
-        );
-    }
+    ) {}
 
     @withLogContext(Loggers.Extension)
     async getValidRoot(
         rootPath?: string,
         @context ctx?: Context
     ): Promise<WorkspaceFsDir | undefined> {
-        if (!workspaceConfigs.enableFilesInWorkspace) {
-            return;
-        }
-
         if (!this.connectionManager.workspaceClient) {
             window.showErrorMessage(
                 `Please login first to create a new directory`
@@ -114,21 +76,15 @@ export class WorkspaceFsCommands implements Disposable {
         const root = await this.getValidRoot(rootPath, ctx);
 
         const inputPath = await createDirWizard(
-            this.workspaceFolder,
-            workspaceConfigs.enableFilesInWorkspace
-                ? "Directory Name"
-                : "Repo Name",
+            this.workspaceFolderManager.activeWorkspaceFolder.uri,
+            "Directory Name",
             root
         );
         let created: WorkspaceFsEntity | undefined;
 
         if (inputPath !== undefined) {
             try {
-                if (!workspaceConfigs.enableFilesInWorkspace) {
-                    created = await this.createRepo(
-                        rootPath + "/" + inputPath + REPO_NAME_SUFFIX
-                    );
-                } else if (root) {
+                if (root) {
                     created = await root.mkdir(inputPath);
                 }
             } catch (e: unknown) {

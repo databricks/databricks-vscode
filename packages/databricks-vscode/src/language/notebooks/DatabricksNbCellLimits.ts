@@ -1,13 +1,16 @@
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {FileUtils} from "../../utils";
-import {Uri} from "vscode";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
+import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
 export async function setDbnbCellLimits(
-    workspacePath: Uri,
+    workspaceFolderManager: WorkspaceFolderManager,
     connectionManager: ConnectionManager
 ) {
-    await FileUtils.waitForDatabricksProject(workspacePath, connectionManager);
+    await FileUtils.waitForDatabricksProject(
+        workspaceFolderManager.activeWorkspaceFolder.uri,
+        connectionManager
+    );
     if (workspaceConfigs.jupyterCellMarkerRegex === undefined) {
         workspaceConfigs.jupyterCellMarkerRegex =
             "^(# Databricks notebook source|# COMMAND ----------)";
