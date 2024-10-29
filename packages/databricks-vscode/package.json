@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "1.4.0",
+    "version": "1.2.2",
     "engines": {
         "vscode": "^1.83.0"
     },
@@ -586,6 +586,11 @@
                         "default": false,
                         "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
                     },
+                    "databricks.cli.verboseMode": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Enable verbose logging for databricks CLI (sync mode)."
+                    },
                     "databricks.sync.destinationType": {
                         "type": "string",
                         "default": "workspace",
@@ -650,7 +655,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.218.1"
+        "version": "0.208.2"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
@@ -699,7 +704,7 @@
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
-        "@sinonjs/fake-timers": "^11.2.2",
+        "@sinonjs/fake-timers": "^10.3.0",
         "@types/bcryptjs": "^2.4.2",
         "@types/chai": "^4.3.5",
         "@types/fs-extra": "^11.0.1",
@@ -713,7 +718,7 @@
         "@types/yargs": "^17.0.24",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
-        "@vscode/test-electron": "^2.3.8",
+        "@vscode/test-electron": "^2.3.3",
         "@wdio/cli": "^8.12.2",
         "@wdio/local-runner": "^8.12.1",
         "@wdio/mocha-framework": "^8.12.1",
@@ -735,7 +740,7 @@
         "typescript": "5.1.6",
         "vsce": "^2.15.0",
         "wdio-video-reporter": "^4.0.3",
-        "wdio-vscode-service": "^5.2.3",
+        "wdio-vscode-service": "^5.2.0",
         "winston": "^3.10.0",
         "yargs": "^17.7.2"
     },

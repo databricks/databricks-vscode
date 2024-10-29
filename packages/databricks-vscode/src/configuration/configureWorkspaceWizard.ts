@@ -75,7 +75,6 @@ export async function configureWorkspaceWizard(
                 return false;
             },
             items,
-            ignoreFocusOut: true,
         });
 
         state.host = normalizeHost(host);
@@ -159,7 +158,6 @@ export async function configureWorkspaceWizard(
             totalSteps: 2,
             placeholder: "Select authentication method",
             items,
-            ignoreFocusOut: true,
             shouldResume: async () => {
                 return false;
             },
@@ -209,7 +207,15 @@ async function listProfiles(cliWrapper: CliWrapper) {
         }
     });
 
-    return profiles;
+    return profiles.filter((profile) => {
+        return [
+            "pat",
+            "basic",
+            "azure-cli",
+            "oauth-m2m",
+            "azure-client-secret",
+        ].includes(profile.authType);
+    });
 }
 
 async function validateDatabricksHost(
@@ -235,11 +241,11 @@ async function validateDatabricksHost(
 
 function authMethodsForHostname(host: URL): Array<AuthType> {
     if (isAzureHost(host)) {
-        return ["databricks-cli", "azure-cli", "profile"];
+        return ["azure-cli", "profile"];
     }
 
     if (isGcpHost(host)) {
-        return ["databricks-cli", "google-id", "profile"];
+        return ["google-id", "profile"];
     }
 
     if (isAwsHost(host)) {

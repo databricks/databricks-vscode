@@ -2,7 +2,7 @@
 import TelemetryReporter from "@vscode/extension-telemetry";
 import assert from "assert";
 import {mock, instance, capture, when} from "ts-mockito";
-import {Telemetry, getContextMetadata, toUserMetadata} from ".";
+import {Telemetry, toUserMetadata} from ".";
 import {Events, Metadata} from "./constants";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {Uri} from "vscode";
@@ -12,13 +12,9 @@ import {ApiClient, Config} from "@databricks/databricks-sdk";
 describe(__filename, () => {
     let reporter: TelemetryReporter;
     let telemetry: Telemetry;
-    const defaultClusterId = process.env["TEST_DEFAULT_CLUSTER_ID"];
     beforeEach(async () => {
         reporter = mock(TelemetryReporter);
         telemetry = new Telemetry(instance(reporter));
-    });
-    afterEach(() => {
-        process.env["TEST_DEFAULT_CLUSTER_ID"] = defaultClusterId;
     });
     it("should record expected properties and metrics", async () => {
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
@@ -37,42 +33,6 @@ describe(__filename, () => {
         });
         assert.deepEqual(metrics, {
             "event.duration": 100,
-        });
-    });
-
-    it("sets context metadata with prod env type", async () => {
-        delete process.env["TEST_DEFAULT_CLUSTER_ID"];
-        telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
-        telemetry.recordEvent(Events.COMMAND_EXECUTION, {
-            command: "testCommand",
-            success: true,
-            duration: 100,
-        });
-        const [eventName, props] = capture(reporter.sendTelemetryEvent).last();
-        assert.equal(eventName, "commandExecution");
-        assert.deepEqual(props, {
-            "version": "1.0",
-            "event.command": "testCommand",
-            "event.success": "true",
-            "context.environmentType": "prod",
-        });
-    });
-
-    it("sets context metadata with tests env type", async () => {
-        process.env["TEST_DEFAULT_CLUSTER_ID"] = "123";
-        telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
-        telemetry.recordEvent(Events.COMMAND_EXECUTION, {
-            command: "testCommand",
-            success: true,
-            duration: 100,
-        });
-        const [eventName, props] = capture(reporter.sendTelemetryEvent).last();
-        assert.equal(eventName, "commandExecution");
-        assert.deepEqual(props, {
-            "version": "1.0",
-            "event.command": "testCommand",
-            "event.success": "true",
-            "context.environmentType": "tests",
         });
     });
 

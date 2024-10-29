@@ -10,7 +10,6 @@ import {
     MetadataServiceVersionHeader,
     ServerResponse,
     logging,
-    Headers,
 } from "@databricks/databricks-sdk";
 
 export class MetadataService implements Disposable {

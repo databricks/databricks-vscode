@@ -2,7 +2,7 @@
 
 | System                                                                                   | Status                                                                                                                                                                                                                                                                                                                                                                |
 | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build ([main branch](https://github.com/databricks/databricks-vscode/commits/main))      | [![GitHub CI Status](https://github.com/databricks/databricks-vscode/actions/workflows/push.yml/badge.svg?branch=main)](https://github.com/databricks/databricks-vscode/actions/workflows/push.yml) [![codecov](https://codecov.io/gh/databricks/databricks-vscode/branch/main/graph/badge.svg?token=PUN77X0W3Z)](https://codecov.io/gh/databricks/databricks-vscode) [![lines of code](https://tokei.rs/b1/github/databricks/databricks-vscode)]([https://codecov.io/github/databricks/databricks-vscode](https://github.com/databricks/databricks-vscode)) |
+| Build ([main branch](https://github.com/databricks/databricks-vscode/commits/main))      | [![GitHub CI Status](https://github.com/databricks/databricks-vscode/actions/workflows/push.yml/badge.svg?branch=main)](https://github.com/databricks/databricks-vscode/actions/workflows/push.yml) [![codecov](https://codecov.io/gh/databricks/databricks-vscode/branch/main/graph/badge.svg?token=PUN77X0W3Z)](https://codecov.io/gh/databricks/databricks-vscode) |
 | [Marketplace](https://marketplace.visualstudio.com/items?itemName=databricks.databricks) | [![Marketplace Version](https://img.shields.io/vscode-marketplace/v/databricks.databricks.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/d/databricks.databricks.svg)](https://marketplace.visualstudio.com/items?itemName=databricks.databricks)                                                                                            |
 
 ## Introduction
@@ -15,6 +15,8 @@ Currently, we have the following packages:
     The VSCode extension for Databricks published to the VSCode marketplace.
 -   [databricks-vscode-types](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-vscode-types)
     Type definition of the public API of the VSCode extension.
+-   [databricks-sdk-js](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-sdk-js)
+    JavaScript and TypeScript SDK for the Databricks REST API.
 
 ### Getting Started
 
@@ -24,20 +26,6 @@ Prepare yarn:
 npm install -g yarn@2
 yarn install
 ```
-
-Prepare Databricks JavaScript SDK:
-
-```
-yarn run install:sdk
-```
-
-Prepare Databricks CLI:
-
-```
-yarn workspace databricks run package:cli:fetch
-```
-
-After that you are ready to build and test the `databricks-vscode` extension.
 
 ### Found an issue?
 

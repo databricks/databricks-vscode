@@ -1,9 +1,4 @@
-import {
-    WorkspaceClient,
-    ApiClient,
-    logging,
-    Headers,
-} from "@databricks/databricks-sdk";
+import {WorkspaceClient, ApiClient, logging} from "@databricks/databricks-sdk";
 import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
 import {
     env,
@@ -29,7 +24,7 @@ import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {Loggers} from "../logger";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {MetadataService} from "./auth/MetadataService";
+import {StateStorage} from "../vscode-objs/StateStorage";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -48,7 +43,6 @@ export class ConnectionManager {
     private _projectConfigFile?: ProjectConfigFile;
     private _clusterManager?: ClusterManager;
     private _databricksWorkspace?: DatabricksWorkspace;
-    private _metadataService: MetadataService;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -64,16 +58,12 @@ export class ConnectionManager {
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
 
-    constructor(private cli: CliWrapper) {
-        this._metadataService = new MetadataService(
-            undefined,
-            NamedLogger.getOrCreate("Extension")
-        );
-    }
+    public metadataServiceUrl?: string;
 
-    get metadataServiceUrl() {
-        return this._metadataService.url;
-    }
+    constructor(
+        private cli: CliWrapper,
+        private stateStorage: StateStorage
+    ) {}
 
     get state(): ConnectionState {
         return this._state;
@@ -210,8 +200,6 @@ export class ConnectionManager {
 
         this._workspaceClient = workspaceClient;
         this._projectConfigFile = projectConfigFile;
-
-        await this._metadataService.setApiClient(workspaceClient?.apiClient);
 
         if (projectConfigFile.clusterId) {
             await this.attachCluster(projectConfigFile.clusterId, true);
@@ -535,11 +523,6 @@ export class ConnectionManager {
         await this._clusterManager?.stop(() => {
             this.onDidChangeClusterEmitter.fire(this.cluster);
         });
-    }
-
-    async startMetadataService() {
-        await this._metadataService.listen();
-        return this._metadataService;
     }
 
     async waitForConnect(): Promise<void> {

@@ -77,7 +77,7 @@ describe("Configure Databricks Extension", async function () {
                     }) !== -1
                 );
             },
-            {timeout: 10_000}
+            {timeout: 5000}
         );
 
         //Wait for quickstart text to be visible.

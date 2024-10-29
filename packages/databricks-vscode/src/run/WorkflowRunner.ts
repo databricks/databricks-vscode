@@ -173,7 +173,16 @@ export class WorkflowRunner implements Disposable {
                 panel.showExportedRun(
                     await cluster.runNotebookAndWait({
                         path: remoteFilePath,
-                        parameters,
+                        parameters: {
+                            // eslint-disable-next-line @typescript-eslint/naming-convention
+                            DATABRICKS_SOURCE_FILE:
+                                syncDestination.localToRemote(program)
+                                    .workspacePrefixPath,
+                            // eslint-disable-next-line @typescript-eslint/naming-convention
+                            DATABRICKS_PROJECT_ROOT:
+                                syncDestination.remoteUri.workspacePrefixPath,
+                            ...parameters,
+                        },
                         onProgress: (
                             state: jobs.RunLifeCycleState,
                             run: WorkflowRun
@@ -191,14 +200,16 @@ export class WorkflowRunner implements Disposable {
                         ? await new WorkspaceFsWorkflowWrapper(
                               this.connectionManager,
                               this.context
-                          ).createPythonFileWrapper(
-                              originalFileUri,
-                              syncDestination.remoteUri
-                          )
+                          ).createPythonFileWrapper(originalFileUri)
                         : undefined;
                 const response = await cluster.runPythonAndWait({
                     path: wrappedFile ? wrappedFile.path : originalFileUri.path,
-                    args: args ?? [],
+                    args: (args ?? []).concat([
+                        "--databricks-source-file",
+                        originalFileUri.workspacePrefixPath,
+                        "--databricks-project-root",
+                        syncDestination.remoteUri.workspacePrefixPath,
+                    ]),
                     onProgress: (
                         state: jobs.RunLifeCycleState,
                         run: WorkflowRun

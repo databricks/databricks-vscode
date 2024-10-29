@@ -76,25 +76,6 @@ describe(__filename, async () => {
         );
     }
 
-    async function getWrapperData(
-        wrapperName:
-            | "notebook.workflow-wrapper.py"
-            | "file.workflow-wrapper.py",
-        originalFilePath: string
-    ) {
-        return (
-            await readFile(path.join(resourceDirPath, wrapperName), "utf-8")
-        )
-            .replace(
-                "{{DATABRICKS_SOURCE_FILE}}",
-                new RemoteUri(originalFilePath).workspacePrefixPath
-            )
-            .replace(
-                "{{DATABRICKS_PROJECT_ROOT}}",
-                new RemoteUri(testDirPath).workspacePrefixPath
-            );
-    }
-
     describe("python files", () => {
         beforeEach(createMocks);
         it("should create wrapper for files", async () => {
@@ -119,14 +100,11 @@ describe(__filename, async () => {
             await new WorkspaceFsWorkflowWrapper(
                 instance(mockConnectionManager),
                 instance(mockExtensionContext)
-            ).createPythonFileWrapper(
-                new RemoteUri(originalFilePath),
-                new RemoteUri(testDirPath)
-            );
+            ).createPythonFileWrapper(new RemoteUri(originalFilePath));
 
-            const wrapperData = await getWrapperData(
-                "file.workflow-wrapper.py",
-                originalFilePath
+            const wrapperData = await readFile(
+                path.join(resourceDirPath, "file.workflow-wrapper.py"),
+                "utf-8"
             );
             verify(
                 mockWorkspaceService.import(
@@ -187,6 +165,23 @@ describe(__filename, async () => {
             });
         });
 
+        async function getWrapperData() {
+            return (
+                await readFile(
+                    path.join(resourceDirPath, "notebook.workflow-wrapper.py"),
+                    "utf-8"
+                )
+            )
+                .replace(
+                    "{{DATABRICKS_SOURCE_FILE}}",
+                    new RemoteUri(originalFilePath).workspacePrefixPath
+                )
+                .replace(
+                    "{{DATABRICKS_PROJECT_ROOT}}",
+                    new RemoteUri(testDirPath).workspacePrefixPath
+                );
+        }
+
         it("should create wrapper for databricks python notebook", async () => {
             await withFile(async (localFilePath) => {
                 const comment = ["# Databricks notebook source"];
@@ -207,10 +202,7 @@ describe(__filename, async () => {
                     "PY_DBNB"
                 );
 
-                const wrapperData = await getWrapperData(
-                    "notebook.workflow-wrapper.py",
-                    originalFilePath
-                );
+                const wrapperData = await getWrapperData();
                 const expected = comment
                     .concat(wrapperData.split(/\r?\n/))
                     .concat(["# COMMAND ----------"])
@@ -252,16 +244,9 @@ describe(__filename, async () => {
                     "PY_DBNB"
                 );
 
-                const wrapperData = await getWrapperData(
-                    "notebook.workflow-wrapper.py",
-                    originalFilePath
-                );
+                const wrapperData = await getWrapperData();
                 const expected = comment
                     .concat([
-                        "import os",
-                        `os.chdir(os.path.dirname('${
-                            new RemoteUri(originalFilePath).workspacePrefixPath
-                        }'))`,
                         "# MAGIC %pip install pandas",
                         "# COMMAND ----------",
                         "dbutils.library.restartPython()",
@@ -392,7 +377,7 @@ describe(__filename, async () => {
                 },
             },
             outputs: [],
-            execution_count: null,
+            execution_count: 0,
         };
 
         it("should create wrapper for databricks jupyter notebook", async () => {
@@ -463,19 +448,7 @@ describe(__filename, async () => {
                 const expected = {
                     ...notebookMetadata,
                     cells: [
-                        {
-                            ...wrapperData,
-                            source: [
-                                [
-                                    "import os",
-                                    `os.chdir(os.path.dirname('${
-                                        new RemoteUri(originalFilePath)
-                                            .workspacePrefixPath
-                                    }'))`,
-                                    "%pip install x",
-                                ].join("\n"),
-                            ],
-                        },
+                        {...wrapperData, source: ["%pip install x"]},
                         {
                             ...wrapperData,
                             source: ["dbutils.library.restartPython()"],

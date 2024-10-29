@@ -11,7 +11,7 @@ const {NamedLogger, ExposedLoggers} = logging;
 export class LoggerManager {
     constructor(readonly context: ExtensionContext) {}
 
-    async getLogFile(prefix: string) {
+    private async getLogFile(prefix: string) {
         await mkdir(this.context.logUri.fsPath, {recursive: true});
         const logFile = path.join(
             this.context.logUri.fsPath,
@@ -66,9 +66,11 @@ export class LoggerManager {
             true
         );
 
-        // This logger collects all the logs in the extension.
+        /** 
+        This logger collects all the logs in the extension.
+        */
         NamedLogger.getOrCreate(
-            Loggers.Extension,
+            "Extension",
             {
                 factory: (name) => {
                     return loggers.add(name, {
@@ -77,6 +79,29 @@ export class LoggerManager {
                                 level: "error",
                             }),
                             this.getFileTransport(sdkAndExtensionLogfile, {
+                                level: "debug",
+                            }),
+                        ],
+                    });
+                },
+            },
+            true
+        );
+
+        const cliLogFile = await this.getLogFile("databricks-cli");
+        /** 
+        This logger collects all the output from databricks CLI.
+        */
+        NamedLogger.getOrCreate(
+            "DatabricksCLI",
+            {
+                factory: (name) => {
+                    return loggers.add(name, {
+                        transports: [
+                            getOutputConsoleTransport(outputChannel, {
+                                level: "error",
+                            }),
+                            this.getFileTransport(cliLogFile, {
                                 level: "debug",
                             }),
                         ],
@@ -95,5 +120,6 @@ export class LoggerManager {
 /* eslint-disable @typescript-eslint/naming-convention */
 export enum Loggers {
     Extension = "Extension",
+    CLI = "DatabricksCLI",
 }
 /* eslint-enable @typescript-eslint/naming-convention */

@@ -41,7 +41,6 @@ describe(__filename, () => {
         );
         when(mockApiClient.host).thenResolve(new URL(mockHost));
         existingEnv = Object.assign({}, process.env);
-        process.env.SPARK_CONNECT_USER_AGENT = "";
     });
 
     afterEach(() => {

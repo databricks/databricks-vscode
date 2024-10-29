@@ -4,7 +4,7 @@ import {CancellationTokenSource, Disposable} from "vscode";
 
 export class ClusterManager implements Disposable {
     private cancellationTokenSource?: CancellationTokenSource;
-    private refreshTimer?: ReturnType<typeof setInterval>;
+    private refreshTimer?: NodeJS.Timer;
 
     constructor(
         readonly cluster: Cluster,

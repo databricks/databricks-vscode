@@ -2,7 +2,6 @@ import path from "path";
 import os from "os";
 import fs from "fs/promises";
 
-import {EXTENSION_DEVELOPMENT} from "../utils/developmentUtils";
 import {downloadAndUnzipVSCode, runTests} from "@vscode/test-electron";
 
 async function main() {
@@ -29,9 +28,6 @@ async function main() {
             extensionDevelopmentPath,
             extensionTestsPath,
             launchArgs: ["--user-data-dir", `${os.tmpdir()}`],
-            extensionTestsEnv: {
-                [EXTENSION_DEVELOPMENT]: "true",
-            },
         });
     } catch (err) {
         // eslint-disable-next-line no-console

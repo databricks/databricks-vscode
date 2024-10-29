@@ -75,6 +75,7 @@ This extension contributes the following settings:
 -   `databricks.logs.maxArrayLength`: The maximum number of items to show for array fields
 -   `databricks.logs.enabled`: Enable/disable logging. Reload window for changes to take effect
 -   `databricks.clusters.onlyShowAccessibleClusters`: Only show clusters that the user has access to
+-   `databricks.cli.verboseMode`: Show debug logs for the sync command
 
 ## <a id="commands"></a>`Databricks:` Commands
 

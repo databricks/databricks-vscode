@@ -110,15 +110,12 @@ export type EventProperties = {
         : never;
 };
 
-export type EnvironmentType = "tests" | "prod";
-
 /**
  * Additional metadata collected from the extension, independent of the event itself.
  */
 /* eslint-disable @typescript-eslint/naming-convention */
 export enum Metadata {
     USER = "user",
-    CONTEXT = "context",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -142,12 +139,6 @@ export class MetadataTypes {
         },
         authType: {
             comment: "The kind of authentication used by the user",
-        },
-    };
-    [Metadata.CONTEXT]: EventType<{environmentType: EnvironmentType}> = {
-        environmentType: {
-            comment:
-                "A type of the environment this extension is running with (test, staging, prod)",
         },
     };
 }

@@ -5,101 +5,62 @@ import {
     RemoteUri,
     SyncDestinationMapper,
 } from "../sync/SyncDestination";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
-import {writeFile, readFile} from "node:fs/promises";
-import {when, spy, reset} from "ts-mockito";
+import {writeFile} from "node:fs/promises";
+
 import {CliWrapper} from "./CliWrapper";
 import path from "node:path";
-import os from "node:os";
-import crypto from "node:crypto";
 import {Context} from "@databricks/databricks-sdk/dist/context";
 import {logging} from "@databricks/databricks-sdk";
-import {writeFileSync} from "fs";
 
 const execFile = promisify(execFileCb);
-const cliPath = path.join(__dirname, "../../bin/databricks");
-
-function getTempLogFilePath() {
-    return path.join(
-        os.tmpdir(),
-        `databricks-cli-logs-${crypto.randomUUID()}.json`
-    );
-}
-
-function createCliWrapper(logFilePath?: string) {
-    return new CliWrapper(
-        {
-            asAbsolutePath(relativePath: string) {
-                return path.join(__dirname, "../..", relativePath);
-            },
-        } as any,
-        logFilePath
-    );
-}
 
 describe(__filename, () => {
     it("should embed a working databricks CLI", async () => {
+        const cliPath = __dirname + "/../../bin/databricks";
         const result = await execFile(cliPath, ["--help"]);
         assert.ok(result.stdout.indexOf("databricks") > 0);
     });
 
-    let mocks: any[] = [];
-    afterEach(() => {
-        mocks.forEach((mock) => reset(mock));
-        mocks = [];
-    });
-
-    it("should tell CLI to log its output to a file", async () => {
-        const logFilePath = getTempLogFilePath();
-        const configsSpy = spy(workspaceConfigs);
-        mocks.push(configsSpy);
-        when(configsSpy.loggingEnabled).thenReturn(true);
-        const cli = createCliWrapper(logFilePath);
-        await execFile(cli.cliPath, ["version", ...cli.loggingArguments]);
-        const file = await readFile(logFilePath);
-        // Just checking if the file is not empty to avoid depending on internal CLI log patterns
-        assert.ok(file.toString().length > 0);
-    });
-
     it("should create sync commands", async () => {
-        const logFilePath = getTempLogFilePath();
-        const cli = createCliWrapper(logFilePath);
+        const cli = new CliWrapper({
+            asAbsolutePath(path: string) {
+                return path;
+            },
+        } as any);
         const mapper = new SyncDestinationMapper(
-            new LocalUri(Uri.file("/user/project")),
+            new LocalUri(
+                Uri.file("/Users/fabian.jakobs/Desktop/notebook-best-practices")
+            ),
             new RemoteUri(
                 Uri.from({
                     scheme: "wsfs",
-                    path: "/Repos/user@databricks.com/project",
+                    path: "/Repos/fabian.jakobs@databricks.com/notebook-best-practices",
                 })
             )
         );
 
-        const syncCommand = `${cliPath} sync . /Repos/user@databricks.com/project --watch --output json`;
-        const loggingArgs = `--log-level debug --log-file ${logFilePath} --log-format json`;
         let {command, args} = cli.getSyncCommand(mapper, "incremental");
         assert.equal(
             [command, ...args].join(" "),
-            [syncCommand, loggingArgs].join(" ")
+            "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json"
         );
 
         ({command, args} = cli.getSyncCommand(mapper, "full"));
         assert.equal(
             [command, ...args].join(" "),
-            [syncCommand, loggingArgs, "--full"].join(" ")
+            "./bin/databricks sync . /Repos/fabian.jakobs@databricks.com/notebook-best-practices --watch --output json --full"
         );
-
-        const configsSpy = spy(workspaceConfigs);
-        mocks.push(configsSpy);
-        when(configsSpy.loggingEnabled).thenReturn(false);
-        ({command, args} = cli.getSyncCommand(mapper, "incremental"));
-        assert.equal([command, ...args].join(" "), syncCommand);
     });
 
     it("should create an 'add profile' command", () => {
-        const cli = createCliWrapper();
+        const cli = new CliWrapper({
+            asAbsolutePath(path: string) {
+                return path;
+            },
+        } as any);
 
         const {command, args} = cli.getAddProfileCommand(
             "DEFAULT",
@@ -108,33 +69,39 @@ describe(__filename, () => {
 
         assert.equal(
             [command, ...args].join(" "),
-            `${cliPath} configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token`
+            "./bin/databricks configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token"
         );
     });
 
     it("should list profiles when no config file exists", async () => {
-        const logFilePath = getTempLogFilePath();
-        const cli = createCliWrapper(logFilePath);
+        const cli = new CliWrapper({
+            asAbsolutePath(p: string) {
+                return path.join(__dirname, "..", "..", p);
+            },
+        } as any);
+
         const profiles = await cli.listProfiles("/tmp/does-not-exist");
         assert.equal(profiles.length, 0);
     });
 
-    it("should list profiles", async () => {
-        const logFilePath = getTempLogFilePath();
-        const cli = createCliWrapper(logFilePath);
+    it("should list profiles", async function () {
+        const cli = new CliWrapper({
+            asAbsolutePath(p: string) {
+                return path.join(__dirname, "..", "..", p);
+            },
+        } as any);
 
         await withFile(async ({path}) => {
-            writeFileSync(
+            await writeFile(
                 path,
                 `
-host = https://cloud.databricks.com/
-token = dapitest1234
+        host = https://cloud.databricks.com/
+        token = dapitest1234
 
-[STAGING]
-host = https://staging.cloud.databricks.com/
-token = dapitest54321
-`,
-                "utf-8"
+        [STAGING]
+        host = https://staging.cloud.databricks.com/
+        token = dapitest54321
+        `
             );
 
             const profiles = await cli.listProfiles(path);
@@ -142,21 +109,26 @@ token = dapitest54321
             assert.equal(profiles.length, 2);
             assert.equal(profiles[0].name, "DEFAULT");
             assert.equal(profiles[0].host, "https://cloud.databricks.com/");
+            assert.equal(profiles[0].authType, "pat");
 
             assert.equal(profiles[1].name, "STAGING");
             assert.equal(
                 profiles[1].host,
                 "https://staging.cloud.databricks.com/"
             );
+            assert.equal(profiles[1].authType, "pat");
         });
     });
 
-    it("should load all valid profiles", async () => {
-        const logFilePath = getTempLogFilePath();
-        const cli = createCliWrapper(logFilePath);
+    it("should load all valid profiles and return errors for rest", async () => {
+        const cli = new CliWrapper({
+            asAbsolutePath(p: string) {
+                return path.join(__dirname, "..", "..", p);
+            },
+        } as any);
 
         await withFile(async ({path}) => {
-            writeFileSync(
+            await writeFile(
                 path,
                 `[correct]
 host = https://cloud.databricks.com/
@@ -170,33 +142,18 @@ host = https://cloud.databricks.com/
 
 [missing-host-token]
 nothing = true
-`,
-                "utf-8"
+
+[typo-host]
+host = example.com
+`
             );
 
-            const profiles = await cli.listProfiles(path);
-            assert.equal(profiles.length, 2);
-
-            assert.equal(profiles[0].name, "correct");
-            assert.equal(profiles[0].host, "https://cloud.databricks.com/");
-
-            assert.equal(profiles[1].name, "no-token");
-            assert.equal(profiles[1].host, "https://cloud.databricks.com/");
-        });
-    });
-
-    it("should show error for corrupted config file and return empty profile list", async () => {
-        const logFilePath = getTempLogFilePath();
-        const cli = createCliWrapper(logFilePath);
-
-        await withFile(async ({path}) => {
-            await writeFile(path, `[bad]\ntest 123`);
             const logs: {level: string; msg?: string; meta: any}[] = [];
             const profiles = await cli.listProfiles(
                 path,
                 new Context({
                     logger: logging.NamedLogger.getOrCreate(
-                        "cli-parsing-error-test",
+                        "cli-wrapper-test",
                         {
                             factory: () => {
                                 return {
@@ -209,13 +166,19 @@ nothing = true
                     ),
                 })
             );
-            const errorLog = logs.find(
-                (log) =>
-                    log.msg?.includes("Failed to parse Databricks Config File")
-            );
-            assert.ok(errorLog !== undefined);
-            assert.ok(errorLog.level === "error");
-            assert.equal(profiles.length, 0);
+            assert.equal(profiles.length, 2);
+
+            assert.equal(profiles[0].name, "correct");
+            assert.equal(profiles[0].host, "https://cloud.databricks.com/");
+            assert.equal(profiles[0].authType, "pat");
+
+            assert.equal(profiles[1].name, "no-token");
+            assert.equal(profiles[1].host, "https://cloud.databricks.com/");
+            assert.equal(profiles[1].authType, "");
+
+            const typoLog = logs.find((log) => log.msg?.includes("typo-host"));
+            assert.ok(typoLog !== undefined);
+            assert.ok(typoLog.level === "error");
         });
     });
 });

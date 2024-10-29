@@ -70,7 +70,7 @@ const Keys = {
     }),
 
     "databricks.lastInstalledExtensionVersion": withType<string>()({
-        location: "global",
+        location: "workspace",
         defaultValue: "0.0.0",
     }),
 };

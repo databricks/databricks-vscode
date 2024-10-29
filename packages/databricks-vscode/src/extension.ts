@@ -36,11 +36,12 @@ import {generateBundleSchema} from "./bundle/GenerateBundle";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
+import {MetadataServiceManager} from "./configuration/auth/MetadataServiceManager";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {DbConnectAccessVerifier} from "./language/DbConnectAccessVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
-import {getContextMetadata, Telemetry, toUserMetadata} from "./telemetry";
+import {Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import {Events, Metadata} from "./telemetry/constants";
 import {DbConnectInstallPrompt} from "./language/DbConnectInstallPrompt";
@@ -88,10 +89,9 @@ export async function activate(
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
-    context.environmentVariableCollection.persistent = false;
-    context.environmentVariableCollection.prepend(
+    context.environmentVariableCollection.append(
         "PATH",
-        `${context.asAbsolutePath("./bin")}${path.delimiter}`
+        `${path.delimiter}${context.asAbsolutePath("./bin")}`
     );
 
     const loggerManager = new LoggerManager(context);
@@ -100,7 +100,6 @@ export async function activate(
     }
 
     const telemetry = Telemetry.createDefault();
-    telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
 
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
@@ -138,35 +137,14 @@ export async function activate(
         CustomWhenContext.updateShowWorkspaceView();
     }
 
-    function updateStrictSsl() {
-        const httpConfig = workspace.getConfiguration("http");
-        const proxyStrictSSL = httpConfig.get<boolean>("proxyStrictSSL");
-        process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = proxyStrictSSL
-            ? "1"
-            : "0";
-    }
-
     updateFeatureContexts();
-    updateStrictSsl();
     context.subscriptions.push(
-        workspace.onDidChangeConfiguration(() => {
-            updateFeatureContexts();
-            updateStrictSsl();
-        })
+        workspace.onDidChangeConfiguration(updateFeatureContexts)
     );
 
     // Configuration group
-    let cliLogFilePath;
-    try {
-        cliLogFilePath = await loggerManager.getLogFile("databricks-cli");
-    } catch (e) {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Failed to create a log file for the CLI",
-            e
-        );
-    }
-    const cli = new CliWrapper(context, cliLogFilePath);
-    const connectionManager = new ConnectionManager(cli);
+    const cli = new CliWrapper(context);
+    const connectionManager = new ConnectionManager(cli, stateStorage);
     context.subscriptions.push(
         connectionManager.onDidChangeState(async (state) => {
             telemetry.setMetadata(
@@ -183,9 +161,10 @@ export async function activate(
             }
         })
     );
-
-    const metadataService = await connectionManager.startMetadataService();
-    context.subscriptions.push(metadataService);
+    const metadataServiceManager = new MetadataServiceManager(
+        connectionManager
+    );
+    await metadataServiceManager.listen();
 
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(
         connectionManager
@@ -198,6 +177,7 @@ export async function activate(
     );
 
     context.subscriptions.push(
+        metadataServiceManager,
         window.registerTreeDataProvider(
             "workspaceFsView",
             workspaceFsDataProvider
