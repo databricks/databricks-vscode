@@ -918,7 +918,7 @@
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
-        "package": "vsce package --baseContentUrl https://github.com/databricks/databricks-vscode/blob/${TAG:-bundle-integ}/packages/databricks-vscode --baseImagesUrl https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-bundle-integ}/packages/databricks-vscode",
+        "package": "vsce package --baseContentUrl https://github.com/databricks/databricks-vscode/blob/${TAG:-main}/packages/databricks-vscode --baseImagesUrl https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-main}/packages/databricks-vscode",
         "package:linux:x64": "./scripts/package-vsix.sh linux-x64",
         "package:linux:arm64": "./scripts/package-vsix.sh linux-arm64",
         "package:darwin:x64": "./scripts/package-vsix.sh darwin-x64",

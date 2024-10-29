@@ -2,7 +2,7 @@ name: Publish nightly release
 
 on:
     push:
-        branches: [main, bundle-integ]
+        branches: [main]
     workflow_dispatch:
 
 jobs:

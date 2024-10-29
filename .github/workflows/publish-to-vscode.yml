@@ -8,9 +8,8 @@ on:
                 required: true
                 type: string
 
-    # TODO: enable this trigger when we merge bundle-integ into main
-    # release:
-    #     types: [published]
+    release:
+        types: [published]
 
 jobs:
     publish-to-vscode:

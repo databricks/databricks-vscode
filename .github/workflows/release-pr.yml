@@ -84,7 +84,7 @@ jobs:
             - name: Create PR
               if: ${{ inputs.extension_version != '0.0.0'}}
               run: |
-                  gh pr create -B bundle-integ -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.extension_version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
+                  gh pr create -B main -H ${{ steps.create-branch.outputs.branch_name }} --title "Release: v${{ inputs.extension_version }}" --body-file ${{ steps.create-changelog.outputs.changelog_file }}
                   rm ${{ steps.create-changelog.outputs.changelog_file }}
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
