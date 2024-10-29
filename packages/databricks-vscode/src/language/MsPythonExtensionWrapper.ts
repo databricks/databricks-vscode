@@ -60,7 +60,15 @@ export class MsPythonExtensionWrapper implements Disposable {
 
     async getAvailableEnvironments() {
         await this.api.environments.refreshEnvironments();
-        return this.api.environments.known.filter((env) => env.environment);
+        const filteredEnvs = [];
+        for (const env of this.api.environments.known) {
+            const resolvedEnv =
+                await this.api.environments.resolveEnvironment(env);
+            if (resolvedEnv && resolvedEnv.environment) {
+                filteredEnvs.push(env);
+            }
+        }
+        return filteredEnvs;
     }
 
     get onDidChangePythonExecutable(): Event<Uri | undefined> {
