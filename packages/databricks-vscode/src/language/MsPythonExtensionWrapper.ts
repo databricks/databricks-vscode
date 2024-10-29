@@ -14,7 +14,6 @@ import {Mutex} from "../locking";
 import * as childProcess from "node:child_process";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {execFile} from "../cli/CliWrapper";
-import {resolve} from "node:path";
 
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
