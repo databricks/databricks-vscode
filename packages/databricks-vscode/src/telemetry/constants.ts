@@ -1,21 +1,35 @@
 import {AuthType} from "@databricks/databricks-sdk";
-/** The production application insights configuration string for Databricks. */
-export const PROD_APP_INSIGHTS_CONFIGURATION_STRING =
-    "InstrumentationKey=ebe191c5-f06b-4189-b68c-34fb5fbdb3f0;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
-/** The application insights configuration string used while developing on the VS Code extension */
-export const DEV_APP_INSIGHTS_CONFIGURATION_STRING =
-    "InstrumentationKey=257d1561-5005-4a76-a3a8-7955df129e86;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/";
+/** The production application insights instrumentation key for Databricks. */
+export const PROD_APP_INSIGHTS_CONFIGURATION_KEY =
+    "ebe191c5-f06b-4189-b68c-34fb5fbdb3f0";
+/** The application insights instrumentation key used while developing on the VS Code extension */
+export const DEV_APP_INSIGHTS_CONFIGURATION_KEY =
+    "257d1561-5005-4a76-a3a8-7955df129e86";
 
 /** The list of all events which can be monitored. */
 /* eslint-disable @typescript-eslint/naming-convention */
 export enum Events {
     COMMAND_EXECUTION = "commandExecution",
-    EXTENSION_ACTIVATED = "extensionActivation",
+    EXTENSION_ACTIVATION = "extensionActivation",
+    EXTENSION_INITIALIZATION = "extensionInitialization",
+    AUTO_LOGIN = "autoLogin",
+    MANUAL_LOGIN = "manualLogin",
+    AUTO_MIGRATION = "autoMigration",
+    MANUAL_MIGRATION = "manualMigration",
+    BUNDLE_RUN = "bundleRun",
+    BUNDLE_INIT = "bundleInit",
+    BUNDLE_SUB_PROJECTS = "bundleSubProjects",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
-    SYNC_DESTINATION = "syncDestination",
-    SWITCH_TO_WORKSPACE_PROMPT = "switchToWorkspacePrompt",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
+
+export type AutoLoginSource = "init" | "hostChange" | "targetChange";
+export type ManualLoginSource =
+    | "authTypeSwitch"
+    | "authTypeLogin"
+    | "command"
+    | "api";
+export type BundleRunResourceType = "pipelines" | "jobs";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -69,8 +83,70 @@ export class EventTypes {
         },
         ...getDurationProperty(),
     };
-    [Events.EXTENSION_ACTIVATED]: EventType<undefined> = {
-        comment: "Extention was activated",
+    [Events.EXTENSION_ACTIVATION]: EventType<undefined> = {
+        comment: "Extension was activated",
+    };
+    [Events.EXTENSION_INITIALIZATION]: EventType<
+        {
+            success: boolean;
+            type?: "dabs" | "legacy" | "unknown";
+        } & DurationMeasurement
+    > = {
+        comment: "Extension services were initialized",
+    };
+    [Events.AUTO_LOGIN]: EventType<
+        {
+            success: boolean;
+            source: AutoLoginSource;
+        } & DurationMeasurement
+    > = {
+        comment: "Extension logged in automatically",
+    };
+    [Events.MANUAL_LOGIN]: EventType<
+        {
+            success: boolean;
+            source: ManualLoginSource;
+        } & DurationMeasurement
+    > = {
+        comment: "User logged in manually",
+    };
+    [Events.AUTO_MIGRATION]: EventType<
+        {
+            success: boolean;
+        } & DurationMeasurement
+    > = {
+        comment: "Extension migrated automatically",
+    };
+    [Events.MANUAL_MIGRATION]: EventType<
+        {
+            success: boolean;
+        } & DurationMeasurement
+    > = {
+        comment: "User migrated manually",
+    };
+    [Events.BUNDLE_RUN]: EventType<
+        {
+            success: boolean;
+            cancelled?: boolean;
+            resourceType?: BundleRunResourceType;
+        } & DurationMeasurement
+    > = {
+        comment: "Execute a bundle resource",
+    };
+    [Events.BUNDLE_INIT]: EventType<
+        {
+            success: boolean;
+        } & DurationMeasurement
+    > = {
+        comment: "Initialize a new bundle project",
+    };
+    [Events.BUNDLE_SUB_PROJECTS]: EventType<{
+        count: number;
+    }> = {
+        comment: "Sub-projects in the active workspace folder",
+        count: {
+            comment: "Amount of sub-projects in the active workspace folder",
+        },
     };
     [Events.CONNECTION_STATE_CHANGED]: EventType<{
         newState: string;
@@ -78,22 +154,6 @@ export class EventTypes {
         comment: "State of ConnectionManager has changed",
         newState: {
             comment: "The new state of the connection",
-        },
-    };
-    [Events.SYNC_DESTINATION]: EventType<{
-        destination: string;
-    }> = {
-        comment: "Sync destination was selected",
-        destination: {
-            comment: "The destination that was selected",
-        },
-    };
-    [Events.SWITCH_TO_WORKSPACE_PROMPT]: EventType<{
-        selection: string;
-    }> = {
-        comment: "Prompt to switch to workspace was shown",
-        selection: {
-            comment: "The selection that was made",
         },
     };
 }
@@ -109,6 +169,10 @@ export type EventProperties = {
             : never
         : never;
 };
+
+export type EventReporter<E extends keyof EventTypes> = (
+    props: Omit<EventProperties[E], "duration">
+) => void;
 
 export type EnvironmentType = "tests" | "prod";
 

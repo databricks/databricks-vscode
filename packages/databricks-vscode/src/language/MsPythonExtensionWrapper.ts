@@ -4,20 +4,16 @@ import {
     Event,
     window,
     Disposable,
-    workspace,
-    RelativePattern,
     Terminal,
     commands,
+    OutputChannel,
 } from "vscode";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {IExtensionApi as MsPythonExtensionApi} from "./MsPythonExtensionApi";
-import * as os from "node:os";
-import * as path from "node:path";
-import {mkdtemp, readFile} from "fs/promises";
 import {Mutex} from "../locking";
-import * as cp from "node:child_process";
-import {promisify} from "node:util";
-export const execFile = promisify(cp.execFile);
+import * as childProcess from "node:child_process";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {execFile} from "../cli/CliWrapper";
 
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
@@ -26,7 +22,7 @@ export class MsPythonExtensionWrapper implements Disposable {
     private _terminal?: Terminal;
     constructor(
         pythonExtension: Extension<MsPythonExtensionApi>,
-        private readonly workspaceFolder: Uri,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly stateStorage: StateStorage
     ) {
         this.api = pythonExtension.exports as MsPythonExtensionApi;
@@ -58,19 +54,21 @@ export class MsPythonExtensionWrapper implements Disposable {
     }
 
     async getPythonExecutable() {
-        if (this.api.settings) {
-            return (
-                this.api.settings.getExecutionDetails(this.workspaceFolder)
-                    .execCommand ?? []
-            ).join(" ");
+        const env = await this.pythonEnvironment;
+        return env?.executable.uri?.fsPath;
+    }
+
+    async getAvailableEnvironments() {
+        await this.api.environments.refreshEnvironments();
+        const filteredEnvs = [];
+        for (const env of this.api.environments.known) {
+            const resolvedEnv =
+                await this.api.environments.resolveEnvironment(env);
+            if (resolvedEnv && resolvedEnv.environment) {
+                filteredEnvs.push(env);
+            }
         }
-        return (
-            await this.api.environments.resolveEnvironment(
-                this.api.environments.getActiveEnvironmentPath(
-                    this.workspaceFolder
-                )
-            )
-        )?.executable.uri?.fsPath;
+        return filteredEnvs;
     }
 
     get onDidChangePythonExecutable(): Event<Uri | undefined> {
@@ -88,44 +86,30 @@ export class MsPythonExtensionWrapper implements Disposable {
 
     get pythonEnvironment() {
         return this.api.environments?.resolveEnvironment(
-            this.api.environments?.getActiveEnvironmentPath()
+            this.api.environments?.getActiveEnvironmentPath(
+                this.workspaceFolderManager.activeWorkspaceFolder
+            )
         );
     }
 
-    private async executeInTerminalE(command: string) {
-        const dir = await mkdtemp(path.join(os.tmpdir(), "databricks-vscode-"));
-        const filePath = path.join(dir, "python-terminal-output.txt");
-
-        const disposables: Disposable[] = [];
-        const exitCodePromise = new Promise<number | undefined>((resolve) => {
-            const fsWatcher = workspace.createFileSystemWatcher(
-                new RelativePattern(dir, path.basename(filePath))
-            );
-            const handleFileChange = async () => {
-                try {
-                    const fileData = await readFile(filePath, "utf-8");
-                    resolve(parseInt(fileData));
-                } catch (e: unknown) {
-                    resolve(undefined);
+    async runWithOutput(
+        command: string,
+        args: string[],
+        outputChannel?: OutputChannel
+    ) {
+        const cp = childProcess.execFile(command, args);
+        cp.stdout?.on("data", (data) => outputChannel?.append(data));
+        cp.stderr?.on("data", (data) => outputChannel?.append(data));
+        return new Promise<void>((resolve, reject) => {
+            cp.on("exit", (code) => {
+                if (code === 0) {
+                    resolve();
+                } else {
+                    reject(new Error(`Command exited with code ${code}`));
                 }
-            };
-            disposables.push(
-                fsWatcher,
-                fsWatcher.onDidCreate(handleFileChange),
-                fsWatcher.onDidChange(handleFileChange)
-            );
+            });
+            cp.on("error", reject);
         });
-
-        try {
-            await this.terminalMutex.wait();
-            this.terminal.show();
-            this.terminal.sendText(`${command}; echo $? > ${filePath}`);
-            const exitCode = await exitCodePromise;
-            return exitCode;
-        } finally {
-            disposables.forEach((i) => i.dispose());
-            this.terminalMutex.signal();
-        }
     }
 
     async getLatestPackageVersion(name: string) {
@@ -194,7 +178,11 @@ export class MsPythonExtensionWrapper implements Disposable {
         );
     }
 
-    async installPackageInEnvironment(name: string, version?: string | RegExp) {
+    async installPackageInEnvironment(
+        name: string,
+        version?: string | RegExp,
+        outputChannel?: OutputChannel
+    ) {
         const executable = await this.getPythonExecutable();
         if (!executable) {
             throw Error("No python executable found");
@@ -202,37 +190,46 @@ export class MsPythonExtensionWrapper implements Disposable {
         if (version === "latest") {
             version = await this.getLatestPackageVersion(name);
         }
-        const execCommand = `'${executable}' -m pip install '${name}${
-            version ? `==${version}` : ""
-        }' --disable-pip-version-check --no-python-version-warning`;
-
-        const exitCode = await this.executeInTerminalE(execCommand);
-        if (exitCode) {
-            throw new Error(
-                `Error while installing ${name} package in the current python environment.`
-            );
-        }
+        const args = [
+            "-m",
+            "pip",
+            "install",
+            `${name}${version ? `==${version}` : ""}`,
+            "--disable-pip-version-check",
+            "--no-python-version-warning",
+        ];
+        outputChannel?.appendLine(`Running: ${executable} ${args.join(" ")}`);
+        await this.runWithOutput(executable, args, outputChannel);
     }
 
-    async uninstallPackageFromEnvironment(name: string) {
+    async uninstallPackageFromEnvironment(
+        name: string,
+        outputChannel?: OutputChannel
+    ) {
         const exists = await this.findPackageInEnvironment(name);
         const executable = await this.getPythonExecutable();
-
         if (!exists || !executable) {
             return;
         }
-
-        const execCommand = `'${executable}' -m pip uninstall '${name}' --disable-pip-version-check --no-python-version-warning -y`;
-        const exitCode = await this.executeInTerminalE(execCommand);
-        if (exitCode) {
-            throw new Error(
-                `Error while un-installing ${name} package from the current python environment.`
-            );
-        }
+        const args = [
+            "-m",
+            "pip",
+            "uninstall",
+            name,
+            "--disable-pip-version-check",
+            "--no-python-version-warning",
+            "-y",
+        ];
+        outputChannel?.appendLine(`Running: ${executable} ${args.join(" ")}`);
+        await this.runWithOutput(executable, args, outputChannel);
     }
 
     async selectPythonInterpreter() {
         await commands.executeCommand("python.setInterpreter");
+    }
+
+    async createPythonEnvironment() {
+        await commands.executeCommand("python.createEnvironment");
     }
 
     dispose() {}

@@ -11,7 +11,8 @@ import {
 import {Loggers} from "../logger";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
-import {DbConnectInstallPrompt} from "./DbConnectInstallPrompt";
+import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 async function getImportString(context: ExtensionContext) {
     try {
@@ -43,9 +44,9 @@ export class ConfigureAutocomplete implements Disposable {
     constructor(
         private readonly context: ExtensionContext,
         private readonly stateStorage: StateStorage,
-        private readonly workspaceFolder: string,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly dbConnectInstallPrompt: DbConnectInstallPrompt
+        private readonly environmentDependenciesInstaller: EnvironmentDependenciesInstaller
     ) {
         //Remove any type stubs that users already have. We will now start using the python SDK (installed with databricks-connect)
         let extraPaths =
@@ -170,7 +171,11 @@ export class ConfigureAutocomplete implements Disposable {
         if (dryRun) {
             return;
         }
-        this.dbConnectInstallPrompt.show(false);
+        this.environmentDependenciesInstaller.show(false);
+    }
+
+    private get workspaceFolder() {
+        return this.workspaceFolderManager.activeWorkspaceFolder.uri.fsPath;
     }
 
     private async addBuiltinsFile(dryRun = false): Promise<StepResult> {

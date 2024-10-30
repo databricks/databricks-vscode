@@ -9,6 +9,7 @@ import {LocalUri, SyncDestinationMapper} from "../sync/SyncDestination";
 import {PackageMetaData} from "../utils/packageJsonUtils";
 import {LazyCustomSyncTerminal, SyncTask} from "./SyncTasks";
 import type {CliWrapper} from "./CliWrapper";
+import {ConfigModel} from "../configuration/models/ConfigModel";
 
 describe(__filename, () => {
     let connection: ConnectionManager;
@@ -23,6 +24,7 @@ describe(__filename, () => {
     it("should create a sync task", () => {
         const task = new SyncTask(
             instance(connection),
+            instance(mock<ConfigModel>()),
             instance(cli),
             "incremental",
             {
@@ -62,11 +64,12 @@ describe(__filename, () => {
             when(mockDbWorkspace.authProvider).thenReturn(
                 new ProfileAuthProvider(
                     new URL("https://000000000000.00.azuredatabricks.net/"),
-                    "profile"
+                    "profile",
+                    instance(cli)
                 )
             );
             when(mockDbWorkspace.host).thenReturn(
-                Uri.parse("https://000000000000.00.azuredatabricks.net/")
+                new URL("https://000000000000.00.azuredatabricks.net/")
             );
 
             const mockSyncDestination = mock(SyncDestinationMapper);
@@ -82,8 +85,11 @@ describe(__filename, () => {
                 instance(mockSyncDestination)
             );
 
+            const mockConfigModel = mock(ConfigModel);
+            when(mockConfigModel.target).thenReturn("dev");
             terminal = new LazyCustomSyncTerminal(
                 instance(connection),
+                instance(mockConfigModel),
                 instance(cli),
                 "full",
                 {
@@ -103,6 +109,7 @@ describe(__filename, () => {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
                     DATABRICKS_CLI_UPSTREAM_VERSION: "1.0.0",
+                    DATABRICKS_BUNDLE_TARGET: "dev",
                     DATABRICKS_HOST:
                         "https://000000000000.00.azuredatabricks.net/",
                     DATABRICKS_AUTH_TYPE: "metadata-service",
@@ -124,6 +131,7 @@ describe(__filename, () => {
                     /* eslint-disable @typescript-eslint/naming-convention */
                     DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
                     DATABRICKS_CLI_UPSTREAM_VERSION: "1.0.0",
+                    DATABRICKS_BUNDLE_TARGET: "dev",
                     DATABRICKS_HOST:
                         "https://000000000000.00.azuredatabricks.net/",
                     DATABRICKS_AUTH_TYPE: "metadata-service",

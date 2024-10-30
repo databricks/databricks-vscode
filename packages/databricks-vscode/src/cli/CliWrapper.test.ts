@@ -1,26 +1,30 @@
 import * as assert from "assert";
 import {Uri} from "vscode";
-import {
-    LocalUri,
-    RemoteUri,
-    SyncDestinationMapper,
-} from "../sync/SyncDestination";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
 import {writeFile, readFile} from "node:fs/promises";
-import {when, spy, reset} from "ts-mockito";
-import {CliWrapper} from "./CliWrapper";
+import {when, spy, reset, instance, mock} from "ts-mockito";
+import {CliWrapper, waitForProcess} from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
 import {Context} from "@databricks/databricks-sdk/dist/context";
 import {logging} from "@databricks/databricks-sdk";
+import {LoggerManager} from "../logger";
+import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
+import {isMatch} from "lodash";
+import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {writeFileSync} from "fs";
+import {ChildProcess, ChildProcessWithoutNullStreams} from "child_process";
+import {Readable} from "stream";
 
 const execFile = promisify(execFileCb);
 const cliPath = path.join(__dirname, "../../bin/databricks");
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const extensionVersion = require("../../package.json").version;
 
 function getTempLogFilePath() {
     return path.join(
@@ -36,11 +40,14 @@ function createCliWrapper(logFilePath?: string) {
                 return path.join(__dirname, "../..", relativePath);
             },
         } as any,
+        instance(mock(LoggerManager)),
         logFilePath
     );
 }
 
-describe(__filename, () => {
+describe(__filename, function () {
+    this.timeout("10s");
+
     it("should embed a working databricks CLI", async () => {
         const result = await execFile(cliPath, ["--help"]);
         assert.ok(result.stdout.indexOf("databricks") > 0);
@@ -58,7 +65,7 @@ describe(__filename, () => {
         mocks.push(configsSpy);
         when(configsSpy.loggingEnabled).thenReturn(true);
         const cli = createCliWrapper(logFilePath);
-        await execFile(cli.cliPath, ["version", ...cli.loggingArguments]);
+        await execFile(cli.cliPath, ["version", ...cli.getLoggingArguments()]);
         const file = await readFile(logFilePath);
         // Just checking if the file is not empty to avoid depending on internal CLI log patterns
         assert.ok(file.toString().length > 0);
@@ -67,25 +74,16 @@ describe(__filename, () => {
     it("should create sync commands", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
-        const mapper = new SyncDestinationMapper(
-            new LocalUri(Uri.file("/user/project")),
-            new RemoteUri(
-                Uri.from({
-                    scheme: "wsfs",
-                    path: "/Repos/user@databricks.com/project",
-                })
-            )
-        );
 
-        const syncCommand = `${cliPath} sync . /Repos/user@databricks.com/project --watch --output json`;
+        const syncCommand = `${cliPath} bundle sync --watch --output json`;
         const loggingArgs = `--log-level debug --log-file ${logFilePath} --log-format json`;
-        let {command, args} = cli.getSyncCommand(mapper, "incremental");
+        let {command, args} = cli.getSyncCommand("incremental");
         assert.equal(
             [command, ...args].join(" "),
             [syncCommand, loggingArgs].join(" ")
         );
 
-        ({command, args} = cli.getSyncCommand(mapper, "full"));
+        ({command, args} = cli.getSyncCommand("full"));
         assert.equal(
             [command, ...args].join(" "),
             [syncCommand, loggingArgs, "--full"].join(" ")
@@ -94,22 +92,8 @@ describe(__filename, () => {
         const configsSpy = spy(workspaceConfigs);
         mocks.push(configsSpy);
         when(configsSpy.loggingEnabled).thenReturn(false);
-        ({command, args} = cli.getSyncCommand(mapper, "incremental"));
+        ({command, args} = cli.getSyncCommand("incremental"));
         assert.equal([command, ...args].join(" "), syncCommand);
-    });
-
-    it("should create an 'add profile' command", () => {
-        const cli = createCliWrapper();
-
-        const {command, args} = cli.getAddProfileCommand(
-            "DEFAULT",
-            new URL("https://databricks.com")
-        );
-
-        assert.equal(
-            [command, ...args].join(" "),
-            `${cliPath} configure --no-interactive --profile DEFAULT --host https://databricks.com/ --token`
-        );
     });
 
     it("should list profiles when no config file exists", async () => {
@@ -217,5 +201,76 @@ nothing = true
             assert.ok(errorLog.level === "error");
             assert.equal(profiles.length, 0);
         });
+    });
+
+    it("should set required env vars to the bundle run CLI calls", async () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+        const workspaceFolder = Uri.file("/test/123");
+        const runCmd = await cli.getBundleRunCommand(
+            "dev",
+            authProvider,
+            "resource-key",
+            workspaceFolder
+        );
+        const expected = {
+            args: ["bundle", "run", "--target", "dev", "resource-key"],
+            cmd: cli.cliPath,
+            options: {
+                cwd: workspaceFolder.fsPath,
+                env: removeUndefinedKeys({
+                    /* eslint-disable @typescript-eslint/naming-convention */
+                    DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
+                    DATABRICKS_CLI_UPSTREAM_VERSION: extensionVersion,
+                    DATABRICKS_CONFIG_PROFILE: "PROFILE",
+                    DATABRICKS_HOST: "https://test.com/",
+                    DATABRICKS_LOG_FILE: logFilePath,
+                    DATABRICKS_LOG_FORMAT: "json",
+                    DATABRICKS_LOG_LEVEL: "debug",
+                    DATABRICKS_OUTPUT_FORMAT: "json",
+                    HOME: process.env.HOME,
+                    PATH: process.env.PATH,
+                    /* eslint-enable @typescript-eslint/naming-convention */
+                }),
+            },
+        };
+        try {
+            assert.ok(isMatch(runCmd, expected));
+        } catch (e) {
+            // Run this in the "catch" case to show better error messages
+            assert.deepStrictEqual(runCmd, expected);
+            throw e;
+        }
+    });
+});
+
+describe("waitForProcess", () => {
+    it("should return correctly formatted stdout and stderr", async () => {
+        const process = new ChildProcess();
+        const stdoutChunks = [`{"hello": "wor`, `ld"}`];
+        const stderrChunks = [`{"error": "no`, `oo"}`];
+        process.stdout = new Readable({
+            read() {
+                this.push(stdoutChunks.shift());
+            },
+        });
+        process.stderr = new Readable({
+            read() {
+                this.push(stderrChunks.shift());
+            },
+        });
+        const waitPromise = waitForProcess(
+            process as ChildProcessWithoutNullStreams
+        );
+        process.emit("close", 0);
+        const {stdout, stderr} = await waitPromise;
+        assert.equal(stdout, `{"hello": "world"}`);
+        assert.equal(stderr, `{"error": "nooo"}`);
     });
 });

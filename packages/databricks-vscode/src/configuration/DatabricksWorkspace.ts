@@ -1,9 +1,8 @@
 import {WorkspaceClient, iam, logging} from "@databricks/databricks-sdk";
 import {Cluster, WorkspaceConf, WorkspaceConfProps} from "../sdk-extensions";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {context, Context} from "@databricks/databricks-sdk";
 import {Uri} from "vscode";
 import {Loggers} from "../logger";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {AuthProvider} from "./auth/AuthProvider";
 import {RemoteUri} from "../sync/SyncDestination";
 
@@ -15,13 +14,10 @@ export class DatabricksWorkspace {
     ) {}
 
     /**
-     * The current root for sync destination folders. Return a Workspace path or a Repo path
-     * depending on whether files in workspace is enabled for VSCode UI.
+     * The current root for sync destination folders.
      */
     get currentFsRoot(): RemoteUri {
-        return workspaceConfigs.enableFilesInWorkspace
-            ? this.workspaceFsRoot
-            : this.repoRoot;
+        return this.workspaceFsRoot;
     }
 
     get workspaceFsRoot(): RemoteUri {
@@ -36,8 +32,8 @@ export class DatabricksWorkspace {
         );
     }
 
-    get host(): Uri {
-        return Uri.parse(this._authProvider.host.toString());
+    get host(): URL {
+        return this._authProvider.host;
     }
 
     get authProvider(): AuthProvider {

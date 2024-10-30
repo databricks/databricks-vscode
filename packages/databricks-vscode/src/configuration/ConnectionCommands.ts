@@ -1,22 +1,28 @@
-import {Cluster, WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
+import {Cluster} from "../sdk-extensions";
 import {
     Disposable,
-    FileSystemError,
     QuickPickItem,
     QuickPickItemKind,
     ThemeIcon,
-    Uri,
     window,
-    workspace,
+    commands,
 } from "vscode";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "./ConnectionManager";
-import {FileUtils, UrlUtils} from "../utils";
-import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {UrlUtils} from "../utils";
 import {WorkspaceFsCommands} from "../workspace-fs";
-import path from "node:path";
-import {RemoteUri, REPO_NAME_SUFFIX} from "../sync/SyncDestination";
+import {ConfigModel} from "./models/ConfigModel";
+import {saveNewProfile} from "./LoginWizard";
+import {PersonalAccessTokenAuthProvider} from "./auth/AuthProvider";
+import {normalizeHost} from "../utils/urlUtils";
+import {CliWrapper, ProcessError} from "../cli/CliWrapper";
+import {
+    AUTH_TYPE_SWITCH_ID,
+    AUTH_TYPE_LOGIN_ID,
+} from "../ui/configuration-view/AuthTypeComponent";
+import {ManualLoginSource} from "../telemetry/constants";
+import {onError} from "../utils/onErrorDecorator";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -55,7 +61,9 @@ export class ConnectionCommands implements Disposable {
     constructor(
         private wsfsCommands: WorkspaceFsCommands,
         private connectionManager: ConnectionManager,
-        private readonly clusterModel: ClusterModel
+        private readonly clusterModel: ClusterModel,
+        private readonly configModel: ConfigModel,
+        private readonly cli: CliWrapper
     ) {}
 
     /**
@@ -65,36 +73,40 @@ export class ConnectionCommands implements Disposable {
         this.connectionManager.logout();
     }
 
-    async configureWorkspaceCommand() {
-        await this.connectionManager.configureWorkspace();
+    async configureLoginCommand(arg?: {id: string}) {
+        commands.executeCommand("configurationView.focus");
+        let source: ManualLoginSource = "command";
+        if (arg?.id === AUTH_TYPE_SWITCH_ID) {
+            source = "authTypeSwitch";
+        } else if (arg?.id === AUTH_TYPE_LOGIN_ID) {
+            source = "authTypeLogin";
+        }
+        await window.withProgress(
+            {
+                location: {viewId: "configurationView"},
+                title: "Configuring Databricks login",
+            },
+            async () => {
+                await this.connectionManager.configureLogin(source);
+            }
+        );
     }
 
-    openDatabricksConfigFileCommand() {
-        return async () => {
-            const homeDir = FileUtils.getHomedir();
-            let filePath =
-                workspaceConfigs.databrickscfgLocation ??
-                process.env.DATABRICKS_CONFIG_FILE ??
-                path.join(homeDir, ".databrickscfg");
-
-            if (filePath.startsWith("~/")) {
-                filePath = path.join(homeDir, filePath.slice(2));
-            }
-            const uri = Uri.file(path.normalize(filePath));
-
-            try {
-                await workspace.fs.stat(uri);
-            } catch (e) {
-                if (e instanceof FileSystemError && e.code === "FileNotFound") {
-                    await workspace.fs.writeFile(uri, Buffer.from(""));
-                } else {
-                    throw e;
-                }
-            }
-
-            const doc = await workspace.openTextDocument(uri);
-            await window.showTextDocument(doc);
-        };
+    // This command is not exposed to users.
+    // We use it to test new profile flow in e2e tests.
+    async saveNewProfileCommand(name: string) {
+        const host = this.connectionManager.workspaceClient?.config.host;
+        const token = this.connectionManager.workspaceClient?.config.token;
+        if (!host || !token) {
+            throw new Error("Must login first");
+        }
+        const hostUrl = normalizeHost(host);
+        const provider = new PersonalAccessTokenAuthProvider(
+            hostUrl,
+            token,
+            this.cli
+        );
+        await saveNewProfile(name, provider, this.cli);
     }
 
     /**
@@ -104,12 +116,12 @@ export class ConnectionCommands implements Disposable {
      */
     attachClusterCommand() {
         return async (cluster: Cluster) => {
-            await this.connectionManager.attachCluster(cluster);
+            await this.connectionManager.attachCluster(cluster.id);
         };
     }
 
     attachClusterQuickPickCommand() {
-        return async () => {
+        return async (title?: string) => {
             const workspaceClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
             if (!workspaceClient || !me) {
@@ -120,6 +132,8 @@ export class ConnectionCommands implements Disposable {
             const quickPick = window.createQuickPick<
                 ClusterItem | QuickPickItem
             >();
+            quickPick.title =
+                typeof title === "string" ? title : "Select Cluster";
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
 
@@ -168,7 +182,7 @@ export class ConnectionCommands implements Disposable {
                 const selectedItem = quickPick.selectedItems[0];
                 if ("cluster" in selectedItem) {
                     const cluster = selectedItem.cluster;
-                    await this.connectionManager.attachCluster(cluster);
+                    await this.connectionManager.attachCluster(cluster.id);
                 } else {
                     await UrlUtils.openExternal(
                         `${
@@ -198,129 +212,37 @@ export class ConnectionCommands implements Disposable {
         };
     }
 
-    attachSyncDestinationCommand() {
-        return async () => {
-            const wsClient = this.connectionManager.workspaceClient;
-            const me = this.connectionManager.databricksWorkspace?.userName;
-            const rootDirPath =
-                this.connectionManager.databricksWorkspace?.currentFsRoot;
-            if (!wsClient || !me || !rootDirPath) {
-                // TODO
-                return;
-            }
+    @onError({popup: {prefix: "Error selecting target."}})
+    async selectTarget() {
+        const targets = await this.configModel.targets;
+        const currentTarget = this.configModel.target;
+        if (targets === undefined) {
+            return;
+        }
 
-            const rootDir = await WorkspaceFsEntity.fromPath(
-                wsClient,
-                rootDirPath.path
-            );
-
-            type WorkspaceFsQuickPickItem = QuickPickItem & {
-                path?: string;
-            };
-            const children: WorkspaceFsQuickPickItem[] = [
-                {
-                    label: "Create New Sync Destination",
-                    alwaysShow: true,
-                    detail: workspaceConfigs.enableFilesInWorkspace
-                        ? `Create a new folder under /Workspace/${me}/.ide as sync destination`
-                        : `Create a new Repo under /Repos/${me} as sync destination`,
-                },
-                {
-                    label: "Sync Destinations",
-                    kind: QuickPickItemKind.Separator,
-                },
-            ];
-
-            const input = window.createQuickPick();
-            input.busy = true;
-            input.show();
-            input.items = children;
-            if (workspaceConfigs.enableFilesInWorkspace) {
-                children.push(
-                    ...((await rootDir?.children) ?? [])
-                        .filter((entity) =>
-                            WorkspaceFsUtils.isDirectory(entity)
-                        )
-                        .map((entity) => {
-                            return {
-                                label: entity.basename,
-                                detail: entity.path,
-                                path: entity.path,
-                            };
-                        })
-                );
-            } else {
-                const repos = (await rootDir?.children) ?? [];
-
-                children.push(
-                    ...repos
-                        .filter((entity) => {
-                            return entity.basename.endsWith(REPO_NAME_SUFFIX);
-                        })
-                        .map((entity) => {
-                            return {
-                                label: entity.basename.slice(
-                                    0,
-                                    -REPO_NAME_SUFFIX.length
-                                ),
-                                detail: entity.path,
-                                path: entity.path,
-                            };
-                        })
-                );
-            }
-            input.items = children;
-            input.busy = false;
-
-            const disposables = [
-                input,
-                input.onDidAccept(async () => {
-                    const fn = async () => {
-                        const selection = input
-                            .selectedItems[0] as WorkspaceFsQuickPickItem;
-                        if (
-                            selection.label !== "Create New Sync Destination" &&
-                            selection.path
-                        ) {
-                            this.connectionManager.attachSyncDestination(
-                                new RemoteUri(selection.path)
-                            );
-                            return;
-                        }
-                        const created = await this.wsfsCommands.createFolder(
-                            rootDir
-                        );
-                        if (created === undefined) {
-                            return;
-                        }
-                        this.connectionManager.attachSyncDestination(
-                            new RemoteUri(created.path)
-                        );
+        const selectedTarget = await window.showQuickPick(
+            Object.keys(targets)
+                .map((t) => {
+                    return {
+                        label: t,
+                        description: targets[t].mode ?? "dev",
+                        detail: targets[t].workspace?.host,
                     };
-                    try {
-                        await fn();
-                    } catch (e: unknown) {
-                        if (e instanceof Error) {
-                            window.showErrorMessage(
-                                `Error while creating a new directory: ${e.message}`
-                            );
-                        }
-                    } finally {
-                        disposables.forEach((i) => i.dispose());
-                    }
-                }),
-                input.onDidHide(() => {
-                    disposables.forEach((i) => i.dispose());
-                }),
-            ];
-        };
-    }
-
-    /**
-     * Set workspace to undefined and remove workspace path from settings file.
-     */
-    async detachWorkspaceCommand() {
-        this.connectionManager.detachSyncDestination();
+                })
+                .sort((a) => (a.label === currentTarget ? -1 : 1)),
+            {title: "Select bundle target"}
+        );
+        if (selectedTarget === undefined) {
+            return;
+        }
+        try {
+            await this.configModel.setTarget(selectedTarget.label);
+        } catch (e) {
+            if (e instanceof ProcessError) {
+                e.showErrorMessage("Error selecting target");
+            }
+            throw e;
+        }
     }
 
     dispose() {

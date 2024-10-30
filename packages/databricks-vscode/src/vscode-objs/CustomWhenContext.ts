@@ -2,14 +2,14 @@ import {commands} from "vscode";
 import {workspaceConfigs} from "./WorkspaceConfigs";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const CustomWhenContext = {
+export class CustomWhenContext {
     setLoggedIn(value: boolean) {
         commands.executeCommand(
             "setContext",
             "databricks.context.loggedIn",
             value
         );
-    },
+    }
 
     setActivated(value: boolean) {
         commands.executeCommand(
@@ -17,7 +17,63 @@ export const CustomWhenContext = {
             "databricks.context.activated",
             value
         );
-    },
+    }
+
+    setDeploymentState(value: "idle" | "deploying") {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.bundle.deploymentState",
+            value
+        );
+    }
+
+    isTargetSet(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.bundle.isTargetSet",
+            value
+        );
+    }
+
+    isDevTarget(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.bundle.isDevTarget",
+            value
+        );
+    }
+
+    setIsBundleProject(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.isBundleProject",
+            value
+        );
+    }
+
+    setSubProjectsAvailable(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.subProjectsAvailable",
+            value
+        );
+    }
+
+    setPendingManualMigration(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.pendingManualMigration",
+            value
+        );
+    }
+
+    setInitialized() {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.initialized",
+            true
+        );
+    }
 
     updateShowClusterView() {
         commands.executeCommand(
@@ -27,7 +83,7 @@ export const CustomWhenContext = {
                 "views.cluster"
             )
         );
-    },
+    }
 
     updateShowWorkspaceView() {
         commands.executeCommand(
@@ -37,5 +93,21 @@ export const CustomWhenContext = {
                 "views.workspace"
             )
         );
-    },
-};
+    }
+
+    setIsActiveFileInActiveWorkspace(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.isActiveFileInActiveWorkspace",
+            value
+        );
+    }
+
+    setShowRunAsWorkflow(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.showRunAsWorkflow",
+            value
+        );
+    }
+}

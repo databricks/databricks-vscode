@@ -236,7 +236,7 @@ describe(__filename, async () => {
                     "dbutils.library.restartPython()",
                     "print('hello2')",
                 ];
-                writeFile(
+                await writeFile(
                     localFilePath.path,
                     comment.concat(data).join("\n"),
                     "utf-8"
@@ -443,7 +443,7 @@ describe(__filename, async () => {
                         },
                     ],
                 };
-                writeFile(
+                await writeFile(
                     localFilePath.path,
                     JSON.stringify(originalData),
                     "utf-8"

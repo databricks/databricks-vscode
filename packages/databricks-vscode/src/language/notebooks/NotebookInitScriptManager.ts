@@ -1,6 +1,5 @@
 import {
     Disposable,
-    Uri,
     ExtensionContext,
     window,
     OutputChannel,
@@ -18,14 +17,12 @@ import {Loggers} from "../../logger";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 import {Mutex} from "../../locking";
 import {MsPythonExtensionWrapper} from "../MsPythonExtensionWrapper";
-import {execFile as ef} from "child_process";
-import {promisify} from "util";
-import {EnvVarGenerators, FileUtils} from "../../utils";
+import {FileUtils} from "../../utils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
-import {SystemVariables} from "../../vscode-objs/SystemVariables";
 import {LocalUri} from "../../sync/SyncDestination";
-
-const execFile = promisify(ef);
+import {DatabricksEnvFileManager} from "../../file-managers/DatabricksEnvFileManager";
+import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
+import {execFile} from "../../cli/CliWrapper";
 
 async function isDbnbTextEditor(editor?: TextEditor) {
     try {
@@ -51,19 +48,18 @@ export class NotebookInitScriptManager implements Disposable {
     private currentEnvPath?: string | null = null;
 
     constructor(
-        private readonly workspacePath: Uri,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly extensionContext: ExtensionContext,
         private readonly connectionManager: ConnectionManager,
         private readonly featureManager: FeatureManager,
-        private readonly pythonExtension: MsPythonExtensionWrapper
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly databricksEnvFileManager: DatabricksEnvFileManager
     ) {
-        this.featureManager.isEnabled("notebooks.dbconnect").then((state) => {
-            if (!state.isDisabledByFf) {
-                this.outputWindow = window.createOutputChannel(
-                    "Databricks Notebooks"
-                );
-                this.disposables.push(this.outputWindow);
-            }
+        this.featureManager.isEnabled("environment.dependencies").then(() => {
+            this.outputWindow = window.createOutputChannel(
+                "Databricks Notebooks"
+            );
+            this.disposables.push(this.outputWindow);
         });
         this.disposables.push(
             this.connectionManager.onDidChangeState(async (e) => {
@@ -79,11 +75,14 @@ export class NotebookInitScriptManager implements Disposable {
                 this.currentEnvPath = null;
                 this.verifyInitScript();
             }),
-            this.featureManager.onDidChangeState("notebooks.dbconnect", () => {
-                this.initScriptSuccessfullyVerified = false;
-                this.currentEnvPath = null;
-                this.verifyInitScript();
-            }),
+            this.featureManager.onDidChangeState(
+                "environment.dependencies",
+                () => {
+                    this.initScriptSuccessfullyVerified = false;
+                    this.currentEnvPath = null;
+                    this.verifyInitScript();
+                }
+            ),
             workspace.onDidOpenNotebookDocument(async () => {
                 if (await this.isKnownEnvironment()) {
                     return;
@@ -183,24 +182,14 @@ export class NotebookInitScriptManager implements Disposable {
 
     async updateInitScript() {
         if (
-            !(await this.featureManager.isEnabled("notebooks.dbconnect"))
-                .avaliable
+            !(await this.featureManager.isEnabled("environment.dependencies"))
+                .available
         ) {
             return;
         }
         await this.connectionManager.waitForConnect();
         await this.deleteOutdatedInitScripts();
         await this.copyInitScript();
-    }
-
-    private async getUserEnvVars() {
-        if (workspaceConfigs.userEnvFile === undefined) {
-            return;
-        }
-        const userEnvFile = new SystemVariables(this.workspacePath).resolve(
-            workspaceConfigs.userEnvFile
-        );
-        return EnvVarGenerators.getUserEnvVars(Uri.file(userEnvFile));
     }
 
     private async showVerificationFailMessage() {
@@ -237,23 +226,15 @@ export class NotebookInitScriptManager implements Disposable {
         let someScriptFailed = false;
         for (const fileBaseName of await this.sourceFiles) {
             const file = path.join(this.startupDir, fileBaseName);
-            const env = {
-                ...(EnvVarGenerators.getCommonDatabricksEnvVars(
-                    this.connectionManager
-                ) ?? {}),
-                ...((await EnvVarGenerators.getDbConnectEnvVars(
-                    this.connectionManager,
-                    this.workspacePath
-                )) ?? {}),
-                ...(EnvVarGenerators.getIdeEnvVars() ?? {}),
-                ...((await this.getUserEnvVars()) ?? {}),
-            };
+            const env = await this.databricksEnvFileManager.getEnv();
+
             const {stderr} = await execFile(
                 executable,
                 ["-m", "IPython", file],
                 {
                     env,
-                    cwd: this.workspacePath.fsPath,
+                    cwd: this.workspaceFolderManager.activeWorkspaceFolder.uri
+                        .fsPath,
                 }
             );
             const correctlyFormatttedErrors = stderr
@@ -295,6 +276,10 @@ export class NotebookInitScriptManager implements Disposable {
         fromCommand = false,
         @context ctx?: Context
     ) {
+        if (this.connectionManager.state !== "CONNECTED") {
+            return;
+        }
+
         // If we are not in a jupyter notebook or a databricks notebook,
         // then we don't need to verify the init script
         if (
@@ -307,13 +292,13 @@ export class NotebookInitScriptManager implements Disposable {
         }
 
         await FileUtils.waitForDatabricksProject(
-            this.workspacePath,
+            this.workspaceFolderManager.activeWorkspaceFolder.uri,
             this.connectionManager
         );
 
         if (
-            !(await this.featureManager.isEnabled("notebooks.dbconnect"))
-                .avaliable
+            !(await this.featureManager.isEnabled("environment.dependencies"))
+                .available
         ) {
             return;
         }

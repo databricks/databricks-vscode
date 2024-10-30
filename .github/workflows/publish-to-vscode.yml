@@ -13,7 +13,6 @@ on:
 
 jobs:
     publish-to-vscode:
-        if: ${{ ! endsWith(github.event.inputs.version, 'preview') || github.event_name == 'workflow_dispatch' }}
         runs-on: ubuntu-latest
         environment: Production
 
@@ -54,13 +53,13 @@ jobs:
               env:
                   VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
 
-            - name: Install ovsx
-              run: npm install -g ovsx
+            # - name: Install ovsx
+            #   run: npm install -g ovsx
 
-            - name: Publish to Open VSIX
-              run: |
-                  ovsx verify-pat databricks
-                  ovsx publish --packagePath databricks-*.vsix
+            # - name: Publish to Open VSIX
+            #   run: |
+            #     ovsx verify-pat databricks
+            #     ovsx publish --packagePath databricks-*.vsix
 
-              env:
-                  OVSX_PAT: ${{ secrets.OVSX_PAT }}
+            #   env:
+            #     OVSX_PAT: ${{ secrets.OVSX_PAT }}

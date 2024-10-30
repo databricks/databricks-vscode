@@ -1,32 +1,144 @@
-# Release: v1.4.0
+# Release: v2.4.7
 
 ## packages/databricks-vscode-types
 
-## 1.4.0 (2024-08-28)
+## (2024-10-24)
 
-# Release: v1.3.1
-
-## packages/databricks-vscode-types
-
-## <small>1.3.1 (2024-07-03)</small>
-
-# Release: v1.3.0
+# Release: v2.4.6
 
 ## packages/databricks-vscode-types
 
-## 1.3.0 (2024-03-19)
+## (2024-10-15)
 
-# Release: v1.2.7
-
-## packages/databricks-vscode-types
-
-## <small>1.2.7 (2024-02-05)</small>
-
-# Release: v1.2.6
+# Release: v2.4.5
 
 ## packages/databricks-vscode-types
 
-## <small>1.2.6 (2024-01-31)</small>
+## (2024-10-10)
+
+# Release: v2.4.4
+
+## packages/databricks-vscode-types
+
+## (2024-09-26)
+
+# Release: v2.4.3
+
+## packages/databricks-vscode-types
+
+## (2024-09-25)
+
+# Release: v2.4.2
+
+## packages/databricks-vscode-types
+
+## (2024-09-06)
+
+# Release: v2.4.1
+
+## packages/databricks-vscode-types
+
+## (2024-09-05)
+
+# Release: v2.4.0-preview
+
+## packages/databricks-vscode-types
+
+## (2024-08-26)
+
+# Release: v2.3.4-preview
+
+## packages/databricks-vscode-types
+
+## (2024-08-30)
+
+# Release: v2.3.3-preview
+
+## packages/databricks-vscode-types
+
+## (2024-08-30)
+
+# Release: v2.3.2-preview
+
+## packages/databricks-vscode-types
+
+## (2024-08-22)
+
+# Release: v2.3.1-preview
+
+## packages/databricks-vscode-types
+
+## (2024-08-13)
+
+# Release: v2.3.0-preview
+
+## packages/databricks-vscode-types
+
+## (2024-07-18)
+
+# Release: v2.2.2-preview
+
+## packages/databricks-vscode-types
+
+## (2024-07-03)
+
+# Release: v2.2.1-preview
+
+## packages/databricks-vscode-types
+
+## (2024-06-27)
+
+# Release: v2.2.0-preview
+
+## packages/databricks-vscode-types
+
+## (2024-06-26)
+
+# Release: v2.1.2-preview
+
+## packages/databricks-vscode-types
+
+## (2024-05-06)
+
+-   Bring back `login` public API
+
+# Release: v2.1.1-preview
+
+## packages/databricks-vscode-types
+
+## (2024-05-02)
+
+# Release: v2.1.0-preview
+
+## packages/databricks-vscode-types
+
+## (2024-04-24)
+
+# Release: v2.0.4-preview
+
+## packages/databricks-vscode-types
+
+## (2024-04-09)
+
+# Release: v2.0.3-preview
+
+## packages/databricks-vscode-types
+
+## (2024-04-08)
+
+# Release: v2.0.2-preview
+
+## packages/databricks-vscode-types
+
+## (2024-04-03)
+
+# Release: v2.0.1-preview
+
+## packages/databricks-vscode-types
+
+-   We made some breaking changes to the API. Please refer to future changelog updates for more information.
+
+## (2024-03-07)
 
 # Release: v1.2.5
 

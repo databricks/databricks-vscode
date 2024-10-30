@@ -1,8 +1,16 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
-import {Uri} from "vscode";
-import {Headers, logging} from "@databricks/databricks-sdk";
+import {ExtensionContext, Uri} from "vscode";
+import {logging, Headers} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {ConfigModel} from "../configuration/models/ConfigModel";
+import {TerraformMetadata} from "./terraformUtils";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const packageJson = require("../../package.json");
+
+const extensionVersion = packageJson.version;
+const terraformMetadata = packageJson.terraformMetadata as TerraformMetadata;
 
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {
@@ -47,7 +55,6 @@ function getUserAgent(connectionManager: ConnectionManager) {
 }
 
 export function getAuthEnvVars(connectionManager: ConnectionManager) {
-    const cluster = connectionManager.cluster;
     const host = connectionManager.databricksWorkspace?.host.toString();
     if (!host || !connectionManager.metadataServiceUrl) {
         return;
@@ -58,18 +65,21 @@ export function getAuthEnvVars(connectionManager: ConnectionManager) {
         DATABRICKS_HOST: host,
         DATABRICKS_AUTH_TYPE: "metadata-service",
         DATABRICKS_METADATA_SERVICE_URL: connectionManager.metadataServiceUrl,
-        DATABRICKS_CLUSTER_ID: cluster?.id,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
 export function getCommonDatabricksEnvVars(
-    connectionManager: ConnectionManager
+    connectionManager: ConnectionManager,
+    configModel: ConfigModel
 ) {
+    const cluster = connectionManager.cluster;
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
+        DATABRICKS_BUNDLE_TARGET: configModel.target,
         ...(getAuthEnvVars(connectionManager) || {}),
         ...(getProxyEnvVars() || {}),
+        DATABRICKS_CLUSTER_ID: cluster?.id,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }
@@ -81,15 +91,14 @@ async function getPatToken(connectionManager: ConnectionManager) {
 }
 
 async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {
-    const host = connectionManager.databricksWorkspace?.host.authority;
-    const authType =
-        connectionManager.databricksWorkspace?.authProvider.authType;
+    const host = connectionManager.databricksWorkspace?.host.host;
+    const authType = connectionManager.authType;
 
     // We export spark remote only for profile auth type. This is to support
     // SparkSession builder in oss spark connect (and also dbconnect).
     // For all other auth types, we don't export spark remote and expect users
     // to use DatabricksSession for full functionality.
-    if (host && connectionManager.cluster && authType === "profile") {
+    if (host && connectionManager.cluster && authType === "pat") {
         const pat = await getPatToken(connectionManager);
         if (pat) {
             return {
@@ -102,15 +111,20 @@ async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {
 
 export async function getDbConnectEnvVars(
     connectionManager: ConnectionManager,
-    workspacePath: Uri
+    workspacePath: Uri,
+    showDatabricksConnectProgess: boolean
 ) {
     const userAgent = getUserAgent(connectionManager);
     const existingSparkUa = process.env.SPARK_CONNECT_USER_AGENT ?? "";
+
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         //We append our user agent to any existing SPARK_CONNECT_USER_AGENT defined in the
         //environment of the parent process of VS Code.
         SPARK_CONNECT_USER_AGENT: [existingSparkUa, userAgent].join(" ").trim(),
+        SPARK_CONNECT_PROGRESS_BAR_ENABLED: showDatabricksConnectProgess
+            ? "1"
+            : "0",
         DATABRICKS_PROJECT_ROOT: workspacePath.fsPath,
         ...((await getSparkRemoteEnvVar(connectionManager)) || {}),
     };
@@ -127,16 +141,48 @@ export function getProxyEnvVars() {
     };
 }
 
+export function getEnvVarsForCli(
+    extensionContext: ExtensionContext,
+    configfilePath?: string
+) {
+    /* eslint-disable @typescript-eslint/naming-convention */
+    return {
+        HOME: process.env.HOME,
+        PATH: process.env.PATH,
+        DATABRICKS_CONFIG_FILE:
+            configfilePath ?? process.env.DATABRICKS_CONFIG_FILE,
+        DATABRICKS_OUTPUT_FORMAT: "json",
+        DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
+        DATABRICKS_CLI_UPSTREAM_VERSION: extensionVersion,
+        ...getCLIDependenciesEnvVars(extensionContext),
+    };
+    /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+export function getCLIDependenciesEnvVars(extensionContext: ExtensionContext) {
+    if (!terraformMetadata) {
+        return {};
+    }
+    /* eslint-disable @typescript-eslint/naming-convention */
+    return {
+        DATABRICKS_TF_VERSION: terraformMetadata.version,
+        DATABRICKS_TF_EXEC_PATH: extensionContext.asAbsolutePath(
+            terraformMetadata.execRelPath
+        ),
+        DATABRICKS_TF_PROVIDER_VERSION: terraformMetadata.providerVersion,
+        DATABRICKS_TF_CLI_CONFIG_FILE: extensionContext.asAbsolutePath(
+            terraformMetadata.terraformCliConfigRelPath
+        ),
+    };
+    /* eslint-enable @typescript-eslint/naming-convention */
+}
+
 export function removeUndefinedKeys<
     T extends Record<string, string | undefined>,
->(envVarMap?: T): T | undefined {
-    if (envVarMap === undefined) {
-        return;
-    }
-
+>(envVarMap: T): Record<string, string> {
     const filteredEntries = Object.entries(envVarMap).filter(
         (entry) => entry[1] !== undefined
     ) as [string, string][];
 
-    return Object.fromEntries<string>(filteredEntries) as T;
+    return Object.fromEntries<string>(filteredEntries);
 }

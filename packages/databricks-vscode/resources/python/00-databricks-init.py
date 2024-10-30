@@ -3,10 +3,14 @@ import functools
 import json
 from typing import Any, Union, List
 import os
+import sys
+import time
 import shlex
 import warnings
 import tempfile
 
+# prevent sum from pyskaprk.sql.functions from shadowing the builtin sum
+builtinSum = sys.modules['builtins'].sum
 
 def logError(function_name: str, e: Union[str, Exception]):
     import sys
@@ -24,6 +28,7 @@ def logError(function_name: str, e: Union[str, Exception]):
 
 try:
     from IPython import get_ipython
+    from IPython.display import display
     from IPython.core.magic import magics_class, Magics, line_magic, needs_local_scope
 except Exception as e:
     logError("Ipython Imports", e)
@@ -101,7 +106,13 @@ class EnvLoader:
 
     def __get__(self, instance, owner):
         if self.env_name in os.environ:
-            return self.transform(os.environ[self.env_name])
+            if self.transform is not bool:
+                return self.transform(os.environ[self.env_name])
+            
+            if os.environ[self.env_name].lower() == "true" or os.environ[self.env_name] == "1":
+                return True
+            elif os.environ[self.env_name].lower() == "false" or os.environ[self.env_name] == "0":
+                return False            
 
         if self.required:
             raise AttributeError(
@@ -117,6 +128,7 @@ class EnvLoader:
 class LocalDatabricksNotebookConfig:
     project_root: str = EnvLoader("DATABRICKS_PROJECT_ROOT", required=True)
     dataframe_display_limit: int = EnvLoader("DATABRICKS_DF_DISPLAY_LIMIT", 20)
+    show_progress: bool = EnvLoader("SPARK_CONNECT_PROGRESS_BAR_ENABLED", default=False)
 
     def __new__(cls):
         annotations = cls.__dict__['__annotations__']
@@ -357,6 +369,107 @@ def register_formatters(notebook_config: LocalDatabricksNotebookConfig):
     html_formatter.for_type(SparkConnectDataframe, df_html)
     html_formatter.for_type(DataFrame, df_html)
 
+@logErrorAndContinue
+@disposable
+def register_spark_progress(spark, show_progress: bool):
+    try:
+        import ipywidgets as widgets
+    except Exception as e:
+        return
+    
+    if not hasattr(spark, "clearProgressHandlers") or not hasattr(spark, "registerProgressHandler"):
+        return
+
+    class Progress:
+        SI_BYTE_SIZES = (1 << 60, 1 << 50, 1 << 40, 1 << 30, 1 << 20, 1 << 10, 1)
+        SI_BYTE_SUFFIXES = ("EiB", "PiB", "TiB", "GiB", "MiB", "KiB", "B")
+
+        def __init__(
+            self
+        ) -> None:
+            self._ticks = None
+            self._tick = None
+            self._started = time.time()
+            self._bytes_read = 0
+            self._running = 0
+            self.init_ui()
+
+        def init_ui(self):
+            self.w_progress = widgets.IntProgress(
+                value=0,
+                min=0,
+                max=100,
+                bar_style='success',
+                orientation='horizontal'
+            )
+            self.w_status = widgets.Label(value="")
+            if show_progress:
+                display(widgets.HBox([self.w_progress, self.w_status]))
+
+        def update_ticks(
+            self,
+            stages,
+            inflight_tasks: int,
+            done: bool
+        ) -> None:
+            total_tasks = builtinSum(map(lambda x: x.num_tasks, stages))
+            completed_tasks = builtinSum(map(lambda x: x.num_completed_tasks, stages))
+            if total_tasks > 0:
+                self._ticks = total_tasks
+                self._tick = completed_tasks
+                self._bytes_read = builtinSum(map(lambda x: x.num_bytes_read, stages))
+
+                if done:
+                    self._tick = self._ticks
+                    self._running = 0
+
+                if self._tick is not None and self._tick >= 0:
+                    self.output()            
+                self._running = inflight_tasks
+
+        def output(self) -> None:
+            if self._tick is not None and self._ticks is not None:
+                percent_complete = (self._tick / self._ticks) * 100
+                elapsed = int(time.time() - self._started)
+                scanned = self._bytes_to_string(self._bytes_read)
+                running = self._running
+                self.w_progress.value = percent_complete
+                self.w_status.value = f"{percent_complete:.2f}% Complete ({running} Tasks running, {elapsed}s, Scanned {scanned})"
+
+        @staticmethod
+        def _bytes_to_string(size: int) -> str:
+            """Helper method to convert a numeric bytes value into a human-readable representation"""
+            i = 0
+            while i < len(Progress.SI_BYTE_SIZES) - 1 and size < 2 * Progress.SI_BYTE_SIZES[i]:
+                i += 1
+            result = float(size) / Progress.SI_BYTE_SIZES[i]
+            return f"{result:.1f} {Progress.SI_BYTE_SUFFIXES[i]}"
+
+    class ProgressHandler:
+        def __init__(self):
+            self.op_id = ""     
+
+        def reset(self):
+            self.p = Progress()
+
+        def __call__(self,
+            stages,
+            inflight_tasks: int,
+            operation_id,
+            done: bool
+        ):
+            if len(stages) == 0:
+                return
+            
+            if self.op_id != operation_id:
+                self.op_id = operation_id
+                self.reset()
+
+            self.p.update_ticks(stages, inflight_tasks, done)
+                    
+    spark.clearProgressHandlers()
+    spark.registerProgressHandler(ProgressHandler())
+
 
 @logErrorAndContinue
 @disposable
@@ -382,9 +495,16 @@ try:
     if not load_env_from_leaf(os.getcwd()):
         sys.exit(1)
     cfg = LocalDatabricksNotebookConfig()
+
+    # disable build-in progress bar
+    show_progress = cfg.show_progress
+    if "SPARK_CONNECT_PROGRESS_BAR_ENABLED" in os.environ:
+        del os.environ["SPARK_CONNECT_PROGRESS_BAR_ENABLED"]
+
     create_and_register_databricks_globals()
     register_magics(cfg)
     register_formatters(cfg)
+    register_spark_progress(globals()["spark"], show_progress)
     update_sys_path(cfg)
     make_matplotlib_inline()
 

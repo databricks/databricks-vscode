@@ -1,0 +1,31 @@
+# This is a Databricks asset bundle definition for {{.project_name}}.
+{{- if .auto_migration}}
+# The file was generated automatically by the Databricks extension. 
+# It's based on the configuration located in `.databricks/project.json`.
+# If you don't want this file to be created automatically, remove the `.databricks/project.json`.
+{{- else}}
+# The Databricks extension requires databricks.yml configuration file.
+{{- end}}
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+
+bundle:
+  name: {{.project_name}}
+
+targets:
+  dev:
+    mode: development
+    default: true
+    {{- if .compute_id}}
+    compute_id: {{.compute_id}}
+    {{- end}}
+    workspace:
+      host: {{workspace_host}}
+      {{- if .root_path}}
+      root_path: {{.root_path}}
+      {{- end}}
+
+  ## Optionally, there could be 'staging' or 'prod' targets here.
+  #
+  # prod:
+  #   workspace:
+  #     host: {{workspace_host}}

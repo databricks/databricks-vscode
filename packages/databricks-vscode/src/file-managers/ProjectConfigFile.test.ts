@@ -1,43 +1,19 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {mkdir, mkdtemp, readFile, writeFile} from "fs/promises";
-import {ProjectConfig, ProjectConfigFile} from "./ProjectConfigFile";
+import {mkdir, mkdtemp, writeFile} from "fs/promises";
+import {ProjectConfigFile} from "./ProjectConfigFile";
 import * as assert from "assert";
 import path from "path";
 import * as os from "os";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {Uri} from "vscode";
+import {instance, mock, when} from "ts-mockito";
+import {CliWrapper} from "../cli/CliWrapper";
 
 describe(__filename, () => {
     let tempDir: string;
     before(async () => {
         tempDir = await mkdtemp(path.join(os.tmpdir(), "ProjectConfTests-"));
-    });
-
-    it("should write config file", async () => {
-        const authProvider = new ProfileAuthProvider(
-            new URL("https://000000000000.00.azuredatabricks.net/"),
-            "testProfile"
-        );
-        const expected: ProjectConfig = {
-            authProvider: authProvider,
-            clusterId: "testClusterId",
-            workspacePath: Uri.from({scheme: "wsfs", path: "workspacePath"}),
-        };
-        await new ProjectConfigFile(expected, tempDir, "databricks").write();
-
-        const rawData = await readFile(
-            ProjectConfigFile.getProjectConfigFilePath(tempDir),
-            {encoding: "utf-8"}
-        );
-        const actual = JSON.parse(rawData);
-        assert.deepEqual(actual, {
-            host: "https://000000000000.00.azuredatabricks.net/",
-            authType: "profile",
-            profile: "testProfile",
-            workspacePath: "workspacePath",
-            clusterId: "testClusterId",
-        });
     });
 
     it("should load config file", async () => {
@@ -55,7 +31,12 @@ describe(__filename, () => {
             encoding: "utf-8",
         });
 
-        const actual = await ProjectConfigFile.load(tempDir, "databricks");
+        const mockCliWrapper = mock(CliWrapper);
+        when(mockCliWrapper.cliPath).thenReturn("databricks");
+        const actual = (await ProjectConfigFile.load(
+            tempDir,
+            instance(mockCliWrapper)
+        ))!;
         assert.equal(actual.host.toString(), config.host);
         assert.ok(actual.authProvider instanceof ProfileAuthProvider);
         assert.equal(actual.authProvider.authType, config.authType);
@@ -99,7 +80,12 @@ token = testToken`,
             tempDir,
             ".databrickscfg"
         );
-        const actual = await ProjectConfigFile.load(tempDir, "databricks");
+        const mockCliWrapper = mock(CliWrapper);
+        when(mockCliWrapper.cliPath).thenReturn("databricks");
+        const actual = (await ProjectConfigFile.load(
+            tempDir,
+            instance(mockCliWrapper)
+        ))!;
         assert.equal(
             actual.host.toString(),
             "https://000000000000.00.azuredatabricks.net/"

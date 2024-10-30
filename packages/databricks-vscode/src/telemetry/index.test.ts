@@ -5,7 +5,6 @@ import {mock, instance, capture, when} from "ts-mockito";
 import {Telemetry, getContextMetadata, toUserMetadata} from ".";
 import {Events, Metadata} from "./constants";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {Uri} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ApiClient, Config} from "@databricks/databricks-sdk";
 
@@ -41,7 +40,7 @@ describe(__filename, () => {
     });
 
     it("sets context metadata with prod env type", async () => {
-        delete process.env["TEST_DEFAULT_CLUSTER_ID"];
+        delete process.env["DATABRICKS_VSCODE_INTEGRATION_TEST"];
         telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
             command: "testCommand",
@@ -59,7 +58,7 @@ describe(__filename, () => {
     });
 
     it("sets context metadata with tests env type", async () => {
-        process.env["TEST_DEFAULT_CLUSTER_ID"] = "123";
+        process.env["DATABRICKS_VSCODE_INTEGRATION_TEST"] = "true";
         telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
             command: "testCommand",
@@ -79,7 +78,7 @@ describe(__filename, () => {
     it("sets user metadata correctly after logged in", async () => {
         const ws = mock(DatabricksWorkspace);
         when(ws.userName).thenReturn("miles@databricks.com");
-        when(ws.host).thenReturn(Uri.parse("https://my.databricks.com"));
+        when(ws.host).thenReturn(new URL("https://my.databricks.com"));
         const cm = mock(ConnectionManager);
         when(cm.databricksWorkspace).thenReturn(instance(ws));
         const mockConfig = mock(Config);

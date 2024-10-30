@@ -1,20 +1,21 @@
 import TelemetryReporter from "@vscode/extension-telemetry";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {isDevExtension} from "../utils/developmentUtils";
+import {isDevExtension, isIntegrationTest} from "../utils/developmentUtils";
 import {
-    DEV_APP_INSIGHTS_CONFIGURATION_STRING,
+    DEV_APP_INSIGHTS_CONFIGURATION_KEY,
     EventProperties,
     EventTypes,
     ExtraMetadata,
     Metadata,
     MetadataTypes,
-    PROD_APP_INSIGHTS_CONFIGURATION_STRING,
+    PROD_APP_INSIGHTS_CONFIGURATION_KEY,
 } from "./constants";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 
 export {Events, EventTypes} from "./constants";
+export type {EventReporter} from "./constants";
 
 /**
  * A version number used for the telemetry metric schema. The version of the schema is always provided
@@ -55,7 +56,7 @@ async function getDatabricksWorkspaceMetadata(
     const hashedUserName = await bcrypt.hash(userName, bcryptSalt);
     return {
         hashedUserName: hashedUserName,
-        host: databricksWorkspace.host.authority,
+        host: databricksWorkspace.host.host,
     };
 }
 
@@ -81,17 +82,15 @@ export async function toUserMetadata(
 
 export function getContextMetadata(): ExtraMetadata[Metadata.CONTEXT] {
     return {
-        environmentType: process.env["TEST_DEFAULT_CLUSTER_ID"]
-            ? "tests"
-            : "prod",
+        environmentType: isIntegrationTest() ? "tests" : "prod",
     };
 }
 
 function getTelemetryKey(): string {
     if (isDevExtension()) {
-        return DEV_APP_INSIGHTS_CONFIGURATION_STRING;
+        return DEV_APP_INSIGHTS_CONFIGURATION_KEY;
     }
-    return PROD_APP_INSIGHTS_CONFIGURATION_STRING;
+    return PROD_APP_INSIGHTS_CONFIGURATION_KEY;
 }
 
 function getTelemetryReporter(): TelemetryReporter | undefined {
@@ -182,5 +181,13 @@ export class Telemetry {
             finalProperties,
             finalMetrics
         );
+    }
+
+    start<E extends keyof EventTypes>(eventName: E) {
+        const start = performance.now();
+        return (props: Omit<EventProperties[E], "duration">) => {
+            const duration = performance.now() - start;
+            this.recordEvent(eventName, {duration, ...(props as any)});
+        };
     }
 }

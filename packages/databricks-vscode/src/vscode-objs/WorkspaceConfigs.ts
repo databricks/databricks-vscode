@@ -1,5 +1,5 @@
 import {ConfigurationTarget, workspace} from "vscode";
-import {SyncDestinationType} from "../sync/SyncDestination";
+import {Time, TimeUnits} from "@databricks/databricks-sdk";
 
 export const workspaceConfigs = {
     get maxFieldLength() {
@@ -37,46 +37,12 @@ export const workspaceConfigs = {
                 .get<boolean>("clusters.onlyShowAccessibleClusters") ?? false
         );
     },
-    get syncDestinationType() {
-        return (
-            workspace
-                .getConfiguration("databricks")
-                .get<SyncDestinationType>("sync.destinationType") ?? "workspace"
-        );
-    },
 
-    get enableFilesInWorkspace() {
-        return this.syncDestinationType === "workspace";
-    },
-
-    async setSyncDestinationType(destinationType: SyncDestinationType) {
-        await workspace
-            .getConfiguration("databricks")
-            .update(
-                "sync.destinationType",
-                destinationType,
-                ConfigurationTarget.Workspace
-            );
-    },
     get databrickscfgLocation() {
         const config = workspace
             .getConfiguration("databricks")
             .get<string>("overrideDatabricksConfigFile");
-        return config === "" || config === undefined ? undefined : config;
-    },
-
-    get userEnvFile() {
-        const config = workspace
-            .getConfiguration("databricks")
-            .get<string>("python.envFile");
-
-        return config === "" || config === undefined ? undefined : config;
-    },
-
-    set userEnvFile(value: string | undefined) {
-        workspace
-            .getConfiguration("databricks")
-            .update("python.envFile", value, ConfigurationTarget.Workspace);
+        return config || process.env.DATABRICKS_CONFIG_FILE || undefined;
     },
 
     get experimetalFeatureOverides() {
@@ -139,6 +105,14 @@ export const workspaceConfigs = {
         );
     },
 
+    get showDatabricksConnectProgress(): boolean {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<boolean>("connect.progress") ?? true
+        );
+    },
+
     get ipythonDir(): string | undefined {
         const dir = workspace
             .getConfiguration("databricks")
@@ -148,4 +122,15 @@ export const workspaceConfigs = {
         }
         return dir;
     },
+
+    get bundleRemoteStateRefreshInterval(): number {
+        const config =
+            workspace
+                .getConfiguration("databricks")
+                .get<number>("bundle.remoteStateRefreshInterval") ?? 5;
+
+        return new Time(config, TimeUnits.minutes).toMillSeconds().value;
+    },
 };
+
+export type WorkspaceConfigs = typeof workspaceConfigs;
