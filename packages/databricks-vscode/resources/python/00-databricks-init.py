@@ -166,12 +166,10 @@ def is_databricks_notebook(py_file: str):
         with open(py_file, "r") as f:
             return "Databricks notebook source" in f.readline()
 
-def strip_hash_magic(lines: List[str]) -> List[str]:
+def strip_hash_magics(lines: List[str]) -> List[str]:
     if len(lines) == 0:
         return lines
-    if lines[0].startswith("# MAGIC"):
-        return [line.partition("# MAGIC ")[2] for line in lines]
-    return lines
+    return [line.partition("# MAGIC ")[2] if line.startswith("# MAGIC") else line for line in lines]
 
 def convert_databricks_notebook_to_ipynb(py_file: str):
     cells: List[dict[str, Any]] = [
@@ -186,7 +184,7 @@ def convert_databricks_notebook_to_ipynb(py_file: str):
     with open(py_file) as file:
         text = file.read()
         for cell in text.split("# COMMAND ----------"):
-            cell = ''.join(strip_hash_magic(cell.strip().splitlines(keepends=True)))
+            cell = ''.join(strip_hash_magics(cell.strip().splitlines(keepends=True)))
             cells.append(
                 {
                     "cell_type": "code", 
@@ -271,15 +269,15 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
         is_cell_magic.handle = handle
         return get_cell_magic(lines) is not None
 
-    def is_line_magic(lines: List[str]):
-        def get_line_magic(lines: List[str]):
+    def is_line_to_cell_magic(lines: List[str]):
+        def get_line_to_cell_magic(lines: List[str]):
             if len(lines) == 0:
                 return
             if lines[0].strip().startswith("%"):
                 return lines[0].split(" ")[0].strip().strip("%")
             
         def handle(lines: List[str]):
-            lmagic = get_line_magic(lines)
+            lmagic = get_line_to_cell_magic(lines)
             if lmagic is None:
                 return lines
             warn_for_dbr_alternative(lmagic)
@@ -311,30 +309,44 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
             if lmagic == "python":
                 return lines[1:]
             
-            if lmagic == "run":
-                rest = lines[0].strip().split(" ")[1:]
-                if len(rest) == 0:
-                    return lines
-                
-                filename = rest[0]
-
-                for suffix in ["", ".py", ".ipynb", ".ipy"]:
-                    if os.path.exists(os.path.join(os.getcwd(), filename + suffix)):
-                        filename = filename + suffix
-                        break
-                
-                return [
-                    f"with databricks_notebook_exec_env('{cfg.project_root}', '{filename}') as file:\n",
-                    "\t%run -i {file} " + lines[0].partition('%run')[2].partition(filename)[2] + "\n"
-                ]
-            
             return lines
 
-        is_line_magic.handle = handle
-        return get_line_magic(lines) is not None
-        
+        is_line_to_cell_magic.handle = handle
+        return get_line_to_cell_magic(lines) is not None
 
-    def parse_line_for_databricks_magics(lines: List[str]):
+    def is_line_magic(lines: List[str]):
+        def get_line_magic(line: str):
+            if line.strip().startswith("%"):
+                return line.split(" ")[0].strip().strip("%")
+            
+        def handle(lines: List[str]):
+            new_lines = []
+            for line in lines:
+                lmagic = get_line_magic(line)
+                if lmagic == "run":
+                    rest = line.strip().split(" ")[1:]
+                    if len(rest) == 0:
+                        new_lines.append(line)
+                        continue
+                    
+                    filename = rest[0]
+
+                    for suffix in ["", ".py", ".ipynb", ".ipy"]:
+                        if os.path.exists(os.path.join(os.getcwd(), filename + suffix)):
+                            filename = filename + suffix
+                            break
+                    
+                    new_lines.append(f"with databricks_notebook_exec_env('{cfg.project_root}', '{filename}') as file:\n")
+                    new_lines.append("\t%run -i {file} " + line.partition('%run')[2].partition(filename)[2] + "\n")
+                else:
+                    new_lines.append(line)
+
+            return new_lines
+
+        is_line_magic.handle = handle
+        return any(get_line_magic(line) is not None for line in lines)
+
+    def parse_lines_for_databricks_magics(lines: List[str]):
         if len(lines) == 0:
             return lines
         
@@ -343,9 +355,9 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                     line.strip() != "# COMMAND ----------"
                 ]
         lines = ''.join(lines).strip().splitlines(keepends=True)
-        lines = strip_hash_magic(lines)
+        lines = strip_hash_magics(lines)
 
-        for magic_check in [is_cell_magic, is_line_magic]:
+        for magic_check in [is_cell_magic, is_line_to_cell_magic, is_line_magic]:
             if magic_check(lines):
                 return magic_check.handle(lines)
 
@@ -353,7 +365,7 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
 
     ip = get_ipython()
     ip.register_magics(DatabricksMagics)
-    ip.input_transformers_cleanup.append(parse_line_for_databricks_magics)
+    ip.input_transformers_cleanup.append(parse_lines_for_databricks_magics)
 
 
 @logErrorAndContinue
