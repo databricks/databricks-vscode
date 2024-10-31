@@ -1,3 +1,13 @@
+# Release: v2.4.8
+
+## packages/databricks-vscode
+
+## (2024-10-31)
+
+-   Fix the start dates for job and pipeline runs (#1427) ([4479c80](https://github.com/databricks/databricks-vscode/commit/4479c80)), closes [#1427](https://github.com/databricks/databricks-vscode/issues/1427)
+-   Merge bundle-integ into main (#1414) ([1c35e51](https://github.com/databricks/databricks-vscode/commit/1c35e51)), closes [#1414](https://github.com/databricks/databricks-vscode/issues/1414)
+-   Update Databricks CLI to 0.232.1 ([ec536aa](https://github.com/databricks/databricks-vscode/commit/ec536aa))
+
 # Release: v2.4.7
 
 ## packages/databricks-vscode

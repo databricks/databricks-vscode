@@ -1,3 +1,11 @@
+# Release: v2.4.8
+
+## packages/databricks-vscode-types
+
+## (2024-10-31)
+
+-   Merge bundle-integ into main (#1414) ([1c35e51](https://github.com/databricks/databricks-vscode/commit/1c35e51)), closes [#1414](https://github.com/databricks/databricks-vscode/issues/1414)
+
 # Release: v2.4.7
 
 ## packages/databricks-vscode-types
