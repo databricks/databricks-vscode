@@ -20,7 +20,7 @@ export interface BundleSchema {
     sync?: SyncClass | string;
     targets?: {[key: string]: TargetClass | string} | string;
     variables?: {[key: string]: VariableValue} | string;
-    workspace?: BundleSchem18 | string;
+    workspace?: BundleSchem20 | string;
 }
 
 export interface ArtifactClass {
@@ -89,6 +89,7 @@ export interface PresetsClass {
 
 export interface ResourcesClass {
     clusters?: {[key: string]: TentacledBundleSchem | string} | string;
+    dashboards?: {[key: string]: HilariousBundleSchem | string} | string;
     experiments?: {[key: string]: ExperimentClass | string} | string;
     jobs?: {[key: string]: JobClass | string} | string;
     model_serving_endpoints?:
@@ -98,7 +99,7 @@ export interface ResourcesClass {
     pipelines?: {[key: string]: PipelineClass | string} | string;
     quality_monitors?: {[key: string]: QualityMonitorClass | string} | string;
     registered_models?: {[key: string]: RegisteredModelClass | string} | string;
-    schemas?: {[key: string]: BundleSchem17 | string} | string;
+    schemas?: {[key: string]: BundleSchem19 | string} | string;
 }
 
 export interface TentacledBundleSchem {
@@ -737,6 +738,35 @@ export interface ClientsClass {
     notebooks?: boolean | string;
 }
 
+export interface HilariousBundleSchem {
+    /**
+     * The display name of the dashboard.
+     */
+    display_name: string;
+    embed_credentials?: boolean | string;
+    file_path?: string;
+    /**
+     * The workspace path of the folder containing the dashboard. Includes leading slash and no
+     * trailing slash.
+     * This field is excluded in List Dashboards responses.
+     */
+    parent_path?: string;
+    permissions?: Array<PermissionClass | string> | string;
+    /**
+     * The contents of the dashboard in serialized string form.
+     * This field is excluded in List Dashboards responses.
+     * Use the [get dashboard API](https://docs.databricks.com/api/workspace/lakeview/get)
+     * to retrieve an example response, which includes the `serialized_dashboard` field.
+     * This field provides the structure of the JSON string that represents the dashboard's
+     * layout and components.
+     */
+    serialized_dashboard?: any;
+    /**
+     * The warehouse ID used to run the dashboard.
+     */
+    warehouse_id?: string;
+}
+
 export interface ExperimentClass {
     /**
      * Location where artifacts for the experiment are stored.
@@ -767,10 +797,10 @@ export interface ExperimentClass {
     /**
      * Tags: Additional metadata key-value pairs.
      */
-    tags?: Array<HilariousBundleSchem | string> | string;
+    tags?: Array<AmbitiousBundleSchem | string> | string;
 }
 
-export interface HilariousBundleSchem {
+export interface AmbitiousBundleSchem {
     /**
      * The tag key.
      */
@@ -782,6 +812,13 @@ export interface HilariousBundleSchem {
 }
 
 export interface JobClass {
+    /**
+     * The id of the user specified budget policy to use for this job.
+     * If not specified, a default budget policy may be applied when creating or modifying the
+     * job.
+     * See `effective_budget_policy_id` for the budget policy used by this workload.
+     */
+    budget_policy_id?: string;
     /**
      * An optional continuous property for this job. The continuous property will ensure that
      * there is always one run executing. Only one of `schedule` and `continuous` can be used.
@@ -796,7 +833,7 @@ export interface JobClass {
      * An optional set of email addresses that is notified when runs of this job begin or
      * complete as well as when this job is deleted.
      */
-    email_notifications?: AmbitiousBundleSchem | string;
+    email_notifications?: CunningBundleSchem | string;
     /**
      * A list of task execution environment specifications that can be referenced by serverless
      * tasks of this job.
@@ -850,7 +887,7 @@ export interface JobClass {
      * Optional notification settings that are used when sending notifications to each of the
      * `email_notifications` and `webhook_notifications` for this job.
      */
-    notification_settings?: CunningBundleSchem | string;
+    notification_settings?: MagentaBundleSchem | string;
     /**
      * Job-level parameter definitions
      */
@@ -866,7 +903,7 @@ export interface JobClass {
      * runs when triggered by clicking “Run Now” in the Jobs UI or sending an API request to
      * `runNow`.
      */
-    schedule?: MagentaBundleSchem | string;
+    schedule?: FriskyBundleSchem | string;
     /**
      * A map of tags associated with the job. These are forwarded to the cluster as cluster tags
      * for jobs clusters, and are subject to the same limitations as cluster tags. A maximum of
@@ -886,7 +923,7 @@ export interface JobClass {
      * that the job runs only when triggered by clicking “Run Now” in the Jobs UI or sending an
      * API request to `runNow`.
      */
-    trigger?: BundleSchem2 | string;
+    trigger?: BundleSchem4 | string;
     /**
      * A collection of system notification IDs to notify when runs of this job begin or complete.
      */
@@ -1028,6 +1065,14 @@ export interface ContinuousClass {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -1040,6 +1085,11 @@ export interface ContinuousClass {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -1458,6 +1508,15 @@ export interface ContinuousClass {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -1468,11 +1527,7 @@ export interface ContinuousClass {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -1643,7 +1698,7 @@ export enum PauseStatus {
     Unpaused = "UNPAUSED",
 }
 
-export interface AmbitiousBundleSchem {
+export interface CunningBundleSchem {
     /**
      * If true, do not send email to recipients specified in `on_failure` if the run is skipped.
      * This field is `deprecated`. Please use the
@@ -1998,7 +2053,7 @@ export interface NewClusterClass {
     workload_type?: WorkloadTypeClass | string;
 }
 
-export interface CunningBundleSchem {
+export interface MagentaBundleSchem {
     /**
      * If true, do not send notifications to recipients specified in `on_failure` if the run is
      * canceled.
@@ -2051,7 +2106,7 @@ export interface RunAsClass {
     user_name?: string;
 }
 
-export interface MagentaBundleSchem {
+export interface FriskyBundleSchem {
     /**
      * Indicate whether this schedule is paused or not.
      */
@@ -2119,7 +2174,7 @@ export interface TaskClass {
      * complete as well as when this task is deleted. The default behavior is to not send any
      * emails.
      */
-    email_notifications?: FriskyBundleSchem | string;
+    email_notifications?: MischievousBundleSchem | string;
     /**
      * The key that references an environment spec in a job. This field is required for Python
      * script, Python wheel and dbt tasks when using serverless compute.
@@ -2146,7 +2201,7 @@ export interface TaskClass {
      * An optional list of libraries to be installed on the cluster.
      * The default value is an empty list.
      */
-    libraries?: Array<MischievousBundleSchem | string> | string;
+    libraries?: Array<BraggadociousBundleSchem | string> | string;
     /**
      * An optional maximum number of times to retry an unsuccessful run. A run is considered to
      * be unsuccessful if it completes with the `FAILED` result_state or `INTERNAL_ERROR`
@@ -2173,7 +2228,7 @@ export interface TaskClass {
      * Optional notification settings that are used when sending notifications to each of the
      * `email_notifications` and `webhook_notifications` for this task.
      */
-    notification_settings?: BraggadociousBundleSchem | string;
+    notification_settings?: BundleSchem1 | string;
     /**
      * If pipeline_task, indicates that this task must execute a Pipeline.
      */
@@ -2410,7 +2465,7 @@ export interface DependsOnClass {
     task_key: string;
 }
 
-export interface FriskyBundleSchem {
+export interface MischievousBundleSchem {
     /**
      * If true, do not send email to recipients specified in `on_failure` if the run is skipped.
      * This field is `deprecated`. Please use the
@@ -2455,7 +2510,7 @@ export interface FriskyBundleSchem {
     on_success?: string[] | string;
 }
 
-export interface MischievousBundleSchem {
+export interface BraggadociousBundleSchem {
     /**
      * Specification of a CRAN library to be installed as part of the library
      */
@@ -2599,7 +2654,7 @@ export interface NotebookTaskClass {
     warehouse_id?: string;
 }
 
-export interface BraggadociousBundleSchem {
+export interface BundleSchem1 {
     /**
      * If true, do not send notifications to recipients specified in `on_start` for the retried
      * runs and do not send notifications to recipients specified in `on_failure` until the last
@@ -2855,11 +2910,11 @@ export interface SQLTaskClass {
     /**
      * If dashboard, indicates that this job must refresh a SQL dashboard.
      */
-    dashboard?: DashboardClass | string;
+    dashboard?: BundleSchem2 | string;
     /**
      * If file, indicates that this job runs a SQL file in a remote Git repository.
      */
-    file?: BundleSchem1 | string;
+    file?: BundleSchem3 | string;
     /**
      * Parameters to be used for each run of this job. The SQL alert task does not support
      * custom parameters.
@@ -2907,7 +2962,7 @@ export interface SubscriptionClass {
     user_name?: string;
 }
 
-export interface DashboardClass {
+export interface BundleSchem2 {
     /**
      * Subject of the email sent to subscribers of this task.
      */
@@ -2926,7 +2981,7 @@ export interface DashboardClass {
     subscriptions?: Array<SubscriptionClass | string> | string;
 }
 
-export interface BundleSchem1 {
+export interface BundleSchem3 {
     /**
      * Path of the SQL file. Must be relative if the source is a remote Git repository and
      * absolute for workspace paths.
@@ -3002,7 +3057,7 @@ export interface OnDurationWarningThresholdExceededClass {
     id: string;
 }
 
-export interface BundleSchem2 {
+export interface BundleSchem4 {
     /**
      * File arrival trigger settings.
      */
@@ -3116,7 +3171,7 @@ export interface ModelServingEndpointClass {
      * Rate limits to be applied to the serving endpoint. NOTE: this field is deprecated, please
      * use AI Gateway to manage rate limits.
      */
-    rate_limits?: Array<BundleSchem4 | string> | string;
+    rate_limits?: Array<BundleSchem6 | string> | string;
     /**
      * Enable route optimization for the serving endpoint.
      */
@@ -3124,7 +3179,7 @@ export interface ModelServingEndpointClass {
     /**
      * Tags to be attached to the serving endpoint and automatically propagated to billing logs.
      */
-    tags?: Array<BundleSchem5 | string> | string;
+    tags?: Array<BundleSchem7 | string> | string;
 }
 
 export interface AIGatewayClass {
@@ -3141,7 +3196,7 @@ export interface AIGatewayClass {
     /**
      * Configuration for rate limits which can be set to limit endpoint traffic.
      */
-    rate_limits?: Array<BundleSchem3 | string> | string;
+    rate_limits?: Array<BundleSchem5 | string> | string;
     /**
      * Configuration to enable usage tracking using system tables. These tables allow you to
      * monitor operational usage on endpoints and their associated costs.
@@ -3316,6 +3371,14 @@ export interface PiiClass {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -3328,6 +3391,11 @@ export interface PiiClass {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -3746,6 +3814,15 @@ export interface PiiClass {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -3756,11 +3833,7 @@ export interface PiiClass {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -3949,7 +4022,7 @@ export interface InferenceTableConfigClass {
     table_name_prefix?: string;
 }
 
-export interface BundleSchem3 {
+export interface BundleSchem5 {
     /**
      * Used to specify how many calls are allowed for a key within the renewal_period.
      */
@@ -4086,6 +4159,14 @@ export interface BundleSchem3 {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -4098,6 +4179,11 @@ export interface BundleSchem3 {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -4516,6 +4602,15 @@ export interface BundleSchem3 {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -4526,11 +4621,7 @@ export interface BundleSchem3 {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -4820,6 +4911,14 @@ export enum Key {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -4832,6 +4931,11 @@ export enum Key {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -5250,6 +5354,15 @@ export enum Key {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -5260,11 +5373,7 @@ export enum Key {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -5783,6 +5892,14 @@ export interface AmazonBedrockConfigClass {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -5795,6 +5912,11 @@ export interface AmazonBedrockConfigClass {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -6213,6 +6335,15 @@ export interface AmazonBedrockConfigClass {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -6223,11 +6354,7 @@ export interface AmazonBedrockConfigClass {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -6611,6 +6738,14 @@ export interface PalmConfigClass {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -6623,6 +6758,11 @@ export interface PalmConfigClass {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -7041,6 +7181,15 @@ export interface PalmConfigClass {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -7051,11 +7200,7 @@ export interface PalmConfigClass {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -7417,6 +7562,14 @@ export interface ServedModelClass {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -7429,6 +7582,11 @@ export interface ServedModelClass {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -7847,6 +8005,15 @@ export interface ServedModelClass {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -7857,11 +8024,7 @@ export interface ServedModelClass {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -8152,6 +8315,14 @@ export enum WorkloadSize {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -8164,6 +8335,11 @@ export enum WorkloadSize {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -8582,6 +8758,15 @@ export enum WorkloadSize {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -8592,11 +8777,7 @@ export enum WorkloadSize {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -8783,7 +8964,7 @@ export interface RouteClass {
     traffic_percentage: number | string;
 }
 
-export interface BundleSchem4 {
+export interface BundleSchem6 {
     /**
      * Used to specify how many calls are allowed for a key within the renewal_period.
      */
@@ -8800,7 +8981,7 @@ export interface BundleSchem4 {
     renewal_period: RenewalPeriod;
 }
 
-export interface BundleSchem5 {
+export interface BundleSchem7 {
     /**
      * Key field for a serving endpoint tag.
      */
@@ -8837,7 +9018,7 @@ export interface ModelClass {
     /**
      * Tags: Additional metadata key-value pairs for this `registered_model`.
      */
-    tags?: Array<BundleSchem7 | string> | string;
+    tags?: Array<BundleSchem9 | string> | string;
     /**
      * User that created this `registered_model`
      */
@@ -8890,7 +9071,7 @@ export interface LatestVersionClass {
     /**
      * Tags: Additional metadata key-value pairs for this `model_version`.
      */
-    tags?: Array<BundleSchem6 | string> | string;
+    tags?: Array<BundleSchem8 | string> | string;
     /**
      * User that created this `model_version`.
      */
@@ -9021,6 +9202,14 @@ export interface LatestVersionClass {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -9033,6 +9222,11 @@ export interface LatestVersionClass {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -9451,6 +9645,15 @@ export interface LatestVersionClass {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -9461,11 +9664,7 @@ export interface LatestVersionClass {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -9637,7 +9836,7 @@ export enum Status {
     Ready = "READY",
 }
 
-export interface BundleSchem6 {
+export interface BundleSchem8 {
     /**
      * The tag key.
      */
@@ -9648,7 +9847,7 @@ export interface BundleSchem6 {
     value?: string;
 }
 
-export interface BundleSchem7 {
+export interface BundleSchem9 {
     /**
      * The tag key.
      */
@@ -9678,7 +9877,7 @@ export interface PipelineClass {
     /**
      * Cluster settings for this pipeline deployment.
      */
-    clusters?: Array<BundleSchem8 | string> | string;
+    clusters?: Array<BundleSchem10 | string> | string;
     /**
      * String-String configuration for this pipeline execution.
      */
@@ -9690,7 +9889,7 @@ export interface PipelineClass {
     /**
      * Deployment type of this pipeline.
      */
-    deployment?: BundleSchem10 | string;
+    deployment?: BundleSchem12 | string;
     /**
      * Whether the pipeline is in Development mode. Defaults to false.
      */
@@ -9719,7 +9918,7 @@ export interface PipelineClass {
     /**
      * Libraries or code needed by this deployment.
      */
-    libraries?: Array<BundleSchem13 | string> | string;
+    libraries?: Array<BundleSchem15 | string> | string;
     /**
      * Friendly identifier for this pipeline.
      */
@@ -9755,10 +9954,10 @@ export interface PipelineClass {
     /**
      * Which pipeline trigger to use. Deprecated: Use `continuous` instead.
      */
-    trigger?: BundleSchem15 | string;
+    trigger?: BundleSchem17 | string;
 }
 
-export interface BundleSchem8 {
+export interface BundleSchem10 {
     /**
      * Note: This field won't be persisted. Only API users will check this field.
      */
@@ -9767,7 +9966,7 @@ export interface BundleSchem8 {
      * Parameters needed in order to automatically scale clusters up and down based on load.
      * Note: autoscaling works best with DB runtime versions 3.0 or later.
      */
-    autoscale?: BundleSchem9 | string;
+    autoscale?: BundleSchem11 | string;
     /**
      * Attributes related to clusters running on Amazon Web Services.
      * If not specified at cluster creation, a set of default values will be used.
@@ -9890,7 +10089,7 @@ export interface BundleSchem8 {
     ssh_public_keys?: string[] | string;
 }
 
-export interface BundleSchem9 {
+export interface BundleSchem11 {
     /**
      * The maximum number of workers to which the cluster can scale up when overloaded.
      * `max_workers` must be strictly greater than `min_workers`.
@@ -10036,6 +10235,14 @@ export interface BundleSchem9 {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -10048,6 +10255,11 @@ export interface BundleSchem9 {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -10466,6 +10678,15 @@ export interface BundleSchem9 {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -10476,11 +10697,7 @@ export interface BundleSchem9 {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -10646,7 +10863,7 @@ export enum Mode {
     Legacy = "LEGACY",
 }
 
-export interface BundleSchem10 {
+export interface BundleSchem12 {
     /**
      * The deployment method that manages the pipeline.
      */
@@ -10726,38 +10943,40 @@ export interface IngestionDefinitionClass {
 
 export interface ObjectClass {
     /**
+     * Select tables from a specific source report.
+     */
+    report?: ReportClass | string;
+    /**
      * Select tables from a specific source schema.
      */
-    schema?: BundleSchem11 | string;
+    schema?: BundleSchem13 | string;
     /**
      * Select tables from a specific source table.
      */
-    table?: BundleSchem12 | string;
+    table?: BundleSchem14 | string;
 }
 
-export interface BundleSchem11 {
+export interface ReportClass {
     /**
-     * Required. Destination catalog to store tables.
+     * Required. Destination catalog to store table.
      */
     destination_catalog?: string;
     /**
-     * Required. Destination schema to store tables in. Tables with the same name as the source
-     * tables are created in this destination schema. The pipeline fails If a table with the
-     * same name already exists.
+     * Required. Destination schema to store table.
      */
     destination_schema?: string;
     /**
-     * The source catalog name. Might be optional depending on the type of source.
+     * Required. Destination table name. The pipeline fails if a table with that name already
+     * exists.
      */
-    source_catalog?: string;
+    destination_table?: string;
     /**
-     * Required. Schema name in the source database.
+     * Required. Report URL in the source system.
      */
-    source_schema?: string;
+    source_url?: string;
     /**
-     * Configuration settings to control the ingestion of tables. These settings are applied to
-     * all tables in this schema and override the table_configuration defined in the
-     * IngestionPipelineDefinition object.
+     * Configuration settings to control the ingestion of tables. These settings override the
+     * table_configuration defined in the IngestionPipelineDefinition object.
      */
     table_configuration?: TableConfigurationClass | string;
 }
@@ -10776,6 +10995,11 @@ export interface TableConfigurationClass {
      * The SCD type to use to ingest the table.
      */
     scd_type?: ScdType;
+    /**
+     * The column names specifying the logical order of events in the source data. Delta Live
+     * Tables uses this sequencing to handle change events that arrive out of order.
+     */
+    sequence_by?: string[] | string;
 }
 
 /**
@@ -10898,6 +11122,14 @@ export interface TableConfigurationClass {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -10910,6 +11142,11 @@ export interface TableConfigurationClass {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -11328,6 +11565,15 @@ export interface TableConfigurationClass {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -11338,11 +11584,7 @@ export interface TableConfigurationClass {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -11513,7 +11755,34 @@ export enum ScdType {
     ScdType2 = "SCD_TYPE_2",
 }
 
-export interface BundleSchem12 {
+export interface BundleSchem13 {
+    /**
+     * Required. Destination catalog to store tables.
+     */
+    destination_catalog?: string;
+    /**
+     * Required. Destination schema to store tables in. Tables with the same name as the source
+     * tables are created in this destination schema. The pipeline fails If a table with the
+     * same name already exists.
+     */
+    destination_schema?: string;
+    /**
+     * The source catalog name. Might be optional depending on the type of source.
+     */
+    source_catalog?: string;
+    /**
+     * Required. Schema name in the source database.
+     */
+    source_schema?: string;
+    /**
+     * Configuration settings to control the ingestion of tables. These settings are applied to
+     * all tables in this schema and override the table_configuration defined in the
+     * IngestionPipelineDefinition object.
+     */
+    table_configuration?: TableConfigurationClass | string;
+}
+
+export interface BundleSchem14 {
     /**
      * Required. Destination catalog to store table.
      */
@@ -11523,7 +11792,7 @@ export interface BundleSchem12 {
      */
     destination_schema?: string;
     /**
-     * Optional. Destination table name. The pipeline fails If a table with that name already
+     * Optional. Destination table name. The pipeline fails if a table with that name already
      * exists. If not set, the source table name is used.
      */
     destination_table?: string;
@@ -11546,11 +11815,11 @@ export interface BundleSchem12 {
     table_configuration?: TableConfigurationClass | string;
 }
 
-export interface BundleSchem13 {
+export interface BundleSchem15 {
     /**
      * The path to a file that defines a pipeline and is stored in the Databricks Repos.
      */
-    file?: BundleSchem14 | string;
+    file?: BundleSchem16 | string;
     /**
      * URI of the jar to be installed. Currently only DBFS is supported.
      */
@@ -11569,7 +11838,7 @@ export interface BundleSchem13 {
     whl?: string;
 }
 
-export interface BundleSchem14 {
+export interface BundleSchem16 {
     /**
      * The absolute path of the file.
      */
@@ -11600,7 +11869,7 @@ export interface NotificationClass {
     email_recipients?: string[] | string;
 }
 
-export interface BundleSchem15 {
+export interface BundleSchem17 {
     cron?: CronClass | string;
     manual?: ManualClass | string;
 }
@@ -11648,7 +11917,7 @@ export interface QualityMonitorClass {
     /**
      * The schedule for automatically updating and refreshing metric tables.
      */
-    schedule?: BundleSchem16 | string;
+    schedule?: BundleSchem18 | string;
     /**
      * Whether to skip creating a default dashboard summarizing data quality metrics.
      */
@@ -11841,6 +12110,14 @@ export interface CustomMetricClass {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -11853,6 +12130,11 @@ export interface CustomMetricClass {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -12271,6 +12553,15 @@ export interface CustomMetricClass {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -12281,11 +12572,7 @@ export interface CustomMetricClass {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -12622,6 +12909,14 @@ export interface InferenceLogClass {
  * the :method:clusters/sparkVersions API call.
  *
  *
+ * The display name of the dashboard.
+ *
+ * The workspace path of the folder containing the dashboard. Includes leading slash and no
+ * trailing slash.
+ * This field is excluded in List Dashboards responses.
+ *
+ * The warehouse ID used to run the dashboard.
+ *
  * Location where artifacts for the experiment are stored.
  *
  * Unique identifier for the experiment.
@@ -12634,6 +12929,11 @@ export interface InferenceLogClass {
  * The tag key.
  *
  * The tag value.
+ *
+ * The id of the user specified budget policy to use for this job.
+ * If not specified, a default budget policy may be applied when creating or modifying the
+ * job.
+ * See `effective_budget_policy_id` for the budget policy used by this workload.
  *
  * An optional description for the job. The maximum length is 27700 characters in UTF-8
  * encoding.
@@ -13052,6 +13352,15 @@ export interface InferenceLogClass {
  * Immutable. Identifier for the ingestion gateway used by this ingestion pipeline to
  * communicate with the source. Specify either ingestion_gateway_id or connection_name.
  *
+ * Required. Destination catalog to store table.
+ *
+ * Required. Destination schema to store table.
+ *
+ * Required. Destination table name. The pipeline fails if a table with that name already
+ * exists.
+ *
+ * Required. Report URL in the source system.
+ *
  * Required. Destination catalog to store tables.
  *
  * Required. Destination schema to store tables in. Tables with the same name as the source
@@ -13062,11 +13371,7 @@ export interface InferenceLogClass {
  *
  * Required. Schema name in the source database.
  *
- * Required. Destination catalog to store table.
- *
- * Required. Destination schema to store table.
- *
- * Optional. Destination table name. The pipeline fails If a table with that name already
+ * Optional. Destination table name. The pipeline fails if a table with that name already
  * exists. If not set, the source table name is used.
  *
  * Source catalog name. Might be optional depending on the type of source.
@@ -13257,7 +13562,7 @@ export interface OnNewClassificationTagDetectedClass {
     email_addresses?: string[] | string;
 }
 
-export interface BundleSchem16 {
+export interface BundleSchem18 {
     /**
      * Read only field that indicates whether a schedule is paused or not.
      */
@@ -13323,7 +13628,7 @@ export interface GrantClass {
     privileges: string[] | string;
 }
 
-export interface BundleSchem17 {
+export interface BundleSchem19 {
     /**
      * Name of parent catalog.
      */
@@ -13364,10 +13669,10 @@ export interface TargetClass {
     run_as?: RunAsClass | string;
     sync?: SyncClass | string;
     variables?: {[key: string]: any} | string;
-    workspace?: BundleSchem18 | string;
+    workspace?: BundleSchem20 | string;
 }
 
-export interface BundleSchem18 {
+export interface BundleSchem20 {
     artifact_path?: string;
     auth_type?: string;
     azure_client_id?: string;
@@ -13665,7 +13970,7 @@ const typeMap: any = {
             {
                 json: "workspace",
                 js: "workspace",
-                typ: u(undefined, u(r("BundleSchem18"), "")),
+                typ: u(undefined, u(r("BundleSchem20"), "")),
             },
         ],
         false
@@ -13805,6 +14110,11 @@ const typeMap: any = {
                 typ: u(undefined, u(m(u(r("TentacledBundleSchem"), "")), "")),
             },
             {
+                json: "dashboards",
+                js: "dashboards",
+                typ: u(undefined, u(m(u(r("HilariousBundleSchem"), "")), "")),
+            },
+            {
                 json: "experiments",
                 js: "experiments",
                 typ: u(undefined, u(m(u(r("ExperimentClass"), "")), "")),
@@ -13845,7 +14155,7 @@ const typeMap: any = {
             {
                 json: "schemas",
                 js: "schemas",
-                typ: u(undefined, u(m(u(r("BundleSchem17"), "")), "")),
+                typ: u(undefined, u(m(u(r("BundleSchem19"), "")), "")),
             },
         ],
         false
@@ -14224,6 +14534,30 @@ const typeMap: any = {
         ],
         false
     ),
+    HilariousBundleSchem: o(
+        [
+            {json: "display_name", js: "display_name", typ: ""},
+            {
+                json: "embed_credentials",
+                js: "embed_credentials",
+                typ: u(undefined, u(true, "")),
+            },
+            {json: "file_path", js: "file_path", typ: u(undefined, "")},
+            {json: "parent_path", js: "parent_path", typ: u(undefined, "")},
+            {
+                json: "permissions",
+                js: "permissions",
+                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+            },
+            {
+                json: "serialized_dashboard",
+                js: "serialized_dashboard",
+                typ: u(undefined, "any"),
+            },
+            {json: "warehouse_id", js: "warehouse_id", typ: u(undefined, "")},
+        ],
+        false
+    ),
     ExperimentClass: o(
         [
             {
@@ -14256,12 +14590,12 @@ const typeMap: any = {
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("HilariousBundleSchem"), "")), "")),
+                typ: u(undefined, u(a(u(r("AmbitiousBundleSchem"), "")), "")),
             },
         ],
         false
     ),
-    HilariousBundleSchem: o(
+    AmbitiousBundleSchem: o(
         [
             {json: "key", js: "key", typ: u(undefined, "")},
             {json: "value", js: "value", typ: u(undefined, "")},
@@ -14271,6 +14605,11 @@ const typeMap: any = {
     JobClass: o(
         [
             {
+                json: "budget_policy_id",
+                js: "budget_policy_id",
+                typ: u(undefined, ""),
+            },
+            {
                 json: "continuous",
                 js: "continuous",
                 typ: u(undefined, u(r("ContinuousClass"), "")),
@@ -14279,7 +14618,7 @@ const typeMap: any = {
             {
                 json: "email_notifications",
                 js: "email_notifications",
-                typ: u(undefined, u(r("AmbitiousBundleSchem"), "")),
+                typ: u(undefined, u(r("CunningBundleSchem"), "")),
             },
             {
                 json: "environments",
@@ -14310,7 +14649,7 @@ const typeMap: any = {
             {
                 json: "notification_settings",
                 js: "notification_settings",
-                typ: u(undefined, u(r("CunningBundleSchem"), "")),
+                typ: u(undefined, u(r("MagentaBundleSchem"), "")),
             },
             {
                 json: "parameters",
@@ -14335,7 +14674,7 @@ const typeMap: any = {
             {
                 json: "schedule",
                 js: "schedule",
-                typ: u(undefined, u(r("MagentaBundleSchem"), "")),
+                typ: u(undefined, u(r("FriskyBundleSchem"), "")),
             },
             {json: "tags", js: "tags", typ: u(undefined, u(m(""), ""))},
             {
@@ -14351,7 +14690,7 @@ const typeMap: any = {
             {
                 json: "trigger",
                 js: "trigger",
-                typ: u(undefined, u(r("BundleSchem2"), "")),
+                typ: u(undefined, u(r("BundleSchem4"), "")),
             },
             {
                 json: "webhook_notifications",
@@ -14371,7 +14710,7 @@ const typeMap: any = {
         ],
         false
     ),
-    AmbitiousBundleSchem: o(
+    CunningBundleSchem: o(
         [
             {
                 json: "no_alert_for_skipped_runs",
@@ -14587,7 +14926,7 @@ const typeMap: any = {
         ],
         false
     ),
-    CunningBundleSchem: o(
+    MagentaBundleSchem: o(
         [
             {
                 json: "no_alert_for_canceled_runs",
@@ -14621,7 +14960,7 @@ const typeMap: any = {
         ],
         false
     ),
-    MagentaBundleSchem: o(
+    FriskyBundleSchem: o(
         [
             {
                 json: "pause_status",
@@ -14675,7 +15014,7 @@ const typeMap: any = {
             {
                 json: "email_notifications",
                 js: "email_notifications",
-                typ: u(undefined, u(r("FriskyBundleSchem"), "")),
+                typ: u(undefined, u(r("MischievousBundleSchem"), "")),
             },
             {
                 json: "environment_key",
@@ -14705,7 +15044,10 @@ const typeMap: any = {
             {
                 json: "libraries",
                 js: "libraries",
-                typ: u(undefined, u(a(u(r("MischievousBundleSchem"), "")), "")),
+                typ: u(
+                    undefined,
+                    u(a(u(r("BraggadociousBundleSchem"), "")), "")
+                ),
             },
             {
                 json: "max_retries",
@@ -14730,7 +15072,7 @@ const typeMap: any = {
             {
                 json: "notification_settings",
                 js: "notification_settings",
-                typ: u(undefined, u(r("BraggadociousBundleSchem"), "")),
+                typ: u(undefined, u(r("BundleSchem1"), "")),
             },
             {
                 json: "pipeline_task",
@@ -14822,7 +15164,7 @@ const typeMap: any = {
         ],
         false
     ),
-    FriskyBundleSchem: o(
+    MischievousBundleSchem: o(
         [
             {
                 json: "no_alert_for_skipped_runs",
@@ -14853,7 +15195,7 @@ const typeMap: any = {
         ],
         false
     ),
-    MischievousBundleSchem: o(
+    BraggadociousBundleSchem: o(
         [
             {
                 json: "cran",
@@ -14916,7 +15258,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BraggadociousBundleSchem: o(
+    BundleSchem1: o(
         [
             {
                 json: "alert_on_last_attempt",
@@ -15073,12 +15415,12 @@ const typeMap: any = {
             {
                 json: "dashboard",
                 js: "dashboard",
-                typ: u(undefined, u(r("DashboardClass"), "")),
+                typ: u(undefined, u(r("BundleSchem2"), "")),
             },
             {
                 json: "file",
                 js: "file",
-                typ: u(undefined, u(r("BundleSchem1"), "")),
+                typ: u(undefined, u(r("BundleSchem3"), "")),
             },
             {
                 json: "parameters",
@@ -15121,7 +15463,7 @@ const typeMap: any = {
         ],
         false
     ),
-    DashboardClass: o(
+    BundleSchem2: o(
         [
             {
                 json: "custom_subject",
@@ -15142,7 +15484,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem1: o(
+    BundleSchem3: o(
         [
             {json: "path", js: "path", typ: ""},
             {json: "source", js: "source", typ: u(undefined, r("Source"))},
@@ -15214,7 +15556,7 @@ const typeMap: any = {
         [{json: "id", js: "id", typ: ""}],
         false
     ),
-    BundleSchem2: o(
+    BundleSchem4: o(
         [
             {
                 json: "file_arrival",
@@ -15309,7 +15651,7 @@ const typeMap: any = {
             {
                 json: "rate_limits",
                 js: "rate_limits",
-                typ: u(undefined, u(a(u(r("BundleSchem4"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem6"), "")), "")),
             },
             {
                 json: "route_optimized",
@@ -15319,7 +15661,7 @@ const typeMap: any = {
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("BundleSchem5"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem7"), "")), "")),
             },
         ],
         false
@@ -15339,7 +15681,7 @@ const typeMap: any = {
             {
                 json: "rate_limits",
                 js: "rate_limits",
-                typ: u(undefined, u(a(u(r("BundleSchem3"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem5"), "")), "")),
             },
             {
                 json: "usage_tracking_config",
@@ -15398,7 +15740,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem3: o(
+    BundleSchem5: o(
         [
             {json: "calls", js: "calls", typ: u(0, "")},
             {json: "key", js: "key", typ: u(undefined, r("Key"))},
@@ -15796,7 +16138,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem4: o(
+    BundleSchem6: o(
         [
             {json: "calls", js: "calls", typ: u(0, "")},
             {json: "key", js: "key", typ: u(undefined, r("Key"))},
@@ -15808,7 +16150,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem5: o(
+    BundleSchem7: o(
         [
             {json: "key", js: "key", typ: ""},
             {json: "value", js: "value", typ: u(undefined, "")},
@@ -15842,7 +16184,7 @@ const typeMap: any = {
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("BundleSchem7"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem9"), "")), "")),
             },
             {json: "user_id", js: "user_id", typ: u(undefined, "")},
         ],
@@ -15875,21 +16217,21 @@ const typeMap: any = {
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("BundleSchem6"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem8"), "")), "")),
             },
             {json: "user_id", js: "user_id", typ: u(undefined, "")},
             {json: "version", js: "version", typ: u(undefined, "")},
         ],
         false
     ),
-    BundleSchem6: o(
+    BundleSchem8: o(
         [
             {json: "key", js: "key", typ: u(undefined, "")},
             {json: "value", js: "value", typ: u(undefined, "")},
         ],
         false
     ),
-    BundleSchem7: o(
+    BundleSchem9: o(
         [
             {json: "key", js: "key", typ: u(undefined, "")},
             {json: "value", js: "value", typ: u(undefined, "")},
@@ -15908,7 +16250,7 @@ const typeMap: any = {
             {
                 json: "clusters",
                 js: "clusters",
-                typ: u(undefined, u(a(u(r("BundleSchem8"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem10"), "")), "")),
             },
             {
                 json: "configuration",
@@ -15923,7 +16265,7 @@ const typeMap: any = {
             {
                 json: "deployment",
                 js: "deployment",
-                typ: u(undefined, u(r("BundleSchem10"), "")),
+                typ: u(undefined, u(r("BundleSchem12"), "")),
             },
             {
                 json: "development",
@@ -15950,7 +16292,7 @@ const typeMap: any = {
             {
                 json: "libraries",
                 js: "libraries",
-                typ: u(undefined, u(a(u(r("BundleSchem13"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem15"), "")), "")),
             },
             {json: "name", js: "name", typ: u(undefined, "")},
             {
@@ -15975,12 +16317,12 @@ const typeMap: any = {
             {
                 json: "trigger",
                 js: "trigger",
-                typ: u(undefined, u(r("BundleSchem15"), "")),
+                typ: u(undefined, u(r("BundleSchem17"), "")),
             },
         ],
         false
     ),
-    BundleSchem8: o(
+    BundleSchem10: o(
         [
             {
                 json: "apply_policy_default_values",
@@ -15990,7 +16332,7 @@ const typeMap: any = {
             {
                 json: "autoscale",
                 js: "autoscale",
-                typ: u(undefined, u(r("BundleSchem9"), "")),
+                typ: u(undefined, u(r("BundleSchem11"), "")),
             },
             {
                 json: "aws_attributes",
@@ -16068,7 +16410,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem9: o(
+    BundleSchem11: o(
         [
             {json: "max_workers", js: "max_workers", typ: u(0, "")},
             {json: "min_workers", js: "min_workers", typ: u(0, "")},
@@ -16076,7 +16418,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem10: o(
+    BundleSchem12: o(
         [
             {json: "kind", js: "kind", typ: u(undefined, r("Kind"))},
             {
@@ -16143,19 +16485,71 @@ const typeMap: any = {
     ObjectClass: o(
         [
             {
+                json: "report",
+                js: "report",
+                typ: u(undefined, u(r("ReportClass"), "")),
+            },
+            {
                 json: "schema",
                 js: "schema",
-                typ: u(undefined, u(r("BundleSchem11"), "")),
+                typ: u(undefined, u(r("BundleSchem13"), "")),
             },
             {
                 json: "table",
                 js: "table",
-                typ: u(undefined, u(r("BundleSchem12"), "")),
+                typ: u(undefined, u(r("BundleSchem14"), "")),
             },
         ],
         false
     ),
-    BundleSchem11: o(
+    ReportClass: o(
+        [
+            {
+                json: "destination_catalog",
+                js: "destination_catalog",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "destination_schema",
+                js: "destination_schema",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "destination_table",
+                js: "destination_table",
+                typ: u(undefined, ""),
+            },
+            {json: "source_url", js: "source_url", typ: u(undefined, "")},
+            {
+                json: "table_configuration",
+                js: "table_configuration",
+                typ: u(undefined, u(r("TableConfigurationClass"), "")),
+            },
+        ],
+        false
+    ),
+    TableConfigurationClass: o(
+        [
+            {
+                json: "primary_keys",
+                js: "primary_keys",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {
+                json: "salesforce_include_formula_fields",
+                js: "salesforce_include_formula_fields",
+                typ: u(undefined, u(true, "")),
+            },
+            {json: "scd_type", js: "scd_type", typ: u(undefined, r("ScdType"))},
+            {
+                json: "sequence_by",
+                js: "sequence_by",
+                typ: u(undefined, u(a(""), "")),
+            },
+        ],
+        false
+    ),
+    BundleSchem13: o(
         [
             {
                 json: "destination_catalog",
@@ -16181,23 +16575,7 @@ const typeMap: any = {
         ],
         false
     ),
-    TableConfigurationClass: o(
-        [
-            {
-                json: "primary_keys",
-                js: "primary_keys",
-                typ: u(undefined, u(a(""), "")),
-            },
-            {
-                json: "salesforce_include_formula_fields",
-                js: "salesforce_include_formula_fields",
-                typ: u(undefined, u(true, "")),
-            },
-            {json: "scd_type", js: "scd_type", typ: u(undefined, r("ScdType"))},
-        ],
-        false
-    ),
-    BundleSchem12: o(
+    BundleSchem14: o(
         [
             {
                 json: "destination_catalog",
@@ -16229,12 +16607,12 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem13: o(
+    BundleSchem15: o(
         [
             {
                 json: "file",
                 js: "file",
-                typ: u(undefined, u(r("BundleSchem14"), "")),
+                typ: u(undefined, u(r("BundleSchem16"), "")),
             },
             {json: "jar", js: "jar", typ: u(undefined, "")},
             {
@@ -16251,7 +16629,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem14: o(
+    BundleSchem16: o(
         [{json: "path", js: "path", typ: u(undefined, "")}],
         false
     ),
@@ -16270,7 +16648,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem15: o(
+    BundleSchem17: o(
         [
             {
                 json: "cron",
@@ -16329,7 +16707,7 @@ const typeMap: any = {
             {
                 json: "schedule",
                 js: "schedule",
-                typ: u(undefined, u(r("BundleSchem16"), "")),
+                typ: u(undefined, u(r("BundleSchem18"), "")),
             },
             {
                 json: "skip_builtin_dashboard",
@@ -16416,7 +16794,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem16: o(
+    BundleSchem18: o(
         [
             {
                 json: "pause_status",
@@ -16466,7 +16844,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem17: o(
+    BundleSchem19: o(
         [
             {json: "catalog_name", js: "catalog_name", typ: ""},
             {json: "comment", js: "comment", typ: u(undefined, "")},
@@ -16543,12 +16921,12 @@ const typeMap: any = {
             {
                 json: "workspace",
                 js: "workspace",
-                typ: u(undefined, u(r("BundleSchem18"), "")),
+                typ: u(undefined, u(r("BundleSchem20"), "")),
             },
         ],
         false
     ),
-    BundleSchem18: o(
+    BundleSchem20: o(
         [
             {json: "artifact_path", js: "artifact_path", typ: u(undefined, "")},
             {json: "auth_type", js: "auth_type", typ: u(undefined, "")},
