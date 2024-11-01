@@ -13,7 +13,9 @@ import {
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
 
-describe("Run notebooks", async function () {
+// We split py and ipynb suites to avoid tests failing on GH workflows,
+// likely because the tests open webviews which are heavy on resources.
+describe("Run ipynb notebooks", async function () {
     let projectDir: string;
     this.timeout(3 * 60 * 1000);
 
@@ -31,15 +33,6 @@ describe("Run notebooks", async function () {
         await fs.mkdir(path.join(projectDir, "a", "b c"), {
             recursive: true,
         });
-        await fs.writeFile(
-            path.join(projectDir, "a", "b c", "notebook.py"),
-            [
-                "# Databricks notebook source",
-                `spark.sql('SELECT "hello world"').show()`,
-                "# COMMAND ----------",
-                "# MAGIC %sh pwd",
-            ].join("\n")
-        );
         await fs.writeFile(
             path.join(projectDir, "notebook.ipynb"),
             JSON.stringify({
@@ -70,12 +63,6 @@ describe("Run notebooks", async function () {
         await writeRootBundleConfig(getBasicBundleConfig(), projectDir);
         await waitForLogin("DEFAULT");
         await dismissNotifications();
-    });
-
-    it("should run a notebook.py file as a workflow", async () => {
-        await openFile("notebook.py");
-        await executeCommandWhenAvailable("Databricks: Run File as Workflow");
-        await waitForWorkflowWebview("a/b c");
     });
 
     it("should run a notebook.ipynb file as a workflow", async () => {

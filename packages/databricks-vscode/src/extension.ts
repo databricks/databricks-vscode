@@ -681,6 +681,11 @@ export async function activate(
             bundleCommands
         ),
         telemetry.registerCommand(
+            "databricks.bundle.deployAndValidate",
+            bundleCommands.deployAndValidate,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
             "databricks.bundle.cancelRun",
             bundleCommands.cancelRun,
             bundleCommands

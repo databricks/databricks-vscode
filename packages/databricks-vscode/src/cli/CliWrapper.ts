@@ -690,7 +690,8 @@ export class CliWrapper {
         authProvider: AuthProvider,
         resourceKey: string,
         workspaceFolder: Uri,
-        configfilePath?: string
+        configfilePath?: string,
+        additionalArgs: string[] = []
     ): Promise<{
         cmd: string;
         args: string[];
@@ -711,7 +712,14 @@ export class CliWrapper {
 
         return {
             cmd: this.cliPath,
-            args: ["bundle", "run", "--target", target, resourceKey],
+            args: [
+                "bundle",
+                "run",
+                "--target",
+                target,
+                resourceKey,
+                ...additionalArgs,
+            ],
             options: {
                 cwd: workspaceFolder.fsPath,
                 env,

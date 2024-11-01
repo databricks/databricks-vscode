@@ -13,6 +13,7 @@ import * as lodash from "lodash";
 import {ProcessError} from "../../cli/CliWrapper";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {humaniseMode} from "../utils/BundleUtils";
+import {BundleRunType} from "../../telemetry/constants";
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
@@ -169,7 +170,11 @@ export class BundleCommands implements Disposable {
     }
 
     @onError({popup: {prefix: "Error running resource."}})
-    async deployAndRun(treeNode: BundleResourceExplorerTreeNode) {
+    async deployAndRun(
+        treeNode: BundleResourceExplorerTreeNode,
+        additionalArgs: string[] = [],
+        runType: BundleRunType = "run"
+    ) {
         if (!isRunnable(treeNode)) {
             throw new Error(`Cannot run resource of type ${treeNode.type}`);
         }
@@ -179,17 +184,23 @@ export class BundleCommands implements Disposable {
             await this.deploy();
             const result = await this.bundleRunStatusManager.run(
                 treeNode.resourceKey,
-                treeNode.type
+                treeNode.type,
+                additionalArgs
             );
             recordEvent({
                 success: true,
+                runType,
                 resourceType: treeNode.type,
                 cancelled: result.cancelled,
             });
         } catch (e) {
-            recordEvent({success: false, resourceType: treeNode.type});
+            recordEvent({success: false, resourceType: treeNode.type, runType});
             throw e;
         }
+    }
+
+    async deployAndValidate(treeNode: BundleResourceExplorerTreeNode) {
+        return this.deployAndRun(treeNode, ["--validate-only"]);
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})
