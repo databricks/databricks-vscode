@@ -1,4 +1,4 @@
-name: integration
+name: Integration Tests
 
 on:
     pull_request:
@@ -10,17 +10,18 @@ jobs:
     check-token:
         name: Check secrets access
         runs-on: ubuntu-latest
+        environment: "test-trigger-is"
         outputs:
             has_token: ${{ steps.set-token-status.outputs.has_token }}
         steps:
-            - name: Check if GITHUB_TOKEN is set
+            - name: Check if DECO_WORKFLOW_TRIGGER_APP_ID is set
               id: set-token-status
               run: |
-                  if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
-                      echo "GITHUB_TOKEN is empty. User has no access to tokens."
+                  if [ -z "${{ secrets.DECO_WORKFLOW_TRIGGER_APP_ID }}" ]; then
+                      echo "DECO_WORKFLOW_TRIGGER_APP_ID is empty. User has no access to secrets."
                       echo "::set-output name=has_token::false"
                   else
-                      echo "GITHUB_TOKEN is set. User has no access to tokens."
+                      echo "DECO_WORKFLOW_TRIGGER_APP_ID is set. User has access to secrets."
                       echo "::set-output name=has_token::true"
                   fi
 
@@ -30,7 +31,6 @@ jobs:
         needs: check-token
         if: github.event_name == 'pull_request'  && needs.check-token.outputs.has_token == 'true'
         environment: "test-trigger-is"
-
         steps:
             - uses: actions/checkout@v4
 
