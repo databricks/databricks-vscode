@@ -18,7 +18,6 @@ import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
-import {cwd} from "node:process";
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 

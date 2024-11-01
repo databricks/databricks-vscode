@@ -1,7 +1,6 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
-    getUniqueResourceName,
     getViewSection,
     waitForLogin,
     waitForTreeItems,
