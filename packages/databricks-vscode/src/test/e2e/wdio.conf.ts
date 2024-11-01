@@ -489,7 +489,7 @@ export const config: Options.Testrunner = {
         console.log("Extension dir:", EXTENSION_DIR);
         console.log("Workspace dir:", WORKSPACE_PATH);
         const dbCli = path.join(
-            EXTENSION_DIR.replace(" ", "\\ "),
+            EXTENSION_DIR,
             `${packageJson.publisher}.${packageJson.name}-${packageJson.version}`,
             "bin",
             "databricks"
