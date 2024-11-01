@@ -1,3 +1,14 @@
+# Release: v2.4.8
+
+## packages/databricks-vscode
+
+## (2024-10-31)
+
+-   Simplify UI for selecting virtual environments
+-   Correctly render variables panel with overridden lookup vars
+-   Fix the start dates for job and pipeline runs
+-   Update Databricks CLI to 0.232.1
+
 # Release: v2.4.7
 
 ## packages/databricks-vscode
