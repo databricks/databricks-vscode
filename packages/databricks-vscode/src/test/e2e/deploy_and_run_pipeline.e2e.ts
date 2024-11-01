@@ -1,21 +1,21 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
-    getUniqueResourceName,
     getViewSection,
     waitForLogin,
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {CustomTreeSection, Workbench} from "wdio-vscode-service";
-import {createProjectWithJob} from "./utils/dabsFixtures.ts";
+import {createProjectWithPipeline} from "./utils/dabsFixtures.ts";
 import {getResourceViewItem} from "./utils/dabsExplorerUtils.ts";
 
-describe("Deploy and run job", async function () {
+describe("Deploy and run pipeline", async function () {
     let workbench: Workbench;
     let resourceExplorerView: CustomTreeSection;
-    let jobName: string;
+    let pipelineName: string;
 
-    this.timeout(3 * 60 * 1000);
+    // Long timeout, as the pipeline will be waiting for its cluster to start
+    this.timeout(20 * 60 * 1000);
 
     before(async function () {
         assert(
@@ -32,9 +32,8 @@ describe("Deploy and run job", async function () {
         );
 
         workbench = await browser.getWorkbench();
-        jobName = await createProjectWithJob(
-            process.env.WORKSPACE_PATH,
-            process.env.TEST_DEFAULT_CLUSTER_ID
+        pipelineName = await createProjectWithPipeline(
+            process.env.WORKSPACE_PATH
         );
         await dismissNotifications();
     });
@@ -56,19 +55,22 @@ describe("Deploy and run job", async function () {
         resourceExplorerView = section as CustomTreeSection;
     });
 
-    it("should deploy and run the current job", async () => {
+    it("should deploy and run the current pipeline", async () => {
         const outputView = await workbench.getBottomBar().openOutputView();
         await outputView.selectChannel("Databricks Bundle Logs");
         await outputView.clearText();
 
-        const jobItem = await getResourceViewItem(
+        const pipelineItem = await getResourceViewItem(
             resourceExplorerView,
-            "Workflows",
-            jobName
+            "Pipelines",
+            pipelineName
         );
-        assert(jobItem, `Job ${jobName} not found in resource explorer`);
+        assert(
+            pipelineItem,
+            `Pipeline ${pipelineName} not found in resource explorer`
+        );
 
-        const deployAndRunButton = await jobItem.getActionButton(
+        const deployAndRunButton = await pipelineItem.getActionButton(
             "Deploy the bundle and run the resource"
         );
         assert(deployAndRunButton, "Deploy and run button not found");
@@ -120,27 +122,33 @@ describe("Deploy and run job", async function () {
         // Wait for status to reach success
         await browser.waitUntil(
             async () => {
-                const jobItem = await getResourceViewItem(
+                const item = await getResourceViewItem(
                     resourceExplorerView,
-                    "Workflows",
-                    jobName
+                    "Pipelines",
+                    pipelineName
                 );
-                if (jobItem === undefined) {
+                if (item === undefined) {
+                    console.log(`Item ${pipelineName} not found`);
                     return false;
                 }
 
-                const runStatusItem = await jobItem.findChildItem("Run Status");
+                const runStatusItem = await item.findChildItem("Run Status");
                 if (runStatusItem === undefined) {
+                    console.log("Run status item not found");
                     return false;
                 }
 
-                return (await runStatusItem.getDescription()) === "Success";
+                const description = await runStatusItem.getDescription();
+                console.log(`Run status: ${description}`);
+
+                return description === "Completed";
             },
             {
-                timeout: 120_000,
-                interval: 2_000,
+                // Long 10min timeout, as the pipeline will be waiting for its cluster to start
+                timeout: 600_000,
+                interval: 10_000,
                 timeoutMsg:
-                    "The run status didn't reach success within 120 seconds",
+                    "The run status didn't reach success within 10 minutes",
             }
         );
     });

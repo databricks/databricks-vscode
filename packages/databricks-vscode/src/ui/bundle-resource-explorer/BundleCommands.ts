@@ -200,7 +200,7 @@ export class BundleCommands implements Disposable {
     }
 
     async deployAndValidate(treeNode: BundleResourceExplorerTreeNode) {
-        return this.deployAndRun(treeNode, ["--validate-only"]);
+        return this.deployAndRun(treeNode, ["--validate-only"], "validate");
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})

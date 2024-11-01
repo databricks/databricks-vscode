@@ -14,7 +14,10 @@ import {
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
 import {BundleSchema, BundleTarget, Resource} from "../../bundle/types";
-import {geTaskViewItem, getJobViewItem} from "./utils/dabsExplorerUtils.ts";
+import {
+    geTaskViewItem,
+    getResourceViewItem,
+} from "./utils/dabsExplorerUtils.ts";
 import {fileURLToPath} from "url";
 
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -142,8 +145,9 @@ describe("Automatically refresh resource explorer", async function () {
 
         await browser.waitUntil(
             async () => {
-                const job = await getJobViewItem(
+                const job = await getResourceViewItem(
                     resourceExplorerView,
+                    "Workflows",
                     jobDef.name!
                 );
                 return job !== undefined;
