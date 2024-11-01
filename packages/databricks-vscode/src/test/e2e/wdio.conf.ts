@@ -488,15 +488,12 @@ export const config: Options.Testrunner = {
         console.log("Starting cleanup");
         console.log("Extension dir:", EXTENSION_DIR);
         console.log("Workspace dir:", WORKSPACE_PATH);
-        let dbCli = path.join(
-            EXTENSION_DIR,
+        const dbCli = path.join(
+            EXTENSION_DIR.replace(" ", "\\ "),
             `${packageJson.publisher}.${packageJson.name}-${packageJson.version}`,
             "bin",
             "databricks"
         );
-        if (process.platform === "win32") {
-            dbCli += ".exe";
-        }
         const subfolders = await fs.readdir(WORKSPACE_PATH, {
             withFileTypes: true,
         });
