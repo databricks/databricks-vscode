@@ -37,3 +37,42 @@ export async function geTaskViewItem(
         }
     }
 }
+
+export async function waitForRunStatus(
+    resourceExplorerView: CustomTreeSection,
+    resourceType: "Workflows" | "Pipelines",
+    resorceName: string,
+    successLabel: string,
+    timeout: number = 120_000
+) {
+    console.log("Waiting for run to finish");
+    await browser.waitUntil(
+        async () => {
+            const item = await getResourceViewItem(
+                resourceExplorerView,
+                resourceType,
+                resorceName
+            );
+            if (item === undefined) {
+                console.log(`Item ${resorceName} not found`);
+                return false;
+            }
+
+            const runStatusItem = await item.findChildItem("Run Status");
+            if (runStatusItem === undefined) {
+                console.log("Run status item not found");
+                return false;
+            }
+
+            const description = await runStatusItem.getDescription();
+            console.log(`Run status: ${description}`);
+
+            return description === successLabel;
+        },
+        {
+            timeout,
+            interval: 5_000,
+            timeoutMsg: `The run status didn't reach success within ${timeout}ms`,
+        }
+    );
+}

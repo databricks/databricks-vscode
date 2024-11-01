@@ -321,3 +321,45 @@ export async function executeCommandWhenAvailable(command: string) {
         }
     });
 }
+
+export async function waitForDeployment() {
+    console.log("Waiting for deployment to finish");
+    const workbench = await driver.getWorkbench();
+    await browser.waitUntil(
+        async () => {
+            try {
+                await browser.executeWorkbench(async (vscode) => {
+                    await vscode.commands.executeCommand(
+                        "workbench.panel.output.focus"
+                    );
+                });
+                const outputView = await workbench
+                    .getBottomBar()
+                    .openOutputView();
+
+                if (
+                    (await outputView.getCurrentChannel()) !==
+                    "Databricks Bundle Logs"
+                ) {
+                    await outputView.selectChannel("Databricks Bundle Logs");
+                }
+
+                const logs = (await outputView.getText()).join("");
+                console.log("------------ Bundle Output ------------");
+                console.log(logs);
+                return (
+                    logs.includes("Bundle deployed successfully") &&
+                    logs.includes("Bundle configuration refreshed")
+                );
+            } catch (e) {
+                return false;
+            }
+        },
+        {
+            timeout: 60_000,
+            interval: 1_000,
+            timeoutMsg:
+                "Can't find 'Bundle deployed successfully' message in output channel",
+        }
+    );
+}

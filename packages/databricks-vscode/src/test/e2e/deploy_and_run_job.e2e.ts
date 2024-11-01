@@ -2,12 +2,16 @@ import assert from "node:assert";
 import {
     dismissNotifications,
     getViewSection,
+    waitForDeployment,
     waitForLogin,
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {CustomTreeSection, Workbench} from "wdio-vscode-service";
 import {createProjectWithJob} from "./utils/dabsFixtures.ts";
-import {getResourceViewItem} from "./utils/dabsExplorerUtils.ts";
+import {
+    getResourceViewItem,
+    waitForRunStatus,
+} from "./utils/dabsExplorerUtils.ts";
 
 describe("Deploy and run job", async function () {
     let workbench: Workbench;
@@ -73,74 +77,13 @@ describe("Deploy and run job", async function () {
         assert(deployAndRunButton, "Deploy and run button not found");
         await deployAndRunButton.elem.click();
 
-        console.log("Waiting for deployment to finish");
-        // Wait for the deployment to finish
-        await browser.waitUntil(
-            async () => {
-                try {
-                    await browser.executeWorkbench(async (vscode) => {
-                        await vscode.commands.executeCommand(
-                            "workbench.panel.output.focus"
-                        );
-                    });
-                    const outputView = await workbench
-                        .getBottomBar()
-                        .openOutputView();
+        await waitForDeployment();
 
-                    if (
-                        (await outputView.getCurrentChannel()) !==
-                        "Databricks Bundle Logs"
-                    ) {
-                        await outputView.selectChannel(
-                            "Databricks Bundle Logs"
-                        );
-                    }
-
-                    const logs = (await outputView.getText()).join("");
-                    console.log("------------ Bundle Output ------------");
-                    console.log(logs);
-                    return (
-                        logs.includes("Bundle deployed successfully") &&
-                        logs.includes("Bundle configuration refreshed")
-                    );
-                } catch (e) {
-                    return false;
-                }
-            },
-            {
-                timeout: 60_000,
-                interval: 1_000,
-                timeoutMsg:
-                    "Can't find 'Bundle deployed successfully' message in output channel",
-            }
-        );
-
-        console.log("Waiting for run to finish");
-        // Wait for status to reach success
-        await browser.waitUntil(
-            async () => {
-                const jobItem = await getResourceViewItem(
-                    resourceExplorerView,
-                    "Workflows",
-                    jobName
-                );
-                if (jobItem === undefined) {
-                    return false;
-                }
-
-                const runStatusItem = await jobItem.findChildItem("Run Status");
-                if (runStatusItem === undefined) {
-                    return false;
-                }
-
-                return (await runStatusItem.getDescription()) === "Success";
-            },
-            {
-                timeout: 120_000,
-                interval: 2_000,
-                timeoutMsg:
-                    "The run status didn't reach success within 120 seconds",
-            }
+        await waitForRunStatus(
+            resourceExplorerView,
+            "Workflows",
+            jobName,
+            "Success"
         );
     });
 });
