@@ -183,6 +183,11 @@ export async function createProjectWithPipeline(vscodeWorkspaceRoot: string) {
                         vscode_integration_test: {
                             name: pipelineName,
                             target: "vscode_integration_test",
+                            clusters: [
+                                {
+                                    num_workers: 0,
+                                },
+                            ],
                             libraries: [
                                 {
                                     notebook: {
