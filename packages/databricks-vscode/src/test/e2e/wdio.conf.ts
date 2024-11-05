@@ -35,12 +35,11 @@ const VSIX_PATH = path.resolve(
 );
 const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
 
-const metaCharsRegExp = /([()\][%!^"`<>&|;,*?])/g;
+const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
 
 export function escapeCommand(arg: string): string {
     // Escape meta chars
-    arg = arg.replace(metaCharsRegExp, "^$1");
-
+    arg = `"${arg}"`.replace(metaCharsRegExp, "^$1");
     return arg;
 }
 
