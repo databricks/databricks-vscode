@@ -30,6 +30,7 @@ export type ManualLoginSource =
     | "command"
     | "api";
 export type BundleRunResourceType = "pipelines" | "jobs";
+export type BundleRunType = "run" | "validate" | "partial-refresh";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -129,6 +130,7 @@ export class EventTypes {
             success: boolean;
             cancelled?: boolean;
             resourceType?: BundleRunResourceType;
+            runType?: BundleRunType;
         } & DurationMeasurement
     > = {
         comment: "Execute a bundle resource",

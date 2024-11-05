@@ -60,7 +60,8 @@ export class BundleRunStatusManager implements Disposable {
 
     async run(
         resourceKey: string,
-        resourceType: ResourceKey<BundleRemoteState>
+        resourceType: ResourceKey<BundleRemoteState>,
+        additionalArgs: string[] = []
     ) {
         const target = this.configModel.target;
         const authProvider = this.configModel.authProvider;
@@ -99,7 +100,8 @@ export class BundleRunStatusManager implements Disposable {
         try {
             const result = await this.bundleRunTerminalManager.run(
                 resourceKey,
-                (data) => remoteRunStatus.parseId(data)
+                (data) => remoteRunStatus.parseId(data),
+                additionalArgs
             );
             if (result.cancelled) {
                 await remoteRunStatus.cancel();

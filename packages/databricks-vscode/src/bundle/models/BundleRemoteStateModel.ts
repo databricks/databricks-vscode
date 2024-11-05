@@ -122,7 +122,10 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         );
     }
 
-    public async getRunCommand(resourceKey: string) {
+    public async getRunCommand(
+        resourceKey: string,
+        additionalArgs: string[] = []
+    ) {
         if (this.target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -135,7 +138,8 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.authProvider,
             resourceKey,
             this.workspaceFolder,
-            this.workspaceConfigs.databrickscfgLocation
+            this.workspaceConfigs.databrickscfgLocation,
+            additionalArgs
         );
     }
 

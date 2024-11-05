@@ -7,18 +7,19 @@ import {
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {CustomTreeSection, Workbench} from "wdio-vscode-service";
-import {createProjectWithJob} from "./utils/dabsFixtures.ts";
+import {createProjectWithPipeline} from "./utils/dabsFixtures.ts";
 import {
     getResourceViewItem,
     waitForRunStatus,
 } from "./utils/dabsExplorerUtils.ts";
 
-describe("Deploy and run job", async function () {
+describe("Deploy and run pipeline", async function () {
     let workbench: Workbench;
     let resourceExplorerView: CustomTreeSection;
-    let jobName: string;
+    let pipelineName: string;
 
-    this.timeout(3 * 60 * 1000);
+    // Long timeout, as the pipeline will be waiting for its cluster to start
+    this.timeout(20 * 60 * 1000);
 
     before(async function () {
         assert(
@@ -35,9 +36,8 @@ describe("Deploy and run job", async function () {
         );
 
         workbench = await browser.getWorkbench();
-        jobName = await createProjectWithJob(
-            process.env.WORKSPACE_PATH,
-            process.env.TEST_DEFAULT_CLUSTER_ID
+        pipelineName = await createProjectWithPipeline(
+            process.env.WORKSPACE_PATH
         );
         await dismissNotifications();
     });
@@ -59,19 +59,22 @@ describe("Deploy and run job", async function () {
         resourceExplorerView = section as CustomTreeSection;
     });
 
-    it("should deploy and run the current job", async () => {
+    it("should deploy and run the current pipeline", async () => {
         const outputView = await workbench.getBottomBar().openOutputView();
         await outputView.selectChannel("Databricks Bundle Logs");
         await outputView.clearText();
 
-        const jobItem = await getResourceViewItem(
+        const pipelineItem = await getResourceViewItem(
             resourceExplorerView,
-            "Workflows",
-            jobName
+            "Pipelines",
+            pipelineName
         );
-        assert(jobItem, `Job ${jobName} not found in resource explorer`);
+        assert(
+            pipelineItem,
+            `Pipeline ${pipelineName} not found in resource explorer`
+        );
 
-        const deployAndRunButton = await jobItem.getActionButton(
+        const deployAndRunButton = await pipelineItem.getActionButton(
             "Deploy the bundle and run the resource"
         );
         assert(deployAndRunButton, "Deploy and run button not found");
@@ -81,9 +84,12 @@ describe("Deploy and run job", async function () {
 
         await waitForRunStatus(
             resourceExplorerView,
-            "Workflows",
-            jobName,
-            "Success"
+            "Pipelines",
+            pipelineName,
+            // TODO: the account we are using to run tests doesn't have permissions to create clusters for the pipelines
+            "Failed",
+            // Long timeout, as the pipeline will be waiting for its cluster to start
+            15 * 60 * 1000
         );
     });
 });

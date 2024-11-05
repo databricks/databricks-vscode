@@ -25,7 +25,8 @@ export class BundleRunTerminalManager implements Disposable {
 
     async run(
         resourceKey: string,
-        onDidUpdate?: (data: string) => void
+        onDidUpdate?: (data: string) => void,
+        additionalArgs: string[] = []
     ): Promise<{cancelled: boolean; exitCode?: number | null}> {
         const target = this.bundleRemoteStateModel.target;
         if (target === undefined) {
@@ -72,8 +73,10 @@ export class BundleRunTerminalManager implements Disposable {
                     onCancellationEvent.dispose();
                 }, this.disposables);
 
-            const cmd =
-                await this.bundleRemoteStateModel.getRunCommand(resourceKey);
+            const cmd = await this.bundleRemoteStateModel.getRunCommand(
+                resourceKey,
+                additionalArgs
+            );
 
             // spawn a new process with the latest command, in the same terminal.
             terminal.pty.spawn(cmd);

@@ -200,21 +200,27 @@ export async function waitForInput() {
 }
 
 export async function waitForLogin(profileName: string) {
+    console.log("Waiting for login");
     await browser.waitUntil(
         async () => {
-            await dismissNotifications();
             const section = (await getViewSection(
                 "CONFIGURATION"
             )) as CustomTreeSection;
             assert(section, "CONFIGURATION section doesn't exist");
             const items = await section.getVisibleItems();
+            console.log("Items in the CONFIGURATION section:", items.length);
             for (const item of items) {
                 const label = await item.getLabel();
                 if (label.toLowerCase().includes("auth type")) {
                     const desc = await item.getDescription();
+                    console.log("Auth type label:", desc);
                     return desc?.includes(profileName);
                 }
             }
+            console.log(
+                "Couldn't find the auth type label with the profile",
+                profileName
+            );
         },
         {timeout: 60_000, interval: 2_000, timeoutMsg: "Login didn't finish"}
     );
@@ -263,11 +269,13 @@ export async function waitForWorkflowWebview(expectedOutput: string) {
     );
 
     const startTime = await browser.getTextByLabel("run-start-time");
+    console.log("Run start time:", startTime);
     expect(startTime).not.toHaveText("-");
 
     await browser.waitUntil(
         async () => {
             const status = await browser.getTextByLabel("run-status");
+            console.log("Run status:", status);
             return status.includes("Succeeded");
         },
         {
@@ -314,4 +322,46 @@ export async function executeCommandWhenAvailable(command: string) {
             return false;
         }
     });
+}
+
+export async function waitForDeployment() {
+    console.log("Waiting for deployment to finish");
+    const workbench = await driver.getWorkbench();
+    await browser.waitUntil(
+        async () => {
+            try {
+                await browser.executeWorkbench(async (vscode) => {
+                    await vscode.commands.executeCommand(
+                        "workbench.panel.output.focus"
+                    );
+                });
+                const outputView = await workbench
+                    .getBottomBar()
+                    .openOutputView();
+
+                if (
+                    (await outputView.getCurrentChannel()) !==
+                    "Databricks Bundle Logs"
+                ) {
+                    await outputView.selectChannel("Databricks Bundle Logs");
+                }
+
+                const logs = (await outputView.getText()).join("");
+                console.log("------------ Bundle Output ------------");
+                console.log(logs);
+                return (
+                    logs.includes("Bundle deployed successfully") &&
+                    logs.includes("Bundle configuration refreshed")
+                );
+            } catch (e) {
+                return false;
+            }
+        },
+        {
+            timeout: 60_000,
+            interval: 1_000,
+            timeoutMsg:
+                "Can't find 'Bundle deployed successfully' message in output channel",
+        }
+    );
 }
