@@ -269,11 +269,13 @@ export async function waitForWorkflowWebview(expectedOutput: string) {
     );
 
     const startTime = await browser.getTextByLabel("run-start-time");
+    console.log("Run start time:", startTime);
     expect(startTime).not.toHaveText("-");
 
     await browser.waitUntil(
         async () => {
             const status = await browser.getTextByLabel("run-status");
+            console.log("Run status:", status);
             return status.includes("Succeeded");
         },
         {
