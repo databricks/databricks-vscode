@@ -37,6 +37,9 @@ describe("Run py notebooks", async function () {
         );
 
         await writeRootBundleConfig(getBasicBundleConfig(), projectDir);
+    });
+
+    it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
         await dismissNotifications();
     });

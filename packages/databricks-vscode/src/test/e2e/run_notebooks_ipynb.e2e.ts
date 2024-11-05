@@ -59,8 +59,10 @@ describe("Run ipynb notebooks", async function () {
                 /* eslint-enable @typescript-eslint/naming-convention */
             })
         );
-
         await writeRootBundleConfig(getBasicBundleConfig(), projectDir);
+    });
+
+    it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
         await dismissNotifications();
     });
