@@ -186,7 +186,7 @@ export async function createProjectWithPipeline(vscodeWorkspaceRoot: string) {
                             clusters: [
                                 {
                                     label: "default",
-                                    policy_id: "000880C28D1101F5",
+                                    policy_id: "001196FD671F30D0",
                                     apply_policy_default_values: true,
                                 },
                             ],
