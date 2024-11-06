@@ -959,7 +959,7 @@
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",
         "test:integ:prepare": "yarn run package",
-        "test:integ:extension": "yarn run test:integ:prepare && wdio run src/test/e2e/wdio.conf.ts --spec src/test/e2e/deploy_and_run_p*",
+        "test:integ:extension": "yarn run test:integ:prepare && wdio run src/test/e2e/wdio.conf.ts",
         "test:integ:sdk": "ts-mocha --type-check 'src/sdk-extensions/**/*.integ.ts'",
         "test:integ": "yarn run test:integ:extension && yarn run test:integ:sdk",
         "test:cov": "nyc yarn run test:unit",
