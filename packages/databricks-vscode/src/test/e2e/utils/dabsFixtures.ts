@@ -185,7 +185,9 @@ export async function createProjectWithPipeline(vscodeWorkspaceRoot: string) {
                             target: "vscode_integration_test",
                             clusters: [
                                 {
-                                    num_workers: 0,
+                                    label: "default",
+                                    policy_id: "000880C28D1101F5",
+                                    apply_policy_default_values: true,
                                 },
                             ],
                             libraries: [
