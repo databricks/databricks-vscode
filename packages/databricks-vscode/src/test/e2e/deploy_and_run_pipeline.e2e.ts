@@ -86,8 +86,7 @@ describe("Deploy and run pipeline", async function () {
             resourceExplorerView,
             "Pipelines",
             pipelineName,
-            // TODO: the account we are using to run tests doesn't have permissions to create clusters for the pipelines
-            "Failed",
+            "Completed",
             // Long timeout, as the pipeline will be waiting for its cluster to start
             15 * 60 * 1000
         );

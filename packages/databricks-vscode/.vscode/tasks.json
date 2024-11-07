@@ -21,6 +21,15 @@
             }
         },
         {
+            "label": "NPM build",
+            "type": "npm",
+            "script": "build",
+            "presentation": {
+                "reveal": "always",
+                "group": "build"
+            }
+        },
+        {
             "label": "Build",
             "dependsOn": ["NPM watch"],
             "group": {
