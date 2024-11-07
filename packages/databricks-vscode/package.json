@@ -226,7 +226,10 @@
             },
             {
                 "command": "databricks.bundle.deployAndValidate",
-                "icon": "$(beaker)",
+                "icon": {
+                    "dark": "resources/dark/check-line-icon.svg",
+                    "light": "resources/light/check-line-icon.svg"
+                },
                 "title": "Deploy the bundle and validate the pipeline",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
