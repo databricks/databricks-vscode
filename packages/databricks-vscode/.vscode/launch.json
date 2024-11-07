@@ -6,12 +6,24 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run Extension",
+            "name": "Run and Watch Extension",
             "type": "extensionHost",
             "request": "launch",
             "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
+            "env": {
+                "DATABRICKS_DEBUG_HEADERS": "false",
+                "EXTENSION_DEVELOPMENT": "true"
+            }
+        },
+        {
+            "name": "Build and Run Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
+            "preLaunchTask": "NPM build",
             "env": {
                 "DATABRICKS_DEBUG_HEADERS": "false",
                 "EXTENSION_DEVELOPMENT": "true"
