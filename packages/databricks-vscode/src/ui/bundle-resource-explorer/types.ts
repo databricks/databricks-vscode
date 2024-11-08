@@ -15,6 +15,7 @@ export interface BundleResourceExplorerTreeNode {
         | "treeItem"
         | "task_run_status"
         | "pipeline_run_status"
+        | "pipeline_run_events"
         | "resource_type_header"
         | "task"
         | "job_run_status"

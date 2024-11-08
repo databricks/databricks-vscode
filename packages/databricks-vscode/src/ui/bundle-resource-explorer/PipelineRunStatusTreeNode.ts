@@ -2,7 +2,7 @@ import {
     BundleResourceExplorerTreeItem,
     BundleResourceExplorerTreeNode,
 } from "./types";
-import {TreeItemCollapsibleState} from "vscode";
+import {ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {ContextUtils, RunStateUtils} from "./utils";
 import {SimplifiedRunState, sentenceCase} from "./utils/RunStateUtils";
 import {GetUpdateResponse} from "@databricks/databricks-sdk/dist/apis/pipelines";
@@ -44,24 +44,19 @@ export class PipelineRunStatusTreeNode
     implements BundleResourceExplorerTreeNode
 {
     readonly type = "pipeline_run_status";
+
     private get update() {
         return this.runMonitor?.data?.update;
     }
+
     public get url() {
-        if (this.type !== this.type) {
+        const {host} = this.connectionManager.databricksWorkspace ?? {};
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        const {pipeline_id, update_id} = this.update ?? {};
+        if (!host || !pipeline_id || !update_id) {
             return undefined;
         }
-        const host = this.connectionManager.databricksWorkspace?.host;
-        if (
-            host === undefined ||
-            this.update?.pipeline_id === undefined ||
-            this.update?.update_id === undefined
-        ) {
-            return undefined;
-        }
-        return `${host.toString()}#joblist/pipelines/${
-            this.update.pipeline_id
-        }/updates/${this.update.update_id}`;
+        return `${host}#joblist/pipelines/${pipeline_id}/updates/${update_id}`;
     }
 
     constructor(
@@ -122,8 +117,7 @@ export class PipelineRunStatusTreeNode
         if (this.update === undefined) {
             return {
                 label: "Run Status",
-                iconPath: RunStateUtils.getThemeIconForStatus("Unknown"),
-                description: "Run status not available",
+                iconPath: new ThemeIcon("loading~spin"),
                 contextValue: ContextUtils.getContextString({
                     nodeType: this.type,
                 }),

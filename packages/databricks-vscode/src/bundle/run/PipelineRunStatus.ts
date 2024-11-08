@@ -2,7 +2,7 @@
 import {BundleRunStatus} from "./BundleRunStatus";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {onError} from "../../utils/onErrorDecorator";
-import {pipelines} from "@databricks/databricks-sdk";
+import {pipelines, WorkspaceClient} from "@databricks/databricks-sdk";
 
 function isRunning(status?: pipelines.UpdateInfoState) {
     if (status === undefined) {
@@ -12,9 +12,12 @@ function isRunning(status?: pipelines.UpdateInfoState) {
 }
 
 export class PipelineRunStatus extends BundleRunStatus {
-    readonly type = "pipelines";
+    public readonly type = "pipelines";
+    public data: pipelines.GetUpdateResponse | undefined;
+    public events: pipelines.PipelineEvent[] | undefined;
+
     private interval?: NodeJS.Timeout;
-    data: pipelines.GetUpdateResponse | undefined;
+
     constructor(
         private readonly authProvider: AuthProvider,
         private readonly pipelineId: string
@@ -22,7 +25,6 @@ export class PipelineRunStatus extends BundleRunStatus {
         super();
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parseId(output: string): void {
         if (this.runId !== undefined || this.runState !== "unknown") {
             return;
@@ -57,24 +59,50 @@ export class PipelineRunStatus extends BundleRunStatus {
                 if (this.runId === undefined) {
                     throw new Error("No update id");
                 }
-                const update = await client.pipelines.getUpdate({
+                this.data = await client.pipelines.getUpdate({
                     pipeline_id: this.pipelineId,
                     update_id: this.runId,
                 });
-                this.data = update;
 
-                // If update is completed, we stop polling.
-                if (!isRunning(update.update?.state)) {
-                    this.markCompleted();
-                    return;
+                if (this.data.update?.creation_time !== undefined) {
+                    this.events = await this.fetchUpdateEvents(
+                        client,
+                        this.data.update.creation_time,
+                        this.data.update?.update_id
+                    );
                 }
 
-                this.onDidChangeEmitter.fire();
+                // If update is completed, we stop polling.
+                if (!isRunning(this.data.update?.state)) {
+                    this.markCompleted();
+                } else {
+                    this.onDidChangeEmitter.fire();
+                }
             } catch (e) {
                 this.runState = "error";
                 throw e;
             }
         }, 5_000);
+    }
+
+    private async fetchUpdateEvents(
+        client: WorkspaceClient,
+        creationTime: number,
+        updateId?: string
+    ) {
+        const events = [];
+        const timestamp = new Date(creationTime).toISOString();
+        const listEvents = client.pipelines.listPipelineEvents({
+            pipeline_id: this.pipelineId,
+            order_by: ["timestamp asc"],
+            filter: `timestamp >= '${timestamp}'`,
+        });
+        for await (const event of listEvents) {
+            if (!updateId || event.origin?.update_id === updateId) {
+                events.push(event);
+            }
+        }
+        return events;
     }
 
     private markCompleted() {
