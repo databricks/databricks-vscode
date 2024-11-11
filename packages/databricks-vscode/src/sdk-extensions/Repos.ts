@@ -41,7 +41,7 @@ export class Repo {
     @logging.withLogContext(logging.ExposedLoggers.SDK)
     static async create(
         client: ApiClient,
-        req: workspace.CreateRepo,
+        req: workspace.CreateRepoRequest,
         @context context?: Context
     ) {
         const repoService = new workspace.ReposService(client);

@@ -290,11 +290,11 @@ __metadata:
     "@types/ini": ^4.1.0
     "@types/node": ^18.19.23
     "@types/semver": ^7.5.8
-    google-auth-library: ^9.6.3
+    google-auth-library: ^9.10.0
     ini: ^4.1.2
     reflect-metadata: ^0.2.1
     semver: ^7.6.0
-  checksum: 84c9f44a5e807b176e0375658e44abe8ac0772d193e3aadbddb06da0d0fbf61696a6102f4e6fa06bf917d16247166b497f5ac7d6c32a4c0ea3fd23b269a2c6d3
+  checksum: 7317896703c911076f1ee48297308e030a850c302267ce3fbcaa0aaa14aad81bae7b61b022c997406849fef795dcfaba181ac05754f035f09619de9d3b8db47d
   languageName: node
   linkType: hard
 
@@ -305,11 +305,11 @@ __metadata:
     "@types/ini": ^4.1.0
     "@types/node": ^18.19.23
     "@types/semver": ^7.5.8
-    google-auth-library: ^9.6.3
+    google-auth-library: ^9.10.0
     ini: ^4.1.2
     reflect-metadata: ^0.2.1
     semver: ^7.6.0
-  checksum: 84c9f44a5e807b176e0375658e44abe8ac0772d193e3aadbddb06da0d0fbf61696a6102f4e6fa06bf917d16247166b497f5ac7d6c32a4c0ea3fd23b269a2c6d3
+  checksum: 7317896703c911076f1ee48297308e030a850c302267ce3fbcaa0aaa14aad81bae7b61b022c997406849fef795dcfaba181ac05754f035f09619de9d3b8db47d
   languageName: node
   linkType: hard
 
@@ -1448,11 +1448,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^18.19.23":
-  version: 18.19.50
-  resolution: "@types/node@npm:18.19.50"
+  version: 18.19.64
+  resolution: "@types/node@npm:18.19.64"
   dependencies:
     undici-types: ~5.26.4
-  checksum: 73bdd2b46fb96816a1f7309e1b609f0832a29739c87df7daa729ff497160be143e02cf18486a0112e1981b092358aed3ca0716b532aff93c7e05f7dbb4f7586a
+  checksum: e7680215b03c9bee8a33947f03d06048e8e460f23b1b7b29c45350cf437faa5f8fcb7d8c3eb8dfec8427923e7a184df42bc710c1b6252b4852e3ed7064c6228f
   languageName: node
   linkType: hard
 
@@ -5712,9 +5712,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"google-auth-library@npm:^9.6.3":
-  version: 9.14.1
-  resolution: "google-auth-library@npm:9.14.1"
+"google-auth-library@npm:^9.10.0":
+  version: 9.14.2
+  resolution: "google-auth-library@npm:9.14.2"
   dependencies:
     base64-js: ^1.3.0
     ecdsa-sig-formatter: ^1.0.11
@@ -5722,7 +5722,7 @@ __metadata:
     gcp-metadata: ^6.1.0
     gtoken: ^7.0.0
     jws: ^4.0.0
-  checksum: 98c7ffb6ef8d811a54d728a94c31aa60c777f035306f0ded70654ce0aa1f4dcf393bb505b262aa48438f5ead8941248f3759f24f0e22b4465b8537b1d90415ac
+  checksum: 64b3a6c1b1b14f1c891dbcfb850bc4db63dc8fae17e70197636244d00c83b539ac3da8688aae0bd1f09c884fc538d203945ae751edbabf666b41066385d86e30
   languageName: node
   linkType: hard
 
