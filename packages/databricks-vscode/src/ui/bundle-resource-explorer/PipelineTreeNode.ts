@@ -12,6 +12,8 @@ import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {PipelineRunStatusTreeNode} from "./PipelineRunStatusTreeNode";
+import {PipelineRunEventsTreeNode} from "./PipelineRunEventsTreeNode";
+import {ThemeIcon} from "vscode";
 
 export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "pipelines";
@@ -67,22 +69,13 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
         const runMonitor = this.bundleRunStatusManager.runStatuses.get(
             this.resourceKey
         ) as PipelineRunStatus | undefined;
-        if (runMonitor) {
-            children.push(
-                new PipelineRunStatusTreeNode(
-                    this.connectionManager,
-                    runMonitor,
-                    this
-                )
-            );
-        }
-
         if (this.data.catalog) {
             children.push(
                 new TreeItemTreeNode(
                     {
                         label: "Catalog",
                         description: this.data.catalog,
+                        iconPath: new ThemeIcon("book"),
                         contextValue: "catalog",
                     },
                     this
@@ -96,8 +89,24 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
                     {
                         label: "Target",
                         description: this.data.target,
+                        iconPath: new ThemeIcon("target"),
                         contextValue: "target",
                     },
+                    this
+                )
+            );
+        }
+
+        if (runMonitor) {
+            children.push(
+                new PipelineRunStatusTreeNode(
+                    this.connectionManager,
+                    runMonitor,
+                    this
+                ),
+                new PipelineRunEventsTreeNode(
+                    this.connectionManager,
+                    runMonitor,
                     this
                 )
             );
