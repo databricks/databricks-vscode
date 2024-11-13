@@ -30,7 +30,7 @@ describe(__filename, function () {
     it("calling start on a non terminated state should not throw an error", async () => {
         when(
             mockedClient.request(
-                "/api/2.0/clusters/get",
+                "/api/2.1/clusters/get",
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
@@ -74,7 +74,7 @@ describe(__filename, function () {
 
         verify(
             mockedClient.request(
-                "/api/2.0/clusters/get",
+                "/api/2.1/clusters/get",
                 anything(),
                 anything(),
                 anything()
@@ -83,7 +83,7 @@ describe(__filename, function () {
 
         verify(
             mockedClient.request(
-                "/api/2.0/clusters/start",
+                "/api/2.1/clusters/start",
                 anything(),
                 anything(),
                 anything()
@@ -94,7 +94,7 @@ describe(__filename, function () {
     it("should terminate cluster", async () => {
         when(
             mockedClient.request(
-                "/api/2.0/clusters/get",
+                "/api/2.1/clusters/get",
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
@@ -118,7 +118,7 @@ describe(__filename, function () {
 
         when(
             mockedClient.request(
-                "/api/2.0/clusters/delete",
+                "/api/2.1/clusters/delete",
                 "POST",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
@@ -137,7 +137,7 @@ describe(__filename, function () {
 
         verify(
             mockedClient.request(
-                "/api/2.0/clusters/get",
+                "/api/2.1/clusters/get",
                 anything(),
                 anything(),
                 anything()
@@ -146,7 +146,7 @@ describe(__filename, function () {
 
         verify(
             mockedClient.request(
-                "/api/2.0/clusters/delete",
+                "/api/2.1/clusters/delete",
                 anything(),
                 anything(),
                 anything()
@@ -157,7 +157,7 @@ describe(__filename, function () {
     it("should terminate non running clusters", async () => {
         when(
             mockedClient.request(
-                "/api/2.0/clusters/get",
+                "/api/2.1/clusters/get",
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
@@ -190,7 +190,7 @@ describe(__filename, function () {
 
         verify(
             mockedClient.request(
-                "/api/2.0/clusters/get",
+                "/api/2.1/clusters/get",
                 anything(),
                 anything(),
                 anything()
@@ -199,7 +199,7 @@ describe(__filename, function () {
 
         verify(
             mockedClient.request(
-                "/api/2.0/clusters/delete",
+                "/api/2.1/clusters/delete",
                 anything(),
                 anything(),
                 anything()
@@ -210,7 +210,7 @@ describe(__filename, function () {
     it("should cancel cluster start", async () => {
         const whenMockGetCluster = when(
             mockedClient.request(
-                "/api/2.0/clusters/get",
+                "/api/2.1/clusters/get",
                 "GET",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,
@@ -226,7 +226,7 @@ describe(__filename, function () {
 
         when(
             mockedClient.request(
-                "/api/2.0/clusters/delete",
+                "/api/2.1/clusters/delete",
                 "POST",
                 deepEqual({
                     cluster_id: testClusterDetails.cluster_id,

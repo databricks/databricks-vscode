@@ -331,7 +331,7 @@ export class Cluster {
     ): Promise<Cluster | undefined> {
         const clusterApi = new compute.ClustersService(client);
 
-        for await (const clusterInfo of clusterApi.list({can_use_client: ""})) {
+        for await (const clusterInfo of clusterApi.list({})) {
             if (clusterInfo.cluster_name === clusterName) {
                 const cluster = await clusterApi.get({
                     cluster_id: clusterInfo.cluster_id!,
@@ -355,7 +355,9 @@ export class Cluster {
     static async *list(client: ApiClient): AsyncIterable<Cluster> {
         const clusterApi = new compute.ClustersService(client);
 
-        for await (const clusterInfo of clusterApi.list({can_use_client: ""})) {
+        for await (const clusterInfo of clusterApi.list({
+            filter_by: {cluster_sources: ["API", "UI"]},
+        })) {
             yield new Cluster(client, clusterInfo);
         }
     }

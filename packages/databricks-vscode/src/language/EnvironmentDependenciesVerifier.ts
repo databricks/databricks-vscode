@@ -117,7 +117,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     async checkWorkspaceHasUc(@context ctx?: Context) {
         try {
             const catalogList =
-                this.connectionManager.workspaceClient?.catalogs.list();
+                this.connectionManager.workspaceClient?.catalogs.list({});
             const catalogListIter = catalogList
                 ? catalogList[Symbol.asyncIterator]()
                 : undefined;

@@ -13,7 +13,7 @@ export async function getMockTestCluster() {
     const mockedClient = mock(ApiClient);
     when(
         mockedClient.request(
-            "/api/2.0/clusters/get",
+            "/api/2.1/clusters/get",
             "GET",
             anything(),
             anything()

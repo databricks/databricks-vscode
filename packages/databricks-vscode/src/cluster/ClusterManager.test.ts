@@ -30,7 +30,7 @@ describe(__filename, async () => {
         mockedClient = mock(ApiClient);
         when(
             mockedClient.request(
-                "/api/2.0/clusters/get",
+                "/api/2.1/clusters/get",
                 "GET",
                 deepEqual({
                     // eslint-disable-next-line
@@ -57,7 +57,7 @@ describe(__filename, async () => {
     it("should start a cluster with progress", async () => {
         when(
             mockedClient.request(
-                "/api/2.0/clusters/get",
+                "/api/2.1/clusters/get",
                 "GET",
                 deepEqual({
                     // eslint-disable-next-line
