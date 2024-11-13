@@ -284,7 +284,7 @@ __metadata:
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
-  version: 0.6.2
+  version: 0.7.0
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
   dependencies:
     "@types/ini": ^4.1.0
@@ -294,12 +294,12 @@ __metadata:
     ini: ^4.1.2
     reflect-metadata: ^0.2.1
     semver: ^7.6.0
-  checksum: 7317896703c911076f1ee48297308e030a850c302267ce3fbcaa0aaa14aad81bae7b61b022c997406849fef795dcfaba181ac05754f035f09619de9d3b8db47d
+  checksum: fc3186dc4dda2a06e01c8e7e20b5f76ec6d1b4379b65deb80cacfd506427f38841af890858bd3335c3ab76f8a7255c4f4ce295f6470d7d0905f236b211fa617b
   languageName: node
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
-  version: 0.6.2
+  version: 0.7.0
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
   dependencies:
     "@types/ini": ^4.1.0
@@ -309,7 +309,7 @@ __metadata:
     ini: ^4.1.2
     reflect-metadata: ^0.2.1
     semver: ^7.6.0
-  checksum: 7317896703c911076f1ee48297308e030a850c302267ce3fbcaa0aaa14aad81bae7b61b022c997406849fef795dcfaba181ac05754f035f09619de9d3b8db47d
+  checksum: fc3186dc4dda2a06e01c8e7e20b5f76ec6d1b4379b65deb80cacfd506427f38841af890858bd3335c3ab76f8a7255c4f4ce295f6470d7d0905f236b211fa617b
   languageName: node
   linkType: hard
 
