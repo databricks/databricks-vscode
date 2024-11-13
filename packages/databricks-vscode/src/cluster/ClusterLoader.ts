@@ -80,10 +80,6 @@ export class ClusterLoader implements Disposable {
 
         const clusters: Array<Cluster> = [];
         for await (const c of Cluster.list(apiClient)) {
-            if (!["UI", "API"].includes(c.source)) {
-                continue;
-            }
-
             if (
                 workspaceConfigs.onlyShowAccessibleClusters &&
                 c.isSingleUser() &&
