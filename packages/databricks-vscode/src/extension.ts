@@ -72,6 +72,7 @@ import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
+import {BundlePipelinesManager} from "./bundle/BundlePipelinesManager";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -633,9 +634,14 @@ export async function activate(
             connectionManager
         );
 
+    const bundlePipelinesManager = new BundlePipelinesManager(
+        bundleRunStatusManager,
+        configModel
+    );
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
         bundleRunStatusManager,
+        bundlePipelinesManager,
         bundleValidateModel,
         configModel,
         customWhenContext,
@@ -649,6 +655,7 @@ export async function activate(
         bundleResourceExplorerTreeDataProvider,
         bundleCommands,
         bundleRunTerminalManager,
+        bundlePipelinesManager,
         decorationProvider,
         window.registerFileDecorationProvider(decorationProvider),
         window.registerTreeDataProvider(
@@ -683,6 +690,11 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.bundle.deployAndValidate",
             bundleCommands.deployAndValidate,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deployAndRunSelected",
+            bundleCommands.deployAndRunSelected,
             bundleCommands
         ),
         telemetry.registerCommand(

@@ -235,6 +235,13 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.bundle.deployAndRunSelected",
+                "icon": "$(debug-coverage)",
+                "title": "Deploy the bundle and select pipeline tables for partial update",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.bundle.cancelRun",
                 "title": "Cancel run",
                 "icon": "$(debug-stop)",
@@ -556,6 +563,11 @@
                 },
                 {
                     "command": "databricks.bundle.deployAndValidate",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunSelected",
                     "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
                 },
