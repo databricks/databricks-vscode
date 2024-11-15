@@ -87,8 +87,6 @@ export class BundlePipelinesManager {
         for (const run of runsByStartTimeDesc) {
             for (const event of run.events ?? []) {
                 const datasetName = extractDatasetName(event);
-                console.log("event", event);
-                console.log("datasetName", datasetName);
                 if (datasetName) {
                     datasets.add(datasetName);
                 }
