@@ -42,6 +42,7 @@ describe(__filename, () => {
         const runStatuses = new Map();
         when(runStatusManager.runStatuses).thenReturn(runStatuses);
 
+        /* eslint-disable @typescript-eslint/naming-convention */
         const firstRun = {
             data: {
                 update: {creation_time: 10},
@@ -52,6 +53,7 @@ describe(__filename, () => {
                 {origin: {dataset_name: "table2"}},
             ],
         };
+        /* eslint-enable @typescript-eslint/naming-convention */
         runStatuses.set("pipelines.pipeline1", firstRun);
 
         eventEmitter.fire();
@@ -62,6 +64,7 @@ describe(__filename, () => {
         assert(datasets.has("table1"));
         assert(datasets.has("table2"));
 
+        /* eslint-disable @typescript-eslint/naming-convention */
         const secondPartialRun = {
             data: {
                 update: {
@@ -75,6 +78,7 @@ describe(__filename, () => {
                 {origin: {dataset_name: "table4"}},
             ],
         };
+        /* eslint-enable @typescript-eslint/naming-convention */
 
         runStatuses.set("pipelines.pipeline1", secondPartialRun);
         eventEmitter.fire();
@@ -87,6 +91,7 @@ describe(__filename, () => {
         assert(datasets.has("table3"));
         assert(datasets.has("table4"));
 
+        /* eslint-disable @typescript-eslint/naming-convention */
         const finalFullRefreshRun = {
             data: {
                 update: {
@@ -100,6 +105,7 @@ describe(__filename, () => {
                 {origin: {dataset_name: "table_final"}},
             ],
         };
+        /* eslint-enable @typescript-eslint/naming-convention */
         runStatuses.set("pipelines.pipeline1", finalFullRefreshRun);
         eventEmitter.fire();
         await clock.runToLastAsync();
