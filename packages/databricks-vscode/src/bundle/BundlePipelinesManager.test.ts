@@ -1,7 +1,6 @@
 import {BundlePipelinesManager} from "./BundlePipelinesManager";
 import {BundleRunStatusManager} from "./run/BundleRunStatusManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
-// import {EventEmitter} from "events";
 import {mock, instance, when} from "ts-mockito";
 import assert from "assert";
 import {EventEmitter} from "vscode";
