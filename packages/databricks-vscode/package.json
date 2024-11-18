@@ -685,6 +685,10 @@
                     "when": "false"
                 },
                 {
+                    "command": "databricks.bundle.deployAndRunPipeline",
+                    "when": "false"
+                },
+                {
                     "command": "databricks.bundle.deployAndValidatePipeline",
                     "when": "false"
                 },

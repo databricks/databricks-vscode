@@ -136,15 +136,20 @@ export class BundleCommands implements Disposable {
                     return;
                 }
             }
-            await window.withProgress(
-                {
-                    location: ProgressLocation.Notification,
-                    title: title,
-                    cancellable: true,
-                },
-                async (progress, token) => {
-                    await this.bundleRemoteStateModel.deploy(force, token);
-                }
+            const viewProgressOptions = {
+                location: {viewId: "dabsResourceExplorerView"},
+            };
+            const notificationProgressOptions = {
+                location: ProgressLocation.Notification,
+                title: title,
+                cancellable: true,
+            };
+            await window.withProgress(viewProgressOptions, () =>
+                window.withProgress(
+                    notificationProgressOptions,
+                    (progress, token) =>
+                        this.bundleRemoteStateModel.deploy(force, token)
+                )
             );
 
             await this.refreshRemoteState();
