@@ -220,7 +220,7 @@
             {
                 "command": "databricks.bundle.deployAndRunJob",
                 "icon": "$(run)",
-                "title": "Deploy the bundle and run the Job",
+                "title": "Deploy the bundle and run the workflow",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
