@@ -205,7 +205,7 @@ export class BundleCommands implements Disposable {
         return this.deployAndRun(treeNode, ["--validate-only"], "validate");
     }
 
-    async deployAndRunSelected(treeNode: BundleResourceExplorerTreeNode) {
+    async deployAndRunSelectedTables(treeNode: BundleResourceExplorerTreeNode) {
         if (!isRunnable(treeNode)) {
             throw new Error(`Cannot run resource of type ${treeNode.type}`);
         }

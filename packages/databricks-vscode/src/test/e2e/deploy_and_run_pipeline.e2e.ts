@@ -75,7 +75,7 @@ describe("Deploy and run pipeline", async function () {
         );
 
         const deployAndRunButton = await pipelineItem.getActionButton(
-            "Deploy the bundle and run the resource"
+            "Deploy the bundle and run the pipeline"
         );
         assert(deployAndRunButton, "Deploy and run button not found");
         await deployAndRunButton.elem.click();
