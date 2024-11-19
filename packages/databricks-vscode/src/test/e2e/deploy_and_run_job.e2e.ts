@@ -72,7 +72,7 @@ describe("Deploy and run job", async function () {
         assert(jobItem, `Job ${jobName} not found in resource explorer`);
 
         const deployAndRunButton = await jobItem.getActionButton(
-            "Deploy the bundle and run the resource"
+            "Deploy the bundle and run the workflow"
         );
         assert(deployAndRunButton, "Deploy and run button not found");
         await deployAndRunButton.elem.click();

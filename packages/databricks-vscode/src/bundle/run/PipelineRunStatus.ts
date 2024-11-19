@@ -68,7 +68,7 @@ export class PipelineRunStatus extends BundleRunStatus {
                     this.events = await this.fetchUpdateEvents(
                         client,
                         this.data.update.creation_time,
-                        this.data.update?.update_id
+                        this.data.update.update_id
                     );
                 }
 

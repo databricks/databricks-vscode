@@ -222,7 +222,7 @@ export async function waitForLogin(profileName: string) {
                 profileName
             );
         },
-        {timeout: 60_000, interval: 2_000, timeoutMsg: "Login didn't finish"}
+        {timeout: 120_000, interval: 2_000, timeoutMsg: "Login didn't finish"}
     );
 }
 

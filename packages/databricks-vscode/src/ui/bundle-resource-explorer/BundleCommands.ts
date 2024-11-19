@@ -14,6 +14,7 @@ import {ProcessError} from "../../cli/CliWrapper";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {humaniseMode} from "../utils/BundleUtils";
 import {BundleRunType} from "../../telemetry/constants";
+import {BundlePipelinesManager} from "../../bundle/BundlePipelinesManager";
 export const RUNNABLE_BUNDLE_RESOURCES = [
     "pipelines",
     "jobs",
@@ -33,6 +34,7 @@ export class BundleCommands implements Disposable {
     constructor(
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly bundleRunStatusManager: BundleRunStatusManager,
+        private readonly bundlePipelinesManager: BundlePipelinesManager,
         private readonly bundleValidateModel: BundleValidateModel,
         private readonly configModel: ConfigModel,
         private readonly whenContext: CustomWhenContext,
@@ -134,15 +136,20 @@ export class BundleCommands implements Disposable {
                     return;
                 }
             }
-            await window.withProgress(
-                {
-                    location: ProgressLocation.Notification,
-                    title: title,
-                    cancellable: true,
-                },
-                async (progress, token) => {
-                    await this.bundleRemoteStateModel.deploy(force, token);
-                }
+            const viewProgressOptions = {
+                location: {viewId: "dabsResourceExplorerView"},
+            };
+            const notificationProgressOptions = {
+                location: ProgressLocation.Notification,
+                title: title,
+                cancellable: true,
+            };
+            await window.withProgress(viewProgressOptions, () =>
+                window.withProgress(
+                    notificationProgressOptions,
+                    (progress, token) =>
+                        this.bundleRemoteStateModel.deploy(force, token)
+                )
             );
 
             await this.refreshRemoteState();
@@ -201,6 +208,26 @@ export class BundleCommands implements Disposable {
 
     async deployAndValidate(treeNode: BundleResourceExplorerTreeNode) {
         return this.deployAndRun(treeNode, ["--validate-only"], "validate");
+    }
+
+    async deployAndRunSelectedTables(treeNode: BundleResourceExplorerTreeNode) {
+        if (!isRunnable(treeNode)) {
+            throw new Error(`Cannot run resource of type ${treeNode.type}`);
+        }
+        const key = treeNode.resourceKey;
+        const result =
+            await this.bundlePipelinesManager.showTableSelectionQuickPick(key);
+        if (!result.tables) {
+            return;
+        }
+        return this.deployAndRun(
+            treeNode,
+            [
+                result.fullRefresh ? "--full-refresh" : "--refresh",
+                result.tables,
+            ],
+            "partial-refresh"
+        );
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})

@@ -218,14 +218,28 @@
                 "category": "Databricks"
             },
             {
-                "command": "databricks.bundle.deployAndRun",
-                "icon": "$(debug-start)",
-                "title": "Deploy the bundle and run the resource",
+                "command": "databricks.bundle.deployAndRunJob",
+                "icon": "$(run)",
+                "title": "Deploy the bundle and run the workflow",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
-                "command": "databricks.bundle.deployAndValidate",
+                "command": "databricks.bundle.deployAndRunPipeline",
+                "icon": "$(run-all)",
+                "title": "Deploy the bundle and run the pipeline",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deployAndRunSelectedTables",
+                "icon": "$(run)",
+                "title": "Deploy the bundle and select pipeline tables for partial update",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deployAndValidatePipeline",
                 "icon": {
                     "dark": "resources/dark/check-line-icon.svg",
                     "light": "resources/light/check-line-icon.svg"
@@ -550,12 +564,22 @@
                     "group": "inline@0"
                 },
                 {
-                    "command": "databricks.bundle.deployAndRun",
-                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
+                    "command": "databricks.bundle.deployAndRunJob",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=jobs.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
                 },
                 {
-                    "command": "databricks.bundle.deployAndValidate",
+                    "command": "databricks.bundle.deployAndRunPipeline",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndValidatePipeline",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunSelectedTables",
                     "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
                 },
@@ -657,11 +681,19 @@
                     "when": "false"
                 },
                 {
-                    "command": "databricks.bundle.deployAndRun",
+                    "command": "databricks.bundle.deployAndRunJob",
                     "when": "false"
                 },
                 {
-                    "command": "databricks.bundle.deployAndValidate",
+                    "command": "databricks.bundle.deployAndRunPipeline",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.deployAndValidatePipeline",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunSelectedTables",
                     "when": "false"
                 },
                 {
