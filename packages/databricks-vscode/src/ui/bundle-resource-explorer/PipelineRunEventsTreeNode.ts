@@ -15,7 +15,7 @@ export class PipelineRunEventsTreeNode
     readonly type = "pipeline_run_events";
 
     private get update() {
-        return this.runMonitor?.data?.update;
+        return this.runMonitor?.data;
     }
 
     private get events() {

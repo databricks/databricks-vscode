@@ -5,8 +5,10 @@ import {mock, instance, when} from "ts-mockito";
 import assert from "assert";
 import {EventEmitter} from "vscode";
 import {install, InstalledClock} from "@sinonjs/fake-timers";
+import {ConnectionManager} from "../configuration/ConnectionManager";
 
 describe(__filename, () => {
+    let connectionManager: ConnectionManager;
     let runStatusManager: BundleRunStatusManager;
     let configModel: ConfigModel;
     let manager: BundlePipelinesManager;
@@ -18,6 +20,7 @@ describe(__filename, () => {
         eventEmitter = new EventEmitter();
         runStatusManager = mock<BundleRunStatusManager>();
         configModel = mock<ConfigModel>();
+        connectionManager = mock<ConnectionManager>();
         when(runStatusManager.onDidChange).thenReturn(eventEmitter.event);
         when(configModel.onDidChangeKey("remoteStateConfig")).thenReturn(
             new EventEmitter<void>().event
@@ -26,6 +29,7 @@ describe(__filename, () => {
             new EventEmitter<void>().event
         );
         manager = new BundlePipelinesManager(
+            instance(connectionManager),
             instance(runStatusManager),
             instance(configModel)
         );

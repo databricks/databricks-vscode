@@ -46,7 +46,7 @@ export class PipelineRunStatusTreeNode
     readonly type = "pipeline_run_status";
 
     private get update() {
-        return this.runMonitor?.data?.update;
+        return this.runMonitor?.data;
     }
 
     public get url() {
