@@ -13,7 +13,7 @@ function isRunning(status?: pipelines.UpdateInfoState) {
 
 export class PipelineRunStatus extends BundleRunStatus {
     public readonly type = "pipelines";
-    public data: pipelines.GetUpdateResponse | undefined;
+    public data: pipelines.UpdateInfo | undefined;
     public events: pipelines.PipelineEvent[] | undefined;
 
     private interval?: NodeJS.Timeout;
@@ -59,21 +59,22 @@ export class PipelineRunStatus extends BundleRunStatus {
                 if (this.runId === undefined) {
                     throw new Error("No update id");
                 }
-                this.data = await client.pipelines.getUpdate({
+                const getUpdateResponse = await client.pipelines.getUpdate({
                     pipeline_id: this.pipelineId,
                     update_id: this.runId,
                 });
+                this.data = getUpdateResponse.update;
 
-                if (this.data.update?.creation_time !== undefined) {
+                if (this.data?.creation_time !== undefined) {
                     this.events = await this.fetchUpdateEvents(
                         client,
-                        this.data.update.creation_time,
-                        this.data.update.update_id
+                        this.data?.creation_time,
+                        this.data?.update_id
                     );
                 }
 
                 // If update is completed, we stop polling.
-                if (!isRunning(this.data.update?.state)) {
+                if (!isRunning(this.data?.state)) {
                     this.markCompleted();
                 } else {
                     this.onDidChangeEmitter.fire();
@@ -141,10 +142,11 @@ export class PipelineRunStatus extends BundleRunStatus {
                 })
             ).wait();
         }
-        this.data = await client.pipelines.getUpdate({
+        const getUpdateResponse = await client.pipelines.getUpdate({
             pipeline_id: this.pipelineId,
             update_id: this.runId,
         });
+        this.data = getUpdateResponse.update;
         this.markCancelled();
     }
 }

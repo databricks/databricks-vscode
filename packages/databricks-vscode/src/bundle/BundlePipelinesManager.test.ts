@@ -5,8 +5,10 @@ import {mock, instance, when} from "ts-mockito";
 import assert from "assert";
 import {EventEmitter} from "vscode";
 import {install, InstalledClock} from "@sinonjs/fake-timers";
+import {ConnectionManager} from "../configuration/ConnectionManager";
 
 describe(__filename, () => {
+    let connectionManager: ConnectionManager;
     let runStatusManager: BundleRunStatusManager;
     let configModel: ConfigModel;
     let manager: BundlePipelinesManager;
@@ -18,6 +20,7 @@ describe(__filename, () => {
         eventEmitter = new EventEmitter();
         runStatusManager = mock<BundleRunStatusManager>();
         configModel = mock<ConfigModel>();
+        connectionManager = mock<ConnectionManager>();
         when(runStatusManager.onDidChange).thenReturn(eventEmitter.event);
         when(configModel.onDidChangeKey("remoteStateConfig")).thenReturn(
             new EventEmitter<void>().event
@@ -26,6 +29,7 @@ describe(__filename, () => {
             new EventEmitter<void>().event
         );
         manager = new BundlePipelinesManager(
+            instance(connectionManager),
             instance(runStatusManager),
             instance(configModel)
         );
@@ -44,9 +48,7 @@ describe(__filename, () => {
 
         /* eslint-disable @typescript-eslint/naming-convention */
         const firstRun = {
-            data: {
-                update: {creation_time: 10},
-            },
+            data: {creation_time: 10},
             events: [
                 {origin: {dataset_name: "table1"}},
                 {origin: {not_a_dataset_name: "table1.5"}},
@@ -67,10 +69,8 @@ describe(__filename, () => {
         /* eslint-disable @typescript-eslint/naming-convention */
         const secondPartialRun = {
             data: {
-                update: {
-                    creation_time: 100,
-                    refresh_selection: ["table3", "table4"],
-                },
+                creation_time: 100,
+                refresh_selection: ["table3", "table4"],
             },
             events: [
                 {origin: {dataset_name: "table3"}},
@@ -94,10 +94,8 @@ describe(__filename, () => {
         /* eslint-disable @typescript-eslint/naming-convention */
         const finalFullRefreshRun = {
             data: {
-                update: {
-                    creation_time: 200,
-                    refresh_selection: [],
-                },
+                creation_time: 200,
+                refresh_selection: [],
             },
             events: [
                 {origin: {dataset_name: "table_new"}},

@@ -15,7 +15,7 @@ export class PipelineRunEventsTreeNode
     readonly type = "pipeline_run_events";
 
     private get update() {
-        return this.runMonitor?.data?.update;
+        return this.runMonitor?.data;
     }
 
     private get events() {
@@ -61,8 +61,16 @@ export class PipelineRunEventsTreeNode
         return children;
     }
 
+    isLoading(): boolean {
+        return (
+            (this.events === undefined || this.events.length === 0) &&
+            (this.runMonitor.runState === "running" ||
+                this.runMonitor.runState === "unknown")
+        );
+    }
+
     getTreeItem(): BundleResourceExplorerTreeItem {
-        if (this.events === undefined || this.events.length === 0) {
+        if (this.isLoading()) {
             return {
                 label: "Event Log",
                 iconPath: new ThemeIcon("loading~spin"),

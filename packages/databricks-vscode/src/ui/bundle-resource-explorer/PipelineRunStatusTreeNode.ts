@@ -46,7 +46,7 @@ export class PipelineRunStatusTreeNode
     readonly type = "pipeline_run_status";
 
     private get update() {
-        return this.runMonitor?.data?.update;
+        return this.runMonitor?.data;
     }
 
     public get url() {
@@ -102,6 +102,14 @@ export class PipelineRunStatusTreeNode
         return children;
     }
 
+    isLoading(): boolean {
+        return (
+            this.update === undefined &&
+            (this.runMonitor.runState === "running" ||
+                this.runMonitor.runState === "unknown")
+        );
+    }
+
     getTreeItem(): BundleResourceExplorerTreeItem {
         const runMonitorRunStateTreeItem =
             RunStateUtils.getTreeItemFromRunMonitorStatus(
@@ -114,7 +122,7 @@ export class PipelineRunStatusTreeNode
             return runMonitorRunStateTreeItem;
         }
 
-        if (this.update === undefined) {
+        if (this.isLoading()) {
             return {
                 label: "Run Status",
                 iconPath: new ThemeIcon("loading~spin"),
@@ -131,7 +139,7 @@ export class PipelineRunStatusTreeNode
         return {
             label: "Run Status",
             iconPath: icon,
-            description: sentenceCase(this.update.state),
+            description: sentenceCase(this.update?.state),
             contextValue: ContextUtils.getContextString({
                 nodeType: this.type,
                 hasUrl: this.url !== undefined,

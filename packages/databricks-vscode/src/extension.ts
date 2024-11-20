@@ -635,6 +635,7 @@ export async function activate(
         );
 
     const bundlePipelinesManager = new BundlePipelinesManager(
+        connectionManager,
         bundleRunStatusManager,
         configModel
     );
