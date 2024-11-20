@@ -20,7 +20,6 @@ import {
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Barrier} from "../locking/Barrier";
 import {WorkspaceClient} from "@databricks/databricks-sdk";
-import {BundlePreValidateState} from "./models/BundlePreValidateModel";
 
 type RunState = {
     data: UpdateInfo | undefined;
