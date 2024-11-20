@@ -217,7 +217,7 @@ export class BundleCommands implements Disposable {
         const key = treeNode.resourceKey;
         const result =
             await this.bundlePipelinesManager.showTableSelectionQuickPick(key);
-        if (!result.tables) {
+        if (!result.tables || result.tables.length === 0) {
             return;
         }
         return this.deployAndRun(

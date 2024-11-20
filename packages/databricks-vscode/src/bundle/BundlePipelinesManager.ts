@@ -189,8 +189,7 @@ export class BundlePipelinesManager {
     public async showTableSelectionQuickPick(pipelineKey: string) {
         const key = pipelineKey.split(".")[1];
         const knownDatasets = this.getDatasets(key);
-        const mode = await this.configModel.get("mode");
-        const {allPicks, fullRefreshPick} = createPicks(mode, knownDatasets);
+        const {allPicks, fullRefreshPick} = createPicks(knownDatasets);
         const ui = window.createQuickPick<Pick>();
         ui.title = "Select tables to update";
         ui.placeholder =
@@ -202,7 +201,7 @@ export class BundlePipelinesManager {
         let isUIVisible = true;
         const disposables: Disposable[] = [];
         ui.onDidChangeValue(
-            () => updateItems(ui, mode, knownDatasets),
+            () => updateItems(ui, knownDatasets),
             null,
             disposables
         );
@@ -212,7 +211,7 @@ export class BundlePipelinesManager {
                     for (const dataset of preloadedDatasets) {
                         knownDatasets.add(dataset);
                     }
-                    updateItems(ui, mode, knownDatasets);
+                    updateItems(ui, knownDatasets);
                 }
             })
             .catch((e) => {
@@ -231,15 +230,34 @@ export class BundlePipelinesManager {
         disposables.forEach((d) => d.dispose());
         ui.dispose();
         isUIVisible = false;
-        return {
-            tables: selectedTables,
-            fullRefresh: ui.selectedItems.includes(fullRefreshPick),
-        };
+        if (isPickSelected(ui, fullRefreshPick)) {
+            switch (await confirmFullRefresh()) {
+                case "Yes":
+                    return {tables: selectedTables, fullRefresh: true};
+                default:
+                    return {tables: undefined, fullRefresh: false};
+            }
+        } else {
+            return {tables: selectedTables, fullRefresh: false};
+        }
     }
 
     public dispose() {
         this.disposables.forEach((d) => d.dispose());
     }
+}
+
+async function confirmFullRefresh() {
+    return await window.showWarningMessage(
+        "Are you sure you want to full refresh?",
+        {
+            modal: true,
+            // The same warning we show in the workspace
+            detail: "Full refresh will truncate and recompute ALL tables in this pipeline from scratch. This can lead to data loss for non-idempotent sources.",
+        },
+        "Yes",
+        "No"
+    );
 }
 
 function isFullGraphUpdate(update?: UpdateInfo) {
@@ -286,11 +304,7 @@ function extractPipelineDatasets(runs: Set<RunState>) {
     return datasets;
 }
 
-function createPicks(
-    mode: BundlePreValidateState["mode"],
-    datasets: Set<string>,
-    manualValue?: string
-) {
+function createPicks(datasets: Set<string>, manualValue?: string) {
     const defaultsSeparatorPick: Pick = {
         label: "Defaults",
         kind: QuickPickItemKind.Separator,
@@ -308,7 +322,7 @@ function createPicks(
     };
     const fullRefreshPick: Pick = {
         label: "Full Refresh",
-        description: "Reset tables before the update",
+        description: "Truncate and recopmute tables",
         alwaysShow: true,
     };
     const ui = window.createQuickPick<Pick>();
@@ -317,10 +331,8 @@ function createPicks(
         defaultsSeparatorPick,
         ...datasetPicks,
         optionsSeparatorPick,
+        fullRefreshPick,
     ];
-    if (mode === "development") {
-        allPicks.push(fullRefreshPick);
-    }
     return {allPicks, fullRefreshPick};
 }
 
@@ -354,13 +366,15 @@ async function waitForPicks(ui: QuickPick<Pick>, disposables: Disposable[]) {
     });
 }
 
-function updateItems(
-    ui: QuickPick<Pick>,
-    mode: BundlePreValidateState["mode"],
-    knownDatasets: Set<string>
-) {
-    ui.items = createPicks(mode, knownDatasets, ui.value).allPicks;
+function updateItems(ui: QuickPick<Pick>, knownDatasets: Set<string>) {
+    ui.items = createPicks(knownDatasets, ui.value).allPicks;
     ui.selectedItems = ui.items.filter((i) =>
         ui.selectedItems.some((s) => s.label === i.label)
+    );
+}
+
+function isPickSelected(ui: QuickPick<Pick>, pick: Pick) {
+    return ui.selectedItems.some(
+        (i) => i.label === pick.label && i.description === pick.description
     );
 }
