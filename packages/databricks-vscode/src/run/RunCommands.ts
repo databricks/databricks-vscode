@@ -139,7 +139,7 @@ export class RunCommands {
         }
         const config: DatabricksPythonDebugConfiguration = {
             program: targetResource.fsPath,
-            type: "python",
+            type: "debugpy",
             name: "Databricks Connect",
             request: "launch",
             databricks: true,
