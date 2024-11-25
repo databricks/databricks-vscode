@@ -963,6 +963,19 @@
                         }
                     }
                 }
+            },
+            {
+                "type": "debugpy",
+                "configurationAttributes": {
+                    "launch": {
+                        "properties": {
+                            "databricks": {
+                                "type": "boolean",
+                                "description": "Setup databricks environment variables and globals."
+                            }
+                        }
+                    }
+                }
             }
         ],
         "configuration": [
@@ -1041,6 +1054,7 @@
     },
     "extensionDependencies": [
         "ms-python.python",
+        "ms-python.debugpy",
         "ms-toolsai.jupyter",
         "redhat.vscode-yaml"
     ],
