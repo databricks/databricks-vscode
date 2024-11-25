@@ -381,7 +381,11 @@ export class BundlePipelinesManager {
         disposables.forEach((d) => d.dispose());
         ui.dispose();
         isUIVisible = false;
-        if (isPickSelected(ui, fullRefreshPick)) {
+        if (
+            selectedTables &&
+            selectedTables.length > 0 &&
+            isPickSelected(ui, fullRefreshPick)
+        ) {
             switch (await confirmFullRefresh()) {
                 case "Yes":
                     return {tables: selectedTables, fullRefresh: true};
@@ -412,7 +416,7 @@ async function confirmFullRefresh() {
 }
 
 function isFullGraphUpdate(update?: UpdateInfo) {
-    if (!update) {
+    if (!update || update.state !== "COMPLETED") {
         return false;
     }
     return (
@@ -473,7 +477,7 @@ function createPicks(datasets: Set<string>, manualValue?: string) {
     };
     const fullRefreshPick: Pick = {
         label: "Full Refresh",
-        description: "Truncate and recopmute tables",
+        description: "Truncate and recopmute selected tables",
         alwaysShow: true,
     };
     const ui = window.createQuickPick<Pick>();
