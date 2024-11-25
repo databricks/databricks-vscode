@@ -117,7 +117,7 @@ describe(__filename, () => {
         /* eslint-disable @typescript-eslint/naming-convention */
         const finalFullRefreshRun = {
             data: {
-                creation_time: 200,
+                creation_time: 300,
                 refresh_selection: [],
                 state: "COMPLETED",
             },
