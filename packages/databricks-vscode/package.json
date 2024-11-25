@@ -249,6 +249,20 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.bundle.clearPipelineDiagnostics",
+                "icon": "$(clear-all)",
+                "title": "Clear pipeline diagnostics",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.showPipelineEventDetails",
+                "icon": "$(info)",
+                "title": "Show more information",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.bundle.cancelRun",
                 "title": "Cancel run",
                 "icon": "$(debug-stop)",
@@ -579,6 +593,11 @@
                     "group": "inline@0"
                 },
                 {
+                    "command": "databricks.bundle.showPipelineEventDetails",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.has-pipeline-details.*$/",
+                    "group": "inline@0"
+                },
+                {
                     "command": "databricks.bundle.deployAndRunSelectedTables",
                     "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
@@ -694,6 +713,10 @@
                 },
                 {
                     "command": "databricks.bundle.deployAndRunSelectedTables",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.showPipelineEventDetails",
                     "when": "false"
                 },
                 {

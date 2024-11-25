@@ -230,6 +230,16 @@ export class BundleCommands implements Disposable {
         );
     }
 
+    @onError({popup: {prefix: "Error clearing diagnostics."}})
+    clearPipelineDiagnostics() {
+        this.bundlePipelinesManager.clearDiagnostics();
+    }
+
+    @onError({popup: {prefix: "Error showing event details."}})
+    showPipelineEventDetails(item: any) {
+        this.bundlePipelinesManager.showPipelineEventDetails(item.event);
+    }
+
     @onError({popup: {prefix: "Error cancelling run."}})
     async cancelRun(treeNode: BundleResourceExplorerTreeNode) {
         if (!isRunnable(treeNode)) {

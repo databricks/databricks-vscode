@@ -6,6 +6,7 @@ import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {exists} from "fs-extra";
 import path from "path";
 import {homedir} from "os";
+import {stat} from "fs/promises";
 
 export type NotebookType = "IPYNB" | "PY_DBNB" | "OTHER_DBNB";
 export async function isNotebook(
@@ -35,6 +36,32 @@ export async function isNotebook(
     ) {
         return ext === "py" ? "PY_DBNB" : "OTHER_DBNB";
     }
+}
+
+export async function expandUriAndType(localUri?: LocalUri): Promise<{
+    uri?: Uri;
+    ext?: string;
+    type?: NotebookType;
+}> {
+    if (!localUri) {
+        return {};
+    }
+    const extensions = ["", "py", "ipynb"];
+    const checks = extensions.map((ext) => ({
+        ext,
+        type: undefined as NotebookType | undefined,
+        uri: ext
+            ? localUri.uri.with({path: localUri.path + "." + ext})
+            : localUri.uri,
+    }));
+    for (const check of checks) {
+        try {
+            await stat(check.uri.fsPath);
+            check.type = await isNotebook(new LocalUri(check.uri));
+            return check;
+        } catch (e) {}
+    }
+    return {};
 }
 
 export async function waitForDatabricksProject(

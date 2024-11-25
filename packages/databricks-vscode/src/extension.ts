@@ -704,6 +704,16 @@ export async function activate(
             bundleCommands
         ),
         telemetry.registerCommand(
+            "databricks.bundle.clearPipelineDiagnostics",
+            bundleCommands.clearPipelineDiagnostics,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.showPipelineEventDetails",
+            bundleCommands.showPipelineEventDetails,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
             "databricks.bundle.cancelRun",
             bundleCommands.cancelRun,
             bundleCommands
