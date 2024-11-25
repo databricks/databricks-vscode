@@ -92,10 +92,34 @@ describe(__filename, () => {
         assert(datasets.has("table4"));
 
         /* eslint-disable @typescript-eslint/naming-convention */
+        const uncompletedFullRefreshRun = {
+            data: {
+                creation_time: 200,
+                refresh_selection: [],
+                state: "RUNNING",
+            },
+            events: [
+                {origin: {dataset_name: "table_new"}},
+                {origin: {not_a_dataset_name: "not a table"}},
+                {origin: {dataset_name: "table_final"}},
+            ],
+        };
+        /* eslint-enable @typescript-eslint/naming-convention */
+        runStatuses.set("pipelines.pipeline1", uncompletedFullRefreshRun);
+        eventEmitter.fire();
+        await clock.runToLastAsync();
+
+        datasets = manager.getDatasets("pipeline1");
+        assert.strictEqual(datasets.size, 6);
+        assert(datasets.has("table_new"));
+        assert(datasets.has("table_final"));
+
+        /* eslint-disable @typescript-eslint/naming-convention */
         const finalFullRefreshRun = {
             data: {
                 creation_time: 200,
                 refresh_selection: [],
+                state: "COMPLETED",
             },
             events: [
                 {origin: {dataset_name: "table_new"}},
