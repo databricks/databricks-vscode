@@ -34,7 +34,6 @@ import {WorkspaceClient} from "@databricks/databricks-sdk";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
 import {expandUriAndType} from "../utils/fileUtils";
 import {onError} from "../utils/onErrorDecorator";
-import {at} from "lodash";
 
 type RunState = {
     data: UpdateInfo | undefined;
@@ -381,11 +380,7 @@ export class BundlePipelinesManager {
         disposables.forEach((d) => d.dispose());
         ui.dispose();
         isUIVisible = false;
-        if (
-            selectedTables &&
-            selectedTables.length > 0 &&
-            isPickSelected(ui, fullRefreshPick)
-        ) {
+        if (isPickSelected(ui, fullRefreshPick)) {
             switch (await confirmFullRefresh()) {
                 case "Yes":
                     return {tables: selectedTables, fullRefresh: true};
@@ -416,7 +411,7 @@ async function confirmFullRefresh() {
 }
 
 function isFullGraphUpdate(update?: UpdateInfo) {
-    if (!update || update.state !== "COMPLETED") {
+    if (!update) {
         return false;
     }
     return (
@@ -477,7 +472,7 @@ function createPicks(datasets: Set<string>, manualValue?: string) {
     };
     const fullRefreshPick: Pick = {
         label: "Full Refresh",
-        description: "Truncate and recopmute selected tables",
+        description: "Truncate and recopmute tables",
         alwaysShow: true,
     };
     const ui = window.createQuickPick<Pick>();
