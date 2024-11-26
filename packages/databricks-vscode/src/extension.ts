@@ -684,6 +684,11 @@ export async function activate(
             bundleCommands
         ),
         telemetry.registerCommand(
+            "databricks.bundle.deployAndRunFromInput",
+            bundleCommands.deployAndRunFromInput,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
             "databricks.bundle.deployAndRunJob",
             bundleCommands.deployAndRun,
             bundleCommands
