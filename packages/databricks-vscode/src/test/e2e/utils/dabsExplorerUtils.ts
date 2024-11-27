@@ -36,7 +36,7 @@ export async function getResourceSubItems(
     resourceExplorerView: CustomTreeSection,
     resourceType: "Workflows" | "Pipelines",
     resourceName: string,
-    subItemName: string
+    ...subItemNames: string[]
 ) {
     const resourceViewItem = await getResourceViewItem(
         resourceExplorerView,
@@ -50,7 +50,7 @@ export async function getResourceSubItems(
     return await resourceExplorerView.openItem(
         resourceType,
         await (await resourceViewItem!.elem).getText(),
-        subItemName
+        ...subItemNames
     );
 }
 

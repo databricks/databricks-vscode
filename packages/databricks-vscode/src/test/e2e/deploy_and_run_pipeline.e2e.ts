@@ -119,7 +119,7 @@ describe("Deploy and run pipeline", async function () {
         );
     });
 
-    it("should show expected datasets with schemas for the successful run", async () => {
+    it("should show expected datasets after the successful run", async () => {
         const datasetItems = await getResourceSubItems(
             resourceExplorerView,
             "Pipelines",
@@ -144,7 +144,11 @@ describe("Deploy and run pipeline", async function () {
         assert.strictEqual(datasets[0].description, "materialized view");
         assert.strictEqual(datasets[1].label, "test_view");
         assert.strictEqual(datasets[1].description, "view");
-        const schemaItems = await resourceExplorerView.openItem(
+    });
+
+    it("should show expected schema definitions for a dataset", async () => {
+        const schemaItems = await getResourceSubItems(
+            resourceExplorerView,
             "Pipelines",
             pipelineName,
             "Datasets",
