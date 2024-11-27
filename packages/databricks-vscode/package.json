@@ -272,7 +272,7 @@
             {
                 "command": "databricks.bundle.cancelRun",
                 "title": "Cancel run",
-                "icon": "$(debug-stop)",
+                "icon": "$(stop)",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },

@@ -32,7 +32,7 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Barrier} from "../locking/Barrier";
 import {WorkspaceClient} from "@databricks/databricks-sdk";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
-import {expandUriAndType} from "../utils/fileUtils";
+import {expandUriAndType, NotebookType} from "../utils/fileUtils";
 import {onError} from "../utils/onErrorDecorator";
 
 type RunState = {
@@ -128,39 +128,42 @@ export class BundlePipelinesManager {
         }
         const message = getEventMessage(event);
         window.showInformationMessage(message);
-        const sourceLocation = (event.origin as any)
-            ?.source_code_location as SourceLocation;
-        if (!sourceLocation?.path) {
+        // Source location is undocumented, but it's safe to rely on
+        // @ts-expect-error Property 'source_code_location' does not exist
+        const location: SourceLocation = event.origin?.source_code_location;
+        if (!location?.path) {
             return;
         }
 
-        const fileCheck = await expandUriAndType(
-            this.remoteToLocal(sourceLocation.path)
-        );
+        const localUri = this.remoteToLocal(location.path);
+        const fileCheck = await expandUriAndType(localUri);
         const uri = fileCheck.uri;
         if (!uri) {
             return;
         }
-        const line = (sourceLocation.line_number ?? 1) - 1;
-        const range = new Range(line, 0, line, Number.MAX_SAFE_INTEGER);
-        let editor: TextEditor;
-        if (fileCheck.type === "IPYNB" && sourceLocation.notebook_cell_number) {
-            const cellIndex = sourceLocation.notebook_cell_number - 1;
+        const range = await locationToRange(uri, location, fileCheck.type);
+        let editor: TextEditor | undefined;
+        if (fileCheck.type === "IPYNB") {
             const notebook = await workspace.openNotebookDocument(uri);
             const notebookEditor = await window.showNotebookDocument(notebook);
+            const cellIndex = (location.notebook_cell_number ?? 1) - 1;
             notebookEditor.revealRange(new NotebookRange(cellIndex, cellIndex));
-            const cell = notebook.cellAt(cellIndex);
-            editor = await window.showTextDocument(cell.document);
+            if (location.notebook_cell_number) {
+                const cell = notebook.cellAt(cellIndex);
+                editor = await window.showTextDocument(cell.document);
+            }
         } else {
             const doc = await workspace.openTextDocument(uri);
             editor = await window.showTextDocument(doc);
         }
-        editor.selection = new Selection(
-            range.start.line,
-            range.start.character,
-            range.end.line,
-            range.end.character
-        );
+        if (editor) {
+            editor.selection = new Selection(
+                range.start.line,
+                range.start.character,
+                range.end.line,
+                range.end.character
+            );
+        }
         commands.executeCommand("revealLine", {
             lineNumber: range.start.line,
             at: "center",
@@ -180,35 +183,36 @@ export class BundlePipelinesManager {
                 continue;
             }
             for (const event of latestRun.events ?? []) {
-                const sourceLocation = (event.origin as any)
-                    ?.source_code_location as SourceLocation;
+                // Source location is undocumented, but it's safe to rely on
+                const location: SourceLocation =
+                    // @ts-expect-error Property 'source_code_location' does not exist
+                    event.origin?.source_code_location;
                 if (
                     !event.message ||
-                    !sourceLocation?.path ||
+                    !location?.path ||
                     !["ERROR", "WARN"].includes(event.level || "")
                 ) {
                     continue;
                 }
                 const fileCheck = await expandUriAndType(
-                    this.remoteToLocal(sourceLocation.path)
+                    this.remoteToLocal(location.path)
                 );
                 let uri = fileCheck.uri;
                 if (!uri) {
                     continue;
                 }
-                if (
-                    fileCheck.type === "IPYNB" &&
-                    sourceLocation.notebook_cell_number
-                ) {
-                    uri = generateNotebookCellURI(
-                        uri,
-                        sourceLocation.notebook_cell_number - 1
-                    );
+                if (fileCheck.type === "IPYNB") {
+                    const cellIndex = (location.notebook_cell_number ?? 1) - 1;
+                    uri = generateNotebookCellURI(uri, cellIndex);
                 }
                 const path = uri.toString();
-                const line = (sourceLocation.line_number ?? 1) - 1;
+                const range = await locationToRange(
+                    uri,
+                    location,
+                    fileCheck.type
+                );
                 const diagnostic = new Diagnostic(
-                    new Range(line, 0, line, Number.MAX_SAFE_INTEGER),
+                    range,
                     getEventMessage(event),
                     event.level === "ERROR"
                         ? DiagnosticSeverity.Error
@@ -542,6 +546,27 @@ function getEventMessage(event: PipelineEvent) {
         ].join("\n");
     }
     return message ?? "";
+}
+
+export async function locationToRange(
+    uri: Uri,
+    location: SourceLocation,
+    fileType?: NotebookType
+) {
+    const cellIndex = (location.notebook_cell_number ?? 1) - 1;
+    let line = (location.line_number ?? 1) - 1;
+    if (fileType === "PY_DBNB") {
+        const bytes = await workspace.fs.readFile(uri);
+        const prevCells = new TextDecoder()
+            .decode(bytes)
+            .split(/\r?\n# COMMAND ----------.*\r?\n/)
+            .slice(0, cellIndex);
+        const prevCellLines = prevCells
+            .map((cell) => cell.split(/\r?\n/).length)
+            .reduce((a, b) => a + b, prevCells.length);
+        line += prevCellLines;
+    }
+    return new Range(line, 0, line, Number.MAX_SAFE_INTEGER);
 }
 
 // Cell URIs are private and there is no public API to generate them.

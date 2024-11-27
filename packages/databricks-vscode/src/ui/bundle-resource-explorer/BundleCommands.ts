@@ -300,8 +300,8 @@ export class BundleCommands implements Disposable {
     }
 
     @onError({popup: {prefix: "Error showing event details."}})
-    showPipelineEventDetails(item: any) {
-        this.bundlePipelinesManager.showPipelineEventDetails(item.event);
+    async showPipelineEventDetails(item: any) {
+        await this.bundlePipelinesManager.showPipelineEventDetails(item.event);
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})
