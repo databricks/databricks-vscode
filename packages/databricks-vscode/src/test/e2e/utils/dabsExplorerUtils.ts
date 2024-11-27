@@ -19,16 +19,10 @@ export async function geTaskViewItem(
     resourceName: string,
     taskName: string
 ) {
-    const jobViewItem = await getResourceViewItem(
+    const tasks = await getResourceSubItems(
         resourceExplorerView,
         "Workflows",
-        resourceName
-    );
-    assert(jobViewItem, `Job view item with name ${resourceName} not found`);
-
-    const tasks = await resourceExplorerView.openItem(
-        "Workflows",
-        await (await jobViewItem!.elem).getText(),
+        resourceName,
         "Tasks"
     );
     for (const task of tasks) {
@@ -36,6 +30,28 @@ export async function geTaskViewItem(
             return task;
         }
     }
+}
+
+export async function getResourceSubItems(
+    resourceExplorerView: CustomTreeSection,
+    resourceType: "Workflows" | "Pipelines",
+    resourceName: string,
+    subItemName: string
+) {
+    const resourceViewItem = await getResourceViewItem(
+        resourceExplorerView,
+        resourceType,
+        resourceName
+    );
+    assert(
+        resourceViewItem,
+        `Resource view item with name ${resourceName} not found`
+    );
+    return await resourceExplorerView.openItem(
+        resourceType,
+        await (await resourceViewItem!.elem).getText(),
+        subItemName
+    );
 }
 
 export async function waitForRunStatus(
