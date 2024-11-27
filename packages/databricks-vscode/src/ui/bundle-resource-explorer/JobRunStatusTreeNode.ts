@@ -92,11 +92,14 @@ export class JobRunStatusTreeNode implements BundleResourceExplorerTreeNode {
             };
         }
 
-        const status = JobRunStateUtils.getSimplifiedRunState(this.runDetails);
-        const icon = RunStateUtils.getThemeIconForStatus(status);
+        const status =
+            this.runMonitor?.runState === "cancelling"
+                ? "Cancelling"
+                : JobRunStateUtils.getSimplifiedRunState(this.runDetails);
+
         return {
             label: "Run Status",
-            iconPath: icon,
+            iconPath: RunStateUtils.getThemeIconForStatus(status),
             description: status,
             contextValue: ContextUtils.getContextString({
                 nodeType: this.type,

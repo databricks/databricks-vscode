@@ -12,7 +12,6 @@ import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {PipelineRunStatusTreeNode} from "./PipelineRunStatusTreeNode";
-import {PipelineRunEventsTreeNode} from "./PipelineRunEventsTreeNode";
 import {ThemeIcon} from "vscode";
 
 export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
@@ -100,11 +99,6 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
         if (runMonitor) {
             children.push(
                 new PipelineRunStatusTreeNode(
-                    this.connectionManager,
-                    runMonitor,
-                    this
-                ),
-                new PipelineRunEventsTreeNode(
                     this.connectionManager,
                     runMonitor,
                     this

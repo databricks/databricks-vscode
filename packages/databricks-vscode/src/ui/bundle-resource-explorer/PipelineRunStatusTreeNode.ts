@@ -4,11 +4,12 @@ import {
 } from "./types";
 import {ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {ContextUtils, RunStateUtils} from "./utils";
-import {SimplifiedRunState, sentenceCase} from "./utils/RunStateUtils";
+import {SimplifiedRunState} from "./utils/RunStateUtils";
 import {GetUpdateResponse} from "@databricks/databricks-sdk/dist/apis/pipelines";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
+import {PipelineEventTreeNode} from "./PipelineEventTreeNode";
 
 function getSimplifiedUpdateState(
     update?: GetUpdateResponse["update"]
@@ -49,6 +50,10 @@ export class PipelineRunStatusTreeNode
         return this.runMonitor?.data;
     }
 
+    private get events() {
+        return this.runMonitor?.events;
+    }
+
     public get url() {
         const {host} = this.connectionManager.databricksWorkspace ?? {};
         // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -71,24 +76,12 @@ export class PipelineRunStatusTreeNode
         }
         const children: BundleResourceExplorerTreeNode[] = [];
 
-        if (this.update.cause) {
-            children.push(
-                new TreeItemTreeNode(
-                    {
-                        label: "Cause",
-                        description: this.update.cause,
-                        contextValue: "update_cause",
-                    },
-                    this
-                )
-            );
-        }
-
         if (this.update.creation_time) {
             children.push(
                 new TreeItemTreeNode(
                     {
                         label: "Start Time",
+                        iconPath: new ThemeIcon("watch"),
                         description: RunStateUtils.humaniseDate(
                             this.update.creation_time
                         ),
@@ -99,15 +92,11 @@ export class PipelineRunStatusTreeNode
             );
         }
 
-        return children;
-    }
+        for (const event of this.events ?? []) {
+            children.push(new PipelineEventTreeNode(event, this));
+        }
 
-    isLoading(): boolean {
-        return (
-            this.update === undefined &&
-            (this.runMonitor.runState === "running" ||
-                this.runMonitor.runState === "unknown")
-        );
+        return children;
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
@@ -122,24 +111,15 @@ export class PipelineRunStatusTreeNode
             return runMonitorRunStateTreeItem;
         }
 
-        if (this.isLoading()) {
-            return {
-                label: "Run Status",
-                iconPath: new ThemeIcon("loading~spin"),
-                contextValue: ContextUtils.getContextString({
-                    nodeType: this.type,
-                }),
-                collapsibleState: TreeItemCollapsibleState.None,
-            };
-        }
-
-        const status = getSimplifiedUpdateState(this.update);
-        const icon = RunStateUtils.getThemeIconForStatus(status);
+        const status =
+            this.runMonitor.runState === "cancelling"
+                ? "Cancelling"
+                : getSimplifiedUpdateState(this.update);
 
         return {
             label: "Run Status",
-            iconPath: icon,
-            description: sentenceCase(this.update?.state),
+            iconPath: RunStateUtils.getThemeIconForStatus(status),
+            description: status,
             contextValue: ContextUtils.getContextString({
                 nodeType: this.type,
                 hasUrl: this.url !== undefined,

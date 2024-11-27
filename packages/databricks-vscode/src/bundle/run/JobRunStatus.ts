@@ -72,6 +72,7 @@ export class JobRunStatus extends BundleRunStatus {
             return;
         }
 
+        this.runState = "cancelling";
         const client = await this.authProvider.getWorkspaceClient();
         await (
             await client.jobs.cancelRun({run_id: parseInt(this.runId)})

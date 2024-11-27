@@ -15,6 +15,7 @@ export type SimplifiedRunState =
     | "Running"
     | "Terminating"
     | "Cancelled"
+    | "Cancelling"
     | "Success"
     | "Unknown"
     | "Timeout";
@@ -54,9 +55,9 @@ export function getThemeIconForStatus(status: SimplifiedRunState): ThemeIcon {
         case "Skipped":
             return new ThemeIcon("testing-skipped-icon");
         case "Pending":
-            return new ThemeIcon("watch");
         case "Running":
             return new ThemeIcon("sync~spin", new ThemeColor("charts.green"));
+        case "Cancelling":
         case "Terminating":
             return new ThemeIcon("sync-ignored", new ThemeColor("charts.red"));
         case "Terminated":
@@ -72,16 +73,6 @@ export function getThemeIconForStatus(status: SimplifiedRunState): ThemeIcon {
         default:
             return new ThemeIcon("question");
     }
-}
-
-export function sentenceCase(str?: string, sep: string = "_") {
-    if (str === undefined) {
-        return undefined;
-    }
-
-    return (str.charAt(0).toUpperCase() + str.slice(1).toLowerCase())
-        .split(sep)
-        .join(" ");
 }
 
 export function getTreeItemFromRunMonitorStatus(
@@ -101,7 +92,7 @@ export function getTreeItemFromRunMonitorStatus(
         };
     }
 
-    if (runMonitor?.runState === "cancelled") {
+    if (runMonitor?.runState === "cancelled" && !runMonitor.data) {
         return {
             label: "Run Status",
             iconPath: getThemeIconForStatus("Cancelled"),
@@ -110,6 +101,29 @@ export function getTreeItemFromRunMonitorStatus(
                 nodeType: type,
                 hasUrl: url !== undefined,
             }),
+            collapsibleState: TreeItemCollapsibleState.None,
+        };
+    }
+
+    if (runMonitor?.runState === "error" && !runMonitor.data) {
+        return {
+            label: "Run Status",
+            iconPath: getThemeIconForStatus("Failed"),
+            description: "Failed to fetch run status",
+            contextValue: ContextUtils.getContextString({nodeType: type}),
+            collapsibleState: TreeItemCollapsibleState.None,
+        };
+    }
+
+    if (
+        (runMonitor?.runState === "running" ||
+            runMonitor?.runState === "unknown") &&
+        !runMonitor.data
+    ) {
+        return {
+            label: "Run Status",
+            iconPath: new ThemeIcon("loading~spin"),
+            contextValue: ContextUtils.getContextString({nodeType: type}),
             collapsibleState: TreeItemCollapsibleState.None,
         };
     }
