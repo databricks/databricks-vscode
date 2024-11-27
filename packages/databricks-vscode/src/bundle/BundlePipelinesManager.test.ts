@@ -179,7 +179,7 @@ describe("BundlePipelinesManager", () => {
         assert(datasets.has("table_final"));
     });
 
-    it("should update pipeline shemas from run events", async () => {
+    it("should extract pipeline schemas from run events", async () => {
         const remoteState = {resources: {pipelines: {pipeline1: {}}}};
         when(configModel.get("remoteStateConfig")).thenResolve(remoteState);
         const runStatuses = new Map();
