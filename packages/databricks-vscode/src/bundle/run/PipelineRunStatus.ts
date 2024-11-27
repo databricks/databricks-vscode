@@ -3,7 +3,6 @@ import {BundleRunStatus} from "./BundleRunStatus";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {onError} from "../../utils/onErrorDecorator";
 import {
-    Context,
     logging,
     pipelines,
     retry,
@@ -15,7 +14,6 @@ import {
     LinearRetryPolicy,
     RetriableError,
 } from "@databricks/databricks-sdk/dist/retries/retries";
-import {CancellationToken, CancellationTokenSource} from "vscode";
 import {Loggers} from "../../logger";
 
 function isRunning(status?: pipelines.UpdateInfoState) {
