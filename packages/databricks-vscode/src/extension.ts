@@ -684,6 +684,11 @@ export async function activate(
             bundleCommands
         ),
         telemetry.registerCommand(
+            "databricks.bundle.deployAndRunFromInput",
+            bundleCommands.deployAndRunFromInput,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
             "databricks.bundle.deployAndRunJob",
             bundleCommands.deployAndRun,
             bundleCommands
@@ -701,6 +706,16 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.bundle.deployAndRunSelectedTables",
             bundleCommands.deployAndRunSelectedTables,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.clearPipelineDiagnostics",
+            bundleCommands.clearPipelineDiagnostics,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.showPipelineEventDetails",
+            bundleCommands.showPipelineEventDetails,
             bundleCommands
         ),
         telemetry.registerCommand(

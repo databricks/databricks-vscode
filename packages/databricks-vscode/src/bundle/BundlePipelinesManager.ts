@@ -8,6 +8,17 @@ import {
     QuickPickItem,
     QuickPickItemKind,
     window,
+    languages,
+    DiagnosticCollection,
+    Diagnostic,
+    Range,
+    DiagnosticSeverity,
+    Uri,
+    workspace,
+    NotebookRange,
+    commands,
+    Selection,
+    TextEditor,
 } from "vscode";
 import {PipelineRunStatus} from "./run/PipelineRunStatus";
 import {BundleRunStatusManager} from "./run/BundleRunStatusManager";
@@ -20,6 +31,9 @@ import {
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Barrier} from "../locking/Barrier";
 import {WorkspaceClient} from "@databricks/databricks-sdk";
+import {LocalUri, RemoteUri} from "../sync/SyncDestination";
+import {expandUriAndType, NotebookType} from "../utils/fileUtils";
+import {onError} from "../utils/onErrorDecorator";
 
 type RunState = {
     data: UpdateInfo | undefined;
@@ -36,29 +50,46 @@ type PreloadedPipelineState = Promise<Set<string> | undefined>;
 
 type Pick = QuickPickItem & {isDataset?: boolean};
 
+type SourceLocation = {
+    path: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    line_number: number;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    notebook_cell_number?: number;
+};
+
 export class BundlePipelinesManager {
     private disposables: Disposable[] = [];
     private readonly triggeredState: Map<string, PipelineState> = new Map();
     private readonly preloadedState: Map<string, PreloadedPipelineState> =
         new Map();
+    private readonly diagnostics: DiagnosticCollection;
 
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly runStatusManager: BundleRunStatusManager,
         private readonly configModel: ConfigModel
     ) {
+        this.diagnostics = languages.createDiagnosticCollection(
+            "Databricks Pipelines"
+        );
         this.disposables.push(
+            this.diagnostics,
             this.configModel.onDidChangeTarget(() => {
                 this.updateTriggeredPipelinesState();
+                this.updateDiagnostics();
             }),
             this.configModel.onDidChangeKey("remoteStateConfig")(async () => {
                 this.updateTriggeredPipelinesState();
+                this.updateDiagnostics();
             }),
             this.runStatusManager.onDidChange(() => {
                 this.updateTriggeredPipelinesState();
+                this.updateDiagnostics();
             })
         );
         this.updateTriggeredPipelinesState();
+        this.updateDiagnostics();
     }
 
     private async updateTriggeredPipelinesState() {
@@ -85,6 +116,129 @@ export class BundlePipelinesManager {
                 state.datasets = extractPipelineDatasets(state.runs);
             }
         });
+    }
+
+    public clearDiagnostics() {
+        this.diagnostics.clear();
+    }
+
+    public async showPipelineEventDetails(event?: PipelineEvent) {
+        if (!event || !event.message) {
+            return;
+        }
+        const message = getEventMessage(event);
+        window.showInformationMessage(message);
+        // Source location is undocumented, but it's safe to rely on
+        // @ts-expect-error Property 'source_code_location' does not exist
+        const location: SourceLocation = event.origin?.source_code_location;
+        if (!location?.path) {
+            return;
+        }
+
+        const localUri = this.remoteToLocal(location.path);
+        const fileCheck = await expandUriAndType(localUri);
+        const uri = fileCheck.uri;
+        if (!uri) {
+            return;
+        }
+        const range = await locationToRange(uri, location, fileCheck.type);
+        let editor: TextEditor | undefined;
+        if (fileCheck.type === "IPYNB") {
+            const notebook = await workspace.openNotebookDocument(uri);
+            const notebookEditor = await window.showNotebookDocument(notebook);
+            const cellIndex = (location.notebook_cell_number ?? 1) - 1;
+            notebookEditor.revealRange(new NotebookRange(cellIndex, cellIndex));
+            if (location.notebook_cell_number) {
+                const cell = notebook.cellAt(cellIndex);
+                editor = await window.showTextDocument(cell.document);
+            }
+        } else {
+            const doc = await workspace.openTextDocument(uri);
+            editor = await window.showTextDocument(doc);
+        }
+        if (editor) {
+            editor.selection = new Selection(
+                range.start.line,
+                range.start.character,
+                range.end.line,
+                range.end.character
+            );
+        }
+        commands.executeCommand("revealLine", {
+            lineNumber: range.start.line,
+            at: "center",
+        });
+    }
+
+    @onError({popup: {prefix: "Failed to update pipeline diagnostics."}})
+    private async updateDiagnostics() {
+        this.clearDiagnostics();
+        const diagnosticsMap = new Map<string, Diagnostic[]>();
+        for (const pipelineState of this.triggeredState.values()) {
+            const latestRun = Array.from(pipelineState.runs).sort(
+                (a, b) =>
+                    (b.data?.creation_time ?? 0) - (a.data?.creation_time ?? 0)
+            )[0];
+            if (!latestRun) {
+                continue;
+            }
+            for (const event of latestRun.events ?? []) {
+                // Source location is undocumented, but it's safe to rely on
+                const location: SourceLocation =
+                    // @ts-expect-error Property 'source_code_location' does not exist
+                    event.origin?.source_code_location;
+                if (
+                    !event.message ||
+                    !location?.path ||
+                    !["ERROR", "WARN"].includes(event.level || "")
+                ) {
+                    continue;
+                }
+                const fileCheck = await expandUriAndType(
+                    this.remoteToLocal(location.path)
+                );
+                let uri = fileCheck.uri;
+                if (!uri) {
+                    continue;
+                }
+                if (fileCheck.type === "IPYNB") {
+                    const cellIndex = (location.notebook_cell_number ?? 1) - 1;
+                    uri = generateNotebookCellURI(uri, cellIndex);
+                }
+                const path = uri.toString();
+                const range = await locationToRange(
+                    uri,
+                    location,
+                    fileCheck.type
+                );
+                const diagnostic = new Diagnostic(
+                    range,
+                    getEventMessage(event),
+                    event.level === "ERROR"
+                        ? DiagnosticSeverity.Error
+                        : DiagnosticSeverity.Warning
+                );
+                diagnostic.source = "Databricks Extension";
+                if (!diagnosticsMap.has(path)) {
+                    diagnosticsMap.set(path, []);
+                }
+                diagnosticsMap.get(path)?.push(diagnostic);
+            }
+        }
+
+        for (const [path, diagnostics] of diagnosticsMap) {
+            this.diagnostics.set(Uri.parse(path), diagnostics);
+        }
+    }
+
+    private remoteToLocal(remotePath: string): LocalUri | undefined {
+        try {
+            return this.connectionManager.syncDestinationMapper?.remoteToLocal(
+                new RemoteUri(remotePath)
+            );
+        } catch (e) {
+            return undefined;
+        }
     }
 
     public getDatasets(pipelineKey: string) {
@@ -174,7 +328,8 @@ export class BundlePipelinesManager {
             order_by: ["timestamp asc"],
         };
         const oldestUpdateTime = Array.from(runs.values()).sort(
-            (a, b) => a.data?.creation_time ?? 0 - (b.data?.creation_time ?? 0)
+            (a, b) =>
+                (a.data?.creation_time ?? 0) - (b.data?.creation_time ?? 0)
         )[0].data?.creation_time;
         if (oldestUpdateTime) {
             const timestamp = new Date(oldestUpdateTime).toISOString();
@@ -380,4 +535,53 @@ function isPickSelected(ui: QuickPick<Pick>, pick: Pick) {
     return ui.selectedItems.some(
         (i) => i.label === pick.label && i.description === pick.description
     );
+}
+
+function getEventMessage(event: PipelineEvent) {
+    let message = event.message;
+    if (event.error?.exceptions) {
+        message = [
+            message,
+            ...event.error.exceptions.map((e) => e.message).filter(Boolean),
+        ].join("\n");
+    }
+    return message ?? "";
+}
+
+export async function locationToRange(
+    uri: Uri,
+    location: SourceLocation,
+    fileType?: NotebookType
+) {
+    const cellIndex = (location.notebook_cell_number ?? 1) - 1;
+    let line = (location.line_number ?? 1) - 1;
+    if (fileType === "PY_DBNB") {
+        const bytes = await workspace.fs.readFile(uri);
+        const prevCells = new TextDecoder()
+            .decode(bytes)
+            .split(/\r?\n# COMMAND ----------.*\r?\n/)
+            .slice(0, cellIndex);
+        const prevCellLines = prevCells
+            .map((cell) => cell.split(/\r?\n/).length)
+            .reduce((a, b) => a + b, prevCells.length);
+        line += prevCellLines;
+    }
+    return new Range(line, 0, line, Number.MAX_SAFE_INTEGER);
+}
+
+// Cell URIs are private and there is no public API to generate them.
+// Here we generate a URI for a cell in the same way as VS Code does it, but without appending base64 schema to it (vsode can still parse such uris).
+// https://github.com/microsoft/vscode/blob/9508be851891834c4036da28461824c664dfa2c0/src/vs/workbench/services/notebook/common/notebookDocumentService.ts#L45C41-L45C47
+// As an alternative we can access these URIs by relying on open notebook editors, which means you won't get diagnostics in the problems panel unless you open a notebook.
+// (Which is how it actually is for disgnostics that python extension provides)
+function generateNotebookCellURI(notebook: Uri, handle: number): Uri {
+    const lengths = ["W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f"];
+    const radix = 7;
+    const cellScheme = "vscode-notebook-cell";
+    const s = handle.toString(radix);
+    const p = s.length < lengths.length ? lengths[s.length - 1] : "z";
+    // base64 encoded notebook cell scheme
+    const schemeFragment = "ZmlsZQ==";
+    const fragment = `${p}${s}s${schemeFragment}`;
+    return notebook.with({scheme: cellScheme, fragment});
 }

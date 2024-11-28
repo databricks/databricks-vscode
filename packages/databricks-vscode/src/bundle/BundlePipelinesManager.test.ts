@@ -3,11 +3,15 @@ import {BundleRunStatusManager} from "./run/BundleRunStatusManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {mock, instance, when} from "ts-mockito";
 import assert from "assert";
-import {EventEmitter} from "vscode";
+import {EventEmitter, Uri} from "vscode";
 import {install, InstalledClock} from "@sinonjs/fake-timers";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {locationToRange} from "./BundlePipelinesManager";
+import path from "node:path";
+import os from "os";
+import fs from "fs/promises";
 
-describe(__filename, () => {
+describe("BundlePipelinesManager", () => {
     let connectionManager: ConnectionManager;
     let runStatusManager: BundleRunStatusManager;
     let configModel: ConfigModel;
@@ -117,7 +121,7 @@ describe(__filename, () => {
         /* eslint-disable @typescript-eslint/naming-convention */
         const finalFullRefreshRun = {
             data: {
-                creation_time: 200,
+                creation_time: 300,
                 refresh_selection: [],
                 state: "COMPLETED",
             },
@@ -137,5 +141,60 @@ describe(__filename, () => {
         assert.strictEqual(datasets.size, 2);
         assert(datasets.has("table_new"));
         assert(datasets.has("table_final"));
+    });
+
+    describe("locationToRange", () => {
+        it("should return correct range for a given location in a text file", async () => {
+            const uri = Uri.file("/path/to/file.py");
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            const location = {path: "/path/to/file.py", line_number: 10};
+            const range = await locationToRange(uri, location);
+            assert.strictEqual(range.start.line, 9);
+            assert.strictEqual(range.end.line, 9);
+        });
+
+        it("should return correct range for a given location in a notebook file", async () => {
+            const uri = Uri.file("/path/to/notebook.ipynb");
+            const location = {
+                path: "/path/to/notebook.ipynb",
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                line_number: 5,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                notebook_cell_number: 2,
+            };
+            const range = await locationToRange(uri, location, "IPYNB");
+            assert.strictEqual(range.start.line, 4);
+            assert.strictEqual(range.end.line, 4);
+        });
+
+        it("should handle PY_DBNB file type correctly", async () => {
+            // const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "test-"));
+            const filePath = path.join(os.tmpdir(), "notebook.py");
+            const uri = Uri.file(filePath);
+            const fileContent = `# Databricks notebook source
+print('cell 1')
+
+# COMMAND ----------
+print('cell 2')
+print('still cell 2')
+
+
+# COMMAND ----------
+print('cell 3')`;
+
+            await fs.writeFile(filePath, fileContent);
+
+            const location = {
+                path: filePath,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                line_number: 1,
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                notebook_cell_number: 3,
+            };
+
+            const range = await locationToRange(uri, location, "PY_DBNB");
+            assert.strictEqual(range.start.line, 9);
+            assert.strictEqual(range.end.line, 9);
+        });
     });
 });

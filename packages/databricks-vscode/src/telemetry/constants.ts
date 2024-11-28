@@ -30,7 +30,11 @@ export type ManualLoginSource =
     | "command"
     | "api";
 export type BundleRunResourceType = "pipelines" | "jobs";
-export type BundleRunType = "run" | "validate" | "partial-refresh";
+export type BundleRunType =
+    | "run"
+    | "validate"
+    | "partial-refresh"
+    | "manual-input";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};

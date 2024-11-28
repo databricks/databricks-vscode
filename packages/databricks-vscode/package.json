@@ -218,6 +218,13 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.bundle.deployAndRunFromInput",
+                "icon": "$(run)",
+                "title": "Deploy the bundle and run a resource",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.bundle.deployAndRunJob",
                 "icon": "$(run)",
                 "title": "Deploy the bundle and run the workflow",
@@ -249,9 +256,23 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.bundle.clearPipelineDiagnostics",
+                "icon": "$(clear-all)",
+                "title": "Clear pipeline diagnostics",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.showPipelineEventDetails",
+                "icon": "$(info)",
+                "title": "Show more information",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.bundle.cancelRun",
                 "title": "Cancel run",
-                "icon": "$(debug-stop)",
+                "icon": "$(stop)",
                 "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
@@ -639,6 +660,16 @@
                     "group": "navigation@0"
                 },
                 {
+                    "command": "databricks.bundle.showPipelineEventDetails",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.has-pipeline-details.*$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.showPipelineEventDetails",
+                    "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.has-pipeline-details.*$/",
+                    "group": "navigation@0"
+                },
+                {
                     "command": "databricks.bundle.cancelRun",
                     "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.*.cancellable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
@@ -778,6 +809,10 @@
                 },
                 {
                     "command": "databricks.bundle.deployAndRunSelectedTables",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.showPipelineEventDetails",
                     "when": "false"
                 },
                 {

@@ -7,7 +7,10 @@ import {ContextUtils} from "./utils";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
-import {EventLevel} from "@databricks/databricks-sdk/dist/apis/pipelines";
+import {
+    EventLevel,
+    PipelineEvent,
+} from "@databricks/databricks-sdk/dist/apis/pipelines";
 
 export class PipelineRunEventsTreeNode
     implements BundleResourceExplorerTreeNode
@@ -45,17 +48,7 @@ export class PipelineRunEventsTreeNode
         const children: BundleResourceExplorerTreeNode[] = [];
 
         for (const event of this.events) {
-            children.push(
-                new TreeItemTreeNode(
-                    {
-                        label: event.message ?? event.event_type ?? "unknown",
-                        iconPath: getEventIcon(event.level),
-                        tooltip: event.message,
-                        contextValue: "pipeline_event",
-                    },
-                    this
-                )
-            );
+            children.push(new PipelineEventTreeNode(event, this));
         }
 
         return children;
@@ -91,6 +84,33 @@ export class PipelineRunEventsTreeNode
             collapsibleState: TreeItemCollapsibleState.Expanded,
         };
     }
+}
+
+class PipelineEventTreeNode<T> extends TreeItemTreeNode<T> {
+    constructor(
+        public event: PipelineEvent,
+        parent: T
+    ) {
+        super(
+            {
+                label: event.message ?? event.event_type ?? "unknown",
+                iconPath: getEventIcon(event.level),
+                tooltip: event.message,
+                contextValue: ContextUtils.getContextString({
+                    nodeType: "pipeline_run_event",
+                    hasPipelineDetails: hasDetails(event),
+                }),
+            },
+            parent
+        );
+    }
+}
+
+function hasDetails(event: PipelineEvent): boolean {
+    return (
+        event.error?.exceptions !== undefined &&
+        event.error.exceptions.length > 0
+    );
 }
 
 function getEventIcon(level: EventLevel | undefined): ThemeIcon {

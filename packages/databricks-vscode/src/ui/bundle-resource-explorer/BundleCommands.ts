@@ -21,10 +21,9 @@ export const RUNNABLE_BUNDLE_RESOURCES = [
 ] satisfies BundleResourceExplorerTreeNode["type"][];
 
 type RunnableTreeNodes = PipelineTreeNode | JobTreeNode;
+type ResourceData = {type: string; resourceKey?: string};
 
-function isRunnable(
-    treeNode: BundleResourceExplorerTreeNode
-): treeNode is RunnableTreeNodes {
+function isRunnable(treeNode: ResourceData): treeNode is RunnableTreeNodes {
     return (RUNNABLE_BUNDLE_RESOURCES as string[]).includes(treeNode.type);
 }
 
@@ -178,31 +177,96 @@ export class BundleCommands implements Disposable {
 
     @onError({popup: {prefix: "Error running resource."}})
     async deployAndRun(
-        treeNode: BundleResourceExplorerTreeNode,
+        resourceData: ResourceData,
         additionalArgs: string[] = [],
         runType: BundleRunType = "run"
     ) {
-        if (!isRunnable(treeNode)) {
-            throw new Error(`Cannot run resource of type ${treeNode.type}`);
+        if (!isRunnable(resourceData)) {
+            throw new Error(`Cannot run resource of type ${resourceData.type}`);
         }
         const recordEvent = this.telemetry.start(Events.BUNDLE_RUN);
         try {
             // TODO: Don't deploy if there is no diff between local and remote state
             await this.deploy();
             const result = await this.bundleRunStatusManager.run(
-                treeNode.resourceKey,
-                treeNode.type,
+                resourceData.resourceKey,
+                resourceData.type,
                 additionalArgs
             );
             recordEvent({
                 success: true,
                 runType,
-                resourceType: treeNode.type,
+                resourceType: resourceData.type,
                 cancelled: result.cancelled,
             });
         } catch (e) {
-            recordEvent({success: false, resourceType: treeNode.type, runType});
+            recordEvent({
+                success: false,
+                resourceType: resourceData.type,
+                runType,
+            });
             throw e;
+        }
+    }
+
+    async deployAndRunFromInput(
+        options: {
+            resourceType?: string;
+            resourceKey?: string;
+            args?: string;
+        } = {}
+    ) {
+        let {resourceType, resourceKey} = options;
+        if (!resourceType || !resourceKey) {
+            const remoteState = await this.configModel.get("remoteStateConfig");
+            const pipelines = remoteState?.resources?.pipelines ?? {};
+            const pipelineItems = Object.keys(pipelines).map((key) => ({
+                label: key,
+                description: "Pipeline",
+                type: "pipelines",
+                key: `pipelines.${key}`,
+            }));
+            const workflows = remoteState?.resources?.jobs ?? {};
+            const workflowItems = Object.keys(workflows).map((key) => ({
+                label: key,
+                description: "Workflow",
+                type: "jobs",
+            }));
+            if (pipelineItems.length === 0 && workflowItems.length === 0) {
+                window.showErrorMessage(
+                    "No pipelines or workflows found in the bundle."
+                );
+                return;
+            }
+            const pick = await window.showQuickPick(
+                [...pipelineItems, ...workflowItems],
+                {
+                    placeHolder: "Select a pipeline or workflow to run",
+                }
+            );
+            if (!pick) {
+                return;
+            }
+            resourceType = pick.type;
+            resourceKey = pick.label;
+        }
+        const resourceData = {
+            type: resourceType,
+            resourceKey: `${resourceType}.${resourceKey}`,
+        };
+        const existingRun = this.bundleRunStatusManager.runStatuses.get(
+            resourceData.resourceKey
+        );
+        if (
+            existingRun?.runState === "running" ||
+            existingRun?.runState === "unknown"
+        ) {
+            window.showErrorMessage(
+                `A run for the "${resourceData.resourceKey}" is already in progress.`
+            );
+        } else {
+            const args = options.args?.split(" ").filter(Boolean);
+            return this.deployAndRun(resourceData, args, "manual-input");
         }
     }
 
@@ -228,6 +292,16 @@ export class BundleCommands implements Disposable {
             ],
             "partial-refresh"
         );
+    }
+
+    @onError({popup: {prefix: "Error clearing diagnostics."}})
+    clearPipelineDiagnostics() {
+        this.bundlePipelinesManager.clearDiagnostics();
+    }
+
+    @onError({popup: {prefix: "Error showing event details."}})
+    async showPipelineEventDetails(item: any) {
+        await this.bundlePipelinesManager.showPipelineEventDetails(item.event);
     }
 
     @onError({popup: {prefix: "Error cancelling run."}})
