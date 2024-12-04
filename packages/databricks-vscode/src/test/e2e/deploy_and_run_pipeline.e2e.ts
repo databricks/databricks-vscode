@@ -86,7 +86,7 @@ describe("Deploy and run pipeline", async function () {
             resourceExplorerView,
             "Pipelines",
             pipelineName,
-            "Completed",
+            "Success",
             // Long timeout, as the pipeline will be waiting for its cluster to start
             15 * 60 * 1000
         );

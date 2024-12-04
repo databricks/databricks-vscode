@@ -570,9 +570,10 @@ export async function locationToRange(
 }
 
 // Cell URIs are private and there is no public API to generate them.
-// Here we generate a URI for a cell in the same way as VS Code does it, but without appending base64 schema to it (vsode can still parse such uris).
+// Here we generate a URI for a cell in the same way as VS Code does it internally.
 // https://github.com/microsoft/vscode/blob/9508be851891834c4036da28461824c664dfa2c0/src/vs/workbench/services/notebook/common/notebookDocumentService.ts#L45C41-L45C47
-// As an alternative we can access these URIs by relying on open notebook editors, which means you won't get diagnostics in the problems panel unless you open a notebook.
+// As an alternative we can access these URIs by relying on open notebook editors,
+// which means you won't get diagnostics in the problems panel unless you open a notebook.
 // (Which is how it actually is for disgnostics that python extension provides)
 function generateNotebookCellURI(notebook: Uri, handle: number): Uri {
     const lengths = ["W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f"];

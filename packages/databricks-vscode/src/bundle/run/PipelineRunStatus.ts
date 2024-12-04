@@ -2,7 +2,19 @@
 import {BundleRunStatus} from "./BundleRunStatus";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {onError} from "../../utils/onErrorDecorator";
-import {pipelines, WorkspaceClient} from "@databricks/databricks-sdk";
+import {
+    logging,
+    pipelines,
+    retry,
+    Time,
+    TimeUnits,
+    WorkspaceClient,
+} from "@databricks/databricks-sdk";
+import {
+    LinearRetryPolicy,
+    RetriableError,
+} from "@databricks/databricks-sdk/dist/retries/retries";
+import {Loggers} from "../../logger";
 
 function isRunning(status?: pipelines.UpdateInfoState) {
     if (status === undefined) {
@@ -16,7 +28,7 @@ export class PipelineRunStatus extends BundleRunStatus {
     public data: pipelines.UpdateInfo | undefined;
     public events: pipelines.PipelineEvent[] | undefined;
 
-    private interval?: NodeJS.Timeout;
+    private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
 
     constructor(
         private readonly authProvider: AuthProvider,
@@ -47,43 +59,53 @@ export class PipelineRunStatus extends BundleRunStatus {
             return;
         }
 
-        if (this.runId === undefined) {
+        const runId = this.runId;
+        if (runId === undefined) {
             throw new Error("No update id");
         }
 
-        const client = await this.authProvider.getWorkspaceClient();
         this.runState = "running";
 
-        this.interval = setInterval(async () => {
-            try {
-                if (this.runId === undefined) {
-                    throw new Error("No update id");
-                }
-                const getUpdateResponse = await client.pipelines.getUpdate({
-                    pipeline_id: this.pipelineId,
-                    update_id: this.runId,
-                });
-                this.data = getUpdateResponse.update;
+        try {
+            await retry({
+                timeout: new Time(48, TimeUnits.hours),
+                retryPolicy: new LinearRetryPolicy(
+                    new Time(5, TimeUnits.seconds)
+                ),
+                fn: async () => {
+                    if (this.runState !== "running") {
+                        return;
+                    }
+                    await this.updateRunData(runId);
+                    if (isRunning(this.data?.state)) {
+                        throw new RetriableError();
+                    } else {
+                        this.runState = "completed";
+                    }
+                },
+            });
+        } catch (e) {
+            this.runState = "error";
+            throw e;
+        }
+    }
 
-                if (this.data?.creation_time !== undefined) {
-                    this.events = await this.fetchUpdateEvents(
-                        client,
-                        this.data?.creation_time,
-                        this.data?.update_id
-                    );
-                }
-
-                // If update is completed, we stop polling.
-                if (!isRunning(this.data?.state)) {
-                    this.markCompleted();
-                } else {
-                    this.onDidChangeEmitter.fire();
-                }
-            } catch (e) {
-                this.runState = "error";
-                throw e;
-            }
-        }, 5_000);
+    private async updateRunData(runId: string) {
+        const client = await this.authProvider.getWorkspaceClient();
+        const getUpdateResponse = await client.pipelines.getUpdate({
+            pipeline_id: this.pipelineId,
+            update_id: runId,
+        });
+        this.data = getUpdateResponse.update;
+        this.onDidChangeEmitter.fire();
+        if (this.data?.creation_time !== undefined) {
+            this.events = await this.fetchUpdateEvents(
+                client,
+                this.data?.creation_time,
+                this.data?.update_id
+            );
+            this.onDidChangeEmitter.fire();
+        }
     }
 
     private async fetchUpdateEvents(
@@ -106,47 +128,33 @@ export class PipelineRunStatus extends BundleRunStatus {
         return events;
     }
 
-    private markCompleted() {
-        if (this.interval !== undefined) {
-            clearInterval(this.interval);
-            this.interval = undefined;
-        }
-        this.runState = "completed";
-    }
-
-    private markCancelled() {
-        if (this.interval !== undefined) {
-            clearInterval(this.interval);
-            this.interval = undefined;
-        }
-        this.runState = "cancelled";
-    }
-
     async cancel() {
         if (this.runState !== "running" || this.runId === undefined) {
-            this.markCancelled();
+            this.runState = "cancelled";
             return;
         }
 
-        const client = await this.authProvider.getWorkspaceClient();
-        const update = await client.pipelines.getUpdate({
-            pipeline_id: this.pipelineId,
-            update_id: this.runId,
-        });
-        // Only stop the pipeline if the tracked update is still running. The stop API stops the
-        // latest update, which might not be the tracked update.
-        if (isRunning(update.update?.state)) {
-            await (
-                await client.pipelines.stop({
+        this.runState = "cancelling";
+        try {
+            const client = await this.authProvider.getWorkspaceClient();
+            const update = await client.pipelines.getUpdate({
+                pipeline_id: this.pipelineId,
+                update_id: this.runId,
+            });
+            // Only stop the pipeline if the tracked update is still running. The stop API stops the
+            // latest update, which might not be the tracked update.
+            if (isRunning(update.update?.state)) {
+                const stopRequest = await client.pipelines.stop({
                     pipeline_id: this.pipelineId,
-                })
-            ).wait();
+                });
+                await stopRequest.wait();
+            }
+            await this.updateRunData(this.runId);
+            this.runState = "cancelled";
+        } catch (e) {
+            this.logger.error("Failed to cancel pipeline run", e);
+            this.runState = "error";
+            throw e;
         }
-        const getUpdateResponse = await client.pipelines.getUpdate({
-            pipeline_id: this.pipelineId,
-            update_id: this.runId,
-        });
-        this.data = getUpdateResponse.update;
-        this.markCancelled();
     }
 }
