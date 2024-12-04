@@ -176,7 +176,8 @@ export async function waitForProcess(
             if (code === 0) {
                 resolve();
             } else {
-                reject(new ProcessError(stderr.join(""), code));
+                const message = onStdError ? "" : stderr.join("");
+                reject(new ProcessError(message, code));
             }
         });
         p.on("error", (e) => new ProcessError(e.message, null));
