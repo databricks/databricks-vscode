@@ -14,6 +14,7 @@ import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {ResourceTypeHeaderTreeNode} from "./ResourceTypeHeaderTreeNode";
+import {BundlePipelinesManager} from "../../bundle/BundlePipelinesManager";
 
 export class BundleResourceExplorerTreeDataProvider
     implements TreeDataProvider<BundleResourceExplorerTreeNode>
@@ -27,10 +28,11 @@ export class BundleResourceExplorerTreeDataProvider
     > = this._onDidChangeTreeData.event;
 
     constructor(
-        private readonly configModel: ConfigModel,
-        private readonly bundleRunStatusManager: BundleRunStatusManager,
         private readonly context: ExtensionContext,
-        private readonly connectionManager: ConnectionManager
+        private readonly configModel: ConfigModel,
+        private readonly connectionManager: ConnectionManager,
+        private readonly bundleRunStatusManager: BundleRunStatusManager,
+        private readonly pipelinesManager: BundlePipelinesManager
     ) {
         this.disposables.push(
             this.configModel.onDidChangeTarget(() => {
@@ -60,8 +62,9 @@ export class BundleResourceExplorerTreeDataProvider
             }
             return ResourceTypeHeaderTreeNode.getRoots(
                 this.context,
-                this.bundleRunStatusManager,
                 this.connectionManager,
+                this.bundleRunStatusManager,
+                this.pipelinesManager,
                 bundleRemoteState
             );
         }

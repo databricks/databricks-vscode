@@ -54,9 +54,21 @@ describe("BundlePipelinesManager", () => {
         const firstRun = {
             data: {creation_time: 10},
             events: [
-                {origin: {dataset_name: "table1"}},
-                {origin: {not_a_dataset_name: "table1.5"}},
-                {origin: {dataset_name: "table2"}},
+                {
+                    origin: {dataset_name: "table1"},
+                    details: {dataset_definition: {dataset_type: "TABLE"}},
+                },
+                {
+                    origin: {not_a_dataset_name: "table1.5"},
+                },
+                {
+                    origin: {dataset_name: "table2"},
+                    details: {dataset_definition: {dataset_type: "TABLE"}},
+                },
+                {
+                    origin: {dataset_name: "table2.5"},
+                    details: {dataset_definition: {dataset_type: "VIEW"}},
+                },
             ],
         };
         /* eslint-enable @typescript-eslint/naming-convention */
@@ -77,9 +89,17 @@ describe("BundlePipelinesManager", () => {
                 refresh_selection: ["table3", "table4"],
             },
             events: [
-                {origin: {dataset_name: "table3"}},
-                {origin: {not_a_dataset_name: "table3.5"}},
-                {origin: {dataset_name: "table4"}},
+                {
+                    origin: {dataset_name: "table3"},
+                    details: {dataset_definition: {dataset_type: "TABLE"}},
+                },
+                {
+                    origin: {not_a_dataset_name: "table3.5"},
+                },
+                {
+                    origin: {dataset_name: "table4"},
+                    details: {dataset_definition: {dataset_type: "TABLE"}},
+                },
             ],
         };
         /* eslint-enable @typescript-eslint/naming-convention */
@@ -103,9 +123,17 @@ describe("BundlePipelinesManager", () => {
                 state: "RUNNING",
             },
             events: [
-                {origin: {dataset_name: "table_new"}},
-                {origin: {not_a_dataset_name: "not a table"}},
-                {origin: {dataset_name: "table_final"}},
+                {
+                    origin: {dataset_name: "table_new"},
+                    details: {dataset_definition: {dataset_type: "TABLE"}},
+                },
+                {
+                    origin: {not_a_dataset_name: "not a table"},
+                },
+                {
+                    origin: {dataset_name: "table_final"},
+                    details: {dataset_definition: {dataset_type: "TABLE"}},
+                },
             ],
         };
         /* eslint-enable @typescript-eslint/naming-convention */
@@ -126,9 +154,17 @@ describe("BundlePipelinesManager", () => {
                 state: "COMPLETED",
             },
             events: [
-                {origin: {dataset_name: "table_new"}},
-                {origin: {not_a_dataset_name: "not a table"}},
-                {origin: {dataset_name: "table_final"}},
+                {
+                    origin: {dataset_name: "table_new"},
+                    details: {dataset_definition: {dataset_type: "TABLE"}},
+                },
+                {
+                    origin: {not_a_dataset_name: "not a table"},
+                },
+                {
+                    origin: {dataset_name: "table_final"},
+                    details: {dataset_definition: {dataset_type: "TABLE"}},
+                },
             ],
         };
         /* eslint-enable @typescript-eslint/naming-convention */
@@ -137,10 +173,75 @@ describe("BundlePipelinesManager", () => {
         await clock.runToLastAsync();
 
         // Only the datasets from the final full-refresh run should be left
-        datasets = manager.getDatasets("pipeline1");
+        datasets = manager.getDatasets("pipelines.pipeline1");
         assert.strictEqual(datasets.size, 2);
         assert(datasets.has("table_new"));
         assert(datasets.has("table_final"));
+    });
+
+    it("should extract pipeline schemas from run events", async () => {
+        const remoteState = {resources: {pipelines: {pipeline1: {}}}};
+        when(configModel.get("remoteStateConfig")).thenResolve(remoteState);
+        const runStatuses = new Map();
+        when(runStatusManager.runStatuses).thenReturn(runStatuses);
+
+        /* eslint-disable @typescript-eslint/naming-convention */
+        const firstRun = {
+            data: {creation_time: 10},
+            events: [
+                {
+                    origin: {dataset_name: "table1"},
+                    details: {
+                        dataset_definition: {
+                            dataset_type: "TABLE",
+                            schema: [
+                                {name: "col1", data_type: "STRING"},
+                                {name: "col2", not_a_data_type: "INTEGER"},
+                            ],
+                        },
+                    },
+                },
+                {
+                    origin: {not_a_dataset_name: "table1.5"},
+                },
+                {
+                    origin: {dataset_name: "table2"},
+                    details: {
+                        dataset_definition: {dataset_type: "TABLE", schema: []},
+                    },
+                },
+                {
+                    origin: {dataset_name: "table3"},
+                    details: {
+                        dataset_definition: {
+                            dataset_type: "VIEW",
+                            schema: [{name: "col1", data_type: "STRING"}],
+                        },
+                    },
+                },
+            ],
+        };
+        /* eslint-enable @typescript-eslint/naming-convention */
+        runStatuses.set("pipelines.pipeline1", firstRun);
+
+        eventEmitter.fire();
+        await clock.runToLastAsync();
+
+        const schemas = manager.getSchemas("pipelines.pipeline1");
+        assert.strictEqual(schemas.size, 2);
+        assert.deepStrictEqual(schemas.get("table1"), {
+            name: "table1",
+            type: "TABLE",
+            schema: [
+                {name: "col1", type: "STRING"},
+                {name: "col2", type: ""},
+            ],
+        });
+        assert.deepStrictEqual(schemas.get("table3"), {
+            name: "table3",
+            type: "VIEW",
+            schema: [{name: "col1", type: "STRING"}],
+        });
     });
 
     describe("locationToRange", () => {

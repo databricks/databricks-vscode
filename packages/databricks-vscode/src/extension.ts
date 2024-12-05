@@ -626,19 +626,20 @@ export async function activate(
         configModel,
         bundleRunTerminalManager
     );
-    const bundleResourceExplorerTreeDataProvider =
-        new BundleResourceExplorerTreeDataProvider(
-            configModel,
-            bundleRunStatusManager,
-            context,
-            connectionManager
-        );
-
     const bundlePipelinesManager = new BundlePipelinesManager(
         connectionManager,
         bundleRunStatusManager,
         configModel
     );
+    const bundleResourceExplorerTreeDataProvider =
+        new BundleResourceExplorerTreeDataProvider(
+            context,
+            configModel,
+            connectionManager,
+            bundleRunStatusManager,
+            bundlePipelinesManager
+        );
+
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
         bundleRunStatusManager,

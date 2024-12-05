@@ -17,11 +17,15 @@ export interface BundleResourceExplorerTreeNode {
         | "pipeline_run_status"
         | "pipeline_run_events"
         | "pipeline_run_event"
+        | "pipeline_datasets"
+        | "pipeline_dataset"
         | "resource_type_header"
         | "task"
         | "job_run_status"
         | "task_header";
     parent?: BundleResourceExplorerTreeNode;
     getTreeItem(): BundleResourceExplorerTreeItem;
-    getChildren(): BundleResourceExplorerTreeNode[];
+    getChildren():
+        | BundleResourceExplorerTreeNode[]
+        | Promise<BundleResourceExplorerTreeNode[]>;
 }
