@@ -9,6 +9,7 @@ import {
 } from "./types";
 import {ExtensionContext, TreeItemCollapsibleState} from "vscode";
 import {PipelineTreeNode} from "./PipelineTreeNode";
+import {BundlePipelinesManager} from "../../bundle/BundlePipelinesManager";
 
 function humaniseResourceType(type: BundleResourceExplorerTreeNode["type"]) {
     switch (type) {
@@ -69,8 +70,9 @@ export class ResourceTypeHeaderTreeNode
 
     static getRoots(
         context: ExtensionContext,
-        bundleRunStatusManager: BundleRunStatusManager,
         connectionManager: ConnectionManager,
+        bundleRunStatusManager: BundleRunStatusManager,
+        pipelinesManager: BundlePipelinesManager,
         bundleRemoteState: BundleRemoteState
     ) {
         const roots: BundleResourceExplorerTreeNode[] = [];
@@ -86,8 +88,9 @@ export class ResourceTypeHeaderTreeNode
         }
 
         const pipelines = PipelineTreeNode.getRoots(
-            bundleRunStatusManager,
             connectionManager,
+            bundleRunStatusManager,
+            pipelinesManager,
             bundleRemoteState
         );
         if (pipelines.length > 0) {
