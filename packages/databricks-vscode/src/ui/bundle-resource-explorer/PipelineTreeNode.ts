@@ -13,6 +13,8 @@ import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {PipelineRunStatusTreeNode} from "./PipelineRunStatusTreeNode";
 import {ThemeIcon} from "vscode";
+import {PipelineDatasetsTreeNode} from "./PipelineDatasetsTreeNode";
+import {BundlePipelinesManager} from "../../bundle/BundlePipelinesManager";
 
 export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "pipelines";
@@ -27,8 +29,9 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
     }
 
     constructor(
-        private readonly bundleRunStatusManager: BundleRunStatusManager,
         private readonly connectionManager: ConnectionManager,
+        private readonly bundleRunStatusManager: BundleRunStatusManager,
+        private readonly pipelinesManager: BundlePipelinesManager,
         public readonly resourceKey: string,
         public readonly data: BundleResourceExplorerResource<"pipelines">,
         public parent?: BundleResourceExplorerTreeNode
@@ -96,6 +99,15 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
             );
         }
 
+        children.push(
+            new PipelineDatasetsTreeNode(
+                this.resourceKey,
+                this.pipelinesManager,
+                runMonitor,
+                this
+            )
+        );
+
         if (runMonitor) {
             children.push(
                 new PipelineRunStatusTreeNode(
@@ -110,8 +122,9 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
     }
 
     static getRoots(
-        bundleRunStatusManager: BundleRunStatusManager,
         connectionManager: ConnectionManager,
+        bundleRunStatusManager: BundleRunStatusManager,
+        pipelinesManager: BundlePipelinesManager,
         remoteStateConfig: BundleRemoteState
     ): BundleResourceExplorerTreeNode[] {
         const pipelines = remoteStateConfig?.resources?.pipelines;
@@ -121,8 +134,9 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
 
         return Object.keys(pipelines).map((pipelineKey) => {
             return new PipelineTreeNode(
-                bundleRunStatusManager,
                 connectionManager,
+                bundleRunStatusManager,
+                pipelinesManager,
                 `pipelines.${pipelineKey}`,
                 pipelines[pipelineKey],
                 undefined

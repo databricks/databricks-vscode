@@ -3,43 +3,17 @@ import {
     BundleResourceExplorerTreeNode,
 } from "./types";
 import {ThemeIcon, TreeItemCollapsibleState} from "vscode";
-import {ContextUtils, RunStateUtils} from "./utils";
-import {SimplifiedRunState} from "./utils/RunStateUtils";
-import {GetUpdateResponse} from "@databricks/databricks-sdk/dist/apis/pipelines";
+import {ContextUtils} from "./utils";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {PipelineEventTreeNode} from "./PipelineEventTreeNode";
-
-function getSimplifiedUpdateState(
-    update?: GetUpdateResponse["update"]
-): SimplifiedRunState {
-    if (update?.state === undefined) {
-        return "Unknown";
-    }
-
-    switch (update.state) {
-        case "RESETTING":
-        case "CREATED":
-        case "QUEUED":
-        case "INITIALIZING":
-        case "SETTING_UP_TABLES":
-        case "WAITING_FOR_RESOURCES":
-            return "Pending";
-        case "RUNNING":
-            return "Running";
-        case "COMPLETED":
-            return "Success";
-        case "FAILED":
-            return "Failed";
-        case "CANCELED":
-            return "Cancelled";
-        case "STOPPING":
-            return "Terminating";
-        default:
-            return "Unknown";
-    }
-}
+import {
+    getSimplifiedPipelineUpdateState,
+    getThemeIconForStatus,
+    getTreeItemFromRunMonitorStatus,
+    humaniseDate,
+} from "./utils/RunStateUtils";
 
 export class PipelineRunStatusTreeNode
     implements BundleResourceExplorerTreeNode
@@ -82,9 +56,7 @@ export class PipelineRunStatusTreeNode
                     {
                         label: "Start Time",
                         iconPath: new ThemeIcon("watch"),
-                        description: RunStateUtils.humaniseDate(
-                            this.update.creation_time
-                        ),
+                        description: humaniseDate(this.update.creation_time),
                         contextValue: "start_time",
                     },
                     this
@@ -100,12 +72,11 @@ export class PipelineRunStatusTreeNode
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
-        const runMonitorRunStateTreeItem =
-            RunStateUtils.getTreeItemFromRunMonitorStatus(
-                this.type,
-                this.url,
-                this.runMonitor
-            );
+        const runMonitorRunStateTreeItem = getTreeItemFromRunMonitorStatus(
+            this.type,
+            this.url,
+            this.runMonitor
+        );
 
         if (runMonitorRunStateTreeItem) {
             return runMonitorRunStateTreeItem;
@@ -114,11 +85,11 @@ export class PipelineRunStatusTreeNode
         const status =
             this.runMonitor.runState === "cancelling"
                 ? "Cancelling"
-                : getSimplifiedUpdateState(this.update);
+                : getSimplifiedPipelineUpdateState(this.update);
 
         return {
             label: "Run Status",
-            iconPath: RunStateUtils.getThemeIconForStatus(status),
+            iconPath: getThemeIconForStatus(status),
             description: status,
             contextValue: ContextUtils.getContextString({
                 nodeType: this.type,
