@@ -67,6 +67,8 @@ type SourceLocation = {
     notebook_cell_number?: number;
 };
 
+const MAX_EVENTS_TO_LOAD = 2000;
+
 export class BundlePipelinesManager {
     private disposables: Disposable[] = [];
     private readonly triggeredState: Map<string, PipelineState> = new Map();
@@ -303,10 +305,15 @@ export class BundlePipelinesManager {
                 pipelineId,
                 runs
             );
+            let loadedEventsCount = 0;
             for await (const event of listing) {
                 const runState = runs.get(event.origin?.update_id ?? "");
                 if (runState?.events) {
                     runState.events.push(event);
+                }
+                loadedEventsCount++;
+                if (loadedEventsCount >= MAX_EVENTS_TO_LOAD) {
+                    break;
                 }
             }
             const extractedData = extractPipelineDatasets(
@@ -358,8 +365,6 @@ export class BundlePipelinesManager {
         if (oldestUpdateTime) {
             const timestamp = new Date(oldestUpdateTime).toISOString();
             listEventsOptions.filter = `timestamp >= '${timestamp}'`;
-        } else {
-            listEventsOptions.max_results = 100;
         }
         return client.pipelines.listPipelineEvents(listEventsOptions);
     }
