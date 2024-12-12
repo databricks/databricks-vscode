@@ -67,7 +67,7 @@ type SourceLocation = {
     notebook_cell_number?: number;
 };
 
-const MAX_EVENTS_TO_LOAD = 2000;
+const MAX_EVENTS_TO_LOAD = 1000;
 
 export class BundlePipelinesManager {
     private disposables: Disposable[] = [];
