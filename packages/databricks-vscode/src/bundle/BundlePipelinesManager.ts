@@ -40,13 +40,22 @@ type RunState = {
     events: PipelineEvent[] | undefined;
 };
 
-type PipelineState = {
-    key: string;
-    datasets: Set<string>;
-    runs: Set<RunState>;
+export type DatasetWithSchema = {
+    name: string;
+    type: string;
+    schema: Array<{name: string; type: string}>;
 };
 
-type PreloadedPipelineState = Promise<Set<string> | undefined>;
+type ResolvedPipelineState = {
+    datasets: Set<string>;
+    schemas: Map<string, DatasetWithSchema>;
+};
+type PreloadedPipelineState = Promise<ResolvedPipelineState | undefined>;
+
+type PipelineState = {
+    key: string;
+    runs: Set<RunState>;
+} & ResolvedPipelineState;
 
 type Pick = QuickPickItem & {isDataset?: boolean};
 
@@ -78,6 +87,7 @@ export class BundlePipelinesManager {
             this.configModel.onDidChangeTarget(() => {
                 this.updateTriggeredPipelinesState();
                 this.updateDiagnostics();
+                this.preloadedState.clear();
             }),
             this.configModel.onDidChangeKey("remoteStateConfig")(async () => {
                 this.updateTriggeredPipelinesState();
@@ -104,6 +114,7 @@ export class BundlePipelinesManager {
                 this.triggeredState.set(pipelineKey, {
                     key: pipelineKey,
                     datasets: new Set(),
+                    schemas: new Map(),
                     runs: new Set(),
                 });
             }
@@ -113,7 +124,9 @@ export class BundlePipelinesManager {
             );
             if (runStatus) {
                 state.runs.add(runStatus as PipelineRunStatus);
-                state.datasets = extractPipelineDatasets(state.runs);
+                const extractedData = extractPipelineDatasets(state.runs);
+                state.datasets = extractedData.datasets;
+                state.schemas = extractedData.schemas;
             }
         });
     }
@@ -242,10 +255,19 @@ export class BundlePipelinesManager {
     }
 
     public getDatasets(pipelineKey: string) {
-        return this.triggeredState.get(pipelineKey)?.datasets ?? new Set();
+        const key = pipelineKey.split(".")[1] ?? pipelineKey;
+        return this.triggeredState.get(key)?.datasets ?? new Set();
     }
 
-    async preloadDatasets(pipelineKey: string): PreloadedPipelineState {
+    public getSchemas(pipelineKey: string) {
+        const key = pipelineKey.split(".")[1] ?? pipelineKey;
+        return (
+            this.triggeredState.get(key ?? pipelineKey)?.schemas ??
+            new Map<string, DatasetWithSchema>()
+        );
+    }
+
+    public async preloadDatasets(pipelineKey: string): PreloadedPipelineState {
         const remoteState = await this.configModel.get("remoteStateConfig");
         if (!remoteState) {
             return undefined;
@@ -267,13 +289,13 @@ export class BundlePipelinesManager {
             return preloaded;
         }
 
-        const barrier = new Barrier<Set<string>>();
+        const barrier = new Barrier<ResolvedPipelineState>();
         this.preloadedState.set(pipelineKey, barrier.promise);
 
         try {
             const runs = await this.preloadUpdates(client, pipelineId);
             if (!runs) {
-                barrier.resolve(new Set());
+                barrier.resolve({datasets: new Set(), schemas: new Map()});
                 return barrier.promise;
             }
             const listing = this.createPreloadEventsRequest(
@@ -287,8 +309,10 @@ export class BundlePipelinesManager {
                     runState.events.push(event);
                 }
             }
-            const datasets = extractPipelineDatasets(new Set(runs.values()));
-            barrier.resolve(datasets);
+            const extractedData = extractPipelineDatasets(
+                new Set(runs.values())
+            );
+            barrier.resolve(extractedData);
         } catch (e) {
             barrier.reject(e);
         }
@@ -360,9 +384,9 @@ export class BundlePipelinesManager {
             disposables
         );
         this.preloadDatasets(key)
-            .then((preloadedDatasets) => {
-                if (preloadedDatasets && isUIVisible) {
-                    for (const dataset of preloadedDatasets) {
+            .then((preloadedData) => {
+                if (preloadedData && isUIVisible) {
+                    for (const dataset of preloadedData.datasets) {
                         knownDatasets.add(dataset);
                     }
                     updateItems(ui, knownDatasets);
@@ -418,7 +442,7 @@ async function confirmFullRefresh() {
     );
 }
 
-function isFullGraphUpdate(update?: UpdateInfo) {
+export function isFullGraphUpdate(update?: UpdateInfo) {
     if (!update || update.state !== "COMPLETED") {
         return false;
     }
@@ -429,37 +453,48 @@ function isFullGraphUpdate(update?: UpdateInfo) {
     );
 }
 
-// "details" is not a publicly documented field
-function extractDatasetName(
-    event: PipelineEvent & {details?: any}
-): string | undefined {
-    if (!event.origin?.dataset_name) {
-        return;
-    }
-    // VIEWs can't be used for a partial refresh (they are always refreshed)
-    if (event.details?.dataset_definition?.dataset_type === "VIEW") {
-        return;
-    }
-    return event.origin.dataset_name;
-}
-
-function extractPipelineDatasets(runs: Set<RunState>) {
+function extractPipelineDatasets(runs: Set<RunState>): ResolvedPipelineState {
     const datasets = new Set<string>();
+    const schemas = new Map<string, DatasetWithSchema>();
     const runsByStartTimeDesc = Array.from(runs).sort(
         (a, b) => (b.data?.creation_time ?? 0) - (a.data?.creation_time ?? 0)
     );
     for (const run of runsByStartTimeDesc) {
         for (const event of run.events ?? []) {
-            const datasetName = extractDatasetName(event);
-            if (datasetName) {
+            const datasetName = event.origin?.dataset_name;
+            // 'details' is not documented, but it's safe to rely on if it exists
+            // @ts-expect-error Property 'details' does not exist
+            const definition = event.details?.dataset_definition;
+            if (!datasetName || !definition) {
+                continue;
+            }
+            const datasetType = definition.dataset_type ?? "";
+            if (datasetType && datasetType !== "VIEW") {
                 datasets.add(datasetName);
+            }
+            if (
+                Array.isArray(definition.schema) &&
+                definition.schema.length > 0
+            ) {
+                const schema = definition.schema.map(
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    (field: {name?: string; data_type?: string}) => ({
+                        name: field.name ?? "",
+                        type: field.data_type ?? "",
+                    })
+                );
+                schemas.set(datasetName, {
+                    name: datasetName,
+                    type: datasetType,
+                    schema,
+                });
             }
         }
         if (isFullGraphUpdate(run.data)) {
             break;
         }
     }
-    return datasets;
+    return {datasets, schemas};
 }
 
 function createPicks(datasets: Set<string>, manualValue?: string) {
