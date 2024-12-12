@@ -29,6 +29,7 @@ export class PipelineRunStatus extends BundleRunStatus {
     public events: pipelines.PipelineEvent[] | undefined;
 
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
+    private latestEventTimestamp: string | undefined;
 
     constructor(
         private readonly authProvider: AuthProvider,
@@ -76,7 +77,12 @@ export class PipelineRunStatus extends BundleRunStatus {
                     if (this.runState !== "running") {
                         return;
                     }
-                    await this.updateRunData(runId);
+                    try {
+                        await this.updateRunData(runId);
+                    } catch (e) {
+                        this.logger.error("Failed to fetch run state:", e);
+                        throw new RetriableError();
+                    }
                     if (isRunning(this.data?.state)) {
                         throw new RetriableError();
                     } else {
@@ -98,32 +104,38 @@ export class PipelineRunStatus extends BundleRunStatus {
         });
         this.data = getUpdateResponse.update;
         this.onDidChangeEmitter.fire();
-        if (this.data?.creation_time !== undefined) {
-            this.events = await this.fetchUpdateEvents(
+        if (this.data?.update_id !== undefined) {
+            const events = await this.fetchUpdateEvents(
                 client,
-                this.data?.creation_time,
-                this.data?.update_id
+                this.data?.update_id,
+                this.latestEventTimestamp
             );
+            const latestEvent = events[events.length - 1];
+            if (latestEvent?.timestamp !== undefined) {
+                this.latestEventTimestamp = latestEvent.timestamp;
+            }
+            this.events = this.events?.concat(events) ?? events;
             this.onDidChangeEmitter.fire();
         }
     }
 
     private async fetchUpdateEvents(
         client: WorkspaceClient,
-        creationTime: number,
-        updateId?: string
+        updateId: string | undefined,
+        latestEventTimestamp: string | undefined
     ) {
         const events = [];
-        const timestamp = new Date(creationTime).toISOString();
+        let filter = `update_id = '${updateId}'`;
+        if (latestEventTimestamp !== undefined) {
+            filter += ` AND timestamp > '${latestEventTimestamp}'`;
+        }
         const listEvents = client.pipelines.listPipelineEvents({
             pipeline_id: this.pipelineId,
             order_by: ["timestamp asc"],
-            filter: `timestamp >= '${timestamp}'`,
+            filter,
         });
         for await (const event of listEvents) {
-            if (!updateId || event.origin?.update_id === updateId) {
-                events.push(event);
-            }
+            events.push(event);
         }
         return events;
     }
