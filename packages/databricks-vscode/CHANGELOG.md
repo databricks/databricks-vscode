@@ -4,23 +4,18 @@
 
 ## (2024-12-12)
 
--   Add `Datasets` section with dataset schemas to the pipelines explorer (#1479) ([e904f71](https://github.com/databricks/databricks-vscode/commit/e904f71)), closes [#1479](https://github.com/databricks/databricks-vscode/issues/1479)
--   Add Event Log section to the pipeline subtree (#1444) ([3c3fc9c](https://github.com/databricks/databricks-vscode/commit/3c3fc9c)), closes [#1444](https://github.com/databricks/databricks-vscode/issues/1444)
--   Add partial update to pipelines (#1453) ([b7cbe4c](https://github.com/databricks/databricks-vscode/commit/b7cbe4c)), closes [#1453](https://github.com/databricks/databricks-vscode/issues/1453)
--   Add validate runs for pipelines (#1436) ([bc0d488](https://github.com/databricks/databricks-vscode/commit/bc0d488)), closes [#1436](https://github.com/databricks/databricks-vscode/issues/1436)
--   Bump JS SDK (#1447) ([aa8eae8](https://github.com/databricks/databricks-vscode/commit/aa8eae8)), closes [#1447](https://github.com/databricks/databricks-vscode/issues/1447)
--   Context menus everywhere (#1461) ([9db90f8](https://github.com/databricks/databricks-vscode/commit/9db90f8)), closes [#1461](https://github.com/databricks/databricks-vscode/issues/1461)
--   DLT diagnostics (#1471) ([7b962ff](https://github.com/databricks/databricks-vscode/commit/7b962ff)), closes [#1471](https://github.com/databricks/databricks-vscode/issues/1471)
--   Do not load too many events (#1484) ([79ad92c](https://github.com/databricks/databricks-vscode/commit/79ad92c)), closes [#1484](https://github.com/databricks/databricks-vscode/issues/1484)
--   Improve bundle logs (#1475) ([ba9518d](https://github.com/databricks/databricks-vscode/commit/ba9518d)), closes [#1475](https://github.com/databricks/databricks-vscode/issues/1475)
--   Improve DLT UX (#1474) ([27f8a9b](https://github.com/databricks/databricks-vscode/commit/27f8a9b)), closes [#1474](https://github.com/databricks/databricks-vscode/issues/1474)
--   Increase the polling time for job run status (#1451) ([d410b62](https://github.com/databricks/databricks-vscode/commit/d410b62)), closes [#1451](https://github.com/databricks/databricks-vscode/issues/1451)
--   Preload datasets (#1458) ([910dccb](https://github.com/databricks/databricks-vscode/commit/910dccb)), closes [#1458](https://github.com/databricks/databricks-vscode/issues/1458)
--   Python launch config is deprecated (#1465) ([1f1df4b](https://github.com/databricks/databricks-vscode/commit/1f1df4b)), closes [#1465](https://github.com/databricks/databricks-vscode/issues/1465)
--   Update Databricks CLI to v0.236.0 (#1480) ([8a19a41](https://github.com/databricks/databricks-vscode/commit/8a19a41)), closes [#1480](https://github.com/databricks/databricks-vscode/issues/1480)
--   Use cluster policy in pipeline tests (#1440) ([5ba42f7](https://github.com/databricks/databricks-vscode/commit/5ba42f7)), closes [#1440](https://github.com/databricks/databricks-vscode/issues/1440)
--   Validate icon (#1441) ([54f7376](https://github.com/databricks/databricks-vscode/commit/54f7376)), closes [#1441](https://github.com/databricks/databricks-vscode/issues/1441)
--   Whats new 2.5 (#1481) ([392bd0a](https://github.com/databricks/databricks-vscode/commit/392bd0a)), closes [#1481](https://github.com/databricks/databricks-vscode/issues/1481)
+-   Check out [What's New 2.5](./resources/whats-new/2.5.md)
+-   New DLT features:
+    -   Add validation and partial update actions
+    -   Show events of the currently running updates
+    -   Expose warning and error events as source code diagnostics
+    -   Show pipeline datasets and their schemas in the resource explorer
+-   Expose Resource Explorer panel inline actions in context menus
+-   Increase the polling time for job run statuses
+-   Fix bundle logs showing 'undefined' or duplicating error messages
+-   Depend on new python debugger extension for local execution
+-   Update internal JS SDK
+-   Update Databricks CLI to v0.236.0
 
 # Release: v2.4.8
 
