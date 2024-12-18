@@ -1,4 +1,4 @@
-name: Publish to VS Code Marketplace
+name: Publish to Open VSX Marketplace
 
 on:
     workflow_dispatch:
@@ -12,7 +12,7 @@ on:
         types: [published]
 
 jobs:
-    publish-to-vscode:
+    publish-to-openvsx:
         runs-on: ubuntu-latest
         environment: Production
 
@@ -22,7 +22,7 @@ jobs:
               with:
                   node-version: 18.x
 
-            - name: download release
+            - name: Download release
               run: |
                   set x
                   echo Version: ${{ github.event.inputs.version }}
@@ -45,10 +45,13 @@ jobs:
             - name: Install vcse
               run: npm install -g @vscode/vsce
 
-            - name: Publish to VS Code Marketplace
+            - name: Install ovsx
+              run: npm install -g ovsx
+
+            - name: Publish to Open VSX
               run: |
-                  vsce -V
-                  vsce publish -p ${{ secrets.VSCE_TOKEN }} --packagePath databricks-*.vsix
+                  ovsx verify-pat databricks
+                  ovsx publish --packagePath databricks-*.vsix
 
               env:
-                  VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+                  OVSX_PAT: ${{ secrets.OVSX_PAT }}
