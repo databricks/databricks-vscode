@@ -497,8 +497,9 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
+        const bundleOpName = "validate";
         return await runBundleCommand(
-            "validate",
+            bundleOpName,
             this.cliPath,
             ["bundle", "validate", "--target", target],
             workspaceFolder,
@@ -509,10 +510,9 @@ export class CliWrapper {
             },
             await this.getBundleCommandEnvVars(authProvider, configfilePath),
             logger,
-            {
-                onStdOut: (data) => logger?.debug(data, {target}),
-                onStdError: (data) => logger?.debug(data, {target}),
-            }
+            // Print stdout to the debug log (not visible in the output channel).
+            // stderr data will be printed to the output channel with the error level.
+            {onStdOut: (data) => logger?.debug(data, {target, bundleOpName})}
         );
     }
 
@@ -523,8 +523,9 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
+        const bundleOpName = "summarize";
         return await runBundleCommand(
-            "summarize",
+            bundleOpName,
             this.cliPath,
             [
                 "bundle",
@@ -544,10 +545,9 @@ export class CliWrapper {
             },
             await this.getBundleCommandEnvVars(authProvider, configfilePath),
             logger,
-            {
-                onStdOut: (data) => logger?.debug(data, {target}),
-                onStdError: (data) => logger?.debug(data, {target}),
-            }
+            // Print stdout to the debug log (not visible in the output channel).
+            // stderr data will be printed to the output channel with the error level.
+            {onStdOut: (data) => logger?.debug(data, {target, bundleOpName})}
         );
     }
 
