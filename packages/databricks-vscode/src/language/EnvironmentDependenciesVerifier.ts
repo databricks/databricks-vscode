@@ -153,24 +153,64 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         return env.version.major === major && env.version.minor === minor;
     }
 
-    private printEnvironment(env?: ResolvedEnvironment): string {
+    private getCurrentPythonVersionMessage(env?: ResolvedEnvironment): string {
         return env?.version && env.environment
             ? `Current version is ${env.version.major}.${env.version.minor}.${env.version.micro}.`
             : "No active environments found.";
     }
 
+    private getExpectedPythonVersionMessage(dbrVersionParts: (number | "x")[]) {
+        if (dbrVersionParts[0] === 13 || dbrVersionParts[0] === 14) {
+            return "3.10";
+        }
+        if (dbrVersionParts[0] === 15) {
+            return "3.11";
+        }
+        if (dbrVersionParts[0] === 16) {
+            return "3.12";
+        }
+        if (dbrVersionParts[0] !== "x" && dbrVersionParts[0] > 16) {
+            return "3.12 or greater";
+        }
+        return "3.10 or greater";
+    }
+
+    private getVersionMismatchWarning(
+        dbrMajor: "x" | number,
+        env: ResolvedEnvironment,
+        currentPythonVersionMessage: string
+    ): string | undefined {
+        if (
+            (dbrMajor === 13 || dbrMajor === 14) &&
+            !this.matchEnvironmentVersion(env, 3, 10)
+        ) {
+            return `Use python 3.10 to match DBR ${dbrMajor} requirements. ${currentPythonVersionMessage}`;
+        }
+        if (dbrMajor === 15 && !this.matchEnvironmentVersion(env, 3, 11)) {
+            return `Use python 3.11 to match DBR ${dbrMajor} requirements. ${currentPythonVersionMessage}`;
+        }
+        if (dbrMajor === 16 && !this.matchEnvironmentVersion(env, 3, 12)) {
+            return `Use python 3.12 to match DBR ${dbrMajor} requirements. ${currentPythonVersionMessage}`;
+        }
+        return undefined;
+    }
+
     async checkPythonEnvironment(): Promise<FeatureStepState> {
+        const dbrVersionParts =
+            this.connectionManager.cluster?.dbrVersion || [];
+        const expectedPythonVersion =
+            this.getExpectedPythonVersionMessage(dbrVersionParts);
         const env = await this.pythonExtension.pythonEnvironment;
         const envVersionTooLow =
             env?.version && (env.version.major !== 3 || env.version.minor < 10);
         const noEnvironment = !env?.environment;
+        const currentPythonVersionMessage =
+            this.getCurrentPythonVersionMessage(env);
         if (noEnvironment || envVersionTooLow) {
             return this.rejectStep(
                 "checkPythonEnvironment",
-                "Activate an environment with Python >= 3.10",
-                `Databricks Connect requires python >= 3.10. ${this.printEnvironment(
-                    env
-                )}`,
+                `Activate an environment with Python ${expectedPythonVersion}`,
+                `Databricks Connect requires ${expectedPythonVersion}. ${currentPythonVersionMessage}`,
                 this.selectPythonInterpreter.bind(this)
             );
         }
@@ -178,30 +218,16 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         if (!executable) {
             return this.rejectStep(
                 "checkPythonEnvironment",
-                "Activate an environment with Python >= 3.10",
+                `Activate an environment with Python ${expectedPythonVersion}`,
                 "No python executable found",
                 this.selectPythonInterpreter.bind(this)
             );
         }
-        const dbrVersionParts =
-            this.connectionManager.cluster?.dbrVersion || [];
-        let warning;
-        if (
-            (dbrVersionParts[0] === 13 || dbrVersionParts[0] === 14) &&
-            !this.matchEnvironmentVersion(env, 3, 10)
-        ) {
-            warning = `Use python 3.10 to match DBR ${
-                dbrVersionParts[0]
-            } requirements. ${this.printEnvironment(env)}`;
-        }
-        if (
-            dbrVersionParts[0] === 15 &&
-            !this.matchEnvironmentVersion(env, 3, 11)
-        ) {
-            warning = `Use python 3.11 to match DBR ${
-                dbrVersionParts[0]
-            } requirements. ${this.printEnvironment(env)}`;
-        }
+        const warning = this.getVersionMismatchWarning(
+            dbrVersionParts[0],
+            env,
+            currentPythonVersionMessage
+        );
         return this.acceptStep(
             "checkPythonEnvironment",
             `Active Environment: ${env.environment.name}`,
