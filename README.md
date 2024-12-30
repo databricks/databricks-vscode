@@ -1,3 +1,5 @@
+# This is a test
+
 # Databricks extension for VSCode
 
 | System                                                                                   | Status                                                                                                                                                                                                                                                                                                                                                                |
