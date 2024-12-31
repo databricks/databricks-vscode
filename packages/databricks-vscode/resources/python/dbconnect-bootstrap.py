@@ -32,6 +32,9 @@ except Exception as e:
     logging.error(f"Failed to get current directory: {e}")
     cur_dir = os.getcwd()
 
+# Suppress grpc warnings coming from databricks-connect with newer version of grpcio lib
+os.environ["GRPC_VERBOSITY"] = "NONE"
+
 root_dir = os.getcwd()
 load_env_file_from_cwd(root_dir)
 
