@@ -49,6 +49,12 @@ jobs:
               run: yarn run test:lint
               working-directory: packages/databricks-vscode
 
+            - name: Fetching Databricks CLI
+              run: yarn run package:cli:fetch
+              working-directory: packages/databricks-vscode
+              env:
+                  GH_TOKEN: ${{ github.token }}
+
             - name: Building packages
               run: yarn run build
 
