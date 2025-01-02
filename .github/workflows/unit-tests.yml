@@ -1,0 +1,62 @@
+name: Integration Tests
+
+on:
+    pull_request:
+        types: [opened, synchronize]
+
+jobs:
+    unit-test-extension:
+        name: Run unit tests
+        strategy:
+            fail-fast: false
+            matrix:
+                arch:
+                    - cli_arch: darwin_amd64
+                      os: macos-latest
+                    - cli_arch: windows_amd64
+                      os: windows-latest
+                node-version: [18.x]
+                vscode-version: [stable]
+
+        runs-on: ${{ matrix.arch.os }}
+
+        env:
+            VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
+            CLI_ARCH: ${{ matrix.arch.cli_arch }}
+
+        defaults:
+            run:
+                shell: bash
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v3
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: "yarn"
+                  cache-dependency-path: ext/databricks-vscode/yarn.lock
+
+            - name: Cache VSCode unit test runner
+              uses: actions/cache@v3
+              with:
+                  path: /tmp/vscode-test-databricks
+                  key: ${{ matrix.arch.cli_arch }}-${{ matrix.vscode-version }}-vscode-test
+
+            - run: yarn install --immutable
+              working-directory: ext/databricks-vscode
+
+            - name: Prettier and Linting
+              run: yarn run test:lint
+              working-directory: ext/databricks-vscode/packages/databricks-vscode
+
+            - name: Building packages
+              run: yarn run build
+              working-directory: ext/databricks-vscode
+
+            - name: Unit Tests with Coverage
+              uses: coactions/setup-xvfb@v1
+              with:
+                  run: yarn run test:cov
+                  working-directory: ext/databricks-vscode/packages/databricks-vscode
