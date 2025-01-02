@@ -1,4 +1,4 @@
-name: Integration Tests
+name: Unit Tests
 
 on:
     pull_request:
@@ -36,7 +36,6 @@ jobs:
               with:
                   node-version: ${{ matrix.node-version }}
                   cache: "yarn"
-                  cache-dependency-path: ext/databricks-vscode/yarn.lock
 
             - name: Cache VSCode unit test runner
               uses: actions/cache@v3
@@ -45,18 +44,16 @@ jobs:
                   key: ${{ matrix.arch.cli_arch }}-${{ matrix.vscode-version }}-vscode-test
 
             - run: yarn install --immutable
-              working-directory: ext/databricks-vscode
 
             - name: Prettier and Linting
               run: yarn run test:lint
-              working-directory: ext/databricks-vscode/packages/databricks-vscode
+              working-directory: packages/databricks-vscode
 
             - name: Building packages
               run: yarn run build
-              working-directory: ext/databricks-vscode
 
             - name: Unit Tests with Coverage
               uses: coactions/setup-xvfb@v1
               with:
                   run: yarn run test:cov
-                  working-directory: ext/databricks-vscode/packages/databricks-vscode
+                  working-directory: packages/databricks-vscode
