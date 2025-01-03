@@ -6,26 +6,12 @@ The extension is available from the [Visual Studio Marketplace](https://marketpl
 
 ## Features
 
--   Synchronize code to a Databricks workspace
--   Run Python files on a Databricks cluster
--   Run notebooks and Python files as Workflows
-
-![run](images/run.gif)
-
-## Requirements
-
-In order to use this extension you need access to a Databricks workspace:
-
-1. Databricks workspace with:
-    1. `Repos` enabled
-    2. `Files in Repos` enabled
-2. Permission to access the workspace using a personal access token (PAT) or Azure AD CLI.
-3. Access to an interactive cluster or permissions to create a cluster
-4. Permissions to create Databricks Repos
-
-## Getting started
-
-![configure](./images/configure.gif)
+-   Define, deploy, and run Databricks Asset Bundles to apply CI/CD patterns to your Databricks jobs, Delta Live Tables pipelines, and MLOps Stacks.
+-   Run local Python code files on Databricks clusters.
+-   Run notebooks and local Python code files as Databricks jobs.
+-   Set up and configure your debugging environment and Databricks Connect.
+-   Debug notebooks cell by cell with Databricks Connect.
+-   Synchronize local code with code in your Databricks workspace.
 
 ## Documentation
 
