@@ -9,7 +9,9 @@ on:
 
 jobs:
   update-cli-version:
-    runs-on: ubuntu-latest
+    runs-on:
+      group: databricks-deco-testing-runner-group
+      labels: ubuntu-latest-deco
 
     strategy:
       matrix:

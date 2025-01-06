@@ -15,7 +15,11 @@ jobs:
   create-release:
     if: startsWith(github.event.head_commit.message, 'Release:') || github.event_name == 'workflow_dispatch'
     needs: ["create-build-artifacts"]
-    runs-on: macos-latest
+
+    runs-on:
+      group: databricks-deco-testing-runner-group
+      labels: ubuntu-latest-deco
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3

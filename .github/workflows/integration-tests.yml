@@ -9,7 +9,11 @@ on:
 jobs:
   check-token:
     name: Check secrets access
-    runs-on: ubuntu-latest
+
+    runs-on:
+      group: databricks-deco-testing-runner-group
+      labels: ubuntu-latest-deco
+
     environment: "test-trigger-is"
     outputs:
       has_token: ${{ steps.set-token-status.outputs.has_token }}
@@ -27,7 +31,11 @@ jobs:
 
   trigger-tests:
     name: Trigger Tests
-    runs-on: ubuntu-latest
+
+    runs-on:
+      group: databricks-deco-testing-runner-group
+      labels: ubuntu-latest-deco
+
     needs: check-token
     if: github.event_name == 'pull_request'  && needs.check-token.outputs.has_token == 'true'
     environment: "test-trigger-is"
@@ -61,7 +69,11 @@ jobs:
   # * Avoid running integration tests twice, since it was already run at the tip of the branch before squashing.
   auto-approve:
     if: github.event_name == 'merge_group'
-    runs-on: ubuntu-latest
+
+    runs-on:
+      group: databricks-deco-testing-runner-group
+      labels: ubuntu-latest-deco
+
     steps:
       - name: Mark Check
         env:

@@ -5,7 +5,10 @@ on:
 
 jobs:
   create-build-artifacts:
-    runs-on: ubuntu-latest
+    runs-on:
+      group: databricks-deco-testing-runner-group
+      labels: ubuntu-latest-deco
+
     defaults:
       run:
         shell: bash

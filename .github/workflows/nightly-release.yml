@@ -12,7 +12,10 @@ jobs:
 
   create-release:
     needs: "create-build-artifacts"
-    runs-on: ubuntu-latest
+
+    runs-on:
+      group: databricks-deco-testing-runner-group
+      labels: ubuntu-latest-deco
 
     steps:
       - uses: actions/download-artifact@v3
