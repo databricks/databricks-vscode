@@ -1,54 +1,54 @@
 name: Publish to VS Code Marketplace
 
 on:
-    workflow_dispatch:
-        inputs:
-            version:
-                description: "Release tag"
-                required: true
-                type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag"
+        required: true
+        type: string
 
-    release:
-        types: [published]
+  release:
+    types: [published]
 
 jobs:
-    publish-to-vscode:
-        runs-on: ubuntu-latest
-        environment: Production
+  publish-to-vscode:
+    runs-on: ubuntu-latest
+    environment: Production
 
-        steps:
-            - name: Use Node.js 18.x
-              uses: actions/setup-node@v3
-              with:
-                  node-version: 18.x
+    steps:
+      - name: Use Node.js 18.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
 
-            - name: download release
-              run: |
-                  set x
-                  echo Version: ${{ github.event.inputs.version }}
-                  echo REF: ${{ github.ref }}
-                  TAG=${{ github.event.inputs.version }}
-                  if [[ ! -z "${{ github.event.inputs.version }}" ]]; then
-                    TAG=${{ github.event.inputs.version }}
-                  elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
-                    TAG=$(echo ${{ github.ref }} | sed -e "s|^refs/tags/||")
-                  else
-                    exit 1
-                  fi
-                  echo Tag: $TAG
-                  gh release download $TAG -R databricks/databricks-vscode
-                  ls -lR
-                  echo "TAG=$TAG" >> $GITHUB_ENV
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: download release
+        run: |
+          set x
+          echo Version: ${{ github.event.inputs.version }}
+          echo REF: ${{ github.ref }}
+          TAG=${{ github.event.inputs.version }}
+          if [[ ! -z "${{ github.event.inputs.version }}" ]]; then
+            TAG=${{ github.event.inputs.version }}
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG=$(echo ${{ github.ref }} | sed -e "s|^refs/tags/||")
+          else
+            exit 1
+          fi
+          echo Tag: $TAG
+          gh release download $TAG -R databricks/databricks-vscode
+          ls -lR
+          echo "TAG=$TAG" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Install vcse
-              run: npm install -g @vscode/vsce
+      - name: Install vcse
+        run: npm install -g @vscode/vsce
 
-            - name: Publish to VS Code Marketplace
-              run: |
-                  vsce -V
-                  vsce publish -p ${{ secrets.VSCE_TOKEN }} --packagePath databricks-*.vsix
+      - name: Publish to VS Code Marketplace
+        run: |
+          vsce -V
+          vsce publish -p ${{ secrets.VSCE_TOKEN }} --packagePath databricks-*.vsix
 
-              env:
-                  VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}

@@ -1,0 +1,8 @@
+# Local configuration for Prettier.
+# This applies exclusively to the files in the ".github" directory.
+#
+# We like to keep the formatting of these files consistent
+# across repositories to keep diffs small and copy-paste friendly.
+#
+tabWidth: 2
+useTabs: false
