@@ -1,43 +1,43 @@
 name: VSCode Extensions CI
 
 on:
-    push:
-        branches: [main]
-    pull_request:
-        branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-    package:
-        name: Package Arm64 VSIX
-        runs-on: "macos-latest"
-        steps:
-            - uses: actions/checkout@v3
+  package:
+    name: Package Arm64 VSIX
+    runs-on: "macos-latest"
+    steps:
+      - uses: actions/checkout@v3
 
-            - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ matrix.node-version }}
-                  cache: "yarn"
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "yarn"
 
-            - run: yarn install --immutable
+      - run: yarn install --immutable
 
-            - run: yarn run package:cli:fetch
-              working-directory: packages/databricks-vscode
-              env:
-                  CLI_ARCH: darwin_amd64
-                  GH_TOKEN: ${{ github.token }}
+      - run: yarn run package:cli:fetch
+        working-directory: packages/databricks-vscode
+        env:
+          CLI_ARCH: darwin_amd64
+          GH_TOKEN: ${{ github.token }}
 
-            - name: Building packages
-              run: yarn run build
+      - name: Building packages
+        run: yarn run build
 
-            - run: mkdir -p packages/databricks-vscode/artifacts
+      - run: mkdir -p packages/databricks-vscode/artifacts
 
-            - name: Build VSIX
-              run: yarn package -o artifacts -t darwin-arm64
-              working-directory: packages/databricks-vscode
+      - name: Build VSIX
+        run: yarn package -o artifacts -t darwin-arm64
+        working-directory: packages/databricks-vscode
 
-            - name: Upload artifacts
-              uses: actions/upload-artifact@v3
-              with:
-                  name: VSIX artifacts
-                  path: packages/databricks-vscode/artifacts
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: VSIX artifacts
+          path: packages/databricks-vscode/artifacts
