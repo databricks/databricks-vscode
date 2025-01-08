@@ -39,7 +39,7 @@ function getEscapedCommandAndAgrs(
             "/c", // Carries out the command specified by <string> and then exits the command processor.
         ];
         const shell = process.env.ComSpec || "cmd.exe";
-        // Fewer quotes are needed for arguments in the cmd.exe than in PowerShell
+        // Fewer quotes are needed for arguments in the CMD.exe than in PowerShell
         if (shell.includes("cmd.exe")) {
             args.push(`"${cmd} ${cmdArgs.map((a) => `${a}`).join(" ")}"`);
         } else {
