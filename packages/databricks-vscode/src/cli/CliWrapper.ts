@@ -37,14 +37,8 @@ function getEscapedCommandAndAgrs(
         args = [
             "/d", // Disables execution of AutoRun commands, which are like .bashrc commands.
             "/c", // Carries out the command specified by <string> and then exits the command processor.
+            `""${cmd}" ${cmdArgs.map((a) => `"${a}"`).join(" ")}"`,
         ];
-        const shell = process.env.ComSpec || "cmd.exe";
-        // Fewer quotes are needed for arguments in the CMD.exe than in PowerShell
-        if (shell.includes("cmd.exe")) {
-            args.push(`"${cmd} ${cmdArgs.map((a) => `${a}`).join(" ")}"`);
-        } else {
-            args.push(`""${cmd}" ${cmdArgs.map((a) => `"${a}"`).join(" ")}"`);
-        }
         cmd = "cmd.exe";
         options = {...options, windowsVerbatimArguments: true};
     }
