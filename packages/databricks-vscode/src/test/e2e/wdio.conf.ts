@@ -400,6 +400,12 @@ export const config: Options.Testrunner = {
                     "Resources/app/bin/code"
                 );
                 break;
+            case "linux":
+                // Run vscode with a virtual X server
+                capabilities["wdio:vscodeOptions"].binary =
+                    `xvfb-run ${binary}`;
+                cli = path.resolve(binary, "code");
+                break;
         }
         const extensionDependencies = packageJson.extensionDependencies.flatMap(
             (item) => ["--install-extension", item]
