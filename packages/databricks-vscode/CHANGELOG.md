@@ -1,3 +1,14 @@
+# Release: v2.5.1
+
+## packages/databricks-vscode
+
+## (2025-01-09)
+
+-   Fix login flow on Windows under CMD.exe with Azure CLI
+-   Better messaging about required python versions
+-   Log validate and summary errors to the Databricks Bundle Logs output channel
+-   Suppress GRPC warnings from Databricks Connect
+
 # Release: v2.5.0
 
 ## packages/databricks-vscode
