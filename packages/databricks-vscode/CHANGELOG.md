@@ -1,3 +1,15 @@
+# Release: v2.5.1
+
+## packages/databricks-vscode
+
+## (2025-01-09)
+
+-   Fix az login on Windows under cmd.exe (#1513) ([4a042a7](https://github.com/databricks/databricks-vscode/commit/4a042a7)), closes [#1513](https://github.com/databricks/databricks-vscode/issues/1513)
+-   Improve venv python version messages (#1501) ([ab65627](https://github.com/databricks/databricks-vscode/commit/ab65627)), closes [#1501](https://github.com/databricks/databricks-vscode/issues/1501)
+-   Log validate and summary errors to the output channel (#1492) ([60215b6](https://github.com/databricks/databricks-vscode/commit/60215b6)), closes [#1492](https://github.com/databricks/databricks-vscode/issues/1492)
+-   Simplify README.md (#1509) ([1157a83](https://github.com/databricks/databricks-vscode/commit/1157a83)), closes [#1509](https://github.com/databricks/databricks-vscode/issues/1509)
+-   Suppress grpc warnings (#1504) ([8c68a3f](https://github.com/databricks/databricks-vscode/commit/8c68a3f)), closes [#1504](https://github.com/databricks/databricks-vscode/issues/1504)
+
 # Release: v2.5.0
 
 ## packages/databricks-vscode
