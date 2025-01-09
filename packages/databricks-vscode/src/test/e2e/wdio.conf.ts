@@ -389,6 +389,7 @@ export const config: Options.Testrunner = {
             .binary as string;
         let cli: string = "";
         switch (process.platform) {
+            case "linux":
             case "win32":
                 cli = path.resolve(binary, "..", "bin", "code");
                 break;
@@ -399,12 +400,6 @@ export const config: Options.Testrunner = {
                     "..",
                     "Resources/app/bin/code"
                 );
-                break;
-            case "linux":
-                // Run vscode with a virtual X server
-                capabilities["wdio:vscodeOptions"].binary =
-                    `xvfb-run ${binary}`;
-                cli = path.resolve(binary, "code");
                 break;
         }
         const extensionDependencies = packageJson.extensionDependencies.flatMap(
