@@ -33,10 +33,11 @@ function getEscapedCommandAndAgrs(
     options: SpawnOptionsWithoutStdio
 ) {
     if (process.platform === "win32") {
+        const cmdArgs = args.slice();
         args = [
-            "/d", //Disables execution of AutoRun commands, which are like .bashrc commands.
-            "/c", //Carries out the command specified by <string> and then exits the command processor.
-            `""${cmd}" ${args.map((a) => `"${a}"`).join(" ")}"`,
+            "/d", // Disables execution of AutoRun commands, which are like .bashrc commands.
+            "/c", // Carries out the command specified by <string> and then exits the command processor.
+            `""${cmd}" ${cmdArgs.map((a) => `"${a}"`).join(" ")}"`,
         ];
         cmd = "cmd.exe";
         options = {...options, windowsVerbatimArguments: true};

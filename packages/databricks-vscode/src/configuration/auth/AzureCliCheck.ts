@@ -9,7 +9,7 @@ import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 import {ShellUtils} from "../../utils";
-import {execFile} from "../../cli/CliWrapper";
+import {cancellableExecFile} from "../../cli/CliWrapper";
 import {
     FileNotFoundException,
     isFileNotFound,
@@ -40,7 +40,12 @@ async function execFileWithShell(
     stderr: string;
 }> {
     try {
-        return await execFile(cmd, args, {shell: true}, cancellationToken);
+        return await cancellableExecFile(
+            cmd,
+            args,
+            {shell: true},
+            cancellationToken
+        );
     } catch (e) {
         if (isFileNotFound(e)) {
             throw new FileNotFoundException(e.message);
