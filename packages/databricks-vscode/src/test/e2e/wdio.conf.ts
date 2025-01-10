@@ -389,6 +389,7 @@ export const config: Options.Testrunner = {
             .binary as string;
         let cli: string = "";
         switch (process.platform) {
+            case "linux":
             case "win32":
                 cli = path.resolve(binary, "..", "bin", "code");
                 break;
