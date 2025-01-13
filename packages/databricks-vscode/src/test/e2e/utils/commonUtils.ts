@@ -146,7 +146,7 @@ export async function waitForSyncComplete() {
 
     await browser.waitUntil(
         async () => {
-            const subTreeItems = await viewSection.openItem("Workspace Folder");
+            const subTreeItems = await viewSection.openItem("Remote Folder");
             for (const item of subTreeItems) {
                 if ((await item.getLabel()).includes("State")) {
                     const status = await item.getDescription();

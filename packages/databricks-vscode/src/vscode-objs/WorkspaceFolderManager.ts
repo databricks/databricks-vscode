@@ -69,6 +69,8 @@ export class WorkspaceFolderManager implements Disposable {
                 this.setIsActiveFileInActiveProject(window.activeTextEditor);
             })
         );
+
+        this.setIsActiveFileInActiveProject(window.activeTextEditor);
     }
 
     private setIsActiveFileInActiveProject(activeEditor?: TextEditor) {
