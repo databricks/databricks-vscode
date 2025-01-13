@@ -9,8 +9,11 @@ import {
 } from "vscode";
 import {CustomWhenContext} from "./CustomWhenContext";
 import {StateStorage} from "./StateStorage";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {Loggers} from "../logger";
 
 export class WorkspaceFolderManager implements Disposable {
+    private logger = NamedLogger.getOrCreate(Loggers.Extension);
     private disposables: Disposable[] = [];
     private _activeWorkspaceFolder: WorkspaceFolder | undefined =
         workspace.workspaceFolders?.[0];
@@ -37,15 +40,11 @@ export class WorkspaceFolderManager implements Disposable {
                 this._activeWorkspaceFolder = folder;
             }
         }
-        console.log(
-            ">>>>> active project path",
-            this._activeProjectUri?.fsPath
-        );
-        console.log(
-            ">>>>> active workspace folder",
+        this.logger.log("Active project:", this._activeProjectUri?.fsPath);
+        this.logger.log(
+            "Active workspace:",
             this._activeWorkspaceFolder?.uri.fsPath
         );
-        this.setIsActiveFileInActiveProject(window.activeTextEditor);
 
         this.disposables.push(
             workspace.onDidChangeWorkspaceFolders((e) => {
