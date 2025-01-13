@@ -1,12 +1,4 @@
-import {
-    Disposable,
-    EventEmitter,
-    TextEditor,
-    Uri,
-    WorkspaceFolder,
-    window,
-    workspace,
-} from "vscode";
+import {workspace} from "vscode";
 import {CustomWhenContext} from "./CustomWhenContext";
 import {StateStorage} from "./StateStorage";
 import {WorkspaceFolderManager} from "./WorkspaceFolderManager";
