@@ -24,8 +24,8 @@ describe(__filename, async function () {
         const mockWorkspaceFolderManager = mock<WorkspaceFolderManager>();
         const mockWorkspaceFolder = mock<WorkspaceFolder>();
         when(mockWorkspaceFolder.uri).thenReturn(Uri.file(tmpdir.path));
-        when(mockWorkspaceFolderManager.activeWorkspaceFolder).thenReturn(
-            instance(mockWorkspaceFolder)
+        when(mockWorkspaceFolderManager.activeProjectUri).thenReturn(
+            instance(mockWorkspaceFolder.uri)
         );
         return instance(mockWorkspaceFolderManager);
     }

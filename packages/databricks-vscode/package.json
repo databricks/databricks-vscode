@@ -204,6 +204,13 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.bundle.selectActiveProjectFolder",
+                "icon": "$(gear)",
+                "title": "Select Active Databricks Project Folder",
+                "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.bundle.refreshRemoteState",
                 "icon": "$(refresh)",
                 "title": "Refresh remote state",
@@ -444,8 +451,13 @@
             },
             {
                 "view": "configurationView",
-                "contents": "There are multiple Databricks projects in the folder:\n[Open existing Databricks Project](command:databricks.bundle.openSubProject)",
+                "contents": "There are multiple Databricks projects in the folder:\n[Open existing Databricks Project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
+            },
+            {
+                "view": "configurationView",
+                "contents": "[Select a folder with a Databricks Project](command:databricks.bundle.selectActiveProjectFolder)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.isBundleProject && !databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
@@ -558,6 +570,16 @@
                     "command": "databricks.utils.openExternal",
                     "when": "viewItem =~ /^databricks.*\\.(has-url).*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.bundle.selectActiveProjectFolder",
+                    "when": "viewItem =~ /^databricks.configuration.activeProjectFolder/ && databricks.context.bundle.deploymentState == idle",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.bundle.selectActiveProjectFolder",
+                    "when": "viewItem =~ /^databricks.configuration.activeProjectFolder/ && databricks.context.bundle.deploymentState == idle",
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.attachCluster",

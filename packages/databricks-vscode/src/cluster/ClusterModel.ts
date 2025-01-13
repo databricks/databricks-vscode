@@ -39,8 +39,8 @@ export class ClusterModel implements Disposable {
                         await this.clusterLoader.restart(true);
                         break;
                     case "DISCONNECTED":
-                        await this.clusterLoader.stop();
                         this.clusterLoader.cleanup();
+                        await this.clusterLoader.stop();
                         break;
                 }
             }),

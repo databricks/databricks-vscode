@@ -1,6 +1,6 @@
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
-import {ThemeIcon} from "vscode";
+import {ThemeIcon, workspace} from "vscode";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
 export class WorkspaceFolderComponent extends BaseComponent {
@@ -9,7 +9,7 @@ export class WorkspaceFolderComponent extends BaseComponent {
     ) {
         super();
         this.disposables.push(
-            this.workspaceFolderManager.onDidChangeActiveWorkspaceFolder(() => {
+            this.workspaceFolderManager.onDidChangeActiveProjectFolder(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
@@ -17,23 +17,21 @@ export class WorkspaceFolderComponent extends BaseComponent {
 
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
         const activeWorkspaceFolder =
-            this.workspaceFolderManager.activeWorkspaceFolder;
-        if (
-            activeWorkspaceFolder === undefined ||
-            !this.workspaceFolderManager.enableUi
-        ) {
+            this.workspaceFolderManager.activeProjectUri;
+
+        if (activeWorkspaceFolder === undefined) {
             return [];
         }
 
         return [
             {
-                label: "Active Workspace Folder",
+                label: "Local Folder",
                 iconPath: new ThemeIcon("folder"),
-                description: activeWorkspaceFolder.name,
-                contextValue: "databricks.configuration.activeWorkspaceFolder",
+                description: workspace.asRelativePath(activeWorkspaceFolder),
+                contextValue: "databricks.configuration.activeProjectFolder",
                 command: {
-                    title: "Select Workspace Folder",
-                    command: "databricks.selectWorkspaceFolder",
+                    title: "Select Active Project Folder",
+                    command: "databricks.bundle.selectActiveProjectFolder",
                 },
             },
         ];

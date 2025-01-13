@@ -16,9 +16,10 @@ import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {ProjectConfigFile} from "../file-managers/ProjectConfigFile";
 import {randomUUID} from "crypto";
 import {onError} from "../utils/onErrorDecorator";
-import {BundleInitWizard, promptToOpenSubProjects} from "./BundleInitWizard";
+import {BundleInitWizard} from "./BundleInitWizard";
 import {EventReporter, Events, Telemetry} from "../telemetry";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {promptToSelectActiveProjectFolder} from "./activeBundleUtils";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -52,7 +53,7 @@ export class BundleProjectManager {
         private telemetry: Telemetry
     ) {
         this.disposables.push(
-            this.workspaceFolderManager.onDidChangeActiveWorkspaceFolder(
+            this.workspaceFolderManager.onDidChangeActiveProjectFolder(
                 async () => {
                     await this.isBundleProjectCache.refresh();
                 }
@@ -162,10 +163,13 @@ export class BundleProjectManager {
         });
     }
 
-    public async openSubProjects() {
-        if (this.subProjects && this.subProjects.length > 0) {
-            return promptToOpenSubProjects(this.subProjects);
-        }
+    public async selectActiveProjectFolder() {
+        await this.detectSubProjects();
+        return promptToSelectActiveProjectFolder(
+            this.subProjects ?? [],
+            undefined,
+            this.workspaceFolderManager
+        );
     }
 
     private setPendingManualMigration() {
@@ -328,7 +332,8 @@ export class BundleProjectManager {
             this.connectionManager.databricksWorkspace?.authProvider;
         const parentFolder = await bundleInitWizard.initNewProject(
             this.workspaceUri,
-            authProvider
+            authProvider,
+            this.workspaceFolderManager
         );
         if (parentFolder) {
             await this.isBundleProjectCache.refresh();

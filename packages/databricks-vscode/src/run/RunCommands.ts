@@ -147,6 +147,7 @@ export class RunCommands {
             env: {...process.env},
         };
 
+        // TODO
         debug.startDebugging(
             this.workspaceFolderManager.activeWorkspaceFolder,
             config
