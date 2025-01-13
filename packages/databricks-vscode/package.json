@@ -461,7 +461,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Migrate current folder to a Databricks Project: \n[Migrate current folder to a Databricks Project](command:databricks.bundle.startManualMigration)",
+                "contents": "[Migrate current folder to a Databricks Project](command:databricks.bundle.startManualMigration)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
