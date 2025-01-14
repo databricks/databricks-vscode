@@ -451,18 +451,18 @@
             },
             {
                 "view": "configurationView",
-                "contents": "There are multiple Databricks projects in the folder:\n[Open existing Databricks Project](command:databricks.bundle.selectActiveProjectFolder)",
+                "contents": "Detected multiple Databricks projects in the sub-folders of the workspace:\n[Select a sub-folder with a Databricks Project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
-                "contents": "[Select a folder with a Databricks Project](command:databricks.bundle.selectActiveProjectFolder)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.isBundleProject && !databricks.context.subProjectsAvailable"
+                "contents": "No Databricks Projects configuration detected in the root of the workspace folder:\n[Create a Databricks Project configuration in the current folder](command:databricks.bundle.startManualMigration)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
                 "view": "configurationView",
-                "contents": "[Migrate current folder to a Databricks Project](command:databricks.bundle.startManualMigration)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
+                "contents": "[Select a sub-folder with a Databricks Project](command:databricks.bundle.selectActiveProjectFolder)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.isBundleProject && !databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
