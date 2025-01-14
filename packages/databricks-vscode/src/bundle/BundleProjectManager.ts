@@ -164,11 +164,16 @@ export class BundleProjectManager {
     }
 
     public async selectActiveProjectFolder() {
-        await this.detectSubProjects();
-        return promptToSelectActiveProjectFolder(
-            this.subProjects ?? [],
-            undefined,
-            this.workspaceFolderManager
+        return window.withProgress(
+            {location: {viewId: "configurationView"}},
+            async () => {
+                await this.detectSubProjects();
+                return promptToSelectActiveProjectFolder(
+                    this.subProjects ?? [],
+                    undefined,
+                    this.workspaceFolderManager
+                );
+            }
         );
     }
 
