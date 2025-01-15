@@ -22,8 +22,9 @@ async function getLocalFolderTreeItem(folder: string) {
         const label = await item.getLabel();
         if (label.toLowerCase().includes("local folder")) {
             const desc = await item.getDescription();
-            console.log("Local Folder description:", desc);
-            if (desc?.includes(folder)) {
+            const descPath = path.normalize(desc!);
+            console.log("Local Folder description:", descPath);
+            if (descPath.includes(folder)) {
                 return item;
             }
         }
