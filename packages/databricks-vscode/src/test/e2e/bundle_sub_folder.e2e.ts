@@ -2,6 +2,7 @@ import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
+    dismissNotifications,
     getUniqueResourceName,
     getViewSection,
     waitForInput,
@@ -80,11 +81,16 @@ describe("Bundle in a sub folder", async function () {
                 console.log(
                     "Selecting Databricks Project Folder though a tree item command"
                 );
+                await dismissNotifications();
                 const localFolderItem = await getLocalFolderTreeItem("nested1");
                 await localFolderItem!.select();
             }
 
             const subFoldersInput = await waitForInput();
+            assert.ok(
+                await subFoldersInput.findQuickPick(folder),
+                `Quick pick for ${folder} not found`
+            );
             await subFoldersInput.selectQuickPick(folder);
 
             await waitForLogin("DEFAULT");
