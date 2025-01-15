@@ -85,13 +85,7 @@ describe("Bundle in a sub folder", async function () {
             }
 
             const subFoldersInput = await waitForInput();
-            const nestedProjectPick =
-                await subFoldersInput.findQuickPick(folder);
-            assert(
-                nestedProjectPick,
-                `'${folder}' project is absent in the quick pick selection`
-            );
-            await nestedProjectPick.select();
+            await subFoldersInput.selectQuickPick(folder);
 
             await waitForLogin("DEFAULT");
         });
