@@ -34,7 +34,7 @@ async function getLocalFolderTreeItem(folder: string) {
 describe("Bundle in a sub folder", async function () {
     this.timeout(3 * 60 * 1000);
 
-    const folders = ["nested1", "double/nested2"];
+    const folders = ["nested1", path.normalize("double/nested2")];
     const jobs = {};
 
     before(async () => {
