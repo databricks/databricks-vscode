@@ -35,11 +35,12 @@ describe("Deploy and destroy", async function () {
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
         workbench = await browser.getWorkbench();
         vscodeWorkspaceRoot = process.env.WORKSPACE_PATH;
-        await createProjectWithJob(
+        const job = await createProjectWithJob(
             getUniqueResourceName("deploy_and_destroy_bundle"),
             vscodeWorkspaceRoot,
             clusterId
         );
+        jobName = job.name!;
         await dismissNotifications();
     });
 
