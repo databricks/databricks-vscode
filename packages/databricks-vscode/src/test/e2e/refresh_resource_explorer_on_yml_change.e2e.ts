@@ -2,29 +2,18 @@ import assert from "assert";
 import {CustomTreeSection} from "wdio-vscode-service";
 import {
     dismissNotifications,
-    getUniqueResourceName,
     getViewSection,
     waitForLogin,
 } from "./utils/commonUtils.ts";
-import fs from "fs/promises";
-import path from "path";
 import {
     createProjectWithJob,
     getBasicBundleConfig,
-    getSimpleJobsResource,
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
-import {BundleSchema, BundleTarget, Resource} from "../../bundle/types";
 import {
     geTaskViewItem,
     getResourceViewItem,
 } from "./utils/dabsExplorerUtils.ts";
-import {fileURLToPath} from "url";
-
-/* eslint-disable @typescript-eslint/naming-convention */
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-/* eslint-enable @typescript-eslint/naming-convention */
 
 describe("Automatically refresh resource explorer", async function () {
     let vscodeWorkspaceRoot: string;
