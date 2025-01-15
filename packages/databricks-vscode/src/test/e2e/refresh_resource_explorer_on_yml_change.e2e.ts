@@ -9,6 +9,7 @@ import {
 import fs from "fs/promises";
 import path from "path";
 import {
+    createProjectWithJob,
     getBasicBundleConfig,
     getSimpleJobsResource,
     writeRootBundleConfig,
@@ -30,59 +31,8 @@ describe("Automatically refresh resource explorer", async function () {
     let projectName: string;
     let resourceExplorerView: CustomTreeSection;
     let clusterId: string;
-    let jobDef: Resource<BundleTarget, "jobs">;
 
     this.timeout(3 * 60 * 1000);
-
-    async function createProjectWithJob() {
-        /**
-         * process.env.WORKSPACE_PATH (cwd)
-         *  ├── databricks.yml
-         *  └── src
-         *    └── notebook.ipynb
-         */
-
-        const notebookTaskName = getUniqueResourceName("notebook_task");
-        /* eslint-disable @typescript-eslint/naming-convention */
-        jobDef = getSimpleJobsResource({
-            tasks: [
-                {
-                    task_key: notebookTaskName,
-                    notebook_task: {
-                        notebook_path: "src/notebook.ipynb",
-                    },
-                    existing_cluster_id: clusterId,
-                },
-            ],
-        });
-
-        const schemaDef: BundleSchema = getBasicBundleConfig({
-            bundle: {
-                name: projectName,
-                deployment: {},
-            },
-            targets: {
-                dev_test: {
-                    resources: {
-                        jobs: {
-                            vscode_integration_test: jobDef,
-                        },
-                    },
-                },
-            },
-        });
-        /* eslint-enable @typescript-eslint/naming-convention */
-
-        await writeRootBundleConfig(schemaDef, vscodeWorkspaceRoot);
-
-        await fs.mkdir(path.join(vscodeWorkspaceRoot, "src"), {
-            recursive: true,
-        });
-        await fs.copyFile(
-            path.join(__dirname, "resources", "spark_select_1.ipynb"),
-            path.join(vscodeWorkspaceRoot, "src", "notebook.ipynb")
-        );
-    }
 
     before(async function () {
         assert(
@@ -141,7 +91,11 @@ describe("Automatically refresh resource explorer", async function () {
             .openOutputView();
         await outputView.selectChannel("Databricks Bundle Logs");
 
-        await createProjectWithJob();
+        const jobDef = await createProjectWithJob(
+            projectName,
+            vscodeWorkspaceRoot,
+            clusterId
+        );
 
         await browser.waitUntil(
             async () => {

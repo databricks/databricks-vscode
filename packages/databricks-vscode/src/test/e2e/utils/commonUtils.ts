@@ -319,6 +319,7 @@ export async function executeCommandWhenAvailable(command: string) {
             await workbench.executeQuickPick(command);
             return true;
         } catch (e) {
+            console.log(`Failed to execute ${command}:`, e);
             return false;
         }
     });

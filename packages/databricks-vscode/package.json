@@ -206,7 +206,7 @@
             {
                 "command": "databricks.bundle.selectActiveProjectFolder",
                 "icon": "$(gear)",
-                "title": "Select Active Databricks Project Folder",
+                "title": "Select Databricks Project Folder",
                 "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
