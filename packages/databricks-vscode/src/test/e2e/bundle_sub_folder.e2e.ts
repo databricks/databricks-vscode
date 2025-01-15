@@ -81,7 +81,7 @@ describe("Bundle in a sub folder", async function () {
                     "Selecting Databricks Project Folder though a tree item command"
                 );
                 const localFolderItem = await getLocalFolderTreeItem("nested1");
-                await (await localFolderItem!.elem).click();
+                await localFolderItem!.select();
             }
 
             const subFoldersInput = await waitForInput();
