@@ -204,6 +204,13 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.bundle.selectActiveProjectFolder",
+                "icon": "$(gear)",
+                "title": "Select a Databricks project folder",
+                "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.bundle.refreshRemoteState",
                 "icon": "$(refresh)",
                 "title": "Refresh remote state",
@@ -444,17 +451,22 @@
             },
             {
                 "view": "configurationView",
-                "contents": "There are multiple Databricks projects in the folder:\n[Open existing Databricks Project](command:databricks.bundle.openSubProject)",
+                "contents": "Detected multiple Databricks projects in the VSCode workspace:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
-                "contents": "Migrate current folder to a Databricks Project: \n[Migrate current folder to a Databricks Project](command:databricks.bundle.startManualMigration)",
+                "contents": "No Databricks project configuration detected in the root of the VSCode workspace:\n[Create configuration](command:databricks.bundle.startManualMigration)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
                 "view": "configurationView",
-                "contents": "[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
+                "contents": "No Databricks projects detected in the VSCode workspace:\n[Select a project manually](command:databricks.bundle.selectActiveProjectFolder)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.isBundleProject && !databricks.context.subProjectsAvailable"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Chose a new parent folder and create a Databricks project based on a [template](https://docs.databricks.com/en/dev-tools/bundles/templates.html#databricks-asset-bundle-project-templates):\n[Create a new project](command:databricks.bundle.initNewProject)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.isBundleProject"
             },
             {
@@ -464,7 +476,12 @@
             },
             {
                 "view": "configurationView",
-                "contents": "This folder is empty.\n[Create a new Databricks Project](command:databricks.bundle.initNewProject)",
+                "contents": "This folder is empty.\n[Open folder](command:vscode.openFolder)",
+                "when": "workspaceFolderCount == 0"
+            },
+            {
+                "view": "configurationView",
+                "contents": "[Create a new Databricks project](command:databricks.bundle.initNewProject)",
                 "when": "workspaceFolderCount == 0"
             },
             {
@@ -558,6 +575,16 @@
                     "command": "databricks.utils.openExternal",
                     "when": "viewItem =~ /^databricks.*\\.(has-url).*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.bundle.selectActiveProjectFolder",
+                    "when": "viewItem =~ /^databricks.configuration.activeProjectFolder/ && databricks.context.bundle.deploymentState == idle",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.bundle.selectActiveProjectFolder",
+                    "when": "viewItem =~ /^databricks.configuration.activeProjectFolder/ && databricks.context.bundle.deploymentState == idle",
+                    "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.attachCluster",

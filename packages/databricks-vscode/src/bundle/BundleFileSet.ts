@@ -62,54 +62,27 @@ export class BundleFileSet {
             return bundle as BundleSchema;
         });
 
-    private get workspaceRoot() {
-        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    private get projectRoot() {
+        return this.workspaceFolderManager.activeProjectUri;
     }
 
     constructor(
         private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
-        workspaceFolderManager.onDidChangeActiveWorkspaceFolder(() => {
+        workspaceFolderManager.onDidChangeActiveProjectFolder(() => {
             this.bundleDataCache.invalidate();
         });
     }
 
     async getRootFile() {
         const rootFile = await glob.glob(
-            getAbsoluteGlobPath(rootFilePattern, this.workspaceRoot),
+            getAbsoluteGlobPath(rootFilePattern, this.projectRoot),
             {nocase: process.platform === "win32"}
         );
         if (rootFile.length !== 1) {
             return undefined;
         }
         return Uri.file(rootFile[0]);
-    }
-
-    async getSubProjects(
-        root?: Uri
-    ): Promise<{relative: Uri; absolute: Uri}[]> {
-        const subProjectRoots = await glob.glob(
-            getAbsoluteGlobPath(
-                subProjectFilePattern,
-                root || this.workspaceRoot
-            ),
-            {nocase: process.platform === "win32"}
-        );
-        const normalizedRoot = path.normalize(
-            root?.fsPath ?? this.workspaceRoot.fsPath
-        );
-        return subProjectRoots
-            .map((rootFile) => {
-                const dirname = path.dirname(path.normalize(rootFile));
-                const absolute = Uri.file(dirname);
-                const relative = Uri.file(
-                    absolute.fsPath.replace(normalizedRoot, "")
-                );
-                return {absolute, relative};
-            })
-            .filter(({absolute}) => {
-                return absolute.fsPath !== normalizedRoot;
-            });
     }
 
     async getIncludedFilesGlob() {
@@ -133,7 +106,7 @@ export class BundleFileSet {
             return (
                 await glob.glob(
                     toGlobPath(
-                        path.join(this.workspaceRoot.fsPath, includedFilesGlob)
+                        path.join(this.projectRoot.fsPath, includedFilesGlob)
                     ),
                     {nocase: process.platform === "win32"}
                 )
@@ -171,7 +144,7 @@ export class BundleFileSet {
     isRootBundleFile(e: Uri) {
         return minimatch(
             e.fsPath,
-            getAbsoluteGlobPath(rootFilePattern, this.workspaceRoot)
+            getAbsoluteGlobPath(rootFilePattern, this.projectRoot)
         );
     }
 
@@ -182,7 +155,7 @@ export class BundleFileSet {
         }
         includedFilesGlob = getAbsoluteGlobPath(
             includedFilesGlob,
-            this.workspaceRoot
+            this.projectRoot
         );
         return minimatch(e.fsPath, toGlobPath(includedFilesGlob));
     }

@@ -174,8 +174,8 @@ export class ConfigureAutocomplete implements Disposable {
         this.environmentDependenciesInstaller.show(false);
     }
 
-    private get workspaceFolder() {
-        return this.workspaceFolderManager.activeWorkspaceFolder.uri.fsPath;
+    private get projectRootPath() {
+        return this.workspaceFolderManager.activeProjectUri.fsPath;
     }
 
     private async addBuiltinsFile(dryRun = false): Promise<StepResult> {
@@ -184,8 +184,8 @@ export class ConfigureAutocomplete implements Disposable {
             .get<string>("analysis.stubPath");
 
         const builtinsDir = stubPath
-            ? path.join(this.workspaceFolder, stubPath)
-            : this.workspaceFolder;
+            ? path.join(this.projectRootPath, stubPath)
+            : this.projectRootPath;
 
         let builtinsFileExists = false;
         try {

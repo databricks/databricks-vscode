@@ -50,7 +50,7 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         }
 
         return Uri.joinPath(
-            this.workspaceRoot,
+            this.projectRoot,
             ".databricks",
             "bundle",
             this.target,
@@ -58,8 +58,8 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         );
     }
 
-    get workspaceRoot() {
-        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    get projectRoot() {
+        return this.workspaceFolderManager.activeProjectUri;
     }
 
     constructor(
@@ -79,7 +79,7 @@ export class OverrideableConfigModel extends BaseModelWithStateCache<Overrideabl
         }
 
         const rootOverrideFile = OverrideableConfigModel.getRootOverrideFile(
-            this.workspaceRoot
+            this.projectRoot
         );
         // If root override file exists, use it to initialise the configs for the first selected target
         if (
