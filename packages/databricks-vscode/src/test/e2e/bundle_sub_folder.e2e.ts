@@ -59,25 +59,23 @@ describe("Bundle in a sub folder", async function () {
                     "Selecting Databricks Project Folder through the welcome screen UI"
                 );
                 const section = await getViewSection("CONFIGURATION");
-                const selectSubFolderButton = await browser.waitUntil(
+                const selectProjectButton = await browser.waitUntil(
                     async () => {
                         const welcome = await section!.findWelcomeContent();
                         const buttons = await welcome!.getButtons();
                         for (const button of buttons) {
-                            if (
-                                (await button.getTitle()) ===
-                                "Select a sub-folder with a Databricks project"
-                            ) {
+                            const title = await button.getTitle();
+                            if (title === "Select a project") {
                                 return button;
                             }
                         }
                     }
                 );
                 assert(
-                    selectSubFolderButton,
-                    "'Select sub folder' button doesn't exist"
+                    selectProjectButton,
+                    "'Select a project' button doesn't exist"
                 );
-                await selectSubFolderButton.elem.click();
+                await selectProjectButton.elem.click();
             } else {
                 console.log(
                     "Selecting Databricks Project Folder though a tree item command"
