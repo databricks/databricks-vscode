@@ -6,6 +6,7 @@ import {JobTreeNode} from "./JobTreeNode";
 import {
     BundleResourceExplorerTreeItem,
     BundleResourceExplorerTreeNode,
+    KNOWN_ICON_RESOURCE_TYPES,
     KNOWN_RESOURCE_TYPES,
 } from "./types";
 import {ExtensionContext, ThemeIcon, TreeItemCollapsibleState} from "vscode";
@@ -40,28 +41,25 @@ export class ResourceTypeHeaderTreeNode
     }
 
     private getIconPath(resourceType: BundleResourceExplorerTreeNode["type"]) {
-        if (!KNOWN_RESOURCE_TYPES.includes(resourceType)) {
+        if (!KNOWN_ICON_RESOURCE_TYPES.includes(resourceType)) {
             return new ThemeIcon("folder");
         }
 
         return {
-            dark: this.context.asAbsolutePath(
-                path.join(
-                    "resources",
-                    "dark",
-                    "resource-explorer",
-                    `${resourceType}.svg`
-                )
-            ),
-            light: this.context.asAbsolutePath(
-                path.join(
-                    "resources",
-                    "light",
-                    "resource-explorer",
-                    `${resourceType}.svg`
-                )
-            ),
+            dark: this.getThemedIconPath("dark", resourceType),
+            light: this.getThemedIconPath("light", resourceType),
         };
+    }
+
+    private getThemedIconPath(theme: string, resourceType: string) {
+        return this.context.asAbsolutePath(
+            path.join(
+                "resources",
+                theme,
+                "resource-explorer",
+                `${resourceType}.svg`
+            )
+        );
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
