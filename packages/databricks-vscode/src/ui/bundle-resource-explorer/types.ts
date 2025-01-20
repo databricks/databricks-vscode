@@ -20,6 +20,7 @@ export interface BundleResourceExplorerTreeNode {
         | "pipeline_datasets"
         | "pipeline_dataset"
         | "resource_type_header"
+        | "unknown_resource"
         | "task"
         | "job_run_status"
         | "task_header";
@@ -29,3 +30,8 @@ export interface BundleResourceExplorerTreeNode {
         | BundleResourceExplorerTreeNode[]
         | Promise<BundleResourceExplorerTreeNode[]>;
 }
+
+export const KNOWN_RESOURCE_TYPES: BundleResourceExplorerTreeNode["type"][] = [
+    "jobs",
+    "pipelines",
+];
