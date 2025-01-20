@@ -451,7 +451,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Detected multiple Databricks projects in the VSCode workspace:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "contents": "Multiple Databricks projects were detected in the workspace:\n[Choose a project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
             },
             {
@@ -486,7 +486,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "To learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
+                "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
             }
         ],
         "menus": {
