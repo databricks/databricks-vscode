@@ -451,22 +451,22 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Detected multiple Databricks projects in the VSCode workspace:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "contents": "Multiple Databricks projects were detected in the workspace:\n[Choose a project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
-                "contents": "No Databricks project configuration detected in the root of the VSCode workspace:\n[Create configuration](command:databricks.bundle.startManualMigration)",
+                "contents": "Databricks project configuration was not detected in the root of the workspace:\n[Create configuration](command:databricks.bundle.startManualMigration)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.pendingManualMigration"
             },
             {
                 "view": "configurationView",
-                "contents": "No Databricks projects detected in the VSCode workspace:\n[Select a project manually](command:databricks.bundle.selectActiveProjectFolder)",
+                "contents": "A Databricks project was not detected in the workspace:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.isBundleProject && !databricks.context.subProjectsAvailable"
             },
             {
                 "view": "configurationView",
-                "contents": "Chose a new parent folder and create a Databricks project based on a [template](https://docs.databricks.com/en/dev-tools/bundles/templates.html#databricks-asset-bundle-project-templates):\n[Create a new project](command:databricks.bundle.initNewProject)",
+                "contents": "Select a folder where you want to create a new Databricks project using a [template](https://docs.databricks.com/en/dev-tools/bundles/templates.html#databricks-asset-bundle-project-templates):\n[Create a new project](command:databricks.bundle.initNewProject)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.isBundleProject"
             },
             {
@@ -486,7 +486,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "To learn more about how to use Databricks with VS Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
+                "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
             }
         ],
         "menus": {
