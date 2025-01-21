@@ -10,7 +10,6 @@
     -   Run actions are only available for files under the active bundle
 -   Show all DABs resources in the explorer panel
 
-
 # Release: v2.5.1
 
 ## packages/databricks-vscode
