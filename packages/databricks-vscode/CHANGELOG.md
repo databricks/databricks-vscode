@@ -1,3 +1,15 @@
+# Release: v2.6.0
+
+## packages/databricks-vscode
+
+## (2025-01-21)
+
+-   Monorepo support
+    -   If there are multiple bundles in the repo, you can now select an "active" bundle in the extension panel
+    -   Switching between active bundles within one workspace doesn't reload the IDE
+    -   Run actions are only available for files under the active bundle
+-   Show all DABs resources in the explorer panel
+
 # Release: v2.5.1
 
 ## packages/databricks-vscode
