@@ -1,3 +1,15 @@
+# Release: v2.6.0
+
+## packages/databricks-vscode
+
+## (2025-01-21)
+
+-   Add icons for new "unknown" resources (#1526) ([c0de2e6](https://github.com/databricks/databricks-vscode/commit/c0de2e6)), closes [#1526](https://github.com/databricks/databricks-vscode/issues/1526)
+-   Bundle selection ux (#1519) ([6b5762e](https://github.com/databricks/databricks-vscode/commit/6b5762e)), closes [#1519](https://github.com/databricks/databricks-vscode/issues/1519)
+-   Enable linux e2e tests (#1517) ([df60b3d](https://github.com/databricks/databricks-vscode/commit/df60b3d)), closes [#1517](https://github.com/databricks/databricks-vscode/issues/1517)
+-   Show all dabs resources in the explorer panel (#1525) ([5023a41](https://github.com/databricks/databricks-vscode/commit/5023a41)), closes [#1525](https://github.com/databricks/databricks-vscode/issues/1525)
+-   Update welcome views (#1524) ([ad8ac4a](https://github.com/databricks/databricks-vscode/commit/ad8ac4a)), closes [#1524](https://github.com/databricks/databricks-vscode/issues/1524)
+
 # Release: v2.5.1
 
 ## packages/databricks-vscode
