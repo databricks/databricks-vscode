@@ -1,4 +1,3 @@
-import {ThemeIcon} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {
     BundleResourceExplorerResourceKey,
@@ -7,6 +6,7 @@ import {
 } from "./types";
 import {ContextUtils} from "./utils";
 import {DecorationUtils} from "../utils";
+import {TreeItemCollapsibleState} from "vscode";
 
 type UnknownResourcesMap = Map<
     BundleResourceExplorerResourceKey,
@@ -38,10 +38,9 @@ export class UnknownResourceTreeNode implements BundleResourceExplorerTreeNode {
 
         return {
             label: name,
-            iconPath: new ThemeIcon("file"),
             contextValue: ContextUtils.getContextString({
-                nodeType: "unknown_resource",
                 resourceType: this.resourceType,
+                nodeType: "unknown_resource",
                 hasUrl: this.url !== undefined,
                 modifiedStatus: this.data.modified_status,
             }),
@@ -49,6 +48,7 @@ export class UnknownResourceTreeNode implements BundleResourceExplorerTreeNode {
                 name,
                 this.data.modified_status
             ),
+            collapsibleState: TreeItemCollapsibleState.None,
         };
     }
 
