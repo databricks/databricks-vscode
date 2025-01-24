@@ -25,7 +25,7 @@ export class BundleWatcher implements Disposable {
     ) {
         this.initCleanup = this.init();
         this.disposables.push(
-            this.workspaceFolderManager.onDidChangeActiveWorkspaceFolder(() => {
+            this.workspaceFolderManager.onDidChangeActiveProjectFolder(() => {
                 this.initCleanup.dispose();
                 this.initCleanup = this.init();
                 this.bundleFileSet.bundleDataCache.invalidate();
@@ -37,7 +37,7 @@ export class BundleWatcher implements Disposable {
         const yamlWatcher = workspace.createFileSystemWatcher(
             getAbsoluteGlobPath(
                 path.join("**", "*.{yaml,yml}"),
-                this.workspaceFolderManager.activeWorkspaceFolder.uri
+                this.workspaceFolderManager.activeProjectUri
             )
         );
 

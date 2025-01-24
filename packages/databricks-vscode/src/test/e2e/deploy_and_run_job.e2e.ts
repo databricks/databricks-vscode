@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
+    getUniqueResourceName,
     getViewSection,
     waitForDeployment,
     waitForLogin,
@@ -35,10 +36,13 @@ describe("Deploy and run job", async function () {
         );
 
         workbench = await browser.getWorkbench();
-        jobName = await createProjectWithJob(
-            process.env.WORKSPACE_PATH,
-            process.env.TEST_DEFAULT_CLUSTER_ID
-        );
+        jobName = (
+            await createProjectWithJob(
+                getUniqueResourceName("deploy_and_run_job"),
+                process.env.WORKSPACE_PATH,
+                process.env.TEST_DEFAULT_CLUSTER_ID
+            )
+        ).name!;
         await dismissNotifications();
     });
 

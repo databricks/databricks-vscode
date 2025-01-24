@@ -233,8 +233,7 @@ export class NotebookInitScriptManager implements Disposable {
                 ["-m", "IPython", file],
                 {
                     env,
-                    cwd: this.workspaceFolderManager.activeWorkspaceFolder.uri
-                        .fsPath,
+                    cwd: this.workspaceFolderManager.activeProjectUri.fsPath,
                 }
             );
             const correctlyFormatttedErrors = stderr
@@ -292,7 +291,7 @@ export class NotebookInitScriptManager implements Disposable {
         }
 
         await FileUtils.waitForDatabricksProject(
-            this.workspaceFolderManager.activeWorkspaceFolder.uri,
+            this.workspaceFolderManager.activeProjectUri,
             this.connectionManager
         );
 
