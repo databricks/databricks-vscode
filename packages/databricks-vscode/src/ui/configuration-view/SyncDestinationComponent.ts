@@ -92,7 +92,7 @@ export class SyncDestinationComponent extends BaseComponent {
 
         return [
             {
-                label: "Workspace Folder",
+                label: "Remote Folder",
                 tooltip: url ? undefined : "Created after deploy",
                 description:
                     mode === "development" ? undefined : workspaceFsPath,
@@ -145,6 +145,7 @@ export class SyncDestinationComponent extends BaseComponent {
             return [
                 pathTreeItem,
                 {
+                    label: `Sync State`,
                     description: "Error - Click for more details",
                     iconPath: new ThemeIcon(
                         "alert",
@@ -170,7 +171,7 @@ export class SyncDestinationComponent extends BaseComponent {
         return [
             pathTreeItem,
             {
-                label: `State`,
+                label: `Sync State`,
                 description: this.codeSynchronizer.state,
                 collapsibleState: TreeItemCollapsibleState.None,
             },

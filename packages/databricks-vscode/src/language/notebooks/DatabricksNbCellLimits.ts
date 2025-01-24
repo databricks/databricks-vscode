@@ -8,7 +8,7 @@ export async function setDbnbCellLimits(
     connectionManager: ConnectionManager
 ) {
     await FileUtils.waitForDatabricksProject(
-        workspaceFolderManager.activeWorkspaceFolder.uri,
+        workspaceFolderManager.activeProjectUri,
         connectionManager
     );
     if (workspaceConfigs.jupyterCellMarkerRegex === undefined) {

@@ -15,7 +15,7 @@ fi
 
 CLI_DIR=$(mktemp -d -t databricks-XXXXXXXXXX)
 pushd $CLI_DIR
-gh release download v${CLI_VERSION} --pattern "databricks_cli_${CLI_VERSION}_${CLI_ARCH}.zip" --repo databricks/cli
+curl -L -O "https://github.com/databricks/cli/releases/download/v${CLI_VERSION}/databricks_cli_${CLI_VERSION}_${CLI_ARCH}.zip"
 unzip databricks_*_$CLI_ARCH.zip
 rm databricks_*_$CLI_ARCH.zip
 ls

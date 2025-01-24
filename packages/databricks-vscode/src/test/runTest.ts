@@ -23,12 +23,14 @@ async function main() {
             cachePath,
         });
 
+        const tmpDir = os.tmpdir();
+
         // Download VS Code, unzip it and run the integration test
         await runTests({
             vscodeExecutablePath,
             extensionDevelopmentPath,
             extensionTestsPath,
-            launchArgs: ["--user-data-dir", `${os.tmpdir()}`],
+            launchArgs: [tmpDir, "--user-data-dir", tmpDir],
             extensionTestsEnv: {
                 [EXTENSION_DEVELOPMENT]: "true",
             },

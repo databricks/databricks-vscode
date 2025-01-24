@@ -1,31 +1,34 @@
 name: Publish nightly release
 
 on:
-    push:
-        branches: [main]
-    workflow_dispatch:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-    create-build-artifacts:
-        uses: ./.github/workflows/create-build-artifacts.yml
-        secrets: inherit
+  create-build-artifacts:
+    uses: ./.github/workflows/create-build-artifacts.yml
+    secrets: inherit
 
-    create-release:
-        needs: "create-build-artifacts"
-        runs-on: ubuntu-latest
+  create-release:
+    needs: "create-build-artifacts"
 
-        steps:
-            - uses: actions/download-artifact@v3
-              with:
-                  path: packages/databricks-vscode
+    runs-on:
+      group: databricks-deco-testing-runner-group
+      labels: ubuntu-latest-deco
 
-            - run: ls -lR packages/databricks-vscode
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          path: packages/databricks-vscode
 
-            - name: Update nightly release
-              uses: softprops/action-gh-release@v1
-              with:
-                  name: Nightly - ${{ github.ref_name }}
-                  prerelease: true
-                  tag_name: nightly-${{ github.ref_name }}
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  files: "packages/databricks-vscode/databricks*/*.vsix"
+      - run: ls -lR packages/databricks-vscode
+
+      - name: Update nightly release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Nightly - ${{ github.ref_name }}
+          prerelease: true
+          tag_name: nightly-${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: "packages/databricks-vscode/databricks*/*.vsix"

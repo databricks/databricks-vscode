@@ -3,7 +3,7 @@ import {
     BundleResourceExplorerTreeNode,
 } from "./types";
 import {TreeItemCollapsibleState} from "vscode";
-import {ContextUtils, JobRunStateUtils, RunStateUtils} from "./utils";
+import {ContextUtils, RunStateUtils} from "./utils";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {jobs} from "@databricks/databricks-sdk";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
@@ -78,7 +78,7 @@ export class TaskRunStatusTreeNode implements BundleResourceExplorerTreeNode {
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
-        const status = JobRunStateUtils.getSimplifiedRunState(this.runDetails);
+        const status = RunStateUtils.getSimplifiedJobRunState(this.runDetails);
         const icon = RunStateUtils.getThemeIconForStatus(status);
         return {
             label: "Run Status",

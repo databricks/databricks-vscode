@@ -1,33 +1,36 @@
 name: Create Build Artefacts
 
 on:
-    workflow_call:
+  workflow_call:
 
 jobs:
-    create-build-artifacts:
-        runs-on: ubuntu-latest
-        defaults:
-            run:
-                shell: bash
+  create-build-artifacts:
+    runs-on:
+      group: databricks-deco-testing-runner-group
+      labels: ubuntu-latest-deco
 
-        steps:
-            - uses: actions/checkout@v3
+    defaults:
+      run:
+        shell: bash
 
-            - name: Use Node.js 18
-              uses: actions/setup-node@v3
-              with:
-                  node-version: 18
-                  cache: "yarn"
+    steps:
+      - uses: actions/checkout@v3
 
-            - run: yarn install
-            - run: yarn run build
-            - run: yarn run package:all
-              working-directory: packages/databricks-vscode
-              env:
-                  GH_TOKEN: ${{ github.token }}
-                  BUILD_PLATFORM_ARCH: linux_amd64
+      - name: Use Node.js 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "yarn"
 
-            - uses: actions/upload-artifact@v3
-              with:
-                  name: databricks
-                  path: "packages/databricks-vscode/*.vsix"
+      - run: yarn install
+      - run: yarn run build
+      - run: yarn run package:all
+        working-directory: packages/databricks-vscode
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_PLATFORM_ARCH: linux_amd64
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: databricks
+          path: "packages/databricks-vscode/*.vsix"

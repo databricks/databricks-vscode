@@ -24,8 +24,8 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
     private target: string | undefined;
     private overrideFileWatcher: FileSystemWatcher | undefined;
 
-    get workspaceRoot() {
-        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    get projectRoot() {
+        return this.workspaceFolderManager.activeProjectUri;
     }
 
     constructor(
@@ -105,7 +105,7 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
         }
 
         return Uri.joinPath(
-            this.workspaceRoot,
+            this.projectRoot,
             ".databricks",
             "bundle",
             target,

@@ -33,10 +33,11 @@ function getEscapedCommandAndAgrs(
     options: SpawnOptionsWithoutStdio
 ) {
     if (process.platform === "win32") {
+        const cmdArgs = args.slice();
         args = [
-            "/d", //Disables execution of AutoRun commands, which are like .bashrc commands.
-            "/c", //Carries out the command specified by <string> and then exits the command processor.
-            `""${cmd}" ${args.map((a) => `"${a}"`).join(" ")}"`,
+            "/d", // Disables execution of AutoRun commands, which are like .bashrc commands.
+            "/c", // Carries out the command specified by <string> and then exits the command processor.
+            `""${cmd}" ${cmdArgs.map((a) => `"${a}"`).join(" ")}"`,
         ];
         cmd = "cmd.exe";
         options = {...options, windowsVerbatimArguments: true};
@@ -176,7 +177,8 @@ export async function waitForProcess(
             if (code === 0) {
                 resolve();
             } else {
-                reject(new ProcessError(stderr.join(""), code));
+                const message = onStdError ? "" : stderr.join("");
+                reject(new ProcessError(message, code));
             }
         });
         p.on("error", (e) => new ProcessError(e.message, null));
@@ -496,8 +498,9 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
+        const bundleOpName = "validate";
         return await runBundleCommand(
-            "validate",
+            bundleOpName,
             this.cliPath,
             ["bundle", "validate", "--target", target],
             workspaceFolder,
@@ -508,10 +511,9 @@ export class CliWrapper {
             },
             await this.getBundleCommandEnvVars(authProvider, configfilePath),
             logger,
-            {
-                onStdOut: (data) => logger?.debug(data, {target}),
-                onStdError: (data) => logger?.debug(data, {target}),
-            }
+            // Print stdout to the debug log (not visible in the output channel).
+            // stderr data will be printed to the output channel with the error level.
+            {onStdOut: (data) => logger?.debug(data, {target, bundleOpName})}
         );
     }
 
@@ -522,8 +524,9 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger
     ) {
+        const bundleOpName = "summarize";
         return await runBundleCommand(
-            "summarize",
+            bundleOpName,
             this.cliPath,
             [
                 "bundle",
@@ -543,10 +546,9 @@ export class CliWrapper {
             },
             await this.getBundleCommandEnvVars(authProvider, configfilePath),
             logger,
-            {
-                onStdOut: (data) => logger?.debug(data, {target}),
-                onStdError: (data) => logger?.debug(data, {target}),
-            }
+            // Print stdout to the debug log (not visible in the output channel).
+            // stderr data will be printed to the output channel with the error level.
+            {onStdOut: (data) => logger?.debug(data, {target, bundleOpName})}
         );
     }
 

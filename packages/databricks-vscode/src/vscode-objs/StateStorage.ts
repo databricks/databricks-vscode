@@ -62,6 +62,10 @@ const StorageConfigurations = {
         location: "workspace",
     }),
 
+    "databricks.activeProjectPath": withType<string>()({
+        location: "workspace",
+    }),
+
     "databricks.lastInstalledExtensionVersion": withType<string>()({
         location: "global",
         defaultValue: "0.0.0",

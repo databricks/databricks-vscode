@@ -65,7 +65,7 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
         if (
             !this.target ||
             !this.authProvider ||
-            !this.workspaceFolderManager.activeWorkspaceFolder
+            !this.workspaceFolderManager.activeProjectUri
         ) {
             return {};
         }
@@ -75,7 +75,7 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
                 await this.cli.bundleValidate(
                     this.target,
                     this.authProvider,
-                    this.workspaceFolderManager.activeWorkspaceFolder?.uri,
+                    this.workspaceFolderManager.activeProjectUri,
                     workspaceConfigs.databrickscfgLocation,
                     this.logger
                 )

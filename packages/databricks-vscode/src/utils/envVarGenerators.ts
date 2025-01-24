@@ -111,7 +111,7 @@ async function getSparkRemoteEnvVar(connectionManager: ConnectionManager) {
 
 export async function getDbConnectEnvVars(
     connectionManager: ConnectionManager,
-    workspacePath: Uri,
+    projectRootUri: Uri,
     showDatabricksConnectProgess: boolean
 ) {
     const userAgent = getUserAgent(connectionManager);
@@ -125,7 +125,7 @@ export async function getDbConnectEnvVars(
         SPARK_CONNECT_PROGRESS_BAR_ENABLED: showDatabricksConnectProgess
             ? "1"
             : "0",
-        DATABRICKS_PROJECT_ROOT: workspacePath.fsPath,
+        DATABRICKS_PROJECT_ROOT: projectRootUri.fsPath,
         ...((await getSparkRemoteEnvVar(connectionManager)) || {}),
     };
     /* eslint-enable @typescript-eslint/naming-convention */

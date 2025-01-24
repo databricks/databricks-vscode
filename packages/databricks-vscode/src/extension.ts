@@ -160,15 +160,8 @@ export async function activate(
     }
 
     const workspaceFolderManager = new WorkspaceFolderManager(
-        customWhenContext
-    );
-
-    context.subscriptions.push(
-        telemetry.registerCommand(
-            "databricks.selectWorkspaceFolder",
-            workspaceFolderManager.selectDatabricksWorkspaceFolderCommand,
-            workspaceFolderManager
-        )
+        customWhenContext,
+        stateStorage
     );
 
     // Add the databricks binary to the PATH environment variable in terminals
@@ -322,8 +315,8 @@ export async function activate(
     context.subscriptions.push(
         bundleProjectManager,
         telemetry.registerCommand(
-            "databricks.bundle.openSubProject",
-            bundleProjectManager.openSubProjects,
+            "databricks.bundle.selectActiveProjectFolder",
+            bundleProjectManager.selectActiveProjectFolder,
             bundleProjectManager
         ),
         telemetry.registerCommand(
@@ -454,7 +447,7 @@ export async function activate(
     databricksEnvFileManager.init();
     context.subscriptions.push(
         databricksEnvFileManager,
-        workspaceFolderManager.onDidChangeActiveWorkspaceFolder(() => {
+        workspaceFolderManager.onDidChangeActiveProjectFolder(() => {
             databricksEnvFileManager.dispose();
             databricksEnvFileManager.init();
         }),
@@ -626,19 +619,20 @@ export async function activate(
         configModel,
         bundleRunTerminalManager
     );
-    const bundleResourceExplorerTreeDataProvider =
-        new BundleResourceExplorerTreeDataProvider(
-            configModel,
-            bundleRunStatusManager,
-            context,
-            connectionManager
-        );
-
     const bundlePipelinesManager = new BundlePipelinesManager(
         connectionManager,
         bundleRunStatusManager,
         configModel
     );
+    const bundleResourceExplorerTreeDataProvider =
+        new BundleResourceExplorerTreeDataProvider(
+            context,
+            configModel,
+            connectionManager,
+            bundleRunStatusManager,
+            bundlePipelinesManager
+        );
+
     const bundleCommands = new BundleCommands(
         bundleRemoteStateModel,
         bundleRunStatusManager,
@@ -915,7 +909,7 @@ export async function activate(
     };
 
     configureWorkspace();
-    workspaceFolderManager.onDidChangeActiveWorkspaceFolder(configureWorkspace);
+    workspaceFolderManager.onDidChangeActiveProjectFolder(configureWorkspace);
 
     customWhenContext.setActivated(true);
     telemetry.recordEvent(Events.EXTENSION_ACTIVATION);

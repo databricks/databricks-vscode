@@ -146,7 +146,7 @@ export async function waitForSyncComplete() {
 
     await browser.waitUntil(
         async () => {
-            const subTreeItems = await viewSection.openItem("Workspace Folder");
+            const subTreeItems = await viewSection.openItem("Remote Folder");
             for (const item of subTreeItems) {
                 if ((await item.getLabel()).includes("State")) {
                     const status = await item.getDescription();
@@ -319,6 +319,7 @@ export async function executeCommandWhenAvailable(command: string) {
             await workbench.executeQuickPick(command);
             return true;
         } catch (e) {
+            console.log(`Failed to execute ${command}:`, e);
             return false;
         }
     });

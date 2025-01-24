@@ -1,3 +1,45 @@
+# Release: v2.6.0
+
+## packages/databricks-vscode
+
+## (2025-01-21)
+
+-   Monorepo support
+    -   If there are multiple bundles in the repo, you can now select an "active" bundle in the extension panel
+    -   Switching between active bundles within one workspace doesn't reload the IDE
+    -   Run actions are only available for files under the active bundle
+-   Show all DABs resources in the explorer panel
+
+# Release: v2.5.1
+
+## packages/databricks-vscode
+
+## (2025-01-09)
+
+-   Fix login flow on Windows under CMD.exe with Azure CLI
+-   Better messaging about required python versions
+-   Log validate and summary errors to the Databricks Bundle Logs output channel
+-   Suppress GRPC warnings from Databricks Connect
+
+# Release: v2.5.0
+
+## packages/databricks-vscode
+
+## (2024-12-12)
+
+-   Check out [What's New 2.5](./resources/whats-new/2.5.md)
+-   New DLT features:
+    -   Add validation and partial update actions
+    -   Show events of the currently running updates
+    -   Expose warning and error events as source code diagnostics
+    -   Show pipeline datasets and their schemas in the resource explorer
+-   Expose Resource Explorer panel inline actions in context menus
+-   Increase the polling time for job run statuses
+-   Fix bundle logs showing 'undefined' or duplicating error messages
+-   Depend on new python debugger extension for local execution
+-   Update internal JS SDK
+-   Update Databricks CLI to v0.236.0
+
 # Release: v2.4.8
 
 ## packages/databricks-vscode
