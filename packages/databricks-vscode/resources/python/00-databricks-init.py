@@ -492,6 +492,10 @@ try:
     import sys
 
     print(sys.modules[__name__])
+
+    # Suppress grpc warnings coming from databricks-connect with newer version of grpcio lib
+    os.environ["GRPC_VERBOSITY"] = "NONE"
+
     if not load_env_from_leaf(os.getcwd()):
         sys.exit(1)
     cfg = LocalDatabricksNotebookConfig()

@@ -46,8 +46,8 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
     protected mutex = new Mutex();
     private logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
-    get workspaceFolder() {
-        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    get projectRoot() {
+        return this.workspaceFolderManager.activeProjectUri;
     }
 
     constructor(
@@ -75,7 +75,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         await this.cli.bundleDeploy(
             this.target,
             this.authProvider,
-            this.workspaceFolder,
+            this.projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
             force,
@@ -95,7 +95,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         await this.cli.bundleDestroy(
             this.target,
             this.authProvider,
-            this.workspaceFolder,
+            this.projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
             force,
@@ -115,7 +115,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         await this.cli.bundleSync(
             this.target,
             this.authProvider,
-            this.workspaceFolder,
+            this.projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
             token
@@ -137,7 +137,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             this.target,
             this.authProvider,
             resourceKey,
-            this.workspaceFolder,
+            this.projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             additionalArgs
         );
@@ -168,7 +168,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         const {stdout} = await this.cli.bundleSummarise(
             this.target,
             this.authProvider,
-            this.workspaceFolder,
+            this.projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger
         );

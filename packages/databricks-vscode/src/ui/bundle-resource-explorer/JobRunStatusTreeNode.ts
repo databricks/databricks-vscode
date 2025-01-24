@@ -3,10 +3,11 @@ import {
     BundleResourceExplorerTreeNode,
 } from "./types";
 import {TreeItemCollapsibleState} from "vscode";
-import {ContextUtils, JobRunStateUtils, RunStateUtils} from "./utils";
+import {ContextUtils, RunStateUtils} from "./utils";
 import {jobs} from "@databricks/databricks-sdk";
 import {JobRunStatus} from "../../bundle/run/JobRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
+import {getSimplifiedJobRunState} from "./utils/RunStateUtils";
 
 export class JobRunStatusTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "job_run_status";
@@ -92,11 +93,14 @@ export class JobRunStatusTreeNode implements BundleResourceExplorerTreeNode {
             };
         }
 
-        const status = JobRunStateUtils.getSimplifiedRunState(this.runDetails);
-        const icon = RunStateUtils.getThemeIconForStatus(status);
+        const status =
+            this.runMonitor?.runState === "cancelling"
+                ? "Cancelling"
+                : getSimplifiedJobRunState(this.runDetails);
+
         return {
             label: "Run Status",
-            iconPath: icon,
+            iconPath: RunStateUtils.getThemeIconForStatus(status),
             description: status,
             contextValue: ContextUtils.getContextString({
                 nodeType: this.type,

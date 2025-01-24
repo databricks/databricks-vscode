@@ -101,6 +101,7 @@ export async function clearRootBundleConfig(workspacePath: string) {
 }
 
 export async function createProjectWithJob(
+    projectName: string,
     vscodeWorkspaceRoot: string,
     clusterId: string
 ) {
@@ -111,7 +112,6 @@ export async function createProjectWithJob(
      *    └── notebook.ipynb
      */
 
-    const projectName = getUniqueResourceName("deploy_and_run_job");
     const notebookTaskName = getUniqueResourceName("notebook_task");
     /* eslint-disable @typescript-eslint/naming-convention */
     const jobDef = getSimpleJobsResource({
@@ -152,7 +152,7 @@ export async function createProjectWithJob(
         path.join(vscodeWorkspaceRoot, "src", "notebook.ipynb")
     );
 
-    return jobDef!.name!;
+    return jobDef;
 }
 
 export async function createProjectWithPipeline(vscodeWorkspaceRoot: string) {

@@ -3,23 +3,19 @@ import sys
 import logging
 from runpy import run_path
 
-# Load environment variables from .databricks/.databricks.env
-# We only look for the folder in the current working directory
-# since for all commands laucnhed from root workspace
-def load_env_file_from_cwd(path: str):
-    if not os.path.isdir(path):
-        return
-    
-    env_file_path = os.path.join(path, ".databricks", ".databricks.env")
-    if not os.path.exists(os.path.dirname(env_file_path)):
-        return
-    
-    with open(env_file_path, "r") as f:
-        for line in f.readlines():
-            key, value = line.strip().split("=", 1)
-            os.environ[key] = value
-    return
-
+def load_env_from_leaf(path: str) -> bool:
+    curdir = path if os.path.isdir(path) else os.path.dirname(path)
+    env_file_path = os.path.join(curdir, ".databricks", ".databricks.env")
+    if os.path.exists(env_file_path):
+        with open(env_file_path, "r") as f:
+            for line in f.readlines():
+                key, value = line.strip().split("=", 1)
+                os.environ[key] = value
+        return curdir
+    parent = os.path.dirname(curdir)
+    if parent == curdir:
+        return curdir
+    return load_env_from_leaf(parent)
 
 script = sys.argv[1]
 sys.argv = sys.argv[1:]
@@ -32,8 +28,10 @@ except Exception as e:
     logging.error(f"Failed to get current directory: {e}")
     cur_dir = os.getcwd()
 
-root_dir = os.getcwd()
-load_env_file_from_cwd(root_dir)
+# Suppress grpc warnings coming from databricks-connect with newer version of grpcio lib
+os.environ["GRPC_VERBOSITY"] = "NONE"
+
+project_dir = load_env_from_leaf(cur_dir)
 
 log_level = os.environ.get("DATABRICKS_VSCODE_LOG_LEVEL")
 log_level = log_level if log_level is not None else "WARN"
@@ -65,7 +63,7 @@ def getArgument(*args, **kwargs):
 
 db_globals['getArgument'] = getArgument
 
-sys.path.insert(0, root_dir)
+sys.path.insert(0, project_dir)
 sys.path.insert(0, cur_dir)
 
 run_path(script, init_globals=db_globals, run_name="__main__")

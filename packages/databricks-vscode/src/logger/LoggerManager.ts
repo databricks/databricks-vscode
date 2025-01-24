@@ -128,7 +128,9 @@ export class LoggerManager {
                         format((info) => info.level === level && info)(),
                         format.timestamp(),
                         format.printf((info) => {
-                            return `${info.bundleOpName}: ${info.message}`;
+                            const name =
+                                info.bundleOpName ?? info.error?.bundleOpName;
+                            return `${name}: ${info.message}`;
                         })
                     ),
                     level,

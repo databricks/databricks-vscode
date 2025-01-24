@@ -283,6 +283,12 @@ export class LoginWizard {
                         type: "error",
                     };
                 }
+                if (value.includes(".")) {
+                    return {
+                        message: "Profile name cannot contain dots",
+                        type: "error",
+                    };
+                }
                 if (profiles.find((profile) => profile.name === value)) {
                     return {
                         message: `Profile ${value} already exists`,

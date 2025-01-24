@@ -4,4 +4,5 @@ export type RunState =
     | "unknown"
     | "error"
     | "timeout"
+    | "cancelling"
     | "cancelled";
