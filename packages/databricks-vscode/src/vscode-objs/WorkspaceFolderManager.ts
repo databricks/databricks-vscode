@@ -40,10 +40,9 @@ export class WorkspaceFolderManager implements Disposable {
                 this._activeWorkspaceFolder = folder;
             }
         }
-        this.logger.log("Active project:", this._activeProjectUri?.fsPath);
-        this.logger.log(
-            "Active workspace:",
-            this._activeWorkspaceFolder?.uri.fsPath
+        this.logger.info(`Active project: ${this._activeProjectUri?.fsPath}`);
+        this.logger.info(
+            `Active workspace: ${this._activeWorkspaceFolder?.uri.fsPath}`
         );
 
         this.disposables.push(
