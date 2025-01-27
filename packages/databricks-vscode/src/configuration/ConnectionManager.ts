@@ -66,8 +66,8 @@ export class ConnectionManager implements Disposable {
 
     private readonly initialization = new Barrier();
 
-    get workspaceUri() {
-        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    get projectRoot() {
+        return this.workspaceFolderManager.activeProjectUri;
     }
 
     constructor(
@@ -102,7 +102,7 @@ export class ConnectionManager implements Disposable {
             return;
         }
         this._syncDestinationMapper = new SyncDestinationMapper(
-            new LocalUri(this.workspaceUri),
+            new LocalUri(this.projectRoot),
             remoteUri
         );
     }
@@ -179,7 +179,7 @@ export class ConnectionManager implements Disposable {
                 this.configModel.onDidChangeTarget(
                     this.loginWithSavedAuth.bind(this, "targetChange")
                 ),
-                this.workspaceFolderManager.onDidChangeActiveWorkspaceFolder(
+                this.workspaceFolderManager.onDidChangeActiveProjectFolder(
                     withOnErrorHandler(
                         async () => {
                             await this.configModel.setTarget(undefined);
@@ -259,7 +259,7 @@ export class ConnectionManager implements Disposable {
 
     private async loadLegacyProjectConfig() {
         try {
-            return await ProjectConfigFile.loadConfig(this.workspaceUri.fsPath);
+            return await ProjectConfigFile.loadConfig(this.projectRoot.fsPath);
         } catch (error) {
             const logger = NamedLogger.getOrCreate("Extension");
             logger.error(`Error loading legacy config`, error);

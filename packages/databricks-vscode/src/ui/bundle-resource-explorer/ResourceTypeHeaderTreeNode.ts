@@ -6,10 +6,14 @@ import {JobTreeNode} from "./JobTreeNode";
 import {
     BundleResourceExplorerTreeItem,
     BundleResourceExplorerTreeNode,
+    KNOWN_ICON_RESOURCE_TYPES,
+    KNOWN_RESOURCE_TYPES,
 } from "./types";
-import {ExtensionContext, TreeItemCollapsibleState} from "vscode";
+import {ExtensionContext, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {PipelineTreeNode} from "./PipelineTreeNode";
 import {BundlePipelinesManager} from "../../bundle/BundlePipelinesManager";
+import {UnknownResourceTreeNode} from "./UnknownResourceTreeNode";
+import {capitalize} from "lodash";
 
 function humaniseResourceType(type: BundleResourceExplorerTreeNode["type"]) {
     switch (type) {
@@ -18,13 +22,15 @@ function humaniseResourceType(type: BundleResourceExplorerTreeNode["type"]) {
         case "jobs":
             return "Workflows";
         default:
-            return type;
+            return capitalize(type).replace(/_/g, " ");
     }
 }
+
 export class ResourceTypeHeaderTreeNode
     implements BundleResourceExplorerTreeNode
 {
     readonly type = "resource_type_header";
+
     constructor(
         private readonly context: ExtensionContext,
         private readonly resourceType: BundleResourceExplorerTreeNode["type"],
@@ -34,25 +40,26 @@ export class ResourceTypeHeaderTreeNode
         this.children.forEach((child) => (child.parent = this));
     }
 
-    private getIconPath(resourceType: string) {
+    private getIconPath(resourceType: BundleResourceExplorerTreeNode["type"]) {
+        if (!KNOWN_ICON_RESOURCE_TYPES.includes(resourceType)) {
+            return new ThemeIcon("folder");
+        }
+
         return {
-            dark: this.context.asAbsolutePath(
-                path.join(
-                    "resources",
-                    "dark",
-                    "resource-explorer",
-                    `${resourceType}.svg`
-                )
-            ),
-            light: this.context.asAbsolutePath(
-                path.join(
-                    "resources",
-                    "light",
-                    "resource-explorer",
-                    `${resourceType}.svg`
-                )
-            ),
+            dark: this.getThemedIconPath("dark", resourceType),
+            light: this.getThemedIconPath("light", resourceType),
         };
+    }
+
+    private getThemedIconPath(theme: string, resourceType: string) {
+        return this.context.asAbsolutePath(
+            path.join(
+                "resources",
+                theme,
+                "resource-explorer",
+                `${resourceType}.svg`
+            )
+        );
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
@@ -77,26 +84,47 @@ export class ResourceTypeHeaderTreeNode
     ) {
         const roots: BundleResourceExplorerTreeNode[] = [];
 
-        const jobs = JobTreeNode.getRoots(
-            context,
-            bundleRunStatusManager,
-            connectionManager,
-            bundleRemoteState
-        );
-        if (jobs.length > 0) {
-            roots.push(new ResourceTypeHeaderTreeNode(context, "jobs", jobs));
+        for (const resourceType of KNOWN_RESOURCE_TYPES) {
+            let resources: BundleResourceExplorerTreeNode[] = [];
+            switch (resourceType) {
+                case "jobs":
+                    resources = JobTreeNode.getRoots(
+                        context,
+                        bundleRunStatusManager,
+                        connectionManager,
+                        bundleRemoteState
+                    );
+                    break;
+                case "pipelines":
+                    resources = PipelineTreeNode.getRoots(
+                        connectionManager,
+                        bundleRunStatusManager,
+                        pipelinesManager,
+                        bundleRemoteState
+                    );
+                    break;
+            }
+            if (resources.length > 0) {
+                roots.push(
+                    new ResourceTypeHeaderTreeNode(
+                        context,
+                        resourceType,
+                        resources
+                    )
+                );
+            }
         }
 
-        const pipelines = PipelineTreeNode.getRoots(
-            connectionManager,
-            bundleRunStatusManager,
-            pipelinesManager,
-            bundleRemoteState
+        const unknownResourceGroups = UnknownResourceTreeNode.getRootGroups(
+            bundleRemoteState,
+            KNOWN_RESOURCE_TYPES
         );
-        if (pipelines.length > 0) {
-            roots.push(
-                new ResourceTypeHeaderTreeNode(context, "pipelines", pipelines)
-            );
+        for (const [type, resources] of unknownResourceGroups) {
+            if (resources.length > 0) {
+                roots.push(
+                    new ResourceTypeHeaderTreeNode(context, type, resources)
+                );
+            }
         }
 
         return roots;

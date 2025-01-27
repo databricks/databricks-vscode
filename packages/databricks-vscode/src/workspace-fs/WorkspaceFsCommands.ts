@@ -76,7 +76,7 @@ export class WorkspaceFsCommands implements Disposable {
         const root = await this.getValidRoot(rootPath, ctx);
 
         const inputPath = await createDirWizard(
-            this.workspaceFolderManager.activeWorkspaceFolder.uri,
+            this.workspaceFolderManager.activeProjectUri,
             "Directory Name",
             root
         );

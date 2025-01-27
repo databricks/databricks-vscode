@@ -87,7 +87,7 @@ export class MsPythonExtensionWrapper implements Disposable {
     get pythonEnvironment() {
         return this.api.environments?.resolveEnvironment(
             this.api.environments?.getActiveEnvironmentPath(
-                this.workspaceFolderManager.activeWorkspaceFolder
+                this.workspaceFolderManager.activeProjectUri
             )
         );
     }

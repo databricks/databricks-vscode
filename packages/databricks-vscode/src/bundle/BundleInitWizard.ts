@@ -15,48 +15,9 @@ import {getSubProjects} from "./BundleFileSet";
 import {tmpdir} from "os";
 import {ShellUtils} from "../utils";
 import {Events, Telemetry} from "../telemetry";
-import {OverrideableConfigModel} from "../configuration/models/OverrideableConfigModel";
-import {writeFile, mkdir} from "fs/promises";
-import path from "path";
 import {escapePathArgument} from "../utils/shellUtils";
-
-export async function promptToOpenSubProjects(
-    projects: {absolute: Uri; relative: string}[],
-    authProvider?: AuthProvider
-) {
-    type OpenProjectItem = QuickPickItem & {uri?: Uri};
-    const items: OpenProjectItem[] = projects.map((project) => {
-        return {
-            uri: project.absolute,
-            label: project.relative,
-            detail: project.absolute.fsPath,
-        };
-    });
-    items.push(
-        {label: "", kind: QuickPickItemKind.Separator},
-        {label: "Choose another folder"}
-    );
-    const options = {
-        title: "Select the project you want to open",
-    };
-    const item = await window.showQuickPick<OpenProjectItem>(items, options);
-    if (!item?.uri) {
-        return;
-    }
-
-    if (authProvider?.authType === "profile") {
-        const rootOverrideFilePath =
-            OverrideableConfigModel.getRootOverrideFile(item.uri);
-        await mkdir(path.dirname(rootOverrideFilePath.fsPath), {
-            recursive: true,
-        });
-        await writeFile(
-            rootOverrideFilePath.fsPath,
-            JSON.stringify({authProfile: authProvider.toJSON().profile})
-        );
-    }
-    await commands.executeCommand("vscode.openFolder", item.uri);
-}
+import {promptToSelectActiveProjectFolder} from "./activeBundleUtils";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 export class BundleInitWizard {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -68,7 +29,8 @@ export class BundleInitWizard {
 
     public async initNewProject(
         workspaceUri?: Uri,
-        existingAuthProvider?: AuthProvider
+        existingAuthProvider?: AuthProvider,
+        workspaceFolderManager?: WorkspaceFolderManager
     ) {
         const recordEvent = this.telemetry.start(Events.BUNDLE_INIT);
         try {
@@ -97,7 +59,11 @@ export class BundleInitWizard {
                 this.logger.debug(
                     `Detected ${projects.length} sub projects after the init wizard, prompting to open one`
                 );
-                await promptToOpenSubProjects(projects, authProvider);
+                await promptToSelectActiveProjectFolder(
+                    projects,
+                    authProvider,
+                    workspaceFolderManager
+                );
             } else {
                 this.logger.debug(
                     `No projects detected after the init wizard, showing notification to open a folder manually`

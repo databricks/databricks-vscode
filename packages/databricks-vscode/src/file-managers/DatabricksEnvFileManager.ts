@@ -22,17 +22,13 @@ export class DatabricksEnvFileManager implements Disposable {
     private showDatabricksConnectProgess = true;
 
     get databricksEnvPath() {
-        return Uri.joinPath(
-            this.workspacePath,
-            ".databricks",
-            ".databricks.env"
-        );
+        return Uri.joinPath(this.projectRoot, ".databricks", ".databricks.env");
     }
     private get systemVariableResolver() {
-        return new SystemVariables(this.workspacePath);
+        return new SystemVariables(this.projectRoot);
     }
-    private get workspacePath() {
-        return this.workspaceFolderManager.activeWorkspaceFolder.uri;
+    private get projectRoot() {
+        return this.workspaceFolderManager.activeProjectUri;
     }
 
     private readonly onDidChangeEnvironmentVariablesEmitter =
@@ -101,7 +97,7 @@ export class DatabricksEnvFileManager implements Disposable {
 
     public async init() {
         await FileUtils.waitForDatabricksProject(
-            this.workspacePath,
+            this.projectRoot,
             this.connectionManager
         );
 
@@ -182,7 +178,7 @@ export class DatabricksEnvFileManager implements Disposable {
                 ...(this.getDatabrickseEnvVars() || {}),
                 ...((await EnvVarGenerators.getDbConnectEnvVars(
                     this.connectionManager,
-                    this.workspacePath,
+                    this.projectRoot,
                     this.showDatabricksConnectProgess
                 )) || {}),
                 ...this.getIdeEnvVars(),

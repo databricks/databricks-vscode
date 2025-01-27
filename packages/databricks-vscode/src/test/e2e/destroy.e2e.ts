@@ -7,21 +7,8 @@ import {
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {Workbench} from "wdio-vscode-service";
-import {
-    getBasicBundleConfig,
-    getSimpleJobsResource,
-    writeRootBundleConfig,
-} from "./utils/dabsFixtures.ts";
-import path from "node:path";
-import fs from "fs/promises";
-import {BundleSchema} from "../../bundle/types.ts";
-import {fileURLToPath} from "url";
 import {WorkspaceClient} from "@databricks/databricks-sdk";
-
-/* eslint-disable @typescript-eslint/naming-convention */
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-/* eslint-enable @typescript-eslint/naming-convention */
+import {createProjectWithJob} from "./utils/dabsFixtures.ts";
 
 describe("Deploy and destroy", async function () {
     let workbench: Workbench;
@@ -30,58 +17,6 @@ describe("Deploy and destroy", async function () {
     let clusterId: string;
 
     this.timeout(3 * 60 * 1000);
-
-    async function createProjectWithJob() {
-        /**
-         * process.env.WORKSPACE_PATH (cwd)
-         *  ├── databricks.yml
-         *  └── src
-         *    └── notebook.ipynb
-         */
-
-        const projectName = getUniqueResourceName("deploy_and_destroy_bundle");
-        const notebookTaskName = getUniqueResourceName("notebook_task");
-        /* eslint-disable @typescript-eslint/naming-convention */
-        const jobDef = getSimpleJobsResource({
-            tasks: [
-                {
-                    task_key: notebookTaskName,
-                    notebook_task: {
-                        notebook_path: "src/notebook.ipynb",
-                    },
-                    existing_cluster_id: clusterId,
-                },
-            ],
-        });
-        jobName = jobDef.name!;
-
-        const schemaDef: BundleSchema = getBasicBundleConfig({
-            bundle: {
-                name: projectName,
-                deployment: {},
-            },
-            targets: {
-                dev_test: {
-                    resources: {
-                        jobs: {
-                            vscode_integration_test: jobDef,
-                        },
-                    },
-                },
-            },
-        });
-        /* eslint-enable @typescript-eslint/naming-convention */
-
-        await writeRootBundleConfig(schemaDef, vscodeWorkspaceRoot);
-
-        await fs.mkdir(path.join(vscodeWorkspaceRoot, "src"), {
-            recursive: true,
-        });
-        await fs.copyFile(
-            path.join(__dirname, "resources", "spark_select_1.ipynb"),
-            path.join(vscodeWorkspaceRoot, "src", "notebook.ipynb")
-        );
-    }
 
     before(async function () {
         assert(
@@ -100,7 +35,12 @@ describe("Deploy and destroy", async function () {
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
         workbench = await browser.getWorkbench();
         vscodeWorkspaceRoot = process.env.WORKSPACE_PATH;
-        await createProjectWithJob();
+        const job = await createProjectWithJob(
+            getUniqueResourceName("deploy_and_destroy_bundle"),
+            vscodeWorkspaceRoot,
+            clusterId
+        );
+        jobName = job.name!;
         await dismissNotifications();
     });
 
