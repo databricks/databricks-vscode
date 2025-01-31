@@ -141,7 +141,12 @@ export class ConnectionCommands implements Disposable {
             quickPick.canSelectMany = false;
             const items: QuickPickItem[] = [
                 {
-                    label: "Create New Cluster",
+                    label: "$(cloud) Serverless",
+                    detail: `Run files as Workflows or use Databricks Connect without a dedicated cluster`,
+                    alwaysShow: false,
+                },
+                {
+                    label: "$(repo-create) Create New Cluster",
                     detail: `Open Databricks in the browser and create a new cluster`,
                     alwaysShow: false,
                 },
@@ -183,6 +188,8 @@ export class ConnectionCommands implements Disposable {
                 if ("cluster" in selectedItem) {
                     const cluster = selectedItem.cluster;
                     await this.connectionManager.attachCluster(cluster.id);
+                } else if (selectedItem.label === "$(cloud) Serverless") {
+                    await this.connectionManager.enableServerless();
                 } else {
                     await UrlUtils.openExternal(
                         `${

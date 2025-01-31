@@ -14,6 +14,7 @@ import {Mutex} from "../locking";
 import * as childProcess from "node:child_process";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {execFile} from "../cli/CliWrapper";
+import fs from "node:fs";
 
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
@@ -85,11 +86,13 @@ export class MsPythonExtensionWrapper implements Disposable {
     }
 
     get pythonEnvironment() {
-        return this.api.environments?.resolveEnvironment(
-            this.api.environments?.getActiveEnvironmentPath(
-                this.workspaceFolderManager.activeProjectUri
-            )
+        const env = this.api.environments?.getActiveEnvironmentPath(
+            this.workspaceFolderManager.activeProjectUri
         );
+        if (!env || !fs.existsSync(env.path)) {
+            return undefined;
+        }
+        return this.api.environments?.resolveEnvironment(env);
     }
 
     async runWithOutput(

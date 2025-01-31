@@ -92,7 +92,7 @@ export class WorkflowOutputPanel {
     }
 
     async updateState(
-        cluster: Cluster,
+        cluster: Cluster | undefined,
         runState: jobs.RunLifeCycleState,
         run: WorkflowRun
     ) {
@@ -108,7 +108,7 @@ export class WorkflowOutputPanel {
         const taskCluster = task.cluster_instance;
 
         let clusterUrl = "#";
-        if (taskCluster) {
+        if (taskCluster && cluster) {
             clusterUrl = await cluster.getSparkUiUrl(
                 taskCluster.spark_context_id
             );
@@ -120,6 +120,7 @@ export class WorkflowOutputPanel {
                 {
                     runUrl: run.runPageUrl,
                     runId: task.run_id,
+                    serverless: cluster === undefined,
                     clusterUrl,
                     clusterId: taskCluster?.cluster_id || "-",
                     started: task.start_time

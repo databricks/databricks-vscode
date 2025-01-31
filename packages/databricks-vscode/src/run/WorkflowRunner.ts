@@ -75,7 +75,7 @@ export class WorkflowRunner implements Disposable {
         program: LocalUri;
         parameters?: Record<string, string>;
         args?: Array<string>;
-        cluster: Cluster;
+        cluster?: Cluster;
         syncDestinationMapper: SyncDestinationMapper;
         token?: CancellationToken;
     }) {
@@ -153,8 +153,11 @@ export class WorkflowRunner implements Disposable {
                         : remoteFilePath;
                 }
                 panel.showExportedRun(
-                    await cluster.runNotebookAndWait({
+                    await WorkflowRun.runNotebookAndWait({
+                        client: this.connectionManager.workspaceClient!
+                            .apiClient,
                         path: remoteFilePath,
+                        clusterId: cluster?.id,
                         parameters,
                         onProgress: (
                             state: jobs.RunLifeCycleState,
@@ -178,7 +181,9 @@ export class WorkflowRunner implements Disposable {
                               syncDestinationMapper.remoteUri
                           )
                         : undefined;
-                const response = await cluster.runPythonAndWait({
+                const response = await WorkflowRun.runPythonAndWait({
+                    client: this.connectionManager.workspaceClient!.apiClient,
+                    clusterId: cluster?.id,
                     path: wrappedFile ? wrappedFile.path : originalFileUri.path,
                     args: args ?? [],
                     onProgress: (

@@ -79,7 +79,12 @@ export function getCommonDatabricksEnvVars(
         DATABRICKS_BUNDLE_TARGET: configModel.target,
         ...(getAuthEnvVars(connectionManager) || {}),
         ...(getProxyEnvVars() || {}),
-        DATABRICKS_CLUSTER_ID: cluster?.id,
+        DATABRICKS_CLUSTER_ID: connectionManager.serverless
+            ? undefined
+            : cluster?.id,
+        DATABRICKS_SERVERLESS_COMPUTE_ID: connectionManager.serverless
+            ? "auto"
+            : undefined,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }
