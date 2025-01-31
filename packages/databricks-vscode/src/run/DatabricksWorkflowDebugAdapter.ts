@@ -31,6 +31,7 @@ import {LocalUri} from "../sync/SyncDestination";
 import {FileUtils} from "../utils";
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 import {ConfigModel} from "../configuration/models/ConfigModel";
+import {Telemetry} from "../telemetry";
 
 /**
  * This interface describes the mock-debug specific launch attributes
@@ -58,12 +59,14 @@ export class DatabricksWorkflowDebugAdapterFactory
         private connection: ConnectionManager,
         private configModel: ConfigModel,
         context: ExtensionContext,
-        bundleCommands: BundleCommands
+        bundleCommands: BundleCommands,
+        telemetry: Telemetry
     ) {
         this.workflowRunner = new WorkflowRunner(
             context,
             bundleCommands,
-            connection
+            connection,
+            telemetry
         );
     }
 
