@@ -14,10 +14,10 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Use Node.js 18
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: "yarn"
@@ -30,7 +30,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_PLATFORM_ARCH: linux_amd64
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: databricks
           path: "packages/databricks-vscode/*.vsix"
