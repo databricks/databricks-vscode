@@ -18,6 +18,7 @@ describe(__filename, () => {
     beforeEach(() => {
         connection = mock<ConnectionManager>();
         when(connection.metadataServiceUrl).thenReturn("http://localhost:1234");
+        when(connection.serverless).thenReturn(false);
         cli = mock<CliWrapper>();
     });
 

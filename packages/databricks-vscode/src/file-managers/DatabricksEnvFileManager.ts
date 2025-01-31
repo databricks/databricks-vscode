@@ -148,7 +148,7 @@ export class DatabricksEnvFileManager implements Disposable {
     private getDatabricksEnvVars() {
         return EnvVarGenerators.getCommonDatabricksEnvVars(
             this.connectionManager,
-            this.configModel
+            this.configModel.target
         );
     }
 
