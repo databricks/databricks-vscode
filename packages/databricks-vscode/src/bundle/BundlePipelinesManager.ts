@@ -520,7 +520,7 @@ function createPicks(datasets: Set<string>, manualValue?: string) {
     };
     const fullRefreshPick: Pick = {
         label: "Full Refresh",
-        description: "Truncate and recopmute selected tables",
+        description: "Truncate and recompute selected tables",
         alwaysShow: true,
     };
     const ui = window.createQuickPick<Pick>();
