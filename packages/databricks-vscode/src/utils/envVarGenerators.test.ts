@@ -6,6 +6,7 @@ import {ApiClient, Config} from "@databricks/databricks-sdk";
 import {Cluster} from "../sdk-extensions";
 import {
     getAuthEnvVars,
+    getCommonDatabricksEnvVars,
     getDbConnectEnvVars,
     getProxyEnvVars,
 } from "./envVarGenerators";
@@ -82,6 +83,37 @@ describe(__filename, () => {
             HTTP_PROXY: "http://example.com",
             HTTPS_PROXY: "https://example.com",
             NO_PROXY: "https://example.com",
+        });
+    });
+
+    it("should generate env vars with expected cluster id", () => {
+        const actual = getCommonDatabricksEnvVars(
+            instance(mockConnectionManager),
+            "target"
+        );
+        assert.deepEqual(actual, {
+            DATABRICKS_BUNDLE_TARGET: "target",
+            DATABRICKS_CLUSTER_ID: mockClusterId,
+            DATABRICKS_SERVERLESS_COMPUTE_ID: undefined,
+            HTTP_PROXY: undefined,
+            HTTPS_PROXY: undefined,
+            NO_PROXY: undefined,
+        });
+    });
+
+    it("should generate env vars with serverless", () => {
+        when(mockConnectionManager.serverless).thenReturn(true);
+        const actual = getCommonDatabricksEnvVars(
+            instance(mockConnectionManager),
+            "target"
+        );
+        assert.deepEqual(actual, {
+            DATABRICKS_BUNDLE_TARGET: "target",
+            DATABRICKS_CLUSTER_ID: undefined,
+            DATABRICKS_SERVERLESS_COMPUTE_ID: "auto",
+            HTTP_PROXY: undefined,
+            HTTPS_PROXY: undefined,
+            NO_PROXY: undefined,
         });
     });
 

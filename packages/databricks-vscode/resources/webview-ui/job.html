@@ -44,8 +44,9 @@
             .vscode-button:hover {
                 background-color: var(--vscode-button-hoverBackground);
             }
-            .vscode-disabled {
-                color: var(--vscode-disabledForeground);
+            .vscode-disabled,
+            .vscode-button.vscode-disabled:hover {
+                background-color: var(--vscode-disabledForeground);
             }
 
             li .vscode-button {
@@ -213,7 +214,7 @@
                         </span>
                     </li>
                     <li>
-                        <span class="label">Cluster:</span>
+                        <span class="label">Compute:</span>
                         <span class="value" aria-label="cluster">
                             <vscode-link id="run-cluster" href="#"
                                 >N/A</vscode-link
@@ -306,7 +307,7 @@
                         .getElementById("run-cluster")
                         .setAttribute("href", details.clusterUrl);
                     document.getElementById("run-cluster").innerText =
-                        details.clusterId;
+                        details.serverless ? "Serverless" : details.clusterId;
 
                     document.getElementById("run-started").innerText =
                         details.started;

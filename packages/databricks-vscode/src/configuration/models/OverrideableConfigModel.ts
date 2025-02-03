@@ -9,13 +9,19 @@ import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 export type OverrideableConfigState = {
     authProfile?: string;
     clusterId?: string;
+    serverless?: boolean;
     useClusterOverride?: boolean;
 };
 
 export function isOverrideableConfigKey(
     key: string
 ): key is keyof OverrideableConfigState {
-    return ["authProfile", "clusterId", "useClusterOverride"].includes(key);
+    return [
+        "authProfile",
+        "clusterId",
+        "useClusterOverride",
+        "serverless",
+    ].includes(key);
 }
 
 async function safeRead(filePath: Uri) {

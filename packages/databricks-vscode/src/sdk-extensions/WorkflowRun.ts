@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiClient, jobs} from "@databricks/databricks-sdk";
+import {ApiClient, CancellationToken, jobs} from "@databricks/databricks-sdk";
+import {SubmitRun, SubmitTask} from "@databricks/databricks-sdk/dist/apis/jobs";
 
 export class WorkflowRun {
     constructor(
@@ -16,6 +17,87 @@ export class WorkflowRun {
             client,
             await jobsService.getRun({run_id: runId})
         );
+    }
+
+    static async submitRun(
+        client: ApiClient,
+        submitRunRequest: jobs.SubmitRun
+    ): Promise<WorkflowRun> {
+        const jobsService = new jobs.JobsService(client);
+        const res = await jobsService.submit(submitRunRequest);
+        return await WorkflowRun.fromId(client, res.run_id!);
+    }
+
+    static async runNotebookAndWait({
+        client,
+        clusterId,
+        path,
+        parameters = {},
+        onProgress,
+        token,
+    }: {
+        client: ApiClient;
+        clusterId?: string;
+        path: string;
+        parameters?: Record<string, string>;
+        onProgress?: (state: jobs.RunLifeCycleState, run: WorkflowRun) => void;
+        token?: CancellationToken;
+    }) {
+        const task: SubmitTask = {
+            task_key: "js_sdk_job_run",
+            notebook_task: {
+                notebook_path: path,
+                base_parameters: parameters,
+            },
+            depends_on: [],
+            libraries: [],
+        };
+        if (clusterId) {
+            task["existing_cluster_id"] = clusterId;
+        }
+        const run = await WorkflowRun.submitRun(client, {tasks: [task]});
+        await run.wait(onProgress, token);
+        return await run.export();
+    }
+
+    static async runPythonAndWait({
+        client,
+        clusterId,
+        path,
+        args = [],
+        onProgress,
+        token,
+    }: {
+        client: ApiClient;
+        clusterId?: string;
+        path: string;
+        args?: string[];
+        onProgress?: (state: jobs.RunLifeCycleState, run: WorkflowRun) => void;
+        token?: CancellationToken;
+    }): Promise<jobs.RunOutput> {
+        const task: SubmitTask = {
+            task_key: "js_sdk_job_run",
+            spark_python_task: {
+                python_file: path,
+                parameters: args,
+            },
+        };
+        if (clusterId) {
+            task["existing_cluster_id"] = clusterId;
+        } else {
+            task["environment_key"] = "js_sdk_job_run_environment";
+        }
+        const submitRunOptions: SubmitRun = {tasks: [task]};
+        if (task["environment_key"]) {
+            submitRunOptions.environments = [
+                {environment_key: task["environment_key"], spec: {client: "1"}},
+            ];
+        }
+        const run = await this.submitRun(client, submitRunOptions);
+        await run.wait(onProgress, token);
+        const output = await run.getOutput();
+        onProgress && onProgress(run.lifeCycleState!, run);
+        return output;
     }
 
     get lifeCycleState(): jobs.RunLifeCycleState {
@@ -52,6 +134,27 @@ export class WorkflowRun {
 
         const jobsService = new jobs.JobsService(this.client);
         return jobsService.getRunOutput({run_id: task.run_id!});
+    }
+
+    async wait(
+        onProgress?: (state: jobs.RunLifeCycleState, run: WorkflowRun) => void,
+        token?: CancellationToken
+    ): Promise<void> {
+        while (true) {
+            if (this.lifeCycleState === "INTERNAL_ERROR") {
+                return;
+            }
+            if (this.lifeCycleState === "TERMINATED") {
+                return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+            if (token && token.isCancellationRequested) {
+                await this.cancel();
+                return;
+            }
+            await this.update();
+            onProgress && onProgress(this.lifeCycleState!, this);
+        }
     }
 
     async export(task?: jobs.RunTask): Promise<jobs.ExportRunOutput> {

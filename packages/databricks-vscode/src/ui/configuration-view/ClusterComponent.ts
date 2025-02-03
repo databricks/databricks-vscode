@@ -93,9 +93,23 @@ export class ClusterComponent extends BaseComponent {
 
     @onError({popup: true})
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
-        const config = await this.configModel.get("clusterId");
+        if (this.connectionManager.serverless) {
+            return [
+                {
+                    label: "Serverless",
+                    collapsibleState: TreeItemCollapsibleState.None,
+                    contextValue: getContextValue("serverless"),
+                    iconPath: new ThemeIcon(
+                        "cloud",
+                        new ThemeColor("debugIcon.startForeground")
+                    ),
+                    id: TREE_ICON_ID,
+                },
+            ];
+        }
 
-        if (config === undefined) {
+        const configClusterId = await this.configModel.get("clusterId");
+        if (configClusterId === undefined) {
             // Cluster is not set in bundle and override
             // We are logged in -> Select cluster prompt
             return [

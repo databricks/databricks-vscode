@@ -49,6 +49,7 @@ export class ConnectionManager implements Disposable {
     private _clusterManager?: ClusterManager;
     private _databricksWorkspace?: DatabricksWorkspace;
     private _metadataService: MetadataService;
+    private _serverlessEnabled: boolean = false;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -143,6 +144,15 @@ export class ConnectionManager implements Disposable {
         }
     }
 
+    private async updateServerless() {
+        const serverless = await this.configModel.get("serverless");
+        if (serverless) {
+            await this.enableServerless();
+        } else {
+            await this.disableServerless();
+        }
+    }
+
     get metadataServiceUrl() {
         return this._metadataService.url;
     }
@@ -157,6 +167,9 @@ export class ConnectionManager implements Disposable {
                 ),
                 this.configModel.onDidChangeKey("clusterId")(
                     this.updateClusterManager.bind(this)
+                ),
+                this.configModel.onDidChangeKey("serverless")(
+                    this.updateServerless.bind(this)
                 ),
                 this.configModel.onDidChangeKey("useClusterOverride")(
                     async () => {
@@ -198,6 +211,10 @@ export class ConnectionManager implements Disposable {
 
     get cluster(): Cluster | undefined {
         return this._clusterManager?.cluster;
+    }
+
+    get serverless(): boolean {
+        return this._serverlessEnabled;
     }
 
     get syncDestinationMapper(): SyncDestinationMapper | undefined {
@@ -358,6 +375,7 @@ export class ConnectionManager implements Disposable {
 
         await this.updateSyncDestinationMapper();
         await this.updateClusterManager();
+        await this.updateServerless();
         await this._metadataService.setApiClient(this.apiClient);
         try {
             await this.configModel.setAuthProvider(authProvider);
@@ -422,6 +440,7 @@ export class ConnectionManager implements Disposable {
         if (this.cluster?.id === clusterId) {
             return;
         }
+        await this.disableServerless();
         await this.configModel.set("clusterId", clusterId);
     }
 
@@ -430,6 +449,32 @@ export class ConnectionManager implements Disposable {
     })
     async detachCluster(): Promise<void> {
         await this.configModel.set("clusterId", undefined);
+    }
+
+    @onError({
+        popup: {prefix: "Failed to enable serverless mode."},
+    })
+    async enableServerless() {
+        if (!this._serverlessEnabled) {
+            this._serverlessEnabled = true;
+            await this.configModel.set("serverless", true);
+            await this.configModel.set("useClusterOverride", false);
+            await this.detachCluster();
+            this.customWhenContext.setServerless(true);
+            this.onDidChangeClusterEmitter.fire(undefined);
+        }
+    }
+
+    @onError({
+        popup: {prefix: "Failed to disable serverless mode."},
+    })
+    async disableServerless() {
+        if (this._serverlessEnabled) {
+            this._serverlessEnabled = false;
+            await this.configModel.set("serverless", false);
+            this.customWhenContext.setServerless(false);
+            this.onDidChangeClusterEmitter.fire(undefined);
+        }
     }
 
     @onError({

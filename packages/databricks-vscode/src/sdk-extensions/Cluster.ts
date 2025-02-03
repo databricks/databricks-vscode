@@ -6,14 +6,12 @@ import {
     TimeUnits,
     retry,
     retries,
-    jobs,
     iam,
     compute,
     CancellationToken,
     logging,
 } from "@databricks/databricks-sdk";
 import {ExecutionContext} from "./ExecutionContext";
-import {WorkflowRun} from "./WorkflowRun";
 import {Context, context} from "@databricks/databricks-sdk/dist/context";
 
 const {ExposedLoggers, withLogContext} = logging;
@@ -359,103 +357,6 @@ export class Cluster {
             filter_by: {cluster_sources: ["API", "UI"]},
         })) {
             yield new Cluster(client, clusterInfo);
-        }
-    }
-
-    async submitRun(submitRunRequest: jobs.SubmitRun): Promise<WorkflowRun> {
-        const jobsService = new jobs.JobsService(this.client);
-        const res = await jobsService.submit(submitRunRequest);
-        return await WorkflowRun.fromId(this.client, res.run_id!);
-    }
-
-    /**
-     * Run a notebook as a workflow on a cluster and export result as HTML
-     */
-    async runNotebookAndWait({
-        path,
-        parameters = {},
-        onProgress,
-        token,
-    }: {
-        path: string;
-        parameters?: Record<string, string>;
-        onProgress?: (state: jobs.RunLifeCycleState, run: WorkflowRun) => void;
-        token?: CancellationToken;
-    }) {
-        const run = await this.submitRun({
-            tasks: [
-                {
-                    task_key: "js_sdk_job_run",
-                    existing_cluster_id: this.id,
-                    notebook_task: {
-                        notebook_path: path,
-                        base_parameters: parameters,
-                    },
-                    depends_on: [],
-                    libraries: [],
-                },
-            ],
-        });
-
-        await this.waitForWorkflowCompletion(run, onProgress, token);
-        return await run.export();
-    }
-
-    /**
-     * Run a python file as a workflow on a cluster
-     */
-    async runPythonAndWait({
-        path,
-        args = [],
-        onProgress,
-        token,
-    }: {
-        path: string;
-        args?: string[];
-        onProgress?: (state: jobs.RunLifeCycleState, run: WorkflowRun) => void;
-        token?: CancellationToken;
-    }): Promise<jobs.RunOutput> {
-        const run = await this.submitRun({
-            tasks: [
-                {
-                    task_key: "js_sdk_job_run",
-                    existing_cluster_id: this.id,
-                    spark_python_task: {
-                        python_file: path,
-                        parameters: args,
-                    },
-                },
-            ],
-        });
-
-        await this.waitForWorkflowCompletion(run, onProgress, token);
-        const output = await run.getOutput();
-        onProgress && onProgress(run.lifeCycleState!, run);
-        return output;
-    }
-
-    private async waitForWorkflowCompletion(
-        run: WorkflowRun,
-        onProgress?: (state: jobs.RunLifeCycleState, run: WorkflowRun) => void,
-        token?: CancellationToken
-    ): Promise<void> {
-        while (true) {
-            if (run.lifeCycleState === "INTERNAL_ERROR") {
-                return;
-            }
-            if (run.lifeCycleState === "TERMINATED") {
-                return;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 3000));
-
-            if (token && token.isCancellationRequested) {
-                await run.cancel();
-                return;
-            }
-
-            await run.update();
-            onProgress && onProgress(run.lifeCycleState!, run);
         }
     }
 }

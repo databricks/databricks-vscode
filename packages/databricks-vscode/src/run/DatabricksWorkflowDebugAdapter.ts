@@ -184,13 +184,6 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             return this.onError();
         }
 
-        const cluster = this.connection.cluster;
-        const workspaceClient = this.connection.workspaceClient;
-
-        if (!cluster || !workspaceClient) {
-            promptForClusterAttach();
-            return this.onError();
-        }
         const syncDestinationMapper = this.connection.syncDestinationMapper;
         if (!syncDestinationMapper) {
             return this.onError(
@@ -198,10 +191,21 @@ export class DatabricksWorkflowDebugSession extends LoggingDebugSession {
             );
         }
 
-        await cluster.refresh();
-        if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
-            promptForClusterStart();
-            return this.onError();
+        const serverless = this.connection.serverless;
+        const cluster = this.connection.cluster;
+        const workspaceClient = this.connection.workspaceClient;
+
+        if (!serverless) {
+            if (!cluster || !workspaceClient) {
+                promptForClusterAttach();
+                return this.onError();
+            }
+
+            await cluster.refresh();
+            if (!["RUNNING", "RESIZING"].includes(cluster.state)) {
+                promptForClusterStart();
+                return this.onError();
+            }
         }
 
         await this.workflowRunner.run({
