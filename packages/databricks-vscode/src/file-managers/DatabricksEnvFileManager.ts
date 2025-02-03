@@ -145,10 +145,10 @@ export class DatabricksEnvFileManager implements Disposable {
         );
     }
 
-    private getDatabrickseEnvVars() {
+    private getDatabricksEnvVars() {
         return EnvVarGenerators.getCommonDatabricksEnvVars(
             this.connectionManager,
-            this.configModel
+            this.configModel.target
         );
     }
 
@@ -175,7 +175,7 @@ export class DatabricksEnvFileManager implements Disposable {
     async getEnv() {
         return Object.fromEntries(
             Object.entries({
-                ...(this.getDatabrickseEnvVars() || {}),
+                ...(this.getDatabricksEnvVars() || {}),
                 ...((await EnvVarGenerators.getDbConnectEnvVars(
                     this.connectionManager,
                     this.projectRoot,

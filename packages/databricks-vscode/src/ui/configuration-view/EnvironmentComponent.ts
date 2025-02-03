@@ -66,7 +66,7 @@ export class EnvironmentComponent extends BaseComponent {
         );
         const children: ConfigurationTreeItem[] = [];
         for (const [id, step] of environmentState.steps) {
-            if (!step.available) {
+            if (!step.available && step.title) {
                 children.push({
                     contextValue: getItemContext(id, false),
                     label: step.title,

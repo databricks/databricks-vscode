@@ -2,7 +2,8 @@ import {commands, EventEmitter, OutputChannel, window} from "vscode";
 
 import {Disposable} from "vscode";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
-import {DATABRICKS_CONNECT_VERSION} from "../utils/constants";
+import {ConnectionManager} from "../configuration/ConnectionManager";
+import {DATABRICKS_CONNECT_VERSION as DATABRICKS_CONNECT_MINIMAL_VERSION} from "../utils/constants";
 
 export class EnvironmentDependenciesInstaller implements Disposable {
     private disposables: Disposable[] = [];
@@ -11,7 +12,10 @@ export class EnvironmentDependenciesInstaller implements Disposable {
 
     private _outputChannel?: OutputChannel;
 
-    constructor(private readonly pythonExtension: MsPythonExtensionWrapper) {}
+    constructor(
+        private readonly connectionManager: ConnectionManager,
+        private readonly pythonExtension: MsPythonExtensionWrapper
+    ) {}
 
     get outputChannel() {
         if (!this._outputChannel) {
@@ -27,7 +31,9 @@ export class EnvironmentDependenciesInstaller implements Disposable {
     }
 
     async install(version?: string) {
-        version = version ?? DATABRICKS_CONNECT_VERSION;
+        if (!version) {
+            version = await this.getSuggestedVersion();
+        }
         try {
             this.outputChannel.clear();
             this.outputChannel.show();
@@ -53,10 +59,25 @@ export class EnvironmentDependenciesInstaller implements Disposable {
         this.onDidInstallAttemptEmitter.fire();
     }
 
+    async getSuggestedVersion() {
+        if (this.connectionManager.serverless) {
+            return "15.1.*";
+        }
+        const dbrVersionParts =
+            this.connectionManager.cluster?.dbrVersion || [];
+        if (dbrVersionParts.length < 2 || dbrVersionParts[0] === "x") {
+            return DATABRICKS_CONNECT_MINIMAL_VERSION;
+        }
+        const major = dbrVersionParts[0];
+        const minor = dbrVersionParts[1] === "x" ? "*" : dbrVersionParts[1];
+        const rest = minor === "*" ? "" : ".*";
+        return `${major}.${minor + rest}`;
+    }
+
     async installWithVersionPrompt(suggestedVersion?: string) {
         const version = await window.showInputBox({
             prompt: "Enter a version of the Databricks Connect",
-            value: suggestedVersion || DATABRICKS_CONNECT_VERSION,
+            value: suggestedVersion || (await this.getSuggestedVersion()),
         });
         if (version) {
             await this.install(version);
@@ -81,10 +102,11 @@ export class EnvironmentDependenciesInstaller implements Disposable {
         const envMessagePart = env
             ? "environment " + env.name
             : "current environment";
+        const suggestedVersion = await this.getSuggestedVersion();
         const pkgUpdateMessagePart = hasPyspark
             ? "(pyspark will be uninstalled)"
             : hasDbConnect
-              ? `(databricks-connect will be changed from ${dbConnectDetails.version} to ${DATABRICKS_CONNECT_VERSION})`
+              ? `(databricks-connect will be changed from ${dbConnectDetails.version} to ${suggestedVersion})`
               : "";
         const message = `${mainMessagePart} ${envMessagePart}. ${pkgUpdateMessagePart}`;
         const choices = ["Install", "Change environment", "Change version"];
@@ -92,9 +114,9 @@ export class EnvironmentDependenciesInstaller implements Disposable {
         const choice = await window.showInformationMessage(message, ...choices);
         switch (choice) {
             case "Install":
-                return this.install();
+                return this.install(suggestedVersion);
             case "Change version":
-                return this.installWithVersionPrompt();
+                return this.installWithVersionPrompt(suggestedVersion);
             case "Change environment":
                 await commands.executeCommand(
                     "databricks.environment.selectPythonInterpreter"

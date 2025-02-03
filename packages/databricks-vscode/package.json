@@ -124,7 +124,7 @@
                 "command": "databricks.run.runEditorContents",
                 "title": "Upload and Run File",
                 "category": "Databricks",
-                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn && !databricks.context.serverless",
                 "icon": {
                     "dark": "resources/dark/databricks-run-icon.svg",
                     "light": "resources/light/databricks-run-icon.svg"
@@ -778,7 +778,7 @@
                 },
                 {
                     "command": "databricks.run.runEditorContents",
-                    "when": "databricks.context.activated && resourceLangId == python",
+                    "when": "databricks.context.activated && resourceLangId == python && !databricks.context.serverless",
                     "group": "2_remote@1"
                 },
                 {

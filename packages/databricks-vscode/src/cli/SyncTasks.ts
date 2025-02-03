@@ -303,7 +303,7 @@ export class LazyCustomSyncTerminal extends CustomSyncTerminal {
                 ...EnvVarGenerators.removeUndefinedKeys(
                     EnvVarGenerators.getCommonDatabricksEnvVars(
                         this.connection,
-                        this.configModel
+                        this.configModel.target
                     )
                 ),
                 /* eslint-enable @typescript-eslint/naming-convention */

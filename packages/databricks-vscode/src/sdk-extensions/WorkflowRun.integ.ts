@@ -1,7 +1,6 @@
 import assert from "assert";
 import {jobs} from "@databricks/databricks-sdk";
 import {IntegrationTestSetup} from "./test/IntegrationTestSetup";
-import {Cluster} from "./Cluster";
 import {WorkflowRun} from "./WorkflowRun";
 
 describe(__filename, function () {
@@ -14,11 +13,6 @@ describe(__filename, function () {
     });
 
     it("should run a python job", async () => {
-        const cluster = await Cluster.fromClusterId(
-            integSetup.client.apiClient,
-            integSetup.cluster.id
-        );
-
         const dbfsApi = integSetup.client.dbfs;
         const jobPath = `/tmp/sdk-js-integ-${integSetup.testRunId}.py`;
 
@@ -32,7 +26,9 @@ describe(__filename, function () {
 
         try {
             const progress: Array<WorkflowRun> = [];
-            const output = await cluster.runPythonAndWait({
+            const output = await WorkflowRun.runPythonAndWait({
+                client: integSetup.client.apiClient,
+                clusterId: integSetup.cluster.id,
                 path: `dbfs:${jobPath}`,
                 onProgress: (
                     _state: jobs.RunLifeCycleState,
@@ -54,11 +50,6 @@ describe(__filename, function () {
     });
 
     it("should run a notebook job", async () => {
-        const cluster = await Cluster.fromClusterId(
-            integSetup.client.apiClient,
-            integSetup.cluster.id
-        );
-
         const jobPath = `/tmp/js-sdk-jobs-tests/sdk-js-integ-${integSetup.testRunId}.py`;
         await integSetup.client.workspace.mkdirs({
             path: "/tmp/js-sdk-jobs-tests",
@@ -76,7 +67,9 @@ describe(__filename, function () {
 
         try {
             const progress: Array<WorkflowRun> = [];
-            const output = await cluster.runNotebookAndWait({
+            const output = await WorkflowRun.runNotebookAndWait({
+                client: integSetup.client.apiClient,
+                clusterId: integSetup.cluster.id,
                 path: `${jobPath}`,
                 onProgress: (
                     _state: jobs.RunLifeCycleState,
@@ -104,11 +97,6 @@ describe(__filename, function () {
     });
 
     it("should run a broken notebook job", async () => {
-        const cluster = await Cluster.fromClusterId(
-            integSetup.client.apiClient,
-            integSetup.cluster.id
-        );
-
         const jobPath = `/tmp/js-sdk-jobs-tests/sdk-js-integ-${integSetup.testRunId}.py`;
         await integSetup.client.workspace.mkdirs({
             path: "/tmp/js-sdk-jobs-tests",
@@ -133,7 +121,9 @@ print("Cell 2")`
 
         try {
             const progress: Array<WorkflowRun> = [];
-            const output = await cluster.runNotebookAndWait({
+            const output = await WorkflowRun.runNotebookAndWait({
+                client: integSetup.client.apiClient,
+                clusterId: integSetup.cluster.id,
                 path: `${jobPath}`,
                 onProgress: (
                     _state: jobs.RunLifeCycleState,

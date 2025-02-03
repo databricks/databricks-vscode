@@ -360,7 +360,10 @@ export async function activate(
     const clusterModel = new ClusterModel(connectionManager);
 
     const environmentDependenciesInstaller =
-        new EnvironmentDependenciesInstaller(pythonExtensionWrapper);
+        new EnvironmentDependenciesInstaller(
+            connectionManager,
+            pythonExtensionWrapper
+        );
     const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
         "environment.dependencies",

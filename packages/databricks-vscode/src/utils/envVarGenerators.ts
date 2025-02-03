@@ -3,7 +3,6 @@ import {readFile} from "fs/promises";
 import {ExtensionContext, Uri} from "vscode";
 import {logging, Headers} from "@databricks/databricks-sdk";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {ConfigModel} from "../configuration/models/ConfigModel";
 import {TerraformMetadata} from "./terraformUtils";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -71,15 +70,20 @@ export function getAuthEnvVars(connectionManager: ConnectionManager) {
 
 export function getCommonDatabricksEnvVars(
     connectionManager: ConnectionManager,
-    configModel: ConfigModel
+    bundleTarget?: string
 ) {
     const cluster = connectionManager.cluster;
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
-        DATABRICKS_BUNDLE_TARGET: configModel.target,
+        DATABRICKS_BUNDLE_TARGET: bundleTarget,
         ...(getAuthEnvVars(connectionManager) || {}),
         ...(getProxyEnvVars() || {}),
-        DATABRICKS_CLUSTER_ID: cluster?.id,
+        DATABRICKS_CLUSTER_ID: connectionManager.serverless
+            ? undefined
+            : cluster?.id,
+        DATABRICKS_SERVERLESS_COMPUTE_ID: connectionManager.serverless
+            ? "auto"
+            : undefined,
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }

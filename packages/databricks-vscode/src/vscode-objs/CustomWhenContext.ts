@@ -110,4 +110,12 @@ export class CustomWhenContext {
             value
         );
     }
+
+    setServerless(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.serverless",
+            value
+        );
+    }
 }
