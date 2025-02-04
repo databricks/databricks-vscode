@@ -17,6 +17,8 @@ import Convert from "ansi-to-html";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWrapper";
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
+import {Events, Telemetry} from "../telemetry";
+import {ComputeType, WorkflowTaskType} from "../telemetry/constants";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();
@@ -25,7 +27,8 @@ export class WorkflowRunner implements Disposable {
     constructor(
         private context: ExtensionContext,
         private bundleCommands: BundleCommands,
-        private readonly connectionManager: ConnectionManager
+        private readonly connectionManager: ConnectionManager,
+        private readonly telemetry: Telemetry
     ) {}
 
     dispose() {
@@ -133,9 +136,14 @@ export class WorkflowRunner implements Disposable {
             }
         });
 
+        let taskType: WorkflowTaskType = "unknown";
+        const computeType: ComputeType =
+            cluster === undefined ? "serverless" : "cluster";
+        const recordRun = this.telemetry.start(Events.WORKFLOW_RUN);
         try {
             const notebookType = await FileUtils.isNotebook(program);
             if (notebookType) {
+                taskType = "notebook";
                 let remoteFilePath: string =
                     syncDestinationMapper.localToRemoteNotebook(program).path;
                 if (syncDestinationMapper.remoteUri.type === "workspace") {
@@ -168,7 +176,9 @@ export class WorkflowRunner implements Disposable {
                         token: panelCancellation.token,
                     })
                 );
+                recordRun({success: true, taskType, computeType});
             } else {
+                taskType = "python";
                 const originalFileUri =
                     syncDestinationMapper.localToRemote(program);
                 const wrappedFile =
@@ -196,6 +206,7 @@ export class WorkflowRunner implements Disposable {
                 });
                 //TODO: Respone logs will contain bootstrap code path in the error stack trace. Remove it.
                 panel.showStdoutResult(response.logs || "");
+                recordRun({success: true, taskType, computeType});
             }
         } catch (e: unknown) {
             if (e instanceof ApiError) {
@@ -212,6 +223,7 @@ export class WorkflowRunner implements Disposable {
                     message: (e as any).message,
                 });
             }
+            recordRun({success: false, taskType, computeType});
         }
     }
 }

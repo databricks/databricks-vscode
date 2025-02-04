@@ -12,6 +12,7 @@ import {
 } from "../utils/shellUtils";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {Events, Telemetry} from "../telemetry";
 
 /**
  * Run related commands
@@ -23,7 +24,8 @@ export class RunCommands {
         private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly featureManager: FeatureManager,
         private readonly context: ExtensionContext,
-        private readonly customWhenContext: CustomWhenContext
+        private readonly customWhenContext: CustomWhenContext,
+        private readonly telemetry: Telemetry
     ) {
         this.context.subscriptions.push(
             window.onDidChangeActiveTextEditor(async () =>
@@ -151,6 +153,11 @@ export class RunCommands {
             this.workspaceFolderManager.activeWorkspaceFolder,
             config
         );
+
+        this.telemetry.recordEvent(Events.DBCONNECT_RUN, {
+            launchType: "debug",
+            computeType: this.connection.serverless ? "serverless" : "cluster",
+        });
     }
 
     async runFileUsingDbconnect(resource?: Uri) {
@@ -180,5 +187,10 @@ export class RunCommands {
                 bootstrapPath
             )} ${escapePathArgument(targetResource.fsPath)}`
         );
+
+        this.telemetry.recordEvent(Events.DBCONNECT_RUN, {
+            launchType: "run",
+            computeType: this.connection.serverless ? "serverless" : "cluster",
+        });
     }
 }

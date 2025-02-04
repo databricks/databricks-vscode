@@ -137,6 +137,11 @@ export class ConnectionManager implements Disposable {
             ) {
                 this.cli.setClusterId(clusterId);
             }
+            if (this.cluster) {
+                this.telemetry.recordEvent(Events.COMPUTE_SELECTED, {
+                    type: "cluster",
+                });
+            }
             this.onDidChangeClusterEmitter.fire(this.cluster);
         } catch (e) {
             this.configModel.set("clusterId", undefined);
@@ -462,6 +467,9 @@ export class ConnectionManager implements Disposable {
             await this.detachCluster();
             this.customWhenContext.setServerless(true);
             this.onDidChangeClusterEmitter.fire(undefined);
+            this.telemetry.recordEvent(Events.COMPUTE_SELECTED, {
+                type: "serverless",
+            });
         }
     }
 
