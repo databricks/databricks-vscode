@@ -20,6 +20,9 @@ export enum Events {
     BUNDLE_INIT = "bundleInit",
     BUNDLE_SUB_PROJECTS = "bundleSubProjects",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
+    COMPUTE_SELECTED = "computeSelected",
+    WORKFLOW_RUN = "workflowRun",
+    DBCONNECT_RUN = "dbconnectRun",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -35,6 +38,9 @@ export type BundleRunType =
     | "validate"
     | "partial-refresh"
     | "manual-input";
+export type WorkflowTaskType = "python" | "notebook" | "unknown";
+export type LaunchType = "run" | "debug";
+export type ComputeType = "cluster" | "serverless";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -160,6 +166,38 @@ export class EventTypes {
         comment: "State of ConnectionManager has changed",
         newState: {
             comment: "The new state of the connection",
+        },
+    };
+    [Events.COMPUTE_SELECTED]: EventType<{
+        type: ComputeType;
+    }> = {
+        comment: "A compute was selected",
+        type: {
+            comment: "The type of the compute",
+        },
+    };
+    [Events.WORKFLOW_RUN]: EventType<
+        {
+            success: boolean;
+            taskType: WorkflowTaskType;
+            computeType: ComputeType;
+        } & DurationMeasurement
+    > = {
+        comment: "A workflow task was run",
+        taskType: {
+            comment: "The type of the workflow task",
+        },
+        computeType: {
+            comment: "The type of the compute",
+        },
+    };
+    [Events.DBCONNECT_RUN]: EventType<{
+        launchType: LaunchType;
+        computeType: ComputeType;
+    }> = {
+        comment: "A Databricks Connect debug run",
+        computeType: {
+            comment: "The type of the compute",
         },
     };
 }

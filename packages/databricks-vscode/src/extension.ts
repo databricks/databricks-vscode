@@ -768,7 +768,8 @@ export async function activate(
         pythonExtensionWrapper,
         featureManager,
         context,
-        customWhenContext
+        customWhenContext,
+        telemetry
     );
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
@@ -780,7 +781,8 @@ export async function activate(
         connectionManager,
         configModel,
         context,
-        bundleCommands
+        bundleCommands,
+        telemetry
     );
 
     context.subscriptions.push(
