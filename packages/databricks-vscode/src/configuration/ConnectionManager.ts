@@ -150,8 +150,15 @@ export class ConnectionManager implements Disposable {
     }
 
     private async updateServerless() {
+        if (this.configModel.target === undefined) {
+            return;
+        }
         const serverless = await this.configModel.get("serverless");
-        if (serverless) {
+        const computeId = this.apiClient?.config.serverlessComputeId;
+        if (
+            serverless ||
+            (!this.cluster && serverless === undefined && computeId === "auto")
+        ) {
             await this.enableServerless();
         } else {
             await this.disableServerless();
