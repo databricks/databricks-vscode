@@ -155,10 +155,12 @@ export class ConnectionManager implements Disposable {
         }
         const serverless = await this.configModel.get("serverless");
         const computeId = this.apiClient?.config.serverlessComputeId;
-        if (
-            serverless ||
-            (!this.cluster && serverless === undefined && computeId === "auto")
-        ) {
+        const autoEnable =
+            serverless === undefined &&
+            !this.cluster &&
+            computeId === "auto" &&
+            this.databricksWorkspace?.isServerlessEnabled;
+        if (serverless || autoEnable) {
             await this.enableServerless();
         } else {
             await this.disableServerless();

@@ -16,6 +16,7 @@ describe(__filename, () => {
         const wsConf = {
             enableProjectTypeInWorkspace: "true",
             enableWorkspaceFilesystem: "dbr11.0+",
+            enableServerless: true,
         } as const;
         const authProvider = new ProfileAuthProvider(
             new URL("https://fabian.databricks.com"),
@@ -23,6 +24,7 @@ describe(__filename, () => {
             instance(mock(CliWrapper))
         );
         const dbWorkspace: DatabricksWorkspace = new DatabricksWorkspace(
+            "workspace-id",
             authProvider,
             user,
             wsConf
@@ -30,8 +32,10 @@ describe(__filename, () => {
 
         assert(dbWorkspace.host.toString() === host.toString());
         assert.equal(dbWorkspace.userName, user.userName);
+        assert.equal(dbWorkspace.id, "workspace-id");
         assert(dbWorkspace.isFilesInReposEnabled);
         assert(dbWorkspace.isFilesInReposEnabled);
+        assert(dbWorkspace.isServerlessEnabled);
 
         assert(
             dbWorkspace.supportFilesInReposForCluster({
