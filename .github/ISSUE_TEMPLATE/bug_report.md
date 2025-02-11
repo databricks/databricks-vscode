@@ -26,7 +26,7 @@ If applicable, add screenshots to help explain your problem.
 2. Databricks Extension Version
 
 **Databricks Extension Logs**
-Please attach the [databricks extension logs](https://docs.databricks.com/dev-tools/vscode-ext.html#send-usage-logs-to-databricks)
+Please attach the [databricks extension logs](https://docs.databricks.com/en/dev-tools/vscode-ext/troubleshooting.html#view-databricks-log-output)
 
 **Additional context**
 Add any other context about the problem here.
