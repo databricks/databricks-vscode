@@ -18,6 +18,7 @@ export interface FeatureState {
 export interface FeatureStepState {
     id: string;
     available: boolean;
+    optional?: boolean;
     title?: string;
     message?: string;
     warning?: string;
