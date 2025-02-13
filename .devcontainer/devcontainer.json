@@ -1,0 +1,51 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
+{
+    "name": "Node.js & TypeScript",
+    // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+    // Features to add to the dev container. More info: https://containers.dev/features.
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers-extra/features/act:1": {},
+        "ghcr.io/devcontainers-extra/features/actionlint:1": {}
+    },
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    // "forwardPorts": [],
+    // Use 'postCreateCommand' to run commands after the container is created.
+    "postCreateCommand": [
+        "corepack enable yarn",
+        "yarn install",
+        "cd /workspaces/databricks-vscode/packages/databricks-vscode && yarn install",
+        "cd /workspaces/databricks-vscode/packages/databricks-vscode-types && yarn install"
+    ],
+    // Configure tool-specific properties.
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "editor.tabSize": 4,
+                "editor.renderWhitespace": "all",
+                "editor.formatOnPaste": false,
+                "editor.formatOnSave": true,
+                "editor.rulers": [
+                    120
+                ],
+                "[typescript]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+            },
+            "extensions": [
+                "dbaeumer.vscode-eslint",
+                "connor4312.esbuild-problem-matchers",
+                "ms-vscode.extension-test-runner",
+                "dbaeumer.vscode-eslint",
+                "amodio.tsl-problem-matcher",
+                "esbenp.prettier-vscode",
+                "Tobermory.es6-string-html"
+            ]
+        }
+    },
+    // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+    "remoteUser": "root"
+}
