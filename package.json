@@ -32,7 +32,7 @@
         "url": "https://github.com/databricks/databricks-vscode/issues"
     },
     "homepage": "https://github.com/databricks/databricks-vscode#readme",
-    "packageManager": "yarn@3.2.1",
+    "packageManager": "yarn@4.6.0",
     "devDependencies": {
         "@types/node": "^20.10.4",
         "@typescript-eslint/eslint-plugin": "^6.14.0",
