@@ -235,7 +235,7 @@ export async function activate(
     function updateStrictSSLEnv() {
         const httpConfig = workspace.getConfiguration("http");
         const proxyStrictSSL = httpConfig.get<boolean>("proxyStrictSSL");
-        process.env["DATABRICKS_VSCODE_PROXY_STRICT_SSL"] = proxyStrictSSL
+        process.env["DATABRICKS_SDK_PROXY_STRICT_SSL"] = proxyStrictSSL
             ? "true"
             : "false";
     }
