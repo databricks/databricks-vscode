@@ -315,7 +315,10 @@ export const config: Options.Testrunner = {
             await config.ensureResolved();
 
             assert(config.host, "Config host must be set");
-            assert(config.token, "Config token must be set");
+            assert(
+                config.token || (config.clientId && config.clientSecret),
+                "Config must have a token or a clientId with clientSecret"
+            );
 
             assert(
                 process.env["TEST_DEFAULT_CLUSTER_ID"],
@@ -326,8 +329,13 @@ export const config: Options.Testrunner = {
             console.log(`Creating vscode workspace folder: ${WORKSPACE_PATH}`);
             await fs.mkdir(WORKSPACE_PATH, {recursive: true});
 
-            const client = getWorkspaceClient(config);
-            await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
+            if (config.token) {
+                const client = getWorkspaceClient(config);
+                await startCluster(
+                    client,
+                    process.env["TEST_DEFAULT_CLUSTER_ID"]
+                );
+            }
 
             process.env.DATABRICKS_HOST = config.host!;
             process.env.DATABRICKS_VSCODE_INTEGRATION_TEST = "true";
@@ -599,12 +607,17 @@ export const config: Options.Testrunner = {
 
 async function writeDatabricksConfig(config: Config, rootPath: string) {
     const configFile = path.join(rootPath, ".databrickscfg");
-    await fs.writeFile(
-        configFile,
-        `[DEFAULT]
-host = ${config.host!}
-token = ${config.token!}`
-    );
+    let content = "[DEFAULT]\n";
+    if (config.token) {
+        content += `host = ${config.host!}\n`;
+        content += `token = ${config.token!}\n`;
+    } else {
+        content += `host = ${config.host!}\n`;
+        content += `client_id = ${config.clientId!}\n`;
+        content += `client_secret = ${config.clientSecret!}\n`;
+        content += `serverless_compute_id = auto\n`;
+    }
+    await fs.writeFile(configFile, content);
     return configFile;
 }
 
