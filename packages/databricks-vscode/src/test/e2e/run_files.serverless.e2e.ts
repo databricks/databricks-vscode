@@ -50,6 +50,6 @@ describe("Run files on serverless compute", async function () {
 
     it("should run a python file as a serverless workflow", async () => {
         await executeCommandWhenAvailable("Databricks: Run File as Workflow");
-        await waitForWorkflowWebview("hello world");
+        await waitForWorkflowWebview(["hello world", "Serverless"]);
     });
 });

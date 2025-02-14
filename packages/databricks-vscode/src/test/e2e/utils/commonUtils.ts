@@ -237,7 +237,9 @@ export function getUniqueResourceName(name?: string) {
     return getStaticResourceName(uniqueName);
 }
 
-export async function waitForWorkflowWebview(expectedOutput: string) {
+export async function waitForWorkflowWebview(
+    expectedOutput: string | string[]
+) {
     const workbench = await browser.getWorkbench();
     const title = /Databricks Job Run/;
     await browser.waitUntil(
@@ -289,7 +291,12 @@ export async function waitForWorkflowWebview(expectedOutput: string) {
     browser.switchToFrame(iframe);
     const iframeRoot = await browser.$("html");
     expect(webView.activeFrame);
-    expect(iframeRoot).toHaveText(expectedOutput);
+    if (!Array.isArray(expectedOutput)) {
+        expectedOutput = [expectedOutput];
+    }
+    for (const output of expectedOutput) {
+        expect(iframeRoot).toHaveText(output);
+    }
     browser.switchToParentFrame();
     await webView.close();
 }
