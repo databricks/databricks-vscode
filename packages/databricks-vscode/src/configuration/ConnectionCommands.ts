@@ -136,15 +136,8 @@ export class ConnectionCommands implements Disposable {
                 typeof title === "string" ? title : "Select Cluster";
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
-
-            quickPick.busy = true;
             quickPick.canSelectMany = false;
             const items: QuickPickItem[] = [
-                {
-                    label: "$(cloud) Serverless",
-                    detail: `Run files as Workflows or use Databricks Connect without a dedicated cluster`,
-                    alwaysShow: false,
-                },
                 {
                     label: "$(repo-create) Create New Cluster",
                     detail: `Open Databricks in the browser and create a new cluster`,
@@ -155,6 +148,15 @@ export class ConnectionCommands implements Disposable {
                     kind: QuickPickItemKind.Separator,
                 },
             ];
+            if (
+                this.connectionManager.databricksWorkspace?.isServerlessEnabled
+            ) {
+                items.unshift({
+                    label: "$(cloud) Serverless",
+                    detail: `Run files as Workflows or use Databricks Connect without a dedicated cluster`,
+                    alwaysShow: false,
+                });
+            }
             quickPick.items = items;
 
             this.clusterModel.refresh();

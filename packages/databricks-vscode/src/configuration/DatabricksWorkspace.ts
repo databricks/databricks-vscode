@@ -6,11 +6,23 @@ import {Loggers} from "../logger";
 import {AuthProvider} from "./auth/AuthProvider";
 import {RemoteUri} from "../sync/SyncDestination";
 
+type ServerlessEnablementResponse = {
+    setting?: {
+        value?: {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            preview_enablement_val?: {
+                enabled: boolean;
+            };
+        };
+    };
+};
+
 export class DatabricksWorkspace {
     constructor(
+        public readonly id: string,
         private _authProvider: AuthProvider,
         private me: iam.User,
-        private wsConf: WorkspaceConfProps
+        private wsConf: WorkspaceConfProps & {enableServerless?: boolean}
     ) {}
 
     /**
@@ -56,6 +68,10 @@ export class DatabricksWorkspace {
         return this.wsConf.enableWorkspaceFilesystem !== "false";
     }
 
+    get isServerlessEnabled(): boolean {
+        return this.wsConf.enableServerless === true;
+    }
+
     supportFilesInReposForCluster(cluster: Cluster): boolean {
         if (!this.isReposEnabled || !this.isFilesInReposEnabled) {
             return false;
@@ -90,27 +106,36 @@ export class DatabricksWorkspace {
         @context ctx?: Context
     ) {
         const me = await client.currentUser.me(ctx);
+        // Workspace ID is returned in a header, which is then copied to the response object.
+        const id = (me as any)["x-databricks-org-id"] as string;
 
         const wsConfApi = new WorkspaceConf(client.apiClient);
-        let state: WorkspaceConfProps = {
+        let state: WorkspaceConfProps & {enableServerless?: boolean} = {
             enableProjectTypeInWorkspace: "true",
             enableWorkspaceFilesystem: "true",
         };
         try {
-            state = {
-                ...state,
-                ...(await wsConfApi.getStatus(
-                    [
-                        "enableProjectTypeInWorkspace",
-                        "enableWorkspaceFilesystem",
-                    ],
-                    ctx
-                )),
-            };
+            const confStatus = await wsConfApi.getStatus(
+                ["enableProjectTypeInWorkspace", "enableWorkspaceFilesystem"],
+                ctx
+            );
+            state = {...state, ...confStatus};
         } catch (e) {
             ctx?.logger?.error("Can't fetch workspace confs", e);
         }
+        try {
+            const serverlessEnablement = (await client.apiClient.request(
+                `/api/2.0/settings-api/workspace/${id}/serverless_job_nb`,
+                "GET"
+            )) as ServerlessEnablementResponse;
+            const enableServerless =
+                serverlessEnablement?.setting?.value?.preview_enablement_val
+                    ?.enabled === true;
+            state = {...state, enableServerless};
+        } catch (e) {
+            ctx?.logger?.error("Can't detect serverless support", e);
+        }
 
-        return new DatabricksWorkspace(authProvider, me, state);
+        return new DatabricksWorkspace(id, authProvider, me, state);
     }
 }
