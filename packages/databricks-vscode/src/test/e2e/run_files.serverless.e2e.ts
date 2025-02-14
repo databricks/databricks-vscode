@@ -8,7 +8,6 @@ import {
     waitForLogin,
     waitForWorkflowWebview,
 } from "./utils/commonUtils.ts";
-import {sleep} from "wdio-vscode-service";
 import {
     getBasicBundleConfig,
     writeRootBundleConfig,
