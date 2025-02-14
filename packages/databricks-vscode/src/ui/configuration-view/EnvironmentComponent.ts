@@ -74,11 +74,15 @@ export class EnvironmentComponent extends BaseComponent {
                     iconPath: step.action
                         ? new ThemeIcon(
                               "run",
-                              new ThemeColor("errorForeground")
+                              step.optional
+                                  ? undefined
+                                  : new ThemeColor("errorForeground")
                           )
                         : new ThemeIcon(
                               "info",
-                              new ThemeColor("errorForeground")
+                              step.optional
+                                  ? undefined
+                                  : new ThemeColor("errorForeground")
                           ),
                     command: {
                         title: "Setup python environment",
@@ -104,6 +108,4 @@ export class EnvironmentComponent extends BaseComponent {
         }
         return children;
     }
-
-    private async setupPythonEnvironment() {}
 }

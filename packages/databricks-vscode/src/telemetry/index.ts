@@ -57,6 +57,7 @@ async function getDatabricksWorkspaceMetadata(
     return {
         hashedUserName: hashedUserName,
         host: databricksWorkspace.host.host,
+        workspaceId: databricksWorkspace.id,
     };
 }
 

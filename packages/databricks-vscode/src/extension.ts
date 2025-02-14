@@ -357,7 +357,19 @@ export async function activate(
         )
     );
 
-    const clusterModel = new ClusterModel(connectionManager);
+    const configureAutocomplete = new ConfigureAutocomplete(
+        context,
+        stateStorage,
+        workspaceFolderManager
+    );
+    context.subscriptions.push(
+        configureAutocomplete,
+        telemetry.registerCommand(
+            "databricks.autocomplete.configure",
+            configureAutocomplete.configureCommand,
+            configureAutocomplete
+        )
+    );
 
     const environmentDependenciesInstaller =
         new EnvironmentDependenciesInstaller(
@@ -371,7 +383,8 @@ export async function activate(
             new EnvironmentDependenciesVerifier(
                 connectionManager,
                 pythonExtensionWrapper,
-                environmentDependenciesInstaller
+                environmentDependenciesInstaller,
+                configureAutocomplete
             )
     );
     const environmentCommands = new EnvironmentCommands(
@@ -458,22 +471,6 @@ export async function activate(
     );
     featureManager.isEnabled("environment.dependencies");
 
-    const configureAutocomplete = new ConfigureAutocomplete(
-        context,
-        stateStorage,
-        workspaceFolderManager,
-        pythonExtensionWrapper,
-        environmentDependenciesInstaller
-    );
-    context.subscriptions.push(
-        configureAutocomplete,
-        telemetry.registerCommand(
-            "databricks.autocomplete.configure",
-            configureAutocomplete.configureCommand,
-            configureAutocomplete
-        )
-    );
-
     const codeSynchroniser = new CodeSynchronizer(
         connectionManager,
         configModel,
@@ -516,6 +513,8 @@ export async function activate(
         configurationView,
         configModel
     );
+
+    const clusterModel = new ClusterModel(connectionManager);
 
     const connectionCommands = new ConnectionCommands(
         workspaceFsCommands,

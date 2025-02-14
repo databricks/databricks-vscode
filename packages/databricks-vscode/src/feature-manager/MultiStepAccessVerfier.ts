@@ -35,7 +35,9 @@ export abstract class MultiStepAccessVerifier implements Feature {
         this.state.steps.set(stepState.id, stepState);
         const oldAvailability = this.state.available;
         this.state.available = Array.from(this.state.steps).reduce(
-            (result, current) => result && current[1].available,
+            (result, current) =>
+                result &&
+                (current[1].available || current[1].optional === true),
             true
         );
         const nonComparableFields: Array<keyof FeatureStepState> = ["action"];
@@ -64,7 +66,8 @@ export abstract class MultiStepAccessVerifier implements Feature {
         title: string,
         message?: string,
         action?: FeatureEnableAction,
-        isDisabledByFf?: boolean
+        isDisabledByFf?: boolean,
+        optional?: boolean
     ) {
         return this.updateStep({
             id: id,
@@ -72,6 +75,7 @@ export abstract class MultiStepAccessVerifier implements Feature {
             title,
             message,
             action,
+            optional,
             isDisabledByFf: isDisabledByFf === true,
         });
     }
