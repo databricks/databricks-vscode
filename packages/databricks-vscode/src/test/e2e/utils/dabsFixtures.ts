@@ -60,10 +60,12 @@ export function getBasicBundleConfig(
     topLevelComputeId = true
 ): BundleSchema {
     assert(process.env.DATABRICKS_HOST, "DATABRICKS_HOST doesn't exist");
-    assert(
-        process.env.TEST_DEFAULT_CLUSTER_ID,
-        "TEST_DEFAULT_CLUSTER_ID doesn't exist"
-    );
+    if (!topLevelComputeId) {
+        assert(
+            process.env.TEST_DEFAULT_CLUSTER_ID,
+            "TEST_DEFAULT_CLUSTER_ID doesn't exist"
+        );
+    }
     /* eslint-disable @typescript-eslint/naming-convention */
     const defaultBundleConfig = {
         bundle: {
