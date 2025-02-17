@@ -55,7 +55,7 @@ describe("Run files on serverless compute", async function () {
             | CustomTreeSection
             | undefined;
         assert(viewSection, "CONFIGURATION section doesn't exist");
-        const subTreeItems = await viewSection.openItem("Python environment");
+        const subTreeItems = await viewSection.openItem("Python Environment");
         for (const item of subTreeItems) {
             const label = await item.getLabel();
             console.log("Python Environment item label: ", label);
