@@ -311,6 +311,12 @@ export const config: Options.Testrunner = {
         try {
             mkdirSync(EXTENSION_DIR, {recursive: true});
 
+            // DATABRICKS_AUTH_TYPE can be set to "pat" by the test runner,
+            // which is not something we want if client_id and client_secret are present
+            if (process.env.DATABRICKS_CLIENT_ID) {
+                delete process.env.DATABRICKS_AUTH_TYPE;
+            }
+
             const config = new Config({});
             await config.ensureResolved();
 
