@@ -21,7 +21,7 @@ const integrationTests = glob
         return {
             path: toUnixPath(path.relative(process.cwd(), testPath)),
             baseName: path.basename(testPath, ".e2e.ts"),
-            serverless: testPath.includes("serverless") ? true : false,
+            ucws: testPath.includes(".ucws.") ? true : false,
         };
     });
 

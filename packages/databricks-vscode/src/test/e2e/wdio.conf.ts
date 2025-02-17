@@ -329,13 +329,8 @@ export const config: Options.Testrunner = {
             console.log(`Creating vscode workspace folder: ${WORKSPACE_PATH}`);
             await fs.mkdir(WORKSPACE_PATH, {recursive: true});
 
-            if (config.token) {
-                const client = getWorkspaceClient(config);
-                await startCluster(
-                    client,
-                    process.env["TEST_DEFAULT_CLUSTER_ID"]
-                );
-            }
+            const client = getWorkspaceClient(config);
+            await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
 
             process.env.DATABRICKS_HOST = config.host!;
             process.env.DATABRICKS_VSCODE_INTEGRATION_TEST = "true";
