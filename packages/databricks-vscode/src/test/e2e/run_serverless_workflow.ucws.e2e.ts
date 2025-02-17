@@ -40,15 +40,15 @@ describe("Run files on serverless compute", async function () {
             getBasicBundleConfig({}, false),
             projectDir
         );
+    });
+
+    it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
         await dismissNotifications();
     });
 
-    beforeEach(async () => {
-        await openFile("hello.py");
-    });
-
     it("should run a python file as a serverless workflow", async () => {
+        await openFile("hello.py");
         await executeCommandWhenAvailable("Databricks: Run File as Workflow");
         await waitForWorkflowWebview(["hello world", "Serverless"]);
     });
