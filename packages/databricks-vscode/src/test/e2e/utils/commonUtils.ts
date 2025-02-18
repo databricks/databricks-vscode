@@ -3,7 +3,6 @@ import {randomUUID} from "crypto";
 import {
     CustomTreeSection,
     sleep,
-    TreeItem,
     ViewControl,
     ViewSection,
     InputBox,
@@ -78,7 +77,7 @@ export async function getViewSection(
     return section;
 }
 
-export async function getViewItems(name: ViewSectionType, section: string) {
+export async function getTreeViewItems(name: ViewSectionType, section: string) {
     const viewSection = (await getViewSection(name)) as
         | CustomTreeSection
         | undefined;
@@ -316,8 +315,11 @@ export async function waitForNotification(message: string, action?: string) {
             const workbench = await browser.getWorkbench();
             for (const notification of await workbench.getNotifications()) {
                 const label = await notification.getMessage();
+                console.log("Checking notification message:", label);
                 if (label.includes(message)) {
+                    console.log(`Notification with "${message}" found.`);
                     if (action) {
+                        console.log(`Taking action: ${action}`);
                         await notification.takeAction(action);
                     }
                     return true;

@@ -4,8 +4,7 @@ import assert from "node:assert";
 import {
     dismissNotifications,
     executeCommandWhenAvailable,
-    getViewItems,
-    getViewSection,
+    getTreeViewItems,
     openFile,
     waitForInput,
     waitForLogin,
@@ -15,7 +14,6 @@ import {
     getBasicBundleConfig,
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
-import {CustomTreeSection} from "wdio-vscode-service";
 
 describe("Run files on serverless compute", async function () {
     let projectDir: string;
@@ -56,7 +54,7 @@ describe("Run files on serverless compute", async function () {
     });
 
     it("should prompt to setup virtual environment", async () => {
-        const subTreeItems = await getViewItems(
+        const subTreeItems = await getTreeViewItems(
             "CONFIGURATION",
             "Python Environment"
         );
@@ -99,17 +97,41 @@ describe("Run files on serverless compute", async function () {
         // Select Venv as the environment manager
         const envTypeInput = await waitForInput();
         await envTypeInput.selectQuickPick("Venv");
+        console.log("Selected Venv as the environment manager");
 
         // Our runner image should have python 3.12+ preinstalled
         const pythonVersionInput = await waitForInput();
         await pythonVersionInput.selectQuickPick(1);
+        console.log("Selected Python Version");
 
         await waitForNotification("The following environment is selected");
         await waitForNotification("Databricks Connect", "Install");
 
         await browser.waitUntil(
             async () => {
-                const subTreeItems = await getViewItems(
+                const workbench = await browser.getWorkbench();
+                const view = await workbench.getBottomBar().openOutputView();
+                const outputText = (await view.getText()).join("");
+                console.log("Output view text: ", outputText);
+                return outputText.includes("Successfully installed");
+            },
+            {
+                timeout: 60_000,
+                interval: 2000,
+                timeoutMsg:
+                    "Installation output did not contain 'Successfully installed'",
+            }
+        );
+
+        // On windows we don't always get a notification after installation (TODO: fix it in the extension code),
+        // so we need to refresh manually.
+        await executeCommandWhenAvailable(
+            "Databricks: Refresh python environment status"
+        );
+
+        await browser.waitUntil(
+            async () => {
+                const subTreeItems = await getTreeViewItems(
                     "CONFIGURATION",
                     "Python Environment"
                 );
@@ -126,6 +148,26 @@ describe("Run files on serverless compute", async function () {
                 timeout: 60_000,
                 interval: 2000,
                 timeoutMsg: "Setup confirmation failed",
+            }
+        );
+    });
+
+    it("should run a python file with dbconnect", async () => {
+        await executeCommandWhenAvailable(
+            "Databricks: Run current file with Databricks Connect"
+        );
+        const workbench = await browser.getWorkbench();
+        const terminal = await workbench.getBottomBar().openTerminalView();
+        await browser.waitUntil(
+            async () => {
+                const terminalOutput = await terminal.getText();
+                console.log("Terminal output: ", terminalOutput);
+                return terminalOutput.includes("hello world");
+            },
+            {
+                timeout: 60_000,
+                interval: 2000,
+                timeoutMsg: "Terminal output did not contain 'hello world'",
             }
         );
     });
