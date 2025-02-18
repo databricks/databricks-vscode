@@ -138,7 +138,7 @@ describe("Run files on serverless compute", async function () {
 
         // Our runners have python 3.12+ preinstalled
         const pythonVersionInput = await waitForInput();
-        await pythonVersionInput.selectQuickPick(1);
+        await pythonVersionInput.selectQuickPick("Python 3.12");
         console.log("Selected Python Version");
 
         // Install dependencies from the requirements.txt

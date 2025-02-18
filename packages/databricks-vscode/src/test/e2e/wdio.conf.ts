@@ -616,6 +616,7 @@ async function writeDatabricksConfig(config: Config, rootPath: string) {
     } else {
         content += `client_id = ${config.clientId!}\n`;
         content += `client_secret = ${config.clientSecret!}\n`;
+        content += `serverless_compute_id = auto\n`;
     }
     await fs.writeFile(configFile, content);
     return configFile;
