@@ -239,6 +239,7 @@ export class MetadataTypes {
     [Metadata.USER]: EventType<{
         hashedUserName: string;
         host: string;
+        workspaceId: string;
         authType: AuthType;
     }> = {
         hashedUserName: {
@@ -247,6 +248,9 @@ export class MetadataTypes {
         host: {
             comment:
                 "The hostname of the workspace that the user is connected to",
+        },
+        workspaceId: {
+            comment: "The id of the workspace",
         },
         authType: {
             comment: "The kind of authentication used by the user",

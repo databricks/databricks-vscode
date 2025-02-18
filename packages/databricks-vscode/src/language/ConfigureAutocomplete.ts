@@ -1,5 +1,4 @@
-import {logging} from "@databricks/databricks-sdk";
-import {appendFile, mkdir, readdir, readFile} from "fs/promises";
+import {appendFile, mkdir, stat, readFile} from "fs/promises";
 import path from "path";
 import {
     ExtensionContext,
@@ -7,11 +6,9 @@ import {
     Disposable,
     workspace,
     ConfigurationTarget,
+    EventEmitter,
 } from "vscode";
-import {Loggers} from "../logger";
 import {StateStorage} from "../vscode-objs/StateStorage";
-import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
-import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 async function getImportString(context: ExtensionContext) {
@@ -31,29 +28,21 @@ async function getImportString(context: ExtensionContext) {
     }
 }
 
-type StepResult = "Skip" | "Cancel" | "Error" | undefined;
-
-interface Step {
-    fn: (dryRun: boolean) => Promise<StepResult>;
-    required?: boolean;
-}
-
 export class ConfigureAutocomplete implements Disposable {
     private disposables: Disposable[] = [];
+    private _onDidUpdateEmitter = new EventEmitter<void>();
+    public onDidUpdate = this._onDidUpdateEmitter.event;
 
     constructor(
         private readonly context: ExtensionContext,
         private readonly stateStorage: StateStorage,
-        private readonly workspaceFolderManager: WorkspaceFolderManager,
-        private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly environmentDependenciesInstaller: EnvironmentDependenciesInstaller
+        private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
-        //Remove any type stubs that users already have. We will now start using the python SDK (installed with databricks-connect)
+        // Remove any type stubs that users already have. We will now start using the python SDK (installed with databricks-connect)
         let extraPaths =
             workspace
                 .getConfiguration("python")
                 .get<Array<string>>("analysis.extraPaths") ?? [];
-
         extraPaths = extraPaths.filter(
             (value) =>
                 !value.endsWith(path.join("resources", "python", "stubs"))
@@ -65,120 +54,17 @@ export class ConfigureAutocomplete implements Disposable {
                 extraPaths,
                 ConfigurationTarget.Global
             );
-        this.configure();
     }
 
     dispose() {
         this.disposables.forEach((i) => i.dispose());
     }
 
-    private async tryStep(fn: () => Promise<StepResult>) {
-        try {
-            return await fn();
-        } catch (e) {
-            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                "Error configuring autocomplete",
-                e
-            );
-
-            if (e instanceof Error) {
-                window.showErrorMessage(
-                    `Error configuring autocomplete: ${e.message}`
-                );
-            }
-            return "Error";
-        }
-    }
-
-    /*
-        Skip run if all the required steps return "Skip". 
-    */
-    private async shouldSkipRun(steps: Step[]) {
-        for (const {fn, required} of steps) {
-            const result = await this.tryStep(() => fn(true));
-            if (result === "Error") {
-                return true;
-            }
-            if (result !== "Skip" && required) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    async configureCommand() {
-        this.stateStorage.set("databricks.autocompletion.skipConfigure", false);
-        return this.configure(true);
-    }
-
-    private async configure(force = false) {
-        if (
-            !force ||
-            this.stateStorage.get("databricks.autocompletion.skipConfigure")
-        ) {
-            return;
-        }
-
-        const steps = [
-            {
-                fn: async (dryRun = false) => await this.installPyspark(dryRun),
-            },
-            {
-                fn: async (dryRun = false) => this.addBuiltinsFile(dryRun),
-                required: true,
-            },
-        ];
-
-        // Force is only set when running from command pallet and we do a fresh configure if it is set.
-        if (!force && (await this.shouldSkipRun(steps))) {
-            return;
-        }
-
-        const choice = await window.showInformationMessage(
-            "Do you want to configure autocompletion for Databricks specific globals (dbutils etc)?",
-            "Configure",
-            "Cancel",
-            "Never for this workspace"
-        );
-
-        if (choice === "Cancel" || choice === undefined) {
-            return;
-        }
-
-        if (choice === "Never for this workspace") {
-            this.stateStorage.set(
-                "databricks.autocompletion.skipConfigure",
-                true
-            );
-            return;
-        }
-
-        for (const {fn} of steps) {
-            const result = await this.tryStep(() => fn(false));
-            if (result === "Error" || result === "Cancel") {
-                return;
-            }
-        }
-    }
-
-    private async installPyspark(dryRun = false): Promise<StepResult> {
-        const executable = await this.pythonExtension.getPythonExecutable();
-
-        if (executable === undefined) {
-            return "Skip";
-        }
-
-        if (dryRun) {
-            return;
-        }
-        this.environmentDependenciesInstaller.show(false);
-    }
-
     private get projectRootPath() {
-        return this.workspaceFolderManager.activeProjectUri.fsPath;
+        return this.workspaceFolderManager.activeWorkspaceFolder.uri.fsPath;
     }
 
-    private async addBuiltinsFile(dryRun = false): Promise<StepResult> {
+    private get builtinsPath() {
         const stubPath = workspace
             .getConfiguration("python")
             .get<string>("analysis.stubPath");
@@ -187,45 +73,76 @@ export class ConfigureAutocomplete implements Disposable {
             ? path.join(this.projectRootPath, stubPath)
             : this.projectRootPath;
 
+        return path.join(builtinsDir, "__builtins__.pyi");
+    }
+
+    public async configureCommand() {
+        await this.stateStorage.set(
+            "databricks.autocompletion.skipConfigure",
+            false
+        );
+        return this.setupBuiltins();
+    }
+
+    public async shouldSetupBuiltins(): Promise<boolean> {
+        if (this.stateStorage.get("databricks.autocompletion.skipConfigure")) {
+            return false;
+        }
+
+        const builtinsPath = this.builtinsPath;
+
         let builtinsFileExists = false;
         try {
-            builtinsFileExists = (await readdir(builtinsDir)).includes(
-                "__builtins__.pyi"
-            );
-        } catch (e) {}
-
-        const builtinsPath = path.join(builtinsDir, "__builtins__.pyi");
+            const stats = await stat(builtinsPath);
+            builtinsFileExists = stats.isFile();
+        } catch (e) {
+            builtinsFileExists = false;
+        }
 
         const importString = await getImportString(this.context);
         if (importString === undefined) {
-            return "Error";
+            return false;
         }
 
         if (
             builtinsFileExists &&
             (await readFile(builtinsPath, "utf-8")).includes(importString)
         ) {
-            return "Skip";
+            return false;
         }
 
-        if (dryRun) {
+        return true;
+    }
+
+    private async setupBuiltins(): Promise<void> {
+        if (!(await this.shouldSetupBuiltins())) {
             return;
         }
 
-        const messageString = `${
-            builtinsFileExists ? "Update" : "Create"
-        } ${builtinsPath} ?`;
+        const importString = await getImportString(this.context);
+        if (!importString) {
+            return;
+        }
+
+        const builtinsPath = this.builtinsPath;
+        const messageString = `Create ${builtinsPath}?`;
         const choice = await window.showInformationMessage(
             messageString,
             "Continue",
-            "Cancel"
+            "Cancel",
+            "Never for this workspace"
         );
 
-        if (choice === "Cancel" || choice === undefined) {
-            return "Cancel";
+        if (choice === "Never for this workspace") {
+            await this.stateStorage.set(
+                "databricks.autocompletion.skipConfigure",
+                true
+            );
+            this._onDidUpdateEmitter.fire();
+        } else if (choice === "Continue") {
+            await mkdir(path.dirname(builtinsPath), {recursive: true});
+            await appendFile(builtinsPath, `\n${importString}\n`);
+            this._onDidUpdateEmitter.fire();
         }
-
-        await mkdir(path.dirname(builtinsPath), {recursive: true});
-        await appendFile(builtinsPath, `\n${importString}\n`);
     }
 }
