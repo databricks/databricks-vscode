@@ -83,9 +83,22 @@ describe("Run files on serverless compute", async function () {
             "Databricks: Setup python environment"
         );
 
+        // Remote runner has miniconda environment preinstalled,
+        // but we still want to create a local .venv to test the full flow
+        const selectEnvInput = await waitForInput();
+        const createNewPick = await selectEnvInput.findQuickPick(
+            "Create new environment"
+        );
+        if (createNewPick) {
+            console.log("'Create new environment' pick found, selecting");
+            await createNewPick.select();
+        } else {
+            console.log("'Create new environment' pick not found, moving on");
+        }
+
         // Select Venv as the environment manager
-        const envInput = await waitForInput();
-        await envInput.selectQuickPick("Venv");
+        const envTypeInput = await waitForInput();
+        await envTypeInput.selectQuickPick("Venv");
 
         // Our runner image should have python 3.12+ preinstalled
         const pythonVersionInput = await waitForInput();
