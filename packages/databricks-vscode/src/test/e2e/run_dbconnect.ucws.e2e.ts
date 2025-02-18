@@ -25,6 +25,11 @@ describe("Run files on serverless compute", async function () {
         projectDir = process.env.WORKSPACE_PATH;
 
         await fs.writeFile(
+            path.join(projectDir, "requirements.txt"),
+            "ipykernel"
+        );
+
+        await fs.writeFile(
             path.join(projectDir, "lib.py"),
             [
                 "def func(spark):",
@@ -38,19 +43,44 @@ describe("Run files on serverless compute", async function () {
             [`from lib import func`, "func(spark)"].join("\n")
         );
 
+        await fs.writeFile(
+            path.join(nestedDir, "notebook.ipynb"),
+            JSON.stringify({
+                /* eslint-disable @typescript-eslint/naming-convention */
+                cells: [
+                    {
+                        cell_type: "code",
+                        execution_count: null,
+                        metadata: {},
+                        outputs: [],
+                        source: [`from lib import func`, "func(spark)"],
+                    },
+                ],
+                metadata: {
+                    kernelspec: {
+                        display_name: "Python 3",
+                        language: "python",
+                        name: "python3",
+                    },
+                    orig_nbformat: 4,
+                },
+                nbformat: 4,
+                nbformat_minor: 2,
+                /* eslint-enable @typescript-eslint/naming-convention */
+            })
+        );
+
         await writeRootBundleConfig(
             getBasicBundleConfig({}, false),
             projectDir
         );
     });
 
-    beforeEach(async () => {
-        await openFile("hello.py");
-    });
-
     it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
         await dismissNotifications();
+        const workbench = await driver.getWorkbench();
+        await workbench.getEditorView().closeAllEditors();
     });
 
     it("should prompt to setup virtual environment", async () => {
@@ -99,10 +129,15 @@ describe("Run files on serverless compute", async function () {
         await envTypeInput.selectQuickPick("Venv");
         console.log("Selected Venv as the environment manager");
 
-        // Our runner image should have python 3.12+ preinstalled
+        // Our runners have python 3.12+ preinstalled
         const pythonVersionInput = await waitForInput();
         await pythonVersionInput.selectQuickPick(1);
         console.log("Selected Python Version");
+
+        // Install dependencies from the requirements.txt
+        const dependenciesInput = await waitForInput();
+        await dependenciesInput.toggleAllQuickPicks(true);
+        await dependenciesInput.confirm();
 
         await waitForNotification("The following environment is selected");
         await waitForNotification("Databricks Connect", "Install");
@@ -113,7 +148,10 @@ describe("Run files on serverless compute", async function () {
                 const view = await workbench.getBottomBar().openOutputView();
                 const outputText = (await view.getText()).join("");
                 console.log("Output view text: ", outputText);
-                return outputText.includes("Successfully installed");
+                return (
+                    outputText.includes("Successfully installed") ||
+                    outputText.includes("finished with status 'done'")
+                );
             },
             {
                 timeout: 60_000,
@@ -153,6 +191,7 @@ describe("Run files on serverless compute", async function () {
     });
 
     it("should run a python file with dbconnect", async () => {
+        await openFile("hello.py");
         await executeCommandWhenAvailable(
             "Databricks: Run current file with Databricks Connect"
         );
@@ -168,6 +207,38 @@ describe("Run files on serverless compute", async function () {
                 timeout: 60_000,
                 interval: 2000,
                 timeoutMsg: "Terminal output did not contain 'hello world'",
+            }
+        );
+    });
+
+    it("should run a notebook with dbconnect", async () => {
+        await openFile("notebook.ipynb");
+        await executeCommandWhenAvailable("Notebook: Run All");
+
+        const kernelInput = await waitForInput();
+        await kernelInput.selectQuickPick("Python Environments...");
+        console.log(
+            "Selected 'Python Environments...' option for kernel selection"
+        );
+
+        const envInput = await waitForInput();
+        await envInput.selectQuickPick(".venv");
+        console.log("Selected .venv environment");
+
+        await browser.waitUntil(
+            async () => {
+                await executeCommandWhenAvailable("File: Save");
+                const notebookContent = await fs.readFile(
+                    path.join(projectDir, "nested", "notebook.ipynb"),
+                    "utf-8"
+                );
+                console.log("Notebook content: ", notebookContent);
+                return notebookContent.includes("hello world");
+            },
+            {
+                timeout: 60_000,
+                interval: 2000,
+                timeoutMsg: "Notebook execution did not complete successfully",
             }
         );
     });
