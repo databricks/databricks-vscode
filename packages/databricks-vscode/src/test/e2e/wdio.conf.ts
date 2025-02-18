@@ -25,7 +25,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const {version, name, engines} = packageJson;
 
-const EXTENSION_DIR = path.resolve(tmpdir(), "extension test", "extension");
+const EXTENSIONS_DIR = path.resolve(tmpdir(), "extension test", "extension");
 const VSIX_PATH = path.resolve(
     __dirname,
     "..",
@@ -178,7 +178,7 @@ export const config: Options.Testrunner = {
                     ),
                     storagePath: VSCODE_STORAGE_DIR,
                     vscodeArgs: {
-                        extensionsDir: EXTENSION_DIR,
+                        extensionsDir: EXTENSIONS_DIR,
                         disableExtensions: false,
                     },
                     workspacePath: WORKSPACE_PATH,
@@ -309,7 +309,8 @@ export const config: Options.Testrunner = {
      */
     onPrepare: async function () {
         try {
-            mkdirSync(EXTENSION_DIR, {recursive: true});
+            console.log("Extensions dir:", EXTENSIONS_DIR);
+            mkdirSync(EXTENSIONS_DIR, {recursive: true});
 
             // DATABRICKS_AUTH_TYPE can be set to "pat" by the test runner,
             // which is not something we want if client_id and client_secret are present
@@ -418,7 +419,7 @@ export const config: Options.Testrunner = {
         console.log("running vscode cli");
         const res = await execFile(cli, [
             "--extensions-dir",
-            EXTENSION_DIR,
+            EXTENSIONS_DIR,
             ...extensionDependencies,
             "--install-extension",
             VSIX_PATH,
@@ -495,10 +496,10 @@ export const config: Options.Testrunner = {
      */
     afterSuite: async function () {
         console.log("Starting cleanup");
-        console.log("Extension dir:", EXTENSION_DIR);
+        console.log("Extensions dir:", EXTENSIONS_DIR);
         console.log("Workspace dir:", WORKSPACE_PATH);
         const dbCli = path.join(
-            EXTENSION_DIR,
+            EXTENSIONS_DIR,
             `${packageJson.publisher}.${packageJson.name}-${packageJson.version}`,
             "bin",
             "databricks"

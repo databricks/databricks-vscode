@@ -66,15 +66,24 @@ describe("Run files on serverless compute", async function () {
         assert(promptFound, "Prompt to setup virtual environment not found");
     });
 
+    it("should select serverless compute", async () => {
+        await executeCommandWhenAvailable("Databricks: Configure cluster");
+        const computeInput = await waitForInput();
+        await computeInput.selectQuickPick("Serverless");
+    });
+
     it("should setup virtual environment", async () => {
         await executeCommandWhenAvailable(
             "Databricks: Setup python environment"
         );
 
+        // Select Venv as the environment manager
         const envInput = await waitForInput();
         await envInput.selectQuickPick("Venv");
-        const pythonInput = await waitForInput();
-        await pythonInput.selectQuickPick(1);
+
+        // Our runner image should have python 3.12+ preinstalled
+        const pythonVersionInput = await waitForInput();
+        await pythonVersionInput.selectQuickPick(1);
 
         await browser.waitUntil(
             async () => {
@@ -96,9 +105,9 @@ describe("Run files on serverless compute", async function () {
             }
         );
 
-        await executeCommandWhenAvailable(
-            "Databricks: Setup python environment"
-        );
+        // await executeCommandWhenAvailable(
+        //     "Databricks: Setup python environment"
+        // );
 
         await browser.waitUntil(
             async () => {
@@ -116,6 +125,30 @@ describe("Run files on serverless compute", async function () {
                 timeout: 60_000,
                 interval: 2000,
                 timeoutMsg: "DBConnect installation failed",
+            }
+        );
+
+        await browser.waitUntil(
+            async () => {
+                const viewSection = (await getViewSection("CONFIGURATION")) as
+                    | CustomTreeSection
+                    | undefined;
+                assert(viewSection, "CONFIGURATION section doesn't exist");
+                const subTreeItems =
+                    await viewSection.openItem("Python Environment");
+                for (const item of subTreeItems) {
+                    const label = await item.getLabel();
+                    console.log("Python Environment item label: ", label);
+                    if (label.includes("Databricks Connect:")) {
+                        return true;
+                    }
+                }
+                return false;
+            },
+            {
+                timeout: 60_000,
+                interval: 2000,
+                timeoutMsg: "Setup confirmation failed",
             }
         );
     });
