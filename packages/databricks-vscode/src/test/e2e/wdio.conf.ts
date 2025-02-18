@@ -610,14 +610,12 @@ export const config: Options.Testrunner = {
 async function writeDatabricksConfig(config: Config, rootPath: string) {
     const configFile = path.join(rootPath, ".databrickscfg");
     let content = "[DEFAULT]\n";
+    content += `host = ${config.host!}\n`;
     if (config.token) {
-        content += `host = ${config.host!}\n`;
         content += `token = ${config.token!}\n`;
     } else {
-        content += `host = ${config.host!}\n`;
         content += `client_id = ${config.clientId!}\n`;
         content += `client_secret = ${config.clientSecret!}\n`;
-        content += `serverless_compute_id = auto\n`;
     }
     await fs.writeFile(configFile, content);
     return configFile;
