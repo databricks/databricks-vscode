@@ -31,16 +31,18 @@ describe("Run files on serverless compute", async function () {
 
         await fs.writeFile(
             path.join(projectDir, "lib.py"),
-            [
-                "def func(spark):",
-                `\tspark.sql('SELECT "hello world"').show()`,
-            ].join("\n")
+            `def func(spark):\treturn spark.sql('SELECT "hello world"')`
         );
         const nestedDir = path.join(projectDir, "nested");
         await fs.mkdir(nestedDir, {recursive: true});
         await fs.writeFile(
             path.join(nestedDir, "hello.py"),
-            [`from lib import func`, "func(spark)"].join("\n")
+            [
+                `from lib import func`,
+                `import os`,
+                `df = func(spark).toPandas()`,
+                `df.to_json(os.path.join(os.getcwd(), "file-output.json"))`,
+            ].join("\n")
         );
 
         await fs.writeFile(
@@ -53,7 +55,12 @@ describe("Run files on serverless compute", async function () {
                         execution_count: null,
                         metadata: {},
                         outputs: [],
-                        source: [`from lib import func`, "func(spark)"],
+                        source: [
+                            `from lib import func`,
+                            `import os`,
+                            `df = func(spark).toPandas()`,
+                            `df.to_json(os.path.join(os.getcwd(), "notebook-output.json"))`,
+                        ],
                     },
                 ],
                 metadata: {
@@ -195,13 +202,14 @@ describe("Run files on serverless compute", async function () {
         await executeCommandWhenAvailable(
             "Databricks: Run current file with Databricks Connect"
         );
-        const workbench = await browser.getWorkbench();
-        const terminal = await workbench.getBottomBar().openTerminalView();
         await browser.waitUntil(
             async () => {
-                const terminalOutput = await terminal.getText();
-                console.log("Terminal output: ", terminalOutput);
-                return terminalOutput.includes("hello world");
+                const fileOutput = await fs.readFile(
+                    path.join(projectDir, "file-output.json"),
+                    "utf-8"
+                );
+                console.log("File output: ", fileOutput);
+                return fileOutput.includes("hello world");
             },
             {
                 timeout: 60_000,
@@ -227,13 +235,12 @@ describe("Run files on serverless compute", async function () {
 
         await browser.waitUntil(
             async () => {
-                await executeCommandWhenAvailable("File: Save");
-                const notebookContent = await fs.readFile(
-                    path.join(projectDir, "nested", "notebook.ipynb"),
+                const notebookOutput = await fs.readFile(
+                    path.join(projectDir, "nested", "notebook-output.json"),
                     "utf-8"
                 );
-                console.log("Notebook content: ", notebookContent);
-                return notebookContent.includes("hello world");
+                console.log("Notebook output: ", notebookOutput);
+                return notebookOutput.includes("hello world");
             },
             {
                 timeout: 60_000,
