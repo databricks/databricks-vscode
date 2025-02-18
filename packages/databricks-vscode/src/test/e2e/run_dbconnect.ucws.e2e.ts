@@ -26,7 +26,7 @@ describe("Run files on serverless compute", async function () {
 
         await fs.writeFile(
             path.join(projectDir, "requirements.txt"),
-            ["ipykernel", "distutils"].join("\n")
+            ["ipykernel", "setuptools"].join("\n")
         );
 
         await fs.writeFile(
