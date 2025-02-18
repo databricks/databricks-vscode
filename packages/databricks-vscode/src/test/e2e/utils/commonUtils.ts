@@ -78,35 +78,13 @@ export async function getViewSection(
     return section;
 }
 
-export async function getViewSubSection(
-    section: ViewSectionType,
-    subSection: string
-): Promise<TreeItem | undefined> {
-    for (const s of ViewSectionTypes) {
-        if (s !== section) {
-            await (await findViewSection(s))?.collapse();
-        }
-    }
-    const sectionView = await getViewSection(section);
-
-    if (!sectionView) {
-        return;
-    }
-
-    const configTree = sectionView as CustomTreeSection;
-
-    await waitForTreeItems(configTree);
-    const configItems = await configTree.getVisibleItems();
-
-    let subConfigItem: TreeItem | undefined;
-    for (const i of configItems) {
-        const label = await i.getLabel();
-        if (label.startsWith(subSection)) {
-            subConfigItem = i;
-            break;
-        }
-    }
-    return subConfigItem;
+export async function getViewItems(name: ViewSectionType, section: string) {
+    const viewSection = (await getViewSection(name)) as
+        | CustomTreeSection
+        | undefined;
+    assert(viewSection, `${name} section doesn't exist`);
+    await viewSection.openItem(section);
+    return viewSection.getVisibleItems();
 }
 
 export async function waitForTreeItems(
@@ -330,6 +308,29 @@ export async function executeCommandWhenAvailable(command: string) {
             return false;
         }
     });
+}
+
+export async function waitForNotification(message: string, action?: string) {
+    await browser.waitUntil(
+        async () => {
+            const workbench = await browser.getWorkbench();
+            for (const notification of await workbench.getNotifications()) {
+                const label = await notification.getMessage();
+                if (label.includes(message)) {
+                    if (action) {
+                        await notification.takeAction(action);
+                    }
+                    return true;
+                }
+            }
+            return false;
+        },
+        {
+            timeout: 60_000,
+            interval: 2000,
+            timeoutMsg: `Notification with message "${message}" not found`,
+        }
+    );
 }
 
 export async function waitForDeployment() {

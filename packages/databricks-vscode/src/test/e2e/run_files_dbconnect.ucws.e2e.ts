@@ -4,9 +4,12 @@ import assert from "node:assert";
 import {
     dismissNotifications,
     executeCommandWhenAvailable,
+    getViewItems,
     getViewSection,
+    openFile,
     waitForInput,
     waitForLogin,
+    waitForNotification,
 } from "./utils/commonUtils.ts";
 import {
     getBasicBundleConfig,
@@ -43,17 +46,20 @@ describe("Run files on serverless compute", async function () {
         );
     });
 
+    beforeEach(async () => {
+        await openFile("hello.py");
+    });
+
     it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
         await dismissNotifications();
     });
 
     it("should prompt to setup virtual environment", async () => {
-        const viewSection = (await getViewSection("CONFIGURATION")) as
-            | CustomTreeSection
-            | undefined;
-        assert(viewSection, "CONFIGURATION section doesn't exist");
-        const subTreeItems = await viewSection.openItem("Python Environment");
+        const subTreeItems = await getViewItems(
+            "CONFIGURATION",
+            "Python Environment"
+        );
         let promptFound = false;
         for (const item of subTreeItems) {
             const label = await item.getLabel();
@@ -85,57 +91,15 @@ describe("Run files on serverless compute", async function () {
         const pythonVersionInput = await waitForInput();
         await pythonVersionInput.selectQuickPick(1);
 
-        await browser.waitUntil(
-            async () => {
-                const workbench = await browser.getWorkbench();
-                for (const notification of await workbench.getNotifications()) {
-                    const label = await notification.getMessage();
-                    if (
-                        label.includes("The following environment is selected")
-                    ) {
-                        return true;
-                    }
-                }
-                return false;
-            },
-            {
-                timeout: 60_000,
-                interval: 2000,
-                timeoutMsg: "Venv creation failed",
-            }
-        );
-
-        // await executeCommandWhenAvailable(
-        //     "Databricks: Setup python environment"
-        // );
+        await waitForNotification("The following environment is selected");
+        await waitForNotification("Databricks Connect", "Install");
 
         await browser.waitUntil(
             async () => {
-                const workbench = await browser.getWorkbench();
-                for (const notification of await workbench.getNotifications()) {
-                    const label = await notification.getMessage();
-                    if (label.includes("Databricks Connect")) {
-                        await notification.takeAction("Install");
-                        return true;
-                    }
-                }
-                return false;
-            },
-            {
-                timeout: 60_000,
-                interval: 2000,
-                timeoutMsg: "DBConnect installation failed",
-            }
-        );
-
-        await browser.waitUntil(
-            async () => {
-                const viewSection = (await getViewSection("CONFIGURATION")) as
-                    | CustomTreeSection
-                    | undefined;
-                assert(viewSection, "CONFIGURATION section doesn't exist");
-                const subTreeItems =
-                    await viewSection.openItem("Python Environment");
+                const subTreeItems = await getViewItems(
+                    "CONFIGURATION",
+                    "Python Environment"
+                );
                 for (const item of subTreeItems) {
                     const label = await item.getLabel();
                     console.log("Python Environment item label: ", label);
