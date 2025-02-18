@@ -5,10 +5,8 @@ import {
     dismissNotifications,
     executeCommandWhenAvailable,
     getViewSection,
-    openFile,
     waitForInput,
     waitForLogin,
-    waitForWorkflowWebview,
 } from "./utils/commonUtils.ts";
 import {
     getBasicBundleConfig,
@@ -50,20 +48,29 @@ describe("Run files on serverless compute", async function () {
         await dismissNotifications();
     });
 
-    it("should setup virtual environment", async () => {
+    it("should prompt to setup virtual environment", async () => {
         const viewSection = (await getViewSection("CONFIGURATION")) as
             | CustomTreeSection
             | undefined;
         assert(viewSection, "CONFIGURATION section doesn't exist");
         const subTreeItems = await viewSection.openItem("Python Environment");
+        let promptFound = false;
         for (const item of subTreeItems) {
             const label = await item.getLabel();
             console.log("Python Environment item label: ", label);
             if (label.includes("Activate an environment")) {
-                await item.select();
+                promptFound = true;
                 break;
             }
         }
+        assert(promptFound, "Prompt to setup virtual environment not found");
+    });
+
+    it("should setup virtual environment", async () => {
+        await executeCommandWhenAvailable(
+            "Databricks: Setup python environment"
+        );
+
         const envInput = await waitForInput();
         await envInput.selectQuickPick("Venv");
         const pythonInput = await waitForInput();
@@ -72,9 +79,8 @@ describe("Run files on serverless compute", async function () {
         await browser.waitUntil(
             async () => {
                 const workbench = await browser.getWorkbench();
-                const notifs = await workbench.getNotifications();
-                for (const n of notifs) {
-                    const label = await n.getMessage();
+                for (const notification of await workbench.getNotifications()) {
+                    const label = await notification.getMessage();
                     if (
                         label.includes("The following environment is selected")
                     ) {
@@ -86,12 +92,31 @@ describe("Run files on serverless compute", async function () {
             {
                 timeout: 60_000,
                 interval: 2000,
-                timeoutMsg: "Environment setup failed",
+                timeoutMsg: "Venv creation failed",
             }
         );
 
         await executeCommandWhenAvailable(
             "Databricks: Setup python environment"
+        );
+
+        await browser.waitUntil(
+            async () => {
+                const workbench = await browser.getWorkbench();
+                for (const notification of await workbench.getNotifications()) {
+                    const label = await notification.getMessage();
+                    if (label.includes("Databricks Connect")) {
+                        await notification.takeAction("Install");
+                        return true;
+                    }
+                }
+                return false;
+            },
+            {
+                timeout: 60_000,
+                interval: 2000,
+                timeoutMsg: "DBConnect installation failed",
+            }
         );
     });
 });
