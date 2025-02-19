@@ -232,9 +232,21 @@ export async function activate(
         customWhenContext.updateShowWorkspaceView();
     }
 
+    function updateStrictSSLEnv() {
+        const httpConfig = workspace.getConfiguration("http");
+        const proxyStrictSSL = httpConfig.get<boolean>("proxyStrictSSL");
+        process.env["DATABRICKS_SDK_PROXY_STRICT_SSL"] = proxyStrictSSL
+            ? "true"
+            : "false";
+    }
+
     updateFeatureContexts();
+    updateStrictSSLEnv();
     context.subscriptions.push(
-        workspace.onDidChangeConfiguration(updateFeatureContexts)
+        workspace.onDidChangeConfiguration(() => {
+            updateFeatureContexts();
+            updateStrictSSLEnv();
+        })
     );
 
     // Configuration group
