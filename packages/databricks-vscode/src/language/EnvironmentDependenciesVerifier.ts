@@ -8,6 +8,7 @@ import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstall
 import {FeatureStepState} from "../feature-manager/FeatureManager";
 import {ResolvedEnvironment} from "./MsPythonExtensionApi";
 import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {ConfigureAutocomplete} from "./ConfigureAutocomplete";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     private readonly logger = NamedLogger.getOrCreate(Loggers.Extension);
@@ -15,13 +16,15 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
-        private readonly installer: EnvironmentDependenciesInstaller
+        private readonly installer: EnvironmentDependenciesInstaller,
+        private readonly configureAutocomplete: ConfigureAutocomplete
     ) {
         super([
             "checkCluster",
             "checkWorkspaceHasUc",
             "checkPythonEnvironment",
             "checkEnvironmentDependencies",
+            "checkBuiltins",
         ]);
         this.disposables.push(
             this.connectionManager.onDidChangeCluster(async (cluster) => {
@@ -30,6 +33,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                     this.checkPythonEnvironment(),
                 ]);
                 await this.checkEnvironmentDependencies();
+                await this.checkBuiltins();
             }, this),
             this.connectionManager.onDidChangeState(async (e) => {
                 if (e === "CONNECTED") {
@@ -42,10 +46,15 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 if (!depsCheck.available && depsCheck.action) {
                     await depsCheck.action(true);
                 }
+                await this.checkBuiltins();
             }, this),
             this.installer.onDidTryInstallation(async () => {
                 await this.checkEnvironmentDependencies();
-            }, this)
+                await this.checkBuiltins();
+            }, this),
+            this.configureAutocomplete.onDidUpdate(async () => {
+                await this.checkBuiltins();
+            })
         );
     }
 
@@ -241,7 +250,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             const title = "Failed to check python environment";
             const message = e instanceof Error ? e.message : (e as string);
             this.logger.error(title, e);
-            window.showErrorMessage(`${title}: "${message}"."`);
+            window.showErrorMessage(`${title}: "${message}".`);
             return this.rejectStep(
                 "checkPythonEnvironment",
                 title,
@@ -328,12 +337,48 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             const title = "Failed to check python environment dependencies";
             const message = e instanceof Error ? e.message : (e as string);
             this.logger.error(title, e);
-            window.showErrorMessage(`${title}: "${message}"."`);
+            window.showErrorMessage(`${title}: "${message}".`);
             return this.rejectStep(
                 "checkEnvironmentDependencies",
                 "Failed to check dependencies",
                 message,
                 async () => void (await this.checkEnvironmentDependencies())
+            );
+        }
+    }
+
+    async checkBuiltins() {
+        if (!this.state.steps.get("checkEnvironmentDependencies")?.available) {
+            return this.acceptStep("checkBuiltins");
+        }
+        try {
+            const setupRequired =
+                await this.configureAutocomplete.shouldSetupBuiltins();
+            if (setupRequired) {
+                return this.rejectStep(
+                    "checkBuiltins",
+                    "Setup Databricks builtins for autocompletion",
+                    "Optional: create a __builtins__.pyi file to enable autocompletion for Databricks builtins.",
+                    async () =>
+                        void (await this.configureAutocomplete.configureCommand()),
+                    undefined,
+                    true
+                );
+            } else {
+                return this.acceptStep("checkBuiltins");
+            }
+        } catch (e: unknown) {
+            const title = "Failed to check Databricks builtins definition";
+            const message = e instanceof Error ? e.message : (e as string);
+            this.logger.error(title, e);
+            window.showErrorMessage(`${title}: "${message}".`);
+            return this.rejectStep(
+                "checkBuiltins",
+                title,
+                message,
+                async () => void (await this.checkBuiltins()),
+                undefined,
+                true
             );
         }
     }
@@ -346,5 +391,6 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             this.checkPythonEnvironment(),
         ]);
         await this.checkEnvironmentDependencies();
+        await this.checkBuiltins();
     }
 }

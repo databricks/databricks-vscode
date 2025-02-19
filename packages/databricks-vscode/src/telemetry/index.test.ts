@@ -77,6 +77,7 @@ describe(__filename, () => {
 
     it("sets user metadata correctly after logged in", async () => {
         const ws = mock(DatabricksWorkspace);
+        when(ws.id).thenReturn("workspace-id");
         when(ws.userName).thenReturn("miles@databricks.com");
         when(ws.host).thenReturn(new URL("https://my.databricks.com"));
         const cm = mock(ConnectionManager);
@@ -110,6 +111,7 @@ describe(__filename, () => {
                 "$2b$07$97f780c0d2a202b5f54aeOJ9MKnLacIH6dXoDUpQLfJXKjhYqxJLW",
             "user.host": "my.databricks.com",
             "user.authType": "azure-cli",
+            "user.workspaceId": "workspace-id",
         });
         assert.deepEqual(metrics, {
             "event.duration": 100,

@@ -26,12 +26,6 @@ export class EnvironmentCommands {
             "environment.dependencies",
             true
         );
-        if (state.available) {
-            window.showInformationMessage(
-                "Python environment and Databricks Connect are already set up."
-            );
-            return true;
-        }
         for (const [, step] of state.steps) {
             if (step.available || (stepId && step.id !== stepId)) {
                 continue;
@@ -42,6 +36,12 @@ export class EnvironmentCommands {
                 window.showErrorMessage(step.message);
                 return false;
             }
+        }
+        if (state.available) {
+            window.showInformationMessage(
+                "Python environment and Databricks Connect are set up."
+            );
+            return true;
         }
     }
 
