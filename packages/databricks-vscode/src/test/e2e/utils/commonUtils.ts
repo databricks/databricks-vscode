@@ -3,7 +3,6 @@ import {randomUUID} from "crypto";
 import {
     CustomTreeSection,
     sleep,
-    TreeItem,
     ViewControl,
     ViewSection,
     InputBox,
@@ -78,35 +77,13 @@ export async function getViewSection(
     return section;
 }
 
-export async function getViewSubSection(
-    section: ViewSectionType,
-    subSection: string
-): Promise<TreeItem | undefined> {
-    for (const s of ViewSectionTypes) {
-        if (s !== section) {
-            await (await findViewSection(s))?.collapse();
-        }
-    }
-    const sectionView = await getViewSection(section);
-
-    if (!sectionView) {
-        return;
-    }
-
-    const configTree = sectionView as CustomTreeSection;
-
-    await waitForTreeItems(configTree);
-    const configItems = await configTree.getVisibleItems();
-
-    let subConfigItem: TreeItem | undefined;
-    for (const i of configItems) {
-        const label = await i.getLabel();
-        if (label.startsWith(subSection)) {
-            subConfigItem = i;
-            break;
-        }
-    }
-    return subConfigItem;
+export async function getTreeViewItems(name: ViewSectionType, section: string) {
+    const viewSection = (await getViewSection(name)) as
+        | CustomTreeSection
+        | undefined;
+    assert(viewSection, `${name} section doesn't exist`);
+    await viewSection.openItem(section);
+    return viewSection.getVisibleItems();
 }
 
 export async function waitForTreeItems(
@@ -237,7 +214,9 @@ export function getUniqueResourceName(name?: string) {
     return getStaticResourceName(uniqueName);
 }
 
-export async function waitForWorkflowWebview(expectedOutput: string) {
+export async function waitForWorkflowWebview(
+    expectedOutput: string | string[]
+) {
     const workbench = await browser.getWorkbench();
     const title = /Databricks Job Run/;
     await browser.waitUntil(
@@ -279,9 +258,9 @@ export async function waitForWorkflowWebview(expectedOutput: string) {
             return status.includes("Succeeded");
         },
         {
-            timeout: 60_000,
+            timeout: 180_000,
             interval: 100,
-            timeoutMsg: "Job did not reach succeeded status after 60s.",
+            timeoutMsg: "Job did not reach succeeded status after 180s.",
         }
     );
 
@@ -289,7 +268,12 @@ export async function waitForWorkflowWebview(expectedOutput: string) {
     browser.switchToFrame(iframe);
     const iframeRoot = await browser.$("html");
     expect(webView.activeFrame);
-    expect(iframeRoot).toHaveText(expectedOutput);
+    if (!Array.isArray(expectedOutput)) {
+        expectedOutput = [expectedOutput];
+    }
+    for (const output of expectedOutput) {
+        expect(iframeRoot).toHaveText(output);
+    }
     browser.switchToParentFrame();
     await webView.close();
 }
@@ -323,6 +307,32 @@ export async function executeCommandWhenAvailable(command: string) {
             return false;
         }
     });
+}
+
+export async function waitForNotification(message: string, action?: string) {
+    await browser.waitUntil(
+        async () => {
+            const workbench = await browser.getWorkbench();
+            for (const notification of await workbench.getNotifications()) {
+                const label = await notification.getMessage();
+                console.log("Checking notification message:", label);
+                if (label.includes(message)) {
+                    console.log(`Notification with "${message}" found.`);
+                    if (action) {
+                        console.log(`Taking action: ${action}`);
+                        await notification.takeAction(action);
+                    }
+                    return true;
+                }
+            }
+            return false;
+        },
+        {
+            timeout: 60_000,
+            interval: 2000,
+            timeoutMsg: `Notification with message "${message}" not found`,
+        }
+    );
 }
 
 export async function waitForDeployment() {

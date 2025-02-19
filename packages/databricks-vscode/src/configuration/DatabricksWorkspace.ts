@@ -10,8 +10,8 @@ type ServerlessEnablementResponse = {
     setting?: {
         value?: {
             // eslint-disable-next-line @typescript-eslint/naming-convention
-            preview_enablement_val?: {
-                enabled: boolean;
+            serverless_jobs_notebooks_workspace_enable_val?: {
+                value: string;
             };
         };
     };
@@ -125,12 +125,13 @@ export class DatabricksWorkspace {
         }
         try {
             const serverlessEnablement = (await client.apiClient.request(
-                `/api/2.0/settings-api/workspace/${id}/serverless_job_nb`,
+                `/api/2.0/settings-api/workspace/${id}/serverless_jobs_ws_nb_enable`,
                 "GET"
             )) as ServerlessEnablementResponse;
             const enableServerless =
-                serverlessEnablement?.setting?.value?.preview_enablement_val
-                    ?.enabled === true;
+                serverlessEnablement?.setting?.value
+                    ?.serverless_jobs_notebooks_workspace_enable_val?.value ===
+                "ENABLED";
             state = {...state, enableServerless};
         } catch (e) {
             ctx?.logger?.error("Can't detect serverless support", e);
