@@ -14,12 +14,7 @@
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // "forwardPorts": [],
     // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": [
-        "corepack enable yarn",
-        "yarn install",
-        "cd /workspaces/databricks-vscode/packages/databricks-vscode && yarn install",
-        "cd /workspaces/databricks-vscode/packages/databricks-vscode-types && yarn install"
-    ],
+    "postCreateCommand": "corepack enable yarn && corepack use yarn@latest && yarn install",
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
@@ -31,9 +26,13 @@
                 "editor.rulers": [
                     120
                 ],
+                "editor.defaultFormatter": "esbenp.prettier-vscode",
                 "[typescript]": {
                     "editor.defaultFormatter": "esbenp.prettier-vscode"
                 },
+                "[javascript]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                }
             },
             "extensions": [
                 "dbaeumer.vscode-eslint",
