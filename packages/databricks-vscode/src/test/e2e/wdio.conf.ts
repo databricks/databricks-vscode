@@ -25,7 +25,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const {version, name, engines} = packageJson;
 
-const EXTENSION_DIR = path.resolve(tmpdir(), "extension test", "extension");
+const EXTENSIONS_DIR = path.resolve(tmpdir(), "extension test", "extension");
 const VSIX_PATH = path.resolve(
     __dirname,
     "..",
@@ -178,7 +178,7 @@ export const config: Options.Testrunner = {
                     ),
                     storagePath: VSCODE_STORAGE_DIR,
                     vscodeArgs: {
-                        extensionsDir: EXTENSION_DIR,
+                        extensionsDir: EXTENSIONS_DIR,
                         disableExtensions: false,
                     },
                     workspacePath: WORKSPACE_PATH,
@@ -309,13 +309,23 @@ export const config: Options.Testrunner = {
      */
     onPrepare: async function () {
         try {
-            mkdirSync(EXTENSION_DIR, {recursive: true});
+            console.log("Extensions dir:", EXTENSIONS_DIR);
+            mkdirSync(EXTENSIONS_DIR, {recursive: true});
+
+            // DATABRICKS_AUTH_TYPE can be set to "pat" by the test runner,
+            // which is not something we want if client_id and client_secret are present
+            if (process.env.DATABRICKS_CLIENT_ID) {
+                delete process.env.DATABRICKS_AUTH_TYPE;
+            }
 
             const config = new Config({});
             await config.ensureResolved();
 
             assert(config.host, "Config host must be set");
-            assert(config.token, "Config token must be set");
+            assert(
+                config.token || (config.clientId && config.clientSecret),
+                "Config must have a token or a clientId with clientSecret"
+            );
 
             assert(
                 process.env["TEST_DEFAULT_CLUSTER_ID"],
@@ -409,7 +419,7 @@ export const config: Options.Testrunner = {
         console.log("running vscode cli");
         const res = await execFile(cli, [
             "--extensions-dir",
-            EXTENSION_DIR,
+            EXTENSIONS_DIR,
             ...extensionDependencies,
             "--install-extension",
             VSIX_PATH,
@@ -486,10 +496,10 @@ export const config: Options.Testrunner = {
      */
     afterSuite: async function () {
         console.log("Starting cleanup");
-        console.log("Extension dir:", EXTENSION_DIR);
+        console.log("Extensions dir:", EXTENSIONS_DIR);
         console.log("Workspace dir:", WORKSPACE_PATH);
         const dbCli = path.join(
-            EXTENSION_DIR,
+            EXTENSIONS_DIR,
             `${packageJson.publisher}.${packageJson.name}-${packageJson.version}`,
             "bin",
             "databricks"
@@ -599,12 +609,16 @@ export const config: Options.Testrunner = {
 
 async function writeDatabricksConfig(config: Config, rootPath: string) {
     const configFile = path.join(rootPath, ".databrickscfg");
-    await fs.writeFile(
-        configFile,
-        `[DEFAULT]
-host = ${config.host!}
-token = ${config.token!}`
-    );
+    let content = "[DEFAULT]\n";
+    content += `host = ${config.host!}\n`;
+    if (config.token) {
+        content += `token = ${config.token!}\n`;
+    } else {
+        content += `client_id = ${config.clientId!}\n`;
+        content += `client_secret = ${config.clientSecret!}\n`;
+        content += `serverless_compute_id = auto\n`;
+    }
+    await fs.writeFile(configFile, content);
     return configFile;
 }
 
