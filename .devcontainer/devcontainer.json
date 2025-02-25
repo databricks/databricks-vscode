@@ -14,7 +14,7 @@
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // "forwardPorts": [],
     // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "corepack enable yarn && corepack use yarn@latest && yarn install",
+    "postCreateCommand": "corepack enable yarn && corepack use yarn@3.2.1 && yarn install",
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
