@@ -142,12 +142,16 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 );
             }
         } catch (e: unknown) {
-            if (e instanceof Error) {
-                const title = "Failed to check workspace permissions";
-                this.logger.error(title, e);
-                window.showErrorMessage(`${title}: "${e.message}".`);
-                return this.rejectStep("checkWorkspaceHasUc", title, e.message);
+            let title = "Failed to check workspace permissions";
+            this.logger.error(title, e);
+            let message = e instanceof Error ? e.message : (e as string) || "";
+            if (message.includes("METASTORE_DOES_NOT_EXIST")) {
+                title = "The workspace should have Unity Catalog enabled";
+                message = "No catalogues with read permission were found";
+            } else {
+                window.showErrorMessage(`${title}: "${message}".`);
             }
+            return this.rejectStep("checkWorkspaceHasUc", title, message);
         }
         return this.acceptStep("checkWorkspaceHasUc");
     }

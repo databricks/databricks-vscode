@@ -6,23 +6,12 @@ import {Loggers} from "../logger";
 import {AuthProvider} from "./auth/AuthProvider";
 import {RemoteUri} from "../sync/SyncDestination";
 
-type ServerlessEnablementResponse = {
-    setting?: {
-        value?: {
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            serverless_jobs_notebooks_workspace_enable_val?: {
-                value: string;
-            };
-        };
-    };
-};
-
 export class DatabricksWorkspace {
     constructor(
         public readonly id: string,
         private _authProvider: AuthProvider,
         private me: iam.User,
-        private wsConf: WorkspaceConfProps & {enableServerless?: boolean}
+        private wsConf: WorkspaceConfProps
     ) {}
 
     /**
@@ -68,10 +57,6 @@ export class DatabricksWorkspace {
         return this.wsConf.enableWorkspaceFilesystem !== "false";
     }
 
-    get isServerlessEnabled(): boolean {
-        return this.wsConf.enableServerless === true;
-    }
-
     supportFilesInReposForCluster(cluster: Cluster): boolean {
         if (!this.isReposEnabled || !this.isFilesInReposEnabled) {
             return false;
@@ -110,7 +95,7 @@ export class DatabricksWorkspace {
         const id = (me as any)["x-databricks-org-id"] as string;
 
         const wsConfApi = new WorkspaceConf(client.apiClient);
-        let state: WorkspaceConfProps & {enableServerless?: boolean} = {
+        let state: WorkspaceConfProps = {
             enableProjectTypeInWorkspace: "true",
             enableWorkspaceFilesystem: "true",
         };
@@ -123,20 +108,6 @@ export class DatabricksWorkspace {
         } catch (e) {
             ctx?.logger?.error("Can't fetch workspace confs", e);
         }
-        try {
-            const serverlessEnablement = (await client.apiClient.request(
-                `/api/2.0/settings-api/workspace/${id}/serverless_jobs_ws_nb_enable`,
-                "GET"
-            )) as ServerlessEnablementResponse;
-            const enableServerless =
-                serverlessEnablement?.setting?.value
-                    ?.serverless_jobs_notebooks_workspace_enable_val?.value ===
-                "ENABLED";
-            state = {...state, enableServerless};
-        } catch (e) {
-            ctx?.logger?.error("Can't detect serverless support", e);
-        }
-
         return new DatabricksWorkspace(id, authProvider, me, state);
     }
 }
