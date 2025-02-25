@@ -232,9 +232,21 @@ export async function activate(
         customWhenContext.updateShowWorkspaceView();
     }
 
+    function updateStrictSSLEnv() {
+        const httpConfig = workspace.getConfiguration("http");
+        const proxyStrictSSL = httpConfig.get<boolean>("proxyStrictSSL");
+        process.env["DATABRICKS_SDK_PROXY_STRICT_SSL"] = proxyStrictSSL
+            ? "true"
+            : "false";
+    }
+
     updateFeatureContexts();
+    updateStrictSSLEnv();
     context.subscriptions.push(
-        workspace.onDidChangeConfiguration(updateFeatureContexts)
+        workspace.onDidChangeConfiguration(() => {
+            updateFeatureContexts();
+            updateStrictSSLEnv();
+        })
     );
 
     // Configuration group
@@ -357,7 +369,19 @@ export async function activate(
         )
     );
 
-    const clusterModel = new ClusterModel(connectionManager);
+    const configureAutocomplete = new ConfigureAutocomplete(
+        context,
+        stateStorage,
+        workspaceFolderManager
+    );
+    context.subscriptions.push(
+        configureAutocomplete,
+        telemetry.registerCommand(
+            "databricks.autocomplete.configure",
+            configureAutocomplete.configureCommand,
+            configureAutocomplete
+        )
+    );
 
     const environmentDependenciesInstaller =
         new EnvironmentDependenciesInstaller(
@@ -371,7 +395,8 @@ export async function activate(
             new EnvironmentDependenciesVerifier(
                 connectionManager,
                 pythonExtensionWrapper,
-                environmentDependenciesInstaller
+                environmentDependenciesInstaller,
+                configureAutocomplete
             )
     );
     const environmentCommands = new EnvironmentCommands(
@@ -458,22 +483,6 @@ export async function activate(
     );
     featureManager.isEnabled("environment.dependencies");
 
-    const configureAutocomplete = new ConfigureAutocomplete(
-        context,
-        stateStorage,
-        workspaceFolderManager,
-        pythonExtensionWrapper,
-        environmentDependenciesInstaller
-    );
-    context.subscriptions.push(
-        configureAutocomplete,
-        telemetry.registerCommand(
-            "databricks.autocomplete.configure",
-            configureAutocomplete.configureCommand,
-            configureAutocomplete
-        )
-    );
-
     const codeSynchroniser = new CodeSynchronizer(
         connectionManager,
         configModel,
@@ -516,6 +525,8 @@ export async function activate(
         configurationView,
         configModel
     );
+
+    const clusterModel = new ClusterModel(connectionManager);
 
     const connectionCommands = new ConnectionCommands(
         workspaceFsCommands,

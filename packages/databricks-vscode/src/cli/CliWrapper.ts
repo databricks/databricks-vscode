@@ -608,7 +608,7 @@ export class CliWrapper {
                 "--target",
                 target,
                 "--verbose",
-                ...(force ? ["--force-lock"] : []),
+                ...(force ? ["--force-lock", "--force"] : []),
             ],
             workspaceFolder,
             {
