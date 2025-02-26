@@ -420,6 +420,10 @@
                     "name": "Configuration"
                 },
                 {
+                    "id": "databricksDocsView",
+                    "name": "Documentation"
+                },
+                {
                     "id": "dabsResourceExplorerView",
                     "name": "Bundle Resource Explorer",
                     "visibility": "visible",

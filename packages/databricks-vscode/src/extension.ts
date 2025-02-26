@@ -73,6 +73,7 @@ import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
 import {BundlePipelinesManager} from "./bundle/BundlePipelinesManager";
+import {DocsViewTreeDataProvider} from "./ui/docs-view/DocsViewTreeDataProvider";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -832,6 +833,15 @@ export async function activate(
             debugWorkflowFactory
         ),
         debugWorkflowFactory
+    );
+
+    const docsViewTreeDataProvider = new DocsViewTreeDataProvider();
+    context.subscriptions.push(
+        window.registerTreeDataProvider(
+            "databricksDocsView",
+            docsViewTreeDataProvider
+        ),
+        docsViewTreeDataProvider
     );
 
     showQuickStartOnFirstUse(context).catch((e) => {
