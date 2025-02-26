@@ -1,3 +1,23 @@
+# Release: v2.7.0
+
+## packages/databricks-vscode
+
+## (2025-02-26)
+
+-   Add serverless support to the extension (#1539) ([ac25d32](https://github.com/databricks/databricks-vscode/commit/ac25d32)), closes [#1539](https://github.com/databricks/databricks-vscode/issues/1539)
+-   Add telemetry for serverless and workflow/dbconnect runs (#1543) ([1ce2126](https://github.com/databricks/databricks-vscode/commit/1ce2126)), closes [#1543](https://github.com/databricks/databricks-vscode/issues/1543)
+-   Always show serverless compute option in the cluster dropwodn (#1573) ([3511e3e](https://github.com/databricks/databricks-vscode/commit/3511e3e)), closes [#1573](https://github.com/databricks/databricks-vscode/issues/1573)
+-   Automatically enable serverless when serverless_compute_id=auto (#1550) ([968c084](https://github.com/databricks/databricks-vscode/commit/968c084)), closes [#1550](https://github.com/databricks/databricks-vscode/issues/1550)
+-   Configure autocomplete as a part of env panel (#1554) ([8e24c87](https://github.com/databricks/databricks-vscode/commit/8e24c87)), closes [#1554](https://github.com/databricks/databricks-vscode/issues/1554)
+-   Do not reject unauthorized hosts if proxyStrictSSL is false (#1559) ([807975f](https://github.com/databricks/databricks-vscode/commit/807975f)), closes [#1559](https://github.com/databricks/databricks-vscode/issues/1559)
+-   Fix active bundle logs (#1528) ([74a431e](https://github.com/databricks/databricks-vscode/commit/74a431e)), closes [#1528](https://github.com/databricks/databricks-vscode/issues/1528)
+-   Fix force deploy commands (#1560) ([811d9ed](https://github.com/databricks/databricks-vscode/commit/811d9ed)), closes [#1560](https://github.com/databricks/databricks-vscode/issues/1560)
+-   Fix small typo in tooltip message (#1541) ([e6b270f](https://github.com/databricks/databricks-vscode/commit/e6b270f)), closes [#1541](https://github.com/databricks/databricks-vscode/issues/1541)
+-   Hide auto-generated cell in ipynb workflows (#1574) ([ef9e923](https://github.com/databricks/databricks-vscode/commit/ef9e923)), closes [#1574](https://github.com/databricks/databricks-vscode/issues/1574)
+-   Serverless e2e tests (#1565) ([2fb7336](https://github.com/databricks/databricks-vscode/commit/2fb7336)), closes [#1565](https://github.com/databricks/databricks-vscode/issues/1565)
+-   Update Databricks CLI to v0.239.1 (#1530) ([cc9e0ef](https://github.com/databricks/databricks-vscode/commit/cc9e0ef)), closes [#1530](https://github.com/databricks/databricks-vscode/issues/1530)
+-   Update Databricks CLI to v0.241.2 (#1557) ([02c2fea](https://github.com/databricks/databricks-vscode/commit/02c2fea)), closes [#1557](https://github.com/databricks/databricks-vscode/issues/1557)
+
 # Release: v2.6.0
 
 ## packages/databricks-vscode
