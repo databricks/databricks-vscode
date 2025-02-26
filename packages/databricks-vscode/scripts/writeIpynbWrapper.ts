@@ -14,7 +14,11 @@ interface INbCell {
 const nbCell: INbCell = {
     cell_type: "code",
     source: [],
-    metadata: {},
+    metadata: {
+        jupyter: {
+            source_hidden: true,
+        },
+    },
     outputs: [],
     execution_count: null,
 };

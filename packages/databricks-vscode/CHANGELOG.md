@@ -1,3 +1,16 @@
+# Release: v2.7.0
+
+## packages/databricks-vscode
+
+## (2025-02-26)
+
+-   Add serverless support to the extension
+-   Suggest to configure autocomplete globals as a part of env panel flow
+-   Do not reject unauthorized hosts if proxyStrictSSL is false
+-   Force deploy commands now pass `--force` flag to the CLI (and not just `--force-lock`)
+-   Hide auto-generated cell in ipynb workflows
+-   Update Databricks CLI to v0.241.2
+
 # Release: v2.6.0
 
 ## packages/databricks-vscode
