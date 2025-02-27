@@ -1,7 +1,6 @@
 import {
     Disposable,
     EventEmitter,
-    TextEditor,
     Uri,
     WorkspaceFolder,
     window,
