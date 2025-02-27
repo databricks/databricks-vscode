@@ -15,6 +15,7 @@ const ViewSectionTypes = [
     "WORKSPACE EXPLORER",
     "BUNDLE RESOURCE EXPLORER",
     "BUNDLE VARIABLES",
+    "DOCUMENTATION",
 ] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
 
